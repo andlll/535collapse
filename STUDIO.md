@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 4b (nemici in mischia) fatto; prossimo il 4c. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 4c (arcieri, frecce, torri) fatto; prossimo il 4d. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,7 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10).
+- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -44,7 +44,8 @@ sta nella sezione citata.
 - [x] 4a. Fanteria (guerriero, picchiere), caserma, pulsanti
   attacco/difesa, gruppi di controllo (§3.9).
 - [x] 4b. Nemici in mischia: IA, morte, cadaveri (§3.10).
-- [ ] 4c–4e. Combattimento (i nemici calcolano i percorsi con le porte
+- [x] 4c. Arcieri, frecce, presidio di torri e castello, torre nemica (§3.11).
+- [ ] 4d–4e. Combattimento (i nemici calcolano i percorsi con le porte
   chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
@@ -1634,3 +1635,66 @@ picchiere nemico: il picchiere lo vede e lo carica, si colpiscono (75 →
 cadavere fa le sue tre pose e sparisce, il guerriero va verso il nemico
 successivo. 3000 passi senza errori in `match`, `lvl01`, `lvl02` (in
 `lvl02` si combatte da soli: alleati 16 → 11, nemici 89 → 83).
+
+### 3.11 Punto 4c: arcieri, frecce, torri (5 ottobre 2026)
+
+**Portato** (`game/src/ranged.js`, `enemies.js`): `ally_arciere` (tiro,
+avvicinamento, bersaglio col click destro, presidio), `enemy_arciere`; le
+quattro frecce (`arciere_bullet` degli arcieri, `arciere_bullet_t` di
+torri, castello e centro, `b_arciere_bullet` degli arcieri nemici,
+`b_arciere_bullet_t` delle torri nemiche); il presidio di `torre` (2
+arcieri) e `castello` (4) con le loro frecce e le bandierine; le frecce
+del centro; `enemy_torre`; `flag_r`, `flag_r2`, `flag_b`; le reazioni
+alle frecce (i nemici fermi scappano da quelle degli arcieri; guerrieri,
+picchieri e cavalieri vanno verso l'arciere nemico che li colpisce).
+
+Inoltre: l'hover degli edifici viene dal parent `ally_build` (vale anche
+per mura, porte e cantieri, come nell'originale); il click destro di
+riparazione controlla che l'edificio sia danneggiato (tranne la casa,
+che non lo controlla); i soldati e i civili mostrano il numero del loro
+gruppo di controllo (gli arcieri no).
+
+**Come funziona** [C]:
+- Arciere: tira entro 600 px (ridotti in verticale), una freccia ogni 56
+  passi (13 + 30 + 13) a 20 px per passo, 33 passi di vita (660 px).
+  Danni delle frecce: 6 a fanteria e arcieri, 4 al cavaliere, 3 ad
+  arieti e catapulte (alleati e nemici, in tabella).
+- Arciere nemico: tira entro 400 px (dimezzati di notte), si avvicina
+  entro 600.
+- Torre (2 posti), castello (4 posti) e centro: una freccia per arciere
+  di presidio (il centro una sempre) ogni 50 passi (35 il centro) su un
+  nemico entro 600 px. La torre nemica tira due frecce ogni 50 passi.
+- Presidio: click destro su torre o castello con arcieri selezionati; a
+  meno di 10 px l'arciere sparisce (−2 popolazione) e l'edificio ha una
+  freccia in più. Gli arcieri non escono più.
+
+**Difetti e stranezze** [C]:
+
+41. `warwark` (sic) nella reazione alle frecce di guerriero, picchiere e
+    cavaliere: mai assegnata, vale 0, la condizione è sempre vera. Nessun
+    effetto.
+42. `torre` Destroy: l'if senza graffe regge solo `var thisflag=...`;
+    senza bandiera `with(thisflag)` diventa `with(0)`, cioè il primo
+    oggetto del progetto, `hint_legna` [I: gli indici seguono l'ordine del
+    progetto]: una torre distrutta senza presidio cancella il suggerimento
+    sulla legna, se è aperto. Riprodotto.
+43. Il controllo "destinazione occupata" (Step azioni 9 e 10, ripetuto due
+    volte) vale anche per l'ordine di presidio: la destinazione è il
+    centro dell'edificio, che non è mai libero, e scivola di 64 px per
+    passo verso l'arciere finché trova un punto libero. Se fra l'edificio
+    e l'arciere c'è un'altra unità, la destinazione arriva fino
+    all'arciere, che si ferma senza entrare. Verificato: di tre arcieri
+    mandati al castello ne è entrato uno. Riprodotto.
+44. Con un bersaglio scelto col click destro, `target_auto_valid` non è
+    assegnata (vale 0): appena il bersaglio è fuori tiro e l'arciere è
+    fermo, lo dimentica invece di avvicinarsi. Riprodotto.
+45. Gli arcieri di presidio non escono mai (nemmeno se l'edificio è
+    distrutto). Forse voluto [?].
+
+**Verificato** (Chromium): un arciere a 450 px da un picchiere nemico
+tira (60 → 54 → 48) e il picchiere colpito, fermo, scappa finché esce di
+tiro; la torre nemica di `match` tira due frecce a un guerriero entro
+600 px (75 → 63 → 51) e lui arretra; tre arcieri mandati al castello: ne
+entra uno (n.43), compare la bandiera, "1/4", e con un nemico a 450 px il
+castello tira (60 → 54 → 42). 3000 passi senza errori in `match`,
+`lvl01`, `lvl02`.

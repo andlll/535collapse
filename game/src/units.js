@@ -14,6 +14,7 @@
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { counterArcher } from "./ranged.js";
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -206,6 +207,7 @@ export function cavaliere(p) {
     keyboard27: escapeDeselect,
     drawEnd: unitDrawEnd,
     drawGUI(i, w, d) { unitPanel(i, w, d, "ico_cavaliere"); },
+    collisions: { b_arciere_bullet: counterArcher },
   };
 }
 
@@ -369,6 +371,7 @@ export function infantry(name, p) {
     keyboard27: escapeDeselect,
     drawEnd: unitDrawEnd,
     drawGUI(i, w, d) { unitPanel(i, w, d, T.icon); },
+    collisions: { b_arciere_bullet: counterArcher },
   };
   if (T.globalLeft) {
     // ally_picchiere Mouse_GlobalLeftPressed [C]
@@ -467,7 +470,9 @@ export function walkCycle(i) {
 
 // Rettangolo di selezione [C, Step "selezione multipla"]: mentre il tasto
 // sinistro e' tenuto e nessun modificatore, dentro = selezionato.
-export function boxSelect(i, w, firesel) {
+// counter: true o "firesel" per i guerrieri, "arcsel" per gli arcieri.
+export function boxSelect(i, w, counter) {
+  const extra = counter === true ? "firesel" : counter || null;
   const g = w.g, mx = w.mouse.x, my = w.mouse.y;
   if (g.multi !== 1 || g.sele !== 0) return;
   const inside = (i.x > g.startx && i.x < mx && i.y > g.starty && i.y < my)
@@ -475,10 +480,10 @@ export function boxSelect(i, w, firesel) {
     || (i.x > g.startx && i.x < mx && i.y < g.starty && i.y > my)
     || (i.x < g.startx && i.x > mx && i.y < g.starty && i.y > my);
   if (inside) {
-    if (i.selected === 0) { g.sel += 1; g.milsel += 1; if (firesel) g.firesel++; }
+    if (i.selected === 0) { g.sel += 1; g.milsel += 1; if (extra) g[extra]++; }
     i.selected = 1;
   } else {
-    if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; if (firesel) g.firesel--; }
+    if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; if (extra) g[extra]--; }
     i.selected = 0;
   }
 }
@@ -654,9 +659,10 @@ function rallyMove(i, w, p, offset100) {
   scrMove(p, i, i.flaggox, i.flaggoy);
 }
 
-// Draw_End [C, identico in guerriero e cavaliere]: barra della vita, cerchio
-// di selezione, segnaposto della destinazione.
-export function unitDrawEnd(i, w, d) {
+// Draw_End [C, identico in guerriero, picchiere e cavaliere]: barra della
+// vita, cerchio di selezione, segnaposto della destinazione, numero del
+// gruppo di controllo (non nell'arciere: unitDrawEnd(..., false)).
+export function unitDrawEnd(i, w, d, showGroup = true) {
   const C = { black: 0, green: 0x008000 };
   if (i.selected === 1 || i.hover === 1) {
     d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
@@ -668,6 +674,14 @@ export function unitDrawEnd(i, w, d) {
   if (i.hit === 1 && w.room !== "menu") {
     d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
     d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.green, C.green, C.green, C.green, false);
+  }
+  if (showGroup && i.assi && i.assi !== 0) {
+    d.setAlpha(0.3);
+    d.setFont("GUI_1");
+    d.setHalign("center");
+    d.text(i.x, i.y - 100, i.assi !== 10 ? i.assi : "0");
+    d.setFont("GUI_1");
+    d.setAlpha(1);
   }
 }
 

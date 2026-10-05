@@ -11,7 +11,7 @@
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
-import { phaseOf, walkCycle, unitDrawEnd } from "./units.js";
+import { phaseOf, walkCycle } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -764,8 +764,16 @@ function ominoDrawEnd(i, w, d) {
     d.sprite("director_blue", 0, i.foodx, i.foody);
   }
   if (i.hit === 1 && w.room !== "menu") bar();
+  // numero del gruppo di controllo, come i soldati
+  if (i.assi && i.assi !== 0) {
+    d.setAlpha(0.3);
+    d.setFont("GUI_1");
+    d.setHalign("center");
+    d.text(i.x, i.y - 100, i.assi !== 10 ? i.assi : "0");
+    d.setFont("GUI_1");
+    d.setAlpha(1);
+  }
   if (i.hover === 1) bar();
-  void unitDrawEnd;
 }
 
 // Draw_GUI [C]: scheda del civile con i 10 pulsanti di costruzione e cio' che

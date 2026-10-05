@@ -337,6 +337,16 @@ export function lifeBar(dr, i, col = GREEN) {
 
 // --------------------------------------------------------- edifici finiti
 
+// ally_build Mouse_MouseEnter/Leave [C]: il parent di tutti gli edifici
+// alleati (anche cantieri, mura e porte): hover, e il cerchio del mouse
+// che indica la riparazione (global.buildhover) se l'edificio e' danneggiato.
+export function allyBuild() {
+  return {
+    mouseEnter(i, w) { i.hover = 1; if (i.life < i.slife) w.g.buildhover = 1; },
+    mouseLeave(i, w) { i.hover = 0; w.g.buildhover = 0; },
+  };
+}
+
 // Dati [C, <edificio>/Create e Step]: vita, rovina, popolazione, sprite di
 // danno di castello, chiesa, torre: sopra il 66% lo sprite normale, sotto
 // il 33% *_r2. [Correzione decisa dall'autore, §3.5 n.19] nell'originale
@@ -403,10 +413,9 @@ export function built(fam, p) {
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
-    // Mouse_RightReleased [C]: i civili selezionati vanno a riparare
-    rightReleased(i, w) { sendRepair(i, w); },
-    mouseEnter(i, w) { i.hover = 1; if (i.life < i.slife) w.g.buildhover = 1; },
-    mouseLeave(i, w) { i.hover = 0; w.g.buildhover = 0; },
+    // Mouse_RightReleased [C]: i civili selezionati vanno a riparare (solo
+    // la casa non controlla che l'edificio sia danneggiato)
+    rightReleased(i, w) { if (fam === "casa" || i.life < i.slife) sendRepair(i, w); },
     keyPress46(i) { if (i.selected === 1) i.life = 0; },
     drawEnd(i, w, dr) {
       if (i.selected === 1) lifeBar(dr, i);
@@ -628,8 +637,6 @@ export function centro(p) {
     globalRightReleased(i, w) { if (i.selected === 1) { i.flagx = w.mouse.x; i.flagy = w.mouse.y; } },
     leftReleased: base.leftReleased,
     rightReleased(i, w) { if (i.life < i.slife) sendRepair(i, w); },
-    mouseEnter: base.mouseEnter,
-    mouseLeave: base.mouseLeave,
     drawEnd(i, w, dr) {
       if (i.flagx !== null && i.flagy !== null && i.selected === 1) {
         dr.sprite("director_blue", 0, i.flagx, i.flagy);

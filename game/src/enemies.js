@@ -68,7 +68,7 @@ function freeSpawnEnemy(i, w) {
 // scr_atk_signal [C]: un segnale d'attacco se il nemico colpisce fuori
 // dalla view (non piu' di uno ogni 500 px). atk_signal non disegna nulla
 // (solo un contatore di debug in mouser): residuo (§3.10).
-function atkSignal(i, w) {
+export function atkSignal(i, w) {
   const c = w.cam;
   if (i.x >= c.x && i.x <= c.x + c.w && i.y >= c.y && i.y <= c.y + c.h) return;
   const s = w.nearest(i.x, i.y, "atk_signal");
@@ -362,6 +362,135 @@ export function enemyMelee(name, p) {
       d.setAlpha(1);
       d.sprite(T.icon, 0, 325, 70);
     },
-    // Collision_arciere_bullet (scappare dalle frecce): con gli arcieri (4c)
+    collisions: { arciere_bullet: fleeArrow },
+  };
+}
+
+// Collision_arciere_bullet [C]: un nemico fermo colpito da una freccia
+// (solo quelle degli arcieri, non delle torri) scappa di 200 px.
+function fleeArrow(i, w, other) {
+  if (i.warwork !== 0) return;
+  const d = pointDirection(other.x, other.y, i.x, i.y);
+  if (i.action !== 1) i.alarm.set(0, 13);
+  i.action = 1;
+  i.dirox = i.x + lengthdirX(200, d);
+  i.diroy = i.y + lengthdirY(200, d);
+}
+
+// ---------------------------------------------------------- arciere nemico
+
+// enemy_arciere [C]: tira entro 400 px (dimezzati di notte), si avvicina
+// entro 600 (ferma se gia' in cammino, come nell'originale). Vita 55,
+// rango 2. Il doppio clic seleziona tutti i civili (n.38) e Alt lo
+// deseleziona sempre.
+export function enemyArcher(p) {
+  const base = enemyMelee("enemy_warrior", p); // visibilita' e disegno in comune
+  const name = "enemy_arciere";
+  const visibility = (i, w) => {
+    const g = w.g, n = 1 - g.night;
+    const near = (obj, r) => distTo(w, i, w.nearest(i.x, i.y, obj)) < r + r * n;
+    i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
+      || near("torre", 500) || w.room === "menu" || g.fogville === 0;
+  };
+  const attack = (i, w) => {
+    if (!w.exists("ally_unit")) return;
+    const k = iso(i.direction), night = w.g.night;
+    const n0 = w.nearest(i.x, i.y, "ally_unit");
+    if (w.distanceToInstance(i, n0) < 400 * (1 - 0.5 * night) * k) {
+      if (i.warwork === 2) {
+        i.targetx = n0.x; i.targety = n0.y;
+        i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
+      }
+      if (i.warwork !== 2 && i.warwork !== 4) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
+      return;
+    }
+    const chase = (needStill) => {
+      const n = w.nearest(i.x, i.y, "ally_unit");
+      if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k && (!needStill || i.action !== 1))) return;
+      if (i.warwork === 0 || i.warwork === 1) {
+        if (i.action !== 1) i.alarm.set(0, 15);
+        i.action = 1; i.warwork = 1; i.dirox = n.x; i.diroy = n.y;
+      }
+    };
+    if (w.exists("fog01")) {
+      if (distTo(w, i, w.nearest(i.x, i.y, "fog01")) > 290) chase(false);
+    } else chase(true);
+    if (i.action === 0 && i.warwork === 1) i.warwork = 0;
+  };
+  return {
+    ...base,
+    create(i, w) {
+      const g = w.g;
+      Object.assign(i, { action: 0, idling: 1, step: 0, phase: 1, hov: 0, hover: 0, warwork: 0, dc: 0, autospeed: 0,
+                         firework: 0, defender: 0, targetid: null, hit: 0, selected: 0, role: 0,
+                         targetx: 0, targety: 0, foodx: 0, foody: 0, dirox: 0, diroy: 0 });
+      g.order++;
+      i.ordo = g.order * 2;
+      i.life = 55;
+      i.slife = 55;
+      i.flow_field = p.grid0;
+    },
+    alarm4: undefined,
+    // Alarm_2 [C]: fuori tiro (400 px fissi) smette; tre fasi (13, 30, 13),
+    // poi la freccia a 20 px per passo
+    alarm2(i, w) {
+      const n = w.nearest(i.x, i.y, "ally_unit");
+      if (!n || w.distanceToInstance(i, n) > 400) { i.action = 0; i.warwork = 0; i.speed = 0; }
+      if (i.action !== 2) return;
+      if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
+      if (i.step === 1) { i.step = 2; i.alarm.set(2, 30); return; }
+      if (i.step !== 2) return;
+      i.step = 0;
+      i.alarm.set(2, 13);
+      const b = w.create("b_arciere_bullet", i.x, i.y - 40);
+      const a = w.nearest(b.x, b.y, "ally_unit");
+      b.direction = a ? pointDirection(b.x, b.y, a.x, a.y) : i.direction;
+      b.speed = 20;
+    },
+    step(i, w) {
+      const g = w.g;
+      visibility(i, w);
+      const diro = i.direction;
+      if (i.life <= 0) {
+        const corpse = w.create("enemy_arciere_corpse", i.x, i.y);
+        if (i.hover === 1) { i.hover = 0; g.enemyhover = 0; }
+        w.destroy(i);
+        corpse.direction = diro;
+        return;
+      }
+      i.autospeed = 4 * iso(i.direction);
+      i.depth = -i.y;
+      i.phase = phaseOf(i.direction);
+      if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
+      enemyMove(i, w, p);
+      ANIM[name](i, w);
+      if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }
+      if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
+      if (w.number("torre_placer") > 0) g.sele = 1;
+      attack(i, w);
+    },
+    // Draw_End come gli altri, ma alla fine rimette il colore bianco [C]
+    drawEnd(i, w, d) { base.drawEnd(i, w, d); d.setColour(C.white); },
+    leftReleased(i, w) {
+      if (i.dc === 1) for (const o of w.all("ally_omino")) o.selected = 1;
+      if (w.g.sele > -1) {
+        i.selected = 1;
+        if (i.action === 1 && i.dc === 0) { i.dc = 1; i.alarm.set(1, 20); }
+      }
+      if (w.g.sele === -1) i.selected = 0;
+    },
+    drawGUI(i, w, d) {
+      if (i.selected !== 1 || w.g.sel >= 2) return;
+      d.setAlpha(0.69);
+      d.roundrectColourExt(260, 20, 390, 150, 60, 60, C.white, C.white, false);
+      d.setFont("GUI_1");
+      d.setColour(C.black);
+      d.setAlpha(0.75);
+      d.setValign("middle");
+      d.setHalign("center");
+      d.text(325, 120, i.life + " / " + i.slife);
+      d.setAlpha(1);
+      d.sprite("ico_arciere", 0, 325, 70);
+    },
   };
 }

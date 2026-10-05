@@ -16,9 +16,10 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
-import { enemyMelee, atkSignalObject } from "./enemies.js";
+import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
+import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
+import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { Draw } from "./draw.js";
@@ -105,13 +106,25 @@ async function main() {
   world.register("difesa_clicker", behaviourClicker("difesa"));
   for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
   for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
-  world.register("centro", centro(path));
+  world.register("centro", centroArrows(centro(path)));
+  world.register("ally_build", allyBuild());
+  world.register("ally_arciere", allyArcher(path));
+  world.register("enemy_arciere", enemyArcher(path));
+  world.register("arciere_bullet", allyArrow(false));
+  world.register("arciere_bullet_t", allyArrow(true));
+  world.register("b_arciere_bullet", enemyArrow(false));
+  world.register("b_arciere_bullet_t", enemyArrow(true));
+  world.register("enemy_torre", enemyTower(path));
+  world.register("flag_r", flag("rflag", -200));
+  world.register("flag_r2", flag("rflag", -400));
+  world.register("flag_b", flag("bflag", -200));
   for (const f of Object.keys(FAM)) {
     world.register(f + "_clicker", clicker(f));
     world.register(f + "_placer", placer(f));
     if (f === "campo" || f === "mura") continue;
     world.register(f + "_fond", fond(f, path));
-    world.register(f, PRODUCERS[f] ? producer(f, built(f, path), path) : built(f, path));
+    const b = built(f, path);
+    world.register(f, PRODUCERS[f] ? producer(f, b, path) : f === "torre" || f === "castello" ? garrisoned(f, b) : b);
   }
   for (const [prod, P] of Object.entries(PRODUCERS)) {
     for (const [type, u] of Object.entries(P.units)) world.register(u.clicker, unitClicker(prod, Number(type)));
