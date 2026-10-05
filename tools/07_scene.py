@@ -13,6 +13,8 @@ prima che giri qualunque logica:
            proprio: in GMS il Draw sostituisce il disegno automatico dello
            sprite [I], e quegli oggetti si disegnano dal loro codice
   visible  il flag dell'oggetto
+  parents  la catena dei parent (with(ally_unit), instance_number(enemy_build)
+           ecc. valgono anche per i figli, STUDIO.md §1.3)
   reveal   true se l'oggetto parte invisibile e il suo Step lo rende
            visibile (alberi, rovine, pietre: si rivelano quando un'unita'
            li vede, STUDIO.md §2.5) — l'anteprima senza nebbia li mostra
@@ -63,7 +65,7 @@ def main():
     for name, o in objs.items():
         src = inherited(name, "Create")
         create = read_event(src, "Create") if src else ""
-        entry = {"sprite": o["sprite"], "visible": o["visible"],
+        entry = {"sprite": o["sprite"], "visible": o["visible"], "parents": chain(name)[1:],
                  "draw": inherited(name, "Draw") is None, "depth": o["depth"]}
         if not o["visible"]:
             step_src = inherited(name, "Step")

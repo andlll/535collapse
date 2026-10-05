@@ -17,6 +17,11 @@ Gruppi (dalle cartelle di sprite dell'autore, data/sprites.json "folder"):
   nemici    unita' barbare (cartelle b_*)                   tier gioco
   citta     citta' romana (lvl01/lvl02)                     tier citta
 
+Nel gruppo gui anche i tre font bitmap rasterizzati da GameMaker (Seagram
+tfb, STUDIO.md §2.5: foglio intero come pseudo-sprite "__font_<nome>", piu'
+la tabella dei glifi in atlas.json "fonts") e "__white", un quadratino
+bianco per rettangoli, cerchi e linee: niente texture in piu' da legare.
+
 Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
 come sprite di un oggetto ne' nel codice): servono solo a tools/06_masks.py.
 
@@ -190,6 +195,25 @@ def main():
                                    Image.LANCZOS)
             entry["frames"].append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
             items[g].append((s["name"], i, crop))
+
+    # font e pixel bianco nel gruppo gui (non ritagliati: le coordinate dei
+    # glifi restano quelle del foglio di GameMaker)
+    manifest["fonts"] = {}
+    for fnt in json.load(open(os.path.join(DATA_DIR, "fonts.json"), encoding="utf-8")):
+        sheet = Image.open(os.path.join(GMX_DIR, "fonts", fnt["image"])).convert("RGBA")
+        name = "__font_" + fnt["name"]
+        manifest["sprites"][name] = {"group": "gui", "width": sheet.width, "height": sheet.height,
+                                     "origin": [0, 0], "scale": 1.0,
+                                     "frames": [{"trim": [0, 0, sheet.width, sheet.height]}]}
+        items["gui"].append((name, 0, sheet))
+        manifest["fonts"][fnt["name"]] = {
+            "sprite": name, "family": fnt["family"], "size": fnt["size"],
+            "height": max(g["h"] for g in fnt["glyphs"]),
+            "glyphs": {str(g["character"]): [g["x"], g["y"], g["w"], g["h"], g["shift"], g["offset"]]
+                       for g in fnt["glyphs"]}}
+    manifest["sprites"]["__white"] = {"group": "gui", "width": 8, "height": 8, "origin": [0, 0],
+                                      "scale": 1.0, "frames": [{"trim": [0, 0, 8, 8]}]}
+    items["gui"].append(("__white", 0, Image.new("RGBA", (8, 8), (255, 255, 255, 255))))
 
     total_gpu = total_disk = 0
     print("%-9s %-6s %5s %6s %7s %9s %8s" % ("gruppo", "tier", "scala", "frame", "pagine", "GPU MB", "WebP MB"))

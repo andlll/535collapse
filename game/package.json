@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/app.js --bundle --splitting --format=esm --minify --sourcemap --outdir=dist"
+    "build": "esbuild src/app.js --bundle --splitting --format=esm --minify --sourcemap --outdir=dist",
+    "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

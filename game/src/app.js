@@ -12,6 +12,9 @@ import { Loop } from "./loop.js";
 import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { Scene } from "./scene.js";
+import { Draw } from "./draw.js";
+import { Manager } from "./manager.js";
+import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t } from "./i18n.js";
 
@@ -71,6 +74,10 @@ async function main() {
   const diag = new Diagnostics($("diag"));
   diag.toggle(settings.diagnostics || params.has("diag"));
   const clear = bgrToRGB(room.colour);
+  const g = newGlobals(roomName);
+  const manager = new Manager(roomName, g);
+  const draw = new Draw(r, assets);
+  draw.setFont("GUI_1");
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
   // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
@@ -86,18 +93,15 @@ async function main() {
   window.addEventListener("resize", resize);
   resize();
 
+  // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
+  // mouse, Step, poi la view segue il puntatore.
   const step = () => {
     input.beginStep();
-    // manager Keyboard_Left/Right/Up/Down [C]: 10 px a passo, 30 con Ctrl
-    // (global.sele=1 mentre Ctrl e' premuto, manager KeyPress/KeyRelease_Control).
-    const k = input.down.has(17) ? 30 : 10;
-    if (input.down.has(37)) cam.x -= k;
-    if (input.down.has(39)) cam.x += k;
-    if (input.down.has(38)) cam.y -= k;
-    if (input.down.has(40)) cam.y += k;
-    // manager KeyPress_X / KeyPress_Z [C]: zoom indietro / avanti di 0,1.
-    if (input.pressed.has(88) && !input.down.has(17)) cam.setScale(cam.scaleview + 0.1);
-    if (input.pressed.has(90) && !input.down.has(17)) cam.setScale(cam.scaleview - 0.1);
+    manager.alarms();
+    manager.keys(input, cam);
+    const [mx, my] = cam.toRoom(input.x, input.y);
+    manager.mouse(input, mx, my);
+    manager.step(input, cam, room.width, room.height);
     if (input.pressed.has(114)) { // F3
       diag.toggle();
       settings.diagnostics = diag.visible;
@@ -112,9 +116,14 @@ async function main() {
     }
   };
 
+  let fpsNow = 0;
   const render = () => {
     r.beginFrame(cam, clear);
     scene.draw(r, cam);
+    // Draw GUI: coordinate in pixel CSS della finestra
+    r.setProjection(0, 0, cam.cssW, cam.cssH);
+    draw.reset();
+    manager.drawGUI(draw, cam, scene, fpsNow);
     r.flush();
   };
 
@@ -124,6 +133,7 @@ async function main() {
     onFrame: (info) => {
       diag.frame(info);
       if (info.rendered) {
+        if (lastRendered) fpsNow = fpsNow * 0.9 + (1000 / Math.max(1, info.now - lastRendered)) * 0.1;
         if (lastRendered && rscale.observe(info.now, info.now - lastRendered, 1000 / loop.fpsCap)) resize();
         lastRendered = info.now;
       }
@@ -155,7 +165,7 @@ async function main() {
 
   loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
-  window.__game = { r, assets, scene, cam, loop, diag, ready: true };
+  window.__game = { r, assets, scene, cam, loop, diag, g, manager, ready: true };
 }
 
 main().catch((e) => {

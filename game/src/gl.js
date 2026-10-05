@@ -170,6 +170,35 @@ export class Renderer {
 
   // ------------------------------------------------------------- disegno
 
+  // Proiezione: rettangolo di coordinate che riempie il canvas (la view di
+  // room per il mondo, 0,0,larghezza,altezza CSS per Draw GUI).
+  setProjection(x, y, w, h) {
+    this.flush();
+    this.gl.uniform4f(this.uView, x, y, w, h);
+  }
+
+  // draw_set_blend_mode [C: bm_normal, bm_add, bm_subtract nel codice].
+  // Con l'alpha premoltiplicato: add = ONE, ONE. bm_subtract in GMS 1.x e'
+  // (bm_zero, bm_inv_src_colour) [I, documentazione del motore]: la
+  // destinazione moltiplicata per (1 - colore sorgente), cioe' scurisce.
+  // E' il modo con cui l'originale applica nebbia e notte (manager Draw_End).
+  setBlend(mode) {
+    if (mode === this.blend) return;
+    this.flush();
+    const gl = this.gl;
+    if (mode === "add") {
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.ONE, gl.ONE);
+    } else if (mode === "subtract") {
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR);
+    } else {
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    }
+    this.blend = mode;
+  }
+
   beginFrame(view, clearRGB) {
     const gl = this.gl;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -179,6 +208,8 @@ export class Renderer {
     this.stats.drawCalls = 0;
     this.stats.quads = 0;
     this.slots.fill(null);
+    this.blend = null;
+    this.setBlend("normal");
   }
 
   _unit(t) {
@@ -198,17 +229,19 @@ export class Renderer {
   }
 
   // Quad generico: 4 angoli (x0..y3 in senso orario da in alto a sinistra),
-  // rettangolo uv in pixel della texture, colore RGBA premoltiplicato a 8 bit.
-  quad(t, x0, y0, x1, y1, x2, y2, x3, y3, u0, v0, u1, v1, rgba) {
+  // rettangolo uv in pixel della texture, colore RGBA premoltiplicato a 8 bit
+  // (uno per angolo se servono sfumature: c1..c3 valgono rgba se omessi).
+  // Un triangolo e' un quad con gli ultimi due angoli coincidenti.
+  quad(t, x0, y0, x1, y1, x2, y2, x3, y3, u0, v0, u1, v1, rgba, c1 = rgba, c2 = rgba, c3 = rgba) {
     if (this.count >= MAX_QUADS) this.flush();
     const unit = this._unit(t);
     const iw = 1 / t.width, ih = 1 / t.height;
     const f = this.f32, u = this.u32;
     let o = this.count * 4 * FLOATS_PER_VERTEX;
     f[o] = x0; f[o + 1] = y0; f[o + 2] = u0 * iw; f[o + 3] = v0 * ih; u[o + 4] = rgba; f[o + 5] = unit; o += 6;
-    f[o] = x1; f[o + 1] = y1; f[o + 2] = u1 * iw; f[o + 3] = v0 * ih; u[o + 4] = rgba; f[o + 5] = unit; o += 6;
-    f[o] = x2; f[o + 1] = y2; f[o + 2] = u1 * iw; f[o + 3] = v1 * ih; u[o + 4] = rgba; f[o + 5] = unit; o += 6;
-    f[o] = x3; f[o + 1] = y3; f[o + 2] = u0 * iw; f[o + 3] = v1 * ih; u[o + 4] = rgba; f[o + 5] = unit;
+    f[o] = x1; f[o + 1] = y1; f[o + 2] = u1 * iw; f[o + 3] = v0 * ih; u[o + 4] = c1; f[o + 5] = unit; o += 6;
+    f[o] = x2; f[o + 1] = y2; f[o + 2] = u1 * iw; f[o + 3] = v1 * ih; u[o + 4] = c2; f[o + 5] = unit; o += 6;
+    f[o] = x3; f[o + 1] = y3; f[o + 2] = u0 * iw; f[o + 3] = v1 * ih; u[o + 4] = c3; f[o + 5] = unit;
     this.count++;
     this.stats.quads++;
   }

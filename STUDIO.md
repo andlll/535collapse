@@ -946,3 +946,89 @@ il bordo di `match` (`hborder` 80, `vborder` 40 [C]) la view si sposta ogni
 passo di (bordo − distanza del puntatore dal bordo): fino a ~78 px a passo,
 cioè ~4700 px/s col puntatore sull'ultimo pixel. È quello che l'originale
 dovrebbe fare [I]; da confermare con l'autore.
+
+---
+
+## Fase 3 — vertical slice su `match`
+
+Ordine concordato con l'autore: (1) manager e interfaccia, (2) selezione e
+ordini, (3) civili, (4) combattimento, (5) nebbia e notte.
+
+### 3.1 Punto 1: manager, interfaccia, font (5 ottobre 2026)
+
+Decisioni dell'autore: lo scorrimento ai bordi **era così veloce** (resta
+com'è); castello e torre **non danno popolazione** (si toglie il −5 alla
+distruzione).
+
+**Font e primitive**: i tre font bitmap di GameMaker e un quadratino bianco
+sono nel gruppo `gui` dell'atlas (4,1 MB di GPU, 0,2 MB su disco): testo,
+rettangoli, cerchi e linee passano dallo stesso lotto, senza texture in più.
+`game/src/draw.js` riproduce lo stato e le funzioni di disegno usate dal
+gioco (`draw_set_alpha/colour/font/halign/valign`, `draw_text(_ext)`,
+`string_width/height(_ext)`, `draw_rectangle(_colour)`,
+`draw_roundrect_colour_ext`, `draw_circle/ellipse/line/triangle_colour`,
+`draw_sprite(_ext)`) per portare il codice di disegno riga per riga.
+`bm_subtract` di GMS 1.x è (zero, 1 − colore sorgente), cioè scurisce
+[I, documentazione del motore]: è come l'originale applica nebbia e notte.
+
+**[?] Raggio degli angoli** di `draw_roundrect_colour_ext`: il porting usa
+metà del valore passato (60 → angoli di raggio 30). Da confrontare con uno
+screenshot dell'originale.
+
+**`game/src/manager.js`** — porta di `manager` [C, src/objects/manager/]:
+
+- Create: risorse **100/50/50/0, popcap 0** (decisione dell'autore, al posto
+  dei valori di test), alarm 0 = 6000 (notte), 4 = 12000–15000 (pioggia),
+  8 = 60 (orologio); `lvl01` parte di notte con `alarm[1]=100000`, `lvl02`
+  di notte con `alarm[1]=1`.
+- Step: tetti 9999 a cibo, legno, oro (non alla pietra), popcap ≤ 99,
+  schermo nero iniziale che sfuma (`fogalpha` −0,02 a passo).
+- Alarm: notte (rampa +0,005 a passo fino a 1, poi 2000 passi), giorno
+  (rampa −0,005 fino a sotto 0, poi 4000), pioggia (solo lo stato
+  `raining`: le gocce arrivano col sistema di particelle), orologio.
+- Tastiera: frecce (10 px, 30 con Ctrl o Alt), X/Z zoom 1,0–1,5 (non nel
+  menu; con Ctrl cambiano la scala della minimappa), M minimappa, O
+  obiettivi, H suggerimenti, trucchi V+Alt+F/Q/S/W/P, Ctrl+V+Canc nebbia.
+- Mouse: inizio/fine del rettangolo di selezione (`multi`, `startx/y`),
+  pulsanti della minimappa.
+- Draw GUI: minimappa (stesso ordine di famiglie e colori dei `with`
+  dell'originale; rettangolo della view alto `view_hport/sz` come
+  nell'originale, anche a zoom > 1), pannello risorse, civili inattivi,
+  FPS se attivo, numero di selezionati; pulsanti di costruzione e di
+  comportamento con il punto 2.
+
+Ordine di un passo in `app.js`: alarm → tastiera → mouse → Step → la view
+segue il puntatore (STUDIO.md §1.3).
+
+**Verificato**:
+
+- `npm test` (`game/test/manager.test.mjs`, 7 test, node --test, nessuna
+  dipendenza): semantica degli alarm; risorse iniziali e tetti; ciclo
+  giorno/notte misurato a passi (notte che comincia al passo 6000, rampa di
+  ~200 passi, notte di ~2000, ritorno); `lvl01`/`lvl02` di notte; orologio;
+  trucchi solo con V e Alt tenuti; zoom e scala della minimappa.
+- Chromium headless su `match` 1280×720: pannello risorse con font Seagram
+  e icone, contatore dei civili inattivi, minimappa con i pulsanti, schermo
+  nero iniziale sparito dopo 50 passi, V+Alt+F e V+Alt+W → cibo 1100 e legno
+  1050; nessun errore, nessun 404.
+
+**Non ancora**: notte e nebbia disegnate (punto 5), gocce di pioggia
+(particelle), aquila (alarm 3), suggerimenti (`hint_night`), controller dei
+livelli e presidi di `match` (servono le unità).
+
+### 3.2 Altri difetti trovati nel manager
+
+9. **`manager` Step**: `if fogville=0 with(enemy) visible=true` legge la
+   variabile d'istanza `fogville`, mai assegnata, invece di
+   `global.fogville` [C]: il trucco "nebbia spenta" non rende visibili i
+   nemici da qui.
+10. **`KeyPress_Q`**: `part_system_destroy(rain)` e `global.raining=0` sono
+    **fuori** dall'`if` del trucco [C]: ogni pressione di Q (anche come tasto
+    di produzione) ferma la pioggia.
+11. **`KeyPress_P`**: `alarm[4]=1` fuori dall'`if` [C]: ogni pressione di P
+    fa ripartire la pioggia.
+
+Riprodotti per ora (n.10 e n.11), segnalati nel codice; in attesa di
+decisione dell'autore. Nota sul debug: in `KeyPress_D` i due `if` in fila
+fanno passare `debug_code` da 2 a 4 con **una sola** pressione, quindi la
+sequenza reale è ← → D ← → [C].

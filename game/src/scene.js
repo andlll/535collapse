@@ -21,14 +21,20 @@ export class Scene {
     this.room = room;
     this.assets = assets;
     this.instances = [];
+    this.roomW = room.width;
+    this.roomH = room.height;
     room.instances.forEach(([object, x, y, sx, sy, rot, colour], order) => {
       const o = room.objects[object];
-      if (!o || !o.draw || !(o.visible || o.reveal)) return;
+      if (!o) return;
       const sprite = o.choices ? o.choices[Math.floor(Math.random() * o.choices.length)] : o.sprite;
-      if (!sprite || !assets.sprites[sprite]) return;
       const depth = typeof o.depth === "number" ? o.depth : -y + o.depth.y;
+      // Tutte le istanze (anche invisibili: la minimappa le conta per
+      // famiglia); `drawable` = disegnata dallo sprite. `visible`: senza la
+      // nebbia, quelle che si rivelano vedendole sono considerate viste.
+      const drawable = !!(o.draw && (o.visible || o.reveal) && sprite && assets.sprites[sprite]);
       // colore d'istanza ARGB a 32 bit; 0xFFFFFFFF = nessuna tinta.
-      this.instances.push({ object, sprite, x, y, sx, sy, rot, order, depth, imageIndex: 0,
+      this.instances.push({ object, parents: o.parents || [], sprite, x, y, sx, sy, rot, order, depth,
+                            imageIndex: 0, drawable, visible: o.visible || !!o.reveal,
                             colour: colour & 0xffffff, alpha: (colour >>> 24) / 255 });
     });
     this.instances.sort((a, b) => b.depth - a.depth || a.order - b.order);
@@ -36,7 +42,7 @@ export class Scene {
 
   step() {
     for (const i of this.instances) {
-      if (this.assets.sprites[i.sprite].frames.length > 1) i.imageIndex += 1;
+      if (i.drawable && this.assets.sprites[i.sprite].frames.length > 1) i.imageIndex += 1;
     }
   }
 
@@ -52,6 +58,7 @@ export class Scene {
     const vx0 = cam.x, vy0 = cam.y, vx1 = cam.x + cam.w, vy1 = cam.y + cam.h;
     let drawn = 0;
     for (const i of this.instances) {
+      if (!i.drawable) continue;
       const bb = spriteBounds(this.assets, i.sprite, i.x, i.y, i.sx, i.sy);
       if (!bb || bb[2] < vx0 || bb[0] > vx1 || bb[3] < vy0 || bb[1] > vy1) continue;
       if (drawSprite(r, this.assets, i.sprite, i.imageIndex, i.x, i.y, i.sx, i.sy, i.rot, i.colour, i.alpha)) drawn++;
