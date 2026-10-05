@@ -348,3 +348,26 @@ da documentare e testare caso per caso. **In attesa di conferma.**
   eseguibile né una build HTML5 nel repo); il comportamento del runner GMS
   (ordine degli eventi, `mp_potential_step`, conteggio degli alarm) è
   conoscenza del motore, da confermare caso per caso.
+
+### 0.12 Campagna, sottomenu livelli e codici di sblocco
+
+L'autore ricorda un pulsante **Campagna** nel menu che apre un sottomenu con
+`lvl01` e altri livelli, e uno sblocco dei livelli con **codici
+alfanumerici** rivelati alla fine del livello precedente.
+
+**[C] In questa esportazione non c'è niente di tutto questo.** Cercato in
+tutto il GML, negli script e nelle room: nessun `room_goto(lvl01)`, nessun
+uso di `keyboard_string`/`get_string`/`keyboard_lastchar` (servirebbero per
+digitare un codice), nessuna stringa "campaign"/"level"/"unlock"/"code"
+nell'interfaccia. Il menu ha solo le due pillole "Survival - Demo" e "More
+coming next - Work in progress". Le room sono 5, quindi **l'unico livello di
+campagna esistente è `lvl01`**. **[C]** `lvl01` non ha condizione di
+vittoria: in `manager` Step la vittoria (`victory_manager`) scatta solo se
+`room=match`. **[?]** Se esiste un'altra versione del progetto con questa
+parte, oppure se va progettata da zero come funzionalità nuova.
+
+### 0.13 Cartella GMX
+
+Decisione dell'autore: gli zip restano nel repo come fonte immutabile;
+l'estrazione va in una cartella esclusa da git; `src/` (codice leggibile)
+e `data/` (JSON) si versionano.
