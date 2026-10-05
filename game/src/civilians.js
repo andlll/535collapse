@@ -326,8 +326,8 @@ function ominoMove(i, w, p) {
     }
   }
   // Ricalcolo se la destinazione e' occupata.
-  // [Difetto §3.4 n.14] l'originale crea qui anche un legno_prizedrawer
-  // (l'icona "+legno" che sale): resto di debug; il porting non lo crea.
+  // [Correzione decisa dall'autore, §3.4 n.14] l'originale crea qui anche
+  // un legno_prizedrawer (l'icona "+legno" che sale): resto di debug.
   if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && !i.buildwork && !i.repairwork
       && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework) {
     p.free(i);

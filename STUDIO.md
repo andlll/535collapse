@@ -24,9 +24,6 @@ sta nella sezione citata.
   particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
-- [ ] Difetti da decidere: n.14 (`legno_prizedrawer` di debug, §3.4),
-  n.18 (fiamme della casa), n.19 (sprite `*_r1` mai mostrato), n.20
-  (cantiere annullato che resta ostacolo) (§3.5).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -62,7 +59,7 @@ sta nella sezione citata.
 - [ ] Correzioni già decise, da applicare quando si porta il sistema:
   ariete 60 oro anche col tasto Q; annullare un picchiere restituisce 55
   cibo e 45 legno; centro distrutto −10 popcap; castello e torre senza −5
-  (§1.6).
+  (§1.6); le fiamme alte della casa non vanno distrutte (§3.5 n.18).
 
 **Fasi 4 e 5**
 - [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
@@ -1333,3 +1330,19 @@ annulla l'ultimo in coda (+50); dopo circa 1000 passi nasce il civile
 (popolazione 5 → 6) e va verso il punto di raccolta. Riparazione: casa a
 100/120, click destro col civile → +1 vita e −1 legno ogni 13 passi, a 120
 si ferma. Nessun errore.
+
+**Decisioni dell'autore sui difetti** (5 ottobre 2026): "correggiamo
+tutto". Il n.14 (§3.4) era davvero debug: il `legno_prizedrawer` non si
+crea. Applicate subito:
+- n.17: il tipo, lo sprite e la maschera della casa arrivano prima del
+  Create del cantiere (`world.create(..., { init })`), che marca la griglia
+  con la maschera giusta;
+- n.19: `*_r1` sotto il 66%, `*_r2` sotto il 33%;
+- n.20: Canc su un cantiere libera le sue celle. Non lo fa un Destroy,
+  perché a cantiere finito l'edificio ha appena marcato le stesse celle.
+
+Il n.18 si applica quando arrivano le particelle (è nella lista delle
+correzioni decise). Verificato in Chromium: cantiere di una casa di tipo
+4 marcato con `c4m`; dopo Canc restano ostacolo solo le celle di un albero
+sotto il cantiere; torre al 50% → `torre_r1`, al 20% → `torre_r2`, al 100%
+→ `torre_spr`.

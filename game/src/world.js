@@ -76,8 +76,11 @@ export class World {
 
   // -------------------------------------------------------------- istanze
 
+  // opts.init(inst): valori impostati prima del Create (serve alle
+  // correzioni che anticipano un'assegnazione fatta dopo nell'originale).
   create(object, x, y, opts = {}) {
     const inst = this._alloc(object, x, y, opts);
+    if (opts.init) { opts.init(inst); this.moved(inst); }
     this.fire(inst, "create");
     return inst;
   }

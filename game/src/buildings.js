@@ -189,13 +189,16 @@ export function placer(fam) {
         w.destroy(i);
         g.sele = 1;
         for (const [r, v] of Object.entries(d.cost)) g[r] -= v;
-        const f = w.create(fam + "_fond", i.x, i.y);
-        if (fam === "casa") {
+        // [Correzione decisa dall'autore, §3.5 n.17] l'originale assegna
+        // tipo, sprite e maschera della casa DOPO il Create del cantiere,
+        // che ha gia' marcato la griglia con la maschera c1m: qui arrivano
+        // prima, e la marcatura usa la maschera giusta.
+        const init = fam !== "casa" ? null : (f) => {
           f.sprite_index = "c" + i.tipo + "f";
           f.tipo = i.tipo;
           f.mask_index = "c" + i.tipo + "m";
-          w.moved(f);
-        }
+        };
+        w.create(fam + "_fond", i.x, i.y, { init });
         for (const c of w.all(fam + "_clicker")) c.active = 0;
       } else if (i.place === 1) {
         blinkMissing(w, fam, d.cost);
@@ -213,9 +216,8 @@ export function placer(fam) {
 export function fond(fam, p) {
   const d = FAM[fam];
   return {
-    // Create [C]: marca la griglia con la maschera PREDEFINITA dell'oggetto
-    // (per la casa c1m: il tipo arriva dopo, dal placer; difetto §3.5 n.17,
-    // riprodotto), vita 1 su slife, alarm 0 al passo dopo.
+    // Create [C]: marca la griglia con la maschera (per la casa quella del
+    // tipo scelto: correzione §3.5 n.17), vita 1 su slife, alarm 0 al passo dopo.
     create(i, w) {
       p.markInstance(i, 1000);
       i.alarm.set(0, 1);
@@ -270,15 +272,17 @@ export function fond(fam, p) {
       for (const o of w.all("ally_omino")) if (o.selected === 1) o.buildwork = 1;
       i.buildwork = 1;
     },
-    // KeyPress_Delete [C]: annulla il cantiere selezionato, rimborso pieno
+    // KeyPress_Delete [C]: annulla il cantiere selezionato, rimborso pieno.
+    // [Correzione decisa dall'autore, §3.5 n.20] l'originale non libera le
+    // celle della griglia, che restano ostacolo: qui si liberano. (Non in un
+    // Destroy: a cantiere finito l'edificio ha gia' marcato le stesse celle.)
     keyPress46(i, w) {
       if (i.selected !== 1) return;
+      p.markInstance(i, 1);
       w.destroy(i);
       for (const [r, v] of Object.entries(d.cost)) w.g[r] += v;
     },
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, d.ico); },
-    // Nessun Destroy [C]: un cantiere annullato con Canc lascia le sue celle
-    // segnate come ostacolo (difetto §3.5 n.20, riprodotto).
   };
 }
 
@@ -303,18 +307,19 @@ function lifeBar(dr, i, col = GREEN) {
 // --------------------------------------------------------- edifici finiti
 
 // Dati [C, <edificio>/Create e Step]: vita, rovina, popolazione, sprite di
-// danno (castello, chiesa, torre: sopra il 66% lo sprite normale, sotto il
-// 33% *_r2; *_r1 non compare mai perche' entrambe le soglie sono "< 0,33",
-// difetto §3.5 n.19, riprodotto).
+// danno di castello, chiesa, torre: sopra il 66% lo sprite normale, sotto
+// il 33% *_r2. [Correzione decisa dall'autore, §3.5 n.19] nell'originale
+// entrambe le soglie di *_r1 e *_r2 sono "< 0,33" e *_r1 non si vede mai:
+// qui *_r1 vale sotto il 66%.
 const BUILT = {
   casa: { life: 120, ruin: "casaruin", popcap: 10, fire: true },
   magazzino: { life: 140, ruin: "magruin", fire: true },
   barn: { life: 150, ruin: "barnruin", fire: true },
   caserma: { life: 350, ruin: "casruin", fire: true },
   stalla: { life: 380, ruin: "stalruin", fire: true },
-  castello: { life: 900, ruin: "castelloruin", damage: ["castello_spr", "castello_r2"], stone: true },
-  chiesa: { life: 300, ruin: "chiesaruin", damage: ["chiesa_spr", "chiesa_r2"] },
-  torre: { life: 330, ruin: "torreruin", damage: ["torre_spr", "torre_r2"], stone: true },
+  castello: { life: 900, ruin: "castelloruin", damage: ["castello_spr", "castello_r1", "castello_r2"], stone: true },
+  chiesa: { life: 300, ruin: "chiesaruin", damage: ["chiesa_spr", "chiesa_r1", "chiesa_r2"] },
+  torre: { life: 330, ruin: "torreruin", damage: ["torre_spr", "torre_r1", "torre_r2"], stone: true },
 };
 
 export function built(fam, p) {
@@ -337,8 +342,9 @@ export function built(fam, p) {
     },
     destroy(i) { p.markInstance(i, 1); },
     // Alarm 0/1 [C]: a fuoco fumo ogni 30 passi e -1 vita ogni 70
-    // (il fumo e le fiamme arrivano con le particelle; nella casa le fiamme
-    // vengono distrutte al passo dopo la loro creazione: difetto §3.5 n.18).
+    // (il fumo e le fiamme arrivano con le particelle; nella casa
+    // l'originale distrugge le fiamme alte al passo dopo: §3.5 n.18, da
+    // correggere quando si portano le particelle).
     alarm0(i) { if (b.fire) i.alarm.set(0, 30); },
     alarm1(i) { if (b.fire) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; } },
     step(i, w) {
@@ -353,8 +359,10 @@ export function built(fam, p) {
       }
       repairEnd(i, w);
       if (b.damage) {
-        if (i.life > i.slife * 0.66 && i.sprite_index !== b.damage[0]) i.sprite_index = b.damage[0];
-        if (i.life < i.slife * 0.33 && i.sprite_index !== b.damage[1]) i.sprite_index = b.damage[1];
+        const [ok, r1, r2] = b.damage;
+        if (i.life > i.slife * 0.66 && i.sprite_index !== ok) i.sprite_index = ok;
+        if (i.life < i.slife * 0.66 && i.life >= i.slife * 0.33 && i.sprite_index !== r1) i.sprite_index = r1;
+        if (i.life < i.slife * 0.33 && i.sprite_index !== r2) i.sprite_index = r2;
       }
     },
     globalLeftPressed(i) { i.selected = 0; },
