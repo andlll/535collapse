@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, mura e porte fatte e corrette (§3.8); prossimo il punto 4. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 4a (fanteria e caserma) fatto; prossimo il 4b. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,6 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
+- [ ] Difetti da decidere: n.30–35 (§3.9).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -40,7 +41,9 @@ sta nella sezione citata.
   `*_prizedrawer`, `idle_clicker` (§3.5).
 - [x] Mura e porte: pulsante, placer, prolungamenti, porte (§3.7).
 - [x] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina (§3.6).
-- [ ] 4. Combattimento (i nemici calcolano i percorsi con le porte
+- [x] 4a. Fanteria (guerriero, picchiere), caserma, pulsanti
+  attacco/difesa, gruppi di controllo (§3.9).
+- [ ] 4b–4e. Combattimento (i nemici calcolano i percorsi con le porte
   chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
@@ -1500,3 +1503,70 @@ ostacoli) e ostacolo per i nemici (32 su 32); da un lato all'altro della
 porta il goal field di un alleato dà 6 celle, quello di un nemico 60
 (deve aggirare il muro); Canc su un tratto finito selezionato → il tratto
 sparisce. Nessun errore.
+
+### 3.9 Punto 4a: fanteria e caserma (5 ottobre 2026)
+
+Il punto 4 (combattimento) è diviso in cinque passi: 4a fanteria e
+caserma; 4b IA dei nemici in mischia, morte e cadaveri; 4c arcieri,
+frecce e torri; 4d assedio e fuoco; 4e edifici nemici, ondate, difensori
+e chiesa.
+
+**Portato** (`units.js`: `infantry`, `controlGroups`, `behaviourClicker`;
+`production.js`): `ally_warrior` e `ally_picchiere`; la produzione della
+caserma (coda di 6, annulla, bandiera di raccolta, pulsanti delle unità);
+i pulsanti attacco/difesa (anche per il cavaliere); i gruppi di controllo
+(Ctrl+numero, numero) per militari e civili, che mancavano anche al
+cavaliere. Gli alarm del fuoco degli edifici ora seguono il numero di
+ciascuna famiglia (nella caserma l'alarm 0 è la produzione).
+
+**Come funziona** [C]:
+- Guerriero e picchiere sono lo stesso codice; il picchiere è una
+  versione precedente, come il cavaliere (clic sinistro all'inizio dello
+  Step, arrivo esatto, niente precedenza di rango da vicino, `scr_move`
+  sempre). Le differenze sono una tabella (`INFANTRY`). Vita 75 e 60,
+  popolazione 2, danni per vita massima del bersaglio in §1.4.
+- Coda della caserma: `coda0` è l'unità in produzione, `coda1..6` quelle
+  in attesa. La nuova unità nasce 20 px a destra o a sinistra e 10 sopra
+  o sotto, verso la bandiera, poi cerca la cella libera più vicina.
+- `nada` e `nope` (bandiera assente) non sono definite da nessuna parte:
+  sono variabili mai assegnate, cioè 0 [I, §1.3].
+- Il "clic fuori" del guerriero sta nel suo evento Destroy, non in
+  Mouse_GlobalLeftPressed: un clic sul terreno lo deseleziona comunque,
+  tramite il rettangolo di selezione vuoto.
+- Non portati: `Alarm_11` del guerriero (vecchia copia di movimento e
+  attacco, nessuno la arma) e F12 di picchiere e cavaliere (ricalcolo del
+  percorso verso il mouse: strumento di sviluppo).
+
+**Difetti trovati** [C], riprodotti in attesa di decisione:
+
+30. `global.firesel` (quanti selezionati possono dare fuoco) non scende
+    quando un guerriero muore selezionato, né con Esc (`ally_unit`):
+    resta sopra 0 e il manager continua a disegnare l'anello del fuoco
+    sotto il puntatore.
+31. Il pulsante Difesa mette `comp=200`, ma la scheda dell'unità evidenzia
+    la difesa solo con `comp=50`: l'evidenziazione non si accende mai.
+32. La caserma avanza di 1% a ogni passo (`alarm[0]=1`): un'unità ogni
+    ~113 passi (1,9 s), contro ~1000 (17 s) del civile al centro. Forse
+    un valore di prova come le risorse iniziali [?].
+33. `scr_find_free_cell_spiral64` usa celle da 64 px ma legge la griglia
+    dei costi (celle da 32) con quegli indici: controlla un altro punto
+    della mappa. In più il primo controllo avviene dopo il primo passo
+    della spirale, e la cella della bandiera non viene mai provata.
+34. Magazzino e mulino non armano mai nel Create l'alarm della vita in
+    fiamme (alarm 1): a fuoco fanno fumo ma non perdono vita.
+35. I pulsanti delle unità (caserma) scrivono `global.sele` a ogni passo
+    (1 col puntatore sopra di sé, 0 altrimenti): vince l'ultimo creato,
+    l'annulla. Finché una caserma è selezionata, Ctrl e Alt non
+    funzionano e il passaggio sopra i pulsanti delle unità non protegge
+    dalla deselezione.
+
+**Altro**: il banner "rendering software" in basso intercettava i clic sul
+canvas; ora è trasparente al mouse (`pointer-events: none`).
+
+**Verificato** (Chromium, `match`, risorse a 500): caserma selezionata, Q
+Q W E → coda di 4 (cibo 500 → 295, legno 500 → 455, oro 500 → 375); R
+annulla l'arciere (+40 legno, +55 oro); nascono due guerrieri e un
+picchiere (popolazione 5 → 11). Portati a 150 px da un picchiere nemico
+lo attaccano da soli (vita 60 → 47 → 27 → 10 → …; i nemici non muoiono
+ancora: 4b). Gruppi: Ctrl+1, Esc, 1 → riselezionati tutti e tre.
+1200 passi senza errori in `match`, `lvl01`, `lvl02`.

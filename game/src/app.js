@@ -14,7 +14,8 @@ import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
-import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
+import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
+import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
@@ -95,7 +96,12 @@ async function main() {
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   world.register("ally_cavaliere", cavaliere(path));
-  world.register("ally_omino", omino(path));
+  world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
+  world.register("ally_warrior", infantry("ally_warrior", path));
+  world.register("ally_picchiere", infantry("ally_picchiere", path));
+  world.register("ally_militare", controlGroups(false));
+  world.register("attacco_clicker", behaviourClicker("attacco"));
+  world.register("difesa_clicker", behaviourClicker("difesa"));
   for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
   for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
   world.register("centro", centro(path));
@@ -104,7 +110,11 @@ async function main() {
     world.register(f + "_placer", placer(f));
     if (f === "campo" || f === "mura") continue;
     world.register(f + "_fond", fond(f, path));
-    world.register(f, built(f, path));
+    world.register(f, PRODUCERS[f] ? producer(f, built(f, path), path) : built(f, path));
+  }
+  for (const [prod, P] of Object.entries(PRODUCERS)) {
+    for (const [type, u] of Object.entries(P.units)) world.register(u.clicker, unitClicker(prod, Number(type)));
+    world.register(P.cancel, cancelClicker(prod));
   }
   world.register("campo_fond", campoFond(path));
   world.register("campo", campo(path));

@@ -17,7 +17,8 @@
   #loading-bar { height: 100%; width: 0; background: #c8b98a; transition: width .15s; }
   #message { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
              max-width: min(90vw, 720px); padding: 10px 16px; border-radius: 8px;
-             font: 15px/1.4 system-ui, sans-serif; color: #fff; background: #4a4f3c; }
+             font: 15px/1.4 system-ui, sans-serif; color: #fff; background: #4a4f3c;
+             pointer-events: none; /* i clic passano al gioco sotto */ }
   #message.warning { background: #8a5a12; }
   #message.error { background: #8a1c12; }
   #diag { position: fixed; left: 8px; top: 8px; margin: 0; padding: 8px 10px;

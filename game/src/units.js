@@ -178,7 +178,8 @@ export function cavaliere(p) {
       flowMovement(i, w, p, { cavalier: true });
       // azione 12: attacco
       if (autoAttack(i, w, p) === "exit") return;
-      // azione 13: pulsanti attacco/difesa (con i pulsanti dell'interfaccia, punto 4)
+      // azione 13: pulsanti attacco/difesa
+      behaviourButtons(i, w);
     },
 
     // Mouse_GlobalLeftPressed: clic altrove senza Ctrl/Alt deseleziona
@@ -205,6 +206,247 @@ export function cavaliere(p) {
     keyboard27: escapeDeselect,
     drawEnd: unitDrawEnd,
     drawGUI(i, w, d) { unitPanel(i, w, d, "ico_cavaliere"); },
+  };
+}
+
+// "creazione pulsanti di comportamento" [C, Step di ogni unita' militare]
+function behaviourButtons(i, w) {
+  if (i.selected === 1 && w.number("attacco_clicker") === 0) {
+    w.create("attacco_clicker", 0, 0);
+    w.create("difesa_clicker", 0, 0);
+  }
+}
+
+// ------------------------------------------------------------- fanteria
+
+// ally_warrior e ally_picchiere [C]: stesso codice, il picchiere e' una
+// versione precedente (come il cavaliere). Differenze nella tabella.
+// Danni di Alarm_2 per vita massima del bersaglio (STUDIO.md §1.4).
+const INFANTRY = {
+  ally_warrior: { rank: 3, life: 75, corpse: "warrior_corpse", icon: "ico_guerriero", alarm8: 3000,
+                  damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4 },
+                  // il guerriero e' la versione piu' recente
+                  clickFirst: false, exactStop: false, nearRank: true, warwork4: true, move100: true,
+                  faceTarget: true, rally100: true, occupyAtCreate: false, globalLeft: false },
+  ally_picchiere: { rank: 2, life: 60, corpse: "picchiere_corpse", icon: "ico_picchiere", alarm8: 1200,
+                    damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8 },
+                    clickFirst: true, exactStop: true, nearRank: false, warwork4: false, move100: false,
+                    faceTarget: false, rally100: false, occupyAtCreate: true, globalLeft: true },
+};
+
+export function infantry(name, p) {
+  const T = INFANTRY[name];
+  // Step, "tasto sinistro del mouse" [C]: selezione, doppio clic (tutti
+  // quelli dello stesso tipo nella view), Alt deseleziona
+  const leftClick = (i, w) => {
+    const g = w.g;
+    if (!(i.hover === 1 && w.input.mouseReleased[0])) return;
+    if (i.dc === 1) {
+      for (const o of w.all(name)) if (inView(w, o)) { o.selected = 1; g.sel += 1; g.milsel += 1; g.firesel++; }
+    }
+    if (g.sele > -1 && i.selected === 0) {
+      i.selected = 1;
+      g.milsel += 1;
+      g.firesel++;
+      // + hint_multi la prima volta (con i suggerimenti)
+      if (i.dc === 0) g.sel += 1;
+      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+    }
+    if (g.sele === -1) {
+      if (i.selected === 1) { g.sel -= 1; g.firesel--; g.milsel -= 1; }
+      i.selected = 0;
+    }
+  };
+  const b = {
+    create(i, w) {
+      const g = w.g;
+      Object.assign(i, {
+        selected: 0, creation: 0, foodx: 0, foody: 0, goal_x: 0, goal_y: 0, targetx: 0, targety: 0,
+        flaggox: null, flaggoy: null, action: 0, idling: 1, step: 0, phase: 1, hit: 0, hov: 0, hover: 0, dc: 0,
+        autospeed: 0, warwork: 0, visib: 0, comp: 700, assi: 0, firework: 0, targetid: null, target_eu: null,
+        pass: 1, direction: 0, life: T.life, slife: T.life, xprev: i.x, yprev: i.y,
+      });
+      g.pop += 2;
+      g.order++;
+      i.ordo = g.order * T.rank;
+      i.dirox = i.x;
+      i.diroy = i.y;
+      // (alarm[3]=1 nel guerriero: nessun evento Alarm_3, non fa nulla)
+      // azione 2: flow field iniziale sul posto
+      p.findFreeSpawn(i);
+      generateFields(p, i, i.x, i.y);
+      i.dirox = i.x;
+      i.diroy = i.y;
+      if (T.occupyAtCreate) p.occupy(i);
+    },
+    roomStart(i) { p.occupy(i); },
+    alarm0: walkCycle,
+    alarm1(i) { i.dc = 0; },
+    alarm2(i, w) { meleeStrike(i, w, T.damage, false, T.faceTarget); },
+    // Alarm_4, "dare fuoco alle case" (action 6): arriva col fuoco (4d)
+    alarm5(i) { i.hit = 0; },
+    alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
+    alarm10(i, w) { rallyMove(i, w, p, T.rally100); },
+
+    step(i, w) {
+      const g = w.g;
+      if (T.clickFirst) leftClick(i, w);
+      // morte: instance_destroy prima di tutto (il Destroy gira subito)
+      const diro = i.direction;
+      if (i.life <= 0) {
+        p.free(i);
+        w.destroy(i);
+        g.pop -= 2;
+        const corpse = w.create(T.corpse, i.x, i.y);
+        corpse.direction = diro;
+        if (i.selected === 1) { g.sel -= 1; g.firesel--; g.milsel -= 1; }
+        return;
+      }
+      // movimento e direzione
+      i.autospeed = 4 * iso(i.direction);
+      i.depth = -i.y;
+      i.phase = phaseOf(i.direction);
+      if (i.action === 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
+                                         : pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction))) {
+        i.action = 0; p.occupy(i); i.creation = 0; i.warwork = 0; i.speed = 0;
+      }
+      ANIM[name](i, w);
+      boxSelect(i, w, true);
+      // destinazione occupata: 32 px verso di se' (a caso se appena creato)
+      if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+        if (i.creation !== 1) {
+          const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
+          i.dirox += lengthdirX(32, dir);
+          i.diroy += lengthdirY(32, dir);
+        } else {
+          i.dirox += irandomRange(-32, 32);
+          i.diroy += irandomRange(-32, 32);
+        }
+      }
+      behaviourButtons(i, w);
+      // dare fuoco alle case (firework, action 6): col fuoco (4d)
+      if (i.targetid && !i.targetid.alive) { i.targetid = null; i.firework = 0; }
+      if (i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70) {
+        i.firework = 0;
+        i.direction = pointDirection(i.x, i.y, i.targetid.x, i.targetid.y);
+        i.step = 0;
+        i.alarm.set(4, 13);
+        i.action = 6;
+      }
+      // [Difetto corretto §3.3 n.12, confermato dall'autore] nel picchiere
+      // il ricalcolo passa dirox anche come y, come nel cavaliere
+      flowMovement(i, w, p, { nearRank: T.nearRank, warwork4: T.warwork4 });
+      if (autoAttack(i, w, p, { move100: T.move100, faceTarget: T.faceTarget }) === "exit") return;
+      if (!T.clickFirst) leftClick(i, w);
+    },
+
+    // Destroy [C]: il codice di "clic fuori" sta nel Destroy: deseleziona
+    // e toglie i pulsanti di comportamento se Ctrl/Alt non sono premuti e
+    // non si sta sopra quei pulsanti. Non tocca firesel (§3.9 n.30).
+    destroy(i, w) {
+      const g = w.g;
+      const hov = (n) => { let h = 0; for (const c of w.all(n)) h = c.hover === 1 ? 1 : 0; return h; };
+      if (hov("attacco_clicker") !== 1 && hov("difesa_clicker") !== 1 && i.selected === 1 && g.sele === 0) {
+        g.sel -= 1; g.milsel -= 1; i.selected = 0;
+        for (const n of ["attacco_clicker", "difesa_clicker"]) for (const c of w.all(n)) w.destroy(c);
+      }
+      p.free(i);
+    },
+    mouseEnter(i) { i.hover = 1; },
+    mouseLeave(i) { i.hover = 0; },
+    globalRightReleased(i, w) {
+      if (i.selected !== 1) return;
+      for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
+      i.dirox = w.mouse.x;
+      i.diroy = w.mouse.y;
+      i.creation = 0;
+      i.alarm.set(8, T.alarm8);
+      if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
+      i.action = 1;
+      i.warwork = 4;
+      if (w.positionMeeting(w.mouse.x, w.mouse.y, "enemy_unit")) i.warwork = 1;
+    },
+    keyboard27: escapeDeselect,
+    drawEnd: unitDrawEnd,
+    drawGUI(i, w, d) { unitPanel(i, w, d, T.icon); },
+  };
+  if (T.globalLeft) {
+    // ally_picchiere Mouse_GlobalLeftPressed [C]
+    b.globalLeftPressed = (i, w) => {
+      if (w.g.sele === 0 && i.selected === 1) { w.g.sel -= 1; w.g.milsel -= 1; w.g.firesel--; i.selected = 0; }
+    };
+    b.stepBegin = (i, w) => { if (w.number("torre_placer") > 0) w.g.sele = 1; };
+  }
+  return b;
+}
+
+// ------------------------------------------------- gruppi di controllo
+
+// ally_militare KeyPress_0..9 e ally_omino KeyPress_0..9 [C]: con Ctrl
+// (sele=1) i selezionati entrano nel gruppo N (0 vale 10); senza, il numero
+// seleziona il gruppo e deseleziona gli altri. I civili non contano in milsel.
+export function controlGroups(civilian) {
+  const b = {};
+  for (let k = 0; k <= 9; k++) {
+    const n = k === 0 ? 10 : k;
+    b["keyPress" + (48 + k)] = (i, w) => {
+      const g = w.g;
+      if (g.sele === 0) {
+        if (i.assi === n && i.selected === 0) { g.sel += 1; if (!civilian) g.milsel += 1; i.selected = 1; }
+        if (i.assi !== n && i.selected === 1) { g.sel -= 1; if (!civilian) g.milsel -= 1; i.selected = 0; }
+      }
+      if (g.sele === 1 && i.selected === 1) i.assi = n;
+    };
+  }
+  return b;
+}
+
+// ------------------------------------------- pulsanti attacco e difesa
+
+// attacco_clicker / difesa_clicker [C]: comp 700 (insegue entro 700 px) o
+// 200. La scheda dell'unita' evidenzia la difesa solo con comp=50, che
+// nessuno assegna: non si accende mai (§3.9 n.31).
+export function behaviourClicker(kind) {
+  const attack = kind === "attacco";
+  const apply = (w) => {
+    for (const u of w.all("ally_militare")) if (u.selected === 1) u.comp = attack ? 700 : 200;
+    if (!attack) for (const u of w.all("ally_arciere")) if (u.selected === 1) u.comp = 200;
+  };
+  return {
+    create(i) { i.active = 0; i.hover = 0; },
+    step(i, w) {
+      const g = w.g, c = w.cam;
+      w.setPos(i, c.x + 450 * g.scaleview, c.y + (attack ? 50 : 120) * g.scaleview);
+      i.depth = -i.y - 999;
+      if (g.milsel === 0) { w.destroy(i); return; }
+      i.image_xscale = g.scaleview;
+      i.image_yscale = g.scaleview;
+    },
+    leftReleased(i, w) { apply(w); },
+    [attack ? "keyPress81" : "keyPress65"](i, w) { apply(w); },
+    mouseEnter(i, w) { i.hover = 1; w.g.sele = 2; },
+    mouseLeave(i, w) { i.hover = 0; w.g.sele = 0; },
+    drawGUI(i, w, d) {
+      if (i.hover !== 1) return;
+      const H = w.cam.cssH, white = 0xffffff, y = attack ? 50 : 120;
+      d.setAlpha(0.69);
+      d.roundrectColourExt(20, H - 150, 340, H - 20, 60, 60, white, white, false);
+      d.setAlpha(0.7);
+      d.setHalign("left");
+      d.text(40, H - 120, attack ? "Aggressive" : "Defensive");
+      d.setFont("overdue");
+      d.setValign("top");
+      d.textExt(40, H - 90, attack ? "Military units engage enemy units in a fight at a greater distance."
+                                   : "Military units engage enemy units in a fight only if they are nearby.", 30, 280);
+      d.setValign("middle"); // fa_center: lo stesso valore di fa_middle [I]
+      d.setFont("GUI_1");
+      d.setHalign("right");
+      d.text(320, H - 120, attack ? "Shortcut: Q" : "Shortcut: A");
+      d.setAlpha(0.99);
+      d.circleColour(450, y, 30, white, white, false);
+      d.setAlpha(1);
+      d.spriteExt(attack ? "ico_attacco" : "ico_difesa", 0, 450, y, 0.5, 0.5, 0, white, 1);
+    },
   };
 }
 
@@ -251,7 +493,11 @@ export function boxSelect(i, w, firesel) {
 // [Difetto corretto §3.3 n.12, confermato dall'autore] nel cavaliere il
 // ricalcolo passava dirox anche come y: scr_find_valid_cell_backwards(dirox
 // div 32, dirox div 32, ...). Qui usa diroy come il guerriero.
-function flowMovement(i, w, p, { cavalier = false } = {}) {
+// Varianti [C]: il guerriero, quando e' vicino, rallenta a 0 se tocca un
+// alleato di rango piu' alto in movimento (nearRank) e insegue il nemico
+// piu' vicino fino a 400 px compresi; il ricalcolo accetta warwork 0 o 4
+// (warwork4) e solo in movimento (cavalier=false).
+function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = true, speed = 4 } = {}) {
   if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
   if (i.action === 1) {
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y)) {
@@ -263,18 +509,24 @@ function flowMovement(i, w, p, { cavalier = false } = {}) {
         moveFlowField(w, p, i);
       }
     } else {
+      if (nearRank) {
+        const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
+        if (otro && !(otro.ordo < i.ordo || otro.action !== 1)) {
+          i.step = 0; i.autospeed = 0; i.alarm.set(0, i.alarm.get(0) + 1);
+        } else i.autospeed = speed * iso(i.direction);
+      }
       if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
       if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.targetid.x, i.targetid.y, i.autospeed);
       if (i.warwork === 1 && i.target_eu) mpPotentialStep(w, i, i.target_eu.x, i.target_eu.y, i.autospeed);
       if (i.warwork === 1 && !i.target_eu) {
         const n = w.nearest(i.x, i.y, "enemy_unit");
-        if (n && w.distanceToInstance(i, n) < 400) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
+        if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
     }
   }
   const guard = cavalier ? true : i.action === 1;
   if (guard && p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000
-      && i.firework === 0 && (cavalier ? i.warwork === 0 : (i.warwork === 0 || i.warwork === 4))) {
+      && i.firework === 0 && (warwork4 && !cavalier ? (i.warwork === 0 || i.warwork === 4) : i.warwork === 0)) {
     p.free(i);
     const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
                                               Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
@@ -291,7 +543,11 @@ function flowMovement(i, w, p, { cavalier = false } = {}) {
 // bersaglio scelto col clic destro, l'unita' attacca il nemico piu' vicino
 // se e' a meno di 10 px, ci va incontro se e' entro `comp` (700 in attacco,
 // 50 in difesa) e visibile. Restituisce "exit" dove il GML fa exit.
-function autoAttack(i, w, p) {
+// Varianti [C]: il guerriero va col flow field (scr_move) solo se il
+// nemico e' entro 100 px (move100) e, colpendo il bersaglio scelto, si gira
+// verso di lui (faceTarget).
+function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
+  const near100 = (t) => !move100 || w.distanceToInstance(i, t) < 100 * iso(i.direction);
   if (!w.exists("enemy_unit")) {
     if (i.warwork === 1 || i.warwork === 2 || i.action === 2) {
       i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null;
@@ -319,7 +575,7 @@ function autoAttack(i, w, p) {
       i.diroy = n.y;
       if (i.action !== 1) {
         i.alarm.set(0, 15);
-        scrMove(p, i, i.dirox, i.diroy);
+        if (near100(ta)) scrMove(p, i, i.dirox, i.diroy);
         p.free(i);
       }
       i.action = 1;
@@ -328,7 +584,11 @@ function autoAttack(i, w, p) {
   } else {
     const te = i.target_eu;
     if (w.distanceToInstance(i, te) < 10) {
-      if (i.warwork === 2 && i.alarm.get(2) < 1) { i.targetx = te.x; i.targety = te.y; i.target_eu = null; }
+      if (i.warwork === 2 && i.alarm.get(2) < 1) {
+        i.targetx = te.x; i.targety = te.y;
+        if (faceTarget) i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
+        i.target_eu = null;
+      }
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; i.alarm.set(2, 13); p.occupy(i);
       }
@@ -338,7 +598,7 @@ function autoAttack(i, w, p) {
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
       i.dirox = i.target_eu.x;
       i.diroy = i.target_eu.y;
-      if (i.action !== 1) { i.alarm.set(0, 15); scrMove(p, i, i.dirox, i.diroy); p.free(i); }
+      if (i.action !== 1) { i.alarm.set(0, 15); if (near100(i.target_eu)) scrMove(p, i, i.dirox, i.diroy); p.free(i); }
       i.action = 1;
       i.warwork = 1;
     }
@@ -353,7 +613,9 @@ function autoAttack(i, w, p) {
 // mentre sono fermi scappano di 200 px nella direzione del colpo.
 // [Difetto corretto §1.5 n.4] io_x/io_y sono la posizione dell'attaccante
 // (nel GML alleato non erano dichiarate).
-export function meleeStrike(i, w, table, enemySide) {
+// Il guerriero controlla che esista un bersaglio e si gira verso di lui
+// prima di colpire (face) [C, ally_warrior Alarm_2].
+export function meleeStrike(i, w, table, enemySide, face = false) {
   if (i.action !== 2) return;
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
   if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
@@ -363,6 +625,7 @@ export function meleeStrike(i, w, table, enemySide) {
   const target = enemySide ? "ally_unit" : "enemy_unit";
   const v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target);
   if (!v) return;
+  if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;
   v.hit = 1;
   if (v.slife !== 125 && v.slife !== 100) v.alarm.set(5, 47);

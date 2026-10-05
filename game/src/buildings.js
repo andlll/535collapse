@@ -342,12 +342,15 @@ export function lifeBar(dr, i, col = GREEN) {
 // il 33% *_r2. [Correzione decisa dall'autore, §3.5 n.19] nell'originale
 // entrambe le soglie di *_r1 e *_r2 sono "< 0,33" e *_r1 non si vede mai:
 // qui *_r1 vale sotto il 66%.
+// Fuoco [C, Alarm e Create]: smoke = [alarm, periodo] del fumo, burn =
+// [alarm, periodo] di -1 vita in fiamme. Magazzino e mulino non armano mai
+// l'alarm della vita nel Create: in fiamme non perdono vita (§3.9 n.34).
 const BUILT = {
-  casa: { life: 120, ruin: "casaruin", popcap: 10, fire: true },
-  magazzino: { life: 140, ruin: "magruin", fire: true },
-  barn: { life: 150, ruin: "barnruin", fire: true },
-  caserma: { life: 350, ruin: "casruin", fire: true },
-  stalla: { life: 380, ruin: "stalruin", fire: true },
+  casa: { life: 120, ruin: "casaruin", popcap: 10, fire: true, smoke: [0, 30], burn: [1, 70] },
+  magazzino: { life: 140, ruin: "magruin", fire: true, smoke: [0, 30], burn: [1, 70], burnIdle: true },
+  barn: { life: 150, ruin: "barnruin", fire: true, smoke: [0, 12], burn: [1, 70], burnIdle: true },
+  caserma: { life: 350, ruin: "casruin", fire: true, smoke: [1, 30], burn: [2, 70] },
+  stalla: { life: 380, ruin: "stalruin", fire: true, smoke: [1, 30], burn: [2, 70] },
   castello: { life: 900, ruin: "castelloruin", damage: ["castello_spr", "castello_r1", "castello_r2"], stone: true },
   chiesa: { life: 300, ruin: "chiesaruin", damage: ["chiesa_spr", "chiesa_r1", "chiesa_r2"] },
   torre: { life: 330, ruin: "torreruin", damage: ["torre_spr", "torre_r1", "torre_r2"], stone: true },
@@ -362,7 +365,7 @@ export function built(fam, p) {
                          fondazione: 0, legno: b.stone ? 0 : 1, pietra: b.stone ? 1 : 0, npresidio: 0, arm: 1 });
       i.depth = -i.y;
       if (b.popcap) w.g.popcap += b.popcap;
-      if (b.fire) { i.alarm.set(0, 30); i.alarm.set(1, 70); }
+      if (b.fire) { i.alarm.set(b.smoke[0], b.smoke[1]); if (!b.burnIdle) i.alarm.set(b.burn[0], b.burn[1]); }
       if (fam === "casa" && w.room === "lvl01") {
         const t = irandomRange(1, 7);
         if (t >= 2 && t <= 6) { i.sprite_index = "c" + t + "s"; w.moved(i); }
@@ -372,12 +375,14 @@ export function built(fam, p) {
       if (fam === "magazzino") sendBuildersToWork(i, w, p);
     },
     destroy(i) { p.markInstance(i, 1); },
-    // Alarm 0/1 [C]: a fuoco fumo ogni 30 passi e -1 vita ogni 70
+    // Alarm del fuoco [C]: fumo (nubeqq) e -1 vita ogni 70 passi in fiamme
     // (il fumo e le fiamme arrivano con le particelle; nella casa
     // l'originale distrugge le fiamme alte al passo dopo: §3.5 n.18, da
     // correggere quando si portano le particelle).
-    alarm0(i) { if (b.fire) i.alarm.set(0, 30); },
-    alarm1(i) { if (b.fire) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; } },
+    ...(b.fire ? {
+      ["alarm" + b.smoke[0]](i) { i.alarm.set(b.smoke[0], b.smoke[1]); },
+      ["alarm" + b.burn[0]](i) { i.alarm.set(b.burn[0], b.burn[1]); if (i.onfire === 1) i.life -= 1; },
+    } : {}),
     step(i, w) {
       const g = w.g;
       if (i.life <= 0) {
