@@ -32,6 +32,40 @@ export class Pathing {
     this.gw = Math.trunc(roomW / GRID);
     this.gh = Math.trunc(roomH / GRID);
     this.cost = new Int32Array(this.gw * this.gh);
+    // [Deviazione decisa dall'autore, STUDIO.md §3.8] le porte sono
+    // percorribili per il giocatore (cost libero) ma ostacolo per i nemici:
+    // contatore di porte per cella, letto solo dai goal field dei nemici.
+    this.enemyBlock = new Uint8Array(this.gw * this.gh);
+  }
+
+  // Segna l'ostacolo "solo per i nemici" sulle celle toccate dalla maschera
+  // dell'istanza (la stessa regola di markInstance); restituisce le celle,
+  // da passare a unblockEnemy quando l'istanza sparisce.
+  blockEnemy(inst) {
+    const cells = this._cellsOf(inst);
+    for (const k of cells) this.enemyBlock[k]++;
+    return cells;
+  }
+
+  unblockEnemy(cells) {
+    for (const k of cells) if (this.enemyBlock[k] > 0) this.enemyBlock[k]--;
+  }
+
+  _cellsOf(inst) {
+    const out = [];
+    const bb = this.w.bbox(inst);
+    if (!bb) return out;
+    const gx0 = Math.floor(bb[0] / GRID), gx1 = Math.floor((bb[2] - 1) / GRID);
+    const gy0 = Math.floor(bb[1] / GRID), gy1 = Math.floor((bb[3] - 1) / GRID);
+    for (let gx = gx0; gx <= gx1; gx++) {
+      for (let gy = gy0; gy <= gy1; gy++) {
+        if (!this.inside(gx, gy)) continue;
+        if (this.w.collisionRectangle(gx * GRID, gy * GRID, gx * GRID + GRID, gy * GRID + GRID, null, true, null, inst)) {
+          out.push(gy * this.gw + gx);
+        }
+      }
+    }
+    return out;
   }
 
   inside(gx, gy) {
@@ -51,20 +85,9 @@ export class Pathing {
     }
   }
 
+  // collision_rectangle sulla cella, maschera precisa, solo quell'istanza [C]
   markInstance(inst, value) {
-    const bb = this.w.bbox(inst);
-    if (!bb) return;
-    const gx0 = Math.floor(bb[0] / GRID), gx1 = Math.floor((bb[2] - 1) / GRID);
-    const gy0 = Math.floor(bb[1] / GRID), gy1 = Math.floor((bb[3] - 1) / GRID);
-    for (let gx = gx0; gx <= gx1; gx++) {
-      for (let gy = gy0; gy <= gy1; gy++) {
-        if (!this.inside(gx, gy)) continue;
-        // collision_rectangle sulla cella, maschera precisa, solo quell'istanza
-        const hit = this.w.collisionRectangle(gx * GRID, gy * GRID, gx * GRID + GRID, gy * GRID + GRID,
-                                              null, true, null, inst);
-        if (hit) this.cost[gy * this.gw + gx] = value;
-      }
-    }
+    for (const k of this._cellsOf(inst)) this.cost[k] = value;
   }
 
   // scr_free / scr_occupy [C]
@@ -78,8 +101,10 @@ export class Pathing {
     if (this.inside(gx, gy)) this.cost[gy * this.gw + gx] = 1000;
   }
 
-  // scr_generate_goal_field [C]: valori BFS, -1 = irraggiungibile
-  goalField(goalX, goalY) {
+  // scr_generate_goal_field [C]: valori BFS, -1 = irraggiungibile.
+  // enemy: anche le celle delle porte sono ostacolo (§3.8).
+  goalField(goalX, goalY, enemy = false) {
+    const block = enemy ? this.enemyBlock : null;
     const { gw, gh } = this;
     const f = new Int32Array(gw * gh).fill(-1);
     const gx = Math.floor(goalX / GRID), gy = Math.floor(goalY / GRID);
@@ -95,7 +120,7 @@ export class Pathing {
         const nx = cx + DX[i], ny = cy + DY[i];
         if (nx >= 0 && nx < gw && ny >= 0 && ny < gh) {
           const k = ny * gw + nx;
-          if (f[k] === -1 && this.cost[k] < 1000) {
+          if (f[k] === -1 && this.cost[k] < 1000 && !(block && block[k])) {
             f[k] = v + 1;
             qx[tail] = nx; qy[tail++] = ny;
           }
@@ -177,7 +202,7 @@ export class Pathing {
 
 // scr_generate_goal_field + scr_generate_flow_field per l'istanza
 export function generateFields(p, inst, gx, gy) {
-  inst.goal_field = p.goalField(gx, gy);
+  inst.goal_field = p.goalField(gx, gy, (inst.parents || []).includes("enemy_unit"));
   inst.flow_field = p.flowField(inst.goal_field);
 }
 

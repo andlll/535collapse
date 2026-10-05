@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, mura e porte fatte. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, mura e porte fatte e corrette (§3.8); prossimo il punto 4. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,7 +25,6 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.22 (§3.6), n.24, 26, 27, 28, 29 (§3.7).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -41,7 +40,8 @@ sta nella sezione citata.
   `*_prizedrawer`, `idle_clicker` (§3.5).
 - [x] Mura e porte: pulsante, placer, prolungamenti, porte (§3.7).
 - [x] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina (§3.6).
-- [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
+- [ ] 4. Combattimento (i nemici calcolano i percorsi con le porte
+  chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
   alarm del fuoco del centro, `nubeqq`); produzione di caserma, stalla e
@@ -1467,3 +1467,36 @@ muro → due "+" e il pulsante della porta; clic sul "+" destro, puntatore
 a destra → anteprima `oosl`; clic → cantiere del prolungamento a +424 px
 (pietra 410); muro selezionato, Q → porta (oro 100), aperta col civile a
 meno di 20 px, chiusa quando i civili si allontanano. Nessun errore.
+
+### 3.8 Decisioni dell'autore su mura e porte (5 ottobre 2026)
+
+"Facciamo sparire le mura"; "la porta chiusa vista come aperta dalla
+griglia è voluta per il giocatore, sarebbe sensato fosse chiusa per il
+nemico"; n.22 resta come nel porting; "correggiamo tutto". Applicato:
+
+- **n.27**: muri e porte a vita 0 spariscono, senza rovina (anche con
+  Canc, che mette `life=0`), insieme ai loro pulsanti se erano selezionati.
+- **Griglia dei nemici** [deviazione decisa dall'autore]: `Pathing` ha un
+  secondo strato, `enemyBlock`, letto solo dai goal field delle unità
+  `enemy_unit`. La porta lascia libere per il giocatore le celle della sua
+  maschera chiusa (lo stesso risultato dell'originale, ora scritto
+  esplicitamente) e le segna come ostacolo per i nemici; le restituisce
+  quando sparisce. Una griglia sola più uno strato costa meno di due
+  griglie complete da tenere allineate.
+- **n.24**: i riparatori di una porta si fermano a vita piena, come per gli
+  altri edifici.
+- **n.25**: l'Alarm_1 di `porta_ori` non si porta (le celle sono già
+  libere).
+- **n.26**: le anteprime ridefiniscono vuoti gli eventi del muro che non
+  devono ereditare (Destroy, click destro, Canc, selezione).
+- **n.28**: Canc su un cantiere di muro rimborsa quanto pagato (50 il
+  primo tratto, 40 un prolungamento).
+- **n.29**: la scheda della porta usa l'altezza dello schermo.
+
+**Verificato** (Chromium, `match`): cantiere di un prolungamento con 26
+celle ostacolo su 30 (le altre 4 le libera il costruttore che ci sta
+sopra, `scr_free`, come nell'originale); porta libera per il giocatore (0
+ostacoli) e ostacolo per i nemici (32 su 32); da un lato all'altro della
+porta il goal field di un alleato dà 6 celle, quello di un nemico 60
+(deve aggirare il muro); Canc su un tratto finito selezionato → il tratto
+sparisce. Nessun errore.

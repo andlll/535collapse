@@ -10,11 +10,17 @@
 //
 // Le anteprime hanno per parent mura_ori o mura_vert [C, objects.json]: in
 // GameMaker ereditano tutti gli eventi che non ridefiniscono, compreso il
-// Destroy che libera la griglia dei costi. Qui succede lo stesso, perche' il
-// mondo risale i parent (world.js, handler): difetto §3.7 n.26, riprodotto.
+// Destroy che libera la griglia dei costi (difetto §3.7 n.26). Il mondo
+// risale i parent come GameMaker, quindi la correzione (§3.8) ridefinisce
+// nelle anteprime gli eventi che non devono ereditare.
+//
+// Correzioni decise dall'autore (§3.8): muri e porte spariscono a vita 0
+// (n.27); i riparatori di una porta si fermano (n.24); Canc rimborsa
+// quanto pagato (n.28); la scheda della porta in view_hport (n.29); la
+// porta e' percorribile per il giocatore e ostacolo per i nemici.
 
-import { pointDirection, pointDistance } from "./gm.js";
-import { panel, lifeBar, repairEnd, sendRepair, armBuilders, NOONE } from "./buildings.js";
+import { pointDirection } from "./gm.js";
+import { panel, lifeBar, repairEnd, sendRepair, armBuilders } from "./buildings.js";
 
 const WHITE = 0xffffff, RED = 0x0000ff;
 
@@ -58,10 +64,9 @@ export function wallFond(k, p) {
       i.alarm.set(0, 1);
       i.depth = -i.y;
       Object.assign(i, { life: 1, slife: 799, selected: 0, fase: 0, phase: 0, fondazione: 1, pietra: 0, legno: 0 });
+      if (i.paid === undefined) i.paid = 50; // 40 se nasce da un'anteprima (n.28)
       w.g.sele = 0;
-      // le anteprime e i placer dei prolungamenti spariscono (il loro
-      // Destroy ereditato libera le celle sotto di loro: anche queste,
-      // appena marcate, se il cantiere nasce da un'anteprima. §3.7 n.26)
+      // le anteprime e i placer dei prolungamenti spariscono
       destroyAll(w, "oval", "ovbl", "oosl", "oodl", "muraplacer_va", "muraplacer_vb", "muraplacer_os", "muraplacer_od");
     },
     alarm0(i, w) { armBuilders(i, w, p, "buildwork", w.mouse.x, w.mouse.y); },
@@ -81,14 +86,13 @@ export function wallFond(k, p) {
       for (const o of w.all("ally_omino")) if (o.selected === 1) o.buildwork = 1;
       i.buildwork = 1;
     },
-    // KeyPress_Delete [C]: rimborso di 50 pietra anche per i prolungamenti,
-    // che ne costano 40 (§3.7 n.28, riprodotto). [Correzione §3.5 n.20]
-    // le celle si liberano.
+    // KeyPress_Delete [C]: annulla e rimborsa. [Correzioni §3.8 n.28 e §3.5
+    // n.20] il rimborso e' quanto pagato (50 o 40), le celle si liberano.
     keyPress46(i, w) {
       if (i.selected !== 1) return;
       p.markInstance(i, 1);
       w.destroy(i);
-      w.g.stone += 50;
+      w.g.stone += i.paid;
       destroyAll(w, ...plusNames);
     },
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_mura"); },
@@ -97,8 +101,9 @@ export function wallFond(k, p) {
 
 // --------------------------------------------------------- tratti finiti
 
-// mura_ori / mura_vert [C]. Non hanno nessun controllo "vita <= 0": non
-// muoiono mai, e Canc (life=0) non fa nulla (§3.7 n.27, riprodotto).
+// mura_ori / mura_vert [C]. [Correzione §3.8 n.27] l'originale non
+// controlla mai la vita: qui a 0 (nemici, o Canc che mette life=0) il
+// tratto sparisce, senza rovina, coi suoi pulsanti se era selezionato.
 export function wall(k, p) {
   const plusNames = KIND[k].plus.map(([n]) => n);
   return {
@@ -110,6 +115,11 @@ export function wall(k, p) {
     alarm0(i) { i.arm = 1; },
     destroy(i) { p.markInstance(i, 1); },
     step(i, w) {
+      if (i.life <= 0) {
+        if (i.selected === 1) destroyAll(w, "gate_clicker", ...plusNames);
+        w.destroy(i);
+        return;
+      }
       if (i.selected === 1 && w.number("gate_clicker") === 0) {
         plusButtons(w, i, k);
         w.create("gate_clicker", 0, 0);
@@ -152,43 +162,53 @@ export function wall(k, p) {
 
 // porta_ori / porta_vert [C]: un tratto che si apre quando l'unita' alleata
 // piu' vicina (per origine) ha il bbox a meno di 20 px.
+//
+// Griglia dei costi: nell'originale la porta marca le sue celle, ma il
+// tratto che sostituisce, distrutto subito dopo, le libera tutte: per i
+// percorsi la porta e' sempre aperta, ed e' voluto per il giocatore
+// [autore]. [Deviazione decisa dall'autore, §3.8] qui la porta lascia
+// libere le celle (lo stesso risultato, scritto esplicitamente) e le segna
+// come ostacolo nella griglia dei soli nemici.
 export function gate(k, p) {
   const K = KIND[k], plusNames = K.plus.map(([n]) => n);
+  // (le celle "ostacolo per i nemici" restano quelle della maschera di
+  // creazione: aprire e chiudere non le cambia)
   const setLook = (i, w, [spr, mask]) => { i.sprite_index = spr; i.mask_index = mask; w.moved(i); };
   return {
     create(i, w) {
-      if (k === "ori") { i.mask_index = "m_ori_pa_mask"; w.moved(i); }
-      p.markInstance(i, 1000);
-      if (k === "ori") i.alarm.set(1, 2);
+      // (porta_ori Create rimette mask_index=m_ori_pa_mask, gia' quella
+      // dell'oggetto) celle della porta chiusa (la maschera aperta e' solo i pilastri):
+      // libere per il giocatore, ostacolo per i nemici
+      i.mask_index = K.closed[1]; w.moved(i);
+      p.markInstance(i, 1);
+      i.enemyCells = p.blockEnemy(i);
+      i.mask_index = w.objects[K.gate].mask; w.moved(i);
       i.depth = -i.y;
       Object.assign(i, { life: K.gateLife, slife: K.gateLife, selected: 0, open: 0, openable: 1, arm: 1,
                          fondazione: 0, legno: 0, pietra: 1, hit: 0 });
       if (k === "vert") i.armed = 1;
     },
     alarm0(i) { i.arm = 1; },
-    // porta_ori Alarm_1 [C]: libera la cella del centro. Voleva liberare
-    // anche le due accanto, ma `floor(x-32/grid_size)` e' floor(x-1): una
-    // colonna fuori dalla griglia (§3.7 n.25, riprodotto: non si fa nulla).
-    // In pratica il passaggio e' gia' libero: il tratto sostituito, distrutto
-    // dopo la creazione della porta, ha liberato le sue celle.
-    alarm1(i) {
-      const gx = Math.floor(i.x / 32), gy = Math.floor(i.y / 32);
-      if (p.inside(gx, gy)) p.cost[gy * p.gw + gx] = 1;
-    },
+    // porta_ori Alarm_1 [C] voleva liberare tre celle al centro (con un
+    // errore di precedenza: §3.7 n.25). Non serve: le celle della porta
+    // sono gia' libere (create qui sopra), quindi non si porta.
     alarm10(i) { i.armed = 1; },
-    destroy(i) { p.markInstance(i, 1); },
+    destroy(i) {
+      p.markInstance(i, 1);
+      if (i.enemyCells) { p.unblockEnemy(i.enemyCells); i.enemyCells = null; }
+    },
     step(i, w) {
-      if (i.selected === 1 && w.number(plusNames[0]) === 0) plusButtons(w, i, k);
-      // "fine riparazione" [C]: qui xpos e ypos non sono dichiarate e dentro
-      // with(ally_omino) sono variabili del civile, mai assegnate: (0, 0).
-      // I riparatori di una porta non si fermano mai (§3.7 n.24).
-      if (i.life >= i.slife) {
-        for (const o of w.all("ally_omino")) {
-          if (o.action === 7 && pointDistance(o.repx, o.repy, 0, 0) < 150) {
-            o.action = 0; w.g.idle += 1; o.repairwork = 0; o.repx = NOONE; o.repy = NOONE;
-          }
-        }
+      // [Correzione §3.8 n.27] a vita 0 la porta sparisce
+      if (i.life <= 0) {
+        if (i.selected === 1) destroyAll(w, ...plusNames);
+        w.destroy(i);
+        return;
       }
+      if (i.selected === 1 && w.number(plusNames[0]) === 0) plusButtons(w, i, k);
+      // "fine riparazione": nell'originale mancano xpos e ypos e i
+      // riparatori di una porta non si fermano mai (§3.7 n.24).
+      // [Correzione §3.8] la stessa regola degli altri edifici.
+      repairEnd(i, w);
       // apertura: in porta_ori l'if senza graffe regge solo open=1, sprite e
       // maschera si riassegnano a ogni passo; porta_vert (armed, alarm 10)
       // ricontrolla al piu' ogni 30 passi [C]
@@ -333,7 +353,7 @@ export function wallPreview(name) {
       if (g.stone >= 40) {
         g.sele = 1;
         g.stone -= 40;
-        w.create(fondName, i.x, i.y);
+        w.create(fondName, i.x, i.y, { init: (f) => { f.paid = 40; } });
         if (name === "oodl") {
           w.destroy(i);
           for (const c of w.all("mura_clicker")) { c.active = 0; w.destroy(c); }
@@ -344,6 +364,13 @@ export function wallPreview(name) {
       } else w.create("stone_blink", 0, 0);
     },
     collisions: { campo(i) { i.place = 0; } },
+    // [Correzione §3.8 n.26] eventi del muro che l'anteprima non deve
+    // ereditare: il Destroy che libera la griglia, la riparazione col click
+    // destro, Canc, la selezione.
+    destroy() {},
+    rightReleased() {},
+    keyPress46() {},
+    leftReleased() {},
   };
   // oodl e oosl hanno un Draw_End proprio (quello sbagliato, n.23): non
   // ereditano la barra della vita di mura_ori
@@ -384,12 +411,12 @@ export function gateClicker() {
     keyPress81(i, w) { makeGate(w); },
     mouseEnter(i, w) { i.hover = 1; w.g.sele = 2; },
     mouseLeave(i, w) { i.hover = 0; w.g.sele = 0; },
-    // Draw_GUI [C]: quasi tutto in view_hview (altezza della view nella
-    // room) invece di view_hport: con lo zoom la scheda scende sotto lo
-    // schermo (§3.7 n.29, riprodotto); la descrizione usa view_hport.
+    // Draw_GUI [C]. [Correzione §3.8 n.29] l'originale usa quasi sempre
+    // view_hview (altezza della view nella room): con lo zoom la scheda
+    // scendeva sotto lo schermo. Qui tutto in view_hport.
     drawGUI(i, w, dr) {
       if (i.hover !== 1) return;
-      const H = w.cam.h, Hp = w.cam.cssH;
+      const H = w.cam.cssH, Hp = H;
       dr.setAlpha(0.69);
       dr.roundrectColourExt(20, H - 150, 370, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
