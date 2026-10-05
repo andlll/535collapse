@@ -61,6 +61,18 @@ export function movementGeneral(w, p, mx, my) {
   for (const u of w.all("ally_unit")) if (u !== leader && u.selected === 1) p.free(u);
 }
 
+// ally_unit Keyboard_Escape [C], ereditato da tutte le unita' alleate senza
+// un Escape proprio. [Difetto corretto §3.3 n.13, confermato dall'autore:
+// l'originale decrementava global.sel ma non global.milsel, e i contatori
+// della selezione restavano sporchi]
+export function escapeDeselect(i, w) {
+  if (w.g.sele === 0 && i.selected === 1) {
+    w.g.sel -= 1;
+    if (!w.is(i, "ally_omino")) w.g.milsel -= 1;
+    i.selected = 0;
+  }
+}
+
 // --------------------------------------------------------------- cavaliere
 
 const CAV = "ally_cavaliere";
@@ -163,7 +175,7 @@ export function cavaliere(p) {
       // azione 10
       if (w.number("torre_placer") > 0) g.sele = 1;
       // azione 11: movimento
-      flowMovement(i, w, p, { dirxDiroyBug: true });
+      flowMovement(i, w, p, { cavalier: true });
       // azione 12: attacco
       if (autoAttack(i, w, p) === "exit") return;
       // azione 13: pulsanti attacco/difesa (con i pulsanti dell'interfaccia, punto 4)
@@ -189,10 +201,8 @@ export function cavaliere(p) {
       if (w.positionMeeting(w.mouse.x, w.mouse.y, "enemy_unit")) i.warwork = 1;
     },
     // ally_unit Keyboard_Escape (ereditato, gira a ogni passo col tasto
-    // tenuto) [C]: deseleziona; non tocca milsel (difetto §3.3 n.13, riprodotto)
-    keyboard27(i, w) {
-      if (w.g.sele === 0 && i.selected === 1) { w.g.sel -= 1; i.selected = 0; }
-    },
+    // tenuto) [C]: deseleziona.
+    keyboard27: escapeDeselect,
     drawEnd: unitDrawEnd,
     drawGUI(i, w, d) { unitPanel(i, w, d, "ico_cavaliere"); },
   };
@@ -236,10 +246,12 @@ export function boxSelect(i, w, firesel) {
 // la precedenza all'alleato con `ordo` piu' alto; vicino si usa
 // mp_potential_step. Poi, se la cella d'arrivo e' diventata un ostacolo, si
 // ricalcola il campo.
-// [Difetto §3.3 n.12] nel cavaliere il ricalcolo passa dirox anche come y
-// (scr_find_valid_cell_backwards(dirox div 32, dirox div 32, ...)) e non
-// controlla action=1: riprodotto con dirxDiroyBug.
-function flowMovement(i, w, p, { dirxDiroyBug = false } = {}) {
+// Differenze del cavaliere [C]: il ricalcolo non controlla action=1 e
+// accetta solo warwork=0 (il guerriero anche 4).
+// [Difetto corretto §3.3 n.12, confermato dall'autore] nel cavaliere il
+// ricalcolo passava dirox anche come y: scr_find_valid_cell_backwards(dirox
+// div 32, dirox div 32, ...). Qui usa diroy come il guerriero.
+function flowMovement(i, w, p, { cavalier = false } = {}) {
   if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
   if (i.action === 1) {
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y)) {
@@ -260,12 +272,11 @@ function flowMovement(i, w, p, { dirxDiroyBug = false } = {}) {
       }
     }
   }
-  const guard = dirxDiroyBug ? true : i.action === 1;
+  const guard = cavalier ? true : i.action === 1;
   if (guard && p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000
-      && i.firework === 0 && (dirxDiroyBug ? i.warwork === 0 : (i.warwork === 0 || i.warwork === 4))) {
+      && i.firework === 0 && (cavalier ? i.warwork === 0 : (i.warwork === 0 || i.warwork === 4))) {
     p.free(i);
-    const ty = dirxDiroyBug ? i.dirox : i.diroy;
-    const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(ty / GRID),
+    const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
                                               Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
     const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
     i.goal_x = found ? cx * GRID : i.x;

@@ -12,6 +12,61 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ---
 
+## Cose da fare (lista aggiornata a ogni passo)
+
+Ultimo aggiornamento: Fase 3, dopo il punto 2. Il dettaglio di ogni voce
+sta nella sezione citata.
+
+**Decisioni o materiali che servono all'autore**
+- [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
+  angoli di `draw_roundrect_colour_ext` (§3.1).
+- [ ] Screenshot o video di fuoco e pioggia: aspetto delle forme di
+  particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
+- [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
+- [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+
+**Vertical slice su `match` (Fase 3)**
+- [x] 1. Manager, interfaccia, font (§3.1).
+- [x] 2. Selezione, ordini, movimento: cavaliere (§3.3).
+- [ ] 3. Civili: `ally_omino` (raccolta, trasporto, costruzione, campi),
+  risorse (alberi, miniere, pietre), magazzini, centro che crea civili,
+  pulsanti di costruzione, piazzamento (`*_placer`), cantieri (`*_fond`),
+  edifici finiti (casa: popolazione).
+- [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
+  arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
+  presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`).
+- [ ] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
+  risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
+
+**Resto del gioco**
+- [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco, fumo, sangue,
+  mattoni, burst; aquila (manager alarm 3), `fog_controller`.
+- [ ] Suggerimenti del tutorial (`hint_*`), dialoghi (`dialogo_*`),
+  obiettivi (`objective_button`), vittoria e sconfitta.
+- [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
+  lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
+  livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
+- [ ] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che conta
+  per la vittoria (§1.2), difetto `l6exists`.
+- [ ] Correzioni già decise, da applicare quando si porta il sistema:
+  ariete 60 oro anche col tasto Q; annullare un picchiere restituisce 55
+  cibo e 45 legno; centro distrutto −10 popcap; castello e torre senza −5
+  (§1.6).
+
+**Fasi 4 e 5**
+- [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
+  esportabile/importabile).
+- [ ] Opzioni nel menu: tetto fps, risoluzione dinamica, diagnostica;
+  i18n dei testi del gioco; pulsante schermo intero con ripiego; PWA.
+- [ ] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
+  zip per i portali verificato con Playwright in una sottocartella.
+
+**Verifiche che mancano**
+- [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
+  Firefox, Safari, schermi ad alta densità.
+
+---
+
 ## Fase 0 — ricognizione (5 ottobre 2026)
 
 > **Superata in parte da §0.14**: la prima ricognizione era su un'esportazione
@@ -1121,3 +1176,8 @@ additivo) sono disegnati come nell'originale.
 del loro Create, senza IA né morte; i pulsanti attacco/difesa sono
 disegnati ma non ancora cliccabili. Gli alberi e le rovine sono visibili da
 subito (la nebbia è il punto 5).
+
+**Correzioni dopo il punto 2** (confermate dall'autore): difetto n.12 (il
+cavaliere ora usa `diroy` nel ricalcolo) e n.13 (Esc decrementa anche
+`global.milsel`; "mi stava facendo impazzire, ora ho capito di chi è la
+colpa").
