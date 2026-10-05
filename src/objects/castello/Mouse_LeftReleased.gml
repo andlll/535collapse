@@ -1,0 +1,14 @@
+// castello — Mouse_LeftReleased (eventtype=6 enumb=7)
+// Estratto da gmx/objects/castello.object.gmx con tools/02_extract.py: non modificare a mano.
+
+// --- azione 1: execute code ---
+if instance_number(clicchero)=0
+if global.sel=0
+if room!=menu
+selected=1
+//presidio hint
+if instance_number(parent_hint)<1
+if global.presidiohint=0
+if room!=menu
+    {instance_create(x,y,hint_presidio)
+    global.presidiohint=1}

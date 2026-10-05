@@ -1,0 +1,30 @@
+{
+ "name": "mobile",
+ "caption": "",
+ "width": 2000,
+ "height": 2000,
+ "speed": 60,
+ "persistent": false,
+ "colour": 16777215,
+ "show_colour": true,
+ "creation_code": "",
+ "views_enabled": true,
+ "clear_view_background": true,
+ "backgrounds": [],
+ "views": [],
+ "instances": [
+  {
+   "object": "android_manager",
+   "x": 288,
+   "y": 416,
+   "name": "inst_3A877FD1",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  }
+ ],
+ "tiles": [],
+ "physics_world": false
+}

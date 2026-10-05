@@ -1,0 +1,48 @@
+{
+ "name": "lvl03",
+ "caption": "",
+ "width": 8000,
+ "height": 8000,
+ "speed": 60,
+ "persistent": false,
+ "colour": 12632256,
+ "show_colour": true,
+ "creation_code": "",
+ "views_enabled": true,
+ "clear_view_background": true,
+ "backgrounds": [
+  {
+   "name": "green1",
+   "visible": true,
+   "foreground": false,
+   "x": 0,
+   "y": 0,
+   "htiled": true,
+   "vtiled": true,
+   "hspeed": 0,
+   "vspeed": 0,
+   "stretch": false
+  }
+ ],
+ "views": [
+  {
+   "index": 0,
+   "follow": null,
+   "xview": 0,
+   "yview": 0,
+   "wview": 1024,
+   "hview": 768,
+   "xport": 0,
+   "yport": 0,
+   "wport": 1024,
+   "hport": 768,
+   "hborder": 32,
+   "vborder": 32,
+   "hspeed": -1,
+   "vspeed": -1
+  }
+ ],
+ "instances": [],
+ "tiles": [],
+ "physics_world": false
+}

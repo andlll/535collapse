@@ -1,0 +1,99 @@
+// castello_indietro_clicker — KeyPress_E (eventtype=9 enumb=69)
+// Estratto da gmx/objects/castello_indietro_clicker.object.gmx con tools/02_extract.py: non modificare a mano.
+
+// --- azione 1: execute code ---
+with(castello)
+{if selected=1
+if progression!=0
+{
+if coda=6
+{if coda6=1
+{global.wood+=250
+global.stone+=30}
+if coda6=2
+{global.wood+=200
+global.stone+=100}
+if coda6=3
+{global.wood+=40
+global.gold+=55}
+coda6=0
+coda-=1
+exit}
+if coda=5
+{if coda5=1
+{global.wood+=250
+global.stone+=30}
+if coda5=2
+{global.wood+=200
+global.stone+=100}
+if coda5=3
+{global.wood+=40
+global.gold+=55}
+coda5=0
+coda-=1
+exit}
+if coda=4
+{if coda4=1
+{global.wood+=250
+global.stone+=30}
+if coda4=2
+{global.wood+=200
+global.stone+=100}
+if coda4=3
+{global.wood+=40
+global.gold+=55}
+coda4=0
+coda-=1
+exit}
+if coda=3
+{if coda3=1
+{global.wood+=250
+global.stone+=30}
+if coda3=2
+{global.wood+=200
+global.stone+=100}
+if coda3=3
+{global.wood+=40
+global.gold+=55}
+coda3=0
+coda-=1
+exit}
+if coda=2
+{if coda2=1
+{global.wood+=250
+global.stone+=30}
+if coda2=2
+{global.wood+=200
+global.stone+=100}
+if coda2=3
+{global.wood+=40
+global.gold+=55}
+coda2=0
+coda-=1
+exit}
+if coda=1
+{if coda1=1
+{global.wood+=250
+global.stone+=30}
+if coda1=2
+{global.wood+=200
+global.stone+=100}
+if coda1=3
+{global.wood+=40
+global.gold+=55}
+coda1=0
+coda-=1
+exit}
+if coda=0
+{if coda0=1
+{global.wood+=250
+global.stone+=30}
+if coda0=2
+{global.wood+=200
+global.stone+=100}
+if coda0=3
+{global.wood+=40
+global.gold+=55}
+coda0=0
+progression=0
+exit}}}

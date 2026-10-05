@@ -1,0 +1,17 @@
+// mura_placer — Mouse_GlobalLeftPressed (eventtype=6 enumb=53)
+// Estratto da gmx/objects/mura_placer.object.gmx con tools/02_extract.py: non modificare a mano.
+
+// --- azione 1: execute code ---
+if place=1
+if global.stone>=50
+    {global.sele=1
+    global.stone-=50
+    if posiz=0
+    instance_create(x,y,mura_ori_fond)
+    else
+    instance_create(x,y,mura_vert_fond)
+    with (mura_clicker)
+    active=0
+    instance_destroy()}
+else
+instance_create(0,0,stone_blink)

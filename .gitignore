@@ -1,0 +1,14 @@
+# progetto GameMaker ricomposto dagli zip (tools/01_unpack.py): si rigenera
+gmx/
+
+# generati dalla pipeline, non versionarli
+game/assets/
+game/dist/
+game/node_modules/
+
+# sistema
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+desktop.ini

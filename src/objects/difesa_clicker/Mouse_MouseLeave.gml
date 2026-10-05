@@ -1,0 +1,6 @@
+// difesa_clicker — Mouse_MouseLeave (eventtype=6 enumb=11)
+// Estratto da gmx/objects/difesa_clicker.object.gmx con tools/02_extract.py: non modificare a mano.
+
+// --- azione 1: execute code ---
+hover=0
+global.sele=0
