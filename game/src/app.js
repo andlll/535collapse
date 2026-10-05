@@ -1,8 +1,9 @@
 // Avvio del motore e di una room (?room=menu|match|lvl01|lvl02).
 //
 // Sistemi portati finora (STUDIO.md §3): manager e interfaccia; selezione,
-// ordini e movimento del cavaliere. Gli altri oggetti sono disegnati con il
-// loro sprite e non fanno ancora nulla. F3 apre la diagnostica.
+// ordini e movimento del cavaliere; civili, raccolta, costruzione e il
+// centro. Gli altri oggetti sono disegnati con il loro sprite e non fanno
+// ancora nulla. F3 apre la diagnostica.
 
 import { Renderer, bgrToRGB } from "./gl.js";
 import { Assets } from "./assets.js";
@@ -15,7 +16,8 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { omino, resource, dying } from "./civilians.js";
-import { centro } from "./buildings.js";
+import { FAM, clicker, placer, fond, built, centro, ominoClicker, centroCancel, blink, prizeDrawer, idleClicker,
+         buildButtons } from "./buildings.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -96,6 +98,19 @@ async function main() {
   for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
   for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
   world.register("centro", centro(path));
+  for (const f of Object.keys(FAM)) {
+    world.register(f + "_clicker", clicker(f));
+    world.register(f + "_placer", placer(f));
+    world.register(f + "_fond", fond(f, path));
+    world.register(f, built(f, path));
+  }
+  world.register("omino_clicker", ominoClicker());
+  world.register("centro_indietro_clicker", centroCancel());
+  for (const n of ["wood_blink", "stone_blink", "food_blink", "gold_blink", "pop_blink"]) world.register(n, blink(n));
+  world.register("legno_prizedrawer", prizeDrawer("ico_wood_prize"));
+  world.register("oro_prizedrawer", prizeDrawer("ico_gold_prize"));
+  world.register("cibo_prizedrawer", prizeDrawer("ico_food_prize"));
+  world.register("idle_clicker", idleClicker());
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
   for (const n of Object.keys(ENEMY_LIFE)) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
@@ -105,6 +120,9 @@ async function main() {
   // manager Create (la parte della griglia dei costi) gira dopo che tutte le
   // istanze della room esistono e prima dei loro Create (world.loadRoom).
   world.loadRoom(room.instances, () => path.initCost());
+  // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
+  world.create("idle_clicker", 0, 0);
+  world.hooks.step = () => buildButtons(world);
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
   // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
@@ -157,6 +175,8 @@ async function main() {
     world.drawGUI(draw);
     draw.reset();
     manager.drawGUI(draw, cam, world, fpsNow);
+    draw.reset();
+    world.drawGUIEnd(draw);
     r.flush();
   };
 

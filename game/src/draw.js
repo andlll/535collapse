@@ -35,11 +35,13 @@ export class Draw {
     this.valign = "top";
   }
 
+  // Inizio di una fase di disegno. In GMS lo stato (alpha, colore, font,
+  // allineamenti) non si azzera mai: resta quello lasciato dall'ultimo
+  // evento, anche fra un fotogramma e l'altro [I], e il gioco ci conta (la
+  // percentuale nella scheda del centro e' nera perche' il manager e il
+  // centro stesso finiscono con draw_set_colour(c_black)). Qui si
+  // ripristina solo il blend, che il renderer azzera a ogni fotogramma.
   reset() {
-    this.alpha = 1;
-    this.colour = 0xffffff;
-    this.halign = "left";
-    this.valign = "top";
     this.r.setBlend("normal");
   }
 

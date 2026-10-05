@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 3a (raccolta) fatto. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 3b (costruzione) fatto. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -24,6 +24,9 @@ sta nella sezione citata.
   particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] Difetti da decidere: n.14 (`legno_prizedrawer` di debug, §3.4),
+  n.18 (fiamme della casa), n.19 (sprite `*_r1` mai mostrato), n.20
+  (cantiere annullato che resta ostacolo) (§3.5).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -31,15 +34,18 @@ sta nella sezione citata.
 - [x] 3a. Civili e raccolta: `ally_omino` (selezione, ordini, movimento,
   legno/oro/pietra, trasporto ai depositi), risorse e risorse esaurite
   (§3.4).
-- [ ] 3b. Costruzione: pulsanti (`*_clicker`), piazzamento (`*_placer`),
-  cantieri (`*_fond`), edifici finiti (casa, magazzino, mulino, caserma,
-  stalla, castello, chiesa, torre, mura); centro completo (produzione di
-  civili, fuoco, riparazione, rovine); feedback `*_blink`/`*_prizedrawer`;
-  `idle_clicker` (Spazio).
+- [x] 3b. Costruzione: pulsanti, piazzamento, cantieri, edifici finiti
+  (casa, magazzino, mulino, caserma, stalla, castello, chiesa, torre);
+  costruzione e riparazione; centro con produzione di civili; `*_blink`,
+  `*_prizedrawer`, `idle_clicker` (§3.5).
+- [ ] Mura e porte: `mura_clicker`, `mura_placer` e `muraplacer_*`
+  (orientamento, tratti), `mura_ori/vert`, `mplus_*`, `gate_clicker`.
 - [ ] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina.
 - [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
-  presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`).
+  presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
+  alarm del fuoco del centro, `nubeqq`); produzione di caserma, stalla e
+  castello; cura della chiesa; frecce di centro e torre; rovine.
 - [ ] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
   risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
 
@@ -1235,3 +1241,95 @@ sull'albero più vicino → cammina, taglia (`owo11`), a 10 legno prende lo
 sprite del carico (`car51/53`), va al centro, scarica (legno 50 → 60),
 riparte verso l'albero più vicino e ricomincia; popolazione 5/10
 (cavaliere 3 + 2 civili; popcap 10 dal centro); nessun errore.
+
+### 3.5 Punto 3b: costruzione (5 ottobre 2026)
+
+**Portato** (`game/src/buildings.js`, `civilians.js`): pulsanti di
+costruzione (`*_clicker`), piazzamento (`*_placer`), cantieri (`*_fond`) ed
+edifici finiti per casa, magazzino, mulino (`barn`), caserma, stalla,
+castello, chiesa e torre; il centro con la produzione di civili (coda fino
+a 6, annulla, bandiera di raccolta); `omino_clicker`,
+`centro_indietro_clicker`, `idle_clicker` (Spazio), i `*_blink` e i
+`*_prizedrawer`; costruzione e riparazione del civile (Step azione 16,
+Alarm_2 azioni 6 e 7). Il motore ha ora gli eventi di collisione, Draw GUI
+End e `mouse_clear`.
+
+**Le famiglie sono lo stesso codice** [C]: confrontando gli eventi delle 8
+famiglie con i nomi normalizzati (famiglia, sprite, numeri, stringhe), le
+differenze sono solo nei dati (costo, tasto, posizione del pulsante, vita,
+fasi del cantiere, rimborso) più quelle elencate qui sotto. Per questo il
+porting ha una tabella (`FAM`, `BUILT`) e un solo codice per tipo di
+oggetto. Differenze vere:
+- casa: 6 stili (`tipo`, tasto C durante il piazzamento), lo stile passa
+  dal placer al cantiere all'edificio; il pulsante non si distrugge subito
+  quando non ci sono più civili selezionati (alarm 0 a 1 passo); da
+  tastiera controlla "un solo placer" come il clic;
+- casa: i costruttori vanno al punto del cantiere (`posix`), le altre
+  famiglie al punto del mouse quando scatta l'alarm del cantiere;
+- `castello_clicker` non ridisegna il cerchio evidenziato; chiesa: due
+  costi e due lampeggi indipendenti; castello, chiesa, torre: il placer non
+  lampeggia se il posto è occupato (le altre sì, per un `else` agganciato
+  all'if sbagliato: riprodotto);
+- mulino: lo sprite `mul1` che gira (0,3 fotogrammi per passo); magazzino:
+  chi l'ha costruito va subito a raccogliere la risorsa più vicina.
+
+**Come funziona** [C]:
+- Con civili selezionati e nessun soldato il manager crea un pulsante per
+  famiglia; clic o tasto (Q W E D F G T A) creano il placer se le risorse
+  bastano, altrimenti lampeggia la risorsa che manca. Il fantasma è rosso
+  dove `place_free` fallisce o tocca un campo.
+- Il clic sinistro paga e crea il cantiere; i civili "armati" dal pulsante
+  (`buildarm`) ci vanno al passo dopo. Arrivati (bbox a meno di 10 px)
+  lavorano: **a ogni scatto** di Alarm_2 (13 passi) il cantiere cresce di
+  +2 (casa, magazzino, mulino), +1 (le grandi) o +5 (mura, campo); il ciclo
+  dei tre step serve solo all'animazione. Più costruttori sommano. A vita
+  piena il cantiere diventa l'edificio; i costruttori passano al cantiere
+  più vicino se ce n'è uno, altrimenti si fermano.
+- Riparazione (click destro su un edificio danneggiato): 1 legno (o 1
+  pietra per castello e torre) per punto di vita a ogni scatto; il legno
+  spegne anche il fuoco. I riparatori si fermano a edificio integro.
+- Centro: 50 cibo per civile, 1 punto di avanzamento ogni 10 passi (circa
+  17 s per civile); a popolazione piena aspetta e lampeggia.
+
+**Semantica del runner aggiunta** [I]: lo stato di disegno (alpha, colore,
+font, allineamenti) non si azzera fra un evento e l'altro né fra un
+fotogramma e l'altro; il porting ora fa lo stesso (`draw.js`, `reset()`
+ripristina solo il blend). Prima del cambio la percentuale del centro era
+bianca; ora prende il colore lasciato dall'ultimo evento di disegno, come
+nell'originale [?, l'ordine dei Draw GUI fra manager e istanze non è
+ancora identico: va confrontato con uno screenshot].
+
+**Difetti e residui trovati** [C]:
+
+17. Cantieri, Create: la griglia dei costi si marca con la maschera del
+    momento della creazione. Per la casa è la maschera predefinita `c1m`:
+    il tipo (e la maschera giusta) arriva dopo, dal placer. Le 6 maschere
+    sono simili; riprodotto.
+18. `casa` Step: `if onfire=1 part_system_destroy(fire_ps)` sta fuori
+    dall'if della fine riparazione (manca un paio di graffe): le fiamme
+    alte della casa vengono distrutte al passo dopo la loro creazione e non
+    ricompaiono (`firestarted` resta 1). Resta il fuoco "basso" e il fumo.
+    Da decidere con l'autore (si porta con le particelle).
+19. Castello, chiesa, torre, Step: le soglie dello sprite di danno sono
+    entrambe `< 0,33`, quindi `*_r1` viene subito sostituito da `*_r2` e non
+    si vede mai; fra il 33% e il 66% resta lo sprite che c'era. Riprodotto;
+    da decidere con l'autore (probabile intenzione: `_r1` sotto il 66%).
+20. I cantieri non hanno un evento Destroy: annullato con Canc, un
+    cantiere lascia le sue celle segnate come ostacolo nella griglia dei
+    costi (le unità le aggirano anche se lì non c'è più niente). Riprodotto;
+    da decidere con l'autore.
+21. Residui innocui: gli `Alarm_9` degli edifici disegnano la barra della
+    vita in un evento che non è di disegno (non si vede nulla, e nessuno
+    arma l'alarm 9); `chiesa` Step confronta `sprite_index!=chiesa` (nome
+    dell'oggetto, non dello sprite); `casa` Step legge `repairork`, mai
+    assegnata (vale 0). Nessun effetto; non portati.
+
+**Verificato** (Chromium headless, `match`): civile selezionato → 8
+pulsanti; Q → fantasma della casa sotto il puntatore; clic → cantiere
+(legno 50 → 0), il civile ci va e costruisce (vita 1 → 119 in circa 780
+passi), la casa compare, popcap 20 → 30, il civile torna inattivo. Centro
+selezionato: Q, Q (100 cibo → 0, coda 1), il terzo Q lampeggia il cibo; W
+annulla l'ultimo in coda (+50); dopo circa 1000 passi nasce il civile
+(popolazione 5 → 6) e va verso il punto di raccolta. Riparazione: casa a
+100/120, click destro col civile → +1 vita e −1 legno ogni 13 passi, a 120
+si ferma. Nessun errore.

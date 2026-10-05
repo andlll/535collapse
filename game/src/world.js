@@ -371,6 +371,9 @@ export class World {
     for (const i of live()) i.alarm.tick((n) => this.fire(i, "alarm" + n));
     this._keyEvents(input);
     this._mouseEvents(input, mouseX, mouseY);
+    // manager e' la prima istanza [C]: il suo Step (pulsanti di costruzione)
+    // gira prima di quello delle altre (app.js, hooks.step).
+    if (this.hooks.step) this.hooks.step();
     for (const i of live()) {
       i.xprevious = i.x;
       i.yprevious = i.y;
@@ -384,8 +387,47 @@ export class World {
         if (s && s.frames.length > 1) i.image_index = (i.image_index + i.image_speed) % s.frames.length;
       }
     }
+    this._collisions();
     for (const i of live()) this.fire(i, "stepEnd");
     this.instances = live();
+  }
+
+  // Eventi di collisione [I, runner GMS]: dopo Step e moto, per ogni istanza
+  // con un evento Collision verso un oggetto (o un suo figlio) che la sua
+  // maschera tocca. Gestori nel comportamento come collisions: { campo(i, w, other) }.
+  // (La regola dei "solidi" che riportano indietro chi si muove non serve
+  // ancora: nessuna collisione portata finora coinvolge due solidi.)
+  _collisions() {
+    for (const i of this.instances) {
+      if (!i.alive) continue;
+      const map = this._collisionMap(i);
+      if (!map) continue;
+      for (const [name, fn] of map) {
+        const bb = this.bbox(i);
+        if (!bb) continue;
+        for (const o of this._near(bb)) {
+          if (!i.alive) break;
+          if (o === i || !o.alive || !this.is(o, name)) continue;
+          if (this.overlap(i, i.x, i.y, o)) fn(i, this, o);
+        }
+      }
+    }
+  }
+
+  _collisionMap(i) {
+    const out = [];
+    for (const n of [i.object, ...i.parents]) {
+      const b = this.behaviours[n];
+      if (b && b.collisions) for (const k of Object.keys(b.collisions)) if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k]]);
+    }
+    return out.length ? out : null;
+  }
+
+  // mouse_clear(mb_left) [I]: il rilascio non vale piu' per chi viene dopo
+  // in questo passo (pulsanti che "consumano" il clic).
+  mouseClear(button = 0) {
+    this.input.mouseReleased[button] = false;
+    this.input.mousePressed[button] = false;
   }
 
   // Eventi di tastiera: Keyboard (tasto tenuto, ogni passo), KeyPress,
@@ -471,5 +513,10 @@ export class World {
 
   drawGUI(d) {
     for (const i of this.sorted()) if (i.visible) this.fire(i, "drawGUI", d);
+  }
+
+  // Draw GUI End [I]: dopo il Draw GUI di tutte le istanze (i *_blink).
+  drawGUIEnd(d) {
+    for (const i of this.sorted()) if (i.visible) this.fire(i, "drawGUIEnd", d);
   }
 }

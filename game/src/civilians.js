@@ -526,12 +526,95 @@ function workTick(i, w) {
   otherWorkTick(i, w);
 }
 
-// --------------------------------------------- punti 3b/3c (da completare)
-// Campi, costruzione, riparazione e semina: segnaposto che non fanno nulla
-// finche' non arrivano gli oggetti campo, *_fond e gli edifici.
+// --------------------------------------------- costruzione e riparazione
+
+// azione 16, parte "costruzione", "riparazione" e "fine costruzione" [C].
+// (La coltivazione dei campi, action 8, arriva col punto 3c.)
+function buildStep(i, w, p) {
+  const g = w.g;
+  const fondNear = () => w.nearest(i.buildx, i.buildy, "ally_fondamenta");
+  const clearLoads = () => { i.wood = 0; i.food = 0; i.gold = 0; i.stone = 0; i.step = 0; i.alarm.set(2, 13); };
+  // costruzione: l'else e' agganciato a "ci sono cantieri" [C]
+  if (i.buildwork === 1) {
+    if (w.number("ally_fondamenta") > 0) {
+      if (w.distanceToInstance(i, fondNear()) < 10) {
+        i.buildwork = 0;
+        p.occupy(i);
+        i.action = 6;
+        clearLoads();
+        i.direction = pointDirection(i.x, i.y, i.buildx, i.buildy);
+      }
+    } else {
+      i.action = 0; p.occupy(i); i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+    }
+  }
+  // riparazione
+  if (i.repairwork === 1 && w.distanceToInstance(i, w.nearest(i.repx, i.repy, "ally_build")) < 5) {
+    i.repairwork = 0;
+    p.occupy(i);
+    i.action = 7;
+    clearLoads();
+    i.direction = pointDirection(i.x, i.y, i.repx, i.repy);
+  }
+  // fine costruzione: il cantiere e' finito (non c'e' piu' a 40 px):
+  // al prossimo cantiere, o fermi se non ce ne sono
+  if (i.action === 6) {
+    if (w.number("ally_fondamenta") > 0) {
+      if (w.distanceToInstance(i, fondNear()) > 40) {
+        i.action = 1;
+        p.free(i);
+        const f = w.nearest(i.x, i.y, "ally_fondamenta");
+        i.dirox = f.x; i.diroy = f.y;
+        i.buildx = i.dirox; i.buildy = i.diroy;
+        i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
+        if (i.buildwork !== 1) scrMove(p, i, i.dirox, i.diroy);
+        i.buildwork = 1;
+        i.alarm.set(0, 13);
+      }
+    } else {
+      i.action = 0; i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+    }
+  }
+  return null;
+}
+
+// Vita aggiunta al cantiere a ogni scatto di Alarm_2 (ogni 13 passi), per
+// slife [C]: le costruzioni grandi +1, casa/magazzino/mulino +2, i tratti
+// di mura (799) e il campo (100) +5.
+const BUILD_RATE = { 329: 1, 899: 1, 349: 1, 299: 1, 379: 1, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5 };
+
+// Alarm_2, azioni 6 e 7 [C]: a differenza della raccolta, il cantiere
+// cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve
+// solo all'animazione.
+function otherWorkTick(i, w) {
+  const g = w.g;
+  if (i.action === 6) {
+    const f = w.nearest(i.buildx, i.buildy, "ally_fondamenta");
+    if (f && f.fondazione === 1) {
+      f.life += BUILD_RATE[f.slife] || 0;
+      if (f.life > f.slife) f.life = f.slife;
+    }
+  } else if (i.action === 7) {
+    // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
+    // anche il fuoco (le particelle arriveranno col loro sistema)
+    const b = w.nearest(i.repx, i.repy, "ally_build");
+    if (b && b.pietra === 1 && g.stone > 0) {
+      g.stone--; b.life++;
+      if (b.life > b.slife) b.life = b.slife;
+    }
+    if (b && b.legno === 1 && g.wood > 0) {
+      g.wood--; b.life++;
+      b.onfire = 0;
+      if (b.firestarted === 1) b.firestarted = 0;
+      if (b.life > b.slife) b.life = b.slife;
+    }
+  } else return;
+  i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
+  i.alarm.set(2, 13);
+}
+
+// Campi e semina (punto 3c): segnaposto finche' non arrivano campo e campo_fond.
 function fieldsStep() { return null; }
-function buildStep() { return null; }
-function otherWorkTick() {}
 
 // --------------------------------------------------------------- disegno
 
