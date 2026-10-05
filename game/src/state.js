@@ -29,5 +29,10 @@ export function newGlobals(room) {
     victory: 0, gameover: 0,
     seconds: 0, minutes: 0, hours: 0,
     debugging: 0, debug_code: 0,
+    order: 1000,    // contatore per "ordo", la precedenza fra unita' (manager Create)
+    firesel: 0, arcsel: 0, siegsel: 0,
+    multihint: 0, enemyhover: 0,
+    // mouser Create: cosa c'e' sotto il puntatore (colore del cerchio)
+    minierahover: 0, alberhover: 0, farmhover: 0, stonehover: 0, buildhover: 0, preshover: 0,
   };
 }

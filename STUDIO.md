@@ -1032,3 +1032,92 @@ Riprodotti per ora (n.10 e n.11), segnalati nel codice; in attesa di
 decisione dell'autore. Nota sul debug: in `KeyPress_D` i due `if` in fila
 fanno passare `debug_code` da 2 a 4 con **una sola** pressione, quindi la
 sequenza reale è ← → D ← → [C].
+
+### 3.3 Punto 2: selezione, ordini, movimento (5 ottobre 2026)
+
+Decisione dell'autore: i difetti n.9–11 si correggono ("era una mia esigenza
+di test"): Q e P agiscono sulla pioggia solo col trucco attivo; il trucco
+nebbia userà `global.fogville` (si applica con la nebbia, punto 5).
+
+**Cosa c'è nelle room** [C, nuova esportazione]: `match` (tutorial) ha 1
+cavaliere, 2 civili e 1 catapulta alleati; `lvl01` 3 guerrieri e 1
+picchiere; `lvl02` 5 guerrieri, 3 picchieri, 2 cavalieri, 4 arcieri, 2
+civili. Il punto 2 porta per intero il **cavaliere** (l'unità militare del
+tutorial); civili, catapulta e le altre unità militari seguono nei punti 3 e
+4 con le stesse fondamenta.
+
+**Fondamenta nuove** (`game/src/`):
+
+| Modulo | Cosa fa |
+|---|---|
+| `world.js` | istanze ed eventi nell'ordine di GMS (Begin Step, Alarm, tastiera, mouse, Step, moto, End Step; Draw per depth, Draw End, Draw GUI); ereditarietà degli eventi dai parent; `instance_place`, `place_free`, `position_meeting`, `collision_rectangle`, `distance_to_object`, `instance_nearest`; maschere rettangolo/ellisse/rombo/precise dai dati di `tools/06_masks.py`; griglia spaziale da 128 px |
+| `pathing.js` | griglia dei costi, `scr_generate_goal_field`, `scr_generate_flow_field`, `scr_find_valid_cell_backwards`, `scr_find_free_spawn_right`, `scr_move`, `scr_move_flow_field`, `mp_potential_step` |
+| `units.js` | cavaliere, cadaveri, `scr_movement_general` (il capo calcola il campo e lo passa ai selezionati), pezzi in comune (ciclo del passo, rettangolo di selezione, mischia col versore, barra della vita, scheda dell'unità) |
+| `animTables.js` | generato da `tools/08_anim.py`: il blocco "Assegnazione sprite" di 13 unità e 13 cadaveri tradotto in modo meccanico in JS (si ferma con un errore su qualunque costrutto non previsto) |
+| `gm.js` | `point_direction`, `lengthdir_x/y`, `irandom_range`, `div` |
+
+Il cursore è lo sprite `cursore` dell'originale (mouser Create:
+`action_set_cursor`), come cursore CSS. Il rettangolo di selezione (manager
+Draw_End) e il cerchio luminoso sotto il puntatore (mouser Draw_End, blend
+additivo) sono disegnati come nell'originale.
+
+**Regole del runner applicate** [I, da §1.3 e nuove]:
+
+- **Avvio della room**: prima esistono tutte le istanze della room, poi
+  girano i Create nell'ordine del file, poi Room Start. Il gioco lo
+  richiede: in `match` il manager è la prima istanza, ma nel suo Create
+  scorre `with(ally_build)` per costruire la griglia dei costi.
+- **Variabili mai assegnate = 0**: il cavaliere legge `selected`,
+  `creation`, `foodx`, `goal_x`… che il suo Create non imposta (il Create
+  del parent `ally` non gira, perché il figlio ne ha uno suo). Senza questa
+  regola la selezione non funzionerebbe mai; coerente con
+  `option_variableerrors=False` del config.
+- `mp_potential_step` è un'approssimazione con lo stesso contratto
+  (direzione verso il bersaglio, poi a destra e sinistra di 3° fino a 180°,
+  3 passi di anticipo, rotazione massima 30° a passo): l'algoritmo interno di
+  GMS non è documentato.
+
+**Fatti trovati leggendo** [C]:
+
+- La **maschera del cavaliere** (`cm73`) è un rettangolo manuale sui piedi:
+  da 21 px sopra a 20 px sotto l'origine. Nell'originale l'unità si clicca
+  alla base, non sul corpo; il porting fa lo stesso.
+- `ally_warrior` **Alarm_11** non viene mai armato da nessuno: è una copia
+  parcheggiata di movimento e attacco; quelli veri sono nello Step.
+- Il clic destro passa prima dal manager (`scr_movement_general`: il
+  selezionato con `ordo` più alto calcola il campo e lo copia agli altri),
+  poi da ogni unità selezionata, che punta `dirox/diroy` al punto cliccato.
+  Il manager viene prima di tutte le unità nell'ordine delle istanze in tutte
+  le room (indice 0, oppure 527 in `lvl01` con le unità da 559).
+- Se il punto d'arrivo non è libero, l'unità lo arretra di 50 px a passo
+  verso di sé (Step azione 9): un clic dentro un edificio la fa fermare al
+  bordo.
+
+**Altri difetti trovati** (riprodotti e segnalati nel codice):
+
+12. `ally_cavaliere` Step azione 11: il ricalcolo "destinazione occupata"
+    passa `dirox` come x **e** come y a `scr_find_valid_cell_backwards` e non
+    controlla `action=1` (il guerriero sì) [C].
+13. `ally_unit` Keyboard_Escape (ereditato da cavaliere e altri): toglie la
+    selezione e decrementa `global.sel` ma non `global.milsel` [C].
+
+**Verificato**:
+
+- `npm test`: 10 test (7 del manager + 3 del flow field: BFS a 4 direzioni
+  con ostacoli, direzione verso la vicina più bassa con pareggi nell'ordine
+  destra/sinistra/su/giù, `scr_find_valid_cell_backwards`).
+- Chromium headless, `match` 1280×720: clic sull'origine del cavaliere →
+  selezionato (`sel` 1, `milsel` 1), scheda "90 / 90" con i pulsanti
+  attacco/difesa, cerchio e barra della vita; clic nel vuoto → deselezionato;
+  rettangolo trascinato attorno → selezionato e resta tale al rilascio;
+  click destro 400 px a destra → ci va a ~5 px a passo
+  (5 × (1 − 0,36·|sin|)) con l'animazione `cm41/42/43` verso est e si ferma
+  entro 10 px; click destro dentro un edificio → si ferma al bordo.
+- `lvl02`: i due cavalieri ingaggiano da soli i guerrieri nemici entro 700
+  px e li colpiscono (75 → 50 e 45: 5 a colpo, come la tabella di §1.4).
+- Tutte e quattro le room si caricano senza errori in console.
+
+**Provvisorio** (fino al punto 4): i nemici sono bersagli fermi con la vita
+del loro Create, senza IA né morte; i pulsanti attacco/difesa sono
+disegnati ma non ancora cliccabili. Gli alberi e le rovine sono visibili da
+subito (la nebbia è il punto 5).

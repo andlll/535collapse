@@ -4019,4 +4019,1174 @@ export const ANIM = {
       }
     }
   },
+  warrior_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "wc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "wc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "wc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "wc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "wc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "wc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "wc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "wc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "wc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "wc33";
+      }
+    }
+  },
+  picchiere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "pc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "pc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "pc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "pc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "pc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "pc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "pc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "pc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "pc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "pc33";
+      }
+    }
+  },
+  arciere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "ac41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "ac51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "ac61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "ac71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "ac81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "ac11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "ac21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "ac31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "ac32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "ac33";
+      }
+    }
+  },
+  cavaliere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "cc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "cc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "cc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "cc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "cc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "cc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "cc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "cc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "cc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "cc33";
+      }
+    }
+  },
+  omino_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "oc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "oc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "oc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "oc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "oc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "oc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "oc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "oc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "oc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "oc33";
+      }
+    }
+  },
+  catapulta_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "catc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "catc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "catc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "catc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "catc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "catc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "catc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "catc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "catc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "catc33";
+      }
+    }
+  },
+  ariete_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "arc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "arc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "arc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "arc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "arc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "arc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "arc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "arc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "arc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "arc33";
+      }
+    }
+  },
+  enemy_warrior_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bwc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bwc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bwc33";
+      }
+    }
+  },
+  enemy_picchiere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bpd31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bpd32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bpd33";
+      }
+    }
+  },
+  enemy_arciere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bac41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bac51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bac61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bac71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bac81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bac11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bac21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bac31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bac32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bac33";
+      }
+    }
+  },
+  enemy_cavaliere_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bcd31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcd32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcd33";
+      }
+    }
+  },
+  enemy_catapulta_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bcatc31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bcatc32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bcatc33";
+      }
+    }
+  },
+  enemy_ariete_corpse(i, w) {
+    if (i.phase === 1) {
+      if (i.step === 0) {
+        i.sprite_index = "bard41";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard42";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard43";
+      }
+    }
+    if (i.phase === 2) {
+      if (i.step === 0) {
+        i.sprite_index = "bard51";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard52";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard53";
+      }
+    }
+    if (i.phase === 3) {
+      if (i.step === 0) {
+        i.sprite_index = "bard61";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard62";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard63";
+      }
+    }
+    if (i.phase === 4) {
+      if (i.step === 0) {
+        i.sprite_index = "bard71";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard72";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard73";
+      }
+    }
+    if (i.phase === 5) {
+      if (i.step === 0) {
+        i.sprite_index = "bard81";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard82";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard83";
+      }
+    }
+    if (i.phase === 6) {
+      if (i.step === 0) {
+        i.sprite_index = "bard11";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard12";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard13";
+      }
+    }
+    if (i.phase === 7) {
+      if (i.step === 0) {
+        i.sprite_index = "bard21";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard22";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard23";
+      }
+    }
+    if (i.phase === 8) {
+      if (i.step === 0) {
+        i.sprite_index = "bard31";
+      }
+      if (i.step === 1) {
+        i.sprite_index = "bard32";
+      }
+      if (i.step === 2) {
+        i.sprite_index = "bard33";
+      }
+    }
+  },
 };

@@ -31,7 +31,11 @@ from _paths import REPO_DIR, SRC_DIR  # noqa: E402
 
 UNITS = ["ally_warrior", "ally_picchiere", "ally_arciere", "ally_cavaliere", "ally_omino",
          "ally_catapulta", "ally_ariete", "enemy_warrior", "enemy_picchiere", "enemy_arciere",
-         "enemy_cavaliere", "enemy_catapulta", "enemy_ariete"]
+         "enemy_cavaliere", "enemy_catapulta", "enemy_ariete",
+         # cadaveri: animazione di morte (Step azione 1, "//assegnazione sprite//")
+         "warrior_corpse", "picchiere_corpse", "arciere_corpse", "cavaliere_corpse", "omino_corpse",
+         "catapulta_corpse", "ariete_corpse", "enemy_warrior_corpse", "enemy_picchiere_corpse",
+         "enemy_arciere_corpse", "enemy_cavaliere_corpse", "enemy_catapulta_corpse", "enemy_ariete_corpse"]
 OUT = os.path.join(REPO_DIR, "game", "src", "animTables.js")
 TOKEN = re.compile(r"\s*(?:(\d+(?:\.\d+)?)|([A-Za-z_]\w*)|(==|!=|<=|>=|&&|\|\||[=<>{}()]))")
 HOOK = re.compile(r"__(faceAhead|faceNearest)__(\w+)$")
@@ -139,7 +143,7 @@ class Parser:
 
 def block(unit):
     src = open(os.path.join(SRC_DIR, "objects", unit, "Step.gml"), encoding="utf-8").read()
-    m = re.search(r"(///\s*[Aa]ssegnazione sprite.*?)(?=// --- azione|\Z)", src, re.S)
+    m = re.search(r"(//+\s*[Aa]ssegnazione sprite.*?)(?=// --- azione|\Z)", src, re.S)
     if not m:
         return None
     return m.group(1)

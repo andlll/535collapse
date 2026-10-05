@@ -160,6 +160,40 @@ export class Manager {
     }
   }
 
+  // Disegno nel mondo, dopo i Draw End delle istanze:
+  // - manager Draw_End azione 3 [C]: rettangolo di selezione, blu di giorno,
+  //   bianco quando global.night != 0;
+  // - mouser Draw_End [C]: il cerchio luminoso sotto il puntatore (somma),
+  //   colorato secondo cosa c'e' sotto quando sono selezionati civili.
+  drawWorldEnd(d, w) {
+    const g = this.g, mx = w.mouse.x, my = w.mouse.y;
+    if (g.multi === 1) {
+      const col = g.night === 0 ? c.blue : c.white;
+      d.rectangleColour(g.startx, g.starty, mx, my, col, col, col, col, true);
+    }
+    d.setBlend("add");
+    d.setAlpha(0.7);
+    const ring = (r, col) => d.circleColour(mx, my, r, col, c.black, false);
+    if (g.sel > 0 && g.milsel < g.sel) {
+      if (g.minierahover === 1) ring(60, c.yellow);
+      if (g.alberhover === 1) ring(60, c.green);
+      if (g.farmhover === 1) ring(60, c.teal);
+      if (g.stonehover === 1) ring(60, c.gray);
+      if (g.buildhover === 1) ring(60, c.orange);
+      else if (!g.minierahover && !g.alberhover && !g.farmhover && !g.stonehover && !g.buildhover) ring(30, c.white);
+    } else if (g.enemyhover === 0) ring(30, c.white);
+    else ring(60, c.red);
+    if (g.arcsel > 0) ring(g.preshover === 1 ? 60 : 30, g.preshover === 1 ? c.aqua : c.white);
+    if (g.firesel > 0) {
+      if (w.positionMeeting(mx, my, "enemy_wooden")) ring(60, c.red); else ring(30, c.white);
+    }
+    if (g.siegsel > 0) {
+      if (w.positionMeeting(mx, my, "enemy_build")) ring(60, c.red); else ring(30, c.white);
+    }
+    d.setAlpha(1);
+    d.setBlend("normal");
+  }
+
   // manager Draw_GUI [C], coordinate in pixel CSS della finestra (la "port").
   drawGUI(d, cam, world, fps) {
     const g = this.g, W = cam.cssW, H = cam.cssH;

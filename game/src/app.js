@@ -1,8 +1,8 @@
-// Avvio del motore e anteprima di una room (?room=menu|match|lvl01|lvl02).
+// Avvio del motore e di una room (?room=menu|match|lvl01|lvl02).
 //
-// Per ora nessun sistema di gioco: si carica una room, la si disegna con i
-// suoi sprite iniziali e ci si muove come nell'originale (puntatore ai
-// bordi, frecce, X/Z per lo zoom). F3 apre la diagnostica.
+// Sistemi portati finora (STUDIO.md §3): manager e interfaccia; selezione,
+// ordini e movimento del cavaliere. Gli altri oggetti sono disegnati con il
+// loro sprite e non fanno ancora nulla. F3 apre la diagnostica.
 
 import { Renderer, bgrToRGB } from "./gl.js";
 import { Assets } from "./assets.js";
@@ -11,7 +11,9 @@ import { Input } from "./input.js";
 import { Loop } from "./loop.js";
 import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
-import { Scene } from "./scene.js";
+import { World } from "./world.js";
+import { Pathing } from "./pathing.js";
+import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -66,7 +68,10 @@ async function main() {
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
                     room.backgrounds.map((b) => b.name), progress);
 
-  const scene = new Scene(room, assets);
+  const [objects, masks, cursor] = await Promise.all(
+    ["objects.json", "masks.json", "cursor.json"].map(async (f) => (await fetch("assets/" + f)).json()));
+  // il cursore del gioco (mouser Create: action_set_cursor(cursore) [C])
+  canvas.style.cursor = `url(assets/${cursor.file}) ${cursor.origin[0]} ${cursor.origin[1]}, auto`;
   const cam = new Camera(room.width, room.height, room.views[0]);
   const input = new Input(canvas);
   const rscale = new RenderScale();
@@ -78,6 +83,21 @@ async function main() {
   const manager = new Manager(roomName, g);
   const draw = new Draw(r, assets);
   draw.setFont("GUI_1");
+
+  const world = new World({ objects, masks: masks.sprites, assets, g, roomW: room.width, roomH: room.height });
+  world.room = roomName;
+  world.cam = cam;
+  const path = new Pathing(world, room.width, room.height);
+  world.register("ally_cavaliere", cavaliere(path));
+  for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
+  for (const n of Object.keys(ENEMY_LIFE)) world.register(n, enemyDummy(n));
+  world.hooks.globalRightReleased = (mx, my) => {
+    // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
+    if (roomName !== "menu") movementGeneral(world, path, mx, my);
+  };
+  // manager Create (la parte della griglia dei costi) gira dopo che tutte le
+  // istanze della room esistono e prima dei loro Create (world.loadRoom).
+  world.loadRoom(room.instances, () => path.initCost());
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
   // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
@@ -102,12 +122,13 @@ async function main() {
     const [mx, my] = cam.toRoom(input.x, input.y);
     manager.mouse(input, mx, my);
     manager.step(input, cam, room.width, room.height);
+    world.input = input;
+    world.step(input, mx, my);
     if (input.pressed.has(114)) { // F3
       diag.toggle();
       settings.diagnostics = diag.visible;
       saveSettings(settings);
     }
-    scene.step();
     if (cam.follow && input.inside) {
       const [mx, my] = cam.toRoom(input.x, input.y); // mouser Step: x=mouse_x, y=mouse_y
       cam.followPoint(mx, my);
@@ -119,11 +140,16 @@ async function main() {
   let fpsNow = 0;
   const render = () => {
     r.beginFrame(cam, clear);
-    scene.draw(r, cam);
+    drawBackgrounds(r, assets, room, cam);
+    draw.reset();
+    world.draw(r, draw, cam);
+    manager.drawWorldEnd(draw, world);
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
-    manager.drawGUI(draw, cam, scene, fpsNow);
+    world.drawGUI(draw);
+    draw.reset();
+    manager.drawGUI(draw, cam, world, fpsNow);
     r.flush();
   };
 
@@ -139,7 +165,7 @@ async function main() {
       }
       diag.update(info.now, {
         renderer: r.rendererString, software: r.software, fpsCap: loop.fpsCap,
-        drawCalls: r.stats.drawCalls, quads: r.stats.quads, drawn: scene.drawn,
+        drawCalls: r.stats.drawCalls, quads: r.stats.quads, drawn: world.drawn,
         textureBytes: r.textureBytes(), textures: r.textures.size,
         canvasW: canvas.width, canvasH: canvas.height, renderScale: rscale.scale,
         view: `${Math.round(cam.x)},${Math.round(cam.y)} ${Math.round(cam.w)}x${Math.round(cam.h)}`,
@@ -165,7 +191,18 @@ async function main() {
 
   loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
-  window.__game = { r, assets, scene, cam, loop, diag, g, manager, ready: true };
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, ready: true };
+}
+
+// Sfondi della room ripetuti (green1, city2: 281x250 [C]), sotto a tutto.
+function drawBackgrounds(r, assets, room, cam) {
+  for (const b of room.backgrounds) {
+    const t = assets.bg.get(b.name);
+    if (!t) continue;
+    const x0 = b.htiled ? cam.x : b.x, y0 = b.vtiled ? cam.y : b.y;
+    const x1 = b.htiled ? cam.x + cam.w : b.x + t.width, y1 = b.vtiled ? cam.y + cam.h : b.y + t.height;
+    r.quad(t, x0, y0, x1, y0, x1, y1, x0, y1, x0 - b.x, y0 - b.y, x1 - b.x, y1 - b.y, 0xffffffff);
+  }
 }
 
 main().catch((e) => {
