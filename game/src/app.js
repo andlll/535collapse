@@ -14,6 +14,8 @@ import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
+import { omino, resource, dying } from "./civilians.js";
+import { centro } from "./buildings.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -88,7 +90,12 @@ async function main() {
   world.room = roomName;
   world.cam = cam;
   const path = new Pathing(world, room.width, room.height);
+  world.path = path;
   world.register("ally_cavaliere", cavaliere(path));
+  world.register("ally_omino", omino(path));
+  for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
+  for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
+  world.register("centro", centro(path));
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
   for (const n of Object.keys(ENEMY_LIFE)) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
@@ -191,7 +198,9 @@ async function main() {
 
   loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, ready: true };
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, ready: true,
+                    // per i test: avanza la simulazione di n passi senza disegnare
+                    advance(n) { for (let k = 0; k < n; k++) step(); } };
 }
 
 // Sfondi della room ripetuti (green1, city2: 281x250 [C]), sotto a tutto.

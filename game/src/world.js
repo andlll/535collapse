@@ -94,9 +94,10 @@ export class World {
       image_xscale: opts.sx ?? 1, image_yscale: opts.sy ?? 1, image_angle: opts.rot ?? 0,
       image_blend: opts.colour ?? 0xffffff, image_alpha: opts.alpha ?? 1,
       depth: typeof o.depth === "number" ? o.depth : -y + o.depth.y,
-      // [Provvisorio fino alla nebbia, punto 5] alberi, rovine e pietre si
-      // rivelano quando un'unita' li vede: per ora sono gia' visibili.
-      visible: o.visible || !!o.reveal, solid: o.solid, persistentDraw: o.draw,
+      // [Provvisorio] gli oggetti che si rivelano quando un'unita' li vede
+      // (rovine, ...) e il cui comportamento non e' ancora portato sono
+      // visibili da subito; quelli portati (risorse) gestiscono da se'.
+      visible: o.visible || (!!o.reveal && !this.behaviours[object]), solid: o.solid, persistentDraw: o.draw,
       direction: 0, speed: 0,
       alarm: new Alarms(12),
       cells: null,
@@ -399,31 +400,48 @@ export class World {
     }
   }
 
-  // Eventi di mouse: Mouse Enter/Leave e "sull'istanza" usano la maschera
-  // sotto il puntatore; i Global no [I, runner GMS].
+  // Eventi di mouse [I, runner GMS]: per tipo di evento, in ordine di
+  // numero, e dentro ogni tipo per istanza nell'ordine di creazione:
+  // 4 LeftPressed, 5 RightPressed, 7 LeftReleased, 8 RightReleased (sopra
+  // la maschera dell'istanza), 10 MouseEnter, 11 MouseLeave, poi i globali
+  // 53 GlobalLeftPressed, 54 GlobalRightPressed, 56 GlobalLeftReleased,
+  // 57 GlobalRightReleased. Il gioco ci conta: il "rilascio destro" su un
+  // albero imposta woodwork=1 sui civili selezionati PRIMA che il loro
+  // GlobalRightReleased decida cosa fare (src/objects/albero, ally_omino).
   _mouseEvents(input, mx, my) {
-    const pressedL = input.mousePressed[0], releasedL = input.mouseReleased[0];
-    const pressedR = input.mousePressed[1], releasedR = input.mouseReleased[1];
-    // manager viene prima di tutte le unita' nell'ordine delle istanze [C]:
-    // il suo clic destro (scr_movement_general) gira per primo.
-    if (releasedR && this.hooks.globalRightReleased) this.hooks.globalRightReleased(mx, my);
-    for (const i of this.instances) {
-      if (!i.alive) continue;
-      const wantsHover = this.handler(i, "mouseEnter") || this.handler(i, "mouseLeave")
-        || this.handler(i, "leftReleased") || this.handler(i, "rightReleased");
-      if (wantsHover) {
-        const over = input.inside && this.pointIn(i, mx, my);
-        if (over && !i._mouseOver) this.fire(i, "mouseEnter");
-        if (!over && i._mouseOver) this.fire(i, "mouseLeave");
-        i._mouseOver = over;
-        if (over && releasedL) this.fire(i, "leftReleased");
-        if (over && releasedR) this.fire(i, "rightReleased");
-      }
-      if (pressedL) this.fire(i, "globalLeftPressed");
-      if (releasedL) this.fire(i, "globalLeftReleased");
-      if (pressedR) this.fire(i, "globalRightPressed");
-      if (releasedR) this.fire(i, "globalRightReleased");
+    const [pL, pR] = input.mousePressed, [rL, rR] = input.mouseReleased;
+    const live = this.instances.filter((i) => i.alive);
+    const over = new Map();
+    const isOver = (i) => {
+      if (!over.has(i)) over.set(i, input.inside && this.pointIn(i, mx, my));
+      return over.get(i);
+    };
+    const local = (flag, ev) => {
+      if (!flag) return;
+      for (const i of live) if (i.alive && this.handler(i, ev) && isOver(i)) this.fire(i, ev);
+    };
+    local(pL, "leftPressed");
+    local(pR, "rightPressed");
+    local(rL, "leftReleased");
+    local(rR, "rightReleased");
+    for (const i of live) {
+      if (!i.alive || !(this.handler(i, "mouseEnter") || this.handler(i, "mouseLeave"))) continue;
+      const o = isOver(i);
+      if (o && !i._mouseOver) this.fire(i, "mouseEnter");
+      if (!o && i._mouseOver) this.fire(i, "mouseLeave");
+      i._mouseOver = o;
     }
+    const global = (flag, ev) => {
+      if (!flag) return;
+      for (const i of live) if (i.alive) this.fire(i, ev);
+    };
+    global(pL, "globalLeftPressed");
+    global(pR, "globalRightPressed");
+    global(rL, "globalLeftReleased");
+    // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
+    // suo GlobalRightReleased (scr_movement_general) gira per primo.
+    if (rR && this.hooks.globalRightReleased) this.hooks.globalRightReleased(mx, my);
+    global(rR, "globalRightReleased");
   }
 
   // ------------------------------------------------------------- disegno

@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, dopo il punto 2. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 3a (raccolta) fatto. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -28,10 +28,15 @@ sta nella sezione citata.
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
 - [x] 2. Selezione, ordini, movimento: cavaliere (§3.3).
-- [ ] 3. Civili: `ally_omino` (raccolta, trasporto, costruzione, campi),
-  risorse (alberi, miniere, pietre), magazzini, centro che crea civili,
-  pulsanti di costruzione, piazzamento (`*_placer`), cantieri (`*_fond`),
-  edifici finiti (casa: popolazione).
+- [x] 3a. Civili e raccolta: `ally_omino` (selezione, ordini, movimento,
+  legno/oro/pietra, trasporto ai depositi), risorse e risorse esaurite
+  (§3.4).
+- [ ] 3b. Costruzione: pulsanti (`*_clicker`), piazzamento (`*_placer`),
+  cantieri (`*_fond`), edifici finiti (casa, magazzino, mulino, caserma,
+  stalla, castello, chiesa, torre, mura); centro completo (produzione di
+  civili, fuoco, riparazione, rovine); feedback `*_blink`/`*_prizedrawer`;
+  `idle_clicker` (Spazio).
+- [ ] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina.
 - [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`).
@@ -1181,3 +1186,52 @@ subito (la nebbia è il punto 5).
 cavaliere ora usa `diroy` nel ricalcolo) e n.13 (Esc decrementa anche
 `global.milsel`; "mi stava facendo impazzire, ora ho capito di chi è la
 colpa").
+
+### 3.4 Punto 3a: civili e raccolta (5 ottobre 2026)
+
+**Portato** (`game/src/civilians.js`, `buildings.js`): `ally_omino` per
+intero tranne le parti di costruzione, riparazione, semina e campi (3b/3c,
+segnaposto nel codice); `albero`, `albero_fake`, `miniera_oro`,
+`pietra_grande`, `pietr_piccolo` e i loro `*_morente`; il Create del
+`centro` (vita 400, +10 popcap, il `cc_barn` che lo rende deposito del cibo).
+
+**Come funziona** [C]:
+
+- Il **click destro su una risorsa** passa prima dall'evento "rilascio
+  destro sull'istanza" della risorsa, che mette `woodwork/goldwork/
+  stonework=1` ai civili selezionati (e la direzione di raccolta al centro
+  selezionato); poi dal `GlobalRightReleased` del civile, che azzera i lavori
+  che non corrispondono a cosa c'è sotto il puntatore e parte. L'ordine è
+  quello degli eventi di GMS: tutti gli eventi "sull'istanza" prima dei
+  globali (`world.js`, [I]).
+- **Raccolta**: arrivato col bbox a meno di 20 px dalla risorsa (15 per la
+  pietra) su una cella libera, il civile lavora; ogni 39 passi (3 × 13) col
+  versore 30 px davanti: legno +2 (l'albero −2), oro +1, pietra +1. A 10 va
+  al deposito più vicino (`ally_magazza`: centro o magazzino), scarica
+  quando il bbox è a meno di 10 px, e torna alla risorsa più vicina.
+- **Velocità**: 3 × (1 − 0,36·|sin|) a mani vuote, 2 quando porta qualcosa;
+  l'arrivo senza lavoro è esatto (`x=dirox && y=diroy`).
+- **Visibilità delle risorse**: alberi entro 600 px (o nebbia spenta col
+  trucco), miniere e pietre entro 400 px da un'unità o un edificio alleato;
+  una volta viste restano visibili. La pietra grande cambia sprite sotto 425.
+- Le risorse esaurite lasciano un `*_morente` che sbiadisce in 40 passi, e
+  liberano le celle della griglia dei costi.
+
+**Difetti e residui trovati** [C]:
+
+14. `ally_omino` Step azione 14: nel ricalcolo "destinazione occupata" crea
+    un `legno_prizedrawer` (l'icona "+legno" che sale) a ogni ricalcolo:
+    residuo di debug. **Non portato** (da confermare con l'autore).
+15. `ally_omino` Step azione 10: se non ci sono depositi, il ramo della
+    pietra azzera `goldwork` invece di `stonework`. Riprodotto.
+16. `miniera_oro` e pietre, Create: la marcatura della griglia usa
+    `collision_rectangle(..., id, true, true)`, che con `notme=true` esclude
+    proprio l'istanza cercata e non marca nulla. Nessun effetto: le celle le
+    marca già il Create del manager (tutti i `natural_parent`).
+
+**Verificato** (Chromium headless, `match`, simulazione accelerata con
+`__game.advance(n)`): civile selezionato col clic, click destro
+sull'albero più vicino → cammina, taglia (`owo11`), a 10 legno prende lo
+sprite del carico (`car51/53`), va al centro, scarica (legno 50 → 60),
+riparte verso l'albero più vicino e ricomincia; popolazione 5/10
+(cavaliere 3 + 2 civili; popcap 10 dal centro); nessun errore.
