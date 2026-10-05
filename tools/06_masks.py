@@ -82,7 +82,8 @@ def main():
             bbox = [0, 0, s["width"] - 1, s["height"] - 1]
         else:
             bbox = s["bbox"]
-        e = {"kind": s["colkind"], "bbox": bbox}
+        e = {"kind": s["colkind"], "bbox": bbox, "origin": [s["origin_x"], s["origin_y"]],
+             "size": [s["width"], s["height"]]}
         if s["colkind"] == 0:
             e["sepmasks"] = s["sepmasks"]
             e["frames"] = [rle(m, bbox) for m in masks]

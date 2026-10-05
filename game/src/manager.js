@@ -52,17 +52,18 @@ export class Manager {
     // V + Alt + F/Q/S/W/P.
     const cheat = g.sele === -1 && g.visia === 1;
     if (P(70) && cheat) g.food += 1000;
-    if (P(81)) {
-      if (cheat) g.gold += 1000;
-      // [Difetto §3.2 n.10, in attesa di decisione] l'originale ferma la
-      // pioggia a OGNI pressione di Q (fuori dall'if del trucco).
+    // [Difetto corretto, §3.2 n.10: nell'originale lo stop della pioggia era
+    // fuori dall'if e ogni Q fermava la pioggia; era un'esigenza di test
+    // dell'autore]
+    if (P(81) && cheat) {
+      g.gold += 1000;
       this.stopRain();
     }
     if (P(83) && cheat) g.stone += 1000;
     if (P(87) && cheat) g.wood += 1000;
-    if (P(80)) {
-      if (cheat) g.popcap += 1000;
-      // [Difetto §3.2 n.11] alarm[4]=1 fuori dall'if: P fa sempre piovere.
+    // [Difetto corretto, §3.2 n.11: alarm[4]=1 era fuori dall'if]
+    if (P(80) && cheat) {
+      g.popcap += 1000;
       this.al.set(4, 1);
     }
     // KeyRelease_Delete con Ctrl + V: nebbia on/off
