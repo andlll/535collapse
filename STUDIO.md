@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 4c (arcieri, frecce, torri) fatto; prossimo il 4d. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 4d (assedio e fuoco) fatto; prossimo il 4e. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,7 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11).
+- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11), n.46–49 (§3.12).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -45,7 +45,9 @@ sta nella sezione citata.
   attacco/difesa, gruppi di controllo (§3.9).
 - [x] 4b. Nemici in mischia: IA, morte, cadaveri (§3.10).
 - [x] 4c. Arcieri, frecce, presidio di torri e castello, torre nemica (§3.11).
-- [ ] 4d–4e. Combattimento (i nemici calcolano i percorsi con le porte
+- [x] 4d. Assedio (arieti, catapulte), fuoco, produzione di stalla e
+  castello (§3.12).
+- [ ] 4e. Combattimento (i nemici calcolano i percorsi con le porte
   chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
@@ -1698,3 +1700,68 @@ tiro; la torre nemica di `match` tira due frecce a un guerriero entro
 entra uno (n.43), compare la bandiera, "1/4", e con un nemico a 450 px il
 castello tira (60 → 54 → 42). 3000 passi senza errori in `match`,
 `lvl01`, `lvl02`.
+
+### 3.12 Punto 4d: assedio e fuoco (5 ottobre 2026)
+
+**Portato** (`game/src/siege.js`, `production.js`): ariete e catapulta
+alleati e nemici; i sassi delle catapulte (`catapulta_bullet`,
+`b_catapulta_bullet`) con parabola, mattoni, zolle e sangue (`sfx_*`);
+le frecce incendiarie (`fire_bullet`) di fanti alleati e nemici; il fumo
+degli edifici in fiamme (`nubeqq`); l'ordine di dar fuoco (click destro
+su una casa, stalla o caserma nemica con fanti selezionati); la
+produzione di stalla (cavaliere) e castello (ariete, catapulta), con la
+stessa coda della caserma; la linea della bandiera di raccolta di
+caserma, stalla e castello, che mancava.
+
+**Come funziona** [C]:
+- Le macchine d'assedio non hanno flow field né rango: vanno verso la
+  destinazione solo con `mp_potential_step`, a 2 px per passo.
+- Ariete: attacca l'edificio nemico più vicino entro 700 px; a contatto
+  un colpo ogni 69 passi col versore a 50 px, −50 (−5 agli edifici con
+  vita massima 100).
+- Catapulta: tira all'edificio nemico più vicino fra 300 e 850 px (o a
+  un nemico scelto col click destro), poi ricarica: un tiro ogni ~180
+  passi. Il sasso viaggia a 5 px per passo su una parabola e all'arrivo
+  toglie 40 all'edificio o all'unità che c'è sotto.
+- Fuoco: un fante (alleato su ordine, nemico da solo se non ci sono
+  civili vicini) tira una freccia incendiaria ogni 38 passi; l'edificio
+  colpito prende fuoco (`onfire`) e perde 5 (3 il centro, 20 il campo);
+  in fiamme fa fumo e perde 1 vita ogni 70 passi finché un civile non lo
+  ripara col legno.
+- Produzione: stalla, un cavaliere ogni 1200 passi (20 s); castello, un
+  ariete o una catapulta ogni 3000 passi (50 s); le unità del castello
+  nascono a destra e vanno alla bandiera (o 150 px a destra).
+
+**Difetti trovati** [C]:
+
+46. Annullare un ariete o una catapulta nel castello rimborsa **pietra**
+    al posto dell'oro (30 e 100 invece di 60 e 100). Verificato.
+    Riprodotto.
+47. Catapulte (alleate e nemiche): con un edificio bersaglio a meno di 300
+    px si mettono in cammino senza cambiare destinazione; per una
+    catapulta della room `dirox` non è mai assegnata (0) e va verso
+    l'angolo (0, 0) della mappa. Riprodotto.
+48. L'ariete nemico arma l'alarm 9 dell'edificio colpito, che non rimette
+    `hit` a 0: la barra della vita resta visibile per sempre. Riprodotto.
+49. Il centro in fiamme non fa fumo e non perde vita: i suoi alarm del
+    fuoco (2 e 3) non sono mai armati. Come magazzino e mulino (n.34).
+    Riprodotto.
+50. Residui: nel castello il tipo 3 (arciere) non ha un pulsante (e
+    riceverebbe `alarm[1]` al posto di `alarm[0]`); il fumo è sempre
+    specchiato (`random(2)==1` non capita mai); `ariete_bullet` e
+    `enemy_ariete_bullet` non li crea nessuno.
+
+**Rimandato**: la fiammata (300 particelle) dei colpi di fuoco e le
+fiamme sugli edifici (sistema di particelle); vita e morte degli edifici
+nemici di legno (punto 4e: per ora il fuoco e i sassi li segnano ma non
+li distruggono).
+
+**Verificato** (Chromium, `match`): castello con 1000 legno e oro: Q
+(ariete, −250 legno −60 oro), W (catapulta, −200 −100), E annulla la
+catapulta (+200 legno, +100 **pietra**: n.46); dopo ~3000 passi nasce
+l'ariete e va a x+150, y+100. Un ariete a 250 px da una torre nemica: la
+raggiunge e la abbatte (330 → 230 → 130 → 30 → distrutta). Un guerriero
+nemico senza civili intorno incendia il centro (400 → 379, `onfire`)
+finché le frecce del centro lo uccidono. La catapulta del tutorial tira a
+un edificio nemico e viene abbattuta dalle torri nemiche. 3000 passi
+senza errori in `match`, `lvl01`, `lvl02`.

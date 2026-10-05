@@ -17,6 +17,7 @@ import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
+import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, fireOrder, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
@@ -110,6 +111,20 @@ async function main() {
   world.register("ally_build", allyBuild());
   world.register("ally_arciere", allyArcher(path));
   world.register("enemy_arciere", enemyArcher(path));
+  world.register("ally_ariete", allyRam());
+  world.register("ally_catapulta", allyCatapult());
+  world.register("enemy_ariete", enemyRam(enemyMelee("enemy_picchiere", path)));
+  world.register("enemy_catapulta", enemyCatapult(enemyMelee("enemy_picchiere", path)));
+  world.register("catapulta_bullet", catapultBullet(false));
+  world.register("b_catapulta_bullet", catapultBullet(true));
+  world.register("sfx_mattone", debris());
+  world.register("sfx_erba", debris());
+  world.register("sfx_sangue", bloodSplat());
+  world.register("fire_bullet", fireBullet());
+  world.register("nubeqq", smoke());
+  // click destro sugli edifici nemici di legno: ordine di dar fuoco (il
+  // resto degli edifici nemici col punto 4e)
+  for (const n of ["enemy_house", "enemy_stalla", "enemy_caserma"]) world.register(n, { rightReleased: fireOrder });
   world.register("arciere_bullet", allyArrow(false));
   world.register("arciere_bullet_t", allyArrow(true));
   world.register("b_arciere_bullet", enemyArrow(false));
@@ -123,11 +138,13 @@ async function main() {
     world.register(f + "_placer", placer(f));
     if (f === "campo" || f === "mura") continue;
     world.register(f + "_fond", fond(f, path));
-    const b = built(f, path);
-    world.register(f, PRODUCERS[f] ? producer(f, b, path) : f === "torre" || f === "castello" ? garrisoned(f, b) : b);
+    let b = built(f, path);
+    if (PRODUCERS[f]) b = producer(f, b, path);
+    if (f === "torre" || f === "castello") b = garrisoned(f, b);
+    world.register(f, b);
   }
   for (const [prod, P] of Object.entries(PRODUCERS)) {
-    for (const [type, u] of Object.entries(P.units)) world.register(u.clicker, unitClicker(prod, Number(type)));
+    for (const [type, u] of Object.entries(P.units)) if (u.clicker) world.register(u.clicker, unitClicker(prod, Number(type)));
     world.register(P.cancel, cancelClicker(prod));
   }
   world.register("campo_fond", campoFond(path));

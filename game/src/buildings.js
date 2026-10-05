@@ -390,7 +390,10 @@ export function built(fam, p) {
     // l'originale distrugge le fiamme alte al passo dopo: §3.5 n.18, da
     // correggere quando si portano le particelle).
     ...(b.fire ? {
-      ["alarm" + b.smoke[0]](i) { i.alarm.set(b.smoke[0], b.smoke[1]); },
+      ["alarm" + b.smoke[0]](i, w) {
+        i.alarm.set(b.smoke[0], b.smoke[1]);
+        if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
+      },
       ["alarm" + b.burn[0]](i) { i.alarm.set(b.burn[0], b.burn[1]); if (i.onfire === 1) i.life -= 1; },
     } : {}),
     step(i, w) {
@@ -529,7 +532,10 @@ export function campo(p) {
     },
     alarm0(i) { i.alarm.set(0, 120); if (i.food < 200) i.food += 1; },
     alarm1(i) { i.foodwork = 0; },
-    alarm2(i) { i.alarm.set(2, 30); }, // fumo se in fiamme: col fuoco (punto 4)
+    alarm2(i, w) {
+      i.alarm.set(2, 30);
+      if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
+    },
     alarm3(i) { i.alarm.set(3, 5); if (i.onfire === 1) i.life -= 1; },
     destroy(i, w) { w.g.farmhover = 0; },
     step(i, w) { if (i.life <= 0) w.destroy(i); }, // (campo bruciato: col fuoco)

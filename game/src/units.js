@@ -15,6 +15,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
 import { counterArcher } from "./ranged.js";
+import { infantryFire } from "./siege.js";
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -285,7 +286,7 @@ export function infantry(name, p) {
     alarm0: walkCycle,
     alarm1(i) { i.dc = 0; },
     alarm2(i, w) { meleeStrike(i, w, T.damage, false, T.faceTarget); },
-    // Alarm_4, "dare fuoco alle case" (action 6): arriva col fuoco (4d)
+    alarm4: infantryFire,
     alarm5(i) { i.hit = 0; },
     alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
     alarm10(i, w) { rallyMove(i, w, p, T.rally100); },
@@ -326,7 +327,7 @@ export function infantry(name, p) {
         }
       }
       behaviourButtons(i, w);
-      // dare fuoco alle case (firework, action 6): col fuoco (4d)
+      // dare fuoco alle case (firework, action 6)
       if (i.targetid && !i.targetid.alive) { i.targetid = null; i.firework = 0; }
       if (i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70) {
         i.firework = 0;
