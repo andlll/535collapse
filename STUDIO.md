@@ -14,8 +14,28 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 4 (combattimento) completo; prossimo il punto 5 (nebbia e notte). Il dettaglio di ogni voce
-sta nella sezione citata.
+Ultimo aggiornamento: fine della sessione del 5 ottobre 2026. Fase 3,
+punto 4 (combattimento) completo e corretto (§3.14); **prossimo: punto 5,
+nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
+
+**Per riprendere**
+- Branch `claude/lucid-gauss-ph92vs`; gli asset generati (`game/assets/`,
+  `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
+  `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
+- Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
+  Prima di ogni commit: build, test, soak senza errori, e una prova mirata
+  del sistema toccato con `window.__game` (scenari descritti in fondo a
+  ogni sezione di §3).
+- Metodo: per ogni sistema si legge il GML in `src/objects/<oggetto>/`, si
+  porta citando file ed evento, si confrontano le copie quasi uguali
+  (famiglie di edifici, unità) e si scrive una tabella invece di duplicare;
+  i difetti si riproducono e si chiedono all'autore, con una
+  raccomandazione, poi si annotano in §3.x.
+- Codice: `world.js` (motore e semantica GMS), `pathing.js`,
+  `units.js`/`civilians.js`/`ranged.js`/`siege.js` (alleati),
+  `enemies.js`/`enemybuild.js` (nemici), `buildings.js`/`walls.js`/
+  `production.js` (edifici), `levels.js` (regia), `manager.js` (HUD,
+  tastiera, minimappa), `app.js` (registrazione dei comportamenti).
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -53,15 +73,21 @@ sta nella sezione citata.
   risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
 
 **Resto del gioco**
-- [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco, fumo, sangue,
-  mattoni, burst; spighe dei campi, semi della semina; aquila (manager alarm 3), `fog_controller`.
+- [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco (fiamme degli
+  edifici, fiammata delle frecce incendiarie), burst; spighe dei campi,
+  semi della semina; aquila (manager alarm 3), `fog_controller` (crea
+  `fog01`). Fumo (`nubeqq`), mattoni, zolle e sangue sono già oggetti
+  portati.
+- [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
+  461 righe) insieme al menu principale.
 - [ ] Suggerimenti del tutorial (`hint_*`), dialoghi (`dialogo_*`),
   obiettivi (`objective_button`), vittoria e sconfitta.
 - [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
   lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
   livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
-- [ ] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che conta
-  per la vittoria (§1.2), difetto `l6exists`.
+- [x] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che
+  conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13).
+  Mancano i dialoghi che li accompagnano (voce sopra).
 - [x] Correzioni decise in Fase 1 (§1.6), applicate coi sistemi: ariete
   60 oro anche col tasto Q, annullare un picchiere restituisce 55 cibo e
   45 legno, centro distrutto −10 popcap, castello e torre senza −5.

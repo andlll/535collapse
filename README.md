@@ -43,6 +43,23 @@ python3 -m http.server 8000 --directory game
 ```
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`. Per ora è un'anteprima delle room senza logica di gioco:
-puntatore ai bordi o frecce per muoversi, X/Z per lo zoom, **F3** per il
-pannello di diagnostica (anche `?diag=1`); `?fps=30` per il tetto a 30 fps.
+`?room=lvl02`. Il menu e la campagna non sono ancora portati: si entra
+nelle room direttamente. Sono giocabili economia, costruzione e
+combattimento; mancano nebbia e notte, particelle, dialoghi e
+suggerimenti, vittoria e sconfitta (la lista aggiornata è in cima a
+`STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
+**F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
+tetto a 30 fps.
+
+## Provare
+
+```bash
+cd game && npm test                                  # test unitari (node --test)
+python3 -m http.server 8123 --directory game         # in un altro terminale
+node game/test/browser/soak.mjs http://localhost:8123 3000   # Chromium: 3000 passi per room
+```
+
+`soak.mjs` usa Playwright; se il modulo non è nel progetto, la variabile
+`PLAYWRIGHT_MODULE` dice dove trovarlo. Nella pagina, `window.__game`
+espone mondo, griglia, globali e `advance(n)` per far avanzare la
+simulazione senza disegnare.

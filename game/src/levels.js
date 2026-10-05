@@ -286,8 +286,10 @@ export function levelStep(w) {
 // enemy_manager_lv2 [C]: sette aree difese; liberarne una (nessun suo
 // difensore vivo) da' civili e un dialogo; i nemici attaccano i civili a
 // gruppi di 5 dalle caserme col ruolo 30; la caserma dell'area 6 crea
-// arcieri difensori finche' l'area resiste. Vittoria: aree 1–6 liberate e
-// nessun edificio nemico (l'area 7 non conta: §1.2).
+// arcieri difensori finche' l'area resiste. Vittoria: aree 1–7 liberate e
+// nessun edificio nemico (l'area 7 per decisione dell'autore, §1.2).
+// l6exists, letta anche quando l'area 6 e' gia' libera, vale falso: la
+// caserma difensiva si ferma (l'effetto voluto, §1.2).
 const AREAS = [
   [2260, 7450, 2920, 7900, 2600, 7700, 110], [2050, 3550, 2950, 4150, 2500, 3850, 120],
   [1150, 5400, 1880, 5900, 1500, 5750, 130], [120, 3400, 720, 3800, 400, 3600, 140],
@@ -362,7 +364,9 @@ export function enemyManagerLv2(p) {
         const v = w.nearest(1500, 2200, "ally_militare");
         if (v && pointDistance(1500, 2200, v.x, v.y) < 400) { i.dia14 = 1; createIfPorted(w, "dialogo_2_14", v.x, v.y); }
       }
-      if ([1, 2, 3, 4, 5, 6].every((k) => i["l" + k] === 1) && w.number("enemy_build") === 0) {
+      // [Deviazione decisa dall'autore, §0.15 e §1.2] anche l'area 7 conta
+      // (l'originale controllava solo le aree 1–6)
+      if ([1, 2, 3, 4, 5, 6, 7].every((k) => i["l" + k] === 1) && w.number("enemy_build") === 0) {
         createIfPorted(w, "victory_manager", 0, 0);
       }
     },
