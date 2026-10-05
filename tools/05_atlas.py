@@ -9,8 +9,8 @@ Gruppi (dalle cartelle di sprite dell'autore, data/sprites.json "folder"):
 
   gui       icone, segnalini, capocce, sprite alla radice   tier core
   campagna  mappa e segnaposti della campagna               tier menu
-  terreno   natura con lato >= 512 px (montagne, fiumi, strade, tracce)
-            a SCALA 0,5                                     tier gioco
+  terreno   natura con lato >= 512 px (montagne, fiumi, strade, tracce),
+            pagine 4096 (montagna10 e' larga 2342 px)       tier gioco
   ambiente  il resto di natura, alberi, props, altro        tier gioco
   edifici   edifici e mura                                  tier gioco
   alleati   unita' romane (8 direzioni)                     tier gioco
@@ -21,7 +21,9 @@ Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
 come sprite di un oggetto ne' nel codice): servono solo a tools/06_masks.py.
 
 Ogni frame e' ritagliato sull'alpha, ridimensionato alla scala del gruppo,
-impacchettato (MaxRects, best short side fit) in pagine 2048x2048 con 2 px
+impacchettato (MaxRects, best short side fit) in pagine quadrate (2048,
+4096 per il terreno; WebGL2 garantisce solo 2048, i PC desktop arrivano
+almeno a 8192: il motore lo controlla all'avvio) con 2 px
 di bordo ripetuto (niente sbavature col filtro lineare). Le pagine sono WebP
 con perdita (q85) e alpha senza perdita (gui: tutto senza perdita): il motore le carica con alpha
 premoltiplicato, cosi' l'RGB dei pixel trasparenti non conta.
@@ -46,7 +48,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import DATA_DIR, GMX_DIR, REPO_DIR, SRC_DIR, need  # noqa: E402
 
-PAGE = 2048
+PAGE = 2048          # lato di pagina predefinito
 PAD = 2
 QUALITY = 85
 OUT = os.path.join(REPO_DIR, "game", "assets")
@@ -55,8 +57,12 @@ ALLIES = {"guerriero", "picchiere", "arciere", "cavaliere", "omino", "catapulta"
 # Il gruppo gui e' WebP senza perdita: icone e segni a bordi netti mostravano
 # fino a 8,8/255 di errore medio con q85 (misurato, STUDIO.md §2.1).
 LOSSLESS = {"gui"}
+# Scala 1 ovunque: il terreno era proposto a 0,5 (33 MB invece di ~120), ma
+# perdeva la grana della carta; l'autore ha scelto la piena risoluzione
+# (STUDIO.md §2.1: "gira solo su PC, per 55 MB non muore nessuno").
+PAGE_OF = {"terreno": 4096}
 GROUPS = {  # nome: (tier, scala)
-    "gui": ("core", 1.0), "campagna": ("menu", 1.0), "terreno": ("gioco", 0.5),
+    "gui": ("core", 1.0), "campagna": ("menu", 1.0), "terreno": ("gioco", 1.0),
     "ambiente": ("gioco", 1.0), "edifici": ("gioco", 1.0), "alleati": ("gioco", 1.0),
     "nemici": ("gioco", 1.0), "citta": ("citta", 1.0),
 }
@@ -96,8 +102,8 @@ def used_as_texture(sprites, objects):
 # ------------------------------------------------------------------ MaxRects
 
 class Page:
-    def __init__(self):
-        self.free = [(0, 0, PAGE, PAGE)]
+    def __init__(self, size):
+        self.free = [(0, 0, size, size)]
 
     def insert(self, w, h):
         best = None
@@ -162,7 +168,7 @@ def main():
 
     # frame -> immagine ritagliata e scalata
     items = {g: [] for g in GROUPS}
-    manifest = {"version": 1, "page_size": PAGE, "groups": {}, "sprites": {}, "excluded": []}
+    manifest = {"version": 1, "groups": {}, "sprites": {}, "excluded": []}
     for s in sprites:
         if s["name"] not in used:
             manifest["excluded"].append(s["name"])
@@ -188,19 +194,20 @@ def main():
     total_gpu = total_disk = 0
     print("%-9s %-6s %5s %6s %7s %9s %8s" % ("gruppo", "tier", "scala", "frame", "pagine", "GPU MB", "WebP MB"))
     for g, lst in items.items():
+        size = PAGE_OF.get(g, PAGE)
         lst.sort(key=lambda t: -max(t[2].size))
         pages, images = [], []
         for name, i, crop in lst:
             w, h = crop.width + 2 * PAD, crop.height + 2 * PAD
-            if w > PAGE or h > PAGE:
-                raise SystemExit("%s_%d non entra in una pagina %d (%dx%d)" % (name, i, PAGE, w, h))
+            if w > size or h > size:
+                raise SystemExit("%s_%d non entra in una pagina %d (%dx%d)" % (name, i, size, w, h))
             for pi, p in enumerate(pages):
                 pos = p.insert(w, h)
                 if pos:
                     break
             else:
-                pages.append(Page())
-                images.append(Image.new("RGBA", (PAGE, PAGE)))
+                pages.append(Page(size))
+                images.append(Image.new("RGBA", (size, size)))
                 pi, pos = len(pages) - 1, pages[-1].insert(w, h)
             images[pi].paste(extrude(crop, PAD), pos)
             manifest["sprites"][name]["frames"][i].update(
@@ -209,8 +216,8 @@ def main():
         for pi, img in enumerate(images):
             # pagina finale: ritaglia lo spazio vuoto in basso/a destra (meno memoria)
             bb = img.getchannel("A").getbbox() or (0, 0, 1, 1)
-            w = min(PAGE, (bb[2] + PAD + 3) // 4 * 4)
-            h = min(PAGE, (bb[3] + PAD + 3) // 4 * 4)
+            w = min(size, (bb[2] + PAD + 3) // 4 * 4)
+            h = min(size, (bb[3] + PAD + 3) // 4 * 4)
             img = img.crop((0, 0, w, h))
             fn = "%s-%d.webp" % (g, pi)
             if g in LOSSLESS:
@@ -222,7 +229,7 @@ def main():
             disk += os.path.getsize(os.path.join(OUT, "atlas", fn))
             files.append({"file": "atlas/" + fn, "width": w, "height": h})
         gpu = sum(f["width"] * f["height"] * 4 for f in files)
-        manifest["groups"][g] = {"tier": GROUPS[g][0], "scale": GROUPS[g][1], "pages": files,
+        manifest["groups"][g] = {"tier": GROUPS[g][0], "scale": GROUPS[g][1], "page_size": size, "pages": files,
                                  "gpu_bytes": gpu, "disk_bytes": disk}
         total_gpu += gpu
         total_disk += disk
