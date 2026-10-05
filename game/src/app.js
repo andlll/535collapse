@@ -1,9 +1,10 @@
 // Avvio del motore e di una room (?room=menu|match|lvl01|lvl02).
 //
 // Sistemi portati finora (STUDIO.md §3): manager e interfaccia; selezione,
-// ordini e movimento del cavaliere; civili, raccolta, costruzione, centro,
-// campi, mura e porte. Gli altri oggetti sono disegnati con il loro sprite
-// e non fanno ancora nulla. F3 apre la diagnostica.
+// ordini e movimento; civili, raccolta, costruzione, campi, mura e porte;
+// combattimento, edifici nemici e regia dei livelli; nebbia e notte. Gli
+// altri oggetti sono disegnati con il loro sprite e non fanno ancora nulla.
+// F3 apre la diagnostica.
 
 import { Renderer, bgrToRGB } from "./gl.js";
 import { Assets } from "./assets.js";
@@ -25,6 +26,9 @@ import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
+import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
+import { FogMap } from "./fog.js";
+import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -178,6 +182,11 @@ async function main() {
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
   for (const n of ["enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) world.register(n, enemyMelee(n, path));
   world.register("atk_signal", atkSignalObject());
+  for (const n of Object.keys(CITY_FIRES)) world.register(n, cityBuilding(n));
+  world.register("firestarter", fireStarter(true));
+  world.register("firestarter_small", fireStarter(false));
+  world.register("palo_1", palo(path));
+  for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) world.register(n, statue());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
@@ -198,6 +207,11 @@ async function main() {
   if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };
+  // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
+  const fog = new FogMap(room.width, room.height);
+  world.fog = fog;
+  fog.update(world);
+  const fogLayer = new FogLayer(r, fog);
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
   // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
@@ -224,6 +238,7 @@ async function main() {
     manager.step(input, cam, room.width, room.height);
     world.input = input;
     world.step(input, mx, my);
+    fog.update(world);
     if (input.pressed.has(114)) { // F3
       diag.toggle();
       settings.diagnostics = diag.visible;
@@ -242,8 +257,13 @@ async function main() {
     r.beginFrame(cam, clear);
     drawBackgrounds(r, assets, room, cam);
     draw.reset();
-    world.draw(r, draw, cam);
-    manager.drawWorldEnd(draw, world);
+    // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
+    // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
+    world.draw(r, draw, cam, () => {
+      manager.drawEnd(draw, world);
+      fogLayer.draw(draw, world, cam);
+    });
+    manager.drawMouser(draw, world);
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
@@ -293,7 +313,7 @@ async function main() {
 
   loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }

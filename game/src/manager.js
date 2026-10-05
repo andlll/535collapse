@@ -1,8 +1,8 @@
 // L'oggetto `manager` dell'originale (src/objects/manager/): una sola
 // istanza per room, regista di risorse, tempo, giorno/notte, pioggia,
-// trucchi, minimappa e barra delle risorse. Qui la parte del punto 1 della
-// vertical slice (STUDIO.md §3); il resto (nebbia, notte disegnata,
-// ondate, presidi, controller dei livelli) arriva con i sistemi a cui serve.
+// trucchi, minimappa e barra delle risorse (STUDIO.md §3.1). Le parti che
+// riguardano altri sistemi stanno con loro: ondate, presidi e controller dei
+// livelli in levels.js, nebbia e notte disegnate in fog.js e fogdraw.js.
 
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
@@ -160,17 +160,30 @@ export class Manager {
     }
   }
 
-  // Disegno nel mondo, dopo i Draw End delle istanze:
-  // - manager Draw_End azione 3 [C]: rettangolo di selezione, blu di giorno,
-  //   bianco quando global.night != 0;
-  // - mouser Draw_End [C]: il cerchio luminoso sotto il puntatore (somma),
-  //   colorato secondo cosa c'e' sotto quando sono selezionati civili.
-  drawWorldEnd(d, w) {
-    const g = this.g, mx = w.mouse.x, my = w.mouse.y;
+  // manager Draw_End [C], fra i Draw End delle istanze alla depth del
+  // manager (world.draw): bordo nero fuori dalla room (azione 2), rettangolo
+  // di selezione (azione 3, blu di giorno, bianco quando global.night != 0).
+  // Subito dopo app.js disegna nebbia e notte (azione 5, fogdraw.js), che
+  // quindi coprono anche il rettangolo di selezione.
+  drawEnd(d, w) {
+    const g = this.g, mx = w.mouse.x, my = w.mouse.y, rw = w.roomW, rh = w.roomH;
+    d.setColour(c.black);
+    d.rectangle(-10000, -10000, rw + 10000, 0, false);
+    d.rectangle(-10000, rh, rw + 10000, rh + 10000, false);
+    d.rectangle(-10000, 0, 0, rh, false);
+    d.rectangle(rw, 0, rw + 10000, rh, false);
+    d.setColour(c.white);
     if (g.multi === 1) {
       const col = g.night === 0 ? c.blue : c.white;
       d.rectangleColour(g.startx, g.starty, mx, my, col, col, col, col, true);
     }
+  }
+
+  // mouser Draw_End [C] (depth -9999, dopo tutti gli altri Draw End): il
+  // cerchio luminoso sotto il puntatore (somma), colorato secondo cosa c'e'
+  // sotto quando sono selezionati civili.
+  drawMouser(d, w) {
+    const g = this.g, mx = w.mouse.x, my = w.mouse.y;
     d.setBlend("add");
     d.setAlpha(0.7);
     const ring = (r, col) => d.circleColour(mx, my, r, col, c.black, false);

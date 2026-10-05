@@ -275,7 +275,8 @@ function lvl01Gates(w) {
 // costruzione, prima degli Step delle istanze).
 export function levelStep(w) {
   const g = w.g;
-  // trucco della nebbia: tutti i nemici visibili
+  // trucco della nebbia: tutti i nemici visibili [Difetto corretto, §3.2
+  // n.9: l'originale leggeva la variabile d'istanza fogville, mai assegnata]
   if (g.fogville === 0) for (const e of w.all("enemy")) e.visible = true;
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);

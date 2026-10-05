@@ -14,9 +14,11 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: fine della sessione del 5 ottobre 2026. Fase 3,
-punto 4 (combattimento) completo e corretto (§3.14); **prossimo: punto 5,
-nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
+Ultimo aggiornamento: 5 ottobre 2026, seconda sessione. Fase 3 completa:
+punto 5, nebbia e notte (§3.15). **Prossimo: da concordare con l'autore**;
+proposta: particelle (pioggia, fuoco: bracieri e torce esistono già come
+istanze), poi suggerimenti, dialoghi, vittoria e sconfitta. Il dettaglio
+di ogni voce sta nella sezione citata.
 
 **Per riprendere**
 - Branch `claude/lucid-gauss-ph92vs`; gli asset generati (`game/assets/`,
@@ -35,7 +37,8 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
   `units.js`/`civilians.js`/`ranged.js`/`siege.js` (alleati),
   `enemies.js`/`enemybuild.js` (nemici), `buildings.js`/`walls.js`/
   `production.js` (edifici), `levels.js` (regia), `manager.js` (HUD,
-  tastiera, minimappa), `app.js` (registrazione dei comportamenti).
+  tastiera, minimappa), `fog.js`/`fogdraw.js` (nebbia e notte), `props.js`
+  (statue, pali, bracieri), `app.js` (registrazione dei comportamenti).
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -48,6 +51,10 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
 - [ ] n.53 (vittoria del livello 2 creata a ogni passo): con la vittoria (§3.13).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] Nebbia e notte (§3.15): bordi delle ellissi sfumati su ~16 px invece
+  che netti (deviazione da confermare); n.54 (le anteprime dei muri
+  scoprono la nebbia) e n.55 (le statue scoprono ma non danno la vista).
+  Utile uno screenshot dell'originale di notte per confrontare la tinta.
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -69,19 +76,22 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
   castello (§3.12).
 - [x] 4e. Edifici nemici, ondate di `match`, regia di `lvl02` e delle porte
   di `lvl01`, chiesa (§3.13).
-- [ ] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
-  risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
+- [x] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
+  risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto);
+  statue, pali e bracieri come fonti di vista e di luce (§3.15).
 
 **Resto del gioco**
 - [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco (fiamme degli
-  edifici, fiammata delle frecce incendiarie), burst; spighe dei campi,
+  edifici, fiammata delle frecce incendiarie, bracieri e torce:
+  `firestarter*`, già istanze), burst; spighe dei campi,
   semi della semina; aquila (manager alarm 3), `fog_controller` (crea
   `fog01`). Fumo (`nubeqq`), mattoni, zolle e sangue sono già oggetti
   portati.
 - [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
   461 righe) insieme al menu principale.
-- [ ] Suggerimenti del tutorial (`hint_*`), dialoghi (`dialogo_*`),
-  obiettivi (`objective_button`), vittoria e sconfitta.
+- [ ] Suggerimenti del tutorial (`hint_*`, fra cui `hint_night` alla prima
+  notte), dialoghi (`dialogo_*`, fra cui `dialogo_statua`), obiettivi
+  (`objective_button`), vittoria e sconfitta.
 - [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
   lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
   livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
@@ -1894,3 +1904,106 @@ Corretti tutti gli altri:
   difensore e l'altro: non crea più attaccanti.
 
 3000 passi senza errori in `match`, `lvl01`, `lvl02`; i 10 test passano.
+
+### 3.15 Punto 5: nebbia e notte (5 ottobre 2026)
+
+**Portato** (`game/src/fog.js`, `fogdraw.js`, `props.js`; `gl.js`,
+`world.js`, `manager.js`): `manager` Draw_End per intero (bordo nero fuori
+dalla room, rettangolo di selezione, superfici `fog`, `blackfog`, `nite`);
+le statue di `lvl01` (`o_statua1..4`: attivazione e cura); `palo_1`
+(Create: celle nella griglia dei costi, vita 999, torcia); i bracieri delle
+città (`ocr_*` Create → `firestarter`) e la torcia del palo
+(`firestarter_small`) come istanze senza particelle, perché la notte li
+illumina. La visibilità di nemici e risorse e il difetto n.9 erano già
+portati con i loro oggetti (§3.4, §3.10); ora il n.9 è marcato nel codice.
+Il punto 5 chiude la vertical slice.
+
+**Come funziona l'originale** [C, manager Draw_End azione 5]: tre superfici
+grandi come la room, ridisegnate a ogni fotogramma e applicate con
+`bm_subtract` (destinazione × (1 − colore)):
+- `fog`: la view riempita di grigio 110 con ellissi nere attorno a unità
+  ed edifici alleati: fuori dalla vista attuale il mondo scende al 57%;
+- `blackfog`: bianca all'inizio e mai cancellata, con le stesse ellissi (e
+  le statue attive): ciò che non è mai stato visto è nero;
+- `nite`: `merge_colour(c_black, c_orange, global.night)`, con lo sprite
+  `arealight` (una macchia nera sfumata) sopra ogni fuoco: di notte piena
+  sparisce il rosso, il 63% del verde e il 25% del blu, tranne attorno ai
+  fuochi.
+- Ellissi (k = 1 − night: di giorno la visuale raddoppia): unità, edifici e
+  pali 200×120 (+k); centro 300×180; castello e torre 500×300; muri
+  orizzontali 300+200k × 120+120k; muri verticali spostati di 125 px in alto
+  (da y−370 a y+120). Fuochi: bracieri e torce scala 3 con un tremolio di
+  ±0,15; edifici in fiamme 3 o 4 (2 le casse) più quanto sono danneggiati;
+  freccia incendiaria 1; il fante che la accende, 67 px sopra di sé.
+- Solo fuori dal menu e con `global.fogville=1`: il trucco Ctrl+V+Canc
+  spegne la nebbia **e la notte**.
+- Il manager ha depth −1 e tutto questo è nel suo Draw End: i Draw End
+  delle unità e degli edifici (depth −y: barre della vita, cerchi di
+  selezione, numeri dei gruppi, la stellina delle miniere) vengono dopo e
+  restano **sopra** nebbia e notte; il rettangolo di selezione, disegnato
+  dal manager prima delle superfici, ci finisce sotto. Il cerchio del
+  puntatore (`mouser`, depth −9999) è sopra a tutto.
+
+**Nel porting** [deviazioni volute, §0.7]:
+- Scoperta e vista sono due griglie di byte con una cella ogni 16 px (in
+  `match` 438×438, 190 KB); ogni cella tiene quanto è coperta (0–255),
+  stimato dalla distanza del suo centro dal bordo dell'ellisse. A ogni
+  fotogramma si ricalcola la vista solo sulle celle della view e si
+  compongono `fog` e `blackfog` in un solo valore da sottrarre (0 vista,
+  110 già vista, 255 mai vista), caricato in una texture a un canale
+  filtrata linearmente. **I bordi sfumano su ~16 px** invece di essere
+  netti (con celle solo 0/1 il filtro lasciava una scaletta sui bordi
+  lunghi: provato e scartato).
+- La scoperta si aggiorna **nel passo** (l'originale nel disegno, cioè a
+  ogni passo a 60 fps): è stato di gioco, non dipende dal tetto di fps e
+  servirà ai salvataggi. Un'istanza ferma la cui ellisse non è cresciuta
+  si salta.
+- La notte usa una superficie con un texel ogni 8 px della view (0,3 MB a
+  1920×1080 con zoom 1,5), allineata alla griglia degli 8 px perché i bordi
+  non tremino mentre la view scorre; senza fuochi nella view basta un
+  rettangolo. Memoria in tutto < 1 MB contro ~590 MB.
+- Motore: superfici (`createTarget`, `beginTarget`/`endTarget`) e texture
+  di dati nel renderer; `world.draw` fa girare il Draw End del manager alla
+  sua depth fra quelli delle istanze. La cache delle unità di texture ora
+  rispecchia sempre i legami GL (prima si azzerava a ogni fotogramma senza
+  slegare nulla: con le superfici WebGL dava l'errore "feedback loop").
+
+**[I]** Lo stato di disegno: le ellissi dell'originale usano l'alpha
+corrente (`draw_set_alpha`, persistente); qui si assume 1. `global.night`
+scende fino a −0,005 (manager Alarm_1): il colore della notte lo tratta
+come 0.
+
+**Difetti e stranezze** [C], riprodotti:
+
+54. Le anteprime dei prolungamenti di muro (`oodl`, `oosl`, `ovbl`,
+    `oval`) sono figlie di `ally_build`: scoprono la nebbia attorno a sé,
+    a ~424 px dal muro, mentre il giocatore sceglie la direzione. Anche
+    `cc_barn` (invisibile, sul centro) e i campi vedono.
+55. Le statue attive scoprono la mappa attorno a sé (blackfog) ma non sono
+    nella lista della vista (`fog`): la loro zona resta grigia come una
+    zona già vista. Ogni statua, nel Create, rimette `global.hintata=0`.
+
+**Rimandato**: `hint_night` (il suggerimento alla prima notte, manager
+Alarm_0) con i suggerimenti; le fiamme di bracieri e torce con le
+particelle; `fog_controller` e `fog01` (le nuvole di nebbia del menu)
+con le particelle, dove sono già in lista.
+
+**Verificato**:
+- `npm test`: 19 test, di cui 9 nuovi in `test/fog.test.mjs` (copertura
+  sul bordo dell'ellisse, raggi di giorno e di notte, forme di castello,
+  centro e muri verticali, composizione 0/110/255, scoperta che resta dopo
+  che l'unità se n'è andata, trucco e menu, statue, colore della notte,
+  fuochi).
+- Chromium (SwiftShader): `match` di giorno, nero dove non si è mai visto e
+  bordi sfumati; di notte tinta blu e luce calda attorno alle torce dei
+  pali; trucco della nebbia → stessa luminosità del giorno senza nebbia, di
+  giorno e di notte; `lvl01` di notte con i bracieri; `lvl02` a zoom 1,5 in
+  una finestra 2400×900 (view più larga della room: bordo nero a destra);
+  menu senza nebbia né notte; barre della vita sopra la nebbia; perdita e
+  ripristino del contesto WebGL senza errori (la scoperta, sulla CPU, non
+  si perde). Nessun errore WebGL in console.
+- Costi misurati in `lvl02`: scoperta 0,01 ms a passo (0,14 ms se tutte le
+  istanze si muovono), composizione della view 0,1 ms a fotogramma. In
+  `lvl01` il passo costa ~0,2 ms in più per le 199 istanze nuove (bracieri
+  e torce, come nell'originale).
+- 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
