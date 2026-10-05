@@ -491,3 +491,21 @@ PNG 59,9 MB, **WebP q85 11,4 MB**. Le conclusioni di §0.8 non cambiano.
 La raccomandazione **A** di §0.11 vale ancora di più: la campagna, i
 dialoghi, la pausa e la combinazione sono interfaccia disegnata a mano con
 coordinate fisse, che si porta per traduzione molto meglio che riscrivendola.
+
+### 0.15 Decisioni dell'autore sulla seconda ricognizione
+
+- **`popcap` iniziale = 0** (cresce con case e centri, come dice il commento
+  di `manager` Create). Risorse iniziali 100/50/50/0 come in §0.10.
+- **Area 7 di `lvl02`**: l'autore non ricorda il dettaglio; se l'area era
+  prevista, deve contare per la vittoria. **[?]** Da verificare leggendo
+  `scr_area_difesa`/`scr_difendi` e la room `lvl02` in Fase 1: se l'area 170
+  ha davvero difensori e prigionieri come le altre, si aggiunge `l7=1` alla
+  condizione di vittoria (deviazione dichiarata dall'originale).
+- **Livelli 3–10**: visibili nell'elenco come "in arrivo". Vanno progettati
+  e implementati insieme all'autore **prima della release**.
+- **Si tolgono** `test_ground`, `resizer`, `mobile`.
+- **Font**: si sostituisce anche `gui_sblocco` (Seagram tfb), insieme a
+  Impact e Arial Narrow.
+- **Architettura**: in attesa di conferma; l'autore chiede se con A si può
+  continuare a modificare e sviluppare il gioco (vedi la risposta in chat e
+  la scelta della "fonte di verità" del codice).
