@@ -62,10 +62,11 @@ sta nella sezione citata.
   livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
 - [ ] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che conta
   per la vittoria (§1.2), difetto `l6exists`.
-- [ ] Correzioni già decise, da applicare quando si porta il sistema:
-  ariete 60 oro anche col tasto Q; annullare un picchiere restituisce 55
-  cibo e 45 legno; centro distrutto −10 popcap; castello e torre senza −5
-  (§1.6); le fiamme alte della casa non vanno distrutte (§3.5 n.18).
+- [x] Correzioni decise in Fase 1 (§1.6), applicate coi sistemi: ariete
+  60 oro anche col tasto Q, annullare un picchiere restituisce 55 cibo e
+  45 legno, centro distrutto −10 popcap, castello e torre senza −5.
+- [ ] Fiamme alte della casa da non distruggere (§3.5 n.18): con le
+  particelle.
 
 **Fasi 4 e 5**
 - [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
