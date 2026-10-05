@@ -14,6 +14,11 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Fase 0 — ricognizione (5 ottobre 2026)
 
+> **Superata in parte da §0.14**: la prima ricognizione era su un'esportazione
+> vecchia (`535 export`, aprile 2025). L'autore l'ha sostituita con
+> `AOE_TYPE(1).project.gmx`. I numeri validi sono quelli di §0.14; il resto di
+> questa sezione resta come storia e per i sistemi che non sono cambiati.
+
 Stato: **solo lettura**. Nessun codice scritto. Gli zip sono stati estratti in
 una cartella temporanea fuori dal repo e ricomposti nella struttura standard
 di GMS 1.x (`sprites/` + `sprites/images/`, ecc.). Le cifre sotto vengono da
@@ -351,6 +356,8 @@ da documentare e testare caso per caso. **In attesa di conferma.**
 
 ### 0.12 Campagna, sottomenu livelli e codici di sblocco
 
+> **Superata da §0.14**: nella nuova esportazione la campagna c'è.
+
 L'autore ricorda un pulsante **Campagna** nel menu che apre un sottomenu con
 `lvl01` e altri livelli, e uno sblocco dei livelli con **codici
 alfanumerici** rivelati alla fine del livello precedente.
@@ -371,3 +378,116 @@ parte, oppure se va progettata da zero come funzionalità nuova.
 Decisione dell'autore: gli zip restano nel repo come fonte immutabile;
 l'estrazione va in una cartella esclusa da git; `src/` (codice leggibile)
 e `data/` (JSON) si versionano.
+
+### 0.14 Seconda ricognizione: esportazione `AOE_TYPE`
+
+L'autore ha cancellato i file vecchi su `main` e caricato l'esportazione
+giusta: `AOE_TYPE(1).project.gmx` + zip (`sprites 1..6`, `sprites no img`,
+`objects`, `rooms`, `scripts`, …). Unita nel branch con un merge. Stesso
+metodo di §0.3: ricomposizione della struttura GMS 1.x fuori dal repo e
+censimento con gli stessi script. **0 frame mancanti.**
+
+**Numeri** [C] (fra parentesi la differenza con la vecchia esportazione):
+
+| | |
+|---|---|
+| Oggetti | **347** (+44 nuovi, −12 tolti); 211 con parent, 0 fisica |
+| Sprite | **1473** (+11), **1496 frame** |
+| Room | **8**: `menu`, `test_ground`, `lvl01`, `lvl02`, `lvl03`, `match`, `resizer`, `mobile` |
+| Script | **36** (+21), 1034 righe: difesa di aree, attacchi, flow field generale, movimento master/slave, `scr_draw_text_ext_safe` |
+| Codice | **2244** blocchi GML (29.200 righe), 31 azioni drag & drop |
+| Funzioni GML | **161** distinte (+32: `instance_activate_all`/`deactivate_all`, `string_*`, `chr`, `keyboard_check_pressed`, `ds_grid_copy`, `draw_text_transformed`, `instance_find`, …) |
+| Font | 3: `GUI_1` (Impact 16), `overdue` (Arial Narrow 15), **`gui_sblocco` (Seagram tfb 32)**, tutti solo ASCII |
+| Path | 2 |
+| Suoni, shader, timeline, salvataggi | ancora **nessuno** |
+
+Nuovi: 23 oggetti `dialogo_1_*`/`dialogo_2_*` (dialoghi in partita, ~100
+stringhe), `enemy_manager_lv2`, `directioner`, `aggr_assign`/`def_assign`/
+`atk_signal` (IA a punti di difesa), oggetti `*_morente` (distruzione
+animata di rovine, alberi, miniere, pietre). Tolti, fra gli altri,
+`ally_warrior_sperimentale`, `croo11`, `rectangle_manager`.
+
+**Room** [C]:
+
+| Room | Dimensione | Istanze | Note |
+|---|---|---|---|
+| `menu` | 7000×3000 | 182 | **ora è la prima room**, quindi quella di avvio [I per la regola di GMS] |
+| `test_ground` | 2000×2000 | 17 | prova: 11 guerrieri e 4 case nemiche; nessun `room_goto` ci porta |
+| `lvl01` | 5000×5000 | 564 | campagna 1 |
+| `lvl02` | 3200×8000 | 475 | campagna 2 |
+| `lvl03` | 8000×8000 | **0** | vuota |
+| `match` | 7000×7000 | 460 | ora si chiama "Play the tutorial" nel menu |
+| `resizer`, `mobile` | | | come prima, irraggiungibili dal flusso normale |
+
+**Flusso** [C, `enemy_manager_menu`]: il menu ha due pulsanti, **"Play the
+tutorial"** → `match` e **"Campaign - Collapse"** → sottomenu (variabile
+`global.campagna=1`, stessa room). Il sottomenu disegna la mappa
+`mappa_camp` (1597×1597), l'elenco dei 10 livelli a sinistra, la storia del
+livello sotto, un pulsante indietro e un lucchetto:
+
+1. Shove the sun aside → `lvl01`
+2. A long walk → `lvl02`
+3. The monastery · 4. Crossing a bridge · 5. The siege · 6. One hundred
+   towers · 7. Our old gods · 8. Escape from the city · 9. Allies ·
+   10. The last day → **solo titolo**: nessun `room_goto`, nessuna room
+   (`lvl03` esiste ma è vuota).
+
+Il livello *n* compare in elenco solo se `global.unlock > n-1`.
+
+**Codici di sblocco** [C]: il lucchetto apre una **combinazione di 5 cifre**
+(rotelle 0–9 con frecce su/giù), **solo numeri**, non alfanumerici. Nove
+codici scritti nel codice, uno per i livelli 2–10. Un codice sbagliato fa
+lampeggiare le cifre di rosso (`redamount`). La schermata di vittoria
+(`victory_manager`) mostra il codice del livello successivo e porta
+`global.unlock` al valore giusto. I codici restano qui solo come
+riferimento al file: `enemy_manager_menu/Mouse_56`.
+
+**Vittoria per livello** [C]:
+
+- `match`: distruggere le 3 basi (come prima).
+- `lvl01`: una catena di 4 "porte" in `manager` Step
+  (`global.lvl01_gate` 0→4): arrivare con un'unità vicino a (4550,4150),
+  poi (593,552), poi (4836,331) entro 800 e poi entro 200 px; ogni porta dà
+  oro, crea edifici o un dialogo; l'ultimo dialogo (`dialogo_1_8`), quando
+  viene chiuso, crea `victory_manager`.
+- `lvl02` (`enemy_manager_lv2`): liberare i prigionieri di 7 aree difese
+  (`def_point_id` 110–170). La vittoria richiede le aree 1–6 e **nessun
+  edificio nemico**; l'area 7 non conta. **[?]** Svista o voluto.
+
+**Difetti e residui di test trovati** [C]:
+
+- `enemy_manager_menu` Create imposta **`global.unlock=2` ogni volta che si
+  apre il menu**: il livello 2 è sempre sbloccato e lo sblocco del 3 (dato
+  dalla vittoria di `lvl02`) si perde al ritorno nel menu. Con i salvataggi
+  JSON lo sblocco va reso persistente e il valore iniziale va a 1.
+- `manager` Create ha ancora risorse di test: cibo 10000, oro 5000, legno
+  5000, pietra 0, **`popcap=990`**. Le risorse giuste sono quelle dette
+  dall'autore (§0.10: 100/50/50/0); **[?]** il `popcap` iniziale.
+- `show_debug_overlay(true)` è ancora attivo.
+- `victory_manager` in `match` scrive `"…score is "+score`: in GMS 1.x sommare
+  stringa e numero è un errore di runtime; **[I]** nell'export HTML5
+  JavaScript diventava una concatenazione. Nel porting: concatenazione.
+
+**Altre novità** [C]:
+
+- **Menu di pausa** (`mouser`): pulsante pausa con Riprendi, Ricomincia,
+  Menu, Suggerimenti on/off, Obiettivi on/off, FPS on/off; la pausa usa
+  `instance_deactivate_all`.
+- **Modalità debug**: la sequenza ← → D D ← → (ogni tasto entro 30 tick
+  dal precedente) attiva `global.debugging`, che disegna la griglia dei costi
+  del flow field. I trucchi delle risorse ci sono ancora (V+Alt+F/Q/S/W/P);
+  Alt+V+Q ora ferma anche la pioggia.
+- Nebbia e notte: ancora **tre superfici grandi come la room**
+  (`manager` Draw End): in `match` ~590 MB, in `lvl03` 8000×8000 sarebbero
+  ~770 MB.
+- Il titolo della pagina HTML5 è ora "535 - Mount Fuji Software".
+
+**Asset** [C, misurati]: memoria texture ritagliata **236 MB** (+10 MB per
+`mappa_camp`); per room, da 200 MB (`resizer`) a 228 MB (`match`). Peso:
+PNG 59,9 MB, **WebP q85 11,4 MB**. Le conclusioni di §0.8 non cambiano.
+
+**Architettura**: la nuova versione ha più codice (29.200 righe contro
+23.500) e più funzioni (161 contro 129), ma lo stesso vocabolario di base.
+La raccomandazione **A** di §0.11 vale ancora di più: la campagna, i
+dialoghi, la pausa e la combinazione sono interfaccia disegnata a mano con
+coordinate fisse, che si porta per traduzione molto meglio che riscrivendola.
