@@ -890,3 +890,59 @@ genere: **Grenze Gotisch** (gotico leggibile, più pesi, latino esteso),
 - **Mipmap**: lo zoom dell'originale va da 1,0 a 1,5 (si allontana al
   massimo di 1,5×): senza mipmap l'aliasing è minimo. Da rivalutare se si
   allarga lo zoom.
+
+### 2.5 Decisioni dell'autore e motore (5 ottobre 2026)
+
+**Decisioni**: terreno a **scala 1** ("gira solo su PC, per 55 MB non muore
+nessuno"): pagine 4096 per il gruppo terreno, **265 MB** di GPU in tutto,
+10,3 MB su disco. **Font: resta Seagram tfb** (l'autore dovrebbe averne la
+licenza): si usano le bitmap rasterizzate da GameMaker (solo ASCII 32–127;
+le lettere accentate per altre lingue restano un limite noto).
+
+**`tools/07_scene.py`** prepara le room per il motore
+(`game/assets/rooms/`): menu, match, lvl01, lvl02. Per ogni oggetto: sprite
+iniziale o scelte casuali del Create (alberi `alb1..alb8`, case nemiche
+`c1b..c6b` [C]), depth fissa o `-y+k`, niente disegno automatico se c'è un
+evento Draw proprio [I], e **oggetti rivelati dalla nebbia** [C, `albero`
+Step: `visible=true` quando un'unità è vicina]: alberi, rovine, pietre
+partono invisibili; l'anteprima li mostra.
+
+**Motore (`game/src/`)**, primo passo, solo anteprima delle room:
+
+| Modulo | Cosa fa |
+|---|---|
+| `gl.js` | WebGL2, un solo shader, quad a lotti con l'indice di texture nel vertice (16 unità: tutte le pagine legate insieme), alpha premoltiplicato, riconoscimento del rendering software (`failIfMajorPerformanceCaveat` + nome del renderer) |
+| `assets.js` | atlas per tier, 3 pagine alla volta, `createImageBitmap` premoltiplicato e chiuso dopo il caricamento, controllo di `MAX_TEXTURE_SIZE`, ricaricamento dopo la perdita del contesto, scarico di un gruppo |
+| `sprites.js` | `draw_sprite_ext`: origine, ritaglio, scala, rotazione antioraria, colore e alpha |
+| `scene.js` | anteprima statica: istanze in ordine di depth (a pari depth, ordine di creazione), sfondi ripetuti, scarto di ciò che è fuori dalla view, `image_speed` 1 di default [I] |
+| `camera.js` | view = finestra in px CSS × `scaleview` (1,0–1,5), inseguimento del puntatore con i bordi della room |
+| `input.js` | mouse e tastiera fotografati a ogni passo (premuto/tenuto/rilasciato), codici tasto di GameMaker |
+| `loop.js` | passo fisso alla velocità della room (60), massimo 5 passi per frame, tetto 30/60 fps, pausa con la pagina in background |
+| `renderscale.js` | risoluzione dinamica 0,5–1,0 se i frame arrivano lenti |
+| `diag.js` | pannello F3: GPU, fps, CPU per frame, chiamate di disegno, memoria texture, canvas, view |
+| `settings.js`, `i18n.js` | opzioni in localStorage con versione e try/catch; testi del motore in inglese e italiano |
+
+**Verificato in Chromium headless (Playwright, rendering software
+SwiftShader)**, room `match` e `menu` a 1600×900 e 1280×720:
+
+- nessun errore in console, nessuna risposta ≥ 400;
+- **1 chiamata di disegno** per frame (72 quad visibili);
+- memoria texture misurata dal motore: 227 MiB in `match`, 238 MiB nel menu
+  (coincide con il budget di §2.1 meno i gruppi non caricati);
+- il rendering software viene riconosciuto e compare l'avviso;
+- posizioni, ordine di profondità e sfondo ripetuto corretti a occhio
+  sugli screenshot (alberi davanti/dietro, edifici, battaglia del menu);
+- puntatore nell'angolo in basso a destra per 1 s → la view scorre; frecce
+  → 10 px a passo; X → `scaleview` 1,2 e poi si ferma a 1,5;
+- perdita del contesto (`WEBGL_lose_context`): il ciclo si ferma, al
+  ripristino ricarica le 12 texture e torna a disegnare.
+
+**Non verificato**: prestazioni su una GPU vera (in headless gira in
+software, 11–15 fps: non è un dato utile), resa su schermi ad alta densità,
+Firefox e Safari.
+
+**[?] Velocità dello scorrimento ai bordi**: con la regola di GameMaker e
+il bordo di `match` (`hborder` 80, `vborder` 40 [C]) la view si sposta ogni
+passo di (bordo − distanza del puntatore dal bordo): fino a ~78 px a passo,
+cioè ~4700 px/s col puntatore sull'ultimo pixel. È quello che l'originale
+dovrebbe fare [I]; da confermare con l'autore.

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>535 – Collapse</title>
+<!-- Unico punto d'ingresso; percorsi sempre relativi, cosi' il gioco
+     funziona in una sottocartella e nell'iframe dei portali. -->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1d17;
+               -webkit-user-select: none; user-select: none; }
+  #game { display: block; position: fixed; inset: 0; cursor: default; }
+  #loading { position: fixed; left: 50%; top: 50%; width: min(60vw, 480px);
+             transform: translate(-50%, -50%); color: #e8e2d0;
+             font: 16px/1.4 system-ui, sans-serif; text-align: center; }
+  #loading-track { height: 8px; margin-top: 10px; background: #3a3d33; border-radius: 4px; overflow: hidden; }
+  #loading-bar { height: 100%; width: 0; background: #c8b98a; transition: width .15s; }
+  #message { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+             max-width: min(90vw, 720px); padding: 10px 16px; border-radius: 8px;
+             font: 15px/1.4 system-ui, sans-serif; color: #fff; background: #4a4f3c; }
+  #message.warning { background: #8a5a12; }
+  #message.error { background: #8a1c12; }
+  #diag { position: fixed; left: 8px; top: 8px; margin: 0; padding: 8px 10px;
+          background: rgba(0, 0, 0, .72); color: #cfe8c8; border-radius: 6px;
+          font: 12px/1.45 ui-monospace, monospace; white-space: pre; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="loading"><div id="loading-text">Loading…</div><div id="loading-track"><div id="loading-bar"></div></div></div>
+<div id="message" hidden></div>
+<pre id="diag" hidden></pre>
+<script type="module" src="./dist/app.js"></script>
+</body>
+</html>

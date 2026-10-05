@@ -18,6 +18,8 @@ Metodo e convenzioni da [andlll/n_redux](https://github.com/andlll/n_redux)
 | `src/objects/<oggetto>/<Evento>.gml` | sì | il codice di ogni evento, leggibile, con le azioni drag & drop rese come GML |
 | `src/scripts/` | sì | gli script GML |
 | `tools/` | sì | la pipeline (Python 3 + Pillow) |
+| `game/` | sì | il motore: `index.html`, `src/` (moduli JS), `package.json` (esbuild) |
+| `game/assets/`, `game/dist/` | no | atlas, maschere, scene (tools 05–07) e bundle JS: si rigenerano |
 
 ## Rigenerare
 
@@ -29,4 +31,18 @@ python3 tools/03_survey.py      # censimento + controllo di coerenza (--png: mis
 ```
 
 `data/` e `src/` sono generati: non si modificano a mano, si rigenerano.
-Il porting vero (motore WebGL2 e logica in moduli JS) andrà in `game/`.
+
+## Far girare il gioco
+
+```bash
+python3 tools/05_atlas.py       # atlas WebP per gruppo -> game/assets/ (~2 minuti)
+python3 tools/06_masks.py       # maschere di collisione -> game/assets/masks.json
+python3 tools/07_scene.py       # room -> game/assets/rooms/
+cd game && npm install && npm run build   # bundle -> game/dist/
+python3 -m http.server 8000 --directory game
+```
+
+Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
+`?room=lvl02`. Per ora è un'anteprima delle room senza logica di gioco:
+puntatore ai bordi o frecce per muoversi, X/Z per lo zoom, **F3** per il
+pannello di diagnostica (anche `?diag=1`); `?fps=30` per il tetto a 30 fps.

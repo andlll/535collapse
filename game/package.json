@@ -1,0 +1,11 @@
+{
+  "name": "535-game",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/app.js --bundle --splitting --format=esm --minify --sourcemap --outdir=dist"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
