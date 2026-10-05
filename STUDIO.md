@@ -396,8 +396,8 @@ censimento con gli stessi script. **0 frame mancanti.**
 | Room | **8**: `menu`, `test_ground`, `lvl01`, `lvl02`, `lvl03`, `match`, `resizer`, `mobile` |
 | Script | **36** (+21), 1034 righe: difesa di aree, attacchi, flow field generale, movimento master/slave, `scr_draw_text_ext_safe` |
 | Codice | **2244** blocchi GML (29.200 righe), 31 azioni drag & drop |
-| Funzioni GML | **161** distinte (+32: `instance_activate_all`/`deactivate_all`, `string_*`, `chr`, `keyboard_check_pressed`, `ds_grid_copy`, `draw_text_transformed`, `instance_find`, …) |
-| Font | 3: `GUI_1` (Impact 16), `overdue` (Arial Narrow 15), **`gui_sblocco` (Seagram tfb 32)**, tutti solo ASCII |
+| Funzioni GML | **137** funzioni GameMaker distinte + 36 script (§1.1: il primo conteggio, 161, includeva le chiamate agli script); nuove (+32: `instance_activate_all`/`deactivate_all`, `string_*`, `chr`, `keyboard_check_pressed`, `ds_grid_copy`, `draw_text_transformed`, `instance_find`, …) |
+| Font | 3, **tutti Seagram tfb**: `GUI_1` 16 grassetto, `overdue` 15, `gui_sblocco` 32 grassetto; solo ASCII (corretto in §1.1: prima avevo scritto Impact/Arial Narrow, che erano i font della vecchia esportazione) |
 | Path | 2 |
 | Suoni, shader, timeline, salvataggi | ancora **nessuno** |
 
@@ -506,6 +506,66 @@ coordinate fisse, che si porta per traduzione molto meglio che riscrivendola.
 - **Si tolgono** `test_ground`, `resizer`, `mobile`.
 - **Font**: si sostituisce anche `gui_sblocco` (Seagram tfb), insieme a
   Impact e Arial Narrow.
-- **Architettura**: in attesa di conferma; l'autore chiede se con A si può
-  continuare a modificare e sviluppare il gioco (vedi la risposta in chat e
-  la scelta della "fonte di verità" del codice).
+- **Architettura: B, porting mirato** (decisione dell'autore): "non ho
+  fretta, preferisco una cosa fatta bene, che ci lasci più libertà". La
+  logica si riscrive a mano in moduli JS per sistema, come NIMBUS, citando
+  in ogni modulo file ed evento d'origine; il GML estratto in `src/` è la
+  specifica, non codice da eseguire.
+- **Niente strumento di reimportazione** da GameMaker: l'autore non userà
+  più l'editor di room di GMS; le room nuove le disegnerà in un altro modo
+  (formato da concordare quando arriveremo ai livelli 3–10).
+
+---
+
+## Fase 1 — pipeline di estrazione (5 ottobre 2026)
+
+### 1.1 Strumenti
+
+| Tool | Cosa fa |
+|---|---|
+| `tools/01_unpack.py` | zip alla radice → `gmx/` nella struttura standard GMS 1.x (esclusa da git); verifica che ogni frame citato esista |
+| `tools/02_extract.py` | `gmx/` → `data/*.json`, `data/rooms/<room>.json`, `src/objects/<oggetto>/<Evento>.gml`, `src/scripts/*.gml` |
+| `tools/03_survey.py` | censimento dai dati estratti, `data/functions.json`, controllo di coerenza |
+| `tools/gmx.py` | nomi di eventi e tasti, resa delle azioni drag & drop |
+
+**Verificato** (eseguendo i tool su questa esportazione):
+
+- `01_unpack.py`: 3524 file, 1473 sprite, **0 frame mancanti**.
+- `02_extract.py`: 347 oggetti, 1783 eventi, 36 script, 8 room.
+- `03_survey.py`: **0 blocchi di codice** degli XML non ritrovati identici
+  (riga per riga) nei `.gml` di `src/`. I numeri coincidono con §0.14,
+  con due correzioni: i font sono tutti Seagram tfb; le funzioni GameMaker
+  distinte sono 137 (il 161 di §0.14 contava anche i 36 script e qualche
+  chiamata `action_*`).
+
+**Formato di `src/`**: un file per evento, nome stabile (`Create`,
+`Alarm_3`, `Step_End`, `Draw_GUI`, `Mouse_GlobalLeftReleased`,
+`Collision_<oggetto>`, `KeyPress_Delete`, …). Ogni azione ha un commento
+`// --- azione N: ...`. Le azioni "execute code" con *applies to* diverso
+da `self` diventano `with (other) { ... }`; le domande drag & drop
+(`action_if_variable`) diventano `if (...) { ... }` annidati, con
+`other.` davanti alla variabile quando la domanda si applica a `other`.
+**[I]** Questa equivalenza è la semantica dell'editor GMS 1.x, non letta nei
+sorgenti; nel progetto riguarda solo 31 azioni (15 domande, 6
+`action_potential_step`, 5 `action_sprite_set`, 2 `action_move`,
+1 `action_set_motion`, 1 `action_if_dice`, 1 `action_set_cursor`).
+
+### 1.2 Area 7 di `lvl02` — verificata
+
+**[C]** `enemy_manager_lv2` Create definisce 7 aree con
+`scr_area_difesa(...)`, che assegna `role=10` e `def_point_id` ai nemici
+dentro il rettangolo. Contando le istanze di `data/rooms/lvl02.json` per
+area: 110 → 5 picchieri; 120 → 21 picchieri; 130 → 8 misti; 140 → 6;
+150 → 12 cavalieri; 160 → 13 arcieri; **170 → 12 arcieri**. Quando l'area
+170 è libera, Step crea 2 civili e `dialogo_2_12` come per le altre. È
+un'area vera: secondo la decisione dell'autore (§0.15) **nel porting conta
+per la vittoria** (`l7=1` aggiunto alla condizione). Deviazione
+dall'originale, dichiarata.
+
+**[I] Difetto collegato**: in `enemy_manager_lv2` Step, `l6exists` è
+dichiarata con `var` solo dentro `if l6=0 { ... }`, ma viene letta più sotto
+(`if l6exists = true`) anche quando `l6=1`. In GMS 1.x leggere una
+variabile locale mai assegnata è un errore di runtime; nell'export HTML5
+probabilmente dava `undefined`, cioè falso. Da decidere quando si porta
+`lvl02`: l'effetto voluto sembra "se l'area 6 è libera, ferma la caserma
+che crea difensori".
