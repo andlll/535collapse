@@ -1,0 +1,52 @@
+{
+ "name": "resizer",
+ "caption": "",
+ "width": 2000,
+ "height": 1200,
+ "speed": 60,
+ "persistent": false,
+ "colour": 0,
+ "show_colour": true,
+ "creation_code": "",
+ "views_enabled": true,
+ "clear_view_background": true,
+ "backgrounds": [],
+ "views": [],
+ "instances": [
+  {
+   "object": "manager",
+   "x": 192,
+   "y": 512,
+   "name": "inst_D1E0509C",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "resizer_manager",
+   "x": 192,
+   "y": 800,
+   "name": "inst_145F6D7A",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "mouser",
+   "x": 320,
+   "y": 544,
+   "name": "inst_CA040ADC",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  }
+ ],
+ "tiles": [],
+ "physics_world": false
+}

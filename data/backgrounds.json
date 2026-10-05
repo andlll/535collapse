@@ -1,0 +1,32 @@
+[
+ {
+  "name": "city1",
+  "folder": "",
+  "width": 281,
+  "height": 250,
+  "tileset": false,
+  "htile": true,
+  "vtile": true,
+  "image": "city1.png"
+ },
+ {
+  "name": "city2",
+  "folder": "",
+  "width": 281,
+  "height": 250,
+  "tileset": false,
+  "htile": true,
+  "vtile": true,
+  "image": "city2.png"
+ },
+ {
+  "name": "green1",
+  "folder": "",
+  "width": 281,
+  "height": 250,
+  "tileset": false,
+  "htile": true,
+  "vtile": true,
+  "image": "green1.png"
+ }
+]

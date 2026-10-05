@@ -1,0 +1,223 @@
+{
+ "name": "test_ground",
+ "caption": "",
+ "width": 2000,
+ "height": 2000,
+ "speed": 60,
+ "persistent": false,
+ "colour": 12632256,
+ "show_colour": true,
+ "creation_code": "",
+ "views_enabled": true,
+ "clear_view_background": true,
+ "backgrounds": [],
+ "views": [
+  {
+   "index": 0,
+   "follow": "mouser",
+   "xview": 0,
+   "yview": 0,
+   "wview": 1600,
+   "hview": 900,
+   "xport": 0,
+   "yport": 0,
+   "wport": 1600,
+   "hport": 900,
+   "hborder": 32,
+   "vborder": 32,
+   "hspeed": -1,
+   "vspeed": -1
+  }
+ ],
+ "instances": [
+  {
+   "object": "manager",
+   "x": 149,
+   "y": 198,
+   "name": "inst_95D22CC2",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 500,
+   "y": 789,
+   "name": "inst_2837B642",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 656,
+   "y": 830,
+   "name": "inst_66A69145",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 602,
+   "y": 1006,
+   "name": "inst_00C9F0A5",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 480,
+   "y": 932,
+   "name": "inst_FF947F8E",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 814,
+   "y": 924,
+   "name": "inst_C545FD8B",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 697,
+   "y": 1098,
+   "name": "inst_B2C4D8CE",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 628,
+   "y": 653,
+   "name": "inst_0084B7EE",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 764,
+   "y": 722,
+   "name": "inst_9EC0A9D7",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 861,
+   "y": 797,
+   "name": "inst_B386DD56",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 767,
+   "y": 553,
+   "name": "inst_BFE77DFB",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "ally_warrior",
+   "x": 886,
+   "y": 681,
+   "name": "inst_BDF2A2A5",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "resizer_manager",
+   "x": 280,
+   "y": 277,
+   "name": "inst_B9FD6DB3",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "enemy_house",
+   "x": 1045,
+   "y": 1033,
+   "name": "inst_3CF18F95",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "enemy_house",
+   "x": 1111,
+   "y": 728,
+   "name": "inst_FC00EE8C",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "enemy_house",
+   "x": 1280,
+   "y": 1041,
+   "name": "inst_309D9556",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  },
+  {
+   "object": "enemy_house",
+   "x": 1416,
+   "y": 700,
+   "name": "inst_CB937E07",
+   "scale_x": 1,
+   "scale_y": 1,
+   "rotation": 0,
+   "colour": 4294967295,
+   "code": ""
+  }
+ ],
+ "tiles": [],
+ "physics_world": false
+}
