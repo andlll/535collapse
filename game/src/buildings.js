@@ -340,8 +340,12 @@ export function lifeBar(dr, i, col = GREEN) {
 // ally_build Mouse_MouseEnter/Leave [C]: il parent di tutti gli edifici
 // alleati (anche cantieri, mura e porte): hover, e il cerchio del mouse
 // che indica la riparazione (global.buildhover) se l'edificio e' danneggiato.
+// [Correzione decisa dall'autore, §3.12 n.48] l'ariete nemico arma l'alarm
+// 9 dell'edificio colpito, che nell'originale disegnava soltanto (e la
+// barra della vita restava per sempre): qui l'alarm 9 rimette hit a 0.
 export function allyBuild() {
   return {
+    alarm9(i) { i.hit = 0; },
     mouseEnter(i, w) { i.hover = 1; if (i.life < i.slife) w.g.buildhover = 1; },
     mouseLeave(i, w) { i.hover = 0; w.g.buildhover = 0; },
   };
@@ -353,12 +357,13 @@ export function allyBuild() {
 // entrambe le soglie di *_r1 e *_r2 sono "< 0,33" e *_r1 non si vede mai:
 // qui *_r1 vale sotto il 66%.
 // Fuoco [C, Alarm e Create]: smoke = [alarm, periodo] del fumo, burn =
-// [alarm, periodo] di -1 vita in fiamme. Magazzino e mulino non armano mai
-// l'alarm della vita nel Create: in fiamme non perdono vita (§3.9 n.34).
+// [alarm, periodo] di -1 vita in fiamme. [Correzione decisa dall'autore,
+// §3.9 n.34] magazzino e mulino non armavano mai nel Create l'alarm della
+// vita: in fiamme non la perdevano. Qui lo armano come gli altri.
 const BUILT = {
   casa: { life: 120, ruin: "casaruin", popcap: 10, fire: true, smoke: [0, 30], burn: [1, 70] },
-  magazzino: { life: 140, ruin: "magruin", fire: true, smoke: [0, 30], burn: [1, 70], burnIdle: true },
-  barn: { life: 150, ruin: "barnruin", fire: true, smoke: [0, 12], burn: [1, 70], burnIdle: true },
+  magazzino: { life: 140, ruin: "magruin", fire: true, smoke: [0, 30], burn: [1, 70] },
+  barn: { life: 150, ruin: "barnruin", fire: true, smoke: [0, 12], burn: [1, 70] },
   caserma: { life: 350, ruin: "casruin", fire: true, smoke: [1, 30], burn: [2, 70] },
   stalla: { life: 380, ruin: "stalruin", fire: true, smoke: [1, 30], burn: [2, 70] },
   castello: { life: 900, ruin: "castelloruin", damage: ["castello_spr", "castello_r1", "castello_r2"], stone: true },
@@ -375,7 +380,7 @@ export function built(fam, p) {
                          fondazione: 0, legno: b.stone ? 0 : 1, pietra: b.stone ? 1 : 0, npresidio: 0, arm: 1 });
       i.depth = -i.y;
       if (b.popcap) w.g.popcap += b.popcap;
-      if (b.fire) { i.alarm.set(b.smoke[0], b.smoke[1]); if (!b.burnIdle) i.alarm.set(b.burn[0], b.burn[1]); }
+      if (b.fire) { i.alarm.set(b.smoke[0], b.smoke[1]); i.alarm.set(b.burn[0], b.burn[1]); }
       if (fam === "casa" && w.room === "lvl01") {
         const t = irandomRange(1, 7);
         if (t >= 2 && t <= 6) { i.sprite_index = "c" + t + "s"; w.moved(i); }
@@ -582,14 +587,25 @@ export function centro(p) {
         firestarted: 0, selected: 0, hover: 0, flagx: null, flagy: null,
       });
       i.depth = -i.y;
+      // [Correzione decisa dall'autore, §3.12 n.49] gli alarm del fuoco (2 e
+      // 3) non erano mai armati: in fiamme il centro non faceva fumo e non
+      // perdeva vita
+      i.alarm.set(2, 30);
+      i.alarm.set(3, 70);
       w.g.popcap += 10;
       // il centro e' anche deposito del cibo: un "mulino" invisibile sul posto
       w.create("cc_barn", i.x, i.y);
     },
     destroy(i) { p.markInstance(i, 1); },
+    // centro Alarm_2 e Alarm_3 [C]: fumo ogni 30 passi, -1 vita ogni 70
+    alarm2(i, w) {
+      i.alarm.set(2, 30);
+      if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
+    },
+    alarm3(i) { i.alarm.set(3, 70); if (i.onfire === 1) i.life -= 1; },
     step(i, w) {
       const g = w.g;
-      // (frecce sui nemici entro 600 px: col combattimento, punto 4)
+      // (le frecce sui nemici sono in ranged.js, centroArrows)
       if (!w.placeEmpty({ ...i, mask_index: i.mask_index }, i.placex, i.placey)) {
         i.placex += irandomRange(-2, 2);
         i.placey += irandomRange(-2, 2);

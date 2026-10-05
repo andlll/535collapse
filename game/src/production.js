@@ -6,8 +6,8 @@
 // La coda [C]: coda0 e' l'unita' in produzione, coda1..coda6 quelle in
 // attesa (1, 2, 3 = tipo, 0 = vuoto), `coda` quante sono in attesa. La
 // stalla produce un solo tipo e conta soltanto. `progression` va da 1 a
-// 100: +1 ogni passo nella caserma (1,9 s per unita', §3.9 n.32), ogni 12
-// nella stalla (20 s), ogni 30 nel castello (50 s).
+// 100: +1 ogni 12 passi in caserma e stalla (20 s), ogni 30 nel castello
+// (50 s).
 //
 // "nada" e "nope" (bandiera assente) non sono definite da nessuna parte:
 // sono variabili mai assegnate, cioe' 0 [I, §1.3]. Qui la bandiera
@@ -20,7 +20,9 @@ const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
 export const PRODUCERS = {
   caserma: {
     ico: "ico_caserma", cancel: "caserma_indietro_clicker", cancelKey: 82, cancelX: 660, icoScale: 0.6,
-    alarm: 0, period: 1, start: 13, next: 9, popMargin: 1, popWait: 30, slots: true, spawn: "flag",
+    // [Correzione decisa dall'autore, §3.9 n.32] period 1 era un valore di
+    // prova: 12 passi per punto, ~1200 passi (20 s) per unita'
+    alarm: 0, period: 12, start: 13, next: 9, popMargin: 1, popWait: 30, slots: true, spawn: "flag",
     units: {
       1: { obj: "ally_warrior", clicker: "warrior_clicker", ico: "ico_guerriero", bx: 450, key: 81,
            cost: { food: 75, gold: 35 }, title: "Warrior", desc: "Melee fighter good against all units.",
@@ -48,8 +50,9 @@ export const PRODUCERS = {
   // castello [C]: produzione sull'alarm 1 (l'alarm 0 sono le frecce); le
   // unita' nascono a x+200, y+100 e vanno alla bandiera (o a x+150, y+100).
   // Il tipo 3 (arciere) non ha un pulsante: non si produce mai.
-  // L'annullamento rimborsa PIETRA al posto dell'oro: 30 per l'ariete, 100
-  // per la catapulta (§3.12 n.46, riprodotto).
+  // [Correzione decisa dall'autore, §3.12 n.46] l'annullamento rimborsava
+  // PIETRA al posto dell'oro (30 per l'ariete, 100 per la catapulta): qui
+  // quanto pagato.
   castello: {
     ico: "ico_castello", cancel: "castello_indietro_clicker", cancelKey: 69, cancelX: 590, icoScale: 0.7,
     alarm: 1, period: 30, start: 30, next: 30, popMargin: 2, popWait: 30, slots: true, spawn: "castle",
@@ -57,11 +60,11 @@ export const PRODUCERS = {
       // [Correzione decisa dall'autore §1.6 n.1] col tasto Q l'ariete
       // costava 30 oro invece di 60
       1: { obj: "ally_ariete", clicker: "ariete_clicker", ico: "ico_ariete", bx: 450, key: 81,
-           cost: { wood: 250, gold: 60 }, refund: { wood: 250, stone: 30 }, title: "Siege Ram",
+           cost: { wood: 250, gold: 60 }, title: "Siege Ram",
            desc: "Siege melee unit great against stone buildings.", costs: [["250", "ico_wood"], ["60", "ico_gold"]],
            shortcut: "Shortcut: Q", pop: "3", wide: true },
       2: { obj: "ally_catapulta", clicker: "catapulta_clicker", ico: "ico_catapulta", bx: 520, key: 87,
-           cost: { wood: 200, gold: 100 }, refund: { wood: 200, stone: 100 }, title: "Catapult",
+           cost: { wood: 200, gold: 100 }, title: "Catapult",
            desc: "Ranged siege unit good against all buildings.", costs: [["200", "ico_wood"], ["100", "ico_gold"]],
            shortcut: "Shortcut: W", pop: "3", wide: true },
       3: { obj: "ally_arciere", ico: "ico_arciere", cost: { wood: 40, gold: 55 } },
@@ -79,10 +82,12 @@ function lastHover(w, name) {
 }
 
 // scr_find_free_cell_spiral64 [C]: spirale su celle "da 64" a partire
-// dalla bandiera, ma la cella si legge nella griglia dei costi da 32 con
-// gli indici da 64: controlla un altro punto della mappa (§3.9 n.33,
-// riprodotto). Il primo passo della spirale avviene prima del primo
-// controllo: la cella della bandiera non e' mai provata.
+// dalla bandiera; il primo passo della spirale avviene prima del primo
+// controllo, la cella della bandiera non e' mai provata.
+// [Correzione decisa dall'autore, §3.9 n.33] l'originale leggeva la
+// griglia dei costi (celle da 32) con gli indici da 64, cioe' un altro
+// punto della mappa: qui si legge la cella da 32 che contiene il centro
+// della cella da 64.
 function spiral64(p, ax, ay) {
   const cs = 64;
   let gx = Math.floor(ax / cs), gy = Math.floor(ay / cs);
@@ -90,7 +95,9 @@ function spiral64(p, ax, ay) {
   for (let attempts = 0; attempts < 1000; attempts++) {
     if (dir === 0) gx++; else if (dir === 1) gy++; else if (dir === 2) gx--; else gy--;
     done++;
-    if (p.inside(gx, gy) && p.cost[gy * p.gw + gx] < 1000) return [gx * cs + cs / 2, gy * cs + cs / 2];
+    const fx = gx * cs + cs / 2, fy = gy * cs + cs / 2;
+    const cx = Math.floor(fx / 32), cy = Math.floor(fy / 32);
+    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000) return [fx, fy];
     if (done >= stepLen) {
       done = 0;
       dir = (dir + 1) % 4;
@@ -225,6 +232,18 @@ export function producer(name, base, p) {
 
 // ------------------------------------------------------- pulsanti
 
+// Step azione 3 dei pulsanti di produzione [C]: global.sele=1 col
+// puntatore sopra il pulsante (un clic li' non deseleziona), 0 altrimenti.
+// [Correzione decisa dall'autore, §3.9 n.35] l'originale scriveva 0 a ogni
+// passo da ogni pulsante (vinceva l'ultimo creato, e Ctrl/Alt non
+// funzionavano finche' l'edificio era selezionato): qui un pulsante rimette
+// 0 solo se l'1 l'aveva messo lui.
+function buttonSele(i, w) {
+  const mx = w.mouse.x, my = w.mouse.y;
+  if (mx > i.x - 30 && mx < i.x + 30 && my > i.y - 30 && my < i.y + 30) { w.g.sele = 1; i.ownSele = true; }
+  else if (i.ownSele) { w.g.sele = 0; i.ownSele = false; }
+}
+
 // warrior_clicker e simili [C]: clic (in Step, col tasto rilasciato sopra)
 // o tasto. Paga e mette in coda nell'edificio selezionato; con la coda
 // vuota parte subito (alarm 13). La popolazione si controlla con +1 anche
@@ -270,10 +289,7 @@ export function unitClicker(prod, type) {
       i.depth = -i.y - 999;
       i.image_xscale = g.scaleview;
       i.image_yscale = g.scaleview;
-      // azione 3 [C]: ogni pulsante scrive sele in base al puntatore sopra
-      // di se': vince l'ultimo pulsante creato (riprodotto)
-      const mx = w.mouse.x, my = w.mouse.y;
-      g.sele = mx > i.x - 30 && mx < i.x + 30 && my > i.y - 30 && my < i.y + 30 ? 1 : 0;
+      buttonSele(i, w);
     },
     ["keyPress" + u.key](i, w) { enqueue(w, prod, type, u); },
     destroy(i, w) { w.g.sele = 0; i.hover = 0; },
@@ -343,8 +359,7 @@ export function cancelClicker(prod) {
       i.depth = -i.y - 999;
       i.image_xscale = g.scaleview;
       i.image_yscale = g.scaleview;
-      const mx = w.mouse.x, my = w.mouse.y;
-      g.sele = mx > i.x - 30 && mx < i.x + 30 && my > i.y - 30 && my < i.y + 30 ? 1 : 0;
+      buttonSele(i, w);
     },
     ["keyPress" + P.cancelKey](i, w) { cancelLast(w, prod); },
     destroy(i, w) { w.g.sele = 0; i.hover = 0; },

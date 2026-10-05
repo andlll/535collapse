@@ -96,8 +96,13 @@ export function enemyBuilding(kind, p) {
     },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
     alarm2(i) { i.hit = 0; },
-    // enemy_caserma Alarm_3 [C]: nuovi attaccanti (o difensori, in lvl02)
-    ...(K.produces ? { alarm3(i, w) { creazioneAttaccantiGenerico(i, w); } } : {}),
+    // enemy_caserma Alarm_3 [C]: nuovi attaccanti. [Correzione §3.13 n.52]
+    // per la caserma difensiva (ruolo 10) l'alarm 3 e' solo l'attesa fra
+    // un difensore e l'altro: alla scadenza non crea nulla, e il prossimo
+    // difensore lo crea scr_controller_crea_difensori (levels.js).
+    ...(K.produces ? {
+      alarm3(i, w) { if (i.role !== 10) creazioneAttaccantiGenerico(i, w); },
+    } : {}),
     destroy(i) { p.markInstance(i, 1); },
     step(i, w) {
       revealBuilding(i, w);

@@ -27,19 +27,19 @@ const MELEE = {
     life: 75, rank: 3, corpse: "enemy_warrior_corpse", icon: "ico_guerriero",
     damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4, 50: 5 }, fleeStep0: true, atkSignal: true,
     attackIso: false, charge: false, fire: true, place: "random", fogBroken: true,
-    palo: false, chaseAlarm: 15, spawnFree: true, menuMarch: true, dcSelectsCivilians: false,
+    palo: false, chaseAlarm: 15, spawnFree: true, menuMarch: true,
   },
   enemy_picchiere: {
     life: 60, rank: 3, corpse: "enemy_picchiere_corpse", icon: "ico_picchiere",
     damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8, 50: 5 }, fleeStep0: false, atkSignal: false,
     attackIso: true, charge: false, fire: true, place: "back50", fogBroken: false,
-    palo: true, chaseAlarm: 15, spawnFree: false, menuMarch: false, dcSelectsCivilians: true,
+    palo: true, chaseAlarm: 15, spawnFree: false, menuMarch: false,
   },
   enemy_cavaliere: {
     life: 90, rank: 5, corpse: "enemy_cavaliere_corpse", icon: "ico_cavaliere",
     damage: { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3, 50: 8 }, fleeStep0: false, atkSignal: true,
     attackIso: true, charge: true, fire: false, place: "random", fogBroken: false,
-    palo: false, chaseAlarm: 10, spawnFree: false, menuMarch: false, dcSelectsCivilians: true,
+    palo: false, chaseAlarm: 10, spawnFree: false, menuMarch: false,
   },
 };
 
@@ -90,16 +90,27 @@ export function atkSignalObject() {
 }
 
 // scr_movimento_nemici_ff [C]. La precedenza di GML e' (lontano && role 31)
-// || sovrapposto. Senza flow field proprio si legge la griglia 0 (pathing.js,
-// initGrid0).
+// || sovrapposto.
+// [Correzione decisa dall'autore, §3.10 n.37] un nemico senza flow field
+// proprio (tutti tranne gli attaccanti delle ondate) leggeva la "griglia
+// 0", una griglia dei costi orfana del manager, come se fosse un campo di
+// direzioni, e quando si sovrapponeva a qualcosa scivolava a destra o in
+// basso. Qui avanza dritto verso la destinazione, come farebbe il flow
+// field in campo aperto.
+function pushThrough(w, p, i) {
+  if (i.flow_field) { moveFlowField(w, p, i); return; }
+  i.direction = pointDirection(i.x, i.y, i.dirox, i.diroy);
+  w.setPos(i, i.x + lengthdirX(i.autospeed, i.direction), i.y + lengthdirY(i.autospeed, i.direction));
+}
+
 function enemyMove(i, w, p) {
   if (i.action !== 1) return;
   if ((pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 && i.role === 31) || !w.placeFree(i, i.x, i.y)) {
     const otro = w.instancePlace(i, i.x, i.y, "enemy_unit");
     if (otro) {
-      if (otro.ordo < i.ordo || otro.action !== 1) moveFlowField(w, p, i);
+      if (otro.ordo < i.ordo || otro.action !== 1) pushThrough(w, p, i);
       else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
-    } else moveFlowField(w, p, i);
+    } else pushThrough(w, p, i);
   } else {
     mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
     if (i.role === 31) for (const e of w.all("enemy_unit")) if (e.role === 31) { e.role = 32; e.action = 0; }
@@ -229,8 +240,8 @@ export function enemyMelee(name, p) {
       i.ordo = g.order * T.rank;
       i.life = T.life;
       i.slife = T.life;
-      // senza flow field proprio: la griglia 0 (§3.10 n.37)
-      i.flow_field = p.grid0;
+      // nessun flow field proprio (§3.10 n.37)
+      i.flow_field = null;
       // enemy_warrior, "azioni iniziali" [C]: nel menu marcia sul centro
       if (T.menuMarch && w.room === "menu") {
         const a = w.nearest(i.x, i.y, "ally");
@@ -310,10 +321,10 @@ export function enemyMelee(name, p) {
       enemyAttack(i, w, T);
     },
     // Mouse_LeftReleased [C]: un nemico si puo' selezionare (per vederne la
-    // vita); nel picchiere e nel cavaliere il doppio clic seleziona TUTTI i
-    // civili, senza contarli in global.sel (§3.10 n.38)
+    // vita). [Correzione decisa dall'autore, §3.10 n.38] nel picchiere, nel
+    // cavaliere, nell'arciere e nell'assedio il doppio clic selezionava TUTTI
+    // i civili, senza contarli in global.sel: tolto.
     leftReleased(i, w) {
-      if (T.dcSelectsCivilians && i.dc === 1) for (const o of w.all("ally_omino")) o.selected = 1;
       if (w.g.sele > -1) {
         i.selected = 1;
         if (i.action === 1 && i.dc === 0) { i.dc = 1; i.alarm.set(1, 20); }
@@ -381,8 +392,7 @@ function fleeArrow(i, w, other) {
 
 // enemy_arciere [C]: tira entro 400 px (dimezzati di notte), si avvicina
 // entro 600 (ferma se gia' in cammino, come nell'originale). Vita 55,
-// rango 2. Il doppio clic seleziona tutti i civili (n.38) e Alt lo
-// deseleziona sempre.
+// rango 2. Alt lo deseleziona sempre.
 export function enemyArcher(p) {
   const base = enemyMelee("enemy_warrior", p); // visibilita' e disegno in comune
   const name = "enemy_arciere";
@@ -428,7 +438,7 @@ export function enemyArcher(p) {
       i.ordo = g.order * 2;
       i.life = 55;
       i.slife = 55;
-      i.flow_field = p.grid0;
+      i.flow_field = null;
     },
     alarm4: undefined,
     // Alarm_2 [C]: fuori tiro (400 px fissi) smette; tre fasi (13, 30, 13),
@@ -472,7 +482,6 @@ export function enemyArcher(p) {
     // Draw_End come gli altri, ma alla fine rimette il colore bianco [C]
     drawEnd(i, w, d) { base.drawEnd(i, w, d); d.setColour(C.white); },
     leftReleased(i, w) {
-      if (i.dc === 1) for (const o of w.all("ally_omino")) o.selected = 1;
       if (w.g.sele > -1) {
         i.selected = 1;
         if (i.action === 1 && i.dc === 0) { i.dc = 1; i.alarm.set(1, 20); }

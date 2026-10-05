@@ -69,8 +69,11 @@ function difendi(w, defX, defY, defId, raggio) {
 }
 
 // scr_controller_crea_difensori [C]: sotto la soglia di difensori la
-// caserma nemica col ruolo 10 ne crea uno (e riarma l'alarm 3, che pero'
-// alla scadenza crea un ATTACCANTE: §3.13 n.52); sopra, rimanda.
+// caserma nemica col ruolo 10 ne crea uno e riarma l'alarm 3; sopra,
+// rimanda. [Correzione decisa dall'autore, §3.13 n.52] alla scadenza
+// l'alarm 3 eseguiva scr_creazione_attaccanti_generico: la caserma creava
+// un ATTACCANTE e passava al ruolo 30. Qui per il ruolo 10 l'alarm e' solo
+// l'attesa (enemybuild.js): un difensore ogni 540 passi sotto la soglia.
 function controllerCreaDifensori(w, critical, interval, defX, defY, targetid) {
   let count = 0;
   for (const e of w.all("enemy_unit")) if (e.role === 10 && e.def_point_id === targetid) count++;

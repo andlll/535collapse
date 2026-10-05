@@ -25,7 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11), n.46–49 (§3.12), n.51–53 (§3.13).
+- [ ] n.53 (vittoria del livello 2 creata a ogni passo): con la vittoria (§3.13).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -1821,3 +1821,50 @@ distrutti gli edifici della base 2, `base2b` 4 → 0 e `basidistrutte` 1.
 caserma il 10; gli attaccanti partono (ruolo 31) e arrivano (32); liberata
 la prima zona arrivano 2 civili. 3000 passi senza errori in `match`,
 `lvl01`, `lvl02`.
+
+### 3.14 Decisioni dell'autore sul punto 4 (5 ottobre 2026)
+
+- **n.32**: era un valore di prova. La caserma ora avanza di 1% ogni 12
+  passi: un'unità ogni ~1200 passi (20 s), come la stalla. Verificato:
+  1189 passi dal pulsante alla nascita.
+- **n.45**: voluto, gli arcieri di presidio muoiono con la torre.
+- **n.39**: voluto (il guerriero nemico vicino alla nebbia non insegue).
+- **n.53**: da sistemare con la vittoria.
+- **n.42**, spiegazione per l'autore: quando una torre alleata viene
+  distrutta senza aver mai avuto arcieri di presidio, il codice che
+  dovrebbe togliere la bandierina (che non c'è) finisce per cancellare il
+  suggerimento del tutorial sulla legna (`hint_legna`), se è aperto.
+  Corretto: senza bandierina non si fa nulla.
+
+Corretti tutti gli altri:
+- n.30: Esc e il "clic fuori" scalano anche `firesel`, `arcsel` e
+  `siegsel` (verificato: 1 → 0).
+- n.31: la scheda evidenzia la difesa con `comp < 300` (il pulsante Difesa
+  mette 200).
+- n.33: la ricerca della cella libera vicino alla bandiera legge la cella
+  giusta della griglia.
+- n.34, n.49: magazzino, mulino e centro in fiamme fanno fumo e perdono 1
+  vita ogni 70 passi come gli altri edifici.
+- n.35: un pulsante di produzione rimette `global.sele` a 0 solo se l'1
+  l'aveva messo lui: Ctrl e Alt funzionano anche con una caserma
+  selezionata.
+- n.37: un nemico senza flow field proprio, quando si sovrappone a
+  qualcosa, avanza dritto verso la destinazione invece di leggere la
+  griglia orfana del manager (tolta da `pathing.js`).
+- n.38: il doppio clic su un nemico non seleziona più i civili.
+- n.43: durante un ordine di presidio la destinazione non scivola verso
+  l'arciere (verificato: tre arcieri su tre entrano nel castello).
+- n.44: con un bersaglio scelto, l'arciere fuori tiro si avvicina se il
+  bersaglio è visibile.
+- n.46: il castello rimborsa quanto pagato (verificato: 750/940 → 1000/1000,
+  nessuna pietra).
+- n.47: la catapulta troppo vicina arretra di 350 px lungo la linea
+  dall'edificio.
+- n.48: l'alarm 9 degli edifici alleati (parent `ally_build`) rimette `hit`
+  a 0.
+- n.51: nel livello 1 i militari partono in difesa (`comp=50`),
+  assegnato dopo il loro Create (verificato).
+- n.52: per la caserma difensiva l'alarm 3 è solo l'attesa fra un
+  difensore e l'altro: non crea più attaccanti.
+
+3000 passi senza errori in `match`, `lvl01`, `lvl02`; i 10 test passano.

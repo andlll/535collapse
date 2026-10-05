@@ -71,8 +71,20 @@ export function escapeDeselect(i, w) {
   if (w.g.sele === 0 && i.selected === 1) {
     w.g.sel -= 1;
     if (!w.is(i, "ally_omino")) w.g.milsel -= 1;
+    // [Correzione decisa dall'autore, §3.9 n.30] anche il contatore del tipo
+    const extra = selCounter(w, i);
+    if (extra) w.g[extra] -= 1;
     i.selected = 0;
   }
+}
+
+// Contatore di selezione per tipo [C]: firesel per guerrieri e picchieri
+// (possono dare fuoco), arcsel per gli arcieri, siegsel per l'assedio.
+export function selCounter(w, i) {
+  if (w.is(i, "ally_infantry")) return "firesel";
+  if (i.object === "ally_arciere") return "arcsel";
+  if (i.object === "ally_ariete" || i.object === "ally_catapulta") return "siegsel";
+  return null;
 }
 
 // --------------------------------------------------------------- cavaliere
@@ -345,12 +357,13 @@ export function infantry(name, p) {
 
     // Destroy [C]: il codice di "clic fuori" sta nel Destroy: deseleziona
     // e toglie i pulsanti di comportamento se Ctrl/Alt non sono premuti e
-    // non si sta sopra quei pulsanti. Non tocca firesel (§3.9 n.30).
+    // non si sta sopra quei pulsanti. [Correzione §3.9 n.30] l'originale
+    // non scalava firesel.
     destroy(i, w) {
       const g = w.g;
       const hov = (n) => { let h = 0; for (const c of w.all(n)) h = c.hover === 1 ? 1 : 0; return h; };
       if (hov("attacco_clicker") !== 1 && hov("difesa_clicker") !== 1 && i.selected === 1 && g.sele === 0) {
-        g.sel -= 1; g.milsel -= 1; i.selected = 0;
+        g.sel -= 1; g.milsel -= 1; g.firesel--; i.selected = 0;
         for (const n of ["attacco_clicker", "difesa_clicker"]) for (const c of w.all(n)) w.destroy(c);
       }
       p.free(i);
@@ -408,8 +421,7 @@ export function controlGroups(civilian) {
 // ------------------------------------------- pulsanti attacco e difesa
 
 // attacco_clicker / difesa_clicker [C]: comp 700 (insegue entro 700 px) o
-// 200. La scheda dell'unita' evidenzia la difesa solo con comp=50, che
-// nessuno assegna: non si accende mai (§3.9 n.31).
+// 200.
 export function behaviourClicker(kind) {
   const attack = kind === "attacco";
   const apply = (w) => {
@@ -709,7 +721,9 @@ export function unitPanel(i, w, d, icon) {
     d.circleColour(450, 50, 30, 0x3030b7, 0x3030b7, false);
     d.spriteExt("ico_attacco_bianco", 0, 450, 50, 0.5, 0.5, 0, white, 1);
   }
-  if (i.comp === 50) {
+  // [Correzione decisa dall'autore, §3.9 n.31] l'originale evidenziava la
+  // difesa solo con comp=50, ma il pulsante Difesa mette 200
+  if (i.comp < 300) {
     d.circleColour(450, 120, 30, 0xc65f44, 0xc65f44, false);
     d.spriteExt("ico_difesa_bianco", 0, 450, 120, 0.5, 0.5, 0, white, 1);
   }

@@ -188,7 +188,12 @@ async function main() {
   world.loadRoom(room.instances, () => path.initCost());
   // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
   world.create("idle_clicker", 0, 0);
-  // manager Create, "Livelli" [C]: i gestori dei nemici di match e lvl02
+  // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
+  // difesa (comp=50). [Correzione decisa dall'autore, §3.13 n.51]
+  // nell'originale lo fa il Create del manager, prima di quello delle unita'
+  // che rimette 700: qui dopo.
+  if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
+  // i gestori dei nemici di match e lvl02
   if (roomName === "match") world.create("enemy_manager", 0, 0);
   if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
   // manager Step: pulsanti di costruzione, poi la regia dei livelli

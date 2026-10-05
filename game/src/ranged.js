@@ -184,8 +184,9 @@ export function allyArcher(p) {
   };
   // azione 14, attacco [C]: tira entro 600 px (al bersaglio scelto col
   // click destro, se c'e'), si avvicina entro `comp` a un nemico visibile.
-  // Con un bersaglio scelto la variabile target_auto_valid non e' mai
-  // assegnata (vale 0): fuori tiro l'arciere lo dimentica (§3.11).
+  // [Correzione decisa dall'autore, §3.11 n.44] con un bersaglio scelto
+  // l'originale non assegnava target_auto_valid (0): fuori tiro l'arciere
+  // lo dimenticava. Qui vale la visibilita' del bersaglio scelto.
   const attack = (i, w) => {
     if (!w.exists("enemy_unit")) {
       if (i.warwork === 1 || i.warwork === 2 || i.action === 2) {
@@ -196,7 +197,7 @@ export function allyArcher(p) {
     if (!(i.atktarget && i.atktarget.alive)) { i.atkorder = 0; i.atktarget = null; }
     const k = iso(i.direction);
     let valid = false;
-    if (i.atkorder === 0) valid = w.nearest(i.x, i.y, "enemy_unit").visible === true;
+    valid = (i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget).visible === true;
     i.targvalid = valid ? 1 : 0;
     const t = i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget;
     if (w.distanceToInstance(i, t) < 600 * k) {
@@ -323,9 +324,14 @@ export function allyArcher(p) {
       }
       ANIM[ARC](i, w);
       boxSelect(i, w, "arcsel");
-      // "se posto in cui fermarsi e' occupato", ripetuto due volte [C]
-      destination(i, w);
-      destination(i, w);
+      // "se posto in cui fermarsi e' occupato", ripetuto due volte [C].
+      // [Correzione decisa dall'autore, §3.11 n.43] non durante un ordine di
+      // presidio: la destinazione e' l'edificio, mai libero, e scivolava
+      // verso l'arciere fino a fermarlo prima di entrare.
+      if (i.presidiowork !== 1) {
+        destination(i, w);
+        destination(i, w);
+      }
       if (w.number("torre_placer") > 0) g.sele = 1;
       if (i.selected === 1 && w.number("attacco_clicker") === 0) {
         w.create("attacco_clicker", 0, 0);
@@ -335,12 +341,13 @@ export function allyArcher(p) {
       if (attack(i, w) === "exit") return;
       garrison(i, w, g);
     },
-    // Destroy [C]: lo stesso "clic fuori" del guerriero (senza arcsel)
+    // Destroy [C]: lo stesso "clic fuori" del guerriero
     destroy(i, w) {
       const g = w.g;
       const hov = (n) => { let h = 0; for (const c of w.all(n)) h = c.hover === 1 ? 1 : 0; return h; };
       if (hov("attacco_clicker") !== 1 && hov("difesa_clicker") !== 1 && i.selected === 1 && g.sele === 0) {
-        g.sel -= 1; g.milsel -= 1; i.selected = 0;
+        // [Correzione §3.9 n.30] anche arcsel
+        g.sel -= 1; g.milsel -= 1; g.arcsel--; i.selected = 0;
         for (const n of ["attacco_clicker", "difesa_clicker"]) for (const c of w.all(n)) w.destroy(c);
       }
       p.free(i);
@@ -420,15 +427,15 @@ export function garrisoned(name, base) {
         if (i.npresidio === n && i[key] === 0) { w.create(obj, i.x + dx, i.y + dy); i[key] = 1; }
       }
     },
-    // Destroy [C]: le bandiere spariscono. Nella torre l'if senza graffe
-    // regge solo `var thisflag=...`: senza bandiera with(thisflag) vale
-    // with(0), cioe' il primo oggetto del progetto (hint_legna) [I, §3.11
-    // n.42]; nel castello startflagger non e' mai assegnata.
+    // Destroy [C]: le bandiere spariscono. [Correzione decisa dall'autore,
+    // §3.11 n.42] nella torre l'if senza graffe reggeva solo `var
+    // thisflag=...`: senza bandiera with(thisflag) diventava with(0), il
+    // primo oggetto del progetto (hint_legna). Qui senza bandiera non si fa
+    // nulla. Nel castello startflagger non e' mai assegnata.
     destroy(i, w) {
       if (base.destroy) base.destroy(i, w);
       if (name === "torre") {
         if (i.flagged === 1) { const f = w.nearest(i.x, i.y - 170, "flag_r"); if (f) w.destroy(f); }
-        else for (const h of w.all("hint_legna")) w.destroy(h);
         return;
       }
       for (const [n, obj, dx, dy] of G.flags) {

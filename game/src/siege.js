@@ -47,7 +47,8 @@ function siegeCommon(name, corpseName, icon) {
       const g = w.g;
       const hov = (n) => { let h = 0; for (const c of w.all(n)) h = c.hover === 1 ? 1 : 0; return h; };
       if (hov("attacco_clicker") !== 1 && hov("difesa_clicker") !== 1 && i.selected === 1 && g.sele === 0) {
-        g.sel -= 1; g.milsel -= 1; i.selected = 0;
+        // [Correzione §3.9 n.30] anche siegsel
+        g.sel -= 1; g.milsel -= 1; g.siegsel--; i.selected = 0;
         for (const n of ["attacco_clicker", "difesa_clicker"]) for (const c of w.all(n)) w.destroy(c);
       }
     },
@@ -225,8 +226,10 @@ function catapultReload(i) {
 
 // Tiro automatico [C]: ferma o in cammino, carica e in automatico, tira
 // all'edificio nemico piu' vicino fra 300 e 850 px. Sotto i 300 px si mette
-// in cammino senza cambiare destinazione: dirox, se mai assegnata, vale 0 e
-// la catapulta va verso l'angolo (0, 0) della room (§3.12 n.47).
+// in cammino. [Correzione decisa dall'autore, §3.12 n.47] l'originale non
+// cambiava la destinazione: dirox, se mai assegnata, valeva 0 e la
+// catapulta andava verso l'angolo (0, 0) della mappa. Qui arretra di 350
+// px lungo la linea dall'edificio, oltre la distanza minima di tiro.
 function catapultAuto(i, w, target, range) {
   if (!((i.action === 0 || i.action === 1) && i.automatic === 1 && i.loaded === 1)) return null;
   const b = w.nearest(i.x, i.y, target);
@@ -242,6 +245,9 @@ function catapultAuto(i, w, target, range) {
       return "exit";
     }
   } else if (i.action === 0) {
+    const away = pointDirection(b.x, b.y, i.x, i.y);
+    i.dirox = i.x + lengthdirX(350, away);
+    i.diroy = i.y + lengthdirY(350, away);
     i.direction = pointDirection(i.x, i.y, b.x, b.y); // (-360: stesso angolo)
     i.action = 1; i.automatic = 1; i.step = 0;
     if (i.speed === 0) i.alarm.set(0, 13);
