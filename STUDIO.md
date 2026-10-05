@@ -777,3 +777,32 @@ dove l'autore ha già deciso.
    la ricalcola a ogni ordine (`scr_generate_goal_field` +
    `scr_generate_flow_field`) [C]. Nel porting si condivide un campo per
    destinazione.
+
+### 1.6 Conferme e decisioni dell'autore sulla Fase 1
+
+**Mischia e raccolta col "versore"** (spiegazione dell'autore, coerente con il
+codice [C]): all'inizio il danno passava da oggetti proiettile che
+collidevano; essendo le collisioni pesanti, l'autore è passato a prendere
+l'istanza più vicina al punto **30 px davanti all'unità nella direzione
+d'attacco**: `instance_nearest(x+30*cos(degtorad(direction)),
+y-30*sin(degtorad(direction)), bersaglio)`. Stesso schema per la raccolta
+in `ally_omino` Alarm_2: alberi (`wood-=2` per colpo, 150 per albero),
+miniere d'oro (`gold-=1`, 2500), pietre (`stone_parent`, `stone-=1`; 850
+la grande, 450 la piccola). I proiettili di mischia di §1.5 n.7 sono i resti
+del primo approccio: **non si portano**.
+
+**Difetti di §1.5: l'autore li conferma tutti e vanno corretti** nel porting.
+Ogni correzione sarà marcata nel codice come deviazione dall'originale:
+
+1. Ariete: **60 oro** anche col tasto Q.
+2. Annullare un picchiere restituisce **55 cibo e 45 legno**.
+3. Centro distrutto: **−10** popcap (quanto ha dato). Castello e torre: **niente
+   −5** alla distruzione, visto che non danno popolazione (nessun testo
+   dell'interfaccia lo dice). [Scelta mia fra le due correzioni possibili, da
+   confermare con l'autore.]
+4. `ally_warrior` Alarm_2: `io_x`/`io_y` dichiarate con `var` prima del
+   `with`, come nella versione nemica.
+5. `warwark` → `warwork`.
+6. `lvl02`: "area 6 libera" calcolata sempre, non solo quando `l6=0`.
+7. Proiettili di mischia: non portati.
+8. Flow field condiviso per destinazione invece di una griglia per unità.
