@@ -731,7 +731,7 @@ edifici, 5 se `slife=100` (il campo).
 | Castello | 900 | 850 pietra | catapulta/ariete, presidio 4 arcieri | G |
 | Chiesa (monastero) | 300 | 50 legno, 150 pietra | cura | T |
 | Torre | 330 | 200 pietra | presidio 2 arcieri | A |
-| Mura | 800 | 50 pietra (+40 per tratto) | | S |
+| Mura | 800 | 50 pietra (+40 per tratto aggiunto [I], `mplus_*`/`oodl`…) | | S |
 | Porte | 600 (orizz.) / 800 (vert.) | 100 oro | | Q |
 
 **Popolazione** [C]: `manager` Step taglia `global.popcap` a **99** a ogni
