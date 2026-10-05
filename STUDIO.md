@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 4d (assedio e fuoco) fatto; prossimo il 4e. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 4 (combattimento) completo; prossimo il punto 5 (nebbia e notte). Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,7 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11), n.46–49 (§3.12).
+- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10), n.42–45 (§3.11), n.46–49 (§3.12), n.51–53 (§3.13).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -47,12 +47,8 @@ sta nella sezione citata.
 - [x] 4c. Arcieri, frecce, presidio di torri e castello, torre nemica (§3.11).
 - [x] 4d. Assedio (arieti, catapulte), fuoco, produzione di stalla e
   castello (§3.12).
-- [ ] 4e. Combattimento (i nemici calcolano i percorsi con le porte
-  chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
-  arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
-  presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
-  alarm del fuoco del centro, `nubeqq`); produzione di caserma, stalla e
-  castello; cura della chiesa; frecce di centro e torre; rovine.
+- [x] 4e. Edifici nemici, ondate di `match`, regia di `lvl02` e delle porte
+  di `lvl01`, chiesa (§3.13).
 - [ ] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
   risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
 
@@ -1765,3 +1761,62 @@ nemico senza civili intorno incendia il centro (400 → 379, `onfire`)
 finché le frecce del centro lo uccidono. La catapulta del tutorial tira a
 un edificio nemico e viene abbattuta dalle torri nemiche. 3000 passi
 senza errori in `match`, `lvl01`, `lvl02`.
+
+### 3.13 Punto 4e: edifici nemici, ondate, difensori, chiesa (5 ottobre 2026)
+
+**Portato** (`game/src/enemybuild.js`, `levels.js`): `enemy_house`,
+`enemy_caserma`, `enemy_stalla` (vita, fuoco, rovina, contatori delle
+basi, produzione di attaccanti della caserma); le casse del livello 1
+(`o_box1`, `o_box2`, con il premio); la cura della chiesa (`sfx_croce`);
+`aggr_assign`, `def_assign`; `enemy_manager` (ondate di `match`),
+`enemy_manager_lv2` (aree difese, liberazioni, attacchi a gruppi); dal
+manager: i blocchi di difensori e le basi del tutorial di `match`, le
+porte del livello 1; gli script `scr_attacca`, `scr_difendi`,
+`scr_area_difesa`, `scr_controller_crea_difensori`,
+`scr_creazione_attaccanti_generico`, `scr_creazione_difensori_arciere`,
+`scr_aggr_interval`. Il punto 4 è completo.
+
+**Come funziona** [C]:
+- `match`: dopo 4 passi i nemici presenti diventano difensori (non vanno
+  a cercare i civili); a ~16900 passi (4,7 minuti) la prima ondata a
+  nord-est, poi una ogni 18550 passi (14550 dalla settima), da 3 a 7
+  unità più un'arma d'assedio dalla sesta. Ogni 600 passi i nemici non
+  difensori e fermi vanno verso il civile più vicino. Avvicinandosi a tre
+  punti compaiono gruppi di difensori; distrutte le tre basi (contatori
+  scalati da edifici e torri nemiche) è vittoria.
+- `lvl02`: sette aree difese (ruolo 10, `def_point_id` 110–170);
+  liberata un'area (nessun suo difensore vivo) arrivano civili e premi; le
+  caserme col ruolo 30 producono un attaccante ogni 540 passi e, quando
+  sono più di 4, partono col flow field (porte chiuse) verso i civili;
+  la caserma dell'area 6 crea arcieri difensori finché l'area resiste.
+  Vittoria: aree 1–6 liberate e nessun edificio nemico.
+- Livello 1: alle porte premi d'oro e basi alleate (2 caserme e 5 case,
+  poi 2 stalle).
+- Chiesa: ogni 180 passi +3 vita alle unità alleate ferite entro 800 px.
+
+Dialoghi, suggerimenti e `victory_manager` non sono ancora portati: la
+regia li crea solo se esistono (`createIfPorted`), così funziona già e li
+mostrerà quando arriveranno. Senza `dialogo_2_1` (che arma il rinvio di
+250 s delle ondate del livello 2) gli attacchi del livello 2 partono
+prima che nell'originale.
+
+**Difetti trovati** [C]:
+
+51. Livello 1: il manager mette `comp=50` (difesa) ai militari nel suo
+    Create, ma il Create delle unità, che viene dopo, rimette 700: nessun
+    effetto. Riprodotto.
+52. `scr_controller_crea_difensori` riarma l'alarm 3 della caserma
+    difensiva, ma alla scadenza l'alarm 3 esegue
+    `scr_creazione_attaccanti_generico`: la caserma crea un attaccante e
+    passa al ruolo 30. Riprodotto.
+53. Livello 2: con le condizioni di vittoria vere, `victory_manager` viene
+    creato a ogni passo. Riprodotto (conterà quando arriverà la vittoria).
+
+**Verificato** (Chromium): `match`: 4 difensori dopo 10 passi; prima
+ondata dopo 17000 passi (+3 nemici), seconda dopo altri 18550; un
+guerriero ferito vicino alla chiesa passa da 40 a 46 in 400 passi;
+distrutti gli edifici della base 2, `base2b` 4 → 0 e `basidistrutte` 1.
+`lvl02`: le due caserme e la stalla ricevono il ruolo 30, la terza
+caserma il 10; gli attaccanti partono (ruolo 31) e arrivano (32); liberata
+la prima zona arrivano 2 civili. 3000 passi senza errori in `match`,
+`lvl01`, `lvl02`.

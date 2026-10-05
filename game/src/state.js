@@ -32,6 +32,10 @@ export function newGlobals(room) {
     order: 1000,    // contatore per "ordo", la precedenza fra unita' (manager Create)
     firesel: 0, arcsel: 0, siegsel: 0,
     multihint: 0, enemyhover: 0,
+    // manager Create: livelli (tutorial di match, porte del livello 1,
+    // liberazioni del livello 2) e casse del livello 1
+    waves: 0, bloc1: 0, bloc2: 0, bloc3: 0, base1b: 7, base2b: 4, base3b: 7, base1d: 0, base2d: 0, base3d: 0,
+    basidistrutte: 0, lvl01_gate: 0, liberati: 0, dialogochest: 0,
     // mouser Create: cosa c'e' sotto il puntatore (colore del cerchio)
     minierahover: 0, alberhover: 0, farmhover: 0, stonehover: 0, buildhover: 0, preshover: 0,
   };

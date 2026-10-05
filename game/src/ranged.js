@@ -9,6 +9,7 @@ import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irando
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
+import { baseCounters } from "./enemybuild.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000;
@@ -480,8 +481,7 @@ export function centroArrows(base) {
 
 // enemy_torre [C]: due frecce ogni 50 passi su un alleato entro 600 px;
 // visibile come le unita' nemiche ma, una volta vista, resta visibile.
-// I contatori global.base1b..3b (le basi del tutorial di match) arrivano
-// col punto 4e.
+// Distrutta, scala i contatori delle basi del tutorial di match.
 export function enemyTower(p) {
   return {
     create(i, w) {
@@ -506,7 +506,7 @@ export function enemyTower(p) {
       if (near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500) || near("torre", 500)
           || w.room === "menu" || g.fogville === 0) i.visible = true;
       if (i.life <= 0) {
-        // (global.base2b/base1b/base3b: punto 4e)
+        baseCounters(i, g, ["x650", "y5800", "y1500"]);
         w.create("torreruin", i.x, i.y);
         w.destroy(i);
         return;

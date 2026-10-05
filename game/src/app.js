@@ -17,7 +17,9 @@ import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
-import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, fireOrder, smoke, enemyRam, enemyCatapult } from "./siege.js";
+import { enemyBuilding, oBox, church, crossEffect, roleAssign } from "./enemybuild.js";
+import { enemyManager, enemyManagerLv2, levelStep } from "./levels.js";
+import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
@@ -122,9 +124,13 @@ async function main() {
   world.register("sfx_sangue", bloodSplat());
   world.register("fire_bullet", fireBullet());
   world.register("nubeqq", smoke());
-  // click destro sugli edifici nemici di legno: ordine di dar fuoco (il
-  // resto degli edifici nemici col punto 4e)
-  for (const n of ["enemy_house", "enemy_stalla", "enemy_caserma"]) world.register(n, { rightReleased: fireOrder });
+  for (const n of ["enemy_house", "enemy_stalla", "enemy_caserma"]) world.register(n, enemyBuilding(n, path));
+  for (const n of ["o_box1", "o_box2"]) world.register(n, oBox(n, path));
+  world.register("sfx_croce", crossEffect());
+  world.register("aggr_assign", roleAssign(30));
+  world.register("def_assign", roleAssign(10));
+  world.register("enemy_manager", enemyManager());
+  world.register("enemy_manager_lv2", enemyManagerLv2(path));
   world.register("arciere_bullet", allyArrow(false));
   world.register("arciere_bullet_t", allyArrow(true));
   world.register("b_arciere_bullet", enemyArrow(false));
@@ -141,6 +147,7 @@ async function main() {
     let b = built(f, path);
     if (PRODUCERS[f]) b = producer(f, b, path);
     if (f === "torre" || f === "castello") b = garrisoned(f, b);
+    if (f === "chiesa") b = church(b);
     world.register(f, b);
   }
   for (const [prod, P] of Object.entries(PRODUCERS)) {
@@ -181,7 +188,11 @@ async function main() {
   world.loadRoom(room.instances, () => path.initCost());
   // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
   world.create("idle_clicker", 0, 0);
-  world.hooks.step = () => buildButtons(world);
+  // manager Create, "Livelli" [C]: i gestori dei nemici di match e lvl02
+  if (roomName === "match") world.create("enemy_manager", 0, 0);
+  if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
+  // manager Step: pulsanti di costruzione, poi la regia dei livelli
+  world.hooks.step = () => { buildButtons(world); levelStep(world); };
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
   // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.

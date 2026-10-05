@@ -51,7 +51,7 @@ function distTo(w, i, o) {
 
 // scr_find_free_spawn_enemy [C]: spirale sulle celle da 32 finche'
 // place_free nell'angolo della cella.
-function freeSpawnEnemy(i, w) {
+export function freeSpawnEnemy(i, w) {
   const G = 32, gw = Math.trunc(w.roomW / G), gh = Math.trunc(w.roomH / G);
   let gx = Math.floor(i.x / G), gy = Math.floor(i.y / G);
   const inside = () => gx >= 0 && gx < gw && gy >= 0 && gy < gh;
