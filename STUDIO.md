@@ -569,3 +569,211 @@ variabile locale mai assegnata è un errore di runtime; nell'export HTML5
 probabilmente dava `undefined`, cioè falso. Da decidere quando si porta
 `lvl02`: l'effetto voluto sembra "se l'area 6 è libera, ferma la caserma
 che crea difensori".
+
+### 1.3 Semantica di GameMaker che il porting deve rispettare
+
+Sono regole del **runner** GMS 1.x, non del gioco: vengono dalla
+conoscenza del motore e sono quindi **[I]** finché non le confermiamo con
+un test (in GameMaker, se l'autore può, o confrontando il comportamento
+atteso descritto dal codice). Per ognuna: perché conta qui, con le prove
+lette in `src/` **[C]**.
+
+**Ordine di un passo (60 al secondo in tutte le room [C]).**
+Begin Step → Alarm → Keyboard/KeyPress/KeyRelease → Mouse → Step →
+applicazione del moto (`x += hspeed`, `y += vspeed`, da `speed`/`direction`)
+→ Collision → End Step → Draw Begin/Draw/Draw End (per depth) →
+Draw GUI Begin/GUI/GUI End. Conta perché le unità impostano `speed` e
+`direction` in Step (`speed=` 94 volte) e il moto si applica dopo; i
+contatori di tempo (`global.seconds` in `manager` Alarm_8, riarmato a 60)
+e tutte le durate sono in passi, non in millisecondi.
+
+**Alarm.** Ogni passo gli alarm >0 scendono di 1; quando arrivano a 0
+l'evento parte e l'alarm diventa -1. `alarm[n]=1` quindi scatta al passo
+dopo; `alarm[n]=0` o un valore negativo non fanno partire niente. Il codice
+usa `alarm[3]=-1` come "spento" e lo confronta (`enemy_caserma`,
+`scr_controller_crea_difensori`: `if role=10 && alarm[3]=-1`) [C]; 4
+istruzioni fanno `alarm[n]+=`. Molti comportamenti sono **catene di
+alarm** a passi fissi: per esempio l'attacco in mischia (`ally_warrior`
+Alarm_2: tre fasi da 13 passi, il colpo alla terza → un colpo ogni 39
+passi, 0,65 s) [C].
+
+**Creazione e distruzione.** `instance_create` esegue subito il Create
+della nuova istanza e poi restituisce l'id, quindi
+`with instance_create(...) {defender=1}` (forma usata in `manager` Step per
+i presidi) agisce *dopo* il Create [C per l'uso]. `instance_destroy()`
+esegue subito il Destroy; il codice dello stesso evento dopo la chiamata
+continua a girare (535 chiamate, spesso seguite da altre istruzioni). Al
+cambio di room le istanze non persistenti spariscono **senza** Destroy;
+gira invece Room End (22 oggetti hanno `Other_RoomEnd`) [C per l'uso].
+
+**`with` e `other`.** `with (oggetto)` gira su tutte le istanze di
+quell'oggetto **e dei suoi figli** (`with(enemy_unit)`, `with(ally_build)`,
+`with(natural_parent)`…); dentro, `other` è chi ha chiamato. Nelle
+collisioni `other` è l'altra istanza. Le variabili `var` sono locali allo
+script/evento e si vedono anche dentro il `with`: il gioco ci conta, per
+esempio `var io_x=x` letto dentro `with` in `enemy_warrior` Alarm_2 [C].
+L'ordine di visita del `with` non è garantito dalla documentazione; il
+porting userà l'ordine di creazione.
+
+**Ereditarietà.** Un figlio senza un evento usa quello del parent; se ce
+l'ha, il parent non gira (nessuna chiamata a `event_inherited` in tutto il
+progetto [C]). `instance_nearest`, `instance_number`, `place_meeting` ecc.
+su un parent contano anche i figli.
+
+**Solidi e collisioni.** 107 oggetti sono `solid` [C], **comprese tutte le
+unità**, gli edifici, alberi, montagne, fiumi, statue. In GMS, se due
+istanze collidono e una è solida, quella che si muove torna alla posizione
+precedente **prima** dell'evento Collision. `place_free(x,y)` è vero se in
+quel punto la maschera non tocca nessun solido (`place_free` 53 volte,
+per esempio "se il posto dove fermarsi è occupato, sposta il bersaglio").
+Le maschere: rettangolo dalla bbox (1412 sprite), precise per pixel (34:
+edifici, fiumi, montagne), ellisse (12), rombo (15); `maskName` sostituisce
+lo sprite per le collisioni (195 oggetti).
+
+**Distanze.** `instance_nearest(x,y,obj)` misura fra le origini e **può
+restituire l'istanza stessa** se è di quel tipo [I, da verificare: qui è
+quasi sempre chiamata su un tipo diverso da sé, p.es. un alleato che cerca
+`enemy_unit`]. `distance_to_object(obj)` misura fra le **bbox** delle
+maschere, non fra le origini (184 chiamate) [I].
+
+**Movimento.** `mp_potential_step(x,y,passo,solo_solidi)` avanza di `passo`
+verso il punto aggirando i solidi; `mp_potential_settings(30,3,3,true)`
+[C, `ally_warrior` Step] = gira al massimo di 30° per passo, prova
+direzioni ogni 3°, guarda 3 passi avanti, può ruotare sul posto. L'algoritmo
+interno non è documentato nel dettaglio: il porting ne farà
+un'approssimazione con lo stesso contratto, verificata a occhio contro il
+comportamento atteso. Le unità usano però soprattutto il **flow field** degli
+script (`scr_generate_goal_field`, `scr_generate_flow_field`,
+`scr_move_flow_field`, griglia da 32 px) [C].
+
+**Depth.** Profondità più alta = disegnata prima. Le unità fanno
+`depth=-y` ogni passo (196 volte) [C]; a pari depth l'ordine non è
+garantito.
+
+**Viste e mouse.** `mouse_x/mouse_y` sono in coordinate di room attraverso la
+view 0; Draw GUI è in coordinate dello schermo. La view che "segue" un
+oggetto (`mouser`, bordo 32 px) si sposta per tenerlo dentro i bordi, senza
+uscire dalla room. Mouse Enter/Leave e gli eventi "sull'istanza"
+(LeftReleased, RightReleased…) usano la maschera dell'istanza sotto il
+puntatore; gli eventi Global no.
+
+**Numeri, condizioni, testo.** In GML 1.x i numeri sono double; una
+condizione è vera se il valore è **> 0,5**; `=` dentro `if` è un
+confronto; `div` (188 volte) è la divisione intera. In `draw_text`, `#`
+va a capo (il progetto lo usa solo in `scr_draw_text_ext_safe` [C]).
+Stringa + numero è un errore in GMS 1.x desktop (`progression+"%"` in
+`caserma`/`centro`/`stalla` Draw_GUI e `"…score is "+score` in
+`victory_manager`): nell'export HTML5 era una concatenazione JavaScript, e
+così farà il porting [I].
+
+**Variabili mai assegnate.** Il config ha `option_variableerrors=False`
+[C]. **[?]** Effetto esatto su questa build; in pratica nell'export HTML5 una
+variabile mai assegnata valeva `undefined` e i confronti davano falso. Il
+porting inizializza esplicitamente e segnala i casi (vedi §1.5).
+
+**Particelle.** Un `part_system` si disegna da solo alla sua depth;
+`part_emitter_stream(ps,em,tipo,n)` emette n particelle a passo (se n<0, una
+con probabilità 1/|n|); `pt_shape_flare` è una texture interna di
+GameMaker da ricreare [I].
+
+**Pausa.** `instance_deactivate_all(true)` (`mouser`, menu di pausa) toglie
+tutte le altre istanze da eventi, `with` e disegno, finché
+`instance_activate_all()` [C per l'uso].
+
+### 1.4 Tabelle numeriche
+
+Estratte da `tools/04_tables.py` (→ `data/tables.json`) e **confermate
+leggendo i file citati** [C], salvo dove marcato.
+
+**Unità** [C, `Create` delle unità + clicker]:
+
+| Unità | Vita | Popolazione | Costo | Dove si crea | Tasto |
+|---|---|---|---|---|---|
+| Civile (`ally_omino`) | 50 | 1 | 50 cibo | centro | Q |
+| Guerriero (`ally_warrior`) | 75 | 2 | 75 cibo, 35 oro | caserma | Q |
+| Picchiere (`ally_picchiere`) | 60 | 2 | 55 cibo, 45 legno | caserma | W |
+| Arciere (`ally_arciere`) | 55 | 2 | 55 oro, 40 legno | caserma | E |
+| Cavaliere (`ally_cavaliere`) | 90 | 3 | 50 cibo, 70 oro | stalla | Q |
+| Catapulta (`ally_catapulta`) | 100 | 3 | 200 legno, 100 oro | castello | W |
+| Ariete (`ally_ariete`) | 125 | 3 | 250 legno, 60 oro (**30** col tasto, §1.5) | castello | Q |
+
+I nemici hanno la stessa vita (75/60/55/90/100/125) e non usano popolazione.
+
+**Danno in mischia** [C, Alarm_2 di ogni unità]. Il bersaglio si riconosce
+dalla sua **vita massima** `slife` (75 guerriero, 60 picchiere, 55 arciere,
+90 cavaliere, 100 catapulta, 125 ariete, 50 civile; 100 è anche il campo),
+non dal tipo di oggetto. Un colpo ogni 39 passi.
+
+| Attaccante ↓ / bersaglio → | Guerr. | Picch. | Arciere | Caval. | Catap. | Ariete | Civile |
+|---|---|---|---|---|---|---|---|
+| Guerriero | 7 | 7 | 15 | 4 | 7 | 7 | 5 (solo nemico) |
+| Picchiere | 3 | 3 | 5 | 8 | 3 | 3 | 5 (solo nemico) |
+| Cavaliere | 5 | 3 | 22 | 5 | 5 | 5 | 8 (solo nemico) |
+
+**Danno a distanza** [C]: freccia (`arciere_bullet`, anche quella di
+torre/castello/centro `arciere_bullet_t`): 6 a guerriero/picchiere/arciere,
+4 al cavaliere, 3 a catapulta/ariete, 5 al civile (solo frecce nemiche).
+Catapulta (`catapulta_bullet` Destroy): **40** all'edificio o all'unità nel
+punto d'impatto. Ariete (Alarm_2, 4 fasi: 30+13+13+13 passi): **50** agli
+edifici, 5 se `slife=100` (il campo).
+
+**Edifici** [C, Create + placer]:
+
+| Edificio | Vita | Costo | Effetto | Tasto |
+|---|---|---|---|---|
+| Centro | 400 | — | +10 popcap; crea civili | — |
+| Casa | 120 | 50 legno | +10 popcap | Q |
+| Campo | 100 | 200 legno | cibo con un civile | R |
+| Mulino (`barn`) | 150 | 60 legno | deposito cibo | E |
+| Magazzino | 140 | 70 legno | deposito | W |
+| Caserma | 350 | 150 legno | guerriero/picchiere/arciere | D |
+| Stalla | 380 | 170 legno | cavaliere | F |
+| Castello | 900 | 850 pietra | catapulta/ariete, presidio 4 arcieri | G |
+| Chiesa (monastero) | 300 | 50 legno, 150 pietra | cura | T |
+| Torre | 330 | 200 pietra | presidio 2 arcieri | A |
+| Mura | 800 | 50 pietra (+40 per tratto) | | S |
+| Porte | 600 (orizz.) / 800 (vert.) | 100 oro | | Q |
+
+**Popolazione** [C]: `manager` Step taglia `global.popcap` a **99** a ogni
+passo, quindi il massimo reale è 99 (anche con il trucco +1000).
+
+**Tempi di produzione** [C per caserma, centro, stalla; [?] castello]: la
+barra va da 1 a 100, un punto per scatto di `alarm[0]`: caserma 1 passo
+(≈100 passi, 1,7 s), centro 10 passi (≈1000, 17 s), stalla 12 passi
+(≈1200, 20 s). Coda di 6 posti. Un'unità esce solo se
+`global.pop+1 < global.popcap`.
+
+Risorse limitate a 9999 (cibo, legno, oro; **non la pietra**) [C, `manager`
+Step].
+
+### 1.5 Difetti e incongruenze trovati nell'originale
+
+Da decidere caso per caso con l'autore quando si porta il sistema; il
+porting li **segnala nel commento** e per ora riproduce l'originale, salvo
+dove l'autore ha già deciso.
+
+1. **Ariete**: 60 oro dal pulsante (`ariete_clicker` Step) ma **30** col
+   tasto Q (`KeyPress_Q`) [C].
+2. **Annullare un picchiere** dalla coda della caserma restituisce 55 cibo
+   e **45 oro** invece di 45 legno (`caserma_indietro_clicker`) [C].
+3. **Popcap**: il centro dà +10 alla creazione ma toglie 5 alla
+   distruzione; castello e torre tolgono 5 alla distruzione senza averli mai
+   dati [C].
+4. **`ally_warrior` Alarm_2** legge `io_x`/`io_y` dentro `with` senza
+   averle dichiarate (la versione nemica le dichiara con `var`) [C]:
+   la "fuga" di catapulta/ariete colpiti dal guerriero alleato usa valori
+   indefiniti.
+5. **`ally_warrior` Collision_b_arciere_bullet**: `warwark!=4`, refuso
+   per `warwork` [C].
+6. **`enemy_manager_lv2` Step**: `l6exists` letta quando non è assegnata
+   (§1.2) [C].
+7. **Codice morto**: i proiettili di mischia (`warrior_bullet`,
+   `picchiere_bullet`, `cavaliere_bullet` e le versioni nemiche,
+   `ariete_bullet`, `enemy_ariete_bullet`, `build_bullet`) non li crea
+   nessuno: il danno in mischia è nell'Alarm_2 delle unità [C, nessun
+   `instance_create` che li citi].
+8. **Prestazioni**: ogni unità militare crea nel Create **una propria
+   griglia di flow field** grande come la room (in `match` 218×218 celle) e
+   la ricalcola a ogni ordine (`scr_generate_goal_field` +
+   `scr_generate_flow_field`) [C]. Nel porting si condivide un campo per
+   destinazione.

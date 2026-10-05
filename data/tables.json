@@ -1,0 +1,6173 @@
+{
+ "create_constants": {
+  "albero": {
+   "from": null,
+   "values": {
+    "selected": 0,
+    "wood": 150,
+    "woodwork": 0
+   }
+  },
+  "albero_debug": {
+   "from": null,
+   "values": {
+    "selected": 0,
+    "wood": 150,
+    "woodwork": 0
+   }
+  },
+  "albero_fake": {
+   "from": null,
+   "values": {
+    "selected": 0,
+    "wood": 150,
+    "woodwork": 0
+   }
+  },
+  "albero_morente": {
+   "from": null,
+   "values": {
+    "selected": 0,
+    "woodwork": 0
+   }
+  },
+  "ally": {
+   "from": null,
+   "values": {
+    "selected": 0
+   }
+  },
+  "ally_arciere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "atkorder": 0,
+    "autospeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "firework": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 55,
+    "phase": 1,
+    "presidiowork": 0,
+    "selected": 0,
+    "slife": 55,
+    "step": 0,
+    "targvalid": 0,
+    "warwork": 0
+   }
+  },
+  "ally_ariete": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "autospeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 125,
+    "phase": 1,
+    "slife": 125,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "ally_barn": {
+   "from": "ally_wooden",
+   "values": {
+    "fondazione": 0,
+    "legno": 1,
+    "pietra": 0
+   }
+  },
+  "ally_build": {
+   "from": "ally",
+   "values": {
+    "selected": 0
+   }
+  },
+  "ally_catapulta": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "automatic": 1,
+    "autospeed": 0,
+    "comp": 500,
+    "dc": 0,
+    "firework": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 100,
+    "loaded": 1,
+    "phase": 1,
+    "slife": 100,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "ally_cavaliere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "autospeed": 0,
+    "chargespeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "firework": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 90,
+    "phase": 1,
+    "slife": 90,
+    "step": 0,
+    "typem": 0,
+    "warwork": 0
+   }
+  },
+  "ally_fondamenta": {
+   "from": null,
+   "values": {
+    "fondazione": 1,
+    "legno": 0,
+    "pietra": 0
+   }
+  },
+  "ally_infantry": {
+   "from": "ally_unit",
+   "values": {
+    "action": 0,
+    "hov": 0,
+    "phase": 1,
+    "step": 0
+   }
+  },
+  "ally_magazza": {
+   "from": "ally_wooden",
+   "values": {
+    "fondazione": 0,
+    "legno": 1,
+    "pietra": 0
+   }
+  },
+  "ally_militare": {
+   "from": "ally_unit",
+   "values": {
+    "action": 0,
+    "hov": 0,
+    "phase": 1,
+    "step": 0
+   }
+  },
+  "ally_omino": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "autospeed": 0,
+    "buildarm": 0,
+    "buildwork": 0,
+    "buildx": 0,
+    "buildy": 0,
+    "dc": 0,
+    "direction": 0,
+    "fieldwork": 0,
+    "flaggox": 0,
+    "flaggoy": 0,
+    "food": 0,
+    "foodwork": 0,
+    "gold": 0,
+    "goldwork": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 50,
+    "pass": 1,
+    "path": 0,
+    "phase": 1,
+    "repairwork": 0,
+    "slife": 50,
+    "step": 0,
+    "stone": 0,
+    "stonework": 0,
+    "wood": 0,
+    "woodwork": 0
+   }
+  },
+  "ally_picchiere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "autospeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "direction": 0,
+    "firework": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 60,
+    "pass": 1,
+    "phase": 1,
+    "slife": 60,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "ally_unit": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "hov": 0,
+    "phase": 1,
+    "step": 0
+   }
+  },
+  "ally_warrior": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "autospeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "direction": 0,
+    "firework": 0,
+    "hit": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 75,
+    "pass": 1,
+    "phase": 1,
+    "rank": 3,
+    "slife": 75,
+    "step": 0,
+    "visib": 0,
+    "warwork": 0
+   }
+  },
+  "ally_wooden": {
+   "from": null,
+   "values": {
+    "fondazione": 0,
+    "legno": 1,
+    "pietra": 0
+   }
+  },
+  "anello": {
+   "from": null,
+   "values": {
+    "fade": 1,
+    "raggio": 0
+   }
+  },
+  "arciere_bullet": {
+   "from": null,
+   "values": {
+    "speed": 27
+   }
+  },
+  "arciere_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "arciere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "ariete_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "ariete_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "atk_signal": {
+   "from": null,
+   "values": {
+    "bounce": 0,
+    "fade": 0
+   }
+  },
+  "attacco_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "b_catapulta_bullet": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "deviance": 0,
+    "godown": 0,
+    "rota": 0,
+    "speed": 5,
+    "time": 0
+   }
+  },
+  "barn": {
+   "from": null,
+   "values": {
+    "action": 1,
+    "firestarted": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 150,
+    "onfire": 0,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 150
+   }
+  },
+  "barn_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "barn_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 149
+   }
+  },
+  "barn_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "barnruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "campo": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "foodwork": 0,
+    "life": 100,
+    "onfire": 0,
+    "selected": 0,
+    "slife": 100
+   }
+  },
+  "campo_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "campo_fond": {
+   "from": null,
+   "values": {
+    "depth": -1,
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "occupato": 0,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 100
+   }
+  },
+  "campo_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "casa": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 120,
+    "onfire": 0,
+    "pietra": 0,
+    "slife": 120
+   }
+  },
+  "casa_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "casa_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 119
+   }
+  },
+  "casa_placer": {
+   "from": null,
+   "values": {
+    "bounce": 0,
+    "place": 1
+   }
+  },
+  "casaruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "caserma": {
+   "from": null,
+   "values": {
+    "coda": 0,
+    "coda0": 0,
+    "coda1": 0,
+    "coda2": 0,
+    "coda3": 0,
+    "coda4": 0,
+    "coda5": 0,
+    "coda6": 0,
+    "firestarted": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 350,
+    "onfire": 0,
+    "pietra": 0,
+    "progression": 0,
+    "selected": 0,
+    "slife": 350
+   }
+  },
+  "caserma_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "caserma_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 349
+   }
+  },
+  "caserma_indietro_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "caserma_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "casruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "castello": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "coda": 0,
+    "coda0": 0,
+    "coda1": 0,
+    "coda2": 0,
+    "coda3": 0,
+    "coda4": 0,
+    "coda5": 0,
+    "coda6": 0,
+    "flagged1": 0,
+    "flagged2": 0,
+    "flagged3": 0,
+    "flagged4": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 900,
+    "npresidio": 0,
+    "pietra": 1,
+    "progression": 0,
+    "selected": 0,
+    "slife": 900,
+    "startflagger": 0
+   }
+  },
+  "castello_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "castello_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 899
+   }
+  },
+  "castello_indietro_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "castello_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "castelloruin": {
+   "from": null,
+   "values": {
+    "fase": 1,
+    "selected": 0,
+    "stone": 500,
+    "stonework": 0
+   }
+  },
+  "catapulta_bullet": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "deviance": 0,
+    "godown": 0,
+    "rota": 0,
+    "speed": 5,
+    "time": 0
+   }
+  },
+  "catapulta_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "catapulta_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "cavaliere_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "cavaliere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "cc_barn": {
+   "from": null,
+   "values": {
+    "life": 0,
+    "slife": 0
+   }
+  },
+  "ccruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "centro": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "coda": 0,
+    "firestarted": 0,
+    "fondazione": 0,
+    "foodir": 0,
+    "goldir": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 400,
+    "onfire": 0,
+    "pietra": 0,
+    "progression": 0,
+    "slife": 400,
+    "stonedir": 0,
+    "woodir": 0
+   }
+  },
+  "centro_indietro_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "chiesa": {
+   "from": null,
+   "values": {
+    "life": 300,
+    "selected": 0,
+    "slife": 300,
+    "startflagger": 0
+   }
+  },
+  "chiesa_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "chiesa_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 299
+   }
+  },
+  "chiesa_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "chiesaruin": {
+   "from": null,
+   "values": {
+    "fase": 1,
+    "selected": 0,
+    "stone": 75,
+    "stonework": 0
+   }
+  },
+  "cibo_prizedrawer": {
+   "from": null,
+   "values": {
+    "alf": 1
+   }
+  },
+  "dialogo_1_0": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "dialogo_1_1": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_3": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_4": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_5": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_6": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_7": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_1_8": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_0": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "dialogo_2_1": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "dialogo_2_10": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_11": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_12": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_13": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_14": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_3": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_4": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_5": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_6": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_7": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_8": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_2_9": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "dialogo_statua": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "difesa_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "enemy_arciere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 0,
+    "dc": 0,
+    "defender": 0,
+    "firework": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 55,
+    "phase": 1,
+    "rank": 2,
+    "slife": 55,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_arciere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "enemy_ariete": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 0,
+    "comp": 700,
+    "dc": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 125,
+    "phase": 1,
+    "slife": 125,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_ariete_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "enemy_caserma": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "hit": 0,
+    "life": 350,
+    "onfire": 0,
+    "prod": 1,
+    "role": 0,
+    "slife": 350
+   }
+  },
+  "enemy_catapulta": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "assi": 0,
+    "automatic": 1,
+    "autospeed": 0,
+    "comp": 500,
+    "dc": 0,
+    "firework": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 100,
+    "loaded": 1,
+    "phase": 1,
+    "slife": 100,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_catapulta_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "enemy_cavaliere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 0,
+    "chargespeed": 0,
+    "dc": 0,
+    "defender": 0,
+    "firework": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 90,
+    "phase": 1,
+    "rank": 5,
+    "slife": 90,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_cavaliere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "enemy_house": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "hit": 0,
+    "life": 120,
+    "onfire": 0,
+    "slife": 120
+   }
+  },
+  "enemy_manager_lv2": {
+   "from": null,
+   "values": {
+    "action": 1,
+    "dia14": 0,
+    "dirox": 112,
+    "diroy": 7449,
+    "l1": 0,
+    "l2": 0,
+    "l3": 0,
+    "l4": 0,
+    "l5": 0,
+    "l6": 0,
+    "l7": 0,
+    "liberati1": 0,
+    "x": 300,
+    "y": 300
+   }
+  },
+  "enemy_manager_menu": {
+   "from": null,
+   "values": {
+    "c_indhover": 0,
+    "c_unlhover": 0,
+    "campagnahover": 0,
+    "comb1": 0,
+    "comb1hmin": 0,
+    "comb1hplus": 0,
+    "comb2": 0,
+    "comb2hmin": 0,
+    "comb2hplus": 0,
+    "comb3": 0,
+    "comb3hmin": 0,
+    "comb3hplus": 0,
+    "comb4": 0,
+    "comb4hmin": 0,
+    "comb4hplus": 0,
+    "comb5": 0,
+    "comb5hmin": 0,
+    "comb5hplus": 0,
+    "hover": 0,
+    "lvlhover": 0,
+    "redamount": 0,
+    "sblocco": 0,
+    "sblocco_hover": 0
+   }
+  },
+  "enemy_picchiere": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 0,
+    "dc": 0,
+    "defender": 0,
+    "firework": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 60,
+    "phase": 1,
+    "rank": 3,
+    "slife": 60,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_picchiere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "enemy_stalla": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "hit": 0,
+    "life": 380,
+    "onfire": 0,
+    "slife": 380
+   }
+  },
+  "enemy_torre": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hit": 0,
+    "life": 330,
+    "slife": 330
+   }
+  },
+  "enemy_warrior": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 0,
+    "dc": 0,
+    "defender": 0,
+    "firework": 0,
+    "hov": 0,
+    "hover": 0,
+    "idling": 1,
+    "life": 75,
+    "phase": 1,
+    "rank": 3,
+    "slife": 75,
+    "step": 0,
+    "warwork": 0
+   }
+  },
+  "enemy_warrior_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "firestarter": {
+   "from": null,
+   "values": {
+    "visible": 0
+   }
+  },
+  "flameqq": {
+   "from": null,
+   "values": {
+    "aaa": 1,
+    "bbb": 1
+   }
+  },
+  "flameqq_nosmoke": {
+   "from": null,
+   "values": {
+    "aaa": 1,
+    "bbb": 1
+   }
+  },
+  "flameqq_small": {
+   "from": null,
+   "values": {
+    "aaa": 1,
+    "bbb": 1
+   }
+  },
+  "flm_signal": {
+   "from": null,
+   "values": {
+    "fade": 1
+   }
+  },
+  "fog01": {
+   "from": null,
+   "values": {
+    "alfa": 0
+   }
+  },
+  "food_blink": {
+   "from": null,
+   "values": {
+    "fad": 1
+   }
+  },
+  "gameover_manager": {
+   "from": null,
+   "values": {
+    "fogalpha": 0
+   }
+  },
+  "gate_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "gold_blink": {
+   "from": null,
+   "values": {
+    "fad": 1
+   }
+  },
+  "hint_attack": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_build": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_campi": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_create": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_create_2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_create_3": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_fire": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_fire_2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_idle": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posy": 170
+   }
+  },
+  "hint_iniziale": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posx": 20,
+    "posy": 170
+   }
+  },
+  "hint_legna": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_minimap": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posx": 20
+   }
+  },
+  "hint_multi": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_multi_2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_night": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posx": 420,
+    "posy": 170
+   }
+  },
+  "hint_objective": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posy": 20
+   }
+  },
+  "hint_objective2": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0,
+    "posy": 20
+   }
+  },
+  "hint_oro": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_pop": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_presidio": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_repair": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0
+   }
+  },
+  "hint_resource": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posx": 20,
+    "posy": 170
+   }
+  },
+  "hint_resource_tree": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "posx": 20,
+    "posy": 170
+   }
+  },
+  "hint_select": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_stone": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "hint_vista": {
+   "from": null,
+   "values": {
+    "arm": 0,
+    "hover": 0,
+    "posx": 20,
+    "posy": 170
+   }
+  },
+  "idle_clicker": {
+   "from": null,
+   "values": {
+    "hover": 0,
+    "orderu": 1
+   }
+  },
+  "legno_prizedrawer": {
+   "from": null,
+   "values": {
+    "alf": 1
+   }
+  },
+  "magazzino": {
+   "from": null,
+   "values": {
+    "action": 1,
+    "firestarted": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 140,
+    "onfire": 0,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 140
+   }
+  },
+  "magazzino_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "magazzino_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 139
+   }
+  },
+  "magazzino_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "magruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "manager": {
+   "from": null,
+   "values": {
+    "comp": 50,
+    "fogalpha": 1,
+    "fps_counter": 0,
+    "minim_hover": 0,
+    "minim_minushover": 0,
+    "minim_plushover": 0,
+    "minim_viewhover": 0,
+    "minim_viewhover_bis": 0
+   }
+  },
+  "miniera_oro": {
+   "from": null,
+   "values": {
+    "blinkfade": 1,
+    "foodir": 0,
+    "gold": 2500,
+    "goldir": 0,
+    "goldwork": 0,
+    "selected": 0,
+    "stonedir": 0,
+    "woodir": 0
+   }
+  },
+  "mouser": {
+   "from": null,
+   "values": {
+    "hoverfps": 0,
+    "hoverhints": 0,
+    "hovermenu": 0,
+    "hoverobj": 0,
+    "hoverpb": 0,
+    "hoverrestart": 0,
+    "hoverresume": 0,
+    "pausa": 0,
+    "pausarm": 1
+   }
+  },
+  "mplus_od": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "mplus_os": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "mplus_va": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "mplus_vb": {
+   "from": null,
+   "values": {
+    "hover": 0
+   }
+  },
+  "mura_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "mura_ori": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 800,
+    "pietra": 1,
+    "selected": 0,
+    "slife": 800
+   }
+  },
+  "mura_ori_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "phase": 0,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 799
+   }
+  },
+  "mura_placer": {
+   "from": null,
+   "values": {
+    "place": 1,
+    "posiz": 0
+   }
+  },
+  "mura_vert": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 800,
+    "pietra": 1,
+    "selected": 0,
+    "slife": 800
+   }
+  },
+  "mura_vert_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "phase": 0,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 799
+   }
+  },
+  "muraplacer_od": {
+   "from": null,
+   "values": {
+    "place": 1,
+    "posiz": 0
+   }
+  },
+  "muraplacer_os": {
+   "from": null,
+   "values": {
+    "place": 1,
+    "posiz": 0
+   }
+  },
+  "muraplacer_va": {
+   "from": null,
+   "values": {
+    "place": 1,
+    "posiz": 0
+   }
+  },
+  "muraplacer_vb": {
+   "from": null,
+   "values": {
+    "place": 1,
+    "posiz": 0
+   }
+  },
+  "nubeqq": {
+   "from": null,
+   "values": {
+    "aaa": 1,
+    "bbb": 1
+   }
+  },
+  "o_box1": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "hit": 0,
+    "life": 30,
+    "onfire": 0,
+    "slife": 30
+   }
+  },
+  "o_box2": {
+   "from": null,
+   "values": {
+    "firestarted": 0,
+    "hit": 0,
+    "life": 30,
+    "onfire": 0,
+    "slife": 30
+   }
+  },
+  "o_statua1": {
+   "from": null,
+   "values": {
+    "attiva": 0
+   }
+  },
+  "o_statua1_real": {
+   "from": null,
+   "values": {
+    "attiva": 0
+   }
+  },
+  "o_statua2": {
+   "from": null,
+   "values": {
+    "attiva": 0
+   }
+  },
+  "o_statua3": {
+   "from": null,
+   "values": {
+    "attiva": 0
+   }
+  },
+  "o_statua4": {
+   "from": null,
+   "values": {
+    "attiva": 0
+   }
+  },
+  "object122": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "object183": {
+   "from": null,
+   "values": {
+    "fondazione": 0,
+    "legno": 1,
+    "life": 120,
+    "pietra": 0,
+    "slife": 120
+   }
+  },
+  "omino_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "omino_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "oodl": {
+   "from": null,
+   "values": {
+    "life": 1,
+    "place": 1,
+    "posiz": 0,
+    "slife": 800
+   }
+  },
+  "oosl": {
+   "from": null,
+   "values": {
+    "life": 1,
+    "place": 1,
+    "posiz": 0,
+    "slife": 800
+   }
+  },
+  "oro_prizedrawer": {
+   "from": null,
+   "values": {
+    "alf": 1
+   }
+  },
+  "oval": {
+   "from": null,
+   "values": {
+    "life": 1,
+    "place": 1,
+    "posiz": 0,
+    "slife": 800
+   }
+  },
+  "ovbl": {
+   "from": null,
+   "values": {
+    "life": 1,
+    "place": 1,
+    "posiz": 0,
+    "slife": 800
+   }
+  },
+  "palo_1": {
+   "from": null,
+   "values": {
+    "life": 999,
+    "slife": 999
+   }
+  },
+  "picchiere_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "picchiere_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "pietr_piccolo": {
+   "from": null,
+   "values": {
+    "selected": 0,
+    "stone": 450,
+    "stonework": 0
+   }
+  },
+  "pietra_grande": {
+   "from": null,
+   "values": {
+    "fase": 1,
+    "selected": 0,
+    "stone": 850,
+    "stonework": 0
+   }
+  },
+  "pop_blink": {
+   "from": null,
+   "values": {
+    "fad": 1
+   }
+  },
+  "porta_ori": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 600,
+    "open": 0,
+    "openable": 1,
+    "pietra": 1,
+    "selected": 0,
+    "slife": 600
+   }
+  },
+  "porta_vert": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "armed": 1,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 800,
+    "open": 0,
+    "openable": 1,
+    "pietra": 1,
+    "selected": 0,
+    "slife": 800
+   }
+  },
+  "sfx_croce": {
+   "from": null,
+   "values": {
+    "alpha": 1
+   }
+  },
+  "sfx_sangue": {
+   "from": null,
+   "values": {
+    "alpha": 1
+   }
+  },
+  "stalla": {
+   "from": null,
+   "values": {
+    "coda": 0,
+    "firestarted": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 1,
+    "life": 380,
+    "onfire": 0,
+    "pietra": 0,
+    "progression": 0,
+    "selected": 0,
+    "slife": 380
+   }
+  },
+  "stalla_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "stalla_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 379
+   }
+  },
+  "stalla_indietro_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "stalla_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "stalruin": {
+   "from": null,
+   "values": {
+    "fading": 0,
+    "life": 0,
+    "slife": 50
+   }
+  },
+  "stone_blink": {
+   "from": null,
+   "values": {
+    "fad": 1
+   }
+  },
+  "tester_flowfield": {
+   "from": null,
+   "values": {
+    "action": 0,
+    "autospeed": 3,
+    "woodwork": 0
+   }
+  },
+  "torre": {
+   "from": null,
+   "values": {
+    "arm": 1,
+    "flagged": 0,
+    "fondazione": 0,
+    "hit": 0,
+    "legno": 0,
+    "life": 330,
+    "npresidio": 0,
+    "pietra": 1,
+    "selected": 0,
+    "slife": 330
+   }
+  },
+  "torre_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "torre_fond": {
+   "from": null,
+   "values": {
+    "fase": 0,
+    "fondazione": 1,
+    "legno": 0,
+    "life": 1,
+    "pietra": 0,
+    "selected": 0,
+    "slife": 329
+   }
+  },
+  "torre_placer": {
+   "from": null,
+   "values": {
+    "place": 1
+   }
+  },
+  "torreruin": {
+   "from": null,
+   "values": {
+    "fase": 1,
+    "selected": 0,
+    "stone": 100,
+    "stonework": 0
+   }
+  },
+  "victory_manager": {
+   "from": null,
+   "values": {
+    "clicloc": 0,
+    "fogalpha": 0
+   }
+  },
+  "warrior_clicker": {
+   "from": null,
+   "values": {
+    "active": 0,
+    "hover": 0
+   }
+  },
+  "warrior_corpse": {
+   "from": null,
+   "values": {
+    "step": 0
+   }
+  },
+  "wood_blink": {
+   "from": null,
+   "values": {
+    "fad": 1
+   }
+  }
+ },
+ "damage": {
+  "arciere_bullet": [
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet/Collision_enemy_arciere.gml",
+    "target": "enemy_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/arciere_bullet/Collision_enemy_ariete.gml",
+    "target": "enemy_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/arciere_bullet/Collision_enemy_catapulta.gml",
+    "target": "enemy_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/arciere_bullet/Collision_enemy_cavaliere.gml",
+    "target": "enemy_cavaliere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet/Collision_enemy_picchiere.gml",
+    "target": "enemy_picchiere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet/Collision_enemy_warrior.gml",
+    "target": "enemy_warrior"
+   }
+  ],
+  "arciere_bullet_t": [
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet_t/Collision_enemy_arciere.gml",
+    "target": "enemy_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/arciere_bullet_t/Collision_enemy_ariete.gml",
+    "target": "enemy_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/arciere_bullet_t/Collision_enemy_catapulta.gml",
+    "target": "enemy_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/arciere_bullet_t/Collision_enemy_cavaliere.gml",
+    "target": "enemy_cavaliere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet_t/Collision_enemy_picchiere.gml",
+    "target": "enemy_picchiere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/arciere_bullet_t/Collision_enemy_warrior.gml",
+    "target": "enemy_warrior"
+   }
+  ],
+  "ariete_bullet": [
+   {
+    "damage": 50,
+    "file": "objects/ariete_bullet/Collision_enemy_house.gml",
+    "target": "enemy_house"
+   }
+  ],
+  "b_arciere_bullet": [
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet/Collision_ally_arciere.gml",
+    "target": "ally_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/b_arciere_bullet/Collision_ally_ariete.gml",
+    "target": "ally_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/b_arciere_bullet/Collision_ally_catapulta.gml",
+    "target": "ally_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/b_arciere_bullet/Collision_ally_cavaliere.gml",
+    "target": "ally_cavaliere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/b_arciere_bullet/Collision_ally_omino.gml",
+    "target": "ally_omino"
+   },
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet/Collision_ally_picchiere.gml",
+    "target": "ally_picchiere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet/Collision_ally_warrior.gml",
+    "target": "ally_warrior"
+   }
+  ],
+  "b_arciere_bullet_t": [
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_arciere.gml",
+    "target": "ally_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_ariete.gml",
+    "target": "ally_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_catapulta.gml",
+    "target": "ally_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_cavaliere.gml",
+    "target": "ally_cavaliere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_omino.gml",
+    "target": "ally_omino"
+   },
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_picchiere.gml",
+    "target": "ally_picchiere"
+   },
+   {
+    "damage": 6,
+    "file": "objects/b_arciere_bullet_t/Collision_ally_warrior.gml",
+    "target": "ally_warrior"
+   }
+  ],
+  "cavaliere_bullet": [
+   {
+    "damage": 22,
+    "file": "objects/cavaliere_bullet/Collision_enemy_arciere.gml",
+    "target": "enemy_arciere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/cavaliere_bullet/Collision_enemy_ariete.gml",
+    "target": "enemy_ariete"
+   },
+   {
+    "damage": 5,
+    "file": "objects/cavaliere_bullet/Collision_enemy_catapulta.gml",
+    "target": "enemy_catapulta"
+   },
+   {
+    "damage": 5,
+    "file": "objects/cavaliere_bullet/Collision_enemy_cavaliere.gml",
+    "target": "enemy_cavaliere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/cavaliere_bullet/Collision_enemy_picchiere.gml",
+    "target": "enemy_picchiere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/cavaliere_bullet/Collision_enemy_warrior.gml",
+    "target": "enemy_warrior"
+   }
+  ],
+  "enemy_ariete_bullet": [
+   {
+    "damage": 5,
+    "file": "objects/enemy_ariete_bullet/Collision_campo.gml",
+    "target": "campo"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_casa.gml",
+    "target": "casa"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_caserma.gml",
+    "target": "caserma"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_castello.gml",
+    "target": "castello"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_centro.gml",
+    "target": "centro"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_chiesa.gml",
+    "target": "chiesa"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_magazzino.gml",
+    "target": "magazzino"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_mura_ori.gml",
+    "target": "mura_ori"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_mura_vert.gml",
+    "target": "mura_vert"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_porta_ori.gml",
+    "target": "porta_ori"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_porta_vert.gml",
+    "target": "porta_vert"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_stalla.gml",
+    "target": "stalla"
+   },
+   {
+    "damage": 50,
+    "file": "objects/enemy_ariete_bullet/Collision_torre.gml",
+    "target": "torre"
+   }
+  ],
+  "enemy_cavaliere_bullet": [
+   {
+    "damage": 22,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_arciere.gml",
+    "target": "ally_arciere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_ariete.gml",
+    "target": "ally_ariete"
+   },
+   {
+    "damage": 5,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_catapulta.gml",
+    "target": "ally_catapulta"
+   },
+   {
+    "damage": 5,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_cavaliere.gml",
+    "target": "ally_cavaliere"
+   },
+   {
+    "damage": 8,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_omino.gml",
+    "target": "ally_omino"
+   },
+   {
+    "damage": 3,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_picchiere.gml",
+    "target": "ally_picchiere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/enemy_cavaliere_bullet/Collision_ally_warrior.gml",
+    "target": "ally_warrior"
+   }
+  ],
+  "enemy_picchiere_bullet": [
+   {
+    "damage": 5,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_arciere.gml",
+    "target": "ally_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_ariete.gml",
+    "target": "ally_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_catapulta.gml",
+    "target": "ally_catapulta"
+   },
+   {
+    "damage": 8,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_cavaliere.gml",
+    "target": "ally_cavaliere"
+   },
+   {
+    "damage": 5,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_omino.gml",
+    "target": "ally_omino"
+   },
+   {
+    "damage": 3,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_picchiere.gml",
+    "target": "ally_picchiere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/enemy_picchiere_bullet/Collision_ally_warrior.gml",
+    "target": "ally_warrior"
+   }
+  ],
+  "enemy_warrior_bullet": [
+   {
+    "damage": 15,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_arciere.gml",
+    "target": "ally_arciere"
+   },
+   {
+    "damage": 7,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_ariete.gml",
+    "target": "ally_ariete"
+   },
+   {
+    "damage": 7,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_catapulta.gml",
+    "target": "ally_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_cavaliere.gml",
+    "target": "ally_cavaliere"
+   },
+   {
+    "damage": 8,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_omino.gml",
+    "target": "ally_omino"
+   },
+   {
+    "damage": 7,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_picchiere.gml",
+    "target": "ally_picchiere"
+   },
+   {
+    "damage": 7,
+    "file": "objects/enemy_warrior_bullet/Collision_ally_warrior.gml",
+    "target": "ally_warrior"
+   }
+  ],
+  "fire_bullet": [
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_barn.gml",
+    "target": "barn"
+   },
+   {
+    "damage": 20,
+    "file": "objects/fire_bullet/Collision_campo.gml",
+    "target": "campo"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_casa.gml",
+    "target": "casa"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_caserma.gml",
+    "target": "caserma"
+   },
+   {
+    "damage": 3,
+    "file": "objects/fire_bullet/Collision_centro.gml",
+    "target": "centro"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_enemy_caserma.gml",
+    "target": "enemy_caserma"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_enemy_house.gml",
+    "target": "enemy_house"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_enemy_stalla.gml",
+    "target": "enemy_stalla"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_magazzino.gml",
+    "target": "magazzino"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_o_box1.gml",
+    "target": "o_box1"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_o_box2.gml",
+    "target": "o_box2"
+   },
+   {
+    "damage": 5,
+    "file": "objects/fire_bullet/Collision_stalla.gml",
+    "target": "stalla"
+   }
+  ],
+  "picchiere_bullet": [
+   {
+    "damage": 5,
+    "file": "objects/picchiere_bullet/Collision_enemy_arciere.gml",
+    "target": "enemy_arciere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/picchiere_bullet/Collision_enemy_ariete.gml",
+    "target": "enemy_ariete"
+   },
+   {
+    "damage": 3,
+    "file": "objects/picchiere_bullet/Collision_enemy_catapulta.gml",
+    "target": "enemy_catapulta"
+   },
+   {
+    "damage": 8,
+    "file": "objects/picchiere_bullet/Collision_enemy_cavaliere.gml",
+    "target": "enemy_cavaliere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/picchiere_bullet/Collision_enemy_picchiere.gml",
+    "target": "enemy_picchiere"
+   },
+   {
+    "damage": 3,
+    "file": "objects/picchiere_bullet/Collision_enemy_warrior.gml",
+    "target": "enemy_warrior"
+   }
+  ],
+  "warrior_bullet": [
+   {
+    "damage": 15,
+    "file": "objects/warrior_bullet/Collision_enemy_arciere.gml",
+    "target": "enemy_arciere"
+   },
+   {
+    "damage": 7,
+    "file": "objects/warrior_bullet/Collision_enemy_ariete.gml",
+    "target": "enemy_ariete"
+   },
+   {
+    "damage": 7,
+    "file": "objects/warrior_bullet/Collision_enemy_catapulta.gml",
+    "target": "enemy_catapulta"
+   },
+   {
+    "damage": 4,
+    "file": "objects/warrior_bullet/Collision_enemy_cavaliere.gml",
+    "target": "enemy_cavaliere"
+   },
+   {
+    "damage": 7,
+    "file": "objects/warrior_bullet/Collision_enemy_picchiere.gml",
+    "target": "enemy_picchiere"
+   },
+   {
+    "damage": 7,
+    "file": "objects/warrior_bullet/Collision_enemy_warrior.gml",
+    "target": "enemy_warrior"
+   }
+  ]
+ },
+ "population": {
+  "ally_arciere": [
+   {
+    "file": "objects/ally_arciere/Alarm_3.gml",
+    "op": "-=",
+    "value": 2,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_arciere/Create.gml",
+    "op": "+=",
+    "value": 2,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_arciere/Step.gml",
+    "op": "-=",
+    "value": 2,
+    "var": "pop"
+   }
+  ],
+  "ally_ariete": [
+   {
+    "file": "objects/ally_ariete/Alarm_3.gml",
+    "op": "-=",
+    "value": 3,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_ariete/Create.gml",
+    "op": "+=",
+    "value": 3,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_ariete/Step.gml",
+    "op": "-=",
+    "value": 3,
+    "var": "pop"
+   }
+  ],
+  "ally_catapulta": [
+   {
+    "file": "objects/ally_catapulta/Alarm_3.gml",
+    "op": "-=",
+    "value": 3,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_catapulta/Create.gml",
+    "op": "+=",
+    "value": 3,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_catapulta/Step.gml",
+    "op": "-=",
+    "value": 3,
+    "var": "pop"
+   }
+  ],
+  "ally_cavaliere": [
+   {
+    "file": "objects/ally_cavaliere/Create.gml",
+    "op": "+=",
+    "value": 3,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_cavaliere/Step.gml",
+    "op": "-=",
+    "value": 3,
+    "var": "pop"
+   }
+  ],
+  "ally_omino": [
+   {
+    "file": "objects/ally_omino/Alarm_3.gml",
+    "op": "-=",
+    "value": 1,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_omino/Create.gml",
+    "op": "+=",
+    "value": 1,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_omino/Step.gml",
+    "op": "-=",
+    "value": 1,
+    "var": "pop"
+   }
+  ],
+  "ally_picchiere": [
+   {
+    "file": "objects/ally_picchiere/Create.gml",
+    "op": "+=",
+    "value": 2,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_picchiere/Step.gml",
+    "op": "-=",
+    "value": 2,
+    "var": "pop"
+   }
+  ],
+  "ally_warrior": [
+   {
+    "file": "objects/ally_warrior/Create.gml",
+    "op": "+=",
+    "value": 2,
+    "var": "pop"
+   },
+   {
+    "file": "objects/ally_warrior/Step.gml",
+    "op": "-=",
+    "value": 2,
+    "var": "pop"
+   }
+  ],
+  "casa": [
+   {
+    "file": "objects/casa/Create.gml",
+    "op": "+=",
+    "value": 10,
+    "var": "popcap"
+   },
+   {
+    "file": "objects/casa/Step.gml",
+    "op": "-=",
+    "value": 10,
+    "var": "popcap"
+   }
+  ],
+  "castello": [
+   {
+    "file": "objects/castello/Step.gml",
+    "op": "-=",
+    "value": 5,
+    "var": "popcap"
+   }
+  ],
+  "centro": [
+   {
+    "file": "objects/centro/Create.gml",
+    "op": "+=",
+    "value": 10,
+    "var": "popcap"
+   },
+   {
+    "file": "objects/centro/Step.gml",
+    "op": "-=",
+    "value": 5,
+    "var": "popcap"
+   }
+  ],
+  "manager": [
+   {
+    "file": "objects/manager/Create.gml",
+    "op": "=",
+    "value": 0,
+    "var": "pop"
+   },
+   {
+    "file": "objects/manager/Create.gml",
+    "op": "=",
+    "value": 990,
+    "var": "popcap"
+   },
+   {
+    "file": "objects/manager/KeyPress_P.gml",
+    "op": "+=",
+    "value": 1000,
+    "var": "popcap"
+   },
+   {
+    "file": "objects/manager/Step.gml",
+    "op": "=",
+    "value": 99,
+    "var": "popcap"
+   }
+  ],
+  "object183": [
+   {
+    "file": "objects/object183/Create.gml",
+    "op": "+=",
+    "value": 10,
+    "var": "popcap"
+   },
+   {
+    "file": "objects/object183/Step.gml",
+    "op": "-=",
+    "value": 5,
+    "var": "popcap"
+   }
+  ],
+  "torre": [
+   {
+    "file": "objects/torre/Step.gml",
+    "op": "-=",
+    "value": 5,
+    "var": "popcap"
+   }
+  ]
+ },
+ "resources": {
+  "ally_omino": [
+   {
+    "file": "objects/ally_omino/Alarm_2.gml",
+    "op": ">",
+    "resource": "stone",
+    "value": 0
+   },
+   {
+    "file": "objects/ally_omino/Alarm_2.gml",
+    "op": ">",
+    "resource": "wood",
+    "value": 0
+   }
+  ],
+  "arciere_clicker": [
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/KeyPress_E.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/arciere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 55
+   }
+  ],
+  "ariete_clicker": [
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 30
+   },
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 60
+   },
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 60
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 60
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 60
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/ariete_clicker/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 60
+   }
+  ],
+  "barn_clicker": [
+   {
+    "file": "objects/barn_clicker/KeyPress_E.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 60
+   },
+   {
+    "file": "objects/barn_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 60
+   }
+  ],
+  "barn_fond": [
+   {
+    "file": "objects/barn_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 60
+   }
+  ],
+  "barn_placer": [
+   {
+    "file": "objects/barn_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 60
+   },
+   {
+    "file": "objects/barn_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 60
+   }
+  ],
+  "build_bullet": [
+   {
+    "file": "objects/build_bullet/Collision_barn.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_barn.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_casa.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_casa.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_caserma.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_caserma.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_castello.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_castello.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_centro.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_centro.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_chiesa.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_chiesa.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_magazzino.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_magazzino.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_stalla.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_stalla.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_torre.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 1
+   },
+   {
+    "file": "objects/build_bullet/Collision_torre.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 1
+   }
+  ],
+  "campo_clicker": [
+   {
+    "file": "objects/campo_clicker/KeyPress_R.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/campo_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 200
+   }
+  ],
+  "campo_fond": [
+   {
+    "file": "objects/campo_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 200
+   }
+  ],
+  "campo_placer": [
+   {
+    "file": "objects/campo_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/campo_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 200
+   }
+  ],
+  "casa_clicker": [
+   {
+    "file": "objects/casa_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/casa_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   }
+  ],
+  "casa_fond": [
+   {
+    "file": "objects/casa_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 50
+   }
+  ],
+  "casa_placer": [
+   {
+    "file": "objects/casa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/casa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   }
+  ],
+  "caserma_clicker": [
+   {
+    "file": "objects/caserma_clicker/KeyPress_D.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 150
+   },
+   {
+    "file": "objects/caserma_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 150
+   }
+  ],
+  "caserma_fond": [
+   {
+    "file": "objects/caserma_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 150
+   }
+  ],
+  "caserma_indietro_clicker": [
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 45
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/KeyPress_R.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 45
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/caserma_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 55
+   }
+  ],
+  "caserma_placer": [
+   {
+    "file": "objects/caserma_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 150
+   },
+   {
+    "file": "objects/caserma_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 150
+   }
+  ],
+  "castello_clicker": [
+   {
+    "file": "objects/castello_clicker/KeyPress_G.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 850
+   },
+   {
+    "file": "objects/castello_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 850
+   }
+  ],
+  "castello_fond": [
+   {
+    "file": "objects/castello_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 850
+   }
+  ],
+  "castello_indietro_clicker": [
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 30
+   },
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 100
+   },
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/castello_indietro_clicker/KeyPress_E.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 55
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 250
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 30
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 100
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 40
+   },
+   {
+    "file": "objects/castello_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 55
+   }
+  ],
+  "castello_placer": [
+   {
+    "file": "objects/castello_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 850
+   },
+   {
+    "file": "objects/castello_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 850
+   }
+  ],
+  "catapulta_clicker": [
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/KeyPress_W.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 200
+   },
+   {
+    "file": "objects/catapulta_clicker/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 100
+   }
+  ],
+  "cavaliere_clicker": [
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/cavaliere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 70
+   }
+  ],
+  "centro_indietro_clicker": [
+   {
+    "file": "objects/centro_indietro_clicker/KeyPress_W.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/centro_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   }
+  ],
+  "chiesa_clicker": [
+   {
+    "file": "objects/chiesa_clicker/KeyPress_T.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_clicker/KeyPress_T.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_clicker/KeyPress_T.gml",
+    "op": "<",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_clicker/KeyPress_T.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml",
+    "op": "<",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 50
+   }
+  ],
+  "chiesa_fond": [
+   {
+    "file": "objects/chiesa_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 150
+   }
+  ],
+  "chiesa_placer": [
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 150
+   },
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "<",
+    "resource": "stone",
+    "value": 150
+   }
+  ],
+  "enemy_manager_lv2": [
+   {
+    "file": "objects/enemy_manager_lv2/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 100
+   },
+   {
+    "file": "objects/enemy_manager_lv2/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 100
+   }
+  ],
+  "gate_clicker": [
+   {
+    "file": "objects/gate_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/gate_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/gate_clicker/Mouse_LeftReleased.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 100
+   },
+   {
+    "file": "objects/gate_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 100
+   }
+  ],
+  "magazzino_clicker": [
+   {
+    "file": "objects/magazzino_clicker/KeyPress_W.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 70
+   },
+   {
+    "file": "objects/magazzino_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 70
+   }
+  ],
+  "magazzino_fond": [
+   {
+    "file": "objects/magazzino_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 70
+   }
+  ],
+  "magazzino_placer": [
+   {
+    "file": "objects/magazzino_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 70
+   },
+   {
+    "file": "objects/magazzino_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 70
+   }
+  ],
+  "manager": [
+   {
+    "file": "objects/manager/KeyPress_F.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 1000
+   },
+   {
+    "file": "objects/manager/KeyPress_Q.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 1000
+   },
+   {
+    "file": "objects/manager/KeyPress_S.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 1000
+   },
+   {
+    "file": "objects/manager/KeyPress_W.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 1000
+   },
+   {
+    "file": "objects/manager/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 250
+   },
+   {
+    "file": "objects/manager/Step.gml",
+    "op": ">",
+    "resource": "food",
+    "value": 9999
+   },
+   {
+    "file": "objects/manager/Step.gml",
+    "op": ">",
+    "resource": "wood",
+    "value": 9999
+   },
+   {
+    "file": "objects/manager/Step.gml",
+    "op": ">",
+    "resource": "gold",
+    "value": 9999
+   }
+  ],
+  "mplus_od": [
+   {
+    "file": "objects/mplus_od/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "mplus_os": [
+   {
+    "file": "objects/mplus_os/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "mplus_va": [
+   {
+    "file": "objects/mplus_va/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "mplus_vb": [
+   {
+    "file": "objects/mplus_vb/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "mura_clicker": [
+   {
+    "file": "objects/mura_clicker/KeyPress_S.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 50
+   },
+   {
+    "file": "objects/mura_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 50
+   }
+  ],
+  "mura_ori_fond": [
+   {
+    "file": "objects/mura_ori_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 50
+   }
+  ],
+  "mura_placer": [
+   {
+    "file": "objects/mura_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 50
+   },
+   {
+    "file": "objects/mura_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 50
+   }
+  ],
+  "mura_vert_fond": [
+   {
+    "file": "objects/mura_vert_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 50
+   }
+  ],
+  "o_box1": [
+   {
+    "file": "objects/o_box1/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 75
+   },
+   {
+    "file": "objects/o_box1/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/o_box1/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   }
+  ],
+  "o_box2": [
+   {
+    "file": "objects/o_box2/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 75
+   },
+   {
+    "file": "objects/o_box2/Step.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 50
+   },
+   {
+    "file": "objects/o_box2/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   }
+  ],
+  "object122": [
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/object122/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 35
+   }
+  ],
+  "omino_clicker": [
+   {
+    "file": "objects/omino_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/omino_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/omino_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/omino_clicker/Step.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/omino_clicker/Step.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/omino_clicker/Step.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 50
+   }
+  ],
+  "oodl": [
+   {
+    "file": "objects/oodl/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 40
+   },
+   {
+    "file": "objects/oodl/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "oosl": [
+   {
+    "file": "objects/oosl/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 40
+   },
+   {
+    "file": "objects/oosl/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "oval": [
+   {
+    "file": "objects/oval/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 40
+   },
+   {
+    "file": "objects/oval/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "ovbl": [
+   {
+    "file": "objects/ovbl/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 40
+   },
+   {
+    "file": "objects/ovbl/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 40
+   }
+  ],
+  "picchiere_clicker": [
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 45
+   },
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 45
+   },
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/KeyPress_W.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 45
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 45
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": "<",
+    "resource": "wood",
+    "value": 45
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 55
+   },
+   {
+    "file": "objects/picchiere_clicker/Step.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 45
+   }
+  ],
+  "stalla_clicker": [
+   {
+    "file": "objects/stalla_clicker/KeyPress_F.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 170
+   },
+   {
+    "file": "objects/stalla_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 170
+   }
+  ],
+  "stalla_fond": [
+   {
+    "file": "objects/stalla_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "wood",
+    "value": 170
+   }
+  ],
+  "stalla_indietro_clicker": [
+   {
+    "file": "objects/stalla_indietro_clicker/KeyPress_W.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/stalla_indietro_clicker/KeyPress_W.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   },
+   {
+    "file": "objects/stalla_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "gold",
+    "value": 70
+   },
+   {
+    "file": "objects/stalla_indietro_clicker/Step.gml",
+    "op": "+=",
+    "resource": "food",
+    "value": 50
+   }
+  ],
+  "stalla_placer": [
+   {
+    "file": "objects/stalla_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "wood",
+    "value": 170
+   },
+   {
+    "file": "objects/stalla_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "wood",
+    "value": 170
+   }
+  ],
+  "torre_clicker": [
+   {
+    "file": "objects/torre_clicker/KeyPress_A.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 200
+   },
+   {
+    "file": "objects/torre_clicker/Mouse_LeftReleased.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 200
+   }
+  ],
+  "torre_fond": [
+   {
+    "file": "objects/torre_fond/KeyPress_Delete.gml",
+    "op": "+=",
+    "resource": "stone",
+    "value": 200
+   }
+  ],
+  "torre_placer": [
+   {
+    "file": "objects/torre_placer/Mouse_GlobalLeftPressed.gml",
+    "op": "-=",
+    "resource": "stone",
+    "value": 200
+   },
+   {
+    "file": "objects/torre_placer/Mouse_GlobalLeftPressed.gml",
+    "op": ">=",
+    "resource": "stone",
+    "value": 200
+   }
+  ],
+  "warrior_clicker": [
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/KeyPress_Q.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": "-=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": "-=",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": "<",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": "<",
+    "resource": "gold",
+    "value": 35
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": ">=",
+    "resource": "food",
+    "value": 75
+   },
+   {
+    "file": "objects/warrior_clicker/Step.gml",
+    "op": ">=",
+    "resource": "gold",
+    "value": 35
+   }
+  ]
+ },
+ "spawns": {
+  "albero": [
+   {
+    "creates": "albero_morente",
+    "file": "objects/albero/Destroy.gml"
+   },
+   {
+    "creates": "hint_legna",
+    "file": "objects/albero/Mouse_MouseEnter.gml"
+   }
+  ],
+  "ally_arciere": [
+   {
+    "creates": "arciere_bullet",
+    "file": "objects/ally_arciere/Alarm_2.gml"
+   },
+   {
+    "creates": "ally_arciere",
+    "file": "objects/ally_arciere/Alarm_3.gml"
+   },
+   {
+    "creates": "hint_multi",
+    "file": "objects/ally_arciere/Step.gml"
+   },
+   {
+    "creates": "arciere_corpse",
+    "file": "objects/ally_arciere/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_arciere/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_arciere/Step.gml"
+   }
+  ],
+  "ally_ariete": [
+   {
+    "creates": "ally_ariete",
+    "file": "objects/ally_ariete/Alarm_3.gml"
+   },
+   {
+    "creates": "ariete_corpse",
+    "file": "objects/ally_ariete/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_ariete/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_ariete/Step.gml"
+   }
+  ],
+  "ally_catapulta": [
+   {
+    "creates": "catapulta_bullet",
+    "file": "objects/ally_catapulta/Alarm_2.gml"
+   },
+   {
+    "creates": "ally_catapulta",
+    "file": "objects/ally_catapulta/Alarm_3.gml"
+   },
+   {
+    "creates": "catapulta_bullet",
+    "file": "objects/ally_catapulta/Other_GameEnd.gml"
+   },
+   {
+    "creates": "catapulta_corpse",
+    "file": "objects/ally_catapulta/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_catapulta/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_catapulta/Step.gml"
+   }
+  ],
+  "ally_cavaliere": [
+   {
+    "creates": "hint_multi",
+    "file": "objects/ally_cavaliere/Step.gml"
+   },
+   {
+    "creates": "cavaliere_corpse",
+    "file": "objects/ally_cavaliere/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_cavaliere/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_cavaliere/Step.gml"
+   }
+  ],
+  "ally_omino": [
+   {
+    "creates": "ally_omino",
+    "file": "objects/ally_omino/Alarm_3.gml"
+   },
+   {
+    "creates": "omino_corpse",
+    "file": "objects/ally_omino/Step.gml"
+   },
+   {
+    "creates": "food_bullet",
+    "file": "objects/ally_omino/Step.gml"
+   },
+   {
+    "creates": "legno_prizedrawer",
+    "file": "objects/ally_omino/Step.gml"
+   }
+  ],
+  "ally_omino_creator": [
+   {
+    "creates": "ally_omino",
+    "file": "objects/ally_omino_creator/Step.gml"
+   }
+  ],
+  "ally_picchiere": [
+   {
+    "creates": "fire_bullet",
+    "file": "objects/ally_picchiere/Alarm_4.gml"
+   },
+   {
+    "creates": "hint_multi",
+    "file": "objects/ally_picchiere/Step.gml"
+   },
+   {
+    "creates": "picchiere_corpse",
+    "file": "objects/ally_picchiere/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_picchiere/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_picchiere/Step.gml"
+   }
+  ],
+  "ally_warrior": [
+   {
+    "creates": "fire_bullet",
+    "file": "objects/ally_warrior/Alarm_4.gml"
+   },
+   {
+    "creates": "warrior_corpse",
+    "file": "objects/ally_warrior/Step.gml"
+   },
+   {
+    "creates": "attacco_clicker",
+    "file": "objects/ally_warrior/Step.gml"
+   },
+   {
+    "creates": "difesa_clicker",
+    "file": "objects/ally_warrior/Step.gml"
+   },
+   {
+    "creates": "hint_multi",
+    "file": "objects/ally_warrior/Step.gml"
+   }
+  ],
+  "arciere_clicker": [
+   {
+    "creates": "wood_blink",
+    "file": "objects/arciere_clicker/KeyPress_E.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/arciere_clicker/KeyPress_E.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/arciere_clicker/KeyPress_E.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/arciere_clicker/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/arciere_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/arciere_clicker/Step.gml"
+   }
+  ],
+  "ariete_clicker": [
+   {
+    "creates": "wood_blink",
+    "file": "objects/ariete_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/ariete_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/ariete_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/ariete_clicker/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/ariete_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/ariete_clicker/Step.gml"
+   }
+  ],
+  "b_catapulta_bullet": [
+   {
+    "creates": "sfx_mattone",
+    "file": "objects/b_catapulta_bullet/Destroy.gml"
+   },
+   {
+    "creates": "sfx_sangue",
+    "file": "objects/b_catapulta_bullet/Destroy.gml"
+   },
+   {
+    "creates": "sfx_erba",
+    "file": "objects/b_catapulta_bullet/Destroy.gml"
+   }
+  ],
+  "barn": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/barn/Alarm_0.gml"
+   },
+   {
+    "creates": "barnruin",
+    "file": "objects/barn/Step.gml"
+   }
+  ],
+  "barn_clicker": [
+   {
+    "creates": "barn_placer",
+    "file": "objects/barn_clicker/KeyPress_E.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/barn_clicker/KeyPress_E.gml"
+   },
+   {
+    "creates": "barn_placer",
+    "file": "objects/barn_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/barn_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "barn_fond": [
+   {
+    "creates": "barn",
+    "file": "objects/barn_fond/Step.gml"
+   }
+  ],
+  "barn_placer": [
+   {
+    "creates": "barn_fond",
+    "file": "objects/barn_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/barn_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "barnruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/barnruin/Alarm_0.gml"
+   }
+  ],
+  "campo": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/campo/Alarm_2.gml"
+   },
+   {
+    "creates": "hint_campi",
+    "file": "objects/campo/Mouse_MouseEnter.gml"
+   }
+  ],
+  "campo_clicker": [
+   {
+    "creates": "campo_placer",
+    "file": "objects/campo_clicker/KeyPress_R.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/campo_clicker/KeyPress_R.gml"
+   },
+   {
+    "creates": "campo_placer",
+    "file": "objects/campo_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/campo_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "campo_fond": [
+   {
+    "creates": "campo",
+    "file": "objects/campo_fond/Step.gml"
+   }
+  ],
+  "campo_placer": [
+   {
+    "creates": "campo_fond",
+    "file": "objects/campo_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/campo_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "casa": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/casa/Alarm_0.gml"
+   },
+   {
+    "creates": "casaruin",
+    "file": "objects/casa/Step.gml"
+   },
+   {
+    "creates": "hint_pop",
+    "file": "objects/casa/Step.gml"
+   }
+  ],
+  "casa_clicker": [
+   {
+    "creates": "casa_placer",
+    "file": "objects/casa_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/casa_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "casa_placer",
+    "file": "objects/casa_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/casa_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "casa_fond": [
+   {
+    "creates": "casa",
+    "file": "objects/casa_fond/Step.gml"
+   }
+  ],
+  "casa_placer": [
+   {
+    "creates": "casa_fond",
+    "file": "objects/casa_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/casa_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "casaruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/casaruin/Alarm_0.gml"
+   }
+  ],
+  "caserma": [
+   {
+    "creates": "pop_blink",
+    "file": "objects/caserma/Alarm_0.gml"
+   },
+   {
+    "creates": "ally_warrior",
+    "file": "objects/caserma/Alarm_0.gml"
+   },
+   {
+    "creates": "ally_picchiere",
+    "file": "objects/caserma/Alarm_0.gml"
+   },
+   {
+    "creates": "ally_arciere",
+    "file": "objects/caserma/Alarm_0.gml"
+   },
+   {
+    "creates": "nubeqq",
+    "file": "objects/caserma/Alarm_1.gml"
+   },
+   {
+    "creates": "casruin",
+    "file": "objects/caserma/Step.gml"
+   },
+   {
+    "creates": "warrior_clicker",
+    "file": "objects/caserma/Step.gml"
+   },
+   {
+    "creates": "picchiere_clicker",
+    "file": "objects/caserma/Step.gml"
+   },
+   {
+    "creates": "arciere_clicker",
+    "file": "objects/caserma/Step.gml"
+   },
+   {
+    "creates": "caserma_indietro_clicker",
+    "file": "objects/caserma/Step.gml"
+   }
+  ],
+  "caserma_clicker": [
+   {
+    "creates": "caserma_placer",
+    "file": "objects/caserma_clicker/KeyPress_D.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/caserma_clicker/KeyPress_D.gml"
+   },
+   {
+    "creates": "caserma_placer",
+    "file": "objects/caserma_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/caserma_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "caserma_fond": [
+   {
+    "creates": "caserma",
+    "file": "objects/caserma_fond/Step.gml"
+   }
+  ],
+  "caserma_placer": [
+   {
+    "creates": "caserma_fond",
+    "file": "objects/caserma_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/caserma_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "casruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/casruin/Alarm_0.gml"
+   }
+  ],
+  "castello": [
+   {
+    "creates": "pop_blink",
+    "file": "objects/castello/Alarm_1.gml"
+   },
+   {
+    "creates": "ally_ariete",
+    "file": "objects/castello/Alarm_1.gml"
+   },
+   {
+    "creates": "ally_catapulta",
+    "file": "objects/castello/Alarm_1.gml"
+   },
+   {
+    "creates": "ally_arciere",
+    "file": "objects/castello/Alarm_1.gml"
+   },
+   {
+    "creates": "hint_presidio",
+    "file": "objects/castello/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "arciere_bullet_t",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "ariete_clicker",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "catapulta_clicker",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "castello_indietro_clicker",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "castelloruin",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "flag_r",
+    "file": "objects/castello/Step.gml"
+   },
+   {
+    "creates": "flag_r2",
+    "file": "objects/castello/Step.gml"
+   }
+  ],
+  "castello_clicker": [
+   {
+    "creates": "castello_placer",
+    "file": "objects/castello_clicker/KeyPress_G.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/castello_clicker/KeyPress_G.gml"
+   },
+   {
+    "creates": "castello_placer",
+    "file": "objects/castello_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/castello_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "castello_fond": [
+   {
+    "creates": "castello",
+    "file": "objects/castello_fond/Step.gml"
+   }
+  ],
+  "castello_placer": [
+   {
+    "creates": "castello_fond",
+    "file": "objects/castello_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/castello_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "castelloruin": [
+   {
+    "creates": "castelloruin_morente",
+    "file": "objects/castelloruin/Destroy.gml"
+   }
+  ],
+  "catapulta_bullet": [
+   {
+    "creates": "sfx_mattone",
+    "file": "objects/catapulta_bullet/Destroy.gml"
+   },
+   {
+    "creates": "sfx_sangue",
+    "file": "objects/catapulta_bullet/Destroy.gml"
+   },
+   {
+    "creates": "sfx_erba",
+    "file": "objects/catapulta_bullet/Destroy.gml"
+   }
+  ],
+  "catapulta_clicker": [
+   {
+    "creates": "wood_blink",
+    "file": "objects/catapulta_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/catapulta_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/catapulta_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/catapulta_clicker/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/catapulta_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/catapulta_clicker/Step.gml"
+   }
+  ],
+  "cavaliere_clicker": [
+   {
+    "creates": "food_blink",
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/cavaliere_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "food_blink",
+    "file": "objects/cavaliere_clicker/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/cavaliere_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/cavaliere_clicker/Step.gml"
+   }
+  ],
+  "ccruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/ccruin/Alarm_0.gml"
+   }
+  ],
+  "centro": [
+   {
+    "creates": "pop_blink",
+    "file": "objects/centro/Alarm_0.gml"
+   },
+   {
+    "creates": "ally_omino",
+    "file": "objects/centro/Alarm_0.gml"
+   },
+   {
+    "creates": "nubeqq",
+    "file": "objects/centro/Alarm_2.gml"
+   },
+   {
+    "creates": "cc_barn",
+    "file": "objects/centro/Create.gml"
+   },
+   {
+    "creates": "arciere_bullet_t",
+    "file": "objects/centro/Step.gml"
+   },
+   {
+    "creates": "ccruin",
+    "file": "objects/centro/Step.gml"
+   },
+   {
+    "creates": "gameover_manager",
+    "file": "objects/centro/Step.gml"
+   },
+   {
+    "creates": "omino_clicker",
+    "file": "objects/centro/Step.gml"
+   },
+   {
+    "creates": "centro_indietro_clicker",
+    "file": "objects/centro/Step.gml"
+   }
+  ],
+  "chiesa": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/chiesa/Alarm_0.gml"
+   },
+   {
+    "creates": "chiesaruin",
+    "file": "objects/chiesa/Step.gml"
+   }
+  ],
+  "chiesa_clicker": [
+   {
+    "creates": "chiesa_placer",
+    "file": "objects/chiesa_clicker/KeyPress_T.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/chiesa_clicker/KeyPress_T.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/chiesa_clicker/KeyPress_T.gml"
+   },
+   {
+    "creates": "chiesa_placer",
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/chiesa_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "chiesa_fond": [
+   {
+    "creates": "chiesa",
+    "file": "objects/chiesa_fond/Step.gml"
+   }
+  ],
+  "chiesa_placer": [
+   {
+    "creates": "chiesa_fond",
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/chiesa_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "chiesaruin": [
+   {
+    "creates": "chiesaruin_morente",
+    "file": "objects/chiesaruin/Destroy.gml"
+   }
+  ],
+  "dialogo_1_0": [
+   {
+    "creates": "dialogo_1_1",
+    "file": "objects/dialogo_1_0/Destroy.gml"
+   }
+  ],
+  "dialogo_1_1": [
+   {
+    "creates": "dialogo_1_2",
+    "file": "objects/dialogo_1_1/Destroy.gml"
+   }
+  ],
+  "dialogo_1_2": [
+   {
+    "creates": "objective_button",
+    "file": "objects/dialogo_1_2/Create.gml"
+   }
+  ],
+  "dialogo_1_8": [
+   {
+    "creates": "victory_manager",
+    "file": "objects/dialogo_1_8/Destroy.gml"
+   }
+  ],
+  "dialogo_2_1": [
+   {
+    "creates": "dialogo_2_2",
+    "file": "objects/dialogo_2_1/Destroy.gml"
+   }
+  ],
+  "dialogo_2_13": [
+   {
+    "creates": "palo_1",
+    "file": "objects/dialogo_2_13/Create.gml"
+   }
+  ],
+  "dialogo_2_2": [
+   {
+    "creates": "dialogo_2_3",
+    "file": "objects/dialogo_2_2/Destroy.gml"
+   }
+  ],
+  "dialogo_2_3": [
+   {
+    "creates": "dialogo_2_4",
+    "file": "objects/dialogo_2_3/Destroy.gml"
+   }
+  ],
+  "dialogo_2_4": [
+   {
+    "creates": "magazzino",
+    "file": "objects/dialogo_2_4/Create.gml"
+   },
+   {
+    "creates": "dialogo_2_5",
+    "file": "objects/dialogo_2_4/Destroy.gml"
+   }
+  ],
+  "dialogo_2_5": [
+   {
+    "creates": "palo_1",
+    "file": "objects/dialogo_2_5/Create.gml"
+   },
+   {
+    "creates": "objective_button",
+    "file": "objects/dialogo_2_5/Create.gml"
+   }
+  ],
+  "enemy_arciere": [
+   {
+    "creates": "b_arciere_bullet",
+    "file": "objects/enemy_arciere/Alarm_2.gml"
+   },
+   {
+    "creates": "enemy_arciere_corpse",
+    "file": "objects/enemy_arciere/Step.gml"
+   }
+  ],
+  "enemy_ariete": [
+   {
+    "creates": "enemy_ariete",
+    "file": "objects/enemy_ariete/Alarm_3.gml"
+   },
+   {
+    "creates": "enemy_ariete_corpse",
+    "file": "objects/enemy_ariete/Step.gml"
+   }
+  ],
+  "enemy_caserma": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/enemy_caserma/Alarm_0.gml"
+   },
+   {
+    "creates": "casruin",
+    "file": "objects/enemy_caserma/Step.gml"
+   },
+   {
+    "creates": "hint_fire",
+    "file": "objects/enemy_caserma/Step.gml"
+   }
+  ],
+  "enemy_catapulta": [
+   {
+    "creates": "b_catapulta_bullet",
+    "file": "objects/enemy_catapulta/Alarm_2.gml"
+   },
+   {
+    "creates": "enemy_catapulta",
+    "file": "objects/enemy_catapulta/Alarm_3.gml"
+   },
+   {
+    "creates": "enemy_catapulta_corpse",
+    "file": "objects/enemy_catapulta/Step.gml"
+   }
+  ],
+  "enemy_cavaliere": [
+   {
+    "creates": "enemy_cavaliere_corpse",
+    "file": "objects/enemy_cavaliere/Step.gml"
+   }
+  ],
+  "enemy_house": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/enemy_house/Alarm_0.gml"
+   },
+   {
+    "creates": "casaruin",
+    "file": "objects/enemy_house/Step.gml"
+   },
+   {
+    "creates": "hint_fire",
+    "file": "objects/enemy_house/Step.gml"
+   }
+  ],
+  "enemy_manager": [
+   {
+    "creates": "enemy_cavaliere",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   },
+   {
+    "creates": "enemy_warrior",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   },
+   {
+    "creates": "enemy_picchiere",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   },
+   {
+    "creates": "enemy_arciere",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   },
+   {
+    "creates": "enemy_ariete",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   },
+   {
+    "creates": "enemy_catapulta",
+    "file": "objects/enemy_manager/Alarm_1.gml"
+   }
+  ],
+  "enemy_manager_lv2": [
+   {
+    "creates": "dialogo_2_13",
+    "file": "objects/enemy_manager_lv2/Alarm_4.gml"
+   },
+   {
+    "creates": "dialogo_2_0",
+    "file": "objects/enemy_manager_lv2/Create.gml"
+   },
+   {
+    "creates": "ally_omino",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_1",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_6",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_7",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_8",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "legno_prizedrawer",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_9",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_10",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_11",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "oro_prizedrawer",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_12",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "dialogo_2_14",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   },
+   {
+    "creates": "victory_manager",
+    "file": "objects/enemy_manager_lv2/Step.gml"
+   }
+  ],
+  "enemy_manager_menu": [
+   {
+    "creates": "fog_controller",
+    "file": "objects/enemy_manager_menu/Create.gml"
+   }
+  ],
+  "enemy_picchiere": [
+   {
+    "creates": "fire_bullet",
+    "file": "objects/enemy_picchiere/Alarm_4.gml"
+   },
+   {
+    "creates": "enemy_picchiere_corpse",
+    "file": "objects/enemy_picchiere/Step.gml"
+   },
+   {
+    "creates": "hint_attack",
+    "file": "objects/enemy_picchiere/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_4",
+    "file": "objects/enemy_picchiere/Step.gml"
+   }
+  ],
+  "enemy_stalla": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/enemy_stalla/Alarm_0.gml"
+   },
+   {
+    "creates": "stalruin",
+    "file": "objects/enemy_stalla/Step.gml"
+   },
+   {
+    "creates": "hint_fire",
+    "file": "objects/enemy_stalla/Step.gml"
+   }
+  ],
+  "enemy_torre": [
+   {
+    "creates": "flag_b",
+    "file": "objects/enemy_torre/Create.gml"
+   },
+   {
+    "creates": "torreruin",
+    "file": "objects/enemy_torre/Step.gml"
+   },
+   {
+    "creates": "b_arciere_bullet_t",
+    "file": "objects/enemy_torre/Step.gml"
+   }
+  ],
+  "enemy_warrior": [
+   {
+    "creates": "fire_bullet",
+    "file": "objects/enemy_warrior/Alarm_4.gml"
+   },
+   {
+    "creates": "enemy_warrior_corpse",
+    "file": "objects/enemy_warrior/Step.gml"
+   }
+  ],
+  "flameqq": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/flameqq/Create.gml"
+   }
+  ],
+  "flameqq_small": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/flameqq_small/Create.gml"
+   }
+  ],
+  "fog_controller": [
+   {
+    "creates": "fog01",
+    "file": "objects/fog_controller/Alarm_0.gml"
+   },
+   {
+    "creates": "fog01",
+    "file": "objects/fog_controller/Create.gml"
+   }
+  ],
+  "gate_clicker": [
+   {
+    "creates": "porta_vert",
+    "file": "objects/gate_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/gate_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "porta_ori",
+    "file": "objects/gate_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "porta_vert",
+    "file": "objects/gate_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/gate_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "porta_ori",
+    "file": "objects/gate_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "hint_build": [
+   {
+    "creates": "hint_repair",
+    "file": "objects/hint_build/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_create": [
+   {
+    "creates": "hint_create_2",
+    "file": "objects/hint_create/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_create_2": [
+   {
+    "creates": "hint_create_3",
+    "file": "objects/hint_create_2/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_fire": [
+   {
+    "creates": "hint_fire_2",
+    "file": "objects/hint_fire/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_idle": [
+   {
+    "creates": "hint_objective",
+    "file": "objects/hint_idle/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "hint_iniziale": [
+   {
+    "creates": "hint_vista",
+    "file": "objects/hint_iniziale/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_minimap": [
+   {
+    "creates": "hint_select",
+    "file": "objects/hint_minimap/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_multi": [
+   {
+    "creates": "hint_multi_2",
+    "file": "objects/hint_multi/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_objective": [
+   {
+    "creates": "hint_objective2",
+    "file": "objects/hint_objective/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_objective2": [
+   {
+    "creates": "hint_minimap",
+    "file": "objects/hint_objective2/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_repair": [
+   {
+    "creates": "hint_create",
+    "file": "objects/hint_repair/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_resource": [
+   {
+    "creates": "hint_build",
+    "file": "objects/hint_resource/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "hint_resource_tree": [
+   {
+    "creates": "hint_idle",
+    "file": "objects/hint_resource_tree/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "hint_select": [
+   {
+    "creates": "hint_resource",
+    "file": "objects/hint_select/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "hint_vista": [
+   {
+    "creates": "hint_resource_tree",
+    "file": "objects/hint_vista/Mouse_GlobalLeftReleased.gml"
+   }
+  ],
+  "magazzino": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/magazzino/Alarm_0.gml"
+   },
+   {
+    "creates": "magruin",
+    "file": "objects/magazzino/Step.gml"
+   }
+  ],
+  "magazzino_clicker": [
+   {
+    "creates": "magazzino_placer",
+    "file": "objects/magazzino_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/magazzino_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "magazzino_placer",
+    "file": "objects/magazzino_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/magazzino_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "magazzino_fond": [
+   {
+    "creates": "magazzino",
+    "file": "objects/magazzino_fond/Step.gml"
+   }
+  ],
+  "magazzino_placer": [
+   {
+    "creates": "magazzino_fond",
+    "file": "objects/magazzino_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/magazzino_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "magruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/magruin/Alarm_0.gml"
+   }
+  ],
+  "manager": [
+   {
+    "creates": "hint_night",
+    "file": "objects/manager/Alarm_0.gml"
+   },
+   {
+    "creates": "solid_obj",
+    "file": "objects/manager/Alarm_10.gml"
+   },
+   {
+    "creates": "fog_controller",
+    "file": "objects/manager/Alarm_7.gml"
+   },
+   {
+    "creates": "mouser",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "idle_clicker",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "enemy_manager_menu",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "enemy_manager",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "objective_button",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "enemy_manager_lv2",
+    "file": "objects/manager/Create.gml"
+   },
+   {
+    "creates": "legno_prizedrawer",
+    "file": "objects/manager/KeyPress_M.gml"
+   },
+   {
+    "creates": "torre_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "magazzino_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "barn_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "campo_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "casa_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "caserma_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "stalla_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "castello_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "chiesa_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "mura_clicker",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "enemy_cavaliere",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "enemy_arciere",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "enemy_picchiere",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "enemy_warrior",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "victory_manager",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "oro_prizedrawer",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_5",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "caserma",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "casa",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_6",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "stalla",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_7",
+    "file": "objects/manager/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_8",
+    "file": "objects/manager/Step.gml"
+   }
+  ],
+  "miniera_oro": [
+   {
+    "creates": "miniera_morente",
+    "file": "objects/miniera_oro/Destroy.gml"
+   },
+   {
+    "creates": "hint_oro",
+    "file": "objects/miniera_oro/Mouse_MouseEnter.gml"
+   }
+  ],
+  "mouser": [
+   {
+    "creates": "anello",
+    "file": "objects/mouser/Mouse_GlobalRightPressed.gml"
+   }
+  ],
+  "mplus_od": [
+   {
+    "creates": "muraplacer_od",
+    "file": "objects/mplus_od/Mouse_LeftReleased.gml"
+   }
+  ],
+  "mplus_os": [
+   {
+    "creates": "muraplacer_os",
+    "file": "objects/mplus_os/Mouse_LeftReleased.gml"
+   }
+  ],
+  "mplus_va": [
+   {
+    "creates": "muraplacer_va",
+    "file": "objects/mplus_va/Mouse_LeftReleased.gml"
+   }
+  ],
+  "mplus_vb": [
+   {
+    "creates": "muraplacer_vb",
+    "file": "objects/mplus_vb/Mouse_LeftReleased.gml"
+   }
+  ],
+  "mura_clicker": [
+   {
+    "creates": "mura_placer",
+    "file": "objects/mura_clicker/KeyPress_S.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/mura_clicker/KeyPress_S.gml"
+   },
+   {
+    "creates": "mura_placer",
+    "file": "objects/mura_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/mura_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "mura_ori": [
+   {
+    "creates": "mplus_os",
+    "file": "objects/mura_ori/Step.gml"
+   },
+   {
+    "creates": "mplus_od",
+    "file": "objects/mura_ori/Step.gml"
+   },
+   {
+    "creates": "gate_clicker",
+    "file": "objects/mura_ori/Step.gml"
+   }
+  ],
+  "mura_ori_fond": [
+   {
+    "creates": "mplus_os",
+    "file": "objects/mura_ori_fond/Step.gml"
+   },
+   {
+    "creates": "mplus_od",
+    "file": "objects/mura_ori_fond/Step.gml"
+   },
+   {
+    "creates": "mura_ori",
+    "file": "objects/mura_ori_fond/Step.gml"
+   }
+  ],
+  "mura_placer": [
+   {
+    "creates": "mura_ori_fond",
+    "file": "objects/mura_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "mura_vert_fond",
+    "file": "objects/mura_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/mura_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "mura_vert": [
+   {
+    "creates": "mplus_vb",
+    "file": "objects/mura_vert/Step.gml"
+   },
+   {
+    "creates": "mplus_va",
+    "file": "objects/mura_vert/Step.gml"
+   },
+   {
+    "creates": "gate_clicker",
+    "file": "objects/mura_vert/Step.gml"
+   }
+  ],
+  "mura_vert_fond": [
+   {
+    "creates": "mplus_vb",
+    "file": "objects/mura_vert_fond/Step.gml"
+   },
+   {
+    "creates": "mplus_va",
+    "file": "objects/mura_vert_fond/Step.gml"
+   },
+   {
+    "creates": "mura_vert",
+    "file": "objects/mura_vert_fond/Step.gml"
+   }
+  ],
+  "muraplacer_od": [
+   {
+    "creates": "ovbl",
+    "file": "objects/muraplacer_od/Step.gml"
+   },
+   {
+    "creates": "oosl",
+    "file": "objects/muraplacer_od/Step.gml"
+   },
+   {
+    "creates": "oval",
+    "file": "objects/muraplacer_od/Step.gml"
+   }
+  ],
+  "muraplacer_os": [
+   {
+    "creates": "oodl",
+    "file": "objects/muraplacer_os/Step.gml"
+   },
+   {
+    "creates": "ovbl",
+    "file": "objects/muraplacer_os/Step.gml"
+   },
+   {
+    "creates": "oval",
+    "file": "objects/muraplacer_os/Step.gml"
+   }
+  ],
+  "muraplacer_va": [
+   {
+    "creates": "oodl",
+    "file": "objects/muraplacer_va/Step.gml"
+   },
+   {
+    "creates": "ovbl",
+    "file": "objects/muraplacer_va/Step.gml"
+   },
+   {
+    "creates": "oosl",
+    "file": "objects/muraplacer_va/Step.gml"
+   }
+  ],
+  "muraplacer_vb": [
+   {
+    "creates": "oodl",
+    "file": "objects/muraplacer_vb/Step.gml"
+   },
+   {
+    "creates": "oosl",
+    "file": "objects/muraplacer_vb/Step.gml"
+   },
+   {
+    "creates": "oval",
+    "file": "objects/muraplacer_vb/Step.gml"
+   }
+  ],
+  "o_box1": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/o_box1/Alarm_0.gml"
+   },
+   {
+    "creates": "oro_prizedrawer",
+    "file": "objects/o_box1/Step.gml"
+   },
+   {
+    "creates": "legno_prizedrawer",
+    "file": "objects/o_box1/Step.gml"
+   },
+   {
+    "creates": "cibo_prizedrawer",
+    "file": "objects/o_box1/Step.gml"
+   }
+  ],
+  "o_box2": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/o_box2/Alarm_0.gml"
+   },
+   {
+    "creates": "oro_prizedrawer",
+    "file": "objects/o_box2/Step.gml"
+   },
+   {
+    "creates": "legno_prizedrawer",
+    "file": "objects/o_box2/Step.gml"
+   },
+   {
+    "creates": "cibo_prizedrawer",
+    "file": "objects/o_box2/Step.gml"
+   },
+   {
+    "creates": "dialogo_1_3",
+    "file": "objects/o_box2/Step.gml"
+   }
+  ],
+  "o_statua1": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/o_statua1/Alarm_0.gml"
+   },
+   {
+    "creates": "dialogo_statua",
+    "file": "objects/o_statua1/Step.gml"
+   }
+  ],
+  "o_statua1_real": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/o_statua1_real/Alarm_0.gml"
+   },
+   {
+    "creates": "dialogo_statua",
+    "file": "objects/o_statua1_real/Step.gml"
+   }
+  ],
+  "o_statua2": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/o_statua2/Alarm_0.gml"
+   },
+   {
+    "creates": "dialogo_statua",
+    "file": "objects/o_statua2/Step.gml"
+   }
+  ],
+  "o_statua3": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/o_statua3/Alarm_0.gml"
+   },
+   {
+    "creates": "dialogo_statua",
+    "file": "objects/o_statua3/Step.gml"
+   }
+  ],
+  "o_statua4": [
+   {
+    "creates": "sfx_croce",
+    "file": "objects/o_statua4/Alarm_0.gml"
+   },
+   {
+    "creates": "dialogo_statua",
+    "file": "objects/o_statua4/Step.gml"
+   }
+  ],
+  "object122": [
+   {
+    "creates": "food_blink",
+    "file": "objects/object122/KeyPress_Q.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/object122/KeyPress_Q.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/object122/KeyPress_Q.gml"
+   },
+   {
+    "creates": "food_blink",
+    "file": "objects/object122/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/object122/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/object122/Step.gml"
+   }
+  ],
+  "object183": [
+   {
+    "creates": "flameqq",
+    "file": "objects/object183/Alarm_0.gml"
+   },
+   {
+    "creates": "flameqq_small",
+    "file": "objects/object183/Alarm_0.gml"
+   },
+   {
+    "creates": "casaruin",
+    "file": "objects/object183/Step.gml"
+   }
+  ],
+  "ocr_01": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_01/Create.gml"
+   }
+  ],
+  "ocr_02": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_02/Create.gml"
+   }
+  ],
+  "ocr_04": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_04/Create.gml"
+   }
+  ],
+  "ocr_32": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_32/Create.gml"
+   }
+  ],
+  "ocr_34": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_34/Create.gml"
+   }
+  ],
+  "ocr_41": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_41/Create.gml"
+   }
+  ],
+  "ocr_42": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_42/Create.gml"
+   }
+  ],
+  "ocr_43": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_43/Create.gml"
+   }
+  ],
+  "ocr_44": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_44/Create.gml"
+   }
+  ],
+  "ocr_45": [
+   {
+    "creates": "firestarter",
+    "file": "objects/ocr_45/Create.gml"
+   }
+  ],
+  "omino_clicker": [
+   {
+    "creates": "food_blink",
+    "file": "objects/omino_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/omino_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "food_blink",
+    "file": "objects/omino_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/omino_clicker/Step.gml"
+   }
+  ],
+  "oodl": [
+   {
+    "creates": "mura_ori_fond",
+    "file": "objects/oodl/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/oodl/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "oosl": [
+   {
+    "creates": "mura_ori_fond",
+    "file": "objects/oosl/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/oosl/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "oval": [
+   {
+    "creates": "mura_vert_fond",
+    "file": "objects/oval/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/oval/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "ovbl": [
+   {
+    "creates": "mura_vert_fond",
+    "file": "objects/ovbl/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/ovbl/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "palo_1": [
+   {
+    "creates": "firestarter_small",
+    "file": "objects/palo_1/Create.gml"
+   }
+  ],
+  "picchiere_clicker": [
+   {
+    "creates": "food_blink",
+    "file": "objects/picchiere_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/picchiere_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/picchiere_clicker/KeyPress_W.gml"
+   },
+   {
+    "creates": "food_blink",
+    "file": "objects/picchiere_clicker/Step.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/picchiere_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/picchiere_clicker/Step.gml"
+   }
+  ],
+  "pietr_piccolo": [
+   {
+    "creates": "pietr_piccolo_morente",
+    "file": "objects/pietr_piccolo/Destroy.gml"
+   },
+   {
+    "creates": "hint_stone",
+    "file": "objects/pietr_piccolo/Mouse_MouseEnter.gml"
+   }
+  ],
+  "pietra_grande": [
+   {
+    "creates": "pietra_grande_morente",
+    "file": "objects/pietra_grande/Destroy.gml"
+   },
+   {
+    "creates": "hint_stone",
+    "file": "objects/pietra_grande/Mouse_MouseEnter.gml"
+   }
+  ],
+  "porta_ori": [
+   {
+    "creates": "mplus_os",
+    "file": "objects/porta_ori/Step.gml"
+   },
+   {
+    "creates": "mplus_od",
+    "file": "objects/porta_ori/Step.gml"
+   }
+  ],
+  "porta_vert": [
+   {
+    "creates": "mplus_vb",
+    "file": "objects/porta_vert/Step.gml"
+   },
+   {
+    "creates": "mplus_va",
+    "file": "objects/porta_vert/Step.gml"
+   }
+  ],
+  "stalla": [
+   {
+    "creates": "pop_blink",
+    "file": "objects/stalla/Alarm_0.gml"
+   },
+   {
+    "creates": "ally_cavaliere",
+    "file": "objects/stalla/Alarm_0.gml"
+   },
+   {
+    "creates": "nubeqq",
+    "file": "objects/stalla/Alarm_1.gml"
+   },
+   {
+    "creates": "stalruin",
+    "file": "objects/stalla/Step.gml"
+   },
+   {
+    "creates": "cavaliere_clicker",
+    "file": "objects/stalla/Step.gml"
+   },
+   {
+    "creates": "stalla_indietro_clicker",
+    "file": "objects/stalla/Step.gml"
+   }
+  ],
+  "stalla_clicker": [
+   {
+    "creates": "stalla_placer",
+    "file": "objects/stalla_clicker/KeyPress_F.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/stalla_clicker/KeyPress_F.gml"
+   },
+   {
+    "creates": "stalla_placer",
+    "file": "objects/stalla_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/stalla_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "stalla_fond": [
+   {
+    "creates": "stalla",
+    "file": "objects/stalla_fond/Step.gml"
+   }
+  ],
+  "stalla_placer": [
+   {
+    "creates": "stalla_fond",
+    "file": "objects/stalla_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "wood_blink",
+    "file": "objects/stalla_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "stalruin": [
+   {
+    "creates": "nubeqq",
+    "file": "objects/stalruin/Alarm_0.gml"
+   }
+  ],
+  "torre": [
+   {
+    "creates": "hint_presidio",
+    "file": "objects/torre/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "arciere_bullet_t",
+    "file": "objects/torre/Step.gml"
+   },
+   {
+    "creates": "torreruin",
+    "file": "objects/torre/Step.gml"
+   },
+   {
+    "creates": "flag_r",
+    "file": "objects/torre/Step.gml"
+   }
+  ],
+  "torre_clicker": [
+   {
+    "creates": "torre_placer",
+    "file": "objects/torre_clicker/KeyPress_A.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/torre_clicker/KeyPress_A.gml"
+   },
+   {
+    "creates": "torre_placer",
+    "file": "objects/torre_clicker/Mouse_LeftReleased.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/torre_clicker/Mouse_LeftReleased.gml"
+   }
+  ],
+  "torre_fond": [
+   {
+    "creates": "torre",
+    "file": "objects/torre_fond/Step.gml"
+   }
+  ],
+  "torre_placer": [
+   {
+    "creates": "torre_fond",
+    "file": "objects/torre_placer/Mouse_GlobalLeftPressed.gml"
+   },
+   {
+    "creates": "stone_blink",
+    "file": "objects/torre_placer/Mouse_GlobalLeftPressed.gml"
+   }
+  ],
+  "torreruin": [
+   {
+    "creates": "torreruin_morente",
+    "file": "objects/torreruin/Destroy.gml"
+   }
+  ],
+  "warrior_clicker": [
+   {
+    "creates": "food_blink",
+    "file": "objects/warrior_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/warrior_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/warrior_clicker/KeyPress_Q.gml"
+   },
+   {
+    "creates": "food_blink",
+    "file": "objects/warrior_clicker/Step.gml"
+   },
+   {
+    "creates": "gold_blink",
+    "file": "objects/warrior_clicker/Step.gml"
+   },
+   {
+    "creates": "pop_blink",
+    "file": "objects/warrior_clicker/Step.gml"
+   }
+  ]
+ }
+}
