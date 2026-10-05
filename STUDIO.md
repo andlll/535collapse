@@ -267,8 +267,74 @@ meglio che su pixel art. Da verificare con screenshot affiancati in Fase 2.
 
 ### 0.9 Proposta di architettura
 
-Vedi la risposta di Fase 0 in chat; la decisione sarà registrata qui dopo il
-via libera.
+Prima proposta (in chat, Fase 0): **B**, porting mirato. Rivista in 0.11
+dopo la decisione "solo desktop".
+
+### 0.10 Decisioni dell'autore (risposte alla Fase 0)
+
+1. **Asset**: tutti dell'autore, distribuibili. Titolo del gioco "535";
+   questa prima uscita si chiamerà "535 – Collapse" (nome definitivo da
+   fissare). **Font**: Impact e Arial Narrow vanno sostituiti con font liberi.
+2. **Solo orizzontale, solo desktop.** Il mobile è fuori per ora
+   (i controlli touch restano "da tenere presenti", non da fare).
+3. **Portali**: itch.io, Newgrounds, Game Jolt, poi CrazyGames. **Niente
+   Android/Capacitor.**
+4. **Niente audio.** Salvataggi **come NIMBUS**: JSON espliciti con
+   versione del formato e checksum leggero, `localStorage` per il salvataggio
+   rapido + file `.json` esportabile/importabile (`game/src/save.js` di
+   n_redux come riferimento di metodo).
+5. **Trucchi**: restano attivi anche fuori dal debug, come nell'originale.
+   `resizer`, `mobile` e `ally_warrior_sperimentale` si tolgono.
+   `lvl01`: vedi sotto.
+6. **Si parte dal `menu`.** Risorse iniziali giuste: **cibo 100, oro 50,
+   legno 50, pietra 0** (al posto di 99100/9950/9950/9990 di `manager`
+   Create, che erano valori di test).
+
+**`lvl01` — verifica dopo la domanda dell'autore** ("dovrebbe essere
+raggiungibile dal menu della campagna"):
+
+- **[C]** Non è vuota: 560 istanze. È una **città romana**: 26 tipi di
+  edifici `ocr_*` (fra cui tempio, teatro, basilica), mura e porte, statue,
+  fontane, colonne, casse; 5 `ally_warrior` contro 62 nemici (picchieri,
+  arcieri, guerrieri, cavalieri); `lvl1_surface_generato` disegna in Draw un
+  prato di `erba_spr` da y=4040 in giù. `manager` Create la fa partire **di
+  notte** (`global.night=1`, `alarm[1]=10000`).
+- **[C]** Nel codice **non c'è nessun modo di arrivarci**: nessun
+  `room_goto(lvl01)`, nessun `room_goto_next`, l'unico riferimento a `lvl01`
+  è il controllo `room=lvl01` in `manager` Create.
+- **[C]** Il menu (`enemy_manager_menu` Draw GUI) disegna **due pillole**:
+  "Survival - Demo" (cliccabile, `Mouse_56` → `room_goto(match)`) e
+  "More coming next - Work in progress" (**nessun gestore di click**).
+  **[I]** La seconda è il posto previsto per la campagna, cioè per `lvl01`.
+
+### 0.11 Architettura rivista dopo "solo desktop"
+
+La ragione principale per scartare **A** (runtime "alla GameMaker" che esegue
+il GML tradotto) era il mobile: hover, click destro, tastiera e camera che
+segue il cursore andavano riscritti comunque. Con il solo desktop quel
+motivo cade, e i numeri pesano diversamente:
+
+- **[C]** L'originale **girava già nel browser** come export HTML5 di GMS,
+  cioè come JavaScript: il carico di logica per frame (le chiamate
+  `instance_nearest`/`distance_to_object` in ogni Step) era accettabile su
+  desktop già con il runner di GameMaker.
+- Il GML è scritto a mano (2001 blocchi, 23.500 righe) ma con un vocabolario
+  piccolo: 129 funzioni, nessuna fisica, shader, audio, timeline, tile.
+  Tradurlo in automatico copre **tutto** il gioco, compresi i 26 suggerimenti
+  del tutorial, l'interfaccia, i trucchi e `lvl01`, con fedeltà riga per riga
+  e il riferimento all'evento d'origine gratis.
+- Il lavoro si concentra in poche parti verificabili: il traduttore GML→JS
+  (testato su casi isolati), il ciclo eventi/alarm, le collisioni (maschere
+  rettangolo/ellisse/rombo/precise), `mp_potential_step`, le primitive di
+  disegno, le particelle, i `ds_*`.
+- Le deviazioni volute restano poche e circoscritte nel runtime: superfici
+  della nebbia/notte a risoluzione ridotta (da ~590 MB a < 1 MB), pool di
+  particelle, eventuale indice spaziale sotto `instance_nearest`.
+
+**[I]** Raccomandazione rivista: **A**, con le deviazioni sopra. Stima
+grezza ~10–16 sessioni contro ~15–24 di B. Il rischio si sposta sulla
+semantica del runner (ordine degli eventi, `mp_potential_step`, collisioni),
+da documentare e testare caso per caso. **In attesa di conferma.**
 
 ---
 
