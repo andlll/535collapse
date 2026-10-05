@@ -59,7 +59,15 @@ export const FAM = {
   campo: { key: 82, bx: 660, by: 50, cost: { wood: 200 }, ico: "ico_corn", ghost: "campo1",
            panel: { w: 430, r: 80, title: "Farm", desc: "Produces food resource when occupied by a worker.",
                     costs: [["200", 40, "ico_wood", 95]], shortcut: ["Shortcut: R", 410] } },
+  // mura [C, mura_clicker, mura_placer]: C ruota (posiz 0 orizzontale, 1
+  // verticale); anche da tastiera c'e' il controllo "un solo placer".
+  // Cantieri, muri, porte e prolungamenti in walls.js.
+  mura: { key: 83, bx: 520, by: 120, cost: { stone: 50 }, ico: "ico_mura", keyCheckOne: true,
+          ghostOf: (p) => (p.posiz === 0 ? "m_ori" : "m_vert"),
+          panel: { w: 630, title: "Wall", desc: "Structure that can be built in both directions. Press C to rotate while placing.",
+                   costs: [["50", 40, "ico_stone", 90]], shortcut: ["Shortcut: S", 620] } },
 };
+FAM.casa.ghostOf = (p) => "c" + p.tipo + "s";
 
 const BLINK = { wood: "wood_blink", stone: "stone_blink", food: "food_blink", gold: "gold_blink" };
 
@@ -113,13 +121,13 @@ export function clicker(fam) {
     leftReleased(i, w) { activate(i, w, true); },
     // KeyPress del tasto [C]: lo stesso senza il controllo "un solo placer"
     // (solo la casa lo controlla anche da tastiera)
-    ["keyPress" + d.key](i, w) { activate(i, w, fam === "casa"); },
+    ["keyPress" + d.key](i, w) { activate(i, w, fam === "casa" || !!d.keyCheckOne); },
     // Draw [C]: il fantasma dell'edificio sotto il puntatore, rosso se il
     // posto non e' libero.
     draw(i, w, dr) {
       if (i.active !== 1) return;
       for (const p of w.all(placer)) {
-        const spr = fam === "casa" ? "c" + p.tipo + "s" : d.ghost;
+        const spr = d.ghostOf ? d.ghostOf(p) : d.ghost;
         dr.spriteExt(spr, 0, w.mouse.x, w.mouse.y, 1, 1, 0, p.place === 1 ? WHITE : RED, 0.5);
       }
     },
@@ -152,7 +160,6 @@ export function clicker(fam) {
 
 // manager Step, "pulsanti di costruzione" [C]: con civili selezionati e
 // nessun soldato, un pulsante per famiglia (nell'ordine dell'originale).
-// mura_clicker (mura) non e' ancora portato.
 const BUTTON_ORDER = ["torre", "magazzino", "barn", "campo", "casa", "caserma", "stalla", "castello", "chiesa", "mura"];
 export function buildButtons(w) {
   const g = w.g;
@@ -172,6 +179,7 @@ export function placer(fam) {
     create(i) {
       i.place = 1;
       if (fam === "casa") { i.tipo = irandomRange(1, 6); i.bounce = 0; }
+      if (fam === "mura") i.posiz = 0;
     },
     alarm0(i) { i.bounce = 0; },
     // Step [C]: segue il puntatore; place = il posto e' libero (maschera
@@ -183,7 +191,14 @@ export function placer(fam) {
     collisions: { campo(i) { i.place = 0; } },
     keyboard27(i, w) { w.g.sele = 0; w.destroy(i); },
     // casa_placer KeyPress_C [C]: cambia stile (6 case), con un rimbalzo di 2 passi
-    keyPress67(i) {
+    keyPress67(i, w) {
+      // mura_placer KeyPress_C [C]: ruota subito, senza rimbalzo
+      if (fam === "mura") {
+        i.posiz = i.posiz === 0 ? 1 : 0;
+        i.mask_index = i.posiz === 1 ? "m_vert" : "m_ori";
+        w.moved(i);
+        return;
+      }
       if (fam !== "casa" || i.bounce !== 0) return;
       i.bounce = 1;
       i.alarm.set(0, 2);
@@ -205,11 +220,12 @@ export function placer(fam) {
           f.tipo = i.tipo;
           f.mask_index = "c" + i.tipo + "m";
         };
-        w.create(fam + "_fond", i.x, i.y, { init });
+        const fondName = fam === "mura" ? (i.posiz === 0 ? "mura_ori_fond" : "mura_vert_fond") : fam + "_fond";
+        w.create(fondName, i.x, i.y, { init });
         for (const c of w.all(fam + "_clicker")) c.active = 0;
       } else if (i.place === 1) {
         blinkMissing(w, fam, d.cost);
-      } else if (fam !== "chiesa" && fam !== "torre" && fam !== "castello" && fam !== "campo") {
+      } else if (!["chiesa", "torre", "castello", "campo", "mura"].includes(fam)) {
         // [C] le altre famiglie lampeggiano anche col posto occupato (l'else
         // e' agganciato al primo if): riprodotto
         blinkMissing(w, fam, d.cost);
@@ -219,6 +235,33 @@ export function placer(fam) {
 }
 
 // -------------------------------------------------------------- cantieri
+
+// Alarm_0 dei cantieri [C, *_fond]: i civili "armati" dal pulsante
+// (buildarm) ricevono il lavoro (buildwork, o fieldwork per il campo) e
+// partono verso la cella valida piu' vicina al punto del mouse.
+export function armBuilders(i, w, p, work, bx, by) {
+  const g = w.g;
+  for (const o of w.all("ally_omino")) {
+    if (o.buildarm !== 1) continue;
+    o[work] = 1;
+    o.buildx = bx;
+    o.buildy = by;
+    p.free(o);
+    o.target_angle = pointDirection(o.x, o.y, i.x, i.y);
+    if (o.action === 0) g.idle -= 1;
+    const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(w.mouse.x / GRID), Math.trunc(w.mouse.y / GRID),
+                                              Math.trunc(o.x / GRID), Math.trunc(o.y / GRID));
+    const found = p.fieldAt(o.goal_field, cx, cy) !== -1;
+    o.goal_x = found ? cx * GRID : o.x;
+    o.goal_y = found ? cy * GRID : o.y;
+    generateFields(p, o, o.goal_x, o.goal_y);
+    o.dirox = o.goal_x;
+    o.diroy = o.goal_y;
+    o.alarm.set(0, 13);
+    o.action = 1;
+    o.buildarm = 0;
+  }
+}
 
 export function fond(fam, p) {
   const d = FAM[fam];
@@ -232,29 +275,10 @@ export function fond(fam, p) {
       Object.assign(i, { life: 1, slife: d.slife, selected: 0, fase: 0, fondazione: 1, pietra: 0, legno: 0 });
       w.g.sele = 0;
     },
-    // Alarm_0 [C]: i civili "armati" dal pulsante (buildarm) vanno a costruire.
+    // Alarm_0 [C]: i civili "armati" dal pulsante (buildarm) vanno a
+    // costruire: al cantiere la casa, al punto del mouse le altre famiglie.
     alarm0(i, w) {
-      const g = w.g;
-      for (const o of w.all("ally_omino")) {
-        if (o.buildarm !== 1) continue;
-        o.buildwork = 1;
-        o.buildx = fam === "casa" ? i.x : w.mouse.x;
-        o.buildy = fam === "casa" ? i.y : w.mouse.y;
-        p.free(o);
-        o.target_angle = pointDirection(o.x, o.y, i.x, i.y);
-        if (o.action === 0) g.idle -= 1;
-        const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(w.mouse.x / GRID), Math.trunc(w.mouse.y / GRID),
-                                                  Math.trunc(o.x / GRID), Math.trunc(o.y / GRID));
-        const found = p.fieldAt(o.goal_field, cx, cy) !== -1;
-        o.goal_x = found ? cx * GRID : o.x;
-        o.goal_y = found ? cy * GRID : o.y;
-        generateFields(p, o, o.goal_x, o.goal_y);
-        o.dirox = o.goal_x;
-        o.diroy = o.goal_y;
-        o.alarm.set(0, 13);
-        o.action = 1;
-        o.buildarm = 0;
-      }
+      armBuilders(i, w, p, "buildwork", fam === "casa" ? i.x : w.mouse.x, fam === "casa" ? i.y : w.mouse.y);
     },
     // Step [C]: fasi del cantiere, poi l'edificio finito.
     step(i, w) {
@@ -293,7 +317,7 @@ export function fond(fam, p) {
   };
 }
 
-function panel(dr, i, ico) {
+export function panel(dr, i, ico) {
   dr.setAlpha(0.69);
   dr.roundrectColourExt(260, 20, 390, 150, 60, 60, WHITE, WHITE, false);
   dr.setFont("GUI_1");
@@ -306,7 +330,7 @@ function panel(dr, i, ico) {
   dr.sprite(ico, 0, 325, 70);
 }
 
-function lifeBar(dr, i, col = GREEN) {
+export function lifeBar(dr, i, col = GREEN) {
   dr.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
   dr.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, col, col, col, col, false);
 }
@@ -392,8 +416,8 @@ export function built(fam, p) {
 // resta non assegnata, cioe' 0 [I, variabili non inizializzate = 0,
 // §1.3], e i riparatori (entro 150 px da (0, y)) non si fermano: si fermano
 // solo a edificio integro, che e' l'effetto voluto.
-const NOONE = -4;
-function repairEnd(i, w) {
+export const NOONE = -4;
+export function repairEnd(i, w) {
   const xpos = i.life >= i.slife ? i.x : 0, ypos = i.y;
   for (const o of w.all("ally_omino")) {
     if (o.action === 7 && pointDistance(o.repx, o.repy, xpos, ypos) < 150) {
@@ -402,7 +426,7 @@ function repairEnd(i, w) {
   }
 }
 
-function sendRepair(i, w) {
+export function sendRepair(i, w) {
   for (const o of w.all("ally_omino")) {
     if (o.selected !== 1) continue;
     o.repairwork = 1;
@@ -459,29 +483,7 @@ export function campoFond(p) {
     },
     // Alarm_0 [C]: come gli altri cantieri, ma con fieldwork e il punto
     // del mouse al momento dell'alarm.
-    alarm0(i, w) {
-      const g = w.g;
-      for (const o of w.all("ally_omino")) {
-        if (o.buildarm !== 1) continue;
-        o.fieldwork = 1;
-        o.buildx = w.mouse.x;
-        o.buildy = w.mouse.y;
-        p.free(o);
-        o.target_angle = pointDirection(o.x, o.y, i.x, i.y);
-        if (o.action === 0) g.idle -= 1;
-        const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(w.mouse.x / GRID), Math.trunc(w.mouse.y / GRID),
-                                                  Math.trunc(o.x / GRID), Math.trunc(o.y / GRID));
-        const found = p.fieldAt(o.goal_field, cx, cy) !== -1;
-        o.goal_x = found ? cx * GRID : o.x;
-        o.goal_y = found ? cy * GRID : o.y;
-        generateFields(p, o, o.goal_x, o.goal_y);
-        o.dirox = o.goal_x;
-        o.diroy = o.goal_y;
-        o.alarm.set(0, 13);
-        o.action = 1;
-        o.buildarm = 0;
-      }
-    },
+    alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
       if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
     },

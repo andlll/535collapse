@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 3c (campi e cibo) fatto. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, mura e porte fatte. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,6 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
+- [ ] Difetti da decidere: n.22 (§3.6), n.24, 26, 27, 28, 29 (§3.7).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -38,8 +39,7 @@ sta nella sezione citata.
   (casa, magazzino, mulino, caserma, stalla, castello, chiesa, torre);
   costruzione e riparazione; centro con produzione di civili; `*_blink`,
   `*_prizedrawer`, `idle_clicker` (§3.5).
-- [ ] Mura e porte: `mura_clicker`, `mura_placer` e `muraplacer_*`
-  (orientamento, tratti), `mura_ori/vert`, `mplus_*`, `gate_clicker`.
+- [x] Mura e porte: pulsante, placer, prolungamenti, porte (§3.7).
 - [x] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina (§3.6).
 - [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
@@ -1397,3 +1397,73 @@ selezionato, R, clic → cantiere (legno 300 → 100); il civile semina
 raccoglie (`owo*`), a 10 va al mulino col carico (`car*`), scarica (cibo
 100 → 110 → 120) e torna allo stesso campo; il campo passa da occupato a
 libero e di nuovo occupato. Nessun errore.
+
+### 3.7 Mura e porte (5 ottobre 2026)
+
+**Portato** (`game/src/walls.js`; pulsante e placer del primo tratto in
+`buildings.js`, famiglia `mura`): `mura_clicker`, `mura_placer`,
+`mura_ori_fond`/`mura_vert_fond`, `mura_ori`/`mura_vert`,
+`porta_ori`/`porta_vert`, `mplus_*`, `muraplacer_*`, le anteprime `oodl`,
+`oosl`, `ovbl`, `oval` e `gate_clicker`. Orizzontale e verticale sono lo
+stesso codice con nomi e offset diversi [C, confronto evento per evento]:
+una tabella `KIND` e un codice solo.
+
+**Come funziona** [C]:
+- S (50 pietra) piazza il primo tratto; C lo ruota (orizzontale/verticale).
+  Il cantiere è un `ally_fondamenta` come gli altri: +5 vita a ogni scatto
+  dei costruttori, 800 di vita, circa 2100 passi (35 s) con un costruttore.
+- Selezionando un tratto (o il suo cantiere, o una porta) compaiono due "+"
+  alle estremità (orizzontale: 219 px a sinistra e 207 a destra;
+  verticale: in basso e 300 px sopra). Un "+" (servono 40 pietra) crea il
+  placer del prolungamento: secondo la direzione del puntatore, a settori
+  di 60°, compare l'anteprima del tratto che continua a destra o a
+  sinistra o che gira in su o in giù; un clic lo paga (40) e apre il
+  cantiere.
+- Con un tratto finito selezionato, Q o il pulsante della porta (100 oro)
+  lo sostituiscono con una porta (600 di vita l'orizzontale, 800 la
+  verticale). La porta si apre quando l'unità alleata più vicina ha il
+  bbox a meno di 20 px; la verticale ricontrolla al più ogni 30 passi.
+- Griglia dei costi: la porta viene creata prima che il tratto sia
+  distrutto, e il Destroy del tratto libera le celle: tutta la porta è
+  percorribile nel flow field, aperta o chiusa (verificato: 0 celle
+  ostacolo su 32).
+
+**Difetti trovati** [C]:
+
+23. `oodl`, `oosl` (Draw_End) e `ovbl`, `oval` (Draw):
+    `draw_sprite(x,y,0,oggetto)` ha gli argomenti scambiati: disegna lo
+    sprite numero `x` alla posizione (0, numero dell'oggetto), nell'angolo
+    della room. Non portato (da lì non si vede niente di utile).
+24. `porta_*` Step, "fine riparazione": manca `var xpos=x; var ypos=y`.
+    Dentro `with(ally_omino)` `xpos` e `ypos` sono variabili del civile,
+    mai assegnate (0, 0): i riparatori di una porta **non si fermano mai**
+    e, anche a vita piena, spendono 1 pietra ogni 13 passi (Alarm_2
+    toglie la pietra prima di controllare il massimo). Riprodotto.
+25. `porta_ori` Alarm_1 vuole liberare tre celle, ma `floor(x-32/32)` è
+    `floor(x-1)`: due delle tre sono fuori dalla griglia. Nessun effetto
+    pratico (le celle sono già libere, vedi sopra).
+26. Le anteprime hanno per parent `mura_ori`/`mura_vert` ed ereditano il
+    loro Destroy, che libera le celle sotto la maschera. Quando
+    un'anteprima sparisce (il puntatore cambia settore, Esc, o il
+    cantiere che la sostituisce) libera le celle sotto di sé: quelle del
+    cantiere del prolungamento appena marcate (verificato: 0 ostacoli su
+    30 durante la costruzione), e quelle di un edificio o di un muro che
+    l'anteprima rossa stava toccando. Le anteprime ereditano anche il
+    click destro di riparazione e il Canc dei muri. Riprodotto
+    (succede da solo: il mondo risale i parent come GameMaker).
+27. Muri e porte non controllano mai `life<=0`: non vengono distrutti
+    (né da Canc, che mette `life=0`, né dai nemici quando arriverà il
+    combattimento) e non ci sono sprite di rovina per le mura. Riprodotto.
+28. Canc su un cantiere di muro rimborsa 50 pietra anche per i
+    prolungamenti, che ne costano 40. Riprodotto.
+29. `gate_clicker` Draw_GUI usa `view_hview` (altezza della view nella
+    room) invece di `view_hport`: con lo zoom a 1,5 la scheda della porta
+    finisce sotto lo schermo. Riprodotto.
+
+**Verificato** (Chromium headless, `match`, pietra 500 e oro 200): S,
+clic in un posto libero → cantiere (pietra 450), il civile costruisce (vita
+1 → 800, a metà lo sprite `m_ori_f2`), il muro compare; Esc, clic sul
+muro → due "+" e il pulsante della porta; clic sul "+" destro, puntatore
+a destra → anteprima `oosl`; clic → cantiere del prolungamento a +424 px
+(pietra 410); muro selezionato, Q → porta (oro 100), aperta col civile a
+meno di 20 px, chiusa quando i civili si allontanano. Nessun errore.

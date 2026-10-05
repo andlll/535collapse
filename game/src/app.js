@@ -1,9 +1,9 @@
 // Avvio del motore e di una room (?room=menu|match|lvl01|lvl02).
 //
 // Sistemi portati finora (STUDIO.md §3): manager e interfaccia; selezione,
-// ordini e movimento del cavaliere; civili, raccolta, costruzione e il
-// centro. Gli altri oggetti sono disegnati con il loro sprite e non fanno
-// ancora nulla. F3 apre la diagnostica.
+// ordini e movimento del cavaliere; civili, raccolta, costruzione, centro,
+// campi, mura e porte. Gli altri oggetti sono disegnati con il loro sprite
+// e non fanno ancora nulla. F3 apre la diagnostica.
 
 import { Renderer, bgrToRGB } from "./gl.js";
 import { Assets } from "./assets.js";
@@ -18,6 +18,7 @@ import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./un
 import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
+import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -101,13 +102,24 @@ async function main() {
   for (const f of Object.keys(FAM)) {
     world.register(f + "_clicker", clicker(f));
     world.register(f + "_placer", placer(f));
-    if (f === "campo") continue;
+    if (f === "campo" || f === "mura") continue;
     world.register(f + "_fond", fond(f, path));
     world.register(f, built(f, path));
   }
   world.register("campo_fond", campoFond(path));
   world.register("campo", campo(path));
   world.register("food_bullet", foodBullet());
+  for (const k of ["ori", "vert"]) {
+    world.register(`mura_${k}_fond`, wallFond(k, path));
+    world.register(`mura_${k}`, wall(k, path));
+    world.register(`porta_${k}`, gate(k, path));
+  }
+  for (const s of ["os", "od", "va", "vb"]) {
+    world.register("mplus_" + s, mplus("mplus_" + s));
+    world.register("muraplacer_" + s, wallExtender("muraplacer_" + s));
+  }
+  for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
+  world.register("gate_clicker", gateClicker());
   world.register("omino_clicker", ominoClicker());
   world.register("centro_indietro_clicker", centroCancel());
   for (const n of ["wood_blink", "stone_blink", "food_blink", "gold_blink", "pop_blink"]) world.register(n, blink(n));
