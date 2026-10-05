@@ -16,6 +16,7 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
+import { enemyMelee, atkSignalObject } from "./enemies.js";
 import { omino, resource, dying } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
@@ -138,7 +139,9 @@ async function main() {
   world.register("cibo_prizedrawer", prizeDrawer("ico_food_prize"));
   world.register("idle_clicker", idleClicker());
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
-  for (const n of Object.keys(ENEMY_LIFE)) world.register(n, enemyDummy(n));
+  for (const n of ["enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) world.register(n, enemyMelee(n, path));
+  world.register("atk_signal", atkSignalObject());
+  for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
     if (roomName !== "menu") movementGeneral(world, path, mx, my);

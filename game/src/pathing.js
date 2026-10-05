@@ -77,8 +77,23 @@ export class Pathing {
     return this.inside(gx, gy) ? this.cost[gy * this.gw + gx] : 0;
   }
 
+  // manager Create, "inizializzazione flow field" [C]: la prima
+  // global.cost_field (1000 dove c'e' un ally, un enemy, un natural_parent o
+  // un palo_1, 1 altrove) viene subito sostituita da una griglia nuova e
+  // resta orfana. E' la ds_grid numero 0: le unita' nemiche senza un flow
+  // field proprio (flow_field mai assegnata = 0) la leggono come campo di
+  // direzioni quando si sovrappongono (scr_move_flow_field): 1000 diventa
+  // 280 gradi, 1 diventa 1 grado (STUDIO.md §3.10 n.37).
+  initGrid0() {
+    this.grid0 = new Int32Array(this.gw * this.gh).fill(1);
+    for (const fam of ["ally", "enemy", "natural_parent"]) {
+      for (const inst of this.w.all(fam)) for (const k of this._cellsOf(inst)) this.grid0[k] = 1000;
+    }
+  }
+
   // manager Create, "Inseriamo gli ostacoli" [C]
   initCost() {
+    this.initGrid0();
     this.cost.fill(0);
     for (const fam of ["ally_build", "enemy_build", "natural_parent"]) {
       for (const inst of this.w.all(fam)) this.markInstance(inst, 1000);
@@ -225,7 +240,8 @@ export function scrMove(p, inst, tx, ty) {
 export function moveFlowField(w, p, inst) {
   const a = p.fieldAt(inst.flow_field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
   if (a !== -1) inst.target_angle = a;
-  if (inst.target_angle !== undefined) inst.direction = inst.target_angle;
+  // direction in GMS si riporta sempre fra 0 e 360 [I]
+  if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
 }
 

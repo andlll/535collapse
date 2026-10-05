@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 4a (fanteria e caserma) fatto; prossimo il 4b. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 4b (nemici in mischia) fatto; prossimo il 4c. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -25,7 +25,7 @@ sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Difetti da decidere: n.30–35 (§3.9).
+- [ ] Difetti da decidere: n.30–35 (§3.9), n.37–39 (§3.10).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -43,7 +43,8 @@ sta nella sezione citata.
 - [x] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina (§3.6).
 - [x] 4a. Fanteria (guerriero, picchiere), caserma, pulsanti
   attacco/difesa, gruppi di controllo (§3.9).
-- [ ] 4b–4e. Combattimento (i nemici calcolano i percorsi con le porte
+- [x] 4b. Nemici in mischia: IA, morte, cadaveri (§3.10).
+- [ ] 4c–4e. Combattimento (i nemici calcolano i percorsi con le porte
   chiuse: `goalField(..., enemy)`, §3.8): IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
@@ -1570,3 +1571,66 @@ picchiere (popolazione 5 → 11). Portati a 150 px da un picchiere nemico
 lo attaccano da soli (vita 60 → 47 → 27 → 10 → …; i nemici non muoiono
 ancora: 4b). Gruppi: Ctrl+1, Esc, 1 → riselezionati tutti e tre.
 1200 passi senza errori in `match`, `lvl01`, `lvl02`.
+
+### 3.10 Punto 4b: nemici in mischia (5 ottobre 2026)
+
+**Portato** (`game/src/enemies.js`): `enemy_warrior`, `enemy_picchiere`,
+`enemy_cavaliere` (visibilità, morte e cadavere, movimento, attacco,
+inseguimento, frecce incendiarie sulle case, selezione, bersaglio col
+click destro); `scr_movimento_nemici_ff`, `scr_atk_signal`,
+`scr_find_free_spawn_enemy`; `atk_signal`. Arcieri, catapulte e arieti
+nemici restano bersagli fermi fino a 4c/4d.
+
+**Come funziona** [C]:
+- Tre copie dello stesso codice che si sono allontanate; le differenze
+  stanno in una tabella (`MELEE`). Vita 75/60/90, rango 3/3/5, danni per
+  vita massima del bersaglio in §1.4.
+- Il nemico vede un alleato entro 400 px (dimezzati di notte, ridotti in
+  verticale come la velocità) e lo carica con `mp_potential_step`; a meno
+  di 10 px attacca: un colpo ogni 39 passi col versore. Colpendo un civile
+  lo fa scappare di 200 px (alarm 10); catapulte e arieti fermi scappano.
+- È visibile entro 150 px da un'unità alleata, 200 da un edificio (o un
+  palo, per il picchiere), 500 da castello e torre (le distanze crescono
+  di giorno: `+ r·(1−night)`), se colpito, nel menu o col trucco della
+  nebbia.
+- Guerriero e picchiere, se fermi a meno di 400 px da un edificio di legno
+  e senza civili entro 400 px, vanno a dargli fuoco (le frecce
+  incendiarie partono col punto 4d).
+- I nemici della room non hanno un flow field proprio
+  (`role` 0): si muovono con `mp_potential_step`. Solo gli attaccanti delle
+  ondate (role 31, punto 4e) seguono un flow field.
+
+**Motore**: il mondo tiene un indice delle istanze per nome di oggetto e
+di parent, nello stesso ordine di creazione (`instance_nearest`,
+`instance_number`, `with` danno gli stessi risultati). L'IA nemica fa
+molte di queste ricerche per istanza e per passo: `lvl02` è passata da
+~12 a ~1 ms per passo di simulazione (3000 passi in 2,8 s).
+
+**Difetti e stranezze** [C]:
+
+36. (Ritirato: i nemici si deselezionano con l'evento ereditato dal parent
+    `enemy`.)
+37. "Griglia 0": il manager crea una prima `global.cost_field` (1000 dove
+    c'è un alleato, un nemico o un elemento naturale, 1 altrove) e la
+    sostituisce subito con un'altra. I nemici senza flow field proprio
+    hanno `flow_field` mai assegnata, cioè 0, e quando si sovrappongono a
+    qualcosa `scr_move_flow_field` legge la griglia 0 come un campo di
+    angoli: 1 grado (destra) o 1000 → 280 gradi (giù, un po' a destra).
+    Riprodotto (`Pathing.grid0`).
+38. Il doppio clic su un picchiere o un cavaliere nemico seleziona
+    **tutti i civili**, senza contarli in `global.sel`. Riprodotto.
+39. `enemy_warrior`: nel controllo della nebbia mancano le graffe (le
+    altre due copie le hanno): vicino a un `fog01` (entro 290 px) il
+    guerriero nemico non insegue mai. `fog01` lo crea `fog_controller`
+    (punto 5): finora non conta. Riprodotto.
+40. Residui: `atk_signal` non disegna nulla (solo un contatore di debug in
+    `mouser`); l'Alarm_3 dei nemici ("animazione fuoco?") non lo arma
+    nessuno; `global.dialogoenemy1` e `hint_attack` arrivano con dialoghi
+    e suggerimenti.
+
+**Verificato** (Chromium, `match`): un guerriero creato a 300 px da un
+picchiere nemico: il picchiere lo vede e lo carica, si colpiscono (75 →
+72 → … e 60 → 53 → …, −3 e −7 ogni 39 passi), il picchiere muore, il
+cadavere fa le sue tre pose e sparisce, il guerriero va verso il nemico
+successivo. 3000 passi senza errori in `match`, `lvl01`, `lvl02` (in
+`lvl02` si combatte da soli: alleati 16 → 11, nemici 89 → 83).

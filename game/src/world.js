@@ -32,6 +32,10 @@ export class World {
     this.roomW = roomW;
     this.roomH = roomH;
     this.instances = [];
+    // Indice per nome di oggetto e di parent: le liste sono in ordine di
+    // creazione come this.instances (le ricerche danno gli stessi
+    // risultati); le istanze distrutte si tolgono a fine passo.
+    this.byName = new Map();
     this.behaviours = {};
     this.nextId = 100001;
     this.grid = new Map();
@@ -106,8 +110,24 @@ export class World {
       cells: null,
     };
     this.instances.push(inst);
+    for (const n of [object, ...o.parents]) {
+      let l = this.byName.get(n);
+      if (!l) this.byName.set(n, (l = []));
+      l.push(inst);
+    }
     this.moved(inst);
     return inst;
+  }
+
+  _list(name) {
+    return this.byName.get(name) || [];
+  }
+
+  // a fine passo: via le istanze distrutte dalle liste dell'indice
+  _compact() {
+    for (const [n, l] of this.byName) {
+      if (l.some((i) => !i.alive)) this.byName.set(n, l.filter((i) => i.alive));
+    }
   }
 
   destroy(inst) {
@@ -122,25 +142,25 @@ export class World {
   }
 
   *all(name) {
-    for (const i of this.instances) if (i.alive && this.is(i, name)) yield i;
+    for (const i of this._list(name)) if (i.alive) yield i;
   }
 
   number(name) {
     let n = 0;
-    for (const i of this.instances) if (i.alive && this.is(i, name)) n++;
+    for (const i of this._list(name)) if (i.alive) n++;
     return n;
   }
 
   exists(name) {
-    for (const i of this.instances) if (i.alive && this.is(i, name)) return true;
+    for (const i of this._list(name)) if (i.alive) return true;
     return false;
   }
 
   // instance_nearest: distanza fra origini [I]
   nearest(x, y, name) {
     let best = null, bd = Infinity;
-    for (const i of this.instances) {
-      if (!i.alive || !this.is(i, name)) continue;
+    for (const i of this._list(name)) {
+      if (!i.alive) continue;
       const d = (i.x - x) ** 2 + (i.y - y) ** 2;
       if (d < bd) { bd = d; best = i; }
     }
@@ -347,8 +367,8 @@ export class World {
     const a = this.bbox(inst);
     if (!a) return Infinity;
     let best = Infinity;
-    for (const o of this.instances) {
-      if (o === inst || !o.alive || !this.is(o, name)) continue;
+    for (const o of this._list(name)) {
+      if (o === inst || !o.alive) continue;
       const b = this.bbox(o);
       if (!b) continue;
       const dx = Math.max(0, b[0] - a[2], a[0] - b[2]);
@@ -393,6 +413,7 @@ export class World {
     this._collisions();
     for (const i of live()) this.fire(i, "stepEnd");
     this.instances = live();
+    this._compact();
   }
 
   // Eventi di collisione [I, runner GMS]: dopo Step e moto, per ogni istanza
