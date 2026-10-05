@@ -806,3 +806,87 @@ Ogni correzione sarà marcata nel codice come deviazione dall'originale:
 6. `lvl02`: "area 6 libera" calcolata sempre, non solo quando `l6=0`.
 7. Proiettili di mischia: non portati.
 8. Flow field condiviso per destinazione invece di una griglia per unità.
+
+---
+
+## Fase 2 — asset e budget (5 ottobre 2026)
+
+### 2.1 Atlas (`tools/05_atlas.py`)
+
+Gruppi dalle cartelle di sprite dell'autore, ognuno con un **tier di
+caricamento** e una **scala**. Frame ritagliati sull'alpha, MaxRects in
+pagine 2048×2048 (l'ultima di ogni gruppo ritagliata al contenuto), 2 px di
+bordo ripetuto contro le sbavature del filtro lineare, WebP q85 con alpha
+senza perdita; `gui` interamente senza perdita. Il motore caricherà le
+pagine con **alpha premoltiplicato** (l'RGB dei pixel trasparenti, alterato
+dalla compressione, così non conta: è il difetto degli aloni visto in
+NIMBUS). Esclusi 42 sprite che non vengono mai disegnati (solo maschere di
+collisione o mai citati).
+
+**Budget misurato** (memoria GPU = pagine × larghezza × altezza × 4):
+
+| Gruppo | Tier | Scala | Frame | Pagine | GPU MB | WebP MB |
+|---|---|---|---|---|---|---|
+| gui | core | 1 | 74 | 1 | 2,2 | 0,1 |
+| campagna | menu | 1 | 4 | 1 | 12,4 | 0,4 |
+| terreno (natura ≥ 512 px) | gioco | **0,5** | 34 | 2 | 33,0 | 1,9 |
+| ambiente | gioco | 1 | 42 | 1 | 5,5 | 0,2 |
+| edifici | gioco | 1 | 92 | 2 | 25,7 | 0,9 |
+| alleati | gioco | 1 | 662 | 3 | 39,9 | 2,4 |
+| nemici | gioco | 1 | 510 | 2 | 33,6 | 2,0 |
+| citta | citta | 1 | 28 | 1 | 15,3 | 0,6 |
+| **totale** | | | | **13** | **167,5** | **8,5** |
+
+In partita (senza `campagna`) ~155 MB; nel menu ~152 MB (serve tutto tranne
+`citta`). Contro l'originale: 236 MB di sprite ritagliati + **~590 MB** di
+superfici di nebbia e notte in `match`.
+
+**Verifiche fatte** (script di controllo, non versionato):
+
+- Ricostruendo 203 sprite (200 a caso + i 3 più grandi) dalle pagine WebP e
+  confrontandoli con i PNG originali: alpha **identico** (errore 0),
+  rettangoli dell'atlas **senza sovrapposizioni**.
+- Errore RGB medio per gruppo con q85, su sfondo nero dopo
+  premoltiplicazione: terreno 1,0/255, campagna 1,7, edifici 1,9, ambiente
+  1,9, nemici 2,2, alleati 2,3, città 3,8; massimo 5,4 su singoli sprite.
+  Le icone `gui` arrivavano a 8,8/255 (bordi netti): per questo `gui` è
+  senza perdita.
+- **Non verificato**: l'aspetto a schermo nel motore (il motore non c'è
+  ancora).
+
+**Scala del terreno: decisione dell'autore in sospeso.** Confronto a 1:1
+fatto con le immagini originali (riduzione Lanczos, poi ingrandimento
+bilineare come fa la GPU): a 0,5 si perde la **grana della carta** delle
+texture e i contorni neri si ammorbidiscono; a 0,75 la grana resta quasi
+tutta. Costi: 0,5 → 167 MB totali; 0,75 → ~200 MB; 1,0 → ~255 MB, e
+`montagna10` (2342 px) non entra in una pagina 2048: servirebbero pagine
+4096 per il terreno.
+
+### 2.2 Maschere (`tools/06_masks.py`)
+
+Dai PNG originali, a risoluzione **piena** anche per il terreno scalato:
+tipo (rettangolo/precisa/ellisse/rombo) e bbox per tutti i 1473 sprite,
+bitmap RLE per le 34 precise. `game/assets/masks.json`: 0,3 MB.
+
+**Verifica della regola GMS** "pixel pieno = alpha > tolleranza, unione dei
+frame se le maschere non sono separate" (§1.3, [I]): ricalcolando il bbox
+automatico dai PNG, coincide con quello salvato nel GMX per **1471 sprite su
+1473**. Le due eccezioni: `cr1` (bbox salvato largo 652 su un'immagine larga
+625: resto di una versione precedente dell'immagine) e `null` (sprite vuoto).
+Il porting usa i bbox del GMX, cioè quelli che usava il gioco.
+
+### 2.3 Font
+
+**[C]** I tre font sono **Seagram tfb**, un gotico (blackletter). Rasterizzati
+solo per ASCII 32–127. Da sostituire con un font libero (decisione §0.15) e
+con le lettere accentate, per la localizzazione. Candidati OFL dello stesso
+genere: **Grenze Gotisch** (gotico leggibile, più pesi, latino esteso),
+**Pirata One**, **UnifrakturMaguntia**. Scelta dell'autore in sospeso.
+
+### 2.4 Escluso per ora
+
+- **Texture compresse (KTX2 ETC2/ASTC)**: con il solo desktop e 155 MB in
+  partita non servono; richiederebbero un transcoder WASM (dipendenza nuova).
+- **Mipmap**: lo zoom dell'originale va da 1,0 a 1,5 (si allontana al
+  massimo di 1,5×): senza mipmap l'aliasing è minimo. Da rivalutare se si
+  allarga lo zoom.
