@@ -4,11 +4,12 @@
 // *_prizedrawer, idle_clicker).
 //
 // Le 9 famiglie (casa, magazzino, barn, caserma, stalla, castello, chiesa,
-// torre, e campo nel punto 3c) sono copie dello stesso codice con dati
+// torre, campo) sono copie dello stesso codice con dati
 // diversi [C, confronto automatico normalizzando i nomi: STUDIO.md §3.5]:
 // qui il codice e' scritto una volta e i dati stanno nella tabella FAM, con
-// il file d'origine di ogni valore. Le mura (orientamento, tratti, porte)
-// sono a parte (da fare).
+// il file d'origine di ogni valore. Il campo condivide pulsante e placer;
+// cantiere e campo finito sono a parte (campoFond, campo). Le mura
+// (orientamento, tratti, porte) sono a parte (da fare).
 
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
@@ -52,6 +53,12 @@ export const FAM = {
            panel: { w: 340, title: "Tower", desc: "Defensive building with great visibility.",
                     costs: [["200", 40, "ico_stone", 95]], shortcut: ["Shortcut: A", 320] },
            slife: 329, phases: [[0.5, "torre_f2"]] },
+  // campo [C, campo_clicker]: niente fasi ne' vita nella tabella (cantiere
+  // e campo hanno codice proprio, campoFond e campo qui sotto); scheda piu'
+  // larga con angoli da 80.
+  campo: { key: 82, bx: 660, by: 50, cost: { wood: 200 }, ico: "ico_corn", ghost: "campo1",
+           panel: { w: 430, r: 80, title: "Farm", desc: "Produces food resource when occupied by a worker.",
+                    costs: [["200", 40, "ico_wood", 95]], shortcut: ["Shortcut: R", 410] } },
 };
 
 const BLINK = { wood: "wood_blink", stone: "stone_blink", food: "food_blink", gold: "gold_blink" };
@@ -120,7 +127,7 @@ export function clicker(fam) {
       if (i.hover !== 1 && i.active !== 1) return;
       const H = w.cam.cssH, P = d.panel;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, P.w, H - 20, 60, 60, WHITE, WHITE, false);
+      dr.roundrectColourExt(20, H - 150, P.w, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
       dr.text(40, H - 120, P.title);
@@ -145,7 +152,7 @@ export function clicker(fam) {
 
 // manager Step, "pulsanti di costruzione" [C]: con civili selezionati e
 // nessun soldato, un pulsante per famiglia (nell'ordine dell'originale).
-// campo_clicker (punto 3c) e mura_clicker (mura) non sono ancora portati.
+// mura_clicker (mura) non e' ancora portato.
 const BUTTON_ORDER = ["torre", "magazzino", "barn", "campo", "casa", "caserma", "stalla", "castello", "chiesa", "mura"];
 export function buildButtons(w) {
   const g = w.g;
@@ -202,7 +209,7 @@ export function placer(fam) {
         for (const c of w.all(fam + "_clicker")) c.active = 0;
       } else if (i.place === 1) {
         blinkMissing(w, fam, d.cost);
-      } else if (fam !== "chiesa" && fam !== "torre" && fam !== "castello") {
+      } else if (fam !== "chiesa" && fam !== "torre" && fam !== "castello" && fam !== "campo") {
         // [C] le altre famiglie lampeggiano anche col posto occupato (l'else
         // e' agganciato al primo if): riprodotto
         blinkMissing(w, fam, d.cost);
@@ -433,6 +440,110 @@ function sendBuildersToWork(i, w, p) {
     o.action = 1;
     o.alarm.set(0, 13);
   }
+}
+
+// ---------------------------------------------------------------- campi
+
+// campo_fond [C]: il cantiere del campo. Non e' un ally_fondamenta: lo
+// semina un civile alla volta (fieldwork, action 8, +5 vita a ogni scatto
+// di Alarm_2). Le celle della griglia diventano libere: sul campo si cammina.
+export function campoFond(p) {
+  return {
+    create(i, w) {
+      p.markInstance(i, 1);
+      Object.assign(i, { life: 1, slife: 100, selected: 0, fase: 0, fondazione: 1, occupato: 0, legno: 0, pietra: 0 });
+      i.depth = -1;
+      w.g.sele = 0;
+      i.alarm.set(0, 1);
+      // (l'erba che cresce, particelle "part_crop": col sistema di particelle)
+    },
+    // Alarm_0 [C]: come gli altri cantieri, ma con fieldwork e il punto
+    // del mouse al momento dell'alarm.
+    alarm0(i, w) {
+      const g = w.g;
+      for (const o of w.all("ally_omino")) {
+        if (o.buildarm !== 1) continue;
+        o.fieldwork = 1;
+        o.buildx = w.mouse.x;
+        o.buildy = w.mouse.y;
+        p.free(o);
+        o.target_angle = pointDirection(o.x, o.y, i.x, i.y);
+        if (o.action === 0) g.idle -= 1;
+        const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(w.mouse.x / GRID), Math.trunc(w.mouse.y / GRID),
+                                                  Math.trunc(o.x / GRID), Math.trunc(o.y / GRID));
+        const found = p.fieldAt(o.goal_field, cx, cy) !== -1;
+        o.goal_x = found ? cx * GRID : o.x;
+        o.goal_y = found ? cy * GRID : o.y;
+        generateFields(p, o, o.goal_x, o.goal_y);
+        o.dirox = o.goal_x;
+        o.diroy = o.goal_y;
+        o.alarm.set(0, 13);
+        o.action = 1;
+        o.buildarm = 0;
+      }
+    },
+    step(i, w) {
+      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
+    },
+    globalLeftPressed(i) { i.selected = 0; },
+    leftReleased(i, w) { if (w.g.sele === 0) i.selected = 1; },
+    rightReleased(i, w) {
+      for (const o of w.all("ally_omino")) if (o.selected === 1) o.fieldwork = 1;
+      i.buildwork = 1;
+    },
+    keyPress46(i, w) { if (i.selected === 1) { w.destroy(i); w.g.wood += 200; } },
+    drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_corn"); },
+  };
+}
+
+// campo [C]: libero (foodwork 0) o occupato da un contadino (foodwork 1,
+// rinnovato a ogni raccolto: alarm 1 lo libera dopo 40 passi). Il cibo
+// non si esaurisce: la variabile food del campo cresce fino a 200 ma
+// nessuno la legge (residuo, §3.6).
+export function campo(p) {
+  return {
+    create(i) {
+      p.markInstance(i, 1);
+      Object.assign(i, { selected: 0, foodwork: 0, life: 100, slife: 100, onfire: 0, firestarted: 0,
+                         food: 0, hover: 0, hit: 0 });
+      i.alarm.set(0, 120);
+      i.alarm.set(2, 30);
+      i.alarm.set(3, 5);
+      // (le spighe, 700 particelle "part_crop": col sistema di particelle)
+    },
+    alarm0(i) { i.alarm.set(0, 120); if (i.food < 200) i.food += 1; },
+    alarm1(i) { i.foodwork = 0; },
+    alarm2(i) { i.alarm.set(2, 30); }, // fumo se in fiamme: col fuoco (punto 4)
+    alarm3(i) { i.alarm.set(3, 5); if (i.onfire === 1) i.life -= 1; },
+    destroy(i, w) { w.g.farmhover = 0; },
+    step(i, w) { if (i.life <= 0) w.destroy(i); }, // (campo bruciato: col fuoco)
+    globalLeftPressed(i) { i.selected = 0; },
+    leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
+    mouseEnter(i, w) { w.g.farmhover = 1; i.hover = 1; }, // (+ hint_campi coi suggerimenti)
+    mouseLeave(i, w) { w.g.farmhover = 0; i.hover = 0; },
+    rightReleased(i, w) {
+      for (const c of w.all("centro")) if (c.selected === 1) Object.assign(c, { woodir: 0, goldir: 0, stonedir: 0, foodir: 1 });
+      for (const o of w.all("ally_omino")) if (o.selected === 1) o.foodwork = 1;
+    },
+    keyPress46(i) { if (i.selected === 1) i.life = 0; },
+    drawEnd(i, w, dr) {
+      if (i.selected === 1) lifeBar(dr, i);
+      if (i.hover === 1 || i.hit === 1) lifeBar(dr, i);
+    },
+    drawGUI(i, w, dr) { if (i.selected === 1 && w.g.sel < 1) panel(dr, i, "ico_corn"); },
+  };
+}
+
+// food_bullet [C]: creato dal contadino quando comincia a raccogliere;
+// toccando il campo lo segna occupato, poi sparisce (o dopo 50 passi).
+export function foodBullet() {
+  return {
+    create(i) { i.alarm.set(0, 50); },
+    alarm0(i, w) { w.destroy(i); },
+    collisions: {
+      campo(i, w, other) { other.alarm.set(1, 40); other.foodwork = 1; w.destroy(i); },
+    },
+  };
 }
 
 // --------------------------------------------------------------- centro

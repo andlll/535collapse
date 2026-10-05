@@ -16,8 +16,8 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
 import { omino, resource, dying } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, centro, ominoClicker, centroCancel, blink, prizeDrawer, idleClicker,
-         buildButtons } from "./buildings.js";
+import { FAM, clicker, placer, fond, built, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
+         prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
@@ -101,9 +101,13 @@ async function main() {
   for (const f of Object.keys(FAM)) {
     world.register(f + "_clicker", clicker(f));
     world.register(f + "_placer", placer(f));
+    if (f === "campo") continue;
     world.register(f + "_fond", fond(f, path));
     world.register(f, built(f, path));
   }
+  world.register("campo_fond", campoFond(path));
+  world.register("campo", campo(path));
+  world.register("food_bullet", foodBullet());
   world.register("omino_clicker", ominoClicker());
   world.register("centro_indietro_clicker", centroCancel());
   for (const n of ["wood_blink", "stone_blink", "food_blink", "gold_blink", "pop_blink"]) world.register(n, blink(n));

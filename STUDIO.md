@@ -14,7 +14,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: Fase 3, punto 3b (costruzione) fatto. Il dettaglio di ogni voce
+Ultimo aggiornamento: Fase 3, punto 3c (campi e cibo) fatto. Il dettaglio di ogni voce
 sta nella sezione citata.
 
 **Decisioni o materiali che servono all'autore**
@@ -22,6 +22,9 @@ sta nella sezione citata.
   angoli di `draw_roundrect_colour_ext` (§3.1).
 - [ ] Screenshot o video di fuoco e pioggia: aspetto delle forme di
   particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
+- [ ] Screenshot dell'originale col centro selezionato mentre produce un
+  civile: colore della percentuale, per verificare lo stato di disegno
+  persistente (§3.5).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -37,7 +40,7 @@ sta nella sezione citata.
   `*_prizedrawer`, `idle_clicker` (§3.5).
 - [ ] Mura e porte: `mura_clicker`, `mura_placer` e `muraplacer_*`
   (orientamento, tratti), `mura_ori/vert`, `mplus_*`, `gate_clicker`.
-- [ ] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina.
+- [x] 3c. Campi e cibo: `campo`, `campo_fond`, `food_bullet`, semina (§3.6).
 - [ ] 4. Combattimento: IA e morte dei nemici; guerriero, picchiere,
   arciere, catapulta, ariete alleati; frecce; pulsanti attacco/difesa;
   presidi di `match`; ondate (`enemy_manager`); fuoco (`fire_bullet`,
@@ -48,7 +51,7 @@ sta nella sezione citata.
 
 **Resto del gioco**
 - [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco, fumo, sangue,
-  mattoni, burst; aquila (manager alarm 3), `fog_controller`.
+  mattoni, burst; spighe dei campi, semi della semina; aquila (manager alarm 3), `fog_controller`.
 - [ ] Suggerimenti del tutorial (`hint_*`), dialoghi (`dialogo_*`),
   obiettivi (`objective_button`), vittoria e sconfitta.
 - [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
@@ -1346,3 +1349,51 @@ correzioni decise). Verificato in Chromium: cantiere di una casa di tipo
 4 marcato con `c4m`; dopo Canc restano ostacolo solo le celle di un albero
 sotto il cantiere; torre al 50% → `torre_r1`, al 20% → `torre_r2`, al 100%
 → `torre_spr`.
+
+### 3.6 Punto 3c: campi e cibo (5 ottobre 2026)
+
+**Portato** (`buildings.js`: `campoFond`, `campo`, `foodBullet`, il campo
+nella tabella `FAM`; `civilians.js`: azione 3 del civile, semina e raccolta
+in Step azione 16 e Alarm_2).
+
+**Come funziona** [C]:
+- Pulsante R, 200 legno. Il cantiere del campo (`campo_fond`) **non** è un
+  `ally_fondamenta`: non lo costruisce chi costruisce le case, lo
+  **semina** un civile alla volta (`fieldwork`, action 8) che va al centro
+  del cantiere: +5 vita a ogni scatto di Alarm_2, quindi 20 scatti, circa
+  260 passi (4,3 s). Campo e cantiere **liberano** le celle della griglia
+  dei costi: ci si cammina sopra.
+- Finita la semina il seminatore diventa contadino. Un campo è libero
+  (`foodwork=0`) o occupato: lo occupa il `food_bullet` che il contadino
+  crea quando comincia, e ogni raccolto lo tiene occupato per altri 40
+  passi. Il contadino cerca il campo **libero** più vicino; se sono tutti
+  occupati si ferma.
+- +1 cibo ogni 39 passi; a 10 va al granaio più vicino (`ally_barn`:
+  mulino o centro, che ha un `cc_barn` invisibile), scarica, e cerca di
+  nuovo il campo libero più vicino. Il campo non si esaurisce.
+
+**Deviazione** [I]:
+
+22. Se un cantiere di campo viene finito mentre un secondo seminatore è
+    ancora in cammino (`fieldwork=1`), l'originale legge
+    `instance_nearest(x,y,campo_fond).x` senza cantieri, cioè `noone.x`, e
+    GameMaker si ferma con un errore. Qui il civile si ferma e torna
+    inattivo. Non l'ho visto succedere: lo deduco dal codice.
+
+**Residui** [C], non portati perché nessuno li legge: la variabile `food`
+del campo (cresce fino a 200 ogni 120 passi), `foodir/woodir/...` del
+centro (assegnate dai click destri, mai lette), lo sprite casuale del
+campo (`action_if_dice(2)` sceglie `campo2`, che è già quello
+dell'oggetto). La room `match` ha già un cantiere di campo piazzato (vita
+1) vicino al mulino.
+
+**Rimandato**: spighe ed erba dei campi, semi lanciati dal seminatore e
+campo bruciato (sistema di particelle e fuoco); `hint_campi`
+(suggerimenti).
+
+**Verificato** (Chromium headless, `match`, legno portato a 300): civile
+selezionato, R, clic → cantiere (legno 300 → 100); il civile semina
+(sprite `os*`, vita 1 → 100), il cantiere diventa campo, il civile
+raccoglie (`owo*`), a 10 va al mulino col carico (`car*`), scarica (cibo
+100 → 110 → 120) e torna allo stesso campo; il campo passa da occupato a
+libero e di nuovo occupato. Nessun errore.

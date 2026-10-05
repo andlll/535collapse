@@ -528,8 +528,8 @@ function workTick(i, w) {
 
 // --------------------------------------------- costruzione e riparazione
 
-// azione 16, parte "costruzione", "riparazione" e "fine costruzione" [C].
-// (La coltivazione dei campi, action 8, arriva col punto 3c.)
+// azione 16, parte "costruzione", "coltivazione di campo", "riparazione",
+// "fine costruzione", "fine coltivazione" [C].
 function buildStep(i, w, p) {
   const g = w.g;
   const fondNear = () => w.nearest(i.buildx, i.buildy, "ally_fondamenta");
@@ -546,6 +546,26 @@ function buildStep(i, w, p) {
       }
     } else {
       i.action = 0; p.occupy(i); i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+    }
+  }
+  // coltivazione di campo: il seminatore arriva al centro del cantiere.
+  // [Deviazione] senza cantieri l'originale legge instance_nearest(...).x
+  // di noone ed esce con un errore (succede se il campo viene finito mentre
+  // un secondo seminatore e' ancora in cammino) [I]; qui il civile si ferma.
+  if (i.fieldwork === 1) {
+    const f = w.nearest(i.x, i.y, "campo_fond");
+    if (!f) {
+      i.fieldwork = 0; i.action = 0; p.occupy(i); i.step = 0; i.speed = 0; g.idle += 1;
+    } else if (pointDistance(i.x, i.y, f.x, f.y) < 10) {
+      i.fieldwork = 0;
+      p.occupy(i);
+      i.action = 8;
+      i.wood = 0;
+      i.buildx = f.x; i.buildy = f.y;
+      i.food = 0; i.gold = 0; i.stone = 0; i.step = 0;
+      i.alarm.set(2, 13);
+      i.direction = pointDirection(i.x, i.y, i.buildx, i.buildy);
+      f.occupato = 1;
     }
   }
   // riparazione
@@ -575,19 +595,57 @@ function buildStep(i, w, p) {
       i.action = 0; i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
     }
   }
+  // fine coltivazione: il campo seminato e' finito (o non c'e' piu' un
+  // cantiere a 30 px): il seminatore diventa contadino. campox e' quello
+  // vecchio: l'azione 3 del passo dopo trova il campo libero piu' vicino.
+  if (i.action === 8) {
+    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
+    if (!f || pointDistance(i.buildx, i.buildy, f.x, f.y) > 30) {
+      i.dirox = i.campox; i.diroy = i.campoy;
+      i.foodx = i.campox; i.foody = i.campoy;
+      if (i.foodwork !== 1) scrMove(p, i, i.dirox, i.diroy);
+      i.foodwork = 1;
+      p.free(i);
+      i.action = 1;
+      i.alarm.set(0, 13);
+      return "exit";
+    }
+  }
   return null;
 }
 
 // Vita aggiunta al cantiere a ogni scatto di Alarm_2 (ogni 13 passi), per
 // slife [C]: le costruzioni grandi +1, casa/magazzino/mulino +2, i tratti
-// di mura (799) e il campo (100) +5.
+// di mura (799) +5. Il 100 non serve: e' il cantiere del campo, che non e'
+// un ally_fondamenta e cresce con la semina (azione 8).
 const BUILD_RATE = { 329: 1, 899: 1, 349: 1, 299: 1, 379: 1, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5 };
 
-// Alarm_2, azioni 6 e 7 [C]: a differenza della raccolta, il cantiere
+// Alarm_2, azioni 4, 6, 7, 8 [C]: a differenza della raccolta, il cantiere
 // cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve
 // solo all'animazione.
 function otherWorkTick(i, w) {
   const g = w.g;
+  // raccolta del cibo [C]: +1 ogni tre scatti; il campo resta occupato
+  // (alarm 1 a 40 passi), o si libera al passo dopo se il contadino ha 10.
+  if (i.action === 4) {
+    if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
+    if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
+    if (i.step !== 2) return;
+    i.step = 0;
+    i.alarm.set(2, 13);
+    i.food += 1;
+    const c = w.nearest(i.x, i.y, "campo");
+    if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
+    return;
+  }
+  // semina [C]: +5 a ogni scatto (i semi lanciati sono particelle: dopo)
+  if (i.action === 8) {
+    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
+    if (f && f.fondazione === 1) { f.life += 5; if (f.life > f.slife) f.life = f.slife; }
+    i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
+    i.alarm.set(2, 13);
+    return;
+  }
   if (i.action === 6) {
     const f = w.nearest(i.buildx, i.buildy, "ally_fondamenta");
     if (f && f.fondazione === 1) {
@@ -613,8 +671,75 @@ function otherWorkTick(i, w) {
   i.alarm.set(2, 13);
 }
 
-// Campi e semina (punto 3c): segnaposto finche' non arrivano campo e campo_fond.
-function fieldsStep() { return null; }
+// --------------------------------------------------------------- campi
+
+// distance_to_point [I]: dal bbox dell'istanza al punto (0 se dentro).
+function distanceToPoint(w, i, px, py) {
+  const b = w.bbox(i);
+  if (!b) return Math.hypot(px - i.x, py - i.y);
+  return Math.hypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
+}
+
+// azione 3, "Campi di grano" [C]. foodwork: 0 niente, 1 verso il mio campo,
+// 2 verso il granaio col cibo, 6 cercare il campo libero piu' vicino.
+function fieldsStep(i, w, p) {
+  const g = w.g;
+  // `var top` sta dentro l'if: fuori vale 0 [I, variabili non assegnate = 0]
+  let top = 0;
+  if (i.foodwork === 1 || i.foodwork === 6) {
+    let miocampox = 0, miocampoy = 0;
+    top = 99999;
+    for (const c of w.all("campo")) {
+      if (c.foodwork !== 0) continue;
+      const dis = w.distanceToInstance(c, i);
+      if (dis < top) { miocampox = c.x; miocampoy = c.y; top = dis; }
+    }
+    if (i.campox !== miocampox || i.foodwork === 6) {
+      i.campox = miocampox; i.campoy = miocampoy;
+      i.dirox = i.campox; i.diroy = i.campoy;
+      i.foodx = i.campox; i.foody = i.campoy;
+      p.free(i);
+      generateFields(p, i, i.dirox, i.diroy);
+      i.foodwork = 1;
+    }
+    i.action = 1;
+  }
+  // tutti i campi occupati
+  if (top === 99999 && i.foodwork === 1) { i.action = 0; g.idle += 1; i.foodwork = 0; }
+  // arrivato al campo: comincia a raccogliere
+  if (i.foodwork === 1 && distanceToPoint(w, i, i.foodx, i.foody) < 5) {
+    i.foodwork = 0;
+    p.occupy(i);
+    i.action = 4;
+    i.step = 0; i.wood = 0; i.gold = 0; i.stone = 0;
+    i.alarm.set(2, 13);
+    w.create("food_bullet", i.x, i.y);
+    i.direction = pointDirection(i.x, i.y, i.foodx, i.foody);
+  }
+  // a 10 di cibo al granaio (ally_barn: mulino o centro); l'else e'
+  // agganciato a "c'e' un granaio" [C]
+  if (i.action === 4 && i.food >= 10) {
+    if (w.number("ally_barn") > 0) {
+      i.action = 1;
+      p.free(i);
+      const b = w.nearest(i.x, i.y, "ally_barn");
+      i.dirox = b.x; i.diroy = b.y;
+      if (i.foodwork !== 2) goTo(p, i, i.dirox, i.diroy);
+      i.alarm.set(0, 13);
+      i.foodwork = 2;
+    } else {
+      i.action = 0; p.occupy(i); i.foodwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+    }
+  }
+  // vicino al granaio: scarica e torna a cercare un campo libero
+  if ((i.foodwork === 2 || i.food > 0) && i.action !== 4 && w.distanceToObject(i, "ally_barn") < 10) {
+    g.food += i.food;
+    i.food = 0;
+    i.alarm.set(0, 13);
+    if (i.foodwork === 2) i.foodwork = 6;
+  }
+  return null;
+}
 
 // --------------------------------------------------------------- disegno
 
