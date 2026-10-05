@@ -62,13 +62,13 @@ def tree(el):
 
 
 def folders_of(el, kind, path=()):
-    """nome risorsa -> percorso di cartelle (senza la radice)."""
+    """nome risorsa -> percorso di cartelle sotto la radice (p.es. "ariete/walk")."""
     res = {}
     for c in el:
         if c.tag == kind + "s" and c.get("name") is not None:
             res.update(folders_of(c, kind, path + (c.get("name"),)))
         elif c.tag == kind and c.text:
-            res[leaf(c.text)] = "/".join(path[1:])
+            res[leaf(c.text)] = "/".join(path)
     return res
 
 

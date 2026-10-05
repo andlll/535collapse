@@ -33,7 +33,7 @@
  },
  {
   "name": "albero",
-  "folder": "",
+  "folder": "nature",
   "sprite": "alb1",
   "mask": "ow73",
   "parent": "natural_parent",
@@ -137,7 +137,7 @@
  },
  {
   "name": "albero_debug",
-  "folder": "",
+  "folder": "nature",
   "sprite": "alb1_F",
   "mask": "ow73",
   "parent": null,
@@ -226,7 +226,7 @@
  },
  {
   "name": "albero_fake",
-  "folder": "",
+  "folder": "nature",
   "sprite": "alb1_F",
   "mask": "ow73",
   "parent": null,
@@ -315,7 +315,7 @@
  },
  {
   "name": "albero_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": "ow73",
   "parent": null,
@@ -356,7 +356,7 @@
  },
  {
   "name": "ally",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -388,7 +388,7 @@
  },
  {
   "name": "ally_arciere",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "aw73",
   "mask": "ow73",
   "parent": "ally_militare",
@@ -573,7 +573,7 @@
  },
  {
   "name": "ally_ariete",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "arm11",
   "mask": "cati11",
   "parent": "ally_militare",
@@ -707,7 +707,7 @@
  },
  {
   "name": "ally_barn",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": null,
   "mask": null,
   "parent": "ally_wooden",
@@ -720,7 +720,7 @@
  },
  {
   "name": "ally_build",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally",
@@ -752,7 +752,7 @@
  },
  {
   "name": "ally_catapulta",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "catm73",
   "mask": "cati11",
   "parent": "ally_militare",
@@ -904,7 +904,7 @@
  },
  {
   "name": "ally_cavaliere",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "cm73",
   "mask": "cm73",
   "parent": "ally_militare",
@@ -1089,7 +1089,7 @@
  },
  {
   "name": "ally_fondamenta",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally_build",
@@ -1112,7 +1112,7 @@
  },
  {
   "name": "ally_infantry",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally_militare",
@@ -1125,7 +1125,7 @@
  },
  {
   "name": "ally_magazza",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": null,
   "mask": null,
   "parent": "ally_wooden",
@@ -1138,7 +1138,7 @@
  },
  {
   "name": "ally_militare",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally_unit",
@@ -1242,7 +1242,7 @@
  },
  {
   "name": "ally_omino",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "ow11",
   "mask": "ow73",
   "parent": "ally_unit",
@@ -1532,7 +1532,7 @@
  },
  {
   "name": "ally_omino_creator",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": "ow73",
   "parent": null,
@@ -1555,7 +1555,7 @@
  },
  {
   "name": "ally_picchiere",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "pw73",
   "mask": "ow73",
   "parent": "ally_infantry",
@@ -1749,7 +1749,7 @@
  },
  {
   "name": "ally_unit",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally",
@@ -1781,7 +1781,7 @@
  },
  {
   "name": "ally_warrior",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "ww73",
   "mask": "ow73",
   "parent": "ally_infantry",
@@ -1957,7 +1957,7 @@
  },
  {
   "name": "ally_wooden",
-  "folder": "",
+  "folder": "ally_",
   "sprite": null,
   "mask": null,
   "parent": "ally_build",
@@ -2021,7 +2021,7 @@
  },
  {
   "name": "anello",
-  "folder": "",
+  "folder": "controller",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -2071,7 +2071,7 @@
  },
  {
   "name": "aquila_01",
-  "folder": "",
+  "folder": "nature",
   "sprite": "aquila",
   "mask": null,
   "parent": null,
@@ -2105,7 +2105,7 @@
  },
  {
   "name": "arciere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": "freccia",
   "mask": "dot",
   "parent": null,
@@ -2200,7 +2200,7 @@
  },
  {
   "name": "arciere_bullet_t",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": "freccia",
   "mask": "dot",
   "parent": null,
@@ -2295,7 +2295,7 @@
  },
  {
   "name": "arciere_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -2381,7 +2381,7 @@
  },
  {
   "name": "arciere_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -2422,7 +2422,7 @@
  },
  {
   "name": "ariete_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -2463,7 +2463,7 @@
  },
  {
   "name": "ariete_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -2549,7 +2549,7 @@
  },
  {
   "name": "ariete_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -2590,7 +2590,7 @@
  },
  {
   "name": "atk_signal",
-  "folder": "",
+  "folder": "controller",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -2649,7 +2649,7 @@
  },
  {
   "name": "attacco_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -2726,7 +2726,7 @@
  },
  {
   "name": "b_arciere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": "freccia",
   "mask": "dot",
   "parent": null,
@@ -2830,7 +2830,7 @@
  },
  {
   "name": "b_arciere_bullet_t",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": "freccia",
   "mask": "dot",
   "parent": null,
@@ -2934,7 +2934,7 @@
  },
  {
   "name": "b_catapulta_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -3002,7 +3002,7 @@
  },
  {
   "name": "barn",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "barn_spr",
   "mask": "barn_mask",
   "parent": "ally_barn",
@@ -3135,7 +3135,7 @@
  },
  {
   "name": "barn_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -3221,7 +3221,7 @@
  },
  {
   "name": "barn_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "barn_f1",
   "mask": "barn_mask",
   "parent": "ally_fondamenta",
@@ -3307,7 +3307,7 @@
  },
  {
   "name": "barn_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "barn_mask",
   "parent": "clicker_parent",
@@ -3366,7 +3366,7 @@
  },
  {
   "name": "barnruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "barn_ruin",
   "mask": null,
   "parent": null,
@@ -3425,7 +3425,7 @@
  },
  {
   "name": "build_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -3637,7 +3637,7 @@
  },
  {
   "name": "burst_chiazza1",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -3669,7 +3669,7 @@
  },
  {
   "name": "burst_chiazza2",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -3701,7 +3701,7 @@
  },
  {
   "name": "burst_erba1",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -3733,7 +3733,7 @@
  },
  {
   "name": "burst_grano1",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -3765,7 +3765,7 @@
  },
  {
   "name": "campo",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "campo1",
   "mask": "campo1",
   "parent": "ally_wooden",
@@ -3934,7 +3934,7 @@
  },
  {
   "name": "campo_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -4020,7 +4020,7 @@
  },
  {
   "name": "campo_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "campo_maggese",
   "mask": "campo1",
   "parent": "ally_build",
@@ -4115,7 +4115,7 @@
  },
  {
   "name": "campo_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "campo1",
   "parent": "clicker_parent",
@@ -4174,7 +4174,7 @@
  },
  {
   "name": "casa",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "c1s",
   "mask": "c1m",
   "parent": "ally_wooden",
@@ -4305,7 +4305,7 @@
  },
  {
   "name": "casa_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -4400,7 +4400,7 @@
  },
  {
   "name": "casa_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "c1f",
   "mask": "c1m",
   "parent": "ally_fondamenta",
@@ -4486,7 +4486,7 @@
  },
  {
   "name": "casa_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "c1m",
   "parent": "clicker_parent",
@@ -4572,7 +4572,7 @@
  },
  {
   "name": "casaruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "casaruin1",
   "mask": null,
   "parent": null,
@@ -4631,7 +4631,7 @@
  },
  {
   "name": "caserma",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "cas_spr",
   "mask": "cas_mask",
   "parent": "ally_wooden",
@@ -4780,7 +4780,7 @@
  },
  {
   "name": "caserma_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -4866,7 +4866,7 @@
  },
  {
   "name": "caserma_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "cas_f1",
   "mask": "cas_mask",
   "parent": "ally_fondamenta",
@@ -4952,7 +4952,7 @@
  },
  {
   "name": "caserma_indietro_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": null,
@@ -5038,7 +5038,7 @@
  },
  {
   "name": "caserma_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "cas_mask",
   "parent": "clicker_parent",
@@ -5097,7 +5097,7 @@
  },
  {
   "name": "casruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "cas_ruin",
   "mask": null,
   "parent": null,
@@ -5156,7 +5156,7 @@
  },
  {
   "name": "castello",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "castello_spr",
   "mask": "castello_mask",
   "parent": "ally_build",
@@ -5287,7 +5287,7 @@
  },
  {
   "name": "castello_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -5373,7 +5373,7 @@
  },
  {
   "name": "castello_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "castello_f1",
   "mask": "castello_mask",
   "parent": "ally_fondamenta",
@@ -5459,7 +5459,7 @@
  },
  {
   "name": "castello_indietro_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": null,
@@ -5545,7 +5545,7 @@
  },
  {
   "name": "castello_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "castello_mask",
   "parent": "clicker_parent",
@@ -5604,7 +5604,7 @@
  },
  {
   "name": "castelloruin",
-  "folder": "",
+  "folder": "nature",
   "sprite": "castello_ruin",
   "mask": "castello_mask",
   "parent": "stone_parent",
@@ -5699,7 +5699,7 @@
  },
  {
   "name": "castelloruin_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "castello_ruin",
   "mask": null,
   "parent": null,
@@ -5740,7 +5740,7 @@
  },
  {
   "name": "catapulta_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -5808,7 +5808,7 @@
  },
  {
   "name": "catapulta_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -5894,7 +5894,7 @@
  },
  {
   "name": "catapulta_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -5935,7 +5935,7 @@
  },
  {
   "name": "cavaliere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -6021,7 +6021,7 @@
  },
  {
   "name": "cavaliere_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -6107,7 +6107,7 @@
  },
  {
   "name": "cavaliere_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -6148,7 +6148,7 @@
  },
  {
   "name": "cc_barn",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": null,
   "mask": "cc_mask",
   "parent": "ally_barn",
@@ -6180,7 +6180,7 @@
  },
  {
   "name": "ccruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "cc_ruin",
   "mask": "cc_mask",
   "parent": null,
@@ -6239,7 +6239,7 @@
  },
  {
   "name": "centro",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "cc_spr",
   "mask": "cc_mask",
   "parent": "ally_magazza",
@@ -6397,7 +6397,7 @@
  },
  {
   "name": "centro_indietro_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": null,
@@ -6483,7 +6483,7 @@
  },
  {
   "name": "chiazza01",
-  "folder": "",
+  "folder": "nature",
   "sprite": "chiazza1",
   "mask": "null",
   "parent": null,
@@ -6506,7 +6506,7 @@
  },
  {
   "name": "chiazzaparticellare",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -6538,7 +6538,7 @@
  },
  {
   "name": "chiesa",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "chiesa_spr",
   "mask": "chiesa_mask",
   "parent": "ally_build",
@@ -6651,7 +6651,7 @@
  },
  {
   "name": "chiesa_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -6737,7 +6737,7 @@
  },
  {
   "name": "chiesa_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "chiesa_f1",
   "mask": "chiesa_mask",
   "parent": "ally_fondamenta",
@@ -6823,7 +6823,7 @@
  },
  {
   "name": "chiesa_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "chiesa_mask",
   "parent": "clicker_parent",
@@ -6882,7 +6882,7 @@
  },
  {
   "name": "chiesaruin",
-  "folder": "",
+  "folder": "nature",
   "sprite": "chiesa_ruin",
   "mask": "chiesa_mask",
   "parent": "stone_parent",
@@ -6977,7 +6977,7 @@
  },
  {
   "name": "chiesaruin_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "chiesa_ruin",
   "mask": null,
   "parent": null,
@@ -7018,7 +7018,7 @@
  },
  {
   "name": "cibo_prizedrawer",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -7059,7 +7059,7 @@
  },
  {
   "name": "clicchero",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -7072,7 +7072,7 @@
  },
  {
   "name": "clicker_parent",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -7140,7 +7140,7 @@
  },
  {
   "name": "dialogo_1_0",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7199,7 +7199,7 @@
  },
  {
   "name": "dialogo_1_1",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7267,7 +7267,7 @@
  },
  {
   "name": "dialogo_1_2",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7326,7 +7326,7 @@
  },
  {
   "name": "dialogo_1_3",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7385,7 +7385,7 @@
  },
  {
   "name": "dialogo_1_4",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7453,7 +7453,7 @@
  },
  {
   "name": "dialogo_1_5",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7512,7 +7512,7 @@
  },
  {
   "name": "dialogo_1_6",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7571,7 +7571,7 @@
  },
  {
   "name": "dialogo_1_7",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7630,7 +7630,7 @@
  },
  {
   "name": "dialogo_1_8",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7698,7 +7698,7 @@
  },
  {
   "name": "dialogo_2_0",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7757,7 +7757,7 @@
  },
  {
   "name": "dialogo_2_1",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7816,7 +7816,7 @@
  },
  {
   "name": "dialogo_2_10",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7875,7 +7875,7 @@
  },
  {
   "name": "dialogo_2_11",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7934,7 +7934,7 @@
  },
  {
   "name": "dialogo_2_12",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -7993,7 +7993,7 @@
  },
  {
   "name": "dialogo_2_13",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8052,7 +8052,7 @@
  },
  {
   "name": "dialogo_2_14",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8111,7 +8111,7 @@
  },
  {
   "name": "dialogo_2_2",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8179,7 +8179,7 @@
  },
  {
   "name": "dialogo_2_3",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8247,7 +8247,7 @@
  },
  {
   "name": "dialogo_2_4",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8315,7 +8315,7 @@
  },
  {
   "name": "dialogo_2_5",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8374,7 +8374,7 @@
  },
  {
   "name": "dialogo_2_6",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8433,7 +8433,7 @@
  },
  {
   "name": "dialogo_2_7",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8492,7 +8492,7 @@
  },
  {
   "name": "dialogo_2_8",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8551,7 +8551,7 @@
  },
  {
   "name": "dialogo_2_9",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8610,7 +8610,7 @@
  },
  {
   "name": "dialogo_statua",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": "text_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -8678,7 +8678,7 @@
  },
  {
   "name": "difesa_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": null,
@@ -8778,7 +8778,7 @@
  },
  {
   "name": "enemy",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -8819,7 +8819,7 @@
  },
  {
   "name": "enemy_arciere",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "baw11",
   "mask": "ow73",
   "parent": "enemy_unit",
@@ -8970,7 +8970,7 @@
  },
  {
   "name": "enemy_arciere_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -9011,7 +9011,7 @@
  },
  {
   "name": "enemy_ariete",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "barm11",
   "mask": "cati11",
   "parent": "enemy_unit",
@@ -9156,7 +9156,7 @@
  },
  {
   "name": "enemy_ariete_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -9305,7 +9305,7 @@
  },
  {
   "name": "enemy_ariete_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -9346,7 +9346,7 @@
  },
  {
   "name": "enemy_build",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": "enemy",
@@ -9359,7 +9359,7 @@
  },
  {
   "name": "enemy_caserma",
-  "folder": "enemy_buildings",
+  "folder": "enemy_/enemy_buildings",
   "sprite": "cas_b",
   "mask": "cas_mask",
   "parent": "enemy_wooden",
@@ -9490,7 +9490,7 @@
  },
  {
   "name": "enemy_catapulta",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "bcatm11",
   "mask": "cati11",
   "parent": "enemy_unit",
@@ -9653,7 +9653,7 @@
  },
  {
   "name": "enemy_catapulta_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -9694,7 +9694,7 @@
  },
  {
   "name": "enemy_cavaliere",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "bcw11",
   "mask": "cm73",
   "parent": "enemy_unit",
@@ -9845,7 +9845,7 @@
  },
  {
   "name": "enemy_cavaliere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -9940,7 +9940,7 @@
  },
  {
   "name": "enemy_cavaliere_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -9981,7 +9981,7 @@
  },
  {
   "name": "enemy_house",
-  "folder": "enemy_buildings",
+  "folder": "enemy_/enemy_buildings",
   "sprite": "c3b",
   "mask": null,
   "parent": "enemy_wooden",
@@ -10103,7 +10103,7 @@
  },
  {
   "name": "enemy_manager",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -10153,7 +10153,7 @@
  },
  {
   "name": "enemy_manager_lv2",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -10212,7 +10212,7 @@
  },
  {
   "name": "enemy_manager_menu",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": "ow73",
   "parent": null,
@@ -10280,7 +10280,7 @@
  },
  {
   "name": "enemy_picchiere",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "bpw11",
   "mask": "ow73",
   "parent": "enemy_unit",
@@ -10440,7 +10440,7 @@
  },
  {
   "name": "enemy_picchiere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -10535,7 +10535,7 @@
  },
  {
   "name": "enemy_picchiere_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -10576,7 +10576,7 @@
  },
  {
   "name": "enemy_stalla",
-  "folder": "enemy_buildings",
+  "folder": "enemy_/enemy_buildings",
   "sprite": "stal_b",
   "mask": "stal_mask",
   "parent": "enemy_wooden",
@@ -10698,7 +10698,7 @@
  },
  {
   "name": "enemy_torre",
-  "folder": "enemy_buildings",
+  "folder": "enemy_/enemy_buildings",
   "sprite": "torre_b",
   "mask": "torre_mask",
   "parent": "enemy_build",
@@ -10802,7 +10802,7 @@
  },
  {
   "name": "enemy_unit",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": "enemy",
@@ -10815,7 +10815,7 @@
  },
  {
   "name": "enemy_warrior",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": "bww11",
   "mask": "ow73",
   "parent": "enemy_unit",
@@ -10973,7 +10973,7 @@
  },
  {
   "name": "enemy_warrior_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -11068,7 +11068,7 @@
  },
  {
   "name": "enemy_warrior_corpse",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -11109,7 +11109,7 @@
  },
  {
   "name": "enemy_wooden",
-  "folder": "",
+  "folder": "enemy_",
   "sprite": null,
   "mask": null,
   "parent": "enemy_build",
@@ -11122,7 +11122,7 @@
  },
  {
   "name": "erba_1",
-  "folder": "",
+  "folder": "nature",
   "sprite": "erba1",
   "mask": "null",
   "parent": null,
@@ -11135,7 +11135,7 @@
  },
  {
   "name": "fiorame1",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiori1",
   "mask": "null",
   "parent": null,
@@ -11148,7 +11148,7 @@
  },
  {
   "name": "fire_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": "torchspr",
   "mask": "dot",
   "parent": null,
@@ -11306,7 +11306,7 @@
  },
  {
   "name": "firestarter",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -11356,7 +11356,7 @@
  },
  {
   "name": "firestarter_small",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -11406,7 +11406,7 @@
  },
  {
   "name": "fiume_1",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume1",
   "mask": null,
   "parent": "natural_parent",
@@ -11429,7 +11429,7 @@
  },
  {
   "name": "fiume_2",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume2",
   "mask": null,
   "parent": "natural_parent",
@@ -11452,7 +11452,7 @@
  },
  {
   "name": "fiume_21",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume_2_1",
   "mask": null,
   "parent": "natural_parent",
@@ -11475,7 +11475,7 @@
  },
  {
   "name": "fiume_22",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume2_2",
   "mask": null,
   "parent": "natural_parent",
@@ -11498,7 +11498,7 @@
  },
  {
   "name": "fiume_23",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume2_3",
   "mask": null,
   "parent": "natural_parent",
@@ -11521,7 +11521,7 @@
  },
  {
   "name": "fiume_3",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume3",
   "mask": null,
   "parent": "natural_parent",
@@ -11544,7 +11544,7 @@
  },
  {
   "name": "fiume_4",
-  "folder": "",
+  "folder": "nature",
   "sprite": "fiume4",
   "mask": null,
   "parent": "natural_parent",
@@ -11567,7 +11567,7 @@
  },
  {
   "name": "fiume_animazione",
-  "folder": "",
+  "folder": "nature",
   "sprite": "anim_fiume",
   "mask": null,
   "parent": null,
@@ -11592,7 +11592,7 @@
  },
  {
   "name": "flag_b",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "bflag",
   "mask": null,
   "parent": null,
@@ -11626,7 +11626,7 @@
  },
  {
   "name": "flag_r",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "rflag",
   "mask": null,
   "parent": null,
@@ -11651,7 +11651,7 @@
  },
  {
   "name": "flag_r2",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "rflag",
   "mask": null,
   "parent": null,
@@ -11676,7 +11676,7 @@
  },
  {
   "name": "flameqq",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -11726,7 +11726,7 @@
  },
  {
   "name": "flameqq_nosmoke",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -11776,7 +11776,7 @@
  },
  {
   "name": "flameqq_small",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -11826,7 +11826,7 @@
  },
  {
   "name": "flm_signal",
-  "folder": "",
+  "folder": "controller",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -11867,7 +11867,7 @@
  },
  {
   "name": "fog01",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": "null",
   "parent": null,
@@ -11928,7 +11928,7 @@
  },
  {
   "name": "fog_controller",
-  "folder": "",
+  "folder": "nature",
   "sprite": "text_sign",
   "mask": null,
   "parent": null,
@@ -11960,7 +11960,7 @@
  },
  {
   "name": "food_blink",
-  "folder": "blinkers",
+  "folder": "controller/blinkers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -12010,7 +12010,7 @@
  },
  {
   "name": "food_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -12051,7 +12051,7 @@
  },
  {
   "name": "food_bullet_rapido",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -12092,7 +12092,7 @@
  },
  {
   "name": "gameover_manager",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -12142,7 +12142,7 @@
  },
  {
   "name": "gate_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -12219,7 +12219,7 @@
  },
  {
   "name": "gold_blink",
-  "folder": "blinkers",
+  "folder": "controller/blinkers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -12269,7 +12269,7 @@
  },
  {
   "name": "gold_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -12310,7 +12310,7 @@
  },
  {
   "name": "graa11",
-  "folder": "",
+  "folder": "nature",
   "sprite": "gr11",
   "mask": "null",
   "parent": null,
@@ -12333,7 +12333,7 @@
  },
  {
   "name": "graa12",
-  "folder": "",
+  "folder": "nature",
   "sprite": "gr12",
   "mask": "null",
   "parent": null,
@@ -12356,7 +12356,7 @@
  },
  {
   "name": "graa13",
-  "folder": "",
+  "folder": "nature",
   "sprite": "gr13",
   "mask": "null",
   "parent": null,
@@ -12379,7 +12379,7 @@
  },
  {
   "name": "graa14",
-  "folder": "",
+  "folder": "nature",
   "sprite": "gr14",
   "mask": "null",
   "parent": null,
@@ -12402,7 +12402,7 @@
  },
  {
   "name": "graa15",
-  "folder": "",
+  "folder": "nature",
   "sprite": "gr15",
   "mask": "null",
   "parent": null,
@@ -12425,7 +12425,7 @@
  },
  {
   "name": "hint_attack",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12475,7 +12475,7 @@
  },
  {
   "name": "hint_build",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12534,7 +12534,7 @@
  },
  {
   "name": "hint_campi",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12584,7 +12584,7 @@
  },
  {
   "name": "hint_create",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12643,7 +12643,7 @@
  },
  {
   "name": "hint_create_2",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12702,7 +12702,7 @@
  },
  {
   "name": "hint_create_3",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12761,7 +12761,7 @@
  },
  {
   "name": "hint_fire",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12811,7 +12811,7 @@
  },
  {
   "name": "hint_fire_2",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12870,7 +12870,7 @@
  },
  {
   "name": "hint_idle",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -12920,7 +12920,7 @@
  },
  {
   "name": "hint_iniziale",
-  "folder": "",
+  "folder": "hints",
   "sprite": "manag_sign",
   "mask": "null",
   "parent": "parent_hint",
@@ -12970,7 +12970,7 @@
  },
  {
   "name": "hint_legna",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13020,7 +13020,7 @@
  },
  {
   "name": "hint_minimap",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13070,7 +13070,7 @@
  },
  {
   "name": "hint_multi",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13120,7 +13120,7 @@
  },
  {
   "name": "hint_multi_2",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13179,7 +13179,7 @@
  },
  {
   "name": "hint_night",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13229,7 +13229,7 @@
  },
  {
   "name": "hint_objective",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13279,7 +13279,7 @@
  },
  {
   "name": "hint_objective2",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13338,7 +13338,7 @@
  },
  {
   "name": "hint_oro",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13388,7 +13388,7 @@
  },
  {
   "name": "hint_pop",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13438,7 +13438,7 @@
  },
  {
   "name": "hint_presidio",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13488,7 +13488,7 @@
  },
  {
   "name": "hint_repair",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13547,7 +13547,7 @@
  },
  {
   "name": "hint_resource",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13597,7 +13597,7 @@
  },
  {
   "name": "hint_resource_tree",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13647,7 +13647,7 @@
  },
  {
   "name": "hint_select",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13697,7 +13697,7 @@
  },
  {
   "name": "hint_stone",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13747,7 +13747,7 @@
  },
  {
   "name": "hint_vista",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": "null",
   "parent": "parent_hint",
@@ -13806,7 +13806,7 @@
  },
  {
   "name": "idle_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "mask_idle",
   "parent": null,
@@ -13874,7 +13874,7 @@
  },
  {
   "name": "legno_prizedrawer",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -13915,7 +13915,7 @@
  },
  {
   "name": "lvl1_surface_generato",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "text_sign",
   "mask": null,
   "parent": null,
@@ -13947,7 +13947,7 @@
  },
  {
   "name": "magazzino",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "magazzino_spr",
   "mask": "magazzino_mask",
   "parent": "ally_magazza",
@@ -14078,7 +14078,7 @@
  },
  {
   "name": "magazzino_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -14164,7 +14164,7 @@
  },
  {
   "name": "magazzino_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "magazzino_f1",
   "mask": "magazzino_mask",
   "parent": "ally_fondamenta",
@@ -14250,7 +14250,7 @@
  },
  {
   "name": "magazzino_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "magazzino_mask",
   "parent": "clicker_parent",
@@ -14309,7 +14309,7 @@
  },
  {
   "name": "magruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "magazzino_ruin",
   "mask": null,
   "parent": null,
@@ -14368,7 +14368,7 @@
  },
  {
   "name": "manager",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -14769,7 +14769,7 @@
  },
  {
   "name": "miniera_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "miniera",
   "mask": null,
   "parent": null,
@@ -14810,7 +14810,7 @@
  },
  {
   "name": "miniera_oro",
-  "folder": "",
+  "folder": "nature",
   "sprite": "miniera",
   "mask": "miniera_mask",
   "parent": "natural_parent",
@@ -14914,7 +14914,7 @@
  },
  {
   "name": "montagna_1",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna1",
   "mask": null,
   "parent": "natural_parent",
@@ -14937,7 +14937,7 @@
  },
  {
   "name": "montagna_10",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna10",
   "mask": null,
   "parent": "natural_parent",
@@ -14960,7 +14960,7 @@
  },
  {
   "name": "montagna_2",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna2",
   "mask": null,
   "parent": "natural_parent",
@@ -14983,7 +14983,7 @@
  },
  {
   "name": "montagna_3",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna3",
   "mask": null,
   "parent": "natural_parent",
@@ -15006,7 +15006,7 @@
  },
  {
   "name": "montagna_4",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna4",
   "mask": null,
   "parent": "natural_parent",
@@ -15029,7 +15029,7 @@
  },
  {
   "name": "montagna_5",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna5",
   "mask": null,
   "parent": "natural_parent",
@@ -15052,7 +15052,7 @@
  },
  {
   "name": "montagna_6",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna6",
   "mask": null,
   "parent": "natural_parent",
@@ -15075,7 +15075,7 @@
  },
  {
   "name": "montagna_7",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna7",
   "mask": null,
   "parent": "natural_parent",
@@ -15098,7 +15098,7 @@
  },
  {
   "name": "montagna_8",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna8",
   "mask": null,
   "parent": "natural_parent",
@@ -15121,7 +15121,7 @@
  },
  {
   "name": "montagna_9",
-  "folder": "",
+  "folder": "nature",
   "sprite": "montagna9",
   "mask": null,
   "parent": "natural_parent",
@@ -15144,7 +15144,7 @@
  },
  {
   "name": "mouser",
-  "folder": "",
+  "folder": "controller",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -15259,7 +15259,7 @@
  },
  {
   "name": "mplus_od",
-  "folder": "",
+  "folder": "ally_",
   "sprite": "ico_muraplus",
   "mask": null,
   "parent": null,
@@ -15327,7 +15327,7 @@
  },
  {
   "name": "mplus_os",
-  "folder": "",
+  "folder": "ally_",
   "sprite": "ico_muraplus",
   "mask": null,
   "parent": null,
@@ -15395,7 +15395,7 @@
  },
  {
   "name": "mplus_va",
-  "folder": "",
+  "folder": "ally_",
   "sprite": "ico_muraplus",
   "mask": null,
   "parent": null,
@@ -15463,7 +15463,7 @@
  },
  {
   "name": "mplus_vb",
-  "folder": "",
+  "folder": "ally_",
   "sprite": "ico_muraplus",
   "mask": null,
   "parent": null,
@@ -15531,7 +15531,7 @@
  },
  {
   "name": "mura_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -15617,7 +15617,7 @@
  },
  {
   "name": "mura_ori",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "m_ori",
   "mask": "m_ori_p",
   "parent": "ally_build",
@@ -15730,7 +15730,7 @@
  },
  {
   "name": "mura_ori_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "m_ori_f",
   "mask": "m_ori_p",
   "parent": "ally_fondamenta",
@@ -15816,7 +15816,7 @@
  },
  {
   "name": "mura_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "m_ori",
   "parent": "clicker_parent",
@@ -15884,7 +15884,7 @@
  },
  {
   "name": "mura_vert",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "m_vert",
   "mask": "m_vert_p",
   "parent": "ally_build",
@@ -15997,7 +15997,7 @@
  },
  {
   "name": "mura_vert_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "m_vert_f",
   "mask": "m_vert_p",
   "parent": "ally_fondamenta",
@@ -16083,7 +16083,7 @@
  },
  {
   "name": "muraplacer_od",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "m_ori",
   "parent": "clicker_parent",
@@ -16133,7 +16133,7 @@
  },
  {
   "name": "muraplacer_os",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "m_ori",
   "parent": "clicker_parent",
@@ -16183,7 +16183,7 @@
  },
  {
   "name": "muraplacer_va",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "m_ori",
   "parent": "clicker_parent",
@@ -16233,7 +16233,7 @@
  },
  {
   "name": "muraplacer_vb",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "m_ori",
   "parent": "clicker_parent",
@@ -16283,7 +16283,7 @@
  },
  {
   "name": "natural_parent",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -16296,7 +16296,7 @@
  },
  {
   "name": "nubeqq",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": "sfx_parent",
@@ -16348,7 +16348,7 @@
  },
  {
   "name": "o_box1",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "box1",
   "mask": null,
   "parent": "enemy_wooden",
@@ -16470,7 +16470,7 @@
  },
  {
   "name": "o_box2",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "box2",
   "mask": null,
   "parent": "enemy_wooden",
@@ -16592,7 +16592,7 @@
  },
  {
   "name": "o_colonna",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "colonna",
   "mask": null,
   "parent": "natural_parent",
@@ -16615,7 +16615,7 @@
  },
  {
   "name": "o_fontana",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "fontana",
   "mask": null,
   "parent": "natural_parent",
@@ -16638,7 +16638,7 @@
  },
  {
   "name": "o_statua1",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "statua1",
   "mask": null,
   "parent": "natural_parent",
@@ -16679,7 +16679,7 @@
  },
  {
   "name": "o_statua1_real",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "statua1",
   "mask": null,
   "parent": "ally_build",
@@ -16720,7 +16720,7 @@
  },
  {
   "name": "o_statua2",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "statua2",
   "mask": null,
   "parent": "natural_parent",
@@ -16761,7 +16761,7 @@
  },
  {
   "name": "o_statua3",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "statua3",
   "mask": null,
   "parent": "natural_parent",
@@ -16802,7 +16802,7 @@
  },
  {
   "name": "o_statua4",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "statua4",
   "mask": null,
   "parent": "natural_parent",
@@ -16843,7 +16843,7 @@
  },
  {
   "name": "object122",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -16929,7 +16929,7 @@
  },
  {
   "name": "object183",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "c1s",
   "mask": "c1m",
   "parent": "ally_wooden",
@@ -17015,7 +17015,7 @@
  },
  {
   "name": "object314",
-  "folder": "",
+  "folder": "SFX",
   "sprite": "burst_sign",
   "mask": null,
   "parent": "sfx_parent",
@@ -17079,7 +17079,7 @@
  },
  {
   "name": "ocr_01",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_01",
   "mask": null,
   "parent": "natural_parent",
@@ -17102,7 +17102,7 @@
  },
  {
   "name": "ocr_02",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_02",
   "mask": null,
   "parent": "natural_parent",
@@ -17125,7 +17125,7 @@
  },
  {
   "name": "ocr_03",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_03",
   "mask": null,
   "parent": "natural_parent",
@@ -17148,7 +17148,7 @@
  },
  {
   "name": "ocr_04",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_04",
   "mask": null,
   "parent": "natural_parent",
@@ -17171,7 +17171,7 @@
  },
  {
   "name": "ocr_05",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_05",
   "mask": null,
   "parent": "natural_parent",
@@ -17194,7 +17194,7 @@
  },
  {
   "name": "ocr_11",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_11",
   "mask": null,
   "parent": "natural_parent",
@@ -17217,7 +17217,7 @@
  },
  {
   "name": "ocr_12",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_12",
   "mask": null,
   "parent": "natural_parent",
@@ -17240,7 +17240,7 @@
  },
  {
   "name": "ocr_13",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_13",
   "mask": null,
   "parent": "natural_parent",
@@ -17263,7 +17263,7 @@
  },
  {
   "name": "ocr_14",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_14",
   "mask": null,
   "parent": "natural_parent",
@@ -17286,7 +17286,7 @@
  },
  {
   "name": "ocr_15",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_15",
   "mask": null,
   "parent": "natural_parent",
@@ -17309,7 +17309,7 @@
  },
  {
   "name": "ocr_21",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_21",
   "mask": null,
   "parent": "natural_parent",
@@ -17332,7 +17332,7 @@
  },
  {
   "name": "ocr_22",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_22",
   "mask": null,
   "parent": "natural_parent",
@@ -17355,7 +17355,7 @@
  },
  {
   "name": "ocr_23",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_23",
   "mask": null,
   "parent": "natural_parent",
@@ -17378,7 +17378,7 @@
  },
  {
   "name": "ocr_24",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_24",
   "mask": null,
   "parent": "natural_parent",
@@ -17401,7 +17401,7 @@
  },
  {
   "name": "ocr_25",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_25",
   "mask": null,
   "parent": "natural_parent",
@@ -17424,7 +17424,7 @@
  },
  {
   "name": "ocr_31",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_31",
   "mask": null,
   "parent": "natural_parent",
@@ -17447,7 +17447,7 @@
  },
  {
   "name": "ocr_32",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_32",
   "mask": null,
   "parent": "natural_parent",
@@ -17470,7 +17470,7 @@
  },
  {
   "name": "ocr_33",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_33",
   "mask": null,
   "parent": "natural_parent",
@@ -17493,7 +17493,7 @@
  },
  {
   "name": "ocr_34",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_34",
   "mask": null,
   "parent": "natural_parent",
@@ -17516,7 +17516,7 @@
  },
  {
   "name": "ocr_35",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_35",
   "mask": null,
   "parent": "natural_parent",
@@ -17539,7 +17539,7 @@
  },
  {
   "name": "ocr_41",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_41",
   "mask": null,
   "parent": "natural_parent",
@@ -17562,7 +17562,7 @@
  },
  {
   "name": "ocr_42",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_42",
   "mask": null,
   "parent": "natural_parent",
@@ -17585,7 +17585,7 @@
  },
  {
   "name": "ocr_43",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_43",
   "mask": null,
   "parent": "natural_parent",
@@ -17608,7 +17608,7 @@
  },
  {
   "name": "ocr_44",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_44",
   "mask": null,
   "parent": "natural_parent",
@@ -17631,7 +17631,7 @@
  },
  {
   "name": "ocr_45",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "cr_45",
   "mask": null,
   "parent": "natural_parent",
@@ -17654,7 +17654,7 @@
  },
  {
   "name": "ocr_basilica",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "spr_basilica",
   "mask": null,
   "parent": "natural_parent",
@@ -17677,7 +17677,7 @@
  },
  {
   "name": "ocr_teatro",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "spr_teatro",
   "mask": null,
   "parent": "natural_parent",
@@ -17700,7 +17700,7 @@
  },
  {
   "name": "ocr_tempio",
-  "folder": "",
+  "folder": "roman_city",
   "sprite": "spr_tempio",
   "mask": null,
   "parent": "natural_parent",
@@ -17723,7 +17723,7 @@
  },
  {
   "name": "omino_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -17809,7 +17809,7 @@
  },
  {
   "name": "omino_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -17850,7 +17850,7 @@
  },
  {
   "name": "oodl",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "odl",
   "parent": "mura_ori",
@@ -17918,7 +17918,7 @@
  },
  {
   "name": "oosl",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "osl",
   "parent": "mura_ori",
@@ -17986,7 +17986,7 @@
  },
  {
   "name": "oro_prizedrawer",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -18027,7 +18027,7 @@
  },
  {
   "name": "oval",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "val",
   "parent": "mura_vert",
@@ -18086,7 +18086,7 @@
  },
  {
   "name": "ovbl",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "vbl",
   "parent": "mura_vert",
@@ -18145,7 +18145,7 @@
  },
  {
   "name": "palo_1",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "palo1",
   "mask": null,
   "parent": "ally",
@@ -18177,7 +18177,7 @@
  },
  {
   "name": "parent_dialogo",
-  "folder": "",
+  "folder": "dialoghi",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -18190,7 +18190,7 @@
  },
  {
   "name": "parent_hint",
-  "folder": "",
+  "folder": "hints",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -18203,7 +18203,7 @@
  },
  {
   "name": "picchiere_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -18289,7 +18289,7 @@
  },
  {
   "name": "picchiere_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -18375,7 +18375,7 @@
  },
  {
   "name": "picchiere_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": "ow83",
   "parent": null,
@@ -18416,7 +18416,7 @@
  },
  {
   "name": "pietr_piccolo",
-  "folder": "",
+  "folder": "nature",
   "sprite": "pietra_piccolo",
   "mask": "pietra_piccolo_mask",
   "parent": "stone_parent",
@@ -18511,7 +18511,7 @@
  },
  {
   "name": "pietr_piccolo_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "pietra_piccolo",
   "mask": null,
   "parent": null,
@@ -18552,7 +18552,7 @@
  },
  {
   "name": "pietra_grande",
-  "folder": "",
+  "folder": "nature",
   "sprite": "pietra_grande1",
   "mask": "pietra_piccolo_mask",
   "parent": "stone_parent",
@@ -18647,7 +18647,7 @@
  },
  {
   "name": "pietra_grande_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "pietra_grande2",
   "mask": null,
   "parent": null,
@@ -18688,7 +18688,7 @@
  },
  {
   "name": "pop_blink",
-  "folder": "blinkers",
+  "folder": "controller/blinkers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -18738,7 +18738,7 @@
  },
  {
   "name": "porta_ori",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "m_ori_pa",
   "mask": "m_ori_pa_mask",
   "parent": "ally_build",
@@ -18860,7 +18860,7 @@
  },
  {
   "name": "porta_vert",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "m_vert_p",
   "mask": "m_vert_pa_mask",
   "parent": "ally_build",
@@ -18982,7 +18982,7 @@
  },
  {
   "name": "prato1",
-  "folder": "",
+  "folder": "cityprops",
   "sprite": "prato",
   "mask": "null",
   "parent": null,
@@ -18995,7 +18995,7 @@
  },
  {
   "name": "resizer_manager",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -19045,7 +19045,7 @@
  },
  {
   "name": "selector",
-  "folder": "",
+  "folder": "controller",
   "sprite": "circ_1",
   "mask": null,
   "parent": null,
@@ -19058,7 +19058,7 @@
  },
  {
   "name": "sfx_croce",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "sfxcroce",
   "mask": null,
   "parent": null,
@@ -19108,7 +19108,7 @@
  },
  {
   "name": "sfx_erba",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "sfxerba",
   "mask": null,
   "parent": null,
@@ -19149,7 +19149,7 @@
  },
  {
   "name": "sfx_mattone",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "sfxmattone",
   "mask": null,
   "parent": null,
@@ -19190,7 +19190,7 @@
  },
  {
   "name": "sfx_parent",
-  "folder": "",
+  "folder": "SFX",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -19203,7 +19203,7 @@
  },
  {
   "name": "sfx_sangue",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": "sfxsangue",
   "mask": null,
   "parent": null,
@@ -19266,7 +19266,7 @@
  },
  {
   "name": "stalla",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "stal_spr",
   "mask": "stal_mask",
   "parent": "ally_wooden",
@@ -19415,7 +19415,7 @@
  },
  {
   "name": "stalla_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -19501,7 +19501,7 @@
  },
  {
   "name": "stalla_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "stal_f1",
   "mask": "stal_mask",
   "parent": "ally_fondamenta",
@@ -19587,7 +19587,7 @@
  },
  {
   "name": "stalla_indietro_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": null,
@@ -19673,7 +19673,7 @@
  },
  {
   "name": "stalla_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "stal_mask",
   "parent": "clicker_parent",
@@ -19732,7 +19732,7 @@
  },
  {
   "name": "stalruin",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "stal_ruin",
   "mask": null,
   "parent": null,
@@ -19791,7 +19791,7 @@
  },
  {
   "name": "stone_blink",
-  "folder": "blinkers",
+  "folder": "controller/blinkers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -19841,7 +19841,7 @@
  },
  {
   "name": "stone_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -19891,7 +19891,7 @@
  },
  {
   "name": "stone_parent",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": null,
   "parent": "natural_parent",
@@ -19904,7 +19904,7 @@
  },
  {
   "name": "strada_1",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": "null",
   "parent": null,
@@ -19917,7 +19917,7 @@
  },
  {
   "name": "strada_2",
-  "folder": "",
+  "folder": "nature",
   "sprite": "strada4",
   "mask": "null",
   "parent": null,
@@ -19930,7 +19930,7 @@
  },
  {
   "name": "strada_4",
-  "folder": "",
+  "folder": "nature",
   "sprite": null,
   "mask": "null",
   "parent": null,
@@ -19943,7 +19943,7 @@
  },
  {
   "name": "strada_5",
-  "folder": "",
+  "folder": "nature",
   "sprite": "strada5",
   "mask": "null",
   "parent": null,
@@ -19956,7 +19956,7 @@
  },
  {
   "name": "strada_6",
-  "folder": "",
+  "folder": "nature",
   "sprite": "strada6",
   "mask": "null",
   "parent": null,
@@ -19969,7 +19969,7 @@
  },
  {
   "name": "strada_7",
-  "folder": "",
+  "folder": "nature",
   "sprite": "strada7",
   "mask": "null",
   "parent": null,
@@ -19982,7 +19982,7 @@
  },
  {
   "name": "strada_8",
-  "folder": "",
+  "folder": "nature",
   "sprite": "strada8",
   "mask": "null",
   "parent": null,
@@ -19995,7 +19995,7 @@
  },
  {
   "name": "tester_flowfield",
-  "folder": "",
+  "folder": "ally_",
   "sprite": "flamespr",
   "mask": null,
   "parent": null,
@@ -20036,7 +20036,7 @@
  },
  {
   "name": "torre",
-  "folder": "ally_buildings",
+  "folder": "ally_/ally_buildings",
   "sprite": "torre_spr",
   "mask": "torre_mask",
   "parent": "ally_build",
@@ -20149,7 +20149,7 @@
  },
  {
   "name": "torre_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": "puls_mask",
   "mask": "puls_mask",
   "parent": null,
@@ -20235,7 +20235,7 @@
  },
  {
   "name": "torre_fond",
-  "folder": "ally_buildings/fondamenta",
+  "folder": "ally_/ally_buildings/fondamenta",
   "sprite": "torre_f1",
   "mask": "torre_mask",
   "parent": "ally_fondamenta",
@@ -20321,7 +20321,7 @@
  },
  {
   "name": "torre_placer",
-  "folder": "placers",
+  "folder": "controller/placers",
   "sprite": null,
   "mask": "torre_mask",
   "parent": "clicker_parent",
@@ -20380,7 +20380,7 @@
  },
  {
   "name": "torreruin",
-  "folder": "",
+  "folder": "nature",
   "sprite": "torre_ruin",
   "mask": "torre_mask",
   "parent": "stone_parent",
@@ -20475,7 +20475,7 @@
  },
  {
   "name": "torreruin_morente",
-  "folder": "",
+  "folder": "nature",
   "sprite": "torre_ruin",
   "mask": null,
   "parent": null,
@@ -20516,7 +20516,7 @@
  },
  {
   "name": "traccia01",
-  "folder": "",
+  "folder": "nature",
   "sprite": "traccia1",
   "mask": "null",
   "parent": null,
@@ -20529,7 +20529,7 @@
  },
  {
   "name": "traccia02",
-  "folder": "",
+  "folder": "nature",
   "sprite": "traccia2",
   "mask": "null",
   "parent": null,
@@ -20542,7 +20542,7 @@
  },
  {
   "name": "traccia03",
-  "folder": "",
+  "folder": "nature",
   "sprite": "traccia3",
   "mask": "null",
   "parent": null,
@@ -20555,7 +20555,7 @@
  },
  {
   "name": "traccia04",
-  "folder": "",
+  "folder": "nature",
   "sprite": "traccia4",
   "mask": "null",
   "parent": null,
@@ -20568,7 +20568,7 @@
  },
  {
   "name": "victory_manager",
-  "folder": "",
+  "folder": "controller",
   "sprite": "manag_sign",
   "mask": null,
   "parent": null,
@@ -20627,7 +20627,7 @@
  },
  {
   "name": "warrior_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
@@ -20713,7 +20713,7 @@
  },
  {
   "name": "warrior_clicker",
-  "folder": "clickers",
+  "folder": "controller/clickers",
   "sprite": null,
   "mask": "puls_mask",
   "parent": "clicchero",
@@ -20799,7 +20799,7 @@
  },
  {
   "name": "warrior_corpse",
-  "folder": "ally_units",
+  "folder": "ally_/ally_units",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -20840,7 +20840,7 @@
  },
  {
   "name": "wood_blink",
-  "folder": "blinkers",
+  "folder": "controller/blinkers",
   "sprite": null,
   "mask": null,
   "parent": null,
@@ -20890,7 +20890,7 @@
  },
  {
   "name": "wood_bullet",
-  "folder": "bullets",
+  "folder": "controller/bullets",
   "sprite": null,
   "mask": "dot",
   "parent": null,
