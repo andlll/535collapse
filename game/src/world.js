@@ -218,14 +218,18 @@ export class World {
 
   // [§6.4, richiesta dell'autore] Gli edifici fermano le frecce degli arcieri:
   // edifici alleati (mura, porte e cantieri compresi, non i campi), edifici
-  // nemici (non le casse), edifici della citta' (ocr_*) e rovine. Le unita',
-  // gli alberi, le montagne, i fiumi, statue e colonne no.
+  // nemici (non le casse), edifici della citta' (ocr_*) e rovine.
+  // [§6.6, decisione dell'autore] anche le montagne e tutte le rovine solide:
+  // quelle da cui si estrae la pietra (stone_parent: pietra_grande e
+  // pietr_piccolo sono un tempio e un tempietto crollati; rovine di
+  // castello, chiesa, torre) e quelle del centro (ccruin). Le unita', i
+  // boschi, i fiumi, statue e colonne, le macerie non solide no.
   blocksShots(o) {
     if (!o.alive || !o.solid) return false;
     const n = o.object;
     if (this.is(o, "ally_build")) return n !== "campo" && n !== "campo_fond";
     if (this.is(o, "enemy_build")) return n !== "o_box1" && n !== "o_box2";
-    return n.startsWith("ocr_") || n === "castelloruin" || n === "chiesaruin" || n === "torreruin";
+    return n.startsWith("ocr_") || n.startsWith("montagna_") || n === "ccruin" || this.is(o, "stone_parent");
   }
 
   // [§6.5] Chi tira da un edificio non e' fermato dall'edificio stesso ne'

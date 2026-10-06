@@ -15,6 +15,9 @@ const objects = {
   albero: { sprite: "h", mask: "h", parents: ["natural_parent"], depth: 0, solid: true },
   torre: { sprite: "h", mask: "h", parents: ["ally_build", "ally"], depth: 0, solid: true },
   mura_ori: { sprite: "h", mask: "h", parents: ["ally_build", "ally"], depth: 0, solid: true },
+  montagna_1: { sprite: "h", mask: "h", parents: ["natural_parent"], depth: 0, solid: true },
+  pietra_grande: { sprite: "h", mask: "h", parents: ["stone_parent", "natural_parent"], depth: 0, solid: true },
+  fiume_1: { sprite: "h", mask: "h", parents: ["natural_parent"], depth: 0, solid: true },
 };
 const mk = () => {
   const w = new World({ objects, masks: { u: unit, h: house }, assets: { sprites: {} }, g: {}, roomW: 3200, roomH: 3200 });
@@ -84,4 +87,17 @@ test("§6.5 edifici che tirano: non li fermano se stessi ne' le mura; scelgono i
   w.create("mura_ori", 2600, 1320);
   assert.equal(towerTarget(w, t2, "enemy_unit", 600), e2);
   assert.equal(w.shotClear(2600, 1500, 2600, 1150), false);
+});
+
+test("§6.6 montagne e rovine (anche quelle da cui si estrae la pietra) fermano; boschi e fiumi no", () => {
+  const [w] = mk();
+  const line = (x) => w.shotClear(x, 1300, x, 900);
+  w.create("montagna_1", 500, 1100);
+  w.create("pietra_grande", 1000, 1100);
+  w.create("albero", 1500, 1100);
+  w.create("fiume_1", 2000, 1100);
+  assert.equal(line(500), false);
+  assert.equal(line(1000), false);
+  assert.equal(line(1500), true);
+  assert.equal(line(2000), true);
 });

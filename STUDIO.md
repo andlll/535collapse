@@ -158,8 +158,8 @@ sezione citata.
 - [x] Torri, castello, centro e torre nemica: non tirano attraverso gli
   edifici e scelgono un altro bersaglio (§6.5); mura e porte non li
   fermano (tirano dall'alto).
-- [ ] Da decidere: anche montagne e alberi fermano le frecce? Oggi no.
-  E le mura per torri e castello? Oggi no.
+- [x] Montagne e tutte le rovine solide fermano le frecce, i boschi no; le
+  mura non fermano torri e castello (decisione dell'autore, §6.6).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
@@ -2944,4 +2944,26 @@ soldati in piu': nessun colpo attraverso edifici, 6,9 → 6,4 ms a passo.
 `npm test` 49 test (nuovo: bersaglio dell'edificio e mura ignorate); 5000
 passi senza errori nelle quattro room; salvataggi identici; zip dei
 portali.
+
+### 6.6 Montagne e rovine fermano le frecce
+
+Decisione dell'autore: "applichiamo il blocco anche con montagne, ma non con
+boschi, si' invece con rovine, comprese quelle usate per minare la pietra.
+Le mura non devono bloccare torri e castello".
+
+`world.blocksShots` ora conta anche le montagne (`montagna_*`) e tutte le
+rovine solide: quelle da cui si estrae la pietra (`stone_parent`: anche
+`pietra_grande` e `pietr_piccolo`, che sono un tempio e un tempietto
+crollati, oltre alle rovine di castello, chiesa e torre) e le rovine del
+centro (`ccruin`). Restano trasparenti boschi e alberi, fiumi, statue,
+colonne, fontane e le macerie non solide degli edifici distrutti (case,
+magazzini, stalle: le unita' ci camminano sopra). Mura e porte non fermano
+chi tira da un edificio (torri, castello e centro, §6.5): gia' cosi'.
+
+**Verificato**: `npm test`, 50 test (nuovo: montagna e rovina fermano,
+bosco e fiume no); Chromium su `montagna_2` di `match` (maschera grande a
+ellisse): linea attraverso bloccata, sopra libera, attraverso un bosco
+libera, 7 µs per controllo; battaglia di `lvl02` con 80 soldati in piu'
+senza colpi attraverso edifici o montagne e senza costo in piu'; 5000 passi
+senza errori nelle quattro room; salvataggi identici; zip dei portali.
 
