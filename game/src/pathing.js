@@ -229,6 +229,28 @@ export class Pathing {
     return true;
   }
 
+  // [§7.6] La cella con un valore nel campo (raggiungibile) piu' vicina a
+  // (gx, gy), per anelli fino a `rad`; a pari anello la piu' vicina e, a
+  // pari distanza, quella col valore piu' basso. null se non c'e'.
+  escapeCell(field, gx, gy, rad) {
+    for (let r = 1; r <= rad; r++) {
+      let best = null, bd = Infinity, bv = Infinity;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const tx = gx + dx, ty = gy + dy;
+          if (!this.inside(tx, ty)) continue;
+          const v = field[ty * this.gw + tx];
+          if (v === -1) continue;
+          const d = dx * dx + dy * dy;
+          if (d < bd || (d === bd && v < bv)) { bd = d; bv = v; best = [tx, ty]; }
+        }
+      }
+      if (best) return best;
+    }
+    return null;
+  }
+
   fieldAt(field, gx, gy) {
     return this.inside(gx, gy) ? field[gy * this.gw + gx] : 0;
   }
@@ -333,8 +355,20 @@ export function scrMove(p, inst, tx, ty) {
 // direzioni.
 export function moveFlowField(w, p, inst) {
   const field = inst.flow_field;
-  let a = p.flowAt(field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
-  if (a !== -1 && field instanceof Int32Array) {
+  const gx = Math.floor(inst.x / GRID), gy = Math.floor(inst.y / GRID);
+  let a = p.flowAt(field, gx, gy);
+  // [§7.6, segnalazione dell'autore] Cella senza direzione: l'unita' e'
+  // su un ostacolo (il costruttore sopra il magazzino appena finito, le cui
+  // celle diventano ostacolo) o in una zona da cui la meta non si
+  // raggiunge (un nemico chiuso dalle porte del giocatore). L'originale
+  // teneva l'ultima direzione e, senza collisioni, l'unita' tirava dritto
+  // attraverso gli edifici, fino a uscire dalla mappa. Qui va verso la cella
+  // raggiungibile piu' vicina (entro 6 celle); se non ce n'e', resta ferma.
+  if (a === -1 && field instanceof Int32Array) {
+    const out = p.escapeCell(field, gx, gy, 6);
+    if (!out) return;
+    a = pointDirection(inst.x, inst.y, out[0] * GRID + GRID / 2, out[1] * GRID + GRID / 2);
+  } else if (a !== -1 && field instanceof Int32Array) {
     let aim = inst.steerField === field ? inst.steerAim : null;
     if (!aim || pointDistance(inst.x, inst.y, aim[0], aim[1]) < 24 || !p.clearLine(field, inst.x, inst.y, aim[0], aim[1])) {
       aim = p.steerPoint(field, inst.x, inst.y);
