@@ -16,7 +16,7 @@ import { Alarms } from "./alarms.js";
 import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
-const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells"], classes: { Alarms }, roundKeys: ["parts"] };
+const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs"], classes: { Alarms }, roundKeys: ["parts"] };
 
 export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const P = world.particles;

@@ -103,53 +103,60 @@ export class Pathing {
 
   // scr_generate_goal_field [C]: valori BFS, -1 = irraggiungibile.
   // enemy: anche le celle delle porte sono ostacolo (§3.8).
+  // [§6.2, ottimizzazione A] stessi valori di prima (stesso ordine dei
+  // vicini: destra, sinistra, su, giu'), con indici lineari e una coda
+  // riusata invece di due array nuovi a ogni chiamata.
   goalField(goalX, goalY, enemy = false) {
     const block = enemy ? this.enemyBlock : null;
-    const { gw, gh } = this;
-    const f = new Int32Array(gw * gh).fill(-1);
+    const { gw, gh, cost } = this;
+    const N = gw * gh;
+    const f = new Int32Array(N).fill(-1);
     const gx = Math.floor(goalX / GRID), gy = Math.floor(goalY / GRID);
     if (!this.inside(gx, gy)) return f;
-    const qx = new Int32Array(gw * gh), qy = new Int32Array(gw * gh);
+    const q = this.queue || (this.queue = new Int32Array(N));
     let head = 0, tail = 0;
-    qx[tail] = gx; qy[tail++] = gy;
-    f[gy * gw + gx] = 0;
+    const g = gy * gw + gx;
+    f[g] = 0;
+    q[tail++] = g;
     while (head < tail) {
-      const cx = qx[head], cy = qy[head++];
-      const v = f[cy * gw + cx];
-      for (let i = 0; i < 4; i++) {
-        const nx = cx + DX[i], ny = cy + DY[i];
-        if (nx >= 0 && nx < gw && ny >= 0 && ny < gh) {
-          const k = ny * gw + nx;
-          if (f[k] === -1 && this.cost[k] < 1000 && !(block && block[k])) {
-            f[k] = v + 1;
-            qx[tail] = nx; qy[tail++] = ny;
-          }
-        }
-      }
+      const k = q[head++], v = f[k] + 1, x = k % gw;
+      let n;
+      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
     }
     return f;
   }
 
-  // scr_generate_flow_field [C]: angolo in gradi, -1 = nessuna direzione
+  // scr_generate_flow_field [C]: per ogni cella la direzione verso la vicina
+  // (8 direzioni) col valore piu' basso; -1 = nessuna direzione.
+  // [§6.2, ottimizzazione A] il flow field non si calcola piu' per tutte le
+  // celle: e' il goal field stesso, e la direzione di una cella si ricava
+  // quando serve (flowAt), con la stessa regola. Prima erano 47.000 celle
+  // calcolate per leggerne poche decine. I salvataggi vecchi hanno flow
+  // field di angoli (Float32Array): flowAt li legge come prima.
   flowField(goal) {
+    return goal;
+  }
+
+  // Direzione del flow field nella cella (gx, gy): angolo in gradi o -1;
+  // fuori dalla griglia 0, come ds_grid_get [I].
+  flowAt(field, gx, gy) {
+    if (!this.inside(gx, gy)) return 0;
     const { gw, gh } = this;
-    const ff = new Float32Array(gw * gh).fill(-1);
-    for (let y = 0; y < gh; y++) {
-      for (let x = 0; x < gw; x++) {
-        const c = goal[y * gw + x];
-        if (c === -1) continue;
-        let best = c, bi = -1;
-        for (let i = 0; i < 8; i++) {
-          const nx = x + DX[i], ny = y + DY[i];
-          if (nx < 0 || nx >= gw || ny < 0 || ny >= gh) continue;
-          const v = goal[ny * gw + nx];
-          if (v === -1) continue;
-          if (v < best) { best = v; bi = i; }
-        }
-        if (bi >= 0) ff[y * gw + x] = DIR[bi];
-      }
+    const k = gy * gw + gx;
+    if (!(field instanceof Int32Array)) return field[k]; // salvataggi vecchi
+    const c = field[k];
+    if (c === -1) return -1;
+    let best = c, bi = -1;
+    for (let i = 0; i < 8; i++) {
+      const nx = gx + DX[i], ny = gy + DY[i];
+      if (nx < 0 || nx >= gw || ny < 0 || ny >= gh) continue;
+      const v = field[k + DY[i] * gw + DX[i]];
+      if (v !== -1 && v < best) { best = v; bi = i; }
     }
-    return ff;
+    return bi >= 0 ? DIR[bi] : -1;
   }
 
   fieldAt(field, gx, gy) {
@@ -249,7 +256,7 @@ export function scrMove(p, inst, tx, ty) {
 // scr_move_flow_field [C]: direzione dalla cella (se valida), avanzamento
 // di autospeed SENZA controllo di collisione.
 export function moveFlowField(w, p, inst) {
-  const a = p.fieldAt(inst.flow_field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
+  const a = p.flowAt(inst.flow_field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
   if (a !== -1) inst.target_angle = a;
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;

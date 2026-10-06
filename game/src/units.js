@@ -60,7 +60,7 @@ export function movementGeneral(w, p, mx, my) {
     if (u.selected !== 1) continue;
     u.flow_field = ff; // ds_grid_copy(flow_field, ff_general)
     p.free(u);
-    if (p.fieldAt(u.flow_field, Math.floor(u.x / GRID), Math.floor(u.y / GRID)) === -1) scrMove(p, u, mx, my);
+    if (p.flowAt(u.flow_field, Math.floor(u.x / GRID), Math.floor(u.y / GRID)) === -1) scrMove(p, u, mx, my);
   }
   for (const u of w.all("ally_unit")) if (u !== leader && u.selected === 1) p.free(u);
 }

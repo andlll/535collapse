@@ -22,6 +22,8 @@ import { drawSprite, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 
 const CELL = 128;
+// intervalli di una riga di maschera (overlap, pointIn): coppie inizio/fine
+const SPANS_A = new Float64Array(512), SPANS_B = new Float64Array(512);
 
 export class World {
   constructor({ objects, masks, assets, g, roomW, roomH }) {
@@ -39,6 +41,7 @@ export class World {
     this.behaviours = {};
     this.nextId = 100001;
     this.grid = new Map();
+    this._qstamp = 0; // contrassegno delle ricerche dei vicini (_eachNear)
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
     this.particles = null; // particles.js (app.js)
@@ -60,6 +63,7 @@ export class World {
 
   register(name, behaviour) {
     this.behaviours[name] = behaviour;
+    this._collMaps = null;
   }
 
   // Gestore di un evento per l'istanza, risalendo i parent.
@@ -208,36 +212,44 @@ export class World {
     return [x0, y0, x1, y1];
   }
 
-  // Intervalli pieni della maschera sulla riga y (coordinate di room) dentro
-  // [ax, bx): rettangolo, ellisse e rombo inscritti nel bbox, o la maschera
-  // precisa del frame.
-  _rowSpans(inst, bb, y, ax, bx) {
+  // Intervalli pieni della maschera di inst (posta in ix, iy) sulla riga y
+  // (coordinate di room) dentro [ax, bx): rettangolo, ellisse e rombo
+  // inscritti nel bbox, o la maschera precisa del frame. Scritti in `out`
+  // come coppie inizio/fine; restituisce quanti numeri ha scritto.
+  // [§6.2, ottimizzazione B] prima restituiva array nuovi a ogni riga e
+  // overlap copiava l'intera istanza ({...a, x, y}) a ogni chiamata: contro
+  // le maschere grandi (montagne, fiumi) un passo di movimento costava ~1 ms.
+  _spans(inst, ix, iy, bb, y, ax, bx, out) {
     const m = this.maskOf(inst);
-    const [x0, y0, x1, y1] = bb;
-    if (y < y0 || y >= y1) return [];
-    const clip = (s, e) => (Math.max(s, ax) < Math.min(e, bx) ? [[Math.max(s, ax), Math.min(e, bx)]] : []);
-    if (m.kind === 1) return clip(x0, x1);
-    if (m.kind === 2 || m.kind === 3) {
-      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2;
-      const ny = Math.abs((y + 0.5 - cy) / ry);
-      if (ny > 1) return [];
-      const half = m.kind === 2 ? rx * Math.sqrt(1 - ny * ny) : rx * (1 - ny);
-      return clip(cx - half, cx + half);
+    const x0 = bb[0], y0 = bb[1], x1 = bb[2], y1 = bb[3];
+    if (y < y0 || y >= y1) return 0;
+    let n = 0;
+    if (m.kind === 1 || m.kind === 2 || m.kind === 3) {
+      let s = x0, e = x1;
+      if (m.kind !== 1) {
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2;
+        const ny = Math.abs((y + 0.5 - cy) / ry);
+        if (ny > 1) return 0;
+        const half = m.kind === 2 ? rx * Math.sqrt(1 - ny * ny) : rx * (1 - ny);
+        s = cx - half; e = cx + half;
+      }
+      const a = s > ax ? s : ax, b = e < bx ? e : bx;
+      if (a < b) { out[n++] = a; out[n++] = b; }
+      return n;
     }
     // precisa: riga del bbox della maschera in coordinate dello sprite
     const sy = inst.image_yscale, sx = inst.image_xscale;
     const frames = m.frames;
     const f = frames[m.sepmasks ? (Math.floor(inst.image_index) % frames.length) : 0];
-    const spriteY = Math.floor((y - inst.y) / sy + m.origin[1]);
-    const row = f[spriteY - m.bbox[1]];
-    if (!row) return [];
-    const out = [];
+    const row = f[Math.floor((y - iy) / sy + m.origin[1]) - m.bbox[1]];
+    if (!row) return 0;
     for (let k = 0; k < row.length; k += 2) {
-      let s = inst.x + (row[k] - m.origin[0]) * sx, e = inst.x + (row[k + 1] - m.origin[0]) * sx;
-      if (s > e) [s, e] = [e, s];
-      out.push(...clip(s, e));
+      let s = ix + (row[k] - m.origin[0]) * sx, e = ix + (row[k + 1] - m.origin[0]) * sx;
+      if (s > e) { const t = s; s = e; e = t; }
+      const a = s > ax ? s : ax, b = e < bx ? e : bx;
+      if (a < b) { out[n++] = a; out[n++] = b; }
     }
-    return out;
+    return n;
   }
 
   // Le due maschere si toccano? a e b nelle posizioni (ax, ay), (b.x, b.y).
@@ -249,12 +261,11 @@ export class World {
     if (x0 >= x1 || y0 >= y1) return false;
     const ma = this.maskOf(a), mb = this.maskOf(b);
     if (ma.kind === 1 && mb.kind === 1) return true;
-    const sa = { ...a, x: ax, y: ay };
     for (let y = Math.floor(y0); y < y1; y++) {
-      const ra = this._rowSpans(sa, ba, y, x0, x1);
-      if (!ra.length) continue;
-      const rb = this._rowSpans(b, bb, y, x0, x1);
-      for (const [s1, e1] of ra) for (const [s2, e2] of rb) if (s1 < e2 && s2 < e1) return true;
+      const na = this._spans(a, ax, ay, ba, y, x0, x1, SPANS_A);
+      if (!na) continue;
+      const nb = this._spans(b, b.x, b.y, bb, y, x0, x1, SPANS_B);
+      for (let i = 0; i < na; i += 2) for (let j = 0; j < nb; j += 2) if (SPANS_A[i] < SPANS_B[j + 1] && SPANS_B[j] < SPANS_A[i + 1]) return true;
     }
     return false;
   }
@@ -262,7 +273,8 @@ export class World {
   pointIn(inst, px, py) {
     const bb = this.bbox(inst);
     if (!bb || px < bb[0] || px >= bb[2] || py < bb[1] || py >= bb[3]) return false;
-    for (const [s, e] of this._rowSpans(inst, bb, Math.floor(py), px, px + 1)) if (s <= px && px < e) return true;
+    const n = this._spans(inst, inst.x, inst.y, bb, Math.floor(py), px, px + 1, SPANS_A);
+    for (let i = 0; i < n; i += 2) if (SPANS_A[i] <= px && px < SPANS_A[i + 1]) return true;
     return false;
   }
 
@@ -299,14 +311,37 @@ export class World {
     }
   }
 
-  // Istanze la cui cella tocca il rettangolo.
-  _near(bb) {
-    const seen = new Set();
-    for (const k of this._cellsOf(bb)) {
-      const s = this.grid.get(k);
-      if (s) for (const i of s) seen.add(i);
+  // Istanze la cui cella tocca il rettangolo, ognuna una volta, nell'ordine
+  // delle celle (riga per riga) e di inserimento in ogni cella.
+  // [§6.2, ottimizzazione B] senza Set ne' array nuovi: i doppioni (istanze
+  // su piu' celle) si saltano con un contrassegno (_qs). fn(o) restituisce
+  // qualcosa per fermarsi; il valore torna a chi chiama. fn non deve
+  // spostare ne' creare istanze (chi lo fa usa _nearList).
+  _eachNear(bb, fn) {
+    const stamp = ++this._qstamp;
+    const cx0 = Math.floor(bb[0] / CELL), cx1 = Math.floor(bb[2] / CELL);
+    const cy0 = Math.floor(bb[1] / CELL), cy1 = Math.floor(bb[3] / CELL);
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        const s = this.grid.get(cy * 65536 + cx);
+        if (!s) continue;
+        for (const o of s) {
+          if (o._qs === stamp) continue;
+          o._qs = stamp;
+          const r = fn(o);
+          if (r) return r;
+        }
+      }
     }
-    return seen;
+    return null;
+  }
+
+  // Le stesse istanze in un array (fotografia: chi le riceve puo' spostare
+  // o distruggere istanze mentre le scorre, come con il Set di prima).
+  _nearList(bb) {
+    const out = [];
+    this._eachNear(bb, (o) => { out.push(o); });
+    return out;
   }
 
   setPos(inst, x, y) {
@@ -322,13 +357,8 @@ export class World {
   instancePlace(inst, x, y, name = null, solidOnly = false) {
     const bb = this.bbox(inst, x, y);
     if (!bb) return null;
-    for (const o of this._near(bb)) {
-      if (o === inst || !o.alive) continue;
-      if (solidOnly && !o.solid) continue;
-      if (name && !this.is(o, name)) continue;
-      if (this.overlap(inst, x, y, o)) return o;
-    }
-    return null;
+    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && (!name || this.is(o, name))
+      && this.overlap(inst, x, y, o) ? o : null));
   }
 
   placeFree(inst, x, y) {
@@ -340,10 +370,7 @@ export class World {
   }
 
   instancePosition(px, py, name) {
-    for (const o of this._near([px, py, px, py])) {
-      if (o.alive && (!name || this.is(o, name)) && this.pointIn(o, px, py)) return o;
-    }
-    return null;
+    return this._eachNear([px, py, px, py], (o) => (o.alive && (!name || this.is(o, name)) && this.pointIn(o, px, py) ? o : null));
   }
 
   positionMeeting(px, py, name) {
@@ -355,13 +382,13 @@ export class World {
   // (collision_rectangle(..., id, ...) del codice originale).
   collisionRectangle(x1, y1, x2, y2, name, prec = true, notme = null, only = null) {
     const rect = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
-    for (const o of only ? [only] : this._near(rect)) {
+    for (const o of only ? [only] : this._nearList(rect)) {
       if (!o.alive || o === notme || (name && !this.is(o, name))) continue;
       const bb = this.bbox(o);
       if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
       if (!prec) return o;
       for (let y = Math.floor(Math.max(rect[1], bb[1])); y <= Math.min(rect[3], bb[3]); y++) {
-        if (this._rowSpans(o, bb, y, rect[0], rect[2] + 1).length) return o;
+        if (this._spans(o, o.x, o.y, bb, y, rect[0], rect[2] + 1, SPANS_A)) return o;
       }
     }
     return null;
@@ -435,7 +462,7 @@ export class World {
       for (const [name, fn] of map) {
         const bb = this.bbox(i);
         if (!bb) continue;
-        for (const o of this._near(bb)) {
+        for (const o of this._nearList(bb)) {
           if (!i.alive) break;
           if (o === i || !o.alive || !this.is(o, name)) continue;
           if (this.overlap(i, i.x, i.y, o)) fn(i, this, o);
@@ -444,13 +471,20 @@ export class World {
     }
   }
 
+  // [§6.2, ottimizzazione B] una volta per oggetto (prima: a ogni passo per
+  // ogni istanza); si rifa' se cambiano i comportamenti (register)
   _collisionMap(i) {
-    const out = [];
+    if (!this._collMaps) this._collMaps = new Map();
+    let out = this._collMaps.get(i.object);
+    if (out !== undefined) return out;
+    out = [];
     for (const n of [i.object, ...i.parents]) {
       const b = this.behaviours[n];
       if (b && b.collisions) for (const k of Object.keys(b.collisions)) if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k]]);
     }
-    return out.length ? out : null;
+    out = out.length ? out : null;
+    this._collMaps.set(i.object, out);
+    return out;
   }
 
   // mouse_clear(mb_left) [I]: il rilascio non vale piu' per chi viene dopo

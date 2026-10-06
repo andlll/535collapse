@@ -25,7 +25,7 @@ test("goal field: BFS a 4 direzioni, gli ostacoli (>=1000) restano -1", () => {
 test("flow field: verso la vicina piu' bassa; a pari valore vince l'ordine destra, sinistra, su, giu'", () => {
   const p = grid(["...", "...", "..."]);
   const ff = p.flowField(p.goalField(GRID * 1, GRID * 1)); // destinazione al centro
-  const at = (x, y) => ff[y * p.gw + x];
+  const at = (x, y) => p.flowAt(ff, x, y);
   assert.equal(at(1, 1), -1);       // la destinazione non ha direzione
   assert.equal(at(0, 1), 0);        // a sinistra del centro: va a destra (0 gradi)
   assert.equal(at(1, 0), 270);      // sopra: va giu' (270)
@@ -34,7 +34,7 @@ test("flow field: verso la vicina piu' bassa; a pari valore vince l'ordine destr
   // (0,0) destra e giu' valgono entrambe 3 -> vince destra (prima nell'ordine)
   const q = grid(["...", ".#.", "..."]);
   const f2 = q.flowField(q.goalField(GRID * 2, GRID * 2));
-  assert.equal(f2[0], 0);
+  assert.equal(q.flowAt(f2, 0, 0), 0);
 });
 
 test("scr_find_valid_cell_backwards: cella raggiungibile piu' vicina, cercando in quadrati crescenti", () => {
