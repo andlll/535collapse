@@ -12,8 +12,8 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
-import { phaseOf, walkCycle } from "./units.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { phaseOf, walkCycle, firstSelected } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -261,7 +261,7 @@ function ominoStep(i, w, p, stop) {
       const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
       i.dirox += lengthdirX(50, dir);
       i.diroy += lengthdirY(50, dir);
-    } else {
+    } else if (!rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-32, 32);
       i.diroy += irandomRange(-32, 32);
     }
@@ -271,8 +271,10 @@ function ominoStep(i, w, p, stop) {
   // azione 11: "posto occupato (legacy?)"
   if (i.action === 1 && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
       && !w.placeFree(i, i.dirox, i.diroy)) {
-    i.dirox += irandomRange(-30, 30);
-    i.diroy += irandomRange(-30, 30);
+    if (i.creation !== 1 || !rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
+      i.dirox += irandomRange(-30, 30);
+      i.diroy += irandomRange(-30, 30);
+    }
   }
   // azione 12: ordine dei civili inattivi (per il tasto Spazio)
   if (i.action === 0 && i.idling === 0) { i.idling = 1; i.idleorder = g.idle; }
@@ -788,22 +790,27 @@ function ominoDrawEnd(i, w, d) {
 // Draw_GUI [C]: scheda del civile con i 10 pulsanti di costruzione e cio' che
 // trasporta.
 function ominoPanel(i, w, d) {
-  if (i.selected !== 1 || w.g.sel >= 2) return;
+  if (i.selected !== 1) return;
+  // [§7.2] con piu' civili (e nessun soldato) i pulsanti di costruzione si
+  // vedono: li disegna il primo civile selezionato, senza la scheda
+  const g = w.g, multi = g.sel >= 2;
+  if (multi && (g.milsel !== 0 || firstSelected(w, true) !== i)) return;
   const white = 0xffffff;
   d.setAlpha(0.69);
-  d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
+  if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
   for (const x of [450, 520, 590, 660, 730]) for (const y of [50, 120]) d.circleColour(x, y, 30, white, white, false);
   d.setFont("GUI_1");
   d.setColour(0);
   d.setAlpha(0.75);
   d.setValign("middle");
   d.setHalign("center");
-  d.text(325, 120, i.life + " / " + i.slife);
+  if (!multi) d.text(325, 120, i.life + " / " + i.slife);
   d.setAlpha(1);
   const ico = (s, x, y) => d.spriteExt(s, 0, x, y, 0.5, 0.5, 0, white, 1);
   ico("ico_casa", 450, 50); ico("ico_torre", 450, 120); ico("ico_magazzino", 520, 50); ico("ico_barn", 590, 50);
   ico("ico_corn", 660, 50); ico("ico_mura", 520, 120); ico("ico_caserma", 590, 120); ico("ico_stalla", 660, 120);
   ico("ico_castello", 730, 120); ico("ico_chiesa", 730, 50);
+  if (multi) return;
   if (!i.gold && !i.wood && !i.food && !i.stone) d.sprite("ico_omino", 0, 325, 70);
   else d.spriteExt("ico_omino", 0, 355, 70, 0.8, 0.8, 0, white, 1);
   for (const [k, s] of [["food", "ico_food"], ["gold", "ico_gold"], ["wood", "ico_wood"], ["stone", "ico_stone"]]) {
@@ -844,10 +851,19 @@ export function resource(p, kind) {
                      hint: ["hint_stone", "stonehint"] },
     pietr_piccolo: { amount: ["stone", 450], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietr_piccolo_morente", centroDir: "stonedir",
                      hint: ["hint_stone", "stonehint"] },
+    // [§7.17] rovine di pietra di castello, torre e chiesa [C, *ruin
+    // Create/Step/Destroy/Mouse_*]: come le pietre (senza suggerimento), con
+    // la pietra del loro Create; nascono anche a partita in corso (edificio
+    // distrutto), quindi segnano da sole le loro celle nella griglia.
+    // Mancavano nel porting: non si esaurivano mai.
+    castelloruin: { amount: ["stone", 500], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "castelloruin_morente", centroDir: "stonedir", grid: true },
+    torreruin: { amount: ["stone", 100], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "torreruin_morente", centroDir: "stonedir", grid: true },
+    chiesaruin: { amount: ["stone", 75], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "chiesaruin_morente", centroDir: "stonedir", grid: true },
   }[kind];
   const ALB = ["alb1", "alb2", "alb3", "alb4", "alb5", "alb6", "alb7", "alb8"];
   return {
     create(i, w) {
+      if (cfg.grid) p.markInstance(i, 1000);
       i.selected = 0;
       i[cfg.work] = 0;
       i.depth = -i.y;
@@ -919,8 +935,7 @@ export function resource(p, kind) {
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1 || w.g.sel >= 1) return;
-      const icon = { albero: "ico_albero", albero_fake: "ico_albero", miniera_oro: "ico_miniera",
-                     pietra_grande: "ico_ruin", pietr_piccolo: "ico_ruin" }[kind];
+      const icon = { albero: "ico_albero", albero_fake: "ico_albero", miniera_oro: "ico_miniera" }[kind] || "ico_ruin";
       const res = { wood: "ico_wood", gold: "ico_gold", stone: "ico_stone" }[cfg.amount[0]];
       d.setAlpha(0.69);
       d.roundrectColourExt(260, 20, 390, 150, 60, 60, 0xffffff, 0xffffff, false);

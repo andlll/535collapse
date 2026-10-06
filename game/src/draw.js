@@ -38,6 +38,9 @@ const SUBST = { "ß": "ss", "œ": "oe", "Œ": "Oe", "æ": "ae", "Æ": "Ae", "’
 const SUBST_RE = new RegExp("[" + Object.keys(SUBST).join("") + "]", "g");
 export const plain = (s) => s.replace(SUBST_RE, (ch) => SUBST[ch]);
 
+// [§7.14] quanto resta del bianco dei pannelli sopra il vetro
+const GLASS_TINT = 0.65;
+
 export class Draw {
   constructor(r, assets) {
     this.r = r;
@@ -59,12 +62,19 @@ export class Draw {
     this.r.setBlend("normal");
   }
 
+  // §7.14: la superficie sfocata per i pannelli di vetro (null: niente vetro)
+  setGlass(t) { this.glass = this._glassTex = t || null; }
+
   // Schede descrittive di pulsanti e unita' (in basso a sinistra, x=20)
   // [Correzione decisa dall'autore, §6.1 n.85]: con la minimappa aperta
   // nell'originale la coprivano; qui si spostano alla sua destra, oltre i
   // suoi tre pulsanti, traslando la proiezione GUI fra Begin ed End.
   tooltipBegin(w) {
     const g = w.g;
+    // [§7.1, segnalazione dell'autore] il testo delle schede (pulsanti di
+    // costruzione, produzione, comportamento) prendeva il colore rimasto
+    // dal disegno precedente: a volte bianco, su fondo bianco. Sempre nero.
+    this.setColour(0);
     this._tipProj = null;
     if (w.room === "menu" || g.minim !== 1) return;
     const ox = w.roomW / g.sz + 60;
@@ -186,11 +196,40 @@ export class Draw {
     }
   }
 
+  // [§7.14, richiesta dell'autore] Vetro: i pannelli bianchi semitrasparenti
+  // dell'interfaccia (rettangoli arrotondati e cerchi pieni) mostrano sotto
+  // di se' il mondo sfocato, piegato verso l'interno vicino al bordo come da
+  // una lente, con un riflesso sul bordo; il bianco sopra e' piu' leggero
+  // (GLASS_TINT). `glass` e' la superficie sfocata grande come lo schermo
+  // (app.js), null se l'opzione e' spenta.
+  _glass(l, t, rgt, btm, rad, c1, c2, outline) {
+    const g = this.glass;
+    if (!g || outline || c1 !== 0xffffff || c2 !== 0xffffff || this.alpha >= 0.95 || this.alpha <= 0.05) return false;
+    const R = this.r, pw = R.proj[2], ph = R.proj[3], a = Math.min(1, this.alpha / 0.69);
+    R.pass("glass", l - 2, t - 2, rgt + 2, btm + 2, (gl, U, tex) => {
+      gl.uniform1i(U.uBg, tex(g));
+      gl.uniform4f(U.uBox, (l + rgt) / 2, (t + btm) / 2, (rgt - l) / 2, (btm - t) / 2);
+      gl.uniform1f(U.uR, Math.min(rad, (rgt - l) / 2, (btm - t) / 2));
+      gl.uniform2f(U.uScale, 1 / pw, 1 / ph);
+      gl.uniform1f(U.uAlpha, a);
+    });
+    return true;
+  }
+
   roundrectColourExt(x1, y1, x2, y2, xrad, yrad, c1, c2, outline = false) {
     const l = Math.min(x1, x2), rgt = Math.max(x1, x2), t = Math.min(y1, y2), btm = Math.max(y1, y2);
     // raggi limitati a meta' lato (con raggio piu' grande gli angoli si
     // sovrapporrebbero) [I]
     const rx = Math.min(xrad / 2, (rgt - l) / 2), ry = Math.min(yrad / 2, (btm - t) / 2);
+    if (this._glass(l, t, rgt, btm, Math.min(rx, ry), c1, c2, outline)) {
+      const a0 = this.alpha;
+      this.alpha = a0 * GLASS_TINT;
+      this.glass = null;
+      this.roundrectColourExt(x1, y1, x2, y2, xrad, yrad, c1, c2, outline);
+      this.glass = this._glassTex;
+      this.alpha = a0;
+      return;
+    }
     const pts = [];
     const q = Math.max(4, Math.ceil(segments(Math.max(rx, ry)) / 4));
     const corner = (cx, cy, a0) => {
@@ -208,6 +247,15 @@ export class Draw {
 
   ellipseColour(x1, y1, x2, y2, c1, c2, outline = false) {
     const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, rx = Math.abs(x2 - x1) / 2, ry = Math.abs(y2 - y1) / 2;
+    if (Math.abs(rx - ry) < 0.5 && this._glass(cx - rx, cy - ry, cx + rx, cy + ry, rx, c1, c2, outline)) { // §7.14
+      const a0 = this.alpha;
+      this.alpha = a0 * GLASS_TINT;
+      this.glass = null;
+      this.ellipseColour(x1, y1, x2, y2, c1, c2, outline);
+      this.glass = this._glassTex;
+      this.alpha = a0;
+      return;
+    }
     const pts = [], seg = segments(Math.max(rx, ry));
     for (let i = 0; i < seg; i++) {
       const a = (i / seg) * Math.PI * 2;

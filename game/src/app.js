@@ -23,11 +23,12 @@ import { enemyManager, enemyManagerLv2, levelStep } from "./levels.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
+import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
+import { GroundCache } from "./ground.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -159,8 +160,9 @@ async function main() {
   world.register("ally_militare", controlGroups(false));
   world.register("attacco_clicker", behaviourClicker("attacco"));
   world.register("difesa_clicker", behaviourClicker("difesa"));
-  for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
-  for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
+  for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"]) world.register(n, resource(path, n));
+  for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente",
+                   "castelloruin_morente", "torreruin_morente", "chiesaruin_morente"]) world.register(n, dying());
   world.register("centro", centroArrows(centro(path)));
   world.register("ally_build", allyBuild());
   world.register("ally_arciere", allyArcher(path));
@@ -228,6 +230,7 @@ async function main() {
   world.register("cibo_prizedrawer", prizeDrawer("ico_food_prize"));
   world.register("idle_clicker", idleClicker());
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
+  for (const n of WOOD_RUINS) world.register(n, woodRuin(n));
   for (const n of ["enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) world.register(n, enemyMelee(n, path));
   world.register("atk_signal", atkSignalObject());
   for (const n of Object.keys(CITY_FIRES)) world.register(n, cityBuilding(n));
@@ -280,11 +283,11 @@ async function main() {
     world.loadRoom(instances, () => path.initCost());
     // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
     world.create("idle_clicker", 0, 0);
-    // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
-    // difesa (comp=50). [Correzione decisa dall'autore, §3.13 n.51]
-    // nell'originale lo fa il Create del manager, prima di quello delle unita'
-    // che rimette 700: qui dopo.
-    if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
+    // manager Create, "Livelli" [C]: nel livello 1 mette i militari in
+    // difesa (comp=50), ma prima del Create delle unita' che rimette 700:
+    // nell'originale partono in attacco. [§3.13 n.51] qui li si metteva in
+    // difesa dopo; [§7.4, decisione dell'autore] si torna all'originale:
+    // i militari di partenza del livello 1 sono in attacco (comp 700).
     // i gestori del menu e dei nemici di match e lvl02
     if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
     if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
@@ -295,6 +298,7 @@ async function main() {
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);
+  const ground = new GroundCache(r, assets, room, world, clear);
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale).
   // [§6.8 G1] Il canvas ha pixel reali = CSS x densita' dello schermo (fino a
@@ -305,6 +309,7 @@ async function main() {
   // schermo pieno prima dell'interfaccia. Prima la scala dinamica
   // rimpiccioliva tutto il canvas, interfaccia compresa.
   const QUALITY_CAP = { high: 2, medium: 1.25, low: 1 };
+  const GRASS_DENSITY = { high: 1, medium: 0.7, low: 0.5 }; // §7.15 G5
   let canvasScale = 1, worldScale = 1;
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight;
@@ -329,6 +334,9 @@ async function main() {
     for (const k of ["rain", "grass", "fire"]) {
       if (settings[k]) world.particles.hidden.delete(k); else world.particles.hidden.add(k);
     }
+    // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000
+    // fili disegnati a ogni fotogramma, fino al 45% del disegno nel menu)
+    world.particles.density.grass = GRASS_DENSITY[settings.quality] ?? 1;
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
     resize(); // §6.8 G1: la qualita' cambia la scala del mondo
@@ -435,19 +443,23 @@ async function main() {
     return worldTarget.t;
   };
   const drawWorld = () => {
-    drawBackgrounds(r, assets, room, cam);
+    ground.draw(cam); // sfondo e suolo cotti in blocchi (§7.16 G4)
     draw.reset();
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
     world.draw(r, draw, cam, () => {
       manager.drawEnd(draw, world);
-      fogLayer.draw(draw, world, cam);
+      fogLayer.draw();
     });
     manager.drawMouser(draw, world);
   };
 
   // la scena: mondo, poi l'interfaccia (Draw GUI)
   const renderScene = () => {
+    // nebbia e notte composte prima del mondo (§7.13)
+    draw.reset();
+    fogLayer.prepare(draw, world, cam);
+    r.setProjection(cam.x, cam.y, cam.w, cam.h);
     if (worldScale < canvasScale - 1e-6) {
       const t = worldSurface();
       r.beginTarget(t, cam.x, cam.y, cam.w, cam.h, clear);
@@ -463,6 +475,8 @@ async function main() {
       worldTarget = null;
       drawWorld();
     }
+    // [§7.14] vetro: il mondo appena disegnato, ridotto a 1/4 e sfocato
+    draw.setGlass(settings.glass ? glassBackdrop() : null);
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
@@ -473,19 +487,48 @@ async function main() {
     world.drawGUIEnd(draw);
     draw.reset();
     pause.drawButton(draw, cam.cssW);
+    draw.setGlass(null);
+  };
+
+  // [§7.14] Sfondo dei pannelli di vetro: una copia del mondo appena
+  // disegnato (dalla superficie corrente: il canvas, o quella della pausa) a
+  // meta' risoluzione, poi a un quarto, sfocata con una gaussiana. Superfici
+  // ricreate solo se cambia la misura o il contesto.
+  const GLASS_SIGMA = 3; // texel a un quarto di risoluzione
+  let glassT = null;
+  const glassBackdrop = () => {
+    const cur = r.targets && r.targets.length ? r.targets[r.targets.length - 1].t : null;
+    const W = cur ? cur.width : canvas.width, H = cur ? cur.height : canvas.height;
+    if (!(glassT && glassT.gen === r.generation && glassT.W === W && glassT.H === H)) {
+      if (glassT && glassT.gen === r.generation) for (const t of glassT.t) r.deleteTarget(t);
+      const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
+      const qw = Math.max(1, Math.ceil(W / 4)), qh = Math.max(1, Math.ceil(H / 4));
+      glassT = { gen: r.generation, W, H, t: [r.createTarget(hw, hh), r.createTarget(qw, qh), r.createTarget(qw, qh), r.createTarget(qw, qh)] };
+    }
+    const [half, q, tmp, out] = glassT.t;
+    const proj = r.proj;
+    r.grab(half);
+    copy(half, q);
+    r.blur(q, tmp, out, GLASS_SIGMA);
+    r.setProjection(...proj);
+    return out;
   };
 
   // Sfondo del menu di pausa, come in NIMBUS: la scena ferma sfumata e
-  // scurita. Si disegna una volta in una superficie grande come il canvas e
-  // si dimezza tre volte col filtro lineare (1/8: ogni passo media 2x2
-  // pixel); si rifa' solo se cambia qualcosa (apertura, lingua, opzioni,
-  // finestra ridimensionata).
+  // scurita. Si disegna una volta in una superficie grande come il canvas,
+  // si riduce a meta' e si sfoca con una gaussiana separabile (gl.js, blur);
+  // si rifa' solo se cambia qualcosa (apertura, lingua, opzioni, finestra
+  // ridimensionata). [§7.12, richiesta dell'autore] prima erano tre
+  // dimezzamenti col filtro lineare fino a 1/8 e un ingrandimento: una
+  // sfocatura a blocchi. Calcolata una volta sola, puo' costare di piu'.
+  const PAUSE_SIGMA = 7; // texel della superficie a meta' risoluzione
   let blur = null;
   const blurTargets = () => {
     const W = canvas.width, H = canvas.height;
     if (blur && blur.gen === r.generation && blur.W === W && blur.H === H) return blur;
     if (blur && blur.gen === r.generation) for (const t of blur.t) r.deleteTarget(t);
-    const t = [1, 2, 4, 8].map((k) => r.createTarget(Math.max(1, Math.ceil(W / k)), Math.max(1, Math.ceil(H / k))));
+    const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
+    const t = [r.createTarget(W, H), r.createTarget(hw, hh), r.createTarget(hw, hh), r.createTarget(hw, hh)];
     blur = { gen: r.generation, W, H, t };
     return blur;
   };
@@ -524,7 +567,8 @@ async function main() {
       r.beginTarget(B.t[0], cam.x, cam.y, cam.w, cam.h, clear);
       renderScene();
       r.endTarget();
-      for (let k = 1; k < 4; k++) copy(B.t[k - 1], B.t[k]);
+      copy(B.t[0], B.t[1]);
+      r.blur(B.t[1], B.t[2], B.t[3], PAUSE_SIGMA * Math.max(1, canvasScale));
       pause.dirty = false;
       B.fresh = false;
     }
@@ -537,7 +581,9 @@ async function main() {
     draw.setAlpha(0.4);
     draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
     draw.setAlpha(1);
+    draw.setGlass(settings.glass ? last : null); // §7.14: il pannello di vetro sullo sfondo gia' sfocato
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
+    draw.setGlass(null);
     drawCursor();
     r.flush();
     r.gpuEnd();
@@ -602,17 +648,6 @@ async function main() {
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
-}
-
-// Sfondi della room ripetuti (green1, city2: 281x250 [C]), sotto a tutto.
-function drawBackgrounds(r, assets, room, cam) {
-  for (const b of room.backgrounds) {
-    const t = assets.bg.get(b.name);
-    if (!t) continue;
-    const x0 = b.htiled ? cam.x : b.x, y0 = b.vtiled ? cam.y : b.y;
-    const x1 = b.htiled ? cam.x + cam.w : b.x + t.width, y1 = b.vtiled ? cam.y + cam.h : b.y + t.height;
-    r.quad(t, x0, y0, x1, y0, x1, y1, x0, y1, x0 - b.x, y0 - b.y, x1 - b.x, y1 - b.y, 0xffffffff);
-  }
 }
 
 // PWA (sw.js): solo dove i service worker sono permessi (https o localhost)

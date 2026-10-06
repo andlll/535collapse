@@ -1,7 +1,7 @@
 // Renderer WebGL2: un solo shader, quad a lotti, piu' texture per lotto.
 //
 // Ogni vertice porta l'indice della texture (pagina d'atlas o sfondo) e lo
-// shader sceglie il sampler con una catena di if: con 16 unita' di texture
+// shader sceglie il sampler (con un albero di if, §7.11 G2): con 16 unita' di texture
 // (il minimo garantito da WebGL2) tutte le pagine stanno legate insieme e una
 // scena intera e' di solito UNA chiamata di disegno. Si svuota il lotto solo
 // quando serve una texture nuova e le unita' sono finite, o il buffer e' pieno.
@@ -31,11 +31,19 @@ void main() {
   vUnit = int(aUnit + 0.5);
 }`;
 
+// [§7.11 G2] La texture del vertice si sceglie con un albero di confronti
+// (log2(16) = 4 invece di fino a 16 if in catena) e si legge con textureLod
+// al livello 0: le texture non hanno mipmap, quindi i pixel sono identici a
+// texture(), ma una lettura senza derivate puo' stare dentro un ramo vero.
+// Con texture() ANGLE (WebGL su Direct3D, Chrome su Windows) tende ad
+// appiattire i rami e a leggere tutte le unita' a ogni pixel.
+function pickTree(lo, hi) {
+  if (hi - lo === 1) return `t = textureLod(uTex[${lo}], vUv, 0.0);`;
+  const mid = (lo + hi) >> 1;
+  return `if (vUnit < ${mid}) { ${pickTree(lo, mid)} } else { ${pickTree(mid, hi)} }`;
+}
+
 function fragmentShader(units) {
-  let pick = "";
-  for (let i = 0; i < units; i++) {
-    pick += `${i ? "else " : ""}if (vUnit == ${i}) t = texture(uTex[${i}], vUv);\n`;
-  }
   return `#version 300 es
 precision mediump float;
 uniform sampler2D uTex[${units}];
@@ -44,8 +52,8 @@ in vec4 vColor;
 flat in int vUnit;
 out vec4 outColor;
 void main() {
-  vec4 t = vec4(1.0);
-  ${pick}
+  vec4 t;
+  ${pickTree(0, units)}
   outColor = t * vColor;
 }`;
 }
@@ -110,6 +118,7 @@ export class Renderer {
       throw new Error(gl.getProgramInfoLog(prog));
     }
     gl.useProgram(prog);
+    this.prog = prog;
     this.uView = gl.getUniformLocation(prog, "uView");
     gl.uniform1iv(gl.getUniformLocation(prog, "uTex"), [...Array(this.units).keys()]);
 
@@ -416,6 +425,225 @@ export class Renderer {
     this.count = 0;
   }
 }
+
+// --------------------------------------------- passaggi con shader propri
+// [§7.12] Sfocatura della pausa e del vetro, nebbia e notte in un passaggio
+// (G3), pannelli di vetro: un rettangolo disegnato con un programma
+// dedicato, senza buffer (i 4 vertici vengono da gl_VertexID). uDst e' il
+// rettangolo nelle coordinate della proiezione corrente, come quad().
+const PASS_VS = `#version 300 es
+uniform vec4 uView;
+uniform vec4 uDst;
+out vec2 vPos;
+out vec2 vScr;
+void main() {
+  vec2 c = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
+  vec2 p = mix(uDst.xy, uDst.zw, c);
+  vec2 q = (p - uView.xy) / uView.zw;
+  gl_Position = vec4(q.x * 2.0 - 1.0, 1.0 - q.y * 2.0, 0.0, 1.0);
+  vPos = p;
+  vScr = vec2(q.x, 1.0 - q.y); // 0..1 sulla superficie corrente, v dal basso come le texture
+}`;
+
+const PASS_FS = {
+  // gaussiana separabile con letture bilineari a coppie: uO/uW gia' combinati
+  blur: `#version 300 es
+precision highp float;
+uniform sampler2D uSrc;
+uniform vec2 uDir;
+uniform float uW[24];
+uniform float uO[24];
+uniform int uN;
+in vec2 vScr;
+out vec4 o;
+void main() {
+  vec4 a = texture(uSrc, vScr) * uW[0];
+  for (int i = 1; i < 24; i++) {
+    if (i >= uN) break;
+    vec2 d = uDir * uO[i];
+    a += (texture(uSrc, vScr + d) + texture(uSrc, vScr - d)) * uW[i];
+  }
+  o = a;
+}`,
+  // nebbia (griglia a un canale, filtro bicubico B-spline con 4 letture
+  // bilineari) e notte (colore unico o superficie delle luci) composte:
+  // con la miscela "subtract" dst * (1 - f) * (1 - n)
+  fog: `#version 300 es
+precision highp float;
+uniform sampler2D uFog;
+uniform vec2 uFogSize;   // celle
+uniform float uFogCell;  // px di room per cella
+uniform int uFogOn;
+uniform sampler2D uNight;
+uniform vec4 uNightRect; // x, y, w, h in room della superficie della notte
+uniform vec3 uNightCol;
+uniform int uNightMode;  // 0 niente, 1 colore unico, 2 superficie
+in vec2 vPos;
+out vec4 o;
+vec4 cubic(float v) {
+  vec4 n = vec4(1.0, 2.0, 3.0, 4.0) - v;
+  vec4 s = n * n * n;
+  float x = s.x, y = s.y - 4.0 * s.x, z = s.z - 4.0 * s.y + 6.0 * s.x;
+  return vec4(x, y, z, 6.0 - x - y - z) * (1.0 / 6.0);
+}
+float bicubic(vec2 t) { // t in celle
+  t -= 0.5;
+  vec2 f = fract(t);
+  t -= f;
+  vec4 xc = cubic(f.x), yc = cubic(f.y);
+  vec4 c = t.xxyy + vec2(-0.5, 1.5).xyxy;
+  vec4 s = vec4(xc.xz + xc.yw, yc.xz + yc.yw);
+  vec4 off = (c + vec4(xc.yw, yc.yw) / s) / uFogSize.xxyy;
+  float s0 = textureLod(uFog, off.xz, 0.0).r, s1 = textureLod(uFog, off.yz, 0.0).r;
+  float s2 = textureLod(uFog, off.xw, 0.0).r, s3 = textureLod(uFog, off.yw, 0.0).r;
+  float sx = s.x / (s.x + s.y), sy = s.z / (s.z + s.w);
+  return mix(mix(s3, s2, sx), mix(s1, s0, sx), sy);
+}
+void main() {
+  float f = uFogOn == 1 ? bicubic(vPos / uFogCell) : 0.0;
+  vec3 n = vec3(0.0);
+  if (uNightMode == 1) n = uNightCol;
+  else if (uNightMode == 2) n = textureLod(uNight, vec2((vPos.x - uNightRect.x) / uNightRect.z, 1.0 - (vPos.y - uNightRect.y) / uNightRect.w), 0.0).rgb;
+  o = vec4(1.0 - (1.0 - f) * (1.0 - n), 1.0);
+}`,
+  // pannello di vetro: lo sfondo sfocato dentro un rettangolo arrotondato,
+  // piegato verso l'interno vicino al bordo (lente), con un riflesso sul
+  // bordo illuminato dall'alto a sinistra
+  glass: `#version 300 es
+precision highp float;
+uniform sampler2D uBg;
+uniform vec4 uBox;   // centro x, y, mezza larghezza, mezza altezza (px della proiezione)
+uniform float uR;    // raggio degli angoli
+uniform vec2 uScale; // px della proiezione -> unita' 0..1 della superficie
+uniform float uAlpha;
+in vec2 vPos;
+in vec2 vScr;
+out vec4 o;
+float sd(vec2 p) {
+  vec2 q = abs(p) - uBox.zw + uR;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - uR;
+}
+void main() {
+  vec2 p = vPos - uBox.xy;
+  float d = sd(p);
+  float a = clamp(0.5 - d, 0.0, 1.0);
+  if (a <= 0.0) discard;
+  vec2 e = vec2(1.0, 0.0);
+  vec2 nrm = normalize(vec2(sd(p + e.xy) - sd(p - e.xy), sd(p + e.yx) - sd(p - e.yx)) + 1e-5);
+  float edge = clamp(-d / 16.0, 0.0, 1.0);
+  float k = (1.0 - edge) * (1.0 - edge);
+  vec2 uv = vScr - vec2(nrm.x, -nrm.y) * k * 12.0 * uScale;
+  vec3 bg = texture(uBg, uv).rgb;
+  float l = dot(bg, vec3(0.299, 0.587, 0.114));
+  bg = mix(vec3(l), bg, 1.25);                         // un po' piu' saturo
+  bg = mix(bg, vec3(1.0), 0.3);                        // brina: sul nero resta leggibile
+  float rim = pow(1.0 - clamp(-d / 3.0, 0.0, 1.0), 2.0); // filo chiaro sul bordo
+  float spec = k * clamp(dot(nrm, normalize(vec2(-1.0, -1.0))), 0.0, 1.0);
+  vec3 col = bg + vec3(0.30 * spec + 0.25 * rim);
+  o = vec4(clamp(col, 0.0, 1.0), 1.0) * a * uAlpha;
+}`,
+};
+
+// Pesi di una gaussiana di deviazione `sigma` (in texel) per uno shader che
+// legge a coppie col filtro bilineare: [offsets, weights], al piu' 24 valori.
+export function gaussPairs(sigma) {
+  const R = Math.min(46, Math.ceil(sigma * 3));
+  const w = [];
+  for (let i = 0; i <= R; i++) w.push(Math.exp(-(i * i) / (2 * sigma * sigma)));
+  const sum = w[0] + 2 * w.slice(1).reduce((a, b) => a + b, 0);
+  const O = [0], W = [w[0] / sum];
+  for (let i = 1; i <= R; i += 2) {
+    const a = w[i], b = i + 1 <= R ? w[i + 1] : 0;
+    O.push(i + b / (a + b));
+    W.push((a + b) / sum);
+  }
+  return [O, W];
+}
+
+Object.assign(Renderer.prototype, {
+  _passProg(name) {
+    const gl = this.gl;
+    this.passProgs = this.passGen === this.generation ? this.passProgs : {};
+    this.passGen = this.generation;
+    let p = this.passProgs[name];
+    if (p) return p;
+    const sh = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, PASS_VS));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, PASS_FS[name]));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS) && !gl.isContextLost()) throw new Error(gl.getProgramInfoLog(prog));
+    const U = {};
+    const n = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const info = gl.getActiveUniform(prog, i);
+      const key = info.name.replace(/\[0\]$/, "");
+      U[key] = gl.getUniformLocation(prog, info.name);
+    }
+    if (!this.passVao) this.passVao = gl.createVertexArray();
+    p = this.passProgs[name] = { prog, U };
+    return p;
+  },
+
+  // Disegna il rettangolo (x0, y0)-(x1, y1) della proiezione corrente col
+  // programma `name`; set(gl, U, tex) imposta le uniform, tex(t) lega una
+  // texture e ne restituisce l'unita'.
+  pass(name, x0, y0, x1, y1, set) {
+    const gl = this.gl;
+    this.flush();
+    const { prog, U } = this._passProg(name);
+    gl.useProgram(prog);
+    gl.bindVertexArray(this.passVao);
+    gl.uniform4f(U.uView, ...this.proj);
+    gl.uniform4f(U.uDst, x0, y0, x1, y1);
+    set(gl, U, (t) => this._unit(t));
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    this.stats.drawCalls++;
+    this.used.fill(0);
+    gl.useProgram(this.prog);
+    gl.bindVertexArray(this.vao);
+  },
+
+  // Sfocatura gaussiana separabile di `src` in `dst` (stessa misura), con
+  // `tmp` come appoggio: deviazione `sigma` in texel.
+  blur(src, tmp, dst, sigma) {
+    const [O, W] = gaussPairs(sigma);
+    const run = (from, to, dx, dy) => {
+      this.beginTarget(to, 0, 0, 1, 1, [0, 0, 0]);
+      this.setBlend("replace");
+      this.pass("blur", 0, 0, 1, 1, (gl, U, tex) => {
+        gl.uniform1i(U.uSrc, tex(from));
+        gl.uniform2f(U.uDir, dx / from.width, dy / from.height);
+        gl.uniform1fv(U.uW, new Float32Array(24).fill(0).map((_, i) => W[i] || 0));
+        gl.uniform1fv(U.uO, new Float32Array(24).fill(0).map((_, i) => O[i] || 0));
+        gl.uniform1i(U.uN, O.length);
+      });
+      this.setBlend("normal");
+      this.endTarget();
+    };
+    run(src, tmp, 1, 0);
+    run(tmp, dst, 0, 1);
+  },
+
+  // Copia (ridotta, filtro lineare) di cio' che e' stato disegnato finora
+  // sulla superficie corrente (o sul canvas) in `dst`.
+  grab(dst) {
+    const gl = this.gl;
+    this.flush();
+    const cur = this.targets && this.targets.length ? this.targets[this.targets.length - 1].t : null;
+    const sw = cur ? cur.width : this.canvas.width, shh = cur ? cur.height : this.canvas.height;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, cur ? cur.fb : null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst.fb);
+    gl.blitFramebuffer(0, 0, sw, shh, 0, 0, dst.width, dst.height, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, cur ? cur.fb : null);
+  },
+});
 
 // Colore GameMaker (intero BGR, 0xBBGGRR) + alpha -> RGBA premoltiplicato a
 // 8 bit nell'ordine dei byte del vertice (little endian: R nel byte basso).

@@ -15,7 +15,8 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { meleeSpot } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
 
@@ -41,9 +42,17 @@ function inView(w, i) {
 // verso il punto cliccato (scr_move_master) e lo passa agli altri
 // selezionati. Gira prima degli eventi delle unita' (manager e' creato
 // prima di tutte le unita' in ogni room [C, ordine delle istanze]).
+// [§7.3, segnalazione dell'autore] Solo le unita' col flow field (quelle con
+// `ordo`): le macchine d'assedio non hanno ne' ordo ne' goal_field e vanno
+// con mp_potential_step verso dirox. Prima un ariete o una catapulta
+// selezionati potevano diventare il capo: il goal field mancante faceva
+// fallire l'ordine con un'eccezione, prima dei GlobalRightReleased delle
+// unita', e le macchine non accettavano piu' nessun ordine.
+const flowUnit = (u) => u.ordo !== undefined && !!u.goal_field;
+
 export function movementGeneral(w, p, mx, my) {
   let leader = null;
-  for (const u of w.all("ally_unit")) if (u.selected === 1 && (!leader || u.ordo > leader.ordo)) leader = u;
+  for (const u of w.all("ally_unit")) if (u.selected === 1 && flowUnit(u) && (!leader || u.ordo > leader.ordo)) leader = u;
   if (!leader) return;
   // scr_move_master
   p.free(leader);
@@ -57,7 +66,7 @@ export function movementGeneral(w, p, mx, my) {
   leader.diroy = leader.goal_y;
   const ff = leader.flow_field;
   for (const u of w.all("ally_unit")) {
-    if (u.selected !== 1) continue;
+    if (u.selected !== 1 || !flowUnit(u)) continue;
     u.flow_field = ff; // ds_grid_copy(flow_field, ff_general)
     p.free(u);
     if (p.flowAt(u.flow_field, Math.floor(u.x / GRID), Math.floor(u.y / GRID)) === -1) scrMove(p, u, mx, my);
@@ -90,9 +99,11 @@ export function formation(w, p, mx, my) {
   if (units.length < 2) return;
   if (w.positionMeeting(mx, my, "enemy") || w.positionMeeting(mx, my, "ally_build")
       || w.positionMeeting(mx, my, "natural_parent") || w.positionMeeting(mx, my, "ally_fondamenta")) return;
-  let leader = units[0];
-  for (const u of units) if (u.ordo > leader.ordo) leader = u;
-  const goal = leader.goal_field;
+  // il capo fra le unita' col flow field; con sole macchine d'assedio il
+  // campo serve solo a scegliere le caselle (celle raggiungibili)
+  let leader = null;
+  for (const u of units) if (flowUnit(u) && (!leader || u.ordo > leader.ordo)) leader = u;
+  const goal = leader ? leader.goal_field : p.goalField(mx, my);
   if (!goal) return;
   // direzione di marcia: dal baricentro al punto cliccato
   let cx = 0, cy = 0;
@@ -162,7 +173,8 @@ export function formation(w, p, mx, my) {
     u.dirox = exact ? Math.round(sx) : gx * GRID + GRID / 2;
     u.diroy = exact ? Math.round(sy) : gy * GRID + GRID / 2;
     // il campo comune (in sola lettura) e la propria cella d'arrivo: il
-    // ricalcolo "cella d'arrivo occupata" guarda questa
+    // ricalcolo "cella d'arrivo occupata" guarda questa (non per l'assedio)
+    if (!flowUnit(u) || !leader) continue;
     u.goal_field = goal;
     u.flow_field = leader.flow_field;
     u.goal_x = gx * GRID;
@@ -284,7 +296,9 @@ export function cavaliere(p) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(50, dir);
           i.diroy += lengthdirY(50, dir);
-        } else {
+        } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) {
+          // [§7.10] un altro posto libero vicino alla bandiera; se non c'e',
+          // come l'originale
           i.dirox += irandomRange(-50, 50);
           i.diroy += irandomRange(-50, 50);
         }
@@ -436,7 +450,7 @@ export function infantry(name, p) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(32, dir);
           i.diroy += lengthdirY(32, dir);
-        } else {
+        } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { // §7.10
           i.dirox += irandomRange(-32, 32);
           i.diroy += irandomRange(-32, 32);
         }
@@ -646,10 +660,18 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
         arriveIfBlocked(i); // §6.1 n.89
       }
       if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.targetid.x, i.targetid.y, i.autospeed);
-      if (i.warwork === 1 && i.target_eu) mpPotentialStep(w, i, i.target_eu.x, i.target_eu.y, i.autospeed);
+      // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
+      // verso il suo centro (melee.js)
+      if (i.warwork === 1 && i.target_eu) {
+        const [sx, sy] = meleeSpot(w, i, i.target_eu);
+        mpPotentialStep(w, i, sx, sy, i.autospeed);
+      }
       if (i.warwork === 1 && !i.target_eu) {
         const n = w.nearest(i.x, i.y, "enemy_unit");
-        if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
+        if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) {
+          const [sx, sy] = meleeSpot(w, i, n, "enemy_unit");
+          mpPotentialStep(w, i, sx, sy, i.autospeed);
+        }
       }
     }
   }
@@ -811,11 +833,25 @@ export function unitDrawEnd(i, w, d, showGroup = true) {
 }
 
 // Draw_GUI [C]: scheda dell'unita' quando e' l'unica selezionata.
+// [§7.2, richiesta dell'autore] Con piu' unita' selezionate l'originale
+// non disegnava nessuna scheda: i pulsanti (istanze invisibili) c'erano ma
+// non si vedevano. Ora, se la selezione e' tutta di un tipo (solo militari o
+// solo civili), la prima unita' selezionata disegna i pulsanti senza la
+// scheda della vita (che diventa il contatore " x N" del manager).
+export function firstSelected(w, civilian) {
+  for (const u of w.all("ally_unit")) {
+    if (u.selected === 1 && (u.object === "ally_omino") === civilian) return u;
+  }
+  return null;
+}
+
 export function unitPanel(i, w, d, icon) {
-  if (i.selected !== 1 || w.g.sel >= 2) return;
+  if (i.selected !== 1) return;
+  const g = w.g, multi = g.sel >= 2;
+  if (multi && (g.milsel !== g.sel || firstSelected(w, false) !== i)) return;
   const white = 0xffffff;
   d.setAlpha(0.69);
-  d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
+  if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
   d.circleColour(450, 50, 30, white, white, false);
   d.circleColour(450, 120, 30, white, white, false);
   d.setFont("GUI_1");
@@ -823,19 +859,28 @@ export function unitPanel(i, w, d, icon) {
   d.setAlpha(0.75);
   d.setValign("middle");
   d.setHalign("center");
-  d.text(325, 120, i.life + " / " + i.slife);
+  if (!multi) d.text(325, 120, i.life + " / " + i.slife);
   d.setAlpha(1);
-  d.sprite(icon, 0, 325, 70);
+  if (!multi) d.sprite(icon, 0, 325, 70);
   d.spriteExt("ico_attacco", 0, 450, 50, 0.5, 0.5, 0, white, 1);
   d.spriteExt("ico_difesa", 0, 450, 120, 0.5, 0.5, 0, white, 1);
+  // con piu' unita' si evidenzia il comportamento solo se e' di tutte
+  let agg = i.comp >= 300, def = i.comp < 300;
+  if (multi) {
+    agg = def = true;
+    for (const u of w.all("ally_unit")) {
+      if (u.selected !== 1) continue;
+      if (u.comp >= 300) def = false; else agg = false;
+    }
+  }
   // make_colour_rgb(183,48,48) e (68,95,198), in BGR
-  if (i.comp >= 300) {
+  if (agg) {
     d.circleColour(450, 50, 30, 0x3030b7, 0x3030b7, false);
     d.spriteExt("ico_attacco_bianco", 0, 450, 50, 0.5, 0.5, 0, white, 1);
   }
   // [Correzione decisa dall'autore, §3.9 n.31] l'originale evidenziava la
   // difesa solo con comp=50, ma il pulsante Difesa mette 200
-  if (i.comp < 300) {
+  if (def) {
     d.circleColour(450, 120, 30, 0xc65f44, 0xc65f44, false);
     d.spriteExt("ico_difesa_bianco", 0, 450, 120, 0.5, 0.5, 0, white, 1);
   }
@@ -844,7 +889,8 @@ export function unitPanel(i, w, d, icon) {
 // ------------------------------------------------------------- cadaveri
 
 // *_corpse [C, Create/Step/Alarm_0]: tre fotogrammi di morte (13, 13, 40
-// passi) nella direzione in cui l'unita' guardava, poi l'istanza sparisce.
+// passi) nella direzione in cui l'unita' guardava, l'ultimo sbiadendo, poi
+// l'istanza sparisce.
 export function corpse(name) {
   return {
     create(i) { i.depth = -i.y; i.alarm.set(0, 20); i.step = 0; i.phase = 0; },
@@ -852,6 +898,9 @@ export function corpse(name) {
       ANIM[name](i, w);          // azione 1: sprite (alla prima passata phase=0: nessuno)
       i.depth = -i.y;            // azione 2: direzione
       i.phase = phaseOf(i.direction);
+      // azione 3 [C, "///alpha"]: nell'ultima fase (40 passi) sbiadisce.
+      // [§7.8] mancava nel porting: il cadavere spariva di colpo
+      if (i.step === 3) i.image_alpha -= 0.025;
     },
     alarm0(i, w) {
       if (i.step === 0) { i.step = 1; i.alarm.set(0, 13); return; }

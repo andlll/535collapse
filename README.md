@@ -54,7 +54,8 @@ bloccare il mouse nella finestra), X/Z o la rotella per lo zoom,
 il browser lo espone, tempo GPU per frame); `?fps=30` per il
 tetto a 30 fps. Nelle opzioni grafiche "Quality" (Alta, Media, Bassa)
 disegna il mondo a risoluzione ridotta sugli schermi ad alta densita',
-lasciando nitida l'interfaccia. Esc (o il pulsante in alto a destra) apre il menu di
+lasciando nitida l'interfaccia (e, in Media e Bassa, l'erba piu' rada);
+"Glass interface" rende i pannelli di vetro sfocato. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
 salvataggi (uno slot per room nel browser, salvataggio automatico ogni 5
 minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu

@@ -480,6 +480,36 @@ export function sendRepair(i, w) {
   }
 }
 
+// Rovine degli edifici di legno [C, casaruin, magruin, barnruin, casruin,
+// stalruin, ccruin: Create, Alarm_0..2, Step]: fumo (nubeqq) ogni 200
+// passi, a 760 cominciano a sbiadire (alpha -0,025 a passo), a 800
+// spariscono. casaruin sceglie una di tre immagini.
+// [§7.8] mancavano nel porting: le rovine restavano per sempre.
+// [Correzione, §7.8] barnruin arma due volte alarm[1] (800, poi 760) e mai
+// alarm[2]: spariva a 760 senza sbiadire; qui come le altre.
+export const WOOD_RUINS = ["casaruin", "magruin", "barnruin", "casruin", "stalruin", "ccruin"];
+export function woodRuin(name) {
+  return {
+    create(i) {
+      Object.assign(i, { life: 0, slife: 50, fading: 0 });
+      i.depth = -i.y;
+      i.alarm.set(0, 200); i.alarm.set(1, 800); i.alarm.set(2, 760);
+      if (name === "casaruin") {
+        const ima = irandomRange(1, 3);
+        if (ima > 1) i.sprite_index = "casaruin" + ima;
+      }
+    },
+    alarm0(i, w) {
+      i.alarm.set(0, 200);
+      const f = w.create("nubeqq", i.x, i.y);
+      f.depth = i.depth - 2;
+    },
+    alarm1(i, w) { w.destroy(i); },
+    alarm2(i) { i.fading = 1; },
+    step(i) { if (i.fading === 1) i.image_alpha -= 0.025; },
+  };
+}
+
 // magazzino Create azione 2 [C]: chi l'ha costruito (bbox a meno di 15 px)
 // va a raccogliere la risorsa piu' vicina fra legno, pietra e oro.
 function sendBuildersToWork(i, w, p) {

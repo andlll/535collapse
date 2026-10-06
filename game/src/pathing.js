@@ -118,8 +118,9 @@ export class Pathing {
     const q = this.queue || (this.queue = new Int32Array(N));
     let head = 0, tail = 0;
     const g = gy * gw + gx;
-    f[g] = 0;
-    q[tail++] = g;
+    const shut = (k) => cost[k] >= 1000 || (block && block[k]);
+    if (shut(g) && this._seedAround(f, q, g, shut)) tail = this._seeds;
+    else { f[g] = 0; q[tail++] = g; }
     while (head < tail) {
       const k = q[head++], v = f[k] + 1, x = k % gw;
       let n;
@@ -129,6 +130,53 @@ export class Pathing {
       if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
     }
     return f;
+  }
+
+  // [§7.17] Meta dentro un ostacolo (una rovina nata dopo che il civile
+  // aveva calcolato il suo campo, un edificio): la ricerca partiva da li' e
+  // non usciva dal blocco di celle chiuse, il campo restava vuoto e chi lo
+  // seguiva non si muoveva. Qui si percorre il blocco (4 direzioni, al piu'
+  // BLOB celle) e la ricerca parte, a valore 1, dalle celle libere che lo
+  // toccano vicino alla meta: si arriva accanto alla meta. false (come
+  // prima) se il blocco e' troppo grande o non tocca celle libere.
+  _seedAround(f, q, g, shut) {
+    const { gw, gh } = this, N = gw * gh, BLOB = 4096;
+    const seen = this._blobSeen && this._blobSeen.length === N ? this._blobSeen : (this._blobSeen = new Uint8Array(N));
+    const stack = [g], blob = [];
+    seen[g] = 1;
+    let tail = 0;
+    while (stack.length) {
+      const k = stack.pop();
+      blob.push(k);
+      if (blob.length > BLOB) break;
+      const x = k % gw, y = (k - x) / gw;
+      const nb = [x + 1 < gw ? k + 1 : -1, x > 0 ? k - 1 : -1, y > 0 ? k - gw : -1, y + 1 < gh ? k + gw : -1];
+      for (const n of nb) {
+        if (n < 0 || seen[n]) continue;
+        if (shut(n)) { seen[n] = 1; stack.push(n); }
+        else if (f[n] === -1) { f[n] = 1; q[tail++] = n; }
+      }
+    }
+    for (const k of blob) seen[k] = 0;
+    for (const k of stack) seen[k] = 0;
+    if (blob.length > BLOB || !tail) {
+      for (let k = 0; k < tail; k++) f[q[k]] = -1;
+      return false;
+    }
+    // solo le celle del bordo vicine alla meta (al piu' una cella piu'
+    // lontane della piu' vicina): il blocco puo' comprendere edifici
+    // accanto, e il loro bordo non porta alla meta
+    const gx = g % gw, gy = (g - gx) / gw;
+    const dist = (k) => { const x = k % gw; return Math.max(Math.abs(x - gx), Math.abs((k - x) / gw - gy)); };
+    let dmin = Infinity;
+    for (let k = 0; k < tail; k++) dmin = Math.min(dmin, dist(q[k]));
+    let n = 0;
+    for (let k = 0; k < tail; k++) {
+      if (dist(q[k]) <= dmin + 1) q[n++] = q[k];
+      else f[q[k]] = -1;
+    }
+    this._seeds = n;
+    return true;
   }
 
   // scr_generate_flow_field [C]: per ogni cella la direzione verso la vicina
@@ -227,6 +275,28 @@ export class Pathing {
       }
     }
     return true;
+  }
+
+  // [§7.6] La cella con un valore nel campo (raggiungibile) piu' vicina a
+  // (gx, gy), per anelli fino a `rad`; a pari anello la piu' vicina e, a
+  // pari distanza, quella col valore piu' basso. null se non c'e'.
+  escapeCell(field, gx, gy, rad) {
+    for (let r = 1; r <= rad; r++) {
+      let best = null, bd = Infinity, bv = Infinity;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const tx = gx + dx, ty = gy + dy;
+          if (!this.inside(tx, ty)) continue;
+          const v = field[ty * this.gw + tx];
+          if (v === -1) continue;
+          const d = dx * dx + dy * dy;
+          if (d < bd || (d === bd && v < bv)) { bd = d; bv = v; best = [tx, ty]; }
+        }
+      }
+      if (best) return best;
+    }
+    return null;
   }
 
   fieldAt(field, gx, gy) {
@@ -333,8 +403,34 @@ export function scrMove(p, inst, tx, ty) {
 // direzioni.
 export function moveFlowField(w, p, inst) {
   const field = inst.flow_field;
-  let a = p.flowAt(field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
-  if (a !== -1 && field instanceof Int32Array) {
+  const gx = Math.floor(inst.x / GRID), gy = Math.floor(inst.y / GRID);
+  let a = p.flowAt(field, gx, gy);
+  // [§7.6, segnalazione dell'autore] Cella senza direzione: l'unita' e'
+  // su un ostacolo (il costruttore sopra il magazzino appena finito, le cui
+  // celle diventano ostacolo) o in una zona da cui la meta non si
+  // raggiunge (un nemico chiuso dalle porte del giocatore). L'originale
+  // teneva l'ultima direzione e, senza collisioni, l'unita' tirava dritto
+  // attraverso gli edifici, fino a uscire dalla mappa. Qui va verso la cella
+  // raggiungibile piu' vicina (entro 6 celle); se non ce n'e', resta ferma.
+  // [§7.17] Se invece la cella ha un valore ma nessuna vicina piu' bassa
+  // (si e' gia' nel punto del campo piu' vicino alla meta), verso la
+  // destinazione con mp_potential_step, cioe' con le collisioni; ma se si
+  // e' sovrapposti a un'altra unita' (con le collisioni nessuna delle due si
+  // muoverebbe) ci si separa senza collisioni, verso la destinazione se il
+  // passo non entra in una cella chiusa, se no lontano dall'altra unita'.
+  if (a === -1 && field instanceof Int32Array) {
+    if (p.inside(gx, gy) && field[gy * p.gw + gx] !== -1) {
+      const o = w.instancePlace(inst, inst.x, inst.y, null, true);
+      if (!o) { mpPotentialStep(w, inst, inst.dirox, inst.diroy, inst.autospeed); return; }
+      a = pointDirection(inst.x, inst.y, inst.dirox, inst.diroy);
+      const nx = Math.floor((inst.x + lengthdirX(GRID / 2, a)) / GRID), ny = Math.floor((inst.y + lengthdirY(GRID / 2, a)) / GRID);
+      if (!p.inside(nx, ny) || field[ny * p.gw + nx] === -1) a = pointDirection(o.x, o.y, inst.x, inst.y);
+    } else {
+      const out = p.escapeCell(field, gx, gy, 6);
+      if (!out) return;
+      a = pointDirection(inst.x, inst.y, out[0] * GRID + GRID / 2, out[1] * GRID + GRID / 2);
+    }
+  } else if (a !== -1 && field instanceof Int32Array) {
     let aim = inst.steerField === field ? inst.steerAim : null;
     if (!aim || pointDistance(inst.x, inst.y, aim[0], aim[1]) < 24 || !p.clearLine(field, inst.x, inst.y, aim[0], aim[1])) {
       aim = p.steerPoint(field, inst.x, inst.y);
@@ -347,6 +443,58 @@ export function moveFlowField(w, p, inst) {
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+}
+
+// [§7.10, segnalazione dell'autore] Un posto per un'unita' appena prodotta
+// vicino alla bandiera (ax, ay): il centro di una cella da 64 px (a spirale
+// a partire da quella della bandiera) percorribile, dove la sua maschera non
+// tocca altri solidi e che nessun'altra unita' appena prodotta (creation 1)
+// ha gia' come meta (entro 48 px). null se non ce n'e' entro 400 tentativi.
+// Prima due unita' prodotte di seguito ricevevano lo stesso posto (la
+// spirale guardava solo le celle di chi e' gia' fermo) e la seconda,
+// trovatolo occupato, spostava la meta a caso di 32-50 px a ogni passo.
+export function rallySpot(w, p, inst, ax, ay) {
+  const taken = [];
+  for (const u of w.all("ally_unit")) {
+    if (u === inst || u.creation !== 1) continue;
+    if (u.flaggox !== null && u.flaggox !== undefined) taken.push([u.flaggox, u.flaggoy]);
+    if (u.action === 1) taken.push([u.dirox, u.diroy]);
+  }
+  const cs = 64;
+  let gx = Math.floor(ax / cs), gy = Math.floor(ay / cs);
+  let stepLen = 1, dir = 0, done = 0, changes = 0;
+  for (let attempts = 0; attempts < 400; attempts++) {
+    const fx = gx * cs + cs / 2, fy = gy * cs + cs / 2;
+    const cx = Math.floor(fx / GRID), cy = Math.floor(fy / GRID);
+    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && w.placeFree(inst, fx, fy)
+        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < 48 && Math.abs(ty - fy) < 48)) return [fx, fy];
+    if (dir === 0) gx++; else if (dir === 1) gy++; else if (dir === 2) gx--; else gy--;
+    done++;
+    if (done >= stepLen) {
+      done = 0;
+      dir = (dir + 1) % 4;
+      changes++;
+      if (changes % 2 === 0) stepLen++;
+    }
+  }
+  return null;
+}
+
+// [§7.10] Appena prodotta e col posto occupato: un altro posto libero
+// vicino alla stessa bandiera (al piu' ogni 15 passi), e il campo verso di
+// lui (`move`: scrMove o l'equivalente del civile). false se non ce n'e'.
+export function rallyRetry(w, p, inst, move) {
+  if ((inst.rallyTry || 0) > w._stepNo) return true;
+  inst.rallyTry = w._stepNo + 15;
+  if (inst.rallyAx === undefined) {
+    inst.rallyAx = inst.flaggox ?? inst.dirox;
+    inst.rallyAy = inst.flaggoy ?? inst.diroy;
+  }
+  const s = rallySpot(w, p, inst, inst.rallyAx, inst.rallyAy);
+  if (!s) return false;
+  inst.flaggox = s[0]; inst.flaggoy = s[1];
+  move(s[0], s[1]);
+  return true;
 }
 
 // [§6.4] Da (x0, y0) a (x1, y1) a piedi in linea retta: tutte le celle

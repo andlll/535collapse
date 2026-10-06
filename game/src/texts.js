@@ -558,6 +558,7 @@ export const TEXTS = {
   "Load game": { it: "Carica partita", es: "Cargar partida", pt: "Carregar jogo", de: "Spiel laden", fr: "Charger une partie" },
   "Save to file": { it: "Salva su file", es: "Guardar en archivo", pt: "Salvar em arquivo", de: "In Datei speichern", fr: "Sauvegarder dans un fichier" },
   "Load from file": { it: "Carica da file", es: "Cargar desde archivo", pt: "Carregar de arquivo", de: "Aus Datei laden", fr: "Charger depuis un fichier" },
+  "Glass interface: {state}": { it: "Interfaccia di vetro: {state}", es: "Interfaz de cristal: {state}", pt: "Interface de vidro: {state}", de: "Glas-Oberfläche: {state}", fr: "Interface en verre : {state}" },
   "Quality: {level}": { it: "Qualità: {level}", es: "Calidad: {level}", pt: "Qualidade: {level}", de: "Qualität: {level}", fr: "Qualité : {level}" },
   "High": { it: "Alta", es: "Alta", pt: "Alta", de: "Hoch", fr: "Haute" },
   "Medium": { it: "Media", es: "Media", pt: "Média", de: "Mittel", fr: "Moyenne" },

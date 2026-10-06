@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -183,7 +183,7 @@ export function allyArcher(p) {
       if (i.creation !== 1) {
         const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
         i.dirox += lengthdirX(32, d); i.diroy += lengthdirY(32, d);
-      } else { i.dirox += irandomRange(-32, 32); i.diroy += irandomRange(-32, 32); }
+      } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { i.dirox += irandomRange(-32, 32); i.diroy += irandomRange(-32, 32); } // §7.10
     }
   };
   // azione 13, movimento [C]: flow field oltre 500 px

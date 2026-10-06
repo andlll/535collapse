@@ -67,6 +67,7 @@ function distr(kind) {
 export class Particles {
   constructor() {
     this.hidden = new Set(); // categorie spente
+    this.density = {};       // categoria -> frazione disegnata (§7.15 G5)
     this.systems = [];
     this.pool = [];
     this.seq = 0;
@@ -230,8 +231,13 @@ export class Particles {
   draw(ps, r, assets, cam) {
     if (!ps || !ps.alive || !ps.parts.length || this.hidden.has(ps.cat)) return;
     const x0 = cam.x, y0 = cam.y, x1 = cam.x + cam.w, y1 = cam.y + cam.h;
+    // [§7.15 G5] densita' della categoria (opzione Qualita'): si disegna
+    // sempre lo stesso sottoinsieme, scelto dalla fase del wiggle
+    // (uniforme in [0, 1) e fissata alla nascita), quindi niente sfarfallio
+    const dens = this.density[ps.cat] ?? 1;
     let blend = null;
     for (const q of ps.parts) {
+      if (dens < 1 && q.ph >= dens) continue;
       const t = q.t;
       const size = q.size + this._wig(q, t.size[3]);
       // raggio per eccesso: le forme sono 64x64, gli sprite fino a ~128

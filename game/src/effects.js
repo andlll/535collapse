@@ -18,8 +18,10 @@ const P = (w) => w.particles;
 // part_type_orientation): 160-170 gradi in piu' dei 250-260 del moto, cioe'
 // linee quasi parallele alla caduta (§6.1 n.77: prima era assoluto e le
 // gocce cadevano di traverso).
+// [§7.9, richiesta dell'autore] gocce 2,5 volte piu' spesse (stessa
+// lunghezza): a 1,5-2,5 px si vedevano poco.
 const GOCCIA = partType({
-  shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0],
+  shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0], scale: [1, 2.5],
   colour: { rgb: [131, 148, 101, 119, 74, 107] }, speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
   life: [200, 300],
 });
@@ -237,11 +239,15 @@ export function campoFondCreate(i, w) {
   i.grass_system = P(w).systemCreate(-1, "grass");
   i.grass_emitter = P(w).emitterCreate(i.grass_system);
   P(w).region(i.grass_emitter, i.x - 145, i.x + 145, i.y - 90, i.y + 90, "diamond", "linear");
-  P(w).stream(i.grass_emitter, GERMOGLIO, 0.1);
+  P(w).stream(i.grass_emitter, GERMOGLIO, 0);
 }
 
+// [§7.5, decisione dell'autore] i germogli nascono quando la semina e'
+// cominciata (vita sopra 1), non appena il cantiere e' piazzato: col
+// flusso frazionario arrotondato per eccesso (vita/6 = 0,17 -> 1 a passo)
+// il cantiere appena creato era gia' pieno di germogli.
 export function campoFondStream(i, w) {
-  P(w).stream(i.grass_emitter, GERMOGLIO, i.life / 6);
+  P(w).stream(i.grass_emitter, GERMOGLIO, i.life > 1 ? i.life / 6 : 0);
 }
 
 // ------------------------------------------------------------------ semi

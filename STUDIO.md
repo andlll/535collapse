@@ -14,8 +14,10 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 6 ottobre 2026, terza sessione (branch
-`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
+Ultimo aggiornamento: 6 ottobre 2026, quarta sessione (branch
+`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
+dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
+sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
 dell'autore (§6.1, n.77–n.89), pathfinding (§6.2–§6.3), arcieri, torri
 e catapulte (§6.4–§6.7), carico della GPU (§6.8). Seconda sessione (PR #2): Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
@@ -30,7 +32,8 @@ sezione citata.
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
-  la terza sessione `claude/inspiring-cray-dalph5`); gli asset generati (`game/assets/`,
+  la terza sessione `claude/inspiring-cray-dalph5`, la quarta
+  `claude/gpu-optimizations-bugs-o3mfcc`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -149,8 +152,9 @@ sezione citata.
   stessi risultati, passo -23% in `lvl02`, -18% in `match`.
 - [ ] Eventuale N4 (indice spaziale per `instance_nearest`) quando ci
   saranno battaglie con 100+ unita' (§6.3).
-- [ ] Da decidere: nemici che escono dalla mappa quando il flow field non
-  ha direzione nella loro cella (§6.2, "trovati").
+- [x] Nemici che uscivano dalla mappa quando il flow field non ha
+  direzione nella loro cella (§6.2, "trovati"): ora vanno alla cella
+  raggiungibile piu' vicina o restano fermi (§7.6).
 
 **Arcieri (§6.4)**
 - [x] Tiro solo con la linea libera da edifici (le unita' non contano); se
@@ -173,9 +177,33 @@ sezione citata.
 - [x] G0 tempo GPU per frame nel pannello F3 (dove il browser lo espone).
 - [x] G1 opzione Qualita' (Alta/Media/Bassa): mondo a risoluzione ridotta,
   interfaccia nitida; la risoluzione dinamica ora riduce solo il mondo.
-- [ ] Proposte da approvare: G2 shader senza catena di `if` (texture a
-  strati), G3 nebbia e notte in un passaggio, G4 suolo cotto in blocchi,
-  G5 erba piu' rada. Prima conviene il dato di F3 sul PC dell'autore.
+- [x] G2 (variante leggera, §7.11): texture scelta con un albero di
+  confronti e letta con `textureLod`; pixel identici. La variante con le
+  texture a strati resta da valutare col dato di F3 (costa 70–130 MB).
+- [x] G3 nebbia e notte in un solo quad, composte prima del mondo (§7.13).
+- [x] G4 suolo cotto in blocchi da 512 px (§7.16): -25% in `lvl02`, -10%
+  in `match`.
+- [x] G5 erba e spighe piu' rade in qualita' Media (70%) e Bassa (50%)
+  (§7.15).
+
+**Fase 7: seconda tornata di segnalazioni (§7)**
+- [x] Testo delle schede sempre nero (§7.1); pulsanti di attacco/difesa e
+  di costruzione con piu' unita' dello stesso tipo selezionate (§7.2).
+- [x] Macchine d'assedio che non accettavano ordini (§7.3).
+- [x] `lvl01`: pilastri delle porte di nuovo ostacoli (si passa dal
+  varco), militari di partenza in attacco (§7.4).
+- [x] Germogli del campo solo a semina cominciata (§7.5); costruttore che
+  "impazziva" sopra il magazzino finito (§7.6).
+- [x] Mischia: posti attorno al bersaglio e percorsi locali, alleati e
+  nemici; attaccanti delle ondate fermati uno per uno (§7.7).
+- [x] Cadaveri, rovine e risorse finite che sbiadiscono (§7.8); pioggia
+  piu' spessa (§7.9); unita' prodotte verso un posto libero (§7.10).
+- [x] Pausa con sfocatura gaussiana (§7.12); nebbia bicubica, senza
+  scalini (§7.13); interfaccia di vetro, opzione attiva di norma (§7.14).
+- [ ] Da vedere sul PC dell'autore: costo del vetro e di G3/G4 su una
+  GPU vera (F3), aspetto del vetro sopra le zone nere della nebbia.
+- [x] Rovine di pietra di castello (500), torre (100) e chiesa (75) portate
+  come risorse, e campi verso una meta dentro un ostacolo (§7.17).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
@@ -3157,3 +3185,251 @@ superficie gia' bassa, e la copia finale; resta da vedere su una GPU vera.)
 (se c'e') in Alta e in Bassa nello stesso punto della mappa. Se in Bassa
 il tempo GPU scende molto, conta il numero di pixel (G1 basta o G4); se
 scende poco, conta il costo per pixel o per particella (G2, G3, G5).
+
+---
+
+## Fase 7 — seconda tornata di segnalazioni e lista della GPU (6 ottobre 2026)
+
+Richiesta dell'autore: completare la lista della GPU (G2–G5, §6.8) e
+correggere una serie di difetti trovati provando il gioco. Ogni voce cita
+la sezione nei commenti del codice. Prove: `npm test` (50), 1500–3000
+passi nelle quattro room senza errori, salvataggi identici, e una prova
+mirata per voce (scenari descritti sotto, con `window.__game`). Le misure
+del disegno sono in SwiftShader a 1280×720, densita' 1: valgono i
+rapporti, con un rumore di ±10% fra un'esecuzione e l'altra.
+
+### 7.1 Testo delle schede bianco su bianco
+
+Le schede dei pulsanti (costruzione, produzione, attacco/difesa, porte,
+mura) disegnavano il testo col colore rimasto dal disegno precedente: a
+volte bianco, su fondo bianco. `Draw.tooltipBegin` (usato da tutte) mette
+il nero.
+
+### 7.2 Pulsanti con piu' unita' selezionate
+
+Nell'originale la scheda dell'unita' (e i cerchi dei pulsanti) si
+disegnano solo con una unita' selezionata (`global.sel < 2`); i pulsanti
+erano istanze invisibili, quindi con piu' unita' "sparivano" pur
+funzionando. Ora, se la selezione e' tutta militare, la prima unita'
+selezionata disegna attacco/difesa (evidenziato solo se e' il
+comportamento di tutte); se e' tutta civile, il primo civile disegna i
+dieci pulsanti di costruzione. La scheda della vita resta il contatore
+" x N" del manager. Con una selezione mista nessun pulsante, come prima.
+
+### 7.3 Macchine d'assedio che non accettavano ordini
+
+Riprodotto: col clic destro su una catapulta o un ariete selezionati
+`scr_movement_general` (units.js, `movementGeneral`) sceglieva come capo
+un'unita' senza `ordo` e senza goal field (l'assedio va con
+`mp_potential_step`, §3.12) e lanciava un'eccezione prima dei
+GlobalRightReleased delle unita': nessun ordine arrivava. Capo e campo
+comune ora solo fra le unita' col flow field; con sole macchine
+d'assedio la formazione usa un campo calcolato dal punto cliccato solo
+per scegliere le caselle.
+
+### 7.4 Livello 1: porte e comportamento iniziale
+
+- **Porte**: la porta liberava nella griglia tutte le celle della sua
+  maschera chiusa, pilastri compresi (§3.8): il flow field passava dai
+  pilastri e i soldati, che sul flow field si muovono senza collisioni,
+  attraversavano la parte solida. Ora le celle della maschera aperta (i
+  pilastri) restano ostacolo: si passa dal varco (3 celle nella porta
+  orizzontale). Verificato con tre soldati da punti diversi: attraversano
+  tutti fra x 4480 e 4576 (il varco).
+- **Militari di partenza in attacco** (decisione dell'autore): il manager
+  li metteva in difesa (`comp=50`) prima del Create delle unita', che
+  rimette 700: nell'originale partivano in attacco. La correzione §3.13
+  n.51 (difesa dopo il Create) e' tolta.
+
+### 7.5 Germogli del campo in costruzione
+
+`part_emitter_stream` con vita/6 = 0,17 vale una particella a passo
+(ceil, §3.16): il cantiere appena piazzato era gia' pieno di germogli.
+Ora nascono quando la semina e' cominciata (vita sopra 1).
+
+### 7.6 Costruttore che "impazziva" dopo il magazzino
+
+Il magazzino finito segna le sue celle come ostacolo e manda chi l'ha
+costruito alla risorsa piu' vicina (§3.5): se il costruttore stava su una
+di quelle celle, la sua cella nel campo nuovo non aveva direzione (-1) e
+`scr_move_flow_field` teneva l'ultima direzione, senza collisioni:
+tirava dritto attraverso alberi ed edifici. E' lo stesso caso dei nemici
+che uscivano dalla mappa (§6.2, "trovati"). Ora, da una cella senza
+direzione, l'unita' va verso la cella raggiungibile piu' vicina (anelli
+fino a 6 celle; a pari distanza quella piu' vicina alla meta); se non ce
+n'e' resta ferma. Prova: civile sul bordo di un magazzino nuovo, girato
+verso un bosco: prima 2 casi su 8 attraversavano gli alberi (48 e 97
+passi dentro), ora nessuno.
+
+### 7.7 Mischia: posti attorno al bersaglio e percorsi locali
+
+Segnalazione: "solo la prima unita' arriva, le altre si accodano e si
+incasinano, alleati e nemici". Nell'originale chi insegue va con
+`mp_potential_step` verso il centro del bersaglio: il primo arriva, gli
+altri spingono contro di lui; i nemici spostano a caso di 20–30 px a ogni
+passo la destinazione occupata e tremano. In piu' il primo attaccante di
+un'ondata arrivato a 400 px fermava tutti gli altri (`role` 32), anche
+quelli lontani, che ripartivano senza flow field.
+
+`melee.js`: chi insegue in mischia punta a un **posto** sul bordo di un
+nemico (la propria maschera a 4 px dalla sua), al piu' un attaccante per
+settore di 45 gradi; un posto vale se nessun altro solido lo occupa. Fra
+il bersaglio e i nemici vicini (fino a 160 px piu' lontani) si sceglie il
+posto piu' comodo (strada piu' corta, penalita' per girare attorno). Se la
+linea dritta verso il posto e' chiusa da altre unita' o edifici si segue
+un **percorso locale**: ricerca in ampiezza su una griglia di 33×33 celle
+da 16 px a meta' strada, con le maschere dei solidi allargate di quella
+dell'unita', ricalcolata ogni 8 passi; si va verso la cella piu' lontana
+del percorso vista in linea retta. Chi non si avvicina al proprio posto
+per 40 passi ne prova un altro. Se non ci sono posti, il centro come
+prima. I nemici non spostano piu' a caso la destinazione quando e' il
+loro posto; gli attaccanti delle ondate passano al ruolo 32 uno per uno.
+
+| prova (600 passi) | prima | dopo |
+|---|---|---|
+| 8 alleati contro 3 nemici: alleati che combattono | 3 | 8 (in ~5 s) |
+| 8 nemici contro 3 alleati: nemici che combattono | 3 | 8 |
+| 20 contro 20: unita' in combattimento a meta' scontro | 7–8 per parte | 11–12 |
+
+Il passo costa uguale (4,1 ms contro 4,8 nella battaglia 20 contro 20).
+
+### 7.8 Dissolvenze: cadaveri, rovine, risorse
+
+Confermato dall'originale: i cadaveri sbiadiscono nell'ultima fase
+(Step, azione 3: `image_alpha -= 0.025` per 40 passi), come le risorse
+finite (`*_morente`, gia' portate) e le rovine. Nel porting mancavano:
+- l'azione 3 dei cadaveri;
+- le rovine degli edifici di legno (`casaruin`, `magruin`, `barnruin`,
+  `casruin`, `stalruin`, `ccruin`): restavano per sempre. Ora fumo ogni
+  200 passi, sbiadiscono da 760, spariscono a 800 [C]. `barnruin` arma
+  due volte `alarm[1]` e mai `alarm[2]`: spariva a 760 senza sbiadire;
+  qui come le altre.
+- Le rovine di pietra (`castelloruin`, `torreruin`, `chiesaruin`) non
+  avevano comportamento nel porting: §7.17. (Nella prima stesura di questa
+  voce scrivevo che il loro Create non assegna `stone`: sbagliato, avevo
+  letto solo l'inizio del file; l'autore se lo ricordava.)
+
+### 7.9 Pioggia
+
+Gocce 2,5 volte piu' spesse (scala verticale della forma `line`; stessa
+lunghezza): a 1,5–2,5 px si vedevano poco.
+
+### 7.10 Unita' prodotte verso un punto occupato
+
+Due unita' prodotte di seguito ricevevano lo stesso posto (la spirale
+attorno alla bandiera guarda solo le celle di chi e' gia' fermo); la
+seconda, trovatolo occupato, spostava la meta a caso di 32–50 px a ogni
+passo. Ora (`rallySpot`, pathing.js) il posto e' il centro di una cella da
+64 px percorribile, libero da altri solidi e non gia' promesso a un'altra
+unita' appena prodotta; se all'arrivo e' occupato se ne cerca un altro
+(al piu' ogni 15 passi). Vale per caserma, stalla, arcieri e civili del
+centro. Prova con 6 guerrieri verso una bandiera su un soldato fermo:
+prima 4 ancora in movimento sullo stesso punto dopo 1500 passi (11
+sovrapposizioni, meta spostata 90 volte), ora tutti fermi in posti
+diversi. Il contatore dei passi del mondo ora si salva (le attese "fino al
+passo N" ripartivano da 0 dopo un caricamento).
+
+### 7.11 G2: scelta della texture
+
+Lo shader sceglie la texture con un albero di confronti (4 invece di fino
+a 16) e la legge con `textureLod(…, 0)`: le texture non hanno mipmap,
+quindi i pixel sono identici (hash uguali in menu, `match`, `lvl01`), ma
+una lettura senza derivate puo' stare in un ramo vero anche su ANGLE/
+Direct3D, che con `texture()` tende ad appiattire i rami e a leggere tutte
+le unita'. In SwiftShader non cambia nulla (esegue comunque tutti i rami).
+La variante "una sola lettura" con texture a strati costerebbe 70–130 MB
+di memoria GPU in piu' (pagine portate a 2048×2048, terreno ritagliato) o
+un rifacimento di `tools/05_atlas.py`: resta da decidere col dato di F3.
+
+### 7.12 Passaggi con shader propri; sfocatura della pausa
+
+`gl.js`: `pass(name, …)` disegna un rettangolo con un programma dedicato
+(vertici da `gl_VertexID`, nessun buffer), `blur` fa una gaussiana
+separabile con letture bilineari a coppie, `grab` copia la superficie
+corrente ridotta (blitFramebuffer). Pausa: la scena a piena risoluzione,
+poi a meta', poi la gaussiana (sigma 7 texel a meta' risoluzione, 14 px di
+schermo) invece di tre dimezzamenti fino a 1/8 e un ingrandimento (a
+blocchi). Calcolata una volta all'apertura (e quando cambiano lingua,
+opzioni o finestra); i fotogrammi seguenti copiano il risultato.
+
+### 7.13 Nebbia senza scalini; G3
+
+La nebbia e' una griglia a celle da 16 px (§3.15) letta col filtro
+lineare: i contorni delle ellissi venivano a rombi e scalini. Ora si
+legge col filtro bicubico (B-spline, 4 letture bilineari): curve morbide,
+bordo largo come prima. Nebbia e notte si compongono in un programma
+(`fog`) su una superficie piccola (un texel ogni 4 px di room) all'inizio
+del fotogramma, prima del mondo, e si sottraggono alla depth del manager
+con un solo quad (prima due quad a schermo intero di notte). Costo in
+SwiftShader: `lvl01` (notte con fuochi) da 65 a 28–36 ms di nebbia, `match`
+e `lvl02` pari entro il rumore (il quad a schermo intero con la miscela
+"subtract" pesa ~25 ms in SwiftShader, c'era anche prima).
+
+### 7.14 Interfaccia di vetro
+
+Opzione "Interfaccia di vetro" (attiva di norma, tradotta). A ogni
+fotogramma il mondo appena disegnato si copia a meta' e a un quarto di
+risoluzione e si sfoca (sigma 3 texel); i pannelli bianchi semitrasparenti
+(rettangoli arrotondati e cerchi pieni con alpha fra 0,05 e 0,95) si
+disegnano col programma `glass`: lo sfondo sfocato dentro la forma
+(distanza con segno del rettangolo arrotondato, bordo sfumato), piegato
+verso l'interno vicino al bordo come da una lente, un po' piu' saturo e
+schiarito (si legge anche sopra il nero della nebbia), un riflesso in
+alto a sinistra e un filo di luce sul bordo; sopra, il bianco originale al
+65%. Il pannello della pausa usa lo sfondo gia' sfocato. Costo misurato
+(SwiftShader): entro il rumore (0–5%).
+
+### 7.15 G5: erba piu' rada con la qualita' piu' bassa
+
+Erba e spighe (2500–4000 fili disegnati a ogni fotogramma): Alta tutte,
+Media 70%, Bassa 50%. Il sottoinsieme e' sempre lo stesso (scelto dalla
+fase del movimento, fissata alla nascita): niente sfarfallio.
+
+### 7.16 G4: suolo cotto in blocchi
+
+`ground.js`: lo sfondo ripetuto e le decorazioni del suolo (`traccia*`,
+`strada_*`, `chiazza01`, `erba_1`, `prato1`: ferme, senza eventi, a depth
+0) si disegnano una volta in blocchi da 512 px di room, a 1 texel per
+pixel come i loro atlas (nessun dettaglio perso), con un texel di bordo
+contro le cuciture; a ogni fotogramma un quad opaco per blocco. Al piu' 48
+blocchi in memoria (1 MB l'uno), riusati dal meno recente. Immagine
+uguale (menu e `lvl02` identici al pixel, in `match` un pixel diverso di
+2/255). Disegno: `lvl02` 126–134 → 94–106 ms (-25%), `match` 139–159 →
+126–150 (-10%), menu pari. Unica differenza d'ordine: il suolo ora sta
+sotto anche ai fiumi e alle montagne in cima alla mappa (y < 0, depth
+> 0), che prima finivano sotto le strade.
+
+### 7.17 Rovine di pietra; meta dentro un ostacolo
+
+Domanda dell'autore: "mi pare fosse 75 o comunque una frazione
+dell'edificio". Il Create delle rovine assegna [C]: `castelloruin` 500,
+`torreruin` 100, `chiesaruin` 75. Nel porting non avevano comportamento
+(non si esaurivano, non segnavano la griglia, nessuna scheda). Ora sono
+risorse di pietra come `pietra_grande` e `pietr_piccolo` (`resource` in
+civilians.js: visibilita' a 400 px, clic destro, scheda, `*_morente` che
+sbiadisce), e nascendo a partita in corso segnano le loro celle (Create
+[C]).
+
+Provandole e' venuto fuori un difetto dei percorsi: la rovina nasce dopo
+che il civile ha calcolato il suo campo, quindi `scr_find_valid_cell_
+backwards` (che guarda il campo vecchio) sceglie come meta una cella ora
+chiusa; la ricerca in ampiezza partiva da li' e non usciva dal blocco di
+celle chiuse: campo vuoto, civile fermo. Correzioni (pathing.js):
+- `goalField`: con la meta dentro un ostacolo si percorre il blocco di
+  celle chiuse che la contiene (al piu' 4096) e la ricerca parte, a valore
+  1, dalle celle libere del suo bordo piu' vicine alla meta (al piu' una
+  cella piu' lontane della piu' vicina: il blocco puo' comprendere gli
+  edifici accanto). Vale anche per i nemici.
+- `moveFlowField`: nel punto piu' basso del campo (cella con un valore ma
+  nessuna vicina piu' bassa) si va verso la destinazione con
+  `mp_potential_step`; se si e' sovrapposti a un'altra unita' ci si separa
+  senza collisioni (verso la meta se non si entra in una cella chiusa, se
+  no lontano dall'altra). La via d'uscita del §7.6 resta per le celle
+  senza valore.
+
+Prova: torre, chiesa e castello costruiti in un punto libero di `match`,
+distrutti, due civili sulla rovina: torre esaurita in 4500–5000 passi,
+chiesa in 3900, castello 418 su 500 in 60000 (deposito a 700 px). Prima
+della correzione dei percorsi una rovina nata accanto al centro restava
+intatta. Le prove precedenti (mischia, magazzino, unita' prodotte,
+assedio) danno gli stessi risultati.

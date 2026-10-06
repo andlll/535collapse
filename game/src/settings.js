@@ -9,9 +9,11 @@ const VERSION = 1;
 // opzioni grafiche; particles.js); autosave: salvataggio automatico ogni 5
 // minuti nello slot della room (save.js), attivo di norma come in NIMBUS;
 // lockMouse: il puntatore resta nel gioco (Pointer Lock, input.js);
-// quality: risoluzione del mondo (high, medium, low; app.js, §6.8 G1)
+// quality: risoluzione del mondo (high, medium, low; app.js, §6.8 G1);
+// glass: pannelli dell'interfaccia di vetro sfocato (§7.14)
 const DEFAULTS = { fpsCap: 60, dynamicResolution: true, diagnostics: false, language: null,
-                   rain: true, grass: true, fire: true, autosave: true, lockMouse: false, quality: "high" };
+                   rain: true, grass: true, fire: true, autosave: true, lockMouse: false, quality: "high",
+                   glass: true };
 
 export function loadSettings() {
   try {

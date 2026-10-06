@@ -15,6 +15,7 @@ import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField } from "./pathing.js";
+import { meleeSpot } from "./melee.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { phaseOf } from "./units.js";
 
@@ -115,7 +116,12 @@ function enemyMove(i, w, p) {
     } else pushThrough(w, p, i);
   } else {
     mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
-    if (i.role === 31) for (const e of w.all("enemy_unit")) if (e.role === 31) { e.role = 32; e.action = 0; }
+    // [§7.7, segnalazione dell'autore] nell'originale il primo attaccante
+    // dell'ondata arrivato a 400 px fermava tutti gli altri (ruolo 32,
+    // fermi), anche quelli ancora lontani, che poi ripartivano verso il
+    // bersaglio senza flow field (dritti, contro gli ostacoli). Qui ognuno
+    // passa al ruolo 32 quando arriva lui.
+    if (i.role === 31) { i.role = 32; i.action = 0; }
   }
 }
 
@@ -181,7 +187,8 @@ function enemyAttack(i, w, T) {
     if (i.warwork === 0 || (i.warwork === 1 && i.alarm.get(2) < 1)) {
       if (i.action !== 1) i.alarm.set(0, T.chaseAlarm);
       i.action = 1; i.warwork = 1;
-      i.dirox = n.x; i.diroy = n.y;
+      // [§7.7] un posto libero attorno al bersaglio (melee.js)
+      [i.dirox, i.diroy] = meleeSpot(w, i, n, "ally_unit");
     }
     return true;
   };
@@ -310,8 +317,10 @@ export function enemyMelee(name, p) {
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
       enemyMove(i, w, p);
       ANIM[name](i, w);
-      // destinazione occupata
-      if (T.place === "back50") {
+      // destinazione occupata ([§7.7] tranne il posto attorno al bersaglio,
+      // gia' scelto libero: spostarlo a caso faceva tremare i nemici)
+      const onSpot = i.warwork === 1 && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1];
+      if (onSpot) { /* niente */ } else if (T.place === "back50") {
         if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) {
           const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(50, d); i.diroy += lengthdirY(50, d);
