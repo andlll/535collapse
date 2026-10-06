@@ -43,11 +43,11 @@ python3 -m http.server 8000 --directory game
 ```
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`. Il menu e la campagna non sono ancora portati: si entra
-nelle room direttamente. Sono giocabili economia, costruzione e
-combattimento, con nebbia di guerra, notte, pioggia e fuoco, suggerimenti
-del tutorial, dialoghi, obiettivi, vittoria e sconfitta; mancano il menu
-e la campagna (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
+`?room=lvl02` per entrare direttamente in una room. Sono giocabili il menu
+principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
+cifre), economia, costruzione e combattimento, con nebbia di guerra,
+notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
+vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
 **F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
 tetto a 30 fps. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche e lingua (EN, IT, ES, PT, DE, FR).

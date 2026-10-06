@@ -40,6 +40,7 @@ import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
+import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 
 const ROOMS = ["menu", "match", "lvl01", "lvl02"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
@@ -116,9 +117,13 @@ async function main() {
   world.gfx = draw; // per string_height_ext nei Create (hints.js)
   manager.world = world;
   g.unlock = loadUnlock();
-  // room_goto: il menu e la campagna non sono ancora portati, si ricarica la
-  // pagina sulla room
-  world.hooks.roomGoto = (name) => { location.search = "?room=" + name; };
+  // room_goto: si ricarica la pagina sulla room. global.campagna nell'originale
+  // sopravvive al cambio di room (dal menu della campagna a un livello e
+  // ritorno, con la vittoria o la sconfitta): qui passa dall'indirizzo.
+  if (params.get("campaign") === "1") g.campagna = 1;
+  world.hooks.roomGoto = (name) => {
+    location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
+  };
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   world.register("ally_cavaliere", cavaliere(path));
@@ -211,6 +216,9 @@ async function main() {
   world.register("objective_button", objectiveButton());
   for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
   world.register("aquila_01", aquila());
+  world.register("enemy_manager_menu", enemyManagerMenu());
+  world.register("fog_controller", fogController());
+  world.register("fog01", fog01());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
@@ -231,7 +239,8 @@ async function main() {
   // nell'originale lo fa il Create del manager, prima di quello delle unita'
   // che rimette 700: qui dopo.
   if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
-  // i gestori dei nemici di match e lvl02
+  // i gestori del menu e dei nemici di match e lvl02
+  if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
   if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
   if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
   // manager Step: pulsanti di costruzione, poi la regia dei livelli

@@ -18,8 +18,9 @@ Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
-(§3.19). **Prossimo: menu principale e campagna**, insieme alla battaglia
-del menu. Il dettaglio di ogni voce sta nella sezione citata.
+(§3.19), menu principale, campagna e battaglia del menu (§3.20).
+**Prossimo: Fase 4** (salvataggi JSON, schermo intero, PWA). Il dettaglio
+di ogni voce sta nella sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -41,7 +42,9 @@ del menu. Il dettaglio di ogni voce sta nella sezione citata.
   `production.js` (edifici), `levels.js` (regia), `manager.js` (HUD,
   tastiera, minimappa), `fog.js`/`fogdraw.js` (nebbia e notte), `props.js`
   (statue, pali, bracieri), `particles.js`/`effects.js` (particelle e loro
-  usi), `app.js` (registrazione dei comportamenti).
+  usi), `hints.js`/`endgame.js` (suggerimenti, dialoghi, fine partita),
+  `menu.js` (menu principale e campagna), `pause.js`, `i18n.js`/`texts.js`
+  (traduzioni), `app.js` (registrazione dei comportamenti).
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -55,6 +58,8 @@ del menu. Il dettaglio di ogni voce sta nella sezione citata.
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] Difetti del menu principale n.73–n.75 (§3.20): lasciati come
+  nell'originale; da confermare.
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -85,13 +90,13 @@ del menu. Il dettaglio di ogni voce sta nella sezione citata.
   degli edifici, fiammata delle frecce incendiarie, bracieri e torce),
   spighe dei campi, germogli, semi della semina; aquila (§3.16). Resta
   `fog_controller` (crea `fog01`, le nuvole del menu): col menu.
-- [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
-  461 righe) e `fog_controller` (le sue nuvole) insieme al menu principale.
+- [x] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu) e
+  `fog_controller` (le sue nuvole) insieme al menu principale (§3.20).
 - [x] Suggerimenti del tutorial, dialoghi, obiettivi, vittoria e
   sconfitta (§3.18).
-- [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
+- [x] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
   lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14,
-  già salvato da `progress.js`); livelli 3–10 "in arrivo".
+  `progress.js`); livelli 3–10 "in arrivo" (§3.20).
 - [x] Menu di pausa (`mouser`) con opzioni grafiche e lingua (§3.19).
 - [x] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che
   conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13).
@@ -2294,3 +2299,75 @@ salvata), gioco in DE/FR/ES/PT con schede e obiettivi allargati, dialogo
 di `lvl01` in francese, titolo "OPÇÕES GRÁFICAS"; `lvl02` senza
 `hint_legna`, dialogo visibile con H spento; sconfitta visibile; 3000
 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.20 Menu principale, campagna e battaglia del menu (6 ottobre 2026)
+
+`game/src/menu.js`: `enemy_manager_menu` [C, Create, Alarm_0, Step_End,
+Draw_GUI, Mouse_GlobalLeftReleased, KeyPress_Escape], `fog_controller` e
+`fog01` [C]. Il manager lo crea nella room `menu` (manager Create,
+"Livelli" [C], con `global.hint=3`, già in `state.js`).
+- **Schermata iniziale**: logo, "Play the tutorial" (va a `match`) e
+  "Campaign - Collapse" (apre la campagna), firma e versione in basso.
+- **Campagna**: la mappa `mappa_camp` al centro, l'elenco dei livelli a
+  sinistra (la riga sotto il puntatore evidenziata, i segnaposto `cap1`/
+  `cap2` sulla mappa), la storia del livello in basso, indietro e
+  lucchetto in alto a destra. Clic su un livello sbloccato: lo avvia. Esc:
+  chiude il lucchetto o torna alla schermata iniziale.
+- **Lucchetto**: cinque rotelle 0–9 (metà alta +1, metà bassa −1) e
+  "Unlock level". I codici sono quelli dell'originale (livello 2: 4 9 2 1
+  7, mostrato dalla vittoria di `lvl01`; i codici fino al 10 sono già
+  nella tabella). Codice giusto: lo sblocco sale e si salva; sbagliato: le
+  cifre lampeggiano di rosso e sfumano.
+- **Battaglia del menu**: l'allarme 0 (dopo 120 passi, poi ogni 9000)
+  manda le unità ferme di ciascun lato contro il nemico più vicino; nel
+  menu le unità non si selezionano (`global.sele=-1` a ogni passo) e il
+  clic destro non dà ordini. Nella room originale i picchieri alleati
+  perdono contro guerrieri e cavalieri: dopo circa 1000 passi restano i
+  nemici, come nell'originale.
+- **Nebbia del menu**: sei `fog_controller` creano 13 nuvole `fog01`
+  ciascuno, di nuovo ogni 2000 passi; ogni nuvola compare in 30 passi, va
+  a destra di 1 px per passo, sfuma a 4970 passi e sparisce a 5000
+  (78–234 nuvole in scena).
+- **Ritorno alla campagna**: `global.campagna` nell'originale sopravvive al
+  cambio di room, così vittoria, sconfitta o "Torna al menu" da un livello
+  avviato dalla campagna riaprono la campagna. Qui ogni room ricarica la
+  pagina: il valore passa dall'indirizzo (`&campaign=1`).
+- [Decisioni dell'autore, §0.14/§0.15] sblocco persistente che parte da 1
+  (l'originale lo rimetteva a 2 a ogni apertura del menu); livelli 3–10
+  sempre in elenco, più chiari, con "Coming soon" come storia e non
+  giocabili.
+- Come in §3.18 (n.66), le posizioni dell'interfaccia usano la misura
+  dello schermo e non `view_wview`.
+- Testi tradotti (§3.19): pulsanti, nomi dei livelli, storie, "Coming
+  soon", "Unlock level"; la storia del livello 1 aveva il refuso "resistence"
+  (n.72, corretto in "resistance"). Restano
+  in originale "Collapse", la firma e la versione.
+
+**Difetti trovati** (da confermare con l'autore; lasciati come
+nell'originale salvo n.76):
+- **n.73**: il riquadro della storia misura il testo con righe da 40 px
+  (`string_height_ext(testo_c,40,…)`) ma lo scrive con righe da 30: il
+  riquadro resta più alto del testo. Prima di passare su un livello
+  `testo_c` vale `"null"` [C, Create]: aprendo la campagna il riquadro in
+  basso mostra la parola "null". Raccomandazione: riquadro vuoto (o la
+  storia del livello 1) finché non si tocca un livello.
+- **n.74**: la riga evidenziata resta quella dell'ultimo livello toccato
+  anche quando il puntatore esce dall'elenco (e un clic fuori dalla riga
+  non la avvia).
+- **n.75**: una volta su otto (`irandom_range(1,8)==8`) al posto della
+  firma compare una frase in italiano dell'autore ("Non mi interessa se
+  sta roba non ingrana quando soffro d'insonnia…"): lasciata, non
+  tradotta. Da confermare se tenerla nell'uscita.
+- **n.76** (corretto): il logo è a y=350 fisso e "Play the tutorial" a
+  `altezza−400`: con finestre alte meno di circa 830 px il logo copre il
+  pulsante. Qui il logo sale a metà dello spazio libero
+  (`min(350, (altezza−400)/2)`); da 830 px in su è come l'originale.
+
+**Verificato**: `npm test`, 33 test (nuovo: nomi dei livelli, storie e
+pulsanti del menu tradotti); Chromium a 1280×720 e 1920×1080: schermata
+iniziale, campagna (livello 1 e 5 sotto il puntatore), lucchetto, codice
+4 9 2 1 7 che sblocca e salva il livello 2, indietro ed Esc, clic sul
+livello 2 che apre `?room=lvl02&campaign=1`; vittoria simulata in `lvl01`
+avviato dalla campagna: sblocco a 2 e ritorno al menu della campagna;
+10000 passi del menu senza errori (0,85 ms per passo con SwiftShader,
+fino a 234 nuvole).

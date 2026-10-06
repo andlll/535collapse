@@ -34,3 +34,10 @@ test("tr: lingua scelta, segnaposto, ricaduta sull'inglese", () => {
   setLanguage("en");
   assert.equal(tr("Shortcut: {key}", { key: "Q" }), "Shortcut: Q");
 });
+
+test("menu principale tradotto (livelli e storie)", async () => {
+  const { LEVELS, STORY } = await import("../src/menu.js");
+  for (const s of [...LEVELS, ...Object.values(STORY), "Campaign - Collapse", "Play the tutorial", "Coming soon", "Unlock level"]) {
+    assert.ok(TEXTS[s], s);
+  }
+});
