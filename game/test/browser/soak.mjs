@@ -15,7 +15,7 @@ const { chromium } = await import(mod);
 
 const [base = "http://localhost:8123", stepsArg = "3000", ...roomsArg] = process.argv.slice(2);
 const steps = Number(stepsArg);
-const rooms = roomsArg.length ? roomsArg : ["match", "lvl01", "lvl02"];
+const rooms = roomsArg.length ? roomsArg : ["menu", "match", "lvl01", "lvl02"];
 
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 let failed = false;

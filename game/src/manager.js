@@ -1,11 +1,13 @@
 // L'oggetto `manager` dell'originale (src/objects/manager/): una sola
 // istanza per room, regista di risorse, tempo, giorno/notte, pioggia,
-// trucchi, minimappa e barra delle risorse. Qui la parte del punto 1 della
-// vertical slice (STUDIO.md §3); il resto (nebbia, notte disegnata,
-// ondate, presidi, controller dei livelli) arriva con i sistemi a cui serve.
+// trucchi, minimappa e barra delle risorse (STUDIO.md §3.1). Le parti che
+// riguardano altri sistemi stanno con loro: ondate, presidi e controller dei
+// livelli in levels.js, nebbia e notte disegnate in fog.js e fogdraw.js.
 
+import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
+import { rainStart, rainExtinguish } from "./effects.js";
 
 export class Manager {
   constructor(room, g) {
@@ -17,9 +19,13 @@ export class Manager {
     this.al.set(0, 6000);                          // timer notte
     this.al.set(4, irandomRange(12000, 15000));    // pioggia
     this.al.set(8, 60);                            // orologio
+    this.al.set(2, 100);                           // pioggia che spegne i fuochi
+    this.al.set(3, 100);                           // aquila
+    this.world = null;                             // app.js (pioggia e aquila)
+    this.rain = null;
     if (room === "lvl01") { g.night = 1; this.al.set(1, 100000); }
     if (room === "lvl02") { g.night = 1; this.al.set(1, 1); }
-    // aquila (alarm 3), startflagger (9), bordi solidi (10): con i loro sistemi
+    // startflagger (9), bordi solidi (10): con i loro sistemi
     this.minimHover = this.minimViewHover = this.minimPlusHover = this.minimMinusHover = 0;
     this.minimViewHoverBis = 0;
   }
@@ -75,7 +81,10 @@ export class Manager {
     if (R(86)) g.visia = 0;
   }
 
+  // part_system_destroy(rain); global.raining=0
   stopRain() {
+    if (this.world && this.rain) this.world.particles.systemDestroy(this.rain);
+    this.rain = null;
     this.g.raining = 0;
   }
 
@@ -135,18 +144,41 @@ export class Manager {
     switch (i) {
       case 0: // passaggio giorno-notte
         if (g.night < 1) { g.night += 0.005; this.al.set(0, 1); }
-        else this.al.set(1, 2000); // + hint_night la prima volta (con i suggerimenti)
+        else {
+          this.al.set(1, 2000);
+          // la prima notte, il suggerimento sotto il puntatore [C]
+          if (g.nighthint === 0 && this.world) {
+            this.world.create("hint_night", this.world.mouse.x, this.world.mouse.y);
+            g.nighthint = 1;
+          }
+        }
         break;
       case 1: // passaggio notte-giorno
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
         else this.al.set(0, 4000);
         break;
-      case 4: // pioggia (le particelle arrivano col loro sistema)
+      case 2: // [C] (il resto e' il ridimensionamento della finestra)
+        // la pioggia spegne gli edifici di legno alleati ogni 10 passi, con
+        // le loro fiamme (§3.17 n.56)
+        this.al.set(2, 10);
+        if (g.raining === 1 && this.world) rainExtinguish(this.world);
+        break;
+      case 3: // aquila, ogni 3000 passi
+        // [Correzione decisa dall'autore, §3.17 n.58] l'originale la crea a
+        // y=-10 e, volando in alto a destra, non entrava mai nella room:
+        // qui parte 10 px sotto il bordo basso e la attraversa
+        this.al.set(3, 3000);
+        if (this.world) this.world.create("aquila_01", irandomRange(-this.world.roomW, this.world.roomW), this.world.roomH + 10);
+        break;
+      case 4: // pioggia: gocce lungo il bordo alto della room
         this.al.set(6, irandomRange(12000, 15000));
-        if (g.raining === 0) g.raining = 1;
+        if (g.raining === 0) {
+          g.raining = 1;
+          if (this.world) this.rain = rainStart(this.world);
+        }
         break;
       case 6: // fine pioggia
-        g.raining = 0;
+        this.stopRain();
         this.al.set(4, irandomRange(20000, 35000));
         break;
       case 8: // orologio (si ferma a partita persa: gameover_manager)
@@ -160,17 +192,30 @@ export class Manager {
     }
   }
 
-  // Disegno nel mondo, dopo i Draw End delle istanze:
-  // - manager Draw_End azione 3 [C]: rettangolo di selezione, blu di giorno,
-  //   bianco quando global.night != 0;
-  // - mouser Draw_End [C]: il cerchio luminoso sotto il puntatore (somma),
-  //   colorato secondo cosa c'e' sotto quando sono selezionati civili.
-  drawWorldEnd(d, w) {
-    const g = this.g, mx = w.mouse.x, my = w.mouse.y;
+  // manager Draw_End [C], fra i Draw End delle istanze alla depth del
+  // manager (world.draw): bordo nero fuori dalla room (azione 2), rettangolo
+  // di selezione (azione 3, blu di giorno, bianco quando global.night != 0).
+  // Subito dopo app.js disegna nebbia e notte (azione 5, fogdraw.js), che
+  // quindi coprono anche il rettangolo di selezione.
+  drawEnd(d, w) {
+    const g = this.g, mx = w.mouse.x, my = w.mouse.y, rw = w.roomW, rh = w.roomH;
+    d.setColour(c.black);
+    d.rectangle(-10000, -10000, rw + 10000, 0, false);
+    d.rectangle(-10000, rh, rw + 10000, rh + 10000, false);
+    d.rectangle(-10000, 0, 0, rh, false);
+    d.rectangle(rw, 0, rw + 10000, rh, false);
+    d.setColour(c.white);
     if (g.multi === 1) {
       const col = g.night === 0 ? c.blue : c.white;
       d.rectangleColour(g.startx, g.starty, mx, my, col, col, col, col, true);
     }
+  }
+
+  // mouser Draw_End [C] (depth -9999, dopo tutti gli altri Draw End): il
+  // cerchio luminoso sotto il puntatore (somma), colorato secondo cosa c'e'
+  // sotto quando sono selezionati civili.
+  drawMouser(d, w) {
+    const g = this.g, mx = w.mouse.x, my = w.mouse.y;
     d.setBlend("add");
     d.setAlpha(0.7);
     const ring = (r, col) => d.circleColour(mx, my, r, col, c.black, false);
@@ -207,7 +252,8 @@ export class Manager {
         d.setAlpha(1);
       }
     }
-    if (this.room !== "menu" && !g.victory) {
+    // [C] if room!=menu && instance_number(victory_manager)=0
+    if (this.room !== "menu" && world.number("victory_manager") === 0) {
       d.setAlpha(0.69);
       d.roundrectColourExt(20, 20, 230, 150, 60, 60, c.white, c.white, false);  // risorse
       d.roundrectColourExt(W - 90, 100, W - 20, 200, 60, 60, c.white, c.white, false); // inattivi
@@ -225,7 +271,7 @@ export class Manager {
       d.text(W - 55, 170, g.idle);
       if (g.fps_show > 0) {
         d.setColour(c.red);
-        d.text(W - 55, 230, "FPS: " + Math.round(fps));
+        d.text(W - 55, 230, tr("FPS: {n}", { n: Math.round(fps) }));
       }
       d.setColour(c.white);
       d.setAlpha(1);

@@ -8,6 +8,8 @@
 // action: 0 fermo, 1 in cammino, 2 taglia legna, 3 scava oro, 4 raccoglie
 // cibo, 5 spacca pietra, 6 costruisce, 7 ripara, 8 semina.
 
+import { hintOnce } from "./hints.js";
+import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
@@ -638,10 +640,11 @@ function otherWorkTick(i, w) {
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
     return;
   }
-  // semina [C]: +5 a ogni scatto (i semi lanciati sono particelle: dopo)
+  // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
   if (i.action === 8) {
     const f = w.nearest(i.buildx, i.buildy, "campo_fond");
     if (f && f.fondazione === 1) { f.life += 5; if (f.life > f.slife) f.life = f.slife; }
+    if (i.step === 2) seedsThrow(i, w);
     i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
     i.alarm.set(2, 13);
     return;
@@ -654,7 +657,7 @@ function otherWorkTick(i, w) {
     }
   } else if (i.action === 7) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
-    // anche il fuoco (le particelle arriveranno col loro sistema)
+    // anche il fuoco (e le fiamme)
     const b = w.nearest(i.repx, i.repy, "ally_build");
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
@@ -663,7 +666,7 @@ function otherWorkTick(i, w) {
     if (b && b.legno === 1 && g.wood > 0) {
       g.wood--; b.life++;
       b.onfire = 0;
-      if (b.firestarted === 1) b.firestarted = 0;
+      if (b.firestarted === 1) { fireStop(b, w); b.firestarted = 0; }
       if (b.life > b.slife) b.life = b.slife;
     }
   } else return;
@@ -824,11 +827,15 @@ function freeCells(p, i) { p.markInstance(i, 1); }
 
 export function resource(p, kind) {
   const cfg = {
-    albero: { amount: ["wood", 150], work: "woodwork", hover: "alberhover", dist: 600, fog: true, dying: "albero_morente", centroDir: "woodir" },
+    albero: { amount: ["wood", 150], work: "woodwork", hover: "alberhover", dist: 600, fog: true, dying: "albero_morente", centroDir: "woodir",
+              hint: ["hint_legna", "woodhint"] },
     albero_fake: { amount: ["wood", 150], work: "woodwork", hover: null, dist: 600, fog: true, dying: null },
-    miniera_oro: { amount: ["gold", 2500], work: "goldwork", hover: "minierahover", dist: 400, fog: false, dying: "miniera_morente", centroDir: "goldir" },
-    pietra_grande: { amount: ["stone", 850], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietra_grande_morente", centroDir: "stonedir" },
-    pietr_piccolo: { amount: ["stone", 450], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietr_piccolo_morente", centroDir: "stonedir" },
+    miniera_oro: { amount: ["gold", 2500], work: "goldwork", hover: "minierahover", dist: 400, fog: false, dying: "miniera_morente", centroDir: "goldir",
+                   hint: ["hint_oro", "goldhint"] },
+    pietra_grande: { amount: ["stone", 850], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietra_grande_morente", centroDir: "stonedir",
+                     hint: ["hint_stone", "stonehint"] },
+    pietr_piccolo: { amount: ["stone", 450], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietr_piccolo_morente", centroDir: "stonedir",
+                     hint: ["hint_stone", "stonehint"] },
   }[kind];
   const ALB = ["alb1", "alb2", "alb3", "alb4", "alb5", "alb6", "alb7", "alb8"];
   return {
@@ -889,7 +896,12 @@ export function resource(p, kind) {
     },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
     globalLeftPressed(i) { i.selected = 0; },
-    mouseEnter(i, w) { if (cfg.hover) w.g[cfg.hover] = 1; },
+    // MouseEnter [C]: il suggerimento della risorsa, la prima volta, dopo
+    // hint_resource
+    mouseEnter(i, w) {
+      if (cfg.hover) w.g[cfg.hover] = 1;
+      if (cfg.hint) hintOnce(w, cfg.hint[0], cfg.hint[1], i.x, i.y, w.g.resourcehint === 1);
+    },
     mouseLeave(i, w) { if (cfg.hover) w.g[cfg.hover] = 0; },
     // Draw_End [C]: albero il cerchio di selezione; miniera il luccichio
     // (miniera_blink) che compare in un punto a caso e sfuma; pietre niente.

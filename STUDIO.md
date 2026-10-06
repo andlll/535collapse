@@ -14,12 +14,19 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: fine della sessione del 5 ottobre 2026. Fase 3,
-punto 4 (combattimento) completo e corretto (§3.14); **prossimo: punto 5,
-nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
+Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
+completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
+dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
+sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
+(§3.19), menu principale, campagna e battaglia del menu (§3.20); Fase 4:
+salvataggi, schermo intero, PWA (§4.1); Fase 5: GitHub Actions, Pages e
+zip per i portali (§5.1). **Prossimo**: verifiche su una GPU vera, Firefox
+e Safari; livelli 3–10 con l'autore. Il dettaglio di ogni voce sta nella
+sezione citata.
 
 **Per riprendere**
-- Branch `claude/lucid-gauss-ph92vs`; gli asset generati (`game/assets/`,
+- Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
+  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -35,7 +42,20 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
   `units.js`/`civilians.js`/`ranged.js`/`siege.js` (alleati),
   `enemies.js`/`enemybuild.js` (nemici), `buildings.js`/`walls.js`/
   `production.js` (edifici), `levels.js` (regia), `manager.js` (HUD,
-  tastiera, minimappa), `app.js` (registrazione dei comportamenti).
+  tastiera, minimappa), `fog.js`/`fogdraw.js` (nebbia e notte), `props.js`
+  (statue, pali, bracieri), `particles.js`/`effects.js` (particelle e loro
+  usi), `hints.js`/`endgame.js` (suggerimenti, dialoghi, fine partita),
+  `menu.js` (menu principale e campagna), `pause.js`, `i18n.js`/`texts.js`
+  (traduzioni), `save.js`/`snapshot.js` (salvataggi), `fullscreen.js`,
+  `app.js` (registrazione dei comportamenti).
+- Prove: anche `game/test/browser/saves.mjs` (salva, ricarica, stato
+  identico) e `portal.mjs` (lo zip dei portali in un iframe); la CI
+  (`.github/workflows/build.yml`, §5.1) le fa tutte a ogni push e da `main`
+  pubblica il gioco su GitHub Pages: https://andlll.github.io/535collapse/
+  (come NIMBUS). **Se cambia la forma dello stato** (campi delle istanze
+  rinominati o con un altro significato) si alza `SAVE_VERSION` in
+  `save.js`: i salvataggi vecchi diventano "non validi" invece di caricare
+  una partita incoerente.
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -45,9 +65,12 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] n.53 (vittoria del livello 2 creata a ogni passo): con la vittoria (§3.13).
+- [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
+  se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
+  Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -69,38 +92,39 @@ nebbia e notte**. Il dettaglio di ogni voce sta nella sezione citata.
   castello (§3.12).
 - [x] 4e. Edifici nemici, ondate di `match`, regia di `lvl02` e delle porte
   di `lvl01`, chiesa (§3.13).
-- [ ] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
-  risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto).
+- [x] 5. Nebbia e notte a bassa risoluzione; visibilità di nemici e
+  risorse; trucco nebbia con `global.fogville` (difetto n.9 corretto);
+  statue, pali e bracieri come fonti di vista e di luce (§3.15).
 
 **Resto del gioco**
-- [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco (fiamme degli
-  edifici, fiammata delle frecce incendiarie), burst; spighe dei campi,
-  semi della semina; aquila (manager alarm 3), `fog_controller` (crea
-  `fog01`). Fumo (`nubeqq`), mattoni, zolle e sangue sono già oggetti
-  portati.
-- [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
-  461 righe) insieme al menu principale.
-- [ ] Suggerimenti del tutorial (`hint_*`), dialoghi (`dialogo_*`),
-  obiettivi (`objective_button`), vittoria e sconfitta.
-- [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
-  lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
-  livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
+- [x] Particelle (riserva unica): pioggia, erba, chiazze, fuoco (fiamme
+  degli edifici, fiammata delle frecce incendiarie, bracieri e torce),
+  spighe dei campi, germogli, semi della semina; aquila (§3.16). Le
+  nuvole del menu (`fog_controller`, `fog01`) sono col menu (§3.20).
+- [x] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu) e
+  `fog_controller` (le sue nuvole) insieme al menu principale (§3.20).
+- [x] Suggerimenti del tutorial, dialoghi, obiettivi, vittoria e
+  sconfitta (§3.18).
+- [x] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
+  lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14,
+  `progress.js`); livelli 3–10 "in arrivo" (§3.20).
+- [x] Menu di pausa (`mouser`) con opzioni grafiche e lingua (§3.19).
 - [x] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che
-  conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13).
-  Mancano i dialoghi che li accompagnano (voce sopra).
+  conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13);
+  i dialoghi che li accompagnano sono in §3.18.
 - [x] Correzioni decise in Fase 1 (§1.6), applicate coi sistemi: ariete
   60 oro anche col tasto Q, annullare un picchiere restituisce 55 cibo e
   45 legno, centro distrutto −10 popcap, castello e torre senza −5.
-- [ ] Fiamme alte della casa da non distruggere (§3.5 n.18): con le
-  particelle.
+- [x] Fiamme alte della casa da non distruggere (§3.5 n.18, §3.16).
 
 **Fasi 4 e 5**
-- [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
-  esportabile/importabile).
-- [ ] Opzioni nel menu: tetto fps, risoluzione dinamica, diagnostica;
-  i18n dei testi del gioco; pulsante schermo intero con ripiego; PWA.
-- [ ] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
-  zip per i portali verificato con Playwright in una sottocartella.
+- [x] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
+  esportabile/importabile), slot per room e salvataggio automatico (§4.1).
+- [x] Opzioni nel menu di pausa (tetto fps, risoluzione dinamica,
+  particelle) e traduzione dei testi del gioco in sei lingue (§3.19).
+- [x] Pulsante schermo intero con ripiego; PWA (§4.1).
+- [x] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
+  zip per i portali verificato con Playwright in una sottocartella (§5.1).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
@@ -1894,3 +1918,598 @@ Corretti tutti gli altri:
   difensore e l'altro: non crea più attaccanti.
 
 3000 passi senza errori in `match`, `lvl01`, `lvl02`; i 10 test passano.
+
+### 3.15 Punto 5: nebbia e notte (5 ottobre 2026)
+
+**Portato** (`game/src/fog.js`, `fogdraw.js`, `props.js`; `gl.js`,
+`world.js`, `manager.js`): `manager` Draw_End per intero (bordo nero fuori
+dalla room, rettangolo di selezione, superfici `fog`, `blackfog`, `nite`);
+le statue di `lvl01` (`o_statua1..4`: attivazione e cura); `palo_1`
+(Create: celle nella griglia dei costi, vita 999, torcia); i bracieri delle
+città (`ocr_*` Create → `firestarter`) e la torcia del palo
+(`firestarter_small`) come istanze senza particelle, perché la notte li
+illumina. La visibilità di nemici e risorse e il difetto n.9 erano già
+portati con i loro oggetti (§3.4, §3.10); ora il n.9 è marcato nel codice.
+Il punto 5 chiude la vertical slice.
+
+**Come funziona l'originale** [C, manager Draw_End azione 5]: tre superfici
+grandi come la room, ridisegnate a ogni fotogramma e applicate con
+`bm_subtract` (destinazione × (1 − colore)):
+- `fog`: la view riempita di grigio 110 con ellissi nere attorno a unità
+  ed edifici alleati: fuori dalla vista attuale il mondo scende al 57%;
+- `blackfog`: bianca all'inizio e mai cancellata, con le stesse ellissi (e
+  le statue attive): ciò che non è mai stato visto è nero;
+- `nite`: `merge_colour(c_black, c_orange, global.night)`, con lo sprite
+  `arealight` (una macchia nera sfumata) sopra ogni fuoco: di notte piena
+  sparisce il rosso, il 63% del verde e il 25% del blu, tranne attorno ai
+  fuochi.
+- Ellissi (k = 1 − night: di giorno la visuale raddoppia): unità, edifici e
+  pali 200×120 (+k); centro 300×180; castello e torre 500×300; muri
+  orizzontali 300+200k × 120+120k; muri verticali spostati di 125 px in alto
+  (da y−370 a y+120). Fuochi: bracieri e torce scala 3 con un tremolio di
+  ±0,15; edifici in fiamme 3 o 4 (2 le casse) più quanto sono danneggiati;
+  freccia incendiaria 1; il fante che la accende, 67 px sopra di sé.
+- Solo fuori dal menu e con `global.fogville=1`: il trucco Ctrl+V+Canc
+  spegne la nebbia **e la notte**.
+- Il manager ha depth −1 e tutto questo è nel suo Draw End: i Draw End
+  delle unità e degli edifici (depth −y: barre della vita, cerchi di
+  selezione, numeri dei gruppi, la stellina delle miniere) vengono dopo e
+  restano **sopra** nebbia e notte; il rettangolo di selezione, disegnato
+  dal manager prima delle superfici, ci finisce sotto. Il cerchio del
+  puntatore (`mouser`, depth −9999) è sopra a tutto.
+
+**Nel porting** [deviazioni volute, §0.7]:
+- Scoperta e vista sono due griglie di byte con una cella ogni 16 px (in
+  `match` 438×438, 190 KB); ogni cella tiene quanto è coperta (0–255),
+  stimato dalla distanza del suo centro dal bordo dell'ellisse. A ogni
+  fotogramma si ricalcola la vista solo sulle celle della view e si
+  compongono `fog` e `blackfog` in un solo valore da sottrarre (0 vista,
+  110 già vista, 255 mai vista), caricato in una texture a un canale
+  filtrata linearmente. **I bordi sfumano su ~16 px** invece di essere
+  netti (con celle solo 0/1 il filtro lasciava una scaletta sui bordi
+  lunghi: provato e scartato).
+- La scoperta si aggiorna **nel passo** (l'originale nel disegno, cioè a
+  ogni passo a 60 fps): è stato di gioco, non dipende dal tetto di fps e
+  servirà ai salvataggi. Un'istanza ferma la cui ellisse non è cresciuta
+  si salta.
+- La notte usa una superficie con un texel ogni 8 px della view (0,3 MB a
+  1920×1080 con zoom 1,5), allineata alla griglia degli 8 px perché i bordi
+  non tremino mentre la view scorre; senza fuochi nella view basta un
+  rettangolo. Memoria in tutto < 1 MB contro ~590 MB.
+- Motore: superfici (`createTarget`, `beginTarget`/`endTarget`) e texture
+  di dati nel renderer; `world.draw` fa girare il Draw End del manager alla
+  sua depth fra quelli delle istanze. La cache delle unità di texture ora
+  rispecchia sempre i legami GL (prima si azzerava a ogni fotogramma senza
+  slegare nulla: con le superfici WebGL dava l'errore "feedback loop").
+
+**[I]** Lo stato di disegno: le ellissi dell'originale usano l'alpha
+corrente (`draw_set_alpha`, persistente); qui si assume 1. `global.night`
+scende fino a −0,005 (manager Alarm_1): il colore della notte lo tratta
+come 0.
+
+**Difetti e stranezze** [C], riprodotti:
+
+54. Le anteprime dei prolungamenti di muro (`oodl`, `oosl`, `ovbl`,
+    `oval`) sono figlie di `ally_build`: scoprono la nebbia attorno a sé,
+    a ~424 px dal muro, mentre il giocatore sceglie la direzione. Anche
+    `cc_barn` (invisibile, sul centro) e i campi vedono.
+55. Le statue attive scoprono la mappa attorno a sé (blackfog) ma non sono
+    nella lista della vista (`fog`): la loro zona resta grigia come una
+    zona già vista. Ogni statua, nel Create, rimette `global.hintata=0`.
+
+**Rimandato**: `hint_night` (il suggerimento alla prima notte, manager
+Alarm_0) con i suggerimenti; le fiamme di bracieri e torce con le
+particelle; `fog_controller` e `fog01` (le nuvole di nebbia del menu)
+con le particelle, dove sono già in lista.
+
+**Verificato**:
+- `npm test`: 19 test, di cui 9 nuovi in `test/fog.test.mjs` (copertura
+  sul bordo dell'ellisse, raggi di giorno e di notte, forme di castello,
+  centro e muri verticali, composizione 0/110/255, scoperta che resta dopo
+  che l'unità se n'è andata, trucco e menu, statue, colore della notte,
+  fuochi).
+- Chromium (SwiftShader): `match` di giorno, nero dove non si è mai visto e
+  bordi sfumati; di notte tinta blu e luce calda attorno alle torce dei
+  pali; trucco della nebbia → stessa luminosità del giorno senza nebbia, di
+  giorno e di notte; `lvl01` di notte con i bracieri; `lvl02` a zoom 1,5 in
+  una finestra 2400×900 (view più larga della room: bordo nero a destra);
+  menu senza nebbia né notte; barre della vita sopra la nebbia; perdita e
+  ripristino del contesto WebGL senza errori (la scoperta, sulla CPU, non
+  si perde). Nessun errore WebGL in console.
+- Costi misurati in `lvl02`: scoperta 0,01 ms a passo (0,14 ms se tutte le
+  istanze si muovono), composizione della view 0,1 ms a fotogramma. In
+  `lvl01` il passo costa ~0,2 ms in più per le 199 istanze nuove (bracieri
+  e torce, come nell'originale).
+- 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.16 Particelle (6 ottobre 2026)
+
+**Portato** (`game/src/particles.js`, `effects.js`; forme in
+`tools/05_atlas.py`): un motore `part_system`/`part_type`/`part_emitter`
+alla GameMaker e tutti gli usi che stanno nelle room: pioggia (manager
+Alarm_4/6, trucco Q), spegnimento degli incendi con la pioggia (Alarm_2),
+fiamme degli edifici in fuoco (alleati, nemici, casse, centro, campo),
+fiammata delle frecce incendiarie, bracieri delle città e torce dei pali,
+erba e spighe decorative (`burst_erba1`, `burst_grano1`,
+`chiazzaparticellare`), spighe del campo e campo bruciato, germogli del
+cantiere del campo, semi lanciati dal seminatore; l'aquila (manager
+Alarm_3, è un oggetto). Mancava anche la collisione della freccia
+incendiaria con le casse del livello 1 (`o_box1/2`): portata.
+
+**Motore** [I, regole del runner annotate in `particles.js`]: ogni
+particella pesca alla nascita vita, dimensione, velocità, direzione e
+orientamento dagli intervalli del tipo; incrementi e gravità a ogni passo;
+"wiggle" come oscillazione attorno al valore; colore e alpha a 1, 2 o 3
+valori lungo la vita, `colour_mix` e `colour_rgb` fissi; regioni
+rettangolo, ellisse, rombo e linea con distribuzione lineare o gaussiana;
+stream negativo = probabilità 1/|n|, frazionario = `ceil(n)` (il ciclo
+`for (i=0; i<n; i++)` dell'export HTML5). I sistemi si aggiornano dopo gli
+Step e si disegnano da soli alla loro depth fra le istanze. Le forme
+interne (`pt_shape_flare`, `line`, `pixel`) sono ricreate a mano
+nell'atlas `gui` (64×64, dimensione 1 = 64 px). Le particelle sono oggetti
+riciclati da una riserva comune.
+
+**Numeri** [C]:
+- Fiamme: due sistemi per edificio, dietro (depth −y+1) e davanti (−y−1);
+  casa, mulino, magazzino, casa nemica 6+3 particelle a passo su 70 px;
+  caserme e stalle 8+4 su 150/110 px; centro 8+4 su 130 px; casse 6+3; il
+  campo solo dietro, 6. Moltiplicate per `visible` al momento
+  dell'accensione. La vita delle fiamme davanti cresce coi danni:
+  ((150−vita)/2, (160−vita)/2), (380, 400) le grandi, (430, 460) il
+  centro, (40, 50) le casse.
+- Pioggia: 6 gocce a passo lungo il bordo alto della room, 18–21 px a
+  passo per 200–300 passi, a depth −9000 (sotto nebbia e notte).
+- Erba e spighe: 1700–2600 particelle immobili per oggetto in un'ellisse
+  di 1000×600 px, che ondeggiano; in `match` ~12.700, nel menu ~18.000.
+
+**Correzione decisa dall'autore** (§3.5 n.18): la casa non distrugge più
+le fiamme dietro a ogni passo: brucia come gli altri edifici.
+
+**Deviazioni** (solo memoria): la fiammata delle frecce è un sistema che
+l'originale non distrugge mai; qui sparisce quando le particelle
+finiscono. Il seminatore crea un emettitore a ogni lancio e non lo
+distrugge; qui ce n'è uno solo.
+
+**Difetti e stranezze** [C], riprodotti:
+
+56. La pioggia spegne gli edifici di legno alleati (`onfire=0`: niente più
+    fumo né danni), ma non distrugge le fiamme e lascia `firestarted=1`:
+    le fiamme restano accese finché un civile non ripara col legno o
+    l'edificio non viene distrutto. La pioggia non spegne gli edifici
+    nemici. Raccomandazione: spegnere anche le fiamme, come la
+    riparazione.
+57. Canc su un cantiere di campo non distrugge i germogli: restano per
+    sempre, emessi al ritmo dell'ultimo passo.
+58. L'aquila parte a y=−10, sopra la room, e vola in direzione 30 (verso
+    l'alto): non entra mai nella view. Probabile intenzione: direzione
+    330 (in basso a destra) o partenza dal basso. Da chiedere.
+59. La torcia del palo (`firestarter_small`) è visibile: le sue fiamme si
+    disegnano due volte, in somma, una nel suo Draw (depth −y−90) e una
+    da sole alla depth del sistema, che non è mai impostata (0: dietro a
+    unità ed edifici) [I].
+60. Un edificio nemico che prende fuoco mentre è nella nebbia
+    (`visible=false`) ha fiamme a 0 particelle per sempre, anche quando
+    diventa visibile (lo stream si fissa all'accensione).
+61. Le gocce sono linee orientate a 160–170° (quasi orizzontali, se la
+    linea interna di GameMaker è orizzontale come fa pensare l'erba di
+    `chiazzaparticellare`, "linea verticale" a 85–95°) ma cadono a
+    250–260°. Da confrontare con l'originale.
+
+**Non portati**: `burst_chiazza1/2` e `object314` (distruggono i loro
+sistemi nello stesso Create, quindi non si vedrebbe nulla; non sono in
+nessuna room); `fog_controller` e `fog01` (le nuvole del menu) restano col
+menu.
+
+**Verificato**:
+- `npm test`: 25 test, di cui 6 nuovi in `test/particles.test.mjs`
+  (regioni, vita e riserva, moto e gravità, stream, distruzione, fiamme
+  degli edifici con i numeri della casa e della caserma nemica).
+- Chromium: torce dei pali e bracieri di `lvl01` accesi vicino alle unità;
+  centro in fiamme sotto la pioggia (spento: `onfire` 0, fiamme accese,
+  n.56); cantiere di campo coi germogli e campo bruciato con stoppie,
+  fuoco e fumo; spighe decorative; una freccia incendiaria su una cassa →
+  fiammata di 300 particelle, cassa in fiamme; riparazione col legno →
+  fiamme distrutte; trucco Q → pioggia fermata; 8 semi lanciati che cadono
+  e spariscono.
+- Costi: aggiornamento 0,29 ms a passo con le 18.000 particelle del menu,
+  disegno 1,3 ms a fotogramma (SwiftShader, CPU); in `lvl01` 0,13 ms.
+- 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.17 Decisioni dell'autore su nebbia e particelle (6 ottobre 2026)
+
+"L'aquila dovrebbe volare verso alto a destra, probabilmente è solo
+sbagliata la posizione di partenza"; "le gocce di pioggia vanno bene
+così" (n.61 resta); "il resto correggiamolo". I bordi sfumati della nebbia
+(§3.15) restano: non sono un difetto dell'originale ma una scelta del
+porting. Applicato:
+
+- **n.54**: le anteprime dei prolungamenti di muro non vedono né scoprono.
+- **n.55**: le statue attive danno anche la vista, non solo la scoperta.
+- **n.56**: la pioggia spegne anche le fiamme (come la riparazione col
+  legno: sistemi distrutti, `firestarted=0`).
+- **n.57**: annullato con Canc, il cantiere di campo porta via i germogli
+  (Destroy del cantiere).
+- **n.58**: l'aquila parte 10 px sotto il bordo basso della room (x a caso
+  come nell'originale) e la attraversa volando in alto a destra. Nota: in
+  `match` un'aquila è anche piazzata nella room.
+- **n.59**: la torcia del palo si disegna una volta, nel suo Draw
+  (depth −y−90); il disegno automatico del sistema è spento
+  (`autoDraw`, come `part_system_automatic_draw(ps, false)`).
+- **n.60**: le fiamme degli edifici ricalcolano a ogni passo il numero di
+  particelle con `visible`: un edificio nemico incendiato nella nebbia
+  mostra le fiamme appena diventa visibile.
+
+**Verificato**: `npm test`, 27 test (nuovi: anteprime dei muri, statue
+con la vista, pioggia che spegne le fiamme, fiamme che compaiono quando
+l'edificio diventa visibile); Chromium: aquila del manager da (5835, 7005)
+a (10165, 4505) in 1000 passi, 7 torce senza disegno automatico, centro
+spento dalla pioggia senza più fiamme, Canc sul cantiere di campo →
+germogli spariti; 3000 passi senza errori in `match`, `lvl01`, `lvl02`,
+`menu`.
+
+### 3.18 Suggerimenti, dialoghi, obiettivi, vittoria e sconfitta (6 ottobre 2026)
+
+**Portato** (`game/src/hints.js`, `endgame.js`, `progress.js`): i 26
+suggerimenti (`hint_*`), i 25 dialoghi (`dialogo_*`), `objective_button`,
+`victory_manager`, `gameover_manager`; tutte le attivazioni negli oggetti
+già portati (risorse, campo, casa, edifici nemici, picchiere nemico,
+selezione delle unità, torre e castello, prima notte, casse del livello
+1); `o_statua1_real` (la quinta statua di `lvl01`, figlia di `ally_build`);
+il bandierino del centro distrutto. La regia dei livelli, che li creava
+"se portati", ora li crea davvero.
+
+**Come funziona** [C]:
+- Suggerimenti e dialoghi sono **la stessa finestra** (confronto evento
+  per evento): rettangolo bianco di 380 px, titolo, testo a capo a 340 px,
+  ritratto di chi parla nei dialoghi; si chiude cliccandoci sopra. Le
+  differenze sono una tabella: ancora (posizione fissa sullo schermo,
+  istanza più vicina al puntatore, istanza seguita finché esiste, chi
+  parla), clic premuto o rilasciato, attesa prima del clic (`arm`, 10 o 30
+  passi), finestra successiva. I suggerimenti si concatenano nel clic, i
+  dialoghi nel Destroy.
+- Tutorial di `match`: `hint_iniziale` è piazzato nella room e apre la
+  catena vista → risorse → inattivi → obiettivi (2) → minimappa →
+  selezione → raccolta → costruzione → riparazione → creazione (3).
+  `hint_resource` abilita i suggerimenti delle risorse (legna, oro, pietra,
+  campi, case). Gli altri compaiono la prima volta che succede qualcosa
+  (soldati selezionati, puntatore su un edificio nemico, prima notte…),
+  solo se non c'è già una finestra aperta. H li nasconde.
+- Dialoghi: `lvl01` dall'apertura (0→1→2, che crea gli obiettivi), le
+  casse, il picchiere nemico, le porte; chiudere `dialogo_1_8` è la
+  vittoria. `lvl02`: il villaggio (2_0…2_5, con magazzino, pali e
+  obiettivi), le liberazioni, la base nemica (2_13 sposta la view), la
+  caserma degli arcieri.
+- Obiettivi: riquadro in alto a destra (O), con contatori e righe barrate
+  in `lvl02`.
+- Vittoria: schermo bianco, "VICTORY"; in `match` il punteggio parziale e
+  un clic fa continuare la partita; nella campagna il codice del livello
+  successivo, e il clic sblocca il livello (**persistente**,
+  `localStorage`, versione del formato, parte da 1: decisione §0.14/§0.15,
+  confluirà nei salvataggi) e torna al menu.
+- Sconfitta: il centro distrutto crea `gameover_manager`; dopo 760 passi
+  si torna al menu. `room_goto` per ora ricarica la pagina sulla room.
+
+**Correzione decisa dall'autore** (§3.14 n.53): la vittoria del livello 2
+si crea una volta sola.
+
+**Difetti e stranezze** [C], riprodotti salvo dove detto:
+
+62. H (`global.hint`) nasconde anche i **dialoghi**, che però restano
+    cliccabili e bloccano la storia: in `lvl01` la vittoria arriva
+    chiudendo un dialogo che, coi suggerimenti spenti, non si vede.
+    Raccomandazione: H solo per i suggerimenti.
+63. In `lvl02` tre `hint_legna` sono piazzati nella room: alla creazione
+    si ancorano all'albero più vicino al puntatore (0, 0), finiscono fuori
+    dallo schermo (y ≈ −6000) e, essendo finestre aperte, bloccano tutti i
+    suggerimenti del livello. Raccomandazione: toglierli dalla room.
+64. Il suggerimento del presidio si apre anche cliccando una torre, ma si
+    ancora al castello più vicino: senza castelli l'originale si ferma con
+    un errore (`noone.x`). **Deviazione**: resta sulla torre.
+65. `hint_multi_2` disegna anche un vecchio riquadro alla sua x, y di room
+    usate come coordinate dello schermo (di solito fuori schermo).
+66. Vittoria e sconfitta centrano i testi su `view_wview/2`, la misura
+    della view nella room: con lo zoom a 1,5 sono fuori centro (come n.29).
+67. `gameover_manager` è invisibile nel GMX: GameMaker non esegue il suo
+    Draw GUI e la schermata di sconfitta **non compare mai**; dopo 12,7 s
+    si torna al menu. Raccomandazione: renderlo visibile.
+68. I dialoghi senza il controllo "chi parla è morto" leggerebbero la
+    posizione di un'istanza distrutta (errore). **Deviazione**: la
+    finestra resta dov'era.
+69. Casse e picchiere nemico controllano `instance_number(parent_dialogo)`,
+    un oggetto senza figli: vale sempre 0 (probabile intenzione:
+    `parent_hint`, cioè non sovrapporre i dialoghi).
+70. Alcuni suggerimenti (selezione, costruzione, creazione, oro, pietra,
+    presidio) seguono l'istanza **più vicina al puntatore**: avvicinandosi
+    per cliccarli possono saltare su un'altra unità.
+71. Nel menu `hint_iniziale` esiste ma è nascosto (`global.hint=3`): un
+    clic in quel punto fa avanzare la catena senza vederla.
+
+**Verificato**: `npm test`, 29 test (nuovi: tabelle complete rispetto al
+progetto, seguiti esistenti, "una volta sola"); Chromium: catena del
+tutorial di `match` da `hint_iniziale` a `hint_select` cliccando le
+finestre; `lvl01` dialoghi 1_0 → 1_1 → 1_2 col ritratto, poi il riquadro
+degli obiettivi; `lvl02` `dialogo_2_0` e i tre `hint_legna` fuori schermo
+(n.63); `match` con le tre basi distrutte → vittoria col punteggio;
+centro distrutto → `gameover_manager` invisibile, dopo 760 passi il menu;
+`lvl01` vittoria → clic → `unlock` 2 salvato e menu; 3000 passi senza
+errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.19 Correzioni, menu di pausa e traduzioni (6 ottobre 2026)
+
+**Decisioni dell'autore sui difetti di §3.18**: "per la 62 facciamo che
+con H vengono nascosti solo gli Hint del tutorial e non i dialoghi. Le
+altre risolviamole." Applicato:
+
+- **n.62**: H nasconde solo i suggerimenti; i dialoghi restano visibili.
+- **n.63**: i tre `hint_legna` piazzati in `lvl02` non si creano.
+- **n.64, n.68**: le due deviazioni restano come soluzione (suggerimento
+  del presidio fermo sulla torre senza castelli; dialogo fermo se muore
+  chi parla).
+- **n.65**: `hint_multi_2` non disegna più il vecchio riquadro.
+- **n.66**: testi di vittoria e sconfitta centrati sullo schermo.
+- **n.67**: la schermata di sconfitta è visibile.
+- **n.69**: casse e picchiere nemico aprono il loro dialogo solo se non
+  c'è un altro dialogo aperto (al posto di `parent_dialogo`, senza figli).
+- **n.70**: i suggerimenti ancorati "all'unità più vicina al puntatore"
+  seguono l'istanza scelta all'apertura (un'altra solo se muore).
+- **n.71**: nel menu `hint_iniziale` non si crea.
+
+**Menu di pausa** (`game/src/pause.js`; richiesta dell'autore: "come
+quello di Nimbus, con le opzioni grafiche e la traduzione"). L'originale
+ne ha uno [C, `mouser`]: pulsante in alto a destra o Esc senza nulla di
+selezionato, tutto fermo (`instance_deactivate_all`), "GAME PAUSED",
+Riprendi, Ricomincia, Torna al menu, interruttori di suggerimenti,
+obiettivi e FPS. Qui:
+- stesso pulsante (rettangolo bianco con `icopausa`) ed Esc; in pausa Esc
+  torna indietro o riprende; il mondo non fa passi;
+- aspetto di NIMBUS (`n_redux`, `drawPauseOverlay()`): la scena ferma
+  sfumata (disegnata in una superficie e dimezzata tre volte col filtro
+  lineare, rifatta solo se cambia qualcosa) e scurita al 40%, pannello
+  bianco traslucido, pulsanti a pillola, controlli a segmenti con la scelta
+  in verde; il testo usa i font del gioco;
+- voci: Riprendi, Opzioni grafiche, Suggerimenti/Obiettivi/Contatore FPS
+  (sì/no), Lingua (EN IT ES PT DE FR), Ricomincia livello, Torna al menu;
+- Opzioni grafiche: Pioggia, Erba e spighe, Fiamme e scintille
+  (categorie di particelle: i sistemi spenti non si aggiornano né si
+  disegnano; solo estetica, il gioco non legge le particelle), Risoluzione
+  dinamica, Limite FPS (30 / 60 / Nessuno). Salvate in `535.settings`.
+- Motore: le superfici del renderer si possono annidare (la notte dentro
+  lo sfondo del menu); il ciclo accetta "nessun limite" di fps.
+
+**Traduzioni** (`game/src/i18n.js`, `texts.js`): le sei lingue di NIMBUS.
+- Tutti i testi del gioco: suggerimenti, dialoghi, schede di edifici e
+  unità, obiettivi, vittoria e sconfitta, menu, messaggi del motore (~180
+  testi). La chiave è il testo inglese dell'originale (si ritrova nel
+  GML); se manca una traduzione resta l'inglese. La lingua viene dal
+  browser la prima volta, poi dalle opzioni; cambiarla nel menu vale
+  subito, anche per le finestre aperte.
+- **Font**: i Seagram tfb di GameMaker hanno solo l'ASCII (§2.5).
+  `tools/05_atlas.py` compone le lettere accentate di IT/ES/PT/DE/FR (51
+  per font) dalla lettera di base e da un segno dello stesso font (`` ` ``
+  e il suo specchio, `^`, `~`, due `.`, `,` per la cedille, `?` e `!`
+  capovolti per ¿ ¡), con uno scostamento verticale per le maiuscole: il
+  testo tradotto resta gotico. ß, œ, virgolette e trattini lunghi li riduce
+  `draw.js` a lettere ASCII.
+- Schede e riquadro degli obiettivi si allargano se un testo tradotto non
+  ci sta (in inglese restano come nell'originale).
+- **n.72**, refusi dei testi inglesi dell'originale: corretti su decisione
+  dell'autore ("sì, correggi i refusi"). Per ritrovare i testi nel GML:
+  "aswell" → "as well", "reallocatein" → "reallocate in", "buildingto" →
+  "building to", "ona" → "on a", "Out citizens" → "Our citizens",
+  "norther gates" → "northern gates", "paesants" → "peasants",
+  "sucessfully" → "successfully", "Thanks you" → "Thank you", "your
+  building, units" → "your buildings, units", "use shortcut" → "use
+  shortcuts", "archers inside it" → "inside them", "help you defeating"
+  → "help you defeat", "It's over.." e "Not yet.." → "...".
+
+**Verificato**: `npm test`, 32 test (nuovi: ogni testo in tutte le lingue
+con gli stessi segnaposto, dialoghi tradotti, `tr()` con ricaduta
+sull'inglese); Chromium: Esc apre la pausa a mondo fermo (contatore dei
+passi fermo), lingua IT e DE dal menu, opzioni grafiche (pioggia spenta e
+salvata), gioco in DE/FR/ES/PT con schede e obiettivi allargati, dialogo
+di `lvl01` in francese, titolo "OPÇÕES GRÁFICAS"; `lvl02` senza
+`hint_legna`, dialogo visibile con H spento; sconfitta visibile; 3000
+passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.20 Menu principale, campagna e battaglia del menu (6 ottobre 2026)
+
+`game/src/menu.js`: `enemy_manager_menu` [C, Create, Alarm_0, Step_End,
+Draw_GUI, Mouse_GlobalLeftReleased, KeyPress_Escape], `fog_controller` e
+`fog01` [C]. Il manager lo crea nella room `menu` (manager Create,
+"Livelli" [C], con `global.hint=3`, già in `state.js`).
+- **Schermata iniziale**: logo, "Play the tutorial" (va a `match`) e
+  "Campaign - Collapse" (apre la campagna), firma e versione in basso.
+- **Campagna**: la mappa `mappa_camp` al centro, l'elenco dei livelli a
+  sinistra (la riga sotto il puntatore evidenziata, i segnaposto `cap1`/
+  `cap2` sulla mappa), la storia del livello in basso, indietro e
+  lucchetto in alto a destra. Clic su un livello sbloccato: lo avvia. Esc:
+  chiude il lucchetto o torna alla schermata iniziale.
+- **Lucchetto**: cinque rotelle 0–9 (metà alta +1, metà bassa −1) e
+  "Unlock level". I codici sono quelli dell'originale (livello 2: 4 9 2 1
+  7, mostrato dalla vittoria di `lvl01`; i codici fino al 10 sono già
+  nella tabella). Codice giusto: lo sblocco sale e si salva; sbagliato: le
+  cifre lampeggiano di rosso e sfumano.
+- **Battaglia del menu**: l'allarme 0 (dopo 120 passi, poi ogni 9000)
+  manda le unità ferme di ciascun lato contro il nemico più vicino; nel
+  menu le unità non si selezionano (`global.sele=-1` a ogni passo) e il
+  clic destro non dà ordini. Nella room originale i picchieri alleati
+  perdono contro guerrieri e cavalieri: dopo circa 1000 passi restano i
+  nemici, come nell'originale.
+- **Nebbia del menu**: sei `fog_controller` creano 13 nuvole `fog01`
+  ciascuno, di nuovo ogni 2000 passi; ogni nuvola compare in 30 passi, va
+  a destra di 1 px per passo, sfuma a 4970 passi e sparisce a 5000
+  (78–234 nuvole in scena).
+- **Ritorno alla campagna**: `global.campagna` nell'originale sopravvive al
+  cambio di room, così vittoria, sconfitta o "Torna al menu" da un livello
+  avviato dalla campagna riaprono la campagna. Qui ogni room ricarica la
+  pagina: il valore passa dall'indirizzo (`&campaign=1`).
+- [Decisioni dell'autore, §0.14/§0.15] sblocco persistente che parte da 1
+  (l'originale lo rimetteva a 2 a ogni apertura del menu); livelli 3–10
+  sempre in elenco, più chiari, con "Coming soon" come storia e non
+  giocabili.
+- Come in §3.18 (n.66), le posizioni dell'interfaccia usano la misura
+  dello schermo e non `view_wview`.
+- Testi tradotti (§3.19): pulsanti, nomi dei livelli, storie, "Coming
+  soon", "Unlock level"; la storia del livello 1 aveva il refuso "resistence"
+  (n.72, corretto in "resistance"). Restano
+  in originale "Collapse", la firma e la versione.
+
+**Decisioni dell'autore** (6 ottobre 2026): "73 lascia vuoto, la 75 è un
+easter egg e va lasciato così". n.73: il riquadro della storia parte vuoto
+(corretto); n.75: resta. Poi: "la 74 la correggiamo" (corretta).
+
+**Difetti trovati** (lasciati come nell'originale salvo n.73, n.74 e n.76):
+- **n.73**: il riquadro della storia misura il testo con righe da 40 px
+  (`string_height_ext(testo_c,40,…)`) ma lo scrive con righe da 30: il
+  riquadro resta più alto del testo. Prima di passare su un livello
+  `testo_c` vale `"null"` [C, Create]: aprendo la campagna il riquadro in
+  basso mostra la parola "null". **Corretto** (decisione dell'autore):
+  vuoto finché non si tocca un livello.
+- **n.74**: la riga evidenziata resta quella dell'ultimo livello toccato
+  anche quando il puntatore esce dall'elenco (e un clic fuori dalla riga
+  non la avvia). **Corretto** (decisione dell'autore): l'evidenziazione
+  segue il puntatore; la storia e i segnaposto sulla mappa restano quelli
+  dell'ultimo livello toccato, così la storia si legge scendendo col
+  puntatore verso il riquadro.
+- **n.75**: una volta su otto (`irandom_range(1,8)==8`) al posto della
+  firma compare una frase in italiano dell'autore ("Non mi interessa se
+  sta roba non ingrana quando soffro d'insonnia…"): lasciata, non
+  tradotta. **È un easter egg e resta** (decisione dell'autore).
+- **n.76** (corretto): il logo è a y=350 fisso e "Play the tutorial" a
+  `altezza−400`: con finestre alte meno di circa 830 px il logo copre il
+  pulsante. Qui il logo sale a metà dello spazio libero
+  (`min(350, (altezza−400)/2)`); da 830 px in su è come l'originale.
+
+**Verificato**: `npm test`, 33 test (nuovo: nomi dei livelli, storie e
+pulsanti del menu tradotti); Chromium a 1280×720 e 1920×1080: schermata
+iniziale, campagna (livello 1 e 5 sotto il puntatore), lucchetto, codice
+4 9 2 1 7 che sblocca e salva il livello 2, indietro ed Esc, clic sul
+livello 2 che apre `?room=lvl02&campaign=1`; vittoria simulata in `lvl01`
+avviato dalla campagna: sblocco a 2 e ritorno al menu della campagna;
+10000 passi del menu senza errori (0,85 ms per passo con SwiftShader,
+fino a 234 nuvole).
+
+---
+
+## Fase 4 — salvataggi, schermo intero, PWA (6 ottobre 2026)
+
+### 4.1 Salvataggi, schermo intero, PWA
+
+**Salvataggi** (`game/src/save.js`, `snapshot.js`; decisione dell'autore
+§0.10: "come NIMBUS"). L'originale non salva nulla [C, §0.6]. Il metodo è
+quello di n_redux (`game/src/save.js`): JSON esplicito con versione del
+formato e checksum leggero (FNV-1a con un sale, come NIMBUS: un numero
+cambiato a mano nel file lo rende non valido; non è una protezione vera,
+il gioco è tutto nel browser), uno slot nel browser e un file.
+- **Cosa si salva**: in NIMBUS lo stato erano poche liste; qui è il mondo
+  intero. Le istanze, nell'ordine di creazione (conta per l'ordine degli
+  eventi), con tutti i campi, l'id successivo, `global.*`, gli allarmi del
+  manager (notte, pioggia, orologio), la griglia dei costi e quella delle
+  porte, la scoperta della nebbia, i sistemi di particelle con le
+  particelle vive (l'erba decorativa sono particelle che durano per
+  sempre), posizione e zoom della view. Non si salvano comportamenti,
+  asset, indici (si ricostruiscono), puntatore e tastiera.
+- **Come**: serializzazione generica del grafo degli oggetti. Le istanze si
+  puntano fra loro (bersagli, chi parla in un dialogo, il fuoco di un palo,
+  anche istanze già distrutte che qualcuno tiene ancora): ogni oggetto
+  raggiunto più volte esce una volta con un numero e poi come riferimento,
+  cicli compresi. Gli array tipizzati (nebbia, costi, flow field condivisi
+  fra le unità) escono compressi a corse (con le differenze negli interi:
+  le distanze del goal field crescono di 1 lungo una riga); le particelle
+  per colonne, arrotondate al millesimo (solo aspetto). Una funzione o una
+  classe non prevista nello stato fa fallire il salvataggio con il percorso
+  del campo, invece di perdere qualcosa in silenzio.
+- **Dimensioni**: 1,0–1,7 MB di JSON per room; nello slot del browser
+  compresso con gzip (`CompressionStream`) 200–450 KB (lo spazio di un sito
+  è circa 5 MB). Catturare lo stato costa ~50 ms (SwiftShader).
+- **Caricare**: ogni room ricarica la pagina, quindi anche il caricamento:
+  `?room=<room>&load=slot` (o `&load=file` per un file aperto, passato da
+  `sessionStorage`). Al posto della room e dei Create si rimette lo stato;
+  il parametro si toglie subito dall'indirizzo, così "Ricomincia livello"
+  riparte dalla room. Lo sblocco della campagna non torna indietro
+  caricando una partita vecchia.
+- **Dove**: menu di pausa → "Salva e carica": Salva partita (slot della
+  room), Carica partita (spento se lo slot è vuoto), Salva su file
+  (`535-<room>-<data>.json`, scaricato), Carica da file, Salvataggio
+  automatico (ogni 5 minuti di gioco, attivo di norma come in NIMBUS, non a
+  partita finita). Menu principale → "Load game" (in alto a destra): gli
+  slot con nome del livello e data, e "Load from file". Le conferme
+  compaiono in alto per 2,5 secondi.
+- [Deviazione dichiarata] lo stato salvato è quello del porting: se una
+  versione futura cambia la forma dei dati si alza `SAVE_VERSION` e i
+  salvataggi vecchi si scartano.
+
+**Schermo intero** (`game/src/fullscreen.js`): API Fullscreen (col
+prefisso webkit per Safari). "Full screen" in alto a sinistra nel menu
+principale e "Schermo intero: sì/no" nelle opzioni grafiche. Ripiego: dove
+non è permesso (iframe di un portale senza `allowfullscreen`, Safari su
+iPhone) il pulsante non compare nel menu ed è spento nelle opzioni; il
+gioco riempie comunque la finestra o la cornice del portale.
+
+**PWA**: `manifest.webmanifest` (nome "535 – Collapse", schermo intero,
+orizzontale), icone dal logo del gioco (`tools/09_icons.py` → `game/icons/`,
+versionate: 192, 512, 512 "maskable", 180 per iOS, favicon 32) e
+`sw.js` come quello di NIMBUS: prima la rete, la cache solo senza rete;
+ogni file entra in cache la prima volta che il gioco lo chiede, quindi una
+room si apre offline dopo averla giocata una volta online. Il service
+worker si registra solo dove è permesso (https o localhost).
+
+**Verificato**: `npm test`, 38 test (nuovi: grafo con riferimenti
+condivisi e cicli, istanze, classi, array tipizzati, colonne, checksum,
+gzip); `test/browser/saves.mjs`: in `match`, `lvl01` e `lvl02` dopo 4000
+passi lo stato ricaricato è **identico** a quello salvato e la partita
+prosegue; lo stesso in `match` dopo 30000 passi e in piena battaglia
+(frecce in volo, bersagli assegnati). Chromium: pannello "Salva e carica",
+salvataggio nello slot, file scaricato e riaperto dal menu principale,
+file modificato a mano scartato ("Non è un salvataggio valido"), elenco
+degli slot nel menu, salvataggio automatico dopo 18000 passi, schermo
+intero acceso e spento dal menu, opzioni grafiche in spagnolo, service
+worker registrato e manifest servito; 3000 passi senza errori in `menu`,
+`match`, `lvl01`, `lvl02`.
+
+---
+
+## Fase 5 — GitHub Actions, Pages, zip per i portali (6 ottobre 2026)
+
+### 5.1 Pipeline, prove e pubblicazione
+
+**Workflow** (`.github/workflows/build.yml`), a ogni push e pull request,
+sullo stesso schema di quello di NIMBUS (n_redux, `deploy-pages.yml`):
+1. Python 3.11 + Pillow; progetto GameMaker dagli zip (`tools/01`).
+2. **File generati e versionati allineati**: `tools/02` (data/, src/) e
+   `tools/08` (`animTables.js`) rigenerati devono dare gli stessi file del
+   repo (`git diff --exit-code`): nessuno li ha toccati a mano e i tool sono
+   allineati.
+3. Atlas, maschere, scene (`tools/05–07`, ~2,5 minuti).
+4. Node 22, `npm ci`, test unitari, bundle.
+5. Zip per i portali (`tools/10_zip.py`).
+6. Playwright e Chromium (solo nella CI, non fra le dipendenze del
+   progetto), server statico, poi tre prove: `soak.mjs` (3000 passi per
+   room), `saves.mjs` (salva, ricarica, stato identico) e `portal.mjs` (lo
+   zip in un iframe).
+7. Lo zip resta come artefatto della run (`535-collapse-web`); su `main`
+   lo zip estratto si pubblica su GitHub Pages.
+
+Provato in locale su un clone pulito con gli stessi comandi: la pipeline
+dagli zip dà atlas, maschere e scene **identici** a quelli di sviluppo e
+lascia invariati i file versionati; test, bundle, zip e le tre prove nel
+browser passano.
+
+**Zip per i portali** (`tools/10_zip.py` → `build/535-collapse-web.zip`,
+non versionato): alla radice `index.html`, manifest, service worker,
+icone, `dist/` (senza source map) e `assets/`; 34 file, 11,5 MB (10,7
+compressi), sotto i limiti di itch.io, Newgrounds, Game Jolt e CrazyGames.
+Riproducibile (file in ordine, data fissa: quella della versione
+dell'originale, 0.250125).
+
+**Prova del portale** (`game/test/browser/portal.mjs`): lo zip si estrae
+in una sottocartella (`/portal/html5/535/`) e si apre in un iframe di
+un'altra origine senza `allowfullscreen`, come fanno i portali. Controlla
+che ogni richiesta resti nella sottocartella (percorsi relativi) e nessuna
+fallisca, che menu e room partano e facciano 1500 passi senza errori, che
+lo schermo intero risulti non permesso (il pulsante non compare: ripiego
+di §4.1) e che salvare e ricaricare dallo slot funzioni dentro l'iframe.
+
+**Da fare una volta (autore)**: attivare GitHub Pages con sorgente "GitHub
+Actions" (Settings → Pages). Finché non è attivo, il passo di
+pubblicazione su `main` fallisce; la build e le prove no.

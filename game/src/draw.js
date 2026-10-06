@@ -24,6 +24,14 @@ export function gmString(v) {
   return String(v);
 }
 
+// I font hanno l'ASCII piu' le lettere accentate composte da
+// tools/05_atlas.py (IT, ES, PT, DE, FR); il resto delle traduzioni si
+// riduce a lettere ASCII qui.
+const SUBST = { "ß": "ss", "œ": "oe", "Œ": "Oe", "æ": "ae", "Æ": "Ae", "’": "'", "‘": "'", "“": "\"", "”": "\"",
+                "«": "\"", "»": "\"", "–": "-", "—": "-", "…": "...", "\u00a0": " ", "\u202f": " " };
+const SUBST_RE = new RegExp("[" + Object.keys(SUBST).join("") + "]", "g");
+const plain = (s) => s.replace(SUBST_RE, (ch) => SUBST[ch]);
+
 export class Draw {
   constructor(r, assets) {
     this.r = r;
@@ -183,7 +191,7 @@ export class Draw {
 
   _lines(str, sep, width) {
     const f = this._font();
-    const lines = gmString(str).split(/#|\n/);
+    const lines = plain(gmString(str)).split(/#|\n/);
     if (width === undefined || width < 0 || !f) return lines;
     const out = [];
     for (const line of lines) {
@@ -209,6 +217,20 @@ export class Draw {
       if (g) w += g[4];
     }
     return w;
+  }
+
+  // Quanto allargare una scheda (pannello in basso a sinistra, testi da
+  // x=40, scorciatoia allineata a destra) perche' ci stiano titolo,
+  // descrizione su una riga e scorciatoia: 0 se ci stanno gia', come in
+  // inglese; serve ai testi tradotti piu' lunghi.
+  panelExtra(right, title, desc, shortcut) {
+    const font = this.font;
+    this.setFont("GUI_1");
+    const tw = this.stringWidth(title), sw = shortcut ? this.stringWidth(shortcut) : 0;
+    this.setFont("overdue");
+    const dw = desc ? this.stringWidth(desc) : 0;
+    this.setFont(font);
+    return Math.max(0, Math.ceil(Math.max(40 + dw + 20, 40 + tw + 30 + sw + 20) - right));
   }
 
   stringWidth(str) {
@@ -250,10 +272,10 @@ export class Draw {
       for (const ch of line) {
         const g = f.glyphs[ch.charCodeAt(0)];
         if (!g) continue;
-        const [gx, gy, gw, gh, shift, off] = g;
+        const [gx, gy, gw, gh, shift, off, yoff = 0] = g;
         if (gw > 0 && gh > 0) {
-          const x0 = xx + off;
-          this.r.quad(fr.tex, x0, yr, x0 + gw, yr, x0 + gw, yr + gh, x0, yr + gh,
+          const x0 = xx + off, y0 = yr + yoff;
+          this.r.quad(fr.tex, x0, y0, x0 + gw, y0, x0 + gw, y0 + gh, x0, y0 + gh,
                       ou + gx, ov + gy, ou + gx + gw, ov + gy + gh, col);
         }
         xx += shift;

@@ -1,0 +1,124 @@
+name: Build, prove e pubblicazione
+
+# Fase 5 (STUDIO.md §5.1). Il repo versiona la fonte (gli zip del progetto
+# GameMaker, data/, src/, il motore in game/src/); atlas, maschere, scene e
+# bundle sono derivati e non versionati: questa pipeline li rigenera dagli
+# zip a ogni push, prova il gioco in Chromium e prepara lo zip per i
+# portali. Su main pubblica il gioco su GitHub Pages (come NIMBUS,
+# n_redux: deploy-pages.yml).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Pillow (unica dipendenza della pipeline)
+        run: pip install pillow
+
+      - name: Progetto GameMaker dagli zip (tools/01)
+        run: python3 tools/01_unpack.py
+
+      # data/, src/ e animTables.js sono generati ma versionati: rigenerati
+      # devono restare identici (nessuno li ha modificati a mano, e il
+      # tool che li produce e' allineato ai file)
+      - name: File generati e versionati allineati (tools/02, 08)
+        run: |
+          python3 tools/02_extract.py > /dev/null
+          python3 tools/08_anim.py > /dev/null
+          git diff --stat --exit-code -- data src game/src/animTables.js
+
+      - name: Atlas, maschere, scene (tools/05-07)
+        run: |
+          python3 tools/05_atlas.py
+          python3 tools/06_masks.py
+          python3 tools/07_scene.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+
+      - name: Dipendenze (esbuild)
+        working-directory: game
+        run: npm ci
+
+      - name: Test unitari
+        working-directory: game
+        run: npm test
+
+      - name: Bundle
+        working-directory: game
+        run: npm run build
+
+      - name: Zip per i portali (tools/10)
+        run: python3 tools/10_zip.py
+
+      # Playwright solo qui (non e' fra le dipendenze del progetto): le prove
+      # nel browser lo trovano in game/node_modules
+      - name: Playwright e Chromium
+        working-directory: game
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Prove nel browser (soak, salvataggi, zip in un iframe)
+        run: |
+          python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
+          for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
+          node game/test/browser/soak.mjs http://localhost:8123 3000
+          node game/test/browser/saves.mjs http://localhost:8123 4000
+          node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 535-collapse-web
+          path: build/535-collapse-web.zip
+          if-no-files-found: error
+
+      # il sito pubblicato e' lo zip dei portali, estratto
+      - name: Sito per Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p build/site
+          unzip -q build/535-collapse-web.zip -d build/site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

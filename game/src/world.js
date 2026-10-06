@@ -41,6 +41,7 @@ export class World {
     this.grid = new Map();
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
+    this.particles = null; // particles.js (app.js)
   }
 
   // Avvio della room [I, runner GMS]: prima esistono TUTTE le istanze della
@@ -121,6 +122,11 @@ export class World {
 
   _list(name) {
     return this.byName.get(name) || [];
+  }
+
+  // room_goto: app.js ricarica la pagina sulla room
+  gotoRoom(name) {
+    if (this.hooks.roomGoto) this.hooks.roomGoto(name);
   }
 
   // a fine passo: via le istanze distrutte dalle liste dell'indice
@@ -518,11 +524,21 @@ export class World {
     return this.instances.filter((i) => i.alive).sort((a, b) => b.depth - a.depth || a.id - b.id);
   }
 
-  draw(r, d, cam) {
+  // `manager`: il Draw End del manager, che non e' un'istanza del mondo
+  // (manager.js) e ha depth -1 [C]: gira fra i Draw End delle istanze, prima
+  // di quelle con depth <= -1 (a pari depth il manager e' creato per primo).
+  // Conta per la nebbia: barre della vita, cerchi di selezione e numeri dei
+  // gruppi (Draw End delle unita', depth -y) restano sopra nebbia e notte.
+  //
+  // I sistemi di particelle (this.particles) si disegnano da soli alla loro
+  // depth fra le istanze del Draw; a pari depth dopo le istanze [I].
+  draw(r, d, cam, manager = null) {
     const vx0 = cam.x, vy0 = cam.y, vx1 = cam.x + cam.w, vy1 = cam.y + cam.h;
     const list = this.sorted();
-    let drawn = 0;
+    const P = this.particles, systems = P ? P.sorted() : [];
+    let drawn = 0, si = 0;
     for (const i of list) {
+      while (si < systems.length && systems[si].depth > i.depth) P.draw(systems[si++], r, this.assets, cam);
       if (!i.visible) continue;
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
@@ -531,7 +547,13 @@ export class World {
       if (drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }
-    for (const i of list) if (i.visible) this.fire(i, "drawEnd", d);
+    while (si < systems.length) P.draw(systems[si++], r, this.assets, cam);
+    let managerDone = !manager;
+    for (const i of list) {
+      if (!managerDone && i.depth <= -1) { manager(); managerDone = true; }
+      if (i.visible) this.fire(i, "drawEnd", d);
+    }
+    if (!managerDone) manager();
     this.drawn = drawn;
   }
 

@@ -77,6 +77,9 @@ export class Renderer {
     this.software = this.slowContext || SOFTWARE.test(this.rendererString);
     this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     this.units = Math.min(16, gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
+    // cresce a ogni contesto nuovo: chi tiene oggetti GL propri (fogdraw.js)
+    // sa che deve ricrearli
+    this.generation = (this.generation || 0) + 1;
     this._createPipeline();
   }
 
@@ -132,7 +135,12 @@ export class Renderer {
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.disable(gl.DEPTH_TEST);
     this.count = 0;
+    // slots[i] = la texture legata ADESSO all'unita' i (specchio dello stato
+    // GL, valido anche fra un fotogramma e l'altro: ogni bindTexture passa
+    // da _unit). Serve anche a slegare una superficie prima di disegnarci.
     this.slots = new Array(this.units).fill(null);
+    this.used = new Uint8Array(this.units); // unita' lette dal lotto in corso
+    this.evict = 0;
   }
 
   // --------------------------------------------------------------- texture
@@ -141,17 +149,22 @@ export class Renderer {
   // sfondi ripetuti; le pagine d'atlas restano CLAMP.
   createTexture(bitmap, repeat = false) {
     const gl = this.gl;
-    const tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
+    const t = { tex: gl.createTexture(), width: bitmap.width, height: bitmap.height, bytes: bitmap.width * bitmap.height * 4 };
+    this._bindForEdit(t);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     const wrap = repeat ? gl.REPEAT : gl.CLAMP_TO_EDGE;
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
-    const t = { tex, width: bitmap.width, height: bitmap.height, bytes: bitmap.width * bitmap.height * 4 };
     this.textures.add(t);
     return t;
+  }
+
+  // Lega `t` a un'unita' e la rende attiva, per texImage2D & co.
+  _bindForEdit(t) {
+    this.flush();
+    this.gl.activeTexture(this.gl.TEXTURE0 + this._unit(t));
   }
 
   deleteTexture(t) {
@@ -160,6 +173,99 @@ export class Renderer {
     this.textures.delete(t);
     const i = this.slots.indexOf(t);
     if (i >= 0) this.slots[i] = null;
+  }
+
+  // Texture a un canale (LUMINANCE: si legge come grigio, alpha 1) per dati
+  // a bassa risoluzione, filtrata linearmente. Piena di zeri.
+  createDataTexture(w, h) {
+    const gl = this.gl;
+    const t = { tex: gl.createTexture(), width: w, height: h, bytes: w * h };
+    this._bindForEdit(t);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, w, h, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(w * h));
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.textures.add(t);
+    return t;
+  }
+
+  // Copia il rettangolo [x, x+w) x [y, y+h) di `data` (righe lunghe
+  // `rowLength`) nella stessa posizione della texture.
+  uploadDataRegion(t, x, y, w, h, data, rowLength) {
+    if (w <= 0 || h <= 0) return;
+    const gl = this.gl;
+    this._bindForEdit(t); // i quad in attesa devono vedere i dati vecchi
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, rowLength);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, x);
+    gl.pixelStorei(gl.UNPACK_SKIP_ROWS, y);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+  }
+
+  // Superficie su cui disegnare (surface_create di GameMaker, ma piccola):
+  // texture RGBA + framebuffer. Si usa come una texture qualunque in quad();
+  // le righe sono capovolte (v da height a 0).
+  createTarget(w, h) {
+    const gl = this.gl;
+    const t = { tex: gl.createTexture(), fb: gl.createFramebuffer(), width: w, height: h, bytes: w * h * 4 };
+    this._bindForEdit(t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t.tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    this.textures.add(t);
+    return t;
+  }
+
+  deleteTarget(t) {
+    if (!t) return;
+    this.gl.deleteFramebuffer(t.fb);
+    this.deleteTexture(t);
+  }
+
+  // surface_set_target: da qui si disegna sulla superficie, che copre il
+  // rettangolo di room (x, y, w, h) e parte pulita col colore `clearRGB`.
+  // Le superfici si possono annidare (la notte dentro lo sfondo sfumato del
+  // menu di pausa): endTarget torna alla precedente.
+  beginTarget(t, x, y, w, h, clearRGB) {
+    const gl = this.gl;
+    this.flush();
+    // la texture della superficie non deve restare legata a un'unita' mentre
+    // ci si disegna sopra (ciclo di retroazione, errore di WebGL2)
+    for (let i = 0; i < this.slots.length; i++) {
+      if (this.slots[i] !== t) continue;
+      gl.activeTexture(gl.TEXTURE0 + i);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      this.slots[i] = null;
+    }
+    (this.targets || (this.targets = [])).push({ t, proj: this.proj });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
+    gl.viewport(0, 0, t.width, t.height);
+    gl.clearColor(clearRGB[0], clearRGB[1], clearRGB[2], 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    this.setProjection(x, y, w, h);
+  }
+
+  // surface_reset_target
+  endTarget() {
+    const gl = this.gl;
+    this.flush();
+    const { proj } = this.targets.pop();
+    const outer = this.targets.length ? this.targets[this.targets.length - 1].t : null;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, outer ? outer.fb : null);
+    gl.viewport(0, 0, outer ? outer.width : this.canvas.width, outer ? outer.height : this.canvas.height);
+    this.setProjection(...proj);
   }
 
   textureBytes() {
@@ -175,6 +281,7 @@ export class Renderer {
   setProjection(x, y, w, h) {
     this.flush();
     this.gl.uniform4f(this.uView, x, y, w, h);
+    this.proj = [x, y, w, h];
   }
 
   // draw_set_blend_mode [C: bm_normal, bm_add, bm_subtract nel codice].
@@ -204,24 +311,27 @@ export class Renderer {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(clearRGB[0], clearRGB[1], clearRGB[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    this.targets = [];
     gl.uniform4f(this.uView, view.x, view.y, view.w, view.h);
+    this.proj = [view.x, view.y, view.w, view.h];
     this.stats.drawCalls = 0;
     this.stats.quads = 0;
-    this.slots.fill(null);
     this.blend = null;
     this.setBlend("normal");
   }
 
   _unit(t) {
     let i = this.slots.indexOf(t);
-    if (i >= 0) return i;
+    if (i >= 0) { this.used[i] = 1; return i; }
     i = this.slots.indexOf(null);
+    if (i < 0) i = this.used.indexOf(0);
     if (i < 0) {
+      // unita' tutte lette dal lotto: lo si svuota e se ne riusa una a turno
       this.flush();
-      this.slots.fill(null);
-      i = 0;
+      i = this.evict++ % this.units;
     }
     this.slots[i] = t;
+    this.used[i] = 1;
     const gl = this.gl;
     gl.activeTexture(gl.TEXTURE0 + i);
     gl.bindTexture(gl.TEXTURE_2D, t.tex);
@@ -247,6 +357,7 @@ export class Renderer {
   }
 
   flush() {
+    this.used.fill(0);
     if (!this.count) return;
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);

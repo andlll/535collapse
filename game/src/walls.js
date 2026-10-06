@@ -19,6 +19,7 @@
 // quanto pagato (n.28); la scheda della porta in view_hport (n.29); la
 // porta e' percorribile per il giocatore e ostacolo per i nemici.
 
+import { tr } from "./i18n.js";
 import { pointDirection } from "./gm.js";
 import { panel, lifeBar, repairEnd, sendRepair, armBuilders } from "./buildings.js";
 
@@ -256,12 +257,14 @@ export function mplus(name) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 390, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Wall"), desc = tr("Structure that can be built in both directions.");
+      const ex = dr.panelExtra(390, title, desc, null);
+      dr.roundrectColourExt(20, H - 150, 390 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Wall");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, H - 90, "Structure that can be built in both directions.");
+      dr.text(40, H - 90, desc);
       dr.setFont("GUI_1");
       dr.text(40, H - 50, "40");
       dr.setAlpha(1);
@@ -418,16 +421,18 @@ export function gateClicker() {
       if (i.hover !== 1) return;
       const H = w.cam.cssH, Hp = H;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 370, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Gate"), desc = tr("Creates a self-opening gate in the wall."), sc = tr("Shortcut: {key}", { key: "Q" });
+      const ex = dr.panelExtra(370, title, desc, sc);
+      dr.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Gate");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, Hp - 90, "Creates a self-opening gate in the wall.");
+      dr.text(40, Hp - 90, desc);
       dr.setFont("GUI_1");
       dr.text(40, H - 50, "100");
       dr.setHalign("right");
-      dr.text(350, H - 120, "Shortcut: Q");
+      dr.text(350 + ex, H - 120, sc);
       dr.setAlpha(0.99);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);

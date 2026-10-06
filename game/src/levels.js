@@ -7,9 +7,8 @@
 // scr_aggr_interval. Nomi originali.
 //
 // Dialoghi, suggerimenti e vittoria (dialogo_*, hint_*, victory_manager)
-// non sono ancora portati: si creano solo se esiste il loro comportamento
-// (createIfPorted), cosi' la regia funziona gia' e li mostrera' quando
-// arriveranno.
+// stanno in hints.js ed endgame.js; la regia li crea con createIfPorted,
+// che resta per gli oggetti non ancora portati.
 
 import { irandomRange, pointDistance } from "./gm.js";
 import { freeSpawnEnemy } from "./enemies.js";
@@ -275,7 +274,8 @@ function lvl01Gates(w) {
 // costruzione, prima degli Step delle istanze).
 export function levelStep(w) {
   const g = w.g;
-  // trucco della nebbia: tutti i nemici visibili
+  // trucco della nebbia: tutti i nemici visibili [Difetto corretto, §3.2
+  // n.9: l'originale leggeva la variabile d'istanza fogville, mai assegnata]
   if (g.fogville === 0) for (const e of w.all("enemy")) e.visible = true;
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);
@@ -366,7 +366,10 @@ export function enemyManagerLv2(p) {
       }
       // [Deviazione decisa dall'autore, §0.15 e §1.2] anche l'area 7 conta
       // (l'originale controllava solo le aree 1–6)
-      if ([1, 2, 3, 4, 5, 6, 7].every((k) => i["l" + k] === 1) && w.number("enemy_build") === 0) {
+      // [Correzione decisa dall'autore, §3.14 n.53] la vittoria si crea
+      // una volta sola (l'originale ne creava una a ogni passo)
+      if (i.won !== 1 && [1, 2, 3, 4, 5, 6, 7].every((k) => i["l" + k] === 1) && w.number("enemy_build") === 0) {
+        i.won = 1;
         createIfPorted(w, "victory_manager", 0, 0);
       }
     },

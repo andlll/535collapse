@@ -11,6 +11,7 @@
 // con mp_potential_step. Gli attaccanti delle ondate (role 30/31/32,
 // scr_attacca) arrivano col punto 4e.
 
+import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField } from "./pathing.js";
@@ -235,7 +236,10 @@ export function enemyMelee(name, p) {
       Object.assign(i, { action: 0, idling: 1, step: 0, phase: 1, hov: 0, hover: 0, warwork: 0, dc: 0, autospeed: 0,
                          firework: 0, defender: 0, targetid: null, chargespeed: 0, hit: 0, selected: 0, role: 0,
                          targetx: 0, targety: 0, foodx: 0, foody: 0, dirox: 0, diroy: 0 });
-      // (global.dialogoenemy1: con i dialoghi del livello 1)
+      // global.dialogoenemy1 [C]: il guerriero lo rimette a 0, il picchiere a
+      // 0 nel livello 1 e a 2 altrove (il dialogo e' solo del livello 1)
+      if (name === "enemy_warrior") g.dialogoenemy1 = 0;
+      if (name === "enemy_picchiere") g.dialogoenemy1 = w.room === "lvl01" ? 0 : 2;
       g.order++;
       i.ordo = g.order * T.rank;
       i.life = T.life;
@@ -317,7 +321,17 @@ export function enemyMelee(name, p) {
       }
       if (w.number("torre_placer") > 0) g.sele = 1;
       if (T.fire) enemyFireHouses(i, w);
-      // (hint_attack e dialogo_1_4: con suggerimenti e dialoghi)
+      if (name === "enemy_picchiere") {
+        // "hint attaccare" [C]: il puntatore entro 60 px, con soldati selezionati
+        hintOnce(w, "hint_attack", "attackhint", i.x, i.y,
+                 pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 60 && g.milsel > 0);
+        // "dialogo livello 1" [C]: un guerriero alleato entro 300 px, se non
+        // c'e' un altro dialogo aperto (§3.19 n.69)
+        if (w.exists("ally_unit") && g.dialogoenemy1 === 0 && w.room === "lvl01" && !dialogOpen(w)) {
+          const war = w.nearest(i.x, i.y, "ally_warrior");
+          if (war && w.distanceToInstance(i, war) < 300) { w.create("dialogo_1_4", i.x, i.y); g.dialogoenemy1 = 1; }
+        }
+      }
       enemyAttack(i, w, T);
     },
     // Mouse_LeftReleased [C]: un nemico si puo' selezionare (per vederne la

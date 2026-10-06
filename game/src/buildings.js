@@ -11,6 +11,9 @@
 // cantiere e campo finito sono a parte (campoFond, campo). Le mura
 // (orientamento, tratti, porte) sono a parte (da fare).
 
+import { tr } from "./i18n.js";
+import { hintOnce } from "./hints.js";
+import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
 
@@ -134,20 +137,22 @@ export function clicker(fam) {
     drawGUI(i, w, dr) {
       if (i.hover !== 1 && i.active !== 1) return;
       const H = w.cam.cssH, P = d.panel;
+      const title = tr(P.title), desc = tr(P.desc), sc = tr("Shortcut: {key}", { key: P.shortcut[0].slice(-1) });
+      const ex = dr.panelExtra(P.w, title, desc, sc);
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, P.w, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
+      dr.roundrectColourExt(20, H - 150, P.w + ex, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, P.title);
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, H - 90, P.desc);
+      dr.text(40, H - 90, desc);
       dr.setFont("GUI_1");
       for (const [txt, tx] of P.costs) dr.text(tx, H - 50, txt);
       dr.setAlpha(1);
       for (const [, , ico, ix] of P.costs) dr.sprite(ico, 0, ix, H - 50);
       dr.setAlpha(0.7);
       dr.setHalign("right");
-      dr.text(P.shortcut[1], H - 120, P.shortcut[0]);
+      dr.text(P.shortcut[1] + ex, H - 120, sc);
       if (!d.noRing) {
         dr.setAlpha(0.99);
         dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
@@ -389,11 +394,10 @@ export function built(fam, p) {
       if (fam === "barn") { i.sprite_index = "mul1"; i.image_index = 0; i.image_speed = 0.3; i.mask_index = "barn_mask"; w.moved(i); }
       if (fam === "magazzino") sendBuildersToWork(i, w, p);
     },
-    destroy(i) { p.markInstance(i, 1); },
-    // Alarm del fuoco [C]: fumo (nubeqq) e -1 vita ogni 70 passi in fiamme
-    // (il fumo e le fiamme arrivano con le particelle; nella casa
-    // l'originale distrugge le fiamme alte al passo dopo: §3.5 n.18, da
-    // correggere quando si portano le particelle).
+    // Destroy [C]: celle libere e, per gli edifici di legno, via le fiamme
+    destroy(i, w) { p.markInstance(i, 1); if (b.fire) fireStop(i, w); },
+    // Alarm del fuoco [C]: fumo (nubeqq) e -1 vita ogni 70 passi in fiamme.
+    // Le fiamme (particelle) sono nello Step: effects.js, fireStep.
     ...(b.fire ? {
       ["alarm" + b.smoke[0]](i, w) {
         i.alarm.set(b.smoke[0], b.smoke[1]);
@@ -412,6 +416,15 @@ export function built(fam, p) {
         return;
       }
       repairEnd(i, w);
+      // casa Step, "casa hint" [C]: il puntatore entro 80 px
+      if (fam === "casa") {
+        hintOnce(w, "hint_pop", "casahint", i.x, i.y,
+                 pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.resourcehint === 1);
+      }
+      // [Correzione decisa dall'autore, §3.5 n.18] nella casa l'originale
+      // distruggeva le fiamme dietro a ogni passo (un if senza graffe nella
+      // "fine riparazione"): qui la casa brucia come gli altri edifici.
+      if (b.fire) fireStep(i, w, fam);
       if (b.damage) {
         const [ok, r1, r2] = b.damage;
         if (i.life > i.slife * 0.66 && i.sprite_index !== ok) i.sprite_index = ok;
@@ -501,14 +514,19 @@ export function campoFond(p) {
       i.depth = -1;
       w.g.sele = 0;
       i.alarm.set(0, 1);
-      // (l'erba che cresce, particelle "part_crop": col sistema di particelle)
+      campoFondCreate(i, w);
     },
     // Alarm_0 [C]: come gli altri cantieri, ma con fieldwork e il punto
     // del mouse al momento dell'alarm.
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
       if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
+      campoFondStream(i, w);
     },
+    // [Correzione decisa dall'autore, §3.17 n.57] i germogli spariscono
+    // con il cantiere anche quando lo si annulla con Canc (l'originale li
+    // distruggeva solo a campo finito)
+    destroy(i, w) { w.particles.systemDestroy(i.grass_system); },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.g.sele === 0) i.selected = 1; },
     rightReleased(i, w) {
@@ -526,14 +544,14 @@ export function campoFond(p) {
 // nessuno la legge (residuo, §3.6).
 export function campo(p) {
   return {
-    create(i) {
+    create(i, w) {
       p.markInstance(i, 1);
       Object.assign(i, { selected: 0, foodwork: 0, life: 100, slife: 100, onfire: 0, firestarted: 0,
                          food: 0, hover: 0, hit: 0 });
       i.alarm.set(0, 120);
       i.alarm.set(2, 30);
       i.alarm.set(3, 5);
-      // (le spighe, 700 particelle "part_crop": col sistema di particelle)
+      campoCreate(i, w);
     },
     alarm0(i) { i.alarm.set(0, 120); if (i.food < 200) i.food += 1; },
     alarm1(i) { i.foodwork = 0; },
@@ -542,11 +560,18 @@ export function campo(p) {
       if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
     },
     alarm3(i) { i.alarm.set(3, 5); if (i.onfire === 1) i.life -= 1; },
-    destroy(i, w) { w.g.farmhover = 0; },
-    step(i, w) { if (i.life <= 0) w.destroy(i); }, // (campo bruciato: col fuoco)
+    destroy(i, w) { w.g.farmhover = 0; campoDestroy(i, w); },
+    step(i, w) {
+      if (i.life <= 0) { w.destroy(i); return; }
+      campoStep(i, w);
+    },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
-    mouseEnter(i, w) { w.g.farmhover = 1; i.hover = 1; }, // (+ hint_campi coi suggerimenti)
+    mouseEnter(i, w) {
+      w.g.farmhover = 1;
+      hintOnce(w, "hint_campi", "foodhint", i.x, i.y, w.g.resourcehint === 1);
+      i.hover = 1;
+    },
     mouseLeave(i, w) { w.g.farmhover = 0; i.hover = 0; },
     rightReleased(i, w) {
       for (const c of w.all("centro")) if (c.selected === 1) Object.assign(c, { woodir: 0, goldir: 0, stonedir: 0, foodir: 1 });
@@ -596,7 +621,7 @@ export function centro(p) {
       // il centro e' anche deposito del cibo: un "mulino" invisibile sul posto
       w.create("cc_barn", i.x, i.y);
     },
-    destroy(i) { p.markInstance(i, 1); },
+    destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     // centro Alarm_2 e Alarm_3 [C]: fumo ogni 30 passi, -1 vita ogni 70
     alarm2(i, w) {
       i.alarm.set(2, 30);
@@ -614,8 +639,10 @@ export function centro(p) {
         // [Correzione decisa dall'autore §1.6 n.3] -10, quanto ha dato
         g.popcap -= 10;
         g.gameover = 1;
+        const flag = w.nearest(i.x, i.y - 100, "flag_r");
+        if (flag) w.destroy(flag);
         w.create("ccruin", i.x, i.y);
-        // + gameover_manager (con vittoria e sconfitta)
+        w.create("gameover_manager", 0, 0);
         w.destroy(i);
         return;
       }
@@ -628,6 +655,7 @@ export function centro(p) {
         for (const c of w.all("centro_indietro_clicker")) w.destroy(c);
       }
       repairEnd(i, w);
+      fireStep(i, w, "centro");
     },
     // Alarm_0 [C]: avanzamento della produzione (un punto ogni 10 passi);
     // a 100 nasce un civile, se c'e' posto nella popolazione, e va verso la
@@ -749,12 +777,14 @@ export function ominoClicker() {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 370, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Worker"), desc = tr("Gathers resources and builds the town."), sc = tr("Shortcut: {key}", { key: "Q" });
+      const ex = dr.panelExtra(370, title, desc, sc);
+      dr.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Worker");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, H - 90, "Gathers resources and builds the town.");
+      dr.text(40, H - 90, desc);
       dr.setFont("GUI_1");
       dr.text(40, H - 50, "50");
       dr.text(120, H - 50, "1");
@@ -763,7 +793,7 @@ export function ominoClicker() {
       dr.spriteExt("ico_multi", 0, 150, H - 50, 0.5, 0.5, 0, WHITE, 1);
       dr.setAlpha(0.7);
       dr.setHalign("right");
-      dr.text(350, H - 120, "Shortcut: Q");
+      dr.text(350 + ex, H - 120, sc);
       dr.setAlpha(0.99);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
@@ -803,17 +833,19 @@ export function centroCancel() {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 340, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Cancel"), sc = tr("Shortcut: {key}", { key: "W" });
+      const ex = dr.panelExtra(340, title, null, sc);
+      dr.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Cancel");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
       dr.setValign("top");
-      dr.textExt(40, H - 100, "Cancel the last unit in the creation queue.", 30, 280);
+      dr.textExt(40, H - 100, tr("Cancel the last unit in the creation queue."), 30, 280 + ex);
       dr.setValign("middle");
       dr.setFont("GUI_1");
       dr.setHalign("right");
-      dr.text(320, H - 120, "Shortcut: W");
+      dr.text(320 + ex, H - 120, sc);
       dr.setAlpha(0.99);
       dr.circleColour(520, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);

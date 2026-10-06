@@ -8,6 +8,7 @@
 // mp_potential_step (azione drag & drop action_potential_step) verso
 // dirox/diroy, e non hanno `ordo` [C].
 
+import { fireFlare } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep } from "./pathing.js";
@@ -376,16 +377,24 @@ export function bloodSplat() {
 
 // fire_bullet [C]: la freccia incendiaria (gira su se stessa, 50 passi di
 // vita). Toccando un edificio di legno lo incendia (onfire=1) e lo
-// danneggia: -5, il centro -3, il campo -20. (La fiammata di 300
-// particelle arriva col sistema di particelle.)
+// danneggia: -5, il centro -3, il campo -20, con una fiammata di 300
+// particelle (effects.js). Le casse del livello 1 prendono fuoco solo sopra
+// meta' vita.
 const FIRE_HIT = { casa: 5, barn: 5, caserma: 5, magazzino: 5, stalla: 5, centro: 3, campo: 20,
                    enemy_house: 5, enemy_caserma: 5, enemy_stalla: 5 };
 export function fireBullet() {
   const collisions = {};
   for (const [name, dmg] of Object.entries(FIRE_HIT)) {
-    collisions[name] = (i, w, other) => { other.onfire = 1; other.life -= dmg; w.destroy(i); };
+    collisions[name] = (i, w, other) => { other.onfire = 1; other.life -= dmg; fireFlare(w, i.x, i.y); w.destroy(i); };
   }
-  // (o_box1, o_box2: le casse del livello 1, col punto 4e)
+  for (const name of ["o_box1", "o_box2"]) {
+    collisions[name] = (i, w, other) => {
+      if (other.life > other.slife / 2) other.onfire = 1;
+      other.life -= 5;
+      fireFlare(w, i.x, i.y);
+      w.destroy(i);
+    };
+  }
   return {
     create(i) { i.alarm.set(0, 50); },
     alarm0(i, w) { w.destroy(i); },
