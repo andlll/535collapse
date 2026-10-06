@@ -14,13 +14,19 @@
 // - Dietro, la battaglia: le unita' della room si attaccano a ondate (ogni
 //   9000 passi, la prima dopo 120) e la nebbia passa.
 //
+// - [Fase 4] "Load game" (in alto a destra): le partite salvate di ogni
+//   room (save.js, una per room, con la data) e "Load from file"; "Full
+//   screen" in alto a sinistra (dove il browser lo permette).
+//
 // [Decisioni dell'autore, §0.14/§0.15] lo sblocco e' persistente e parte da
 // 1 (l'originale lo rimetteva a 2 a ogni apertura del menu); i livelli 3-10
 // sono nell'elenco "in arrivo" (non giocabili). [§3.20, testi] i testi
 // passano da tr().
 
 import { c, makeColourRgb, mergeColour } from "./colours.js";
-import { tr } from "./i18n.js";
+import { tr, getLanguage } from "./i18n.js";
+import { slotInfo, SAVE_ROOMS } from "./save.js";
+import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
 import { irandomRange } from "./gm.js";
 
@@ -39,6 +45,34 @@ const WHEEL_X = [-240, -120, 0, 120, 240];
 
 const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 
+// [Fase 4] il pulsante "Load game" e il pannello delle partite salvate
+const LOAD_BTN = (W) => [W - 340, 20, W - 20, 80];
+const FULL_BTN = [20, 20, 340, 80];
+const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
+export function roomLabel(room) {
+  if (room === "match") return tr("Tutorial");
+  const n = { lvl01: 1, lvl02: 2 }[room];
+  return n ? n + ". " + tr(LEVELS[n - 1]) : room;
+}
+function loadRows(W, H) {
+  const rows = [];
+  for (const room of SAVE_ROOMS) {
+    const info = slotInfo(room);
+    if (!info) continue;
+    let date = "";
+    try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
+    rows.push({ label: roomLabel(room) + "  -  " + date, action: "slot", room });
+  }
+  if (!rows.length) rows.push({ label: tr("No saved games"), action: null });
+  rows.push({ label: tr("Load from file"), action: "file" });
+  rows.push({ label: tr("Back"), action: "back" });
+  const total = rows.length * ROW_H + (rows.length - 1) * ROW_GAP;
+  let y = Math.max(140, (H - total) / 2);
+  const x1 = W / 2 - PANEL_W / 2 + 30, x2 = W / 2 + PANEL_W / 2 - 30;
+  for (const r of rows) { Object.assign(r, { x1, y1: y, x2, y2: y + ROW_H }); y += ROW_H + ROW_GAP; }
+  return rows;
+}
+
 export function enemyManagerMenu() {
   return {
     create(i, w) {
@@ -50,11 +84,15 @@ export function enemyManagerMenu() {
         w.create("fog_controller", x, y);
       }
       i.testo = irandomRange(1, 8);
-      i.testo_c = "null";
+      // [Correzione decisa dall'autore, §3.20 n.73] l'originale partiva da
+      // "null", che si leggeva nel riquadro: vuoto finche' non si tocca un
+      // livello
+      i.testo_c = "";
       i.testo_h = 0;
       if (g.campagna !== 1) g.campagna = 0;
       Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0,
-                         comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0 });
+                         comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
+                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0 });
     },
     // Alarm_0 [C]: le unita' ferme vanno contro il nemico piu' vicino
     alarm0(i, w) {
@@ -79,9 +117,17 @@ export function enemyManagerMenu() {
     stepEnd(i, w) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH, mx = w.input.x, my = w.input.y;
       g.sele = -1; // nel menu le unita' non si selezionano
-      if (g.campagna === 0) {
+      if (g.campagna === 0 && i.loadmenu === 0) {
         i.hover = +inRect(mx, my, W / 2 - 200, H - 400, W / 2 + 200, H - 300);
         i.campagnahover = +inRect(mx, my, W / 2 - 200, H - 200, W / 2 + 200, H - 100);
+        i.loadhover = +inRect(mx, my, ...LOAD_BTN(W));
+        i.fullhover = +(fullscreenAvailable() && inRect(mx, my, ...FULL_BTN));
+      } else {
+        i.hover = i.campagnahover = i.loadhover = i.fullhover = 0;
+      }
+      i.loadrow = -1;
+      if (g.campagna === 0 && i.loadmenu === 1) {
+        loadRows(W, H).forEach((r, k) => { if (r.action && inRect(mx, my, r.x1, r.y1, r.x2, r.y2)) i.loadrow = k; });
       }
       if (g.campagna === 1) {
         i.c_indhover = +inRect(mx, my, W - 80, 20, W - 20, 70);
@@ -103,9 +149,22 @@ export function enemyManagerMenu() {
       }
       if (i.redamount > 0) i.redamount -= 0.03125;
     },
-    keyPress27(i, w) { if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0; },
+    keyPress27(i, w) {
+      if (i.loadmenu === 1) { i.loadmenu = 0; return; }
+      if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0;
+    },
     globalLeftReleased(i, w) {
       const g = w.g, mx = w.input.x, my = w.input.y;
+      if (g.campagna === 0 && i.loadmenu === 1) {
+        const r = loadRows(w.cam.cssW, w.cam.cssH)[i.loadrow];
+        if (!r) return;
+        if (r.action === "back") i.loadmenu = 0;
+        if (r.action === "slot" && w.hooks.loadSlot) w.hooks.loadSlot(r.room);
+        if (r.action === "file" && w.hooks.loadFile) w.hooks.loadFile();
+        return;
+      }
+      if (g.campagna === 0 && i.loadhover === 1) { i.loadmenu = 1; i.loadhover = 0; return; }
+      if (g.campagna === 0 && i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
       if (g.campagna === 0) {
         if (i.hover === 1) { w.gotoRoom("match"); return; }
         if (i.campagnahover === 1) { g.campagna = 1; return; }
@@ -134,7 +193,8 @@ export function enemyManagerMenu() {
     drawGUI(i, w, d) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH;
       d.setBlend("normal");
-      if (g.campagna === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.loadmenu === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.loadmenu === 1) drawLoad(i, d, W, H);
       if (g.campagna === 1) drawCampaign(i, g, d, W, H);
       d.setAlpha(1);
       d.setColour(c.white);
@@ -143,6 +203,10 @@ export function enemyManagerMenu() {
 }
 
 function drawTitle(i, d, W, H) {
+  // [Fase 4] "Load game"
+  const [lx1, ly1, lx2, ly2] = LOAD_BTN(W);
+  d.setAlpha(i.loadhover ? 0.99 : 0.69);
+  d.roundrectColourExt(lx1, ly1, lx2, ly2, 60, 60, c.white, c.white, false);
   d.setAlpha(i.campagnahover ? 0.99 : 0.69);
   d.roundrectColourExt(W / 2 - 200, H - 200, W / 2 + 200, H - 100, 60, 60, c.white, c.white, false);
   d.setAlpha(i.hover ? 0.99 : 0.69);
@@ -154,6 +218,14 @@ function drawTitle(i, d, W, H) {
   d.setAlpha(0.75);
   d.text(W / 2, H - 150, tr("Campaign - Collapse"));
   d.text(W / 2, H - 350, tr("Play the tutorial"));
+  d.text((lx1 + lx2) / 2, (ly1 + ly2) / 2, tr("Load game"));
+  if (fullscreenAvailable()) {
+    const [fx1, fy1, fx2, fy2] = FULL_BTN;
+    d.setAlpha(i.fullhover ? 0.99 : 0.69);
+    d.roundrectColourExt(fx1, fy1, fx2, fy2, 60, 60, c.white, c.white, false);
+    d.setAlpha(0.75);
+    d.text((fx1 + fx2) / 2, (fy1 + fy2) / 2, tr(isFullscreen() ? "Exit full screen" : "Full screen"));
+  }
   d.setFont("overdue");
   // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75]
   d.text(W / 2, H - 50, i.testo !== 8 ? "Mount Fuji Software, 2025"
@@ -164,6 +236,31 @@ function drawTitle(i, d, W, H) {
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre alte meno di 830 px: sale a meta' dello spazio libero
   d.sprite("logo535", 0, W / 2, Math.min(350, (H - 400) / 2));
+}
+
+// [Fase 4] le partite salvate, nello stile dei pulsanti del menu
+function drawLoad(i, d, W, H) {
+  const rows = loadRows(W, H);
+  const top = rows[0].y1 - 90, bottom = rows[rows.length - 1].y2 + 30;
+  d.setAlpha(0.69);
+  d.roundrectColourExt(W / 2 - PANEL_W / 2, top, W / 2 + PANEL_W / 2, bottom, 60, 60, c.white, c.white, false);
+  d.setHalign("center");
+  d.setValign("middle");
+  d.setColour(c.black);
+  d.setFont("gui_sblocco");
+  d.setAlpha(0.8);
+  d.text(W / 2, top + 45, tr("Load game"));
+  d.setFont("GUI_1");
+  rows.forEach((r, k) => {
+    if (r.action) {
+      d.setAlpha(i.loadrow === k ? 0.99 : 0.69);
+      d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+    }
+    d.setColour(c.black);
+    d.setAlpha(r.action ? 0.75 : 0.4);
+    d.text(W / 2, (r.y1 + r.y2) / 2, r.label);
+  });
+  d.setHalign("left");
 }
 
 function drawCampaign(i, g, d, W, H) {

@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>535 – Collapse</title>
+<!-- Icone (tools/09_icons.py, dal logo del gioco) e PWA: manifest
+     (schermo intero, orizzontale) e service worker (./sw.js, prima la
+     rete: installabile e avviabile offline, mai una build vecchia al posto
+     di quella online). -->
+<link rel="icon" type="image/png" href="./icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1b1d17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="535">
 <!-- Unico punto d'ingresso; percorsi sempre relativi, cosi' il gioco
      funziona in una sottocartella e nell'iframe dei portali. -->
 <style>
@@ -19,7 +30,12 @@
              max-width: min(90vw, 720px); padding: 10px 16px; border-radius: 8px;
              font: 15px/1.4 system-ui, sans-serif; color: #fff; background: #4a4f3c;
              pointer-events: none; /* i clic passano al gioco sotto */ }
-  #message.warning { background: #8a5a12; }
+  #message.warning, #toast.warning { background: #8a5a12; }
+  /* conferme brevi (salvataggi), in alto: non coprono gli avvisi del motore */
+  #toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%);
+           max-width: min(90vw, 720px); padding: 10px 16px; border-radius: 8px;
+           font: 15px/1.4 system-ui, sans-serif; color: #fff; background: #4a4f3c;
+           pointer-events: none; }
   #message.error { background: #8a1c12; }
   #diag { position: fixed; left: 8px; top: 8px; margin: 0; padding: 8px 10px;
           background: rgba(0, 0, 0, .72); color: #cfe8c8; border-radius: 6px;
@@ -30,6 +46,7 @@
 <canvas id="game"></canvas>
 <div id="loading"><div id="loading-text">Loading…</div><div id="loading-track"><div id="loading-bar"></div></div></div>
 <div id="message" hidden></div>
+<div id="toast" hidden></div>
 <pre id="diag" hidden></pre>
 <script type="module" src="./dist/app.js"></script>
 </body>

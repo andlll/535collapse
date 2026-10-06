@@ -18,9 +18,10 @@ Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
-(§3.19), menu principale, campagna e battaglia del menu (§3.20).
-**Prossimo: Fase 4** (salvataggi JSON, schermo intero, PWA). Il dettaglio
-di ogni voce sta nella sezione citata.
+(§3.19), menu principale, campagna e battaglia del menu (§3.20); Fase 4:
+salvataggi, schermo intero, PWA (§4.1). **Prossimo: Fase 5** (GitHub
+Actions e zip per i portali). Il dettaglio di ogni voce sta nella sezione
+citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -44,7 +45,13 @@ di ogni voce sta nella sezione citata.
   (statue, pali, bracieri), `particles.js`/`effects.js` (particelle e loro
   usi), `hints.js`/`endgame.js` (suggerimenti, dialoghi, fine partita),
   `menu.js` (menu principale e campagna), `pause.js`, `i18n.js`/`texts.js`
-  (traduzioni), `app.js` (registrazione dei comportamenti).
+  (traduzioni), `save.js`/`snapshot.js` (salvataggi), `fullscreen.js`,
+  `app.js` (registrazione dei comportamenti).
+- Prove: anche `game/test/browser/saves.mjs` (salva, ricarica, stato
+  identico). **Se cambia la forma dello stato** (campi delle istanze
+  rinominati o con un altro significato) si alza `SAVE_VERSION` in
+  `save.js`: i salvataggi vecchi diventano "non validi" invece di caricare
+  una partita incoerente.
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -58,7 +65,7 @@ di ogni voce sta nella sezione citata.
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
-- [ ] Difetti del menu principale n.73–n.75 (§3.20): lasciati come
+- [ ] Difetto n.74 del menu principale (§3.20): lasciato come
   nell'originale; da confermare.
 
 **Vertical slice su `match` (Fase 3)**
@@ -107,11 +114,11 @@ di ogni voce sta nella sezione citata.
 - [x] Fiamme alte della casa da non distruggere (§3.5 n.18, §3.16).
 
 **Fasi 4 e 5**
-- [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
-  esportabile/importabile).
+- [x] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
+  esportabile/importabile), slot per room e salvataggio automatico (§4.1).
 - [x] Opzioni nel menu di pausa (tetto fps, risoluzione dinamica,
   particelle) e traduzione dei testi del gioco in sei lingue (§3.19).
-- [ ] Pulsante schermo intero con ripiego; PWA.
+- [x] Pulsante schermo intero con ripiego; PWA (§4.1).
 - [ ] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
   zip per i portali verificato con Playwright in una sottocartella.
 
@@ -2343,21 +2350,24 @@ Draw_GUI, Mouse_GlobalLeftReleased, KeyPress_Escape], `fog_controller` e
   (n.72, corretto in "resistance"). Restano
   in originale "Collapse", la firma e la versione.
 
-**Difetti trovati** (da confermare con l'autore; lasciati come
-nell'originale salvo n.76):
+**Decisioni dell'autore** (6 ottobre 2026): "73 lascia vuoto, la 75 è un
+easter egg e va lasciato così". n.73: il riquadro della storia parte vuoto
+(corretto); n.75: resta. n.74 ancora da decidere.
+
+**Difetti trovati** (lasciati come nell'originale salvo n.73 e n.76):
 - **n.73**: il riquadro della storia misura il testo con righe da 40 px
   (`string_height_ext(testo_c,40,…)`) ma lo scrive con righe da 30: il
   riquadro resta più alto del testo. Prima di passare su un livello
   `testo_c` vale `"null"` [C, Create]: aprendo la campagna il riquadro in
-  basso mostra la parola "null". Raccomandazione: riquadro vuoto (o la
-  storia del livello 1) finché non si tocca un livello.
+  basso mostra la parola "null". **Corretto** (decisione dell'autore):
+  vuoto finché non si tocca un livello.
 - **n.74**: la riga evidenziata resta quella dell'ultimo livello toccato
   anche quando il puntatore esce dall'elenco (e un clic fuori dalla riga
   non la avvia).
 - **n.75**: una volta su otto (`irandom_range(1,8)==8`) al posto della
   firma compare una frase in italiano dell'autore ("Non mi interessa se
   sta roba non ingrana quando soffro d'insonnia…"): lasciata, non
-  tradotta. Da confermare se tenerla nell'uscita.
+  tradotta. **È un easter egg e resta** (decisione dell'autore).
 - **n.76** (corretto): il logo è a y=350 fisso e "Play the tutorial" a
   `altezza−400`: con finestre alte meno di circa 830 px il logo copre il
   pulsante. Qui il logo sale a metà dello spazio libero
@@ -2371,3 +2381,81 @@ livello 2 che apre `?room=lvl02&campaign=1`; vittoria simulata in `lvl01`
 avviato dalla campagna: sblocco a 2 e ritorno al menu della campagna;
 10000 passi del menu senza errori (0,85 ms per passo con SwiftShader,
 fino a 234 nuvole).
+
+---
+
+## Fase 4 — salvataggi, schermo intero, PWA (6 ottobre 2026)
+
+### 4.1 Salvataggi, schermo intero, PWA
+
+**Salvataggi** (`game/src/save.js`, `snapshot.js`; decisione dell'autore
+§0.10: "come NIMBUS"). L'originale non salva nulla [C, §0.6]. Il metodo è
+quello di n_redux (`game/src/save.js`): JSON esplicito con versione del
+formato e checksum leggero (FNV-1a con un sale, come NIMBUS: un numero
+cambiato a mano nel file lo rende non valido; non è una protezione vera,
+il gioco è tutto nel browser), uno slot nel browser e un file.
+- **Cosa si salva**: in NIMBUS lo stato erano poche liste; qui è il mondo
+  intero. Le istanze, nell'ordine di creazione (conta per l'ordine degli
+  eventi), con tutti i campi, l'id successivo, `global.*`, gli allarmi del
+  manager (notte, pioggia, orologio), la griglia dei costi e quella delle
+  porte, la scoperta della nebbia, i sistemi di particelle con le
+  particelle vive (l'erba decorativa sono particelle che durano per
+  sempre), posizione e zoom della view. Non si salvano comportamenti,
+  asset, indici (si ricostruiscono), puntatore e tastiera.
+- **Come**: serializzazione generica del grafo degli oggetti. Le istanze si
+  puntano fra loro (bersagli, chi parla in un dialogo, il fuoco di un palo,
+  anche istanze già distrutte che qualcuno tiene ancora): ogni oggetto
+  raggiunto più volte esce una volta con un numero e poi come riferimento,
+  cicli compresi. Gli array tipizzati (nebbia, costi, flow field condivisi
+  fra le unità) escono compressi a corse (con le differenze negli interi:
+  le distanze del goal field crescono di 1 lungo una riga); le particelle
+  per colonne, arrotondate al millesimo (solo aspetto). Una funzione o una
+  classe non prevista nello stato fa fallire il salvataggio con il percorso
+  del campo, invece di perdere qualcosa in silenzio.
+- **Dimensioni**: 1,0–1,7 MB di JSON per room; nello slot del browser
+  compresso con gzip (`CompressionStream`) 200–450 KB (lo spazio di un sito
+  è circa 5 MB). Catturare lo stato costa ~50 ms (SwiftShader).
+- **Caricare**: ogni room ricarica la pagina, quindi anche il caricamento:
+  `?room=<room>&load=slot` (o `&load=file` per un file aperto, passato da
+  `sessionStorage`). Al posto della room e dei Create si rimette lo stato;
+  il parametro si toglie subito dall'indirizzo, così "Ricomincia livello"
+  riparte dalla room. Lo sblocco della campagna non torna indietro
+  caricando una partita vecchia.
+- **Dove**: menu di pausa → "Salva e carica": Salva partita (slot della
+  room), Carica partita (spento se lo slot è vuoto), Salva su file
+  (`535-<room>-<data>.json`, scaricato), Carica da file, Salvataggio
+  automatico (ogni 5 minuti di gioco, attivo di norma come in NIMBUS, non a
+  partita finita). Menu principale → "Load game" (in alto a destra): gli
+  slot con nome del livello e data, e "Load from file". Le conferme
+  compaiono in alto per 2,5 secondi.
+- [Deviazione dichiarata] lo stato salvato è quello del porting: se una
+  versione futura cambia la forma dei dati si alza `SAVE_VERSION` e i
+  salvataggi vecchi si scartano.
+
+**Schermo intero** (`game/src/fullscreen.js`): API Fullscreen (col
+prefisso webkit per Safari). "Full screen" in alto a sinistra nel menu
+principale e "Schermo intero: sì/no" nelle opzioni grafiche. Ripiego: dove
+non è permesso (iframe di un portale senza `allowfullscreen`, Safari su
+iPhone) il pulsante non compare nel menu ed è spento nelle opzioni; il
+gioco riempie comunque la finestra o la cornice del portale.
+
+**PWA**: `manifest.webmanifest` (nome "535 – Collapse", schermo intero,
+orizzontale), icone dal logo del gioco (`tools/09_icons.py` → `game/icons/`,
+versionate: 192, 512, 512 "maskable", 180 per iOS, favicon 32) e
+`sw.js` come quello di NIMBUS: prima la rete, la cache solo senza rete;
+ogni file entra in cache la prima volta che il gioco lo chiede, quindi una
+room si apre offline dopo averla giocata una volta online. Il service
+worker si registra solo dove è permesso (https o localhost).
+
+**Verificato**: `npm test`, 38 test (nuovi: grafo con riferimenti
+condivisi e cicli, istanze, classi, array tipizzati, colonne, checksum,
+gzip); `test/browser/saves.mjs`: in `match`, `lvl01` e `lvl02` dopo 4000
+passi lo stato ricaricato è **identico** a quello salvato e la partita
+prosegue; lo stesso in `match` dopo 30000 passi e in piena battaglia
+(frecce in volo, bersagli assegnati). Chromium: pannello "Salva e carica",
+salvataggio nello slot, file scaricato e riaperto dal menu principale,
+file modificato a mano scartato ("Non è un salvataggio valido"), elenco
+degli slot nel menu, salvataggio automatico dopo 18000 passi, schermo
+intero acceso e spento dal menu, opzioni grafiche in spagnolo, service
+worker registrato e manifest servito; 3000 passi senza errori in `menu`,
+`match`, `lvl01`, `lvl02`.

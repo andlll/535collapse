@@ -38,9 +38,12 @@ import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
-import { setLanguage, t } from "./i18n.js";
+import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
+import { captureGame, restoreGame } from "./snapshot.js";
+import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
+import { toggleFullscreen } from "./fullscreen.js";
 
 const ROOMS = ["menu", "match", "lvl01", "lvl02"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
@@ -61,6 +64,17 @@ function message(text, kind = "info", key = null) {
   el.textContent = text;
   el.className = kind;
   el.hidden = !text;
+}
+
+// messaggio breve (salvataggi), in alto, sparisce da solo
+let toastTimer = 0;
+function toast(text, kind = "info") {
+  const el = $("toast");
+  el.textContent = text;
+  el.className = kind;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2500);
 }
 
 function progress(done, total) {
@@ -231,23 +245,39 @@ async function main() {
   // livello; n.71: nel menu hint_iniziale era nascosto ma cliccabile.
   const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"] };
   const instances = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
-  world.loadRoom(instances, () => path.initCost());
-  // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
-  world.create("idle_clicker", 0, 0);
-  // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
-  // difesa (comp=50). [Correzione decisa dall'autore, §3.13 n.51]
-  // nell'originale lo fa il Create del manager, prima di quello delle unita'
-  // che rimette 700: qui dopo.
-  if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
-  // i gestori del menu e dei nemici di match e lvl02
-  if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
-  if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
-  if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
+  const fog = new FogMap(room.width, room.height);
+  world.fog = fog;
+  // Partita salvata (save.js, snapshot.js): ?load=slot (localStorage) o
+  // ?load=file (il file scelto, passato da setPending). Il parametro si
+  // toglie subito: "Ricomincia livello" riparte dalla room.
+  const loadMode = params.get("load");
+  let saved = null;
+  if (loadMode) {
+    saved = loadMode === "slot" ? await loadSlot(roomName) : await takePending();
+    params.delete("load");
+    history.replaceState(null, "", location.pathname + "?" + params.toString());
+    if (!saved || saved.room !== roomName) { saved = null; toast(tr("Not a valid save file"), "warning"); }
+  }
+  if (saved) {
+    restoreGame(saved, { world, g, manager, path, fog, cam });
+    g.unlock = Math.max(g.unlock || 1, loadUnlock()); // lo sblocco non torna indietro
+  } else {
+    world.loadRoom(instances, () => path.initCost());
+    // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
+    world.create("idle_clicker", 0, 0);
+    // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
+    // difesa (comp=50). [Correzione decisa dall'autore, §3.13 n.51]
+    // nell'originale lo fa il Create del manager, prima di quello delle unita'
+    // che rimette 700: qui dopo.
+    if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
+    // i gestori del menu e dei nemici di match e lvl02
+    if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
+    if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
+    if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
+  }
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
-  const fog = new FogMap(room.width, room.height);
-  world.fog = fog;
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);
 
@@ -263,6 +293,7 @@ async function main() {
     cam.resize(w, h);
   };
   window.addEventListener("resize", resize);
+  for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => { pause.dirty = true; });
   resize();
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
@@ -277,6 +308,18 @@ async function main() {
     loop.fpsCap = settings.fpsCap;
     saveSettings(settings);
   };
+  // Salvataggi (save.js, snapshot.js; menu di pausa, "Salva e carica")
+  const capture = () => captureGame({ world, g, manager, path, fog, cam, room: roomName });
+  const campaignParam = () => (g.campagna === 1 ? "&campaign=1" : "");
+  const saveGame = async (auto = false) => {
+    try {
+      await saveSlot(capture());
+      toast(tr(auto ? "Game saved automatically" : "Game saved"));
+    } catch (e) {
+      console.error(e);
+      toast(tr("Saving failed"), "warning");
+    }
+  };
   const pause = new PauseMenu({
     g, settings, room: roomName,
     actions: {
@@ -288,8 +331,33 @@ async function main() {
       restart: () => location.reload(),          // room_restart
       menu: () => world.gotoRoom("menu"),        // room_goto(menu)
       graphics: applyGraphics,
+      saveGame: () => saveGame(false),
+      loadGame: () => { location.search = "?room=" + roomName + campaignParam() + "&load=slot"; },
+      saveFile: () => {
+        try { saveFile(capture()); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
+      },
+      fullscreen: () => toggleFullscreen(),
+      loadFile: async () => {
+        const res = await openFile();
+        if (!res) return;
+        if (res.invalid || !(await setPending(res.data))) { toast(tr("Not a valid save file"), "warning"); return; }
+        location.search = "?room=" + res.data.room + "&load=file";
+      },
     },
   });
+  // "Full screen" e "Load game" del menu principale (menu.js)
+  world.hooks.fullscreen = () => toggleFullscreen();
+  world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
+  world.hooks.loadFile = () => pause.actions.loadFile();
+  // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
+  const AUTOSAVE_STEPS = room.speed * 300;
+  let autosaveAt = AUTOSAVE_STEPS;
+  const autosave = () => {
+    if (roomName === "menu" || !settings.autosave || --autosaveAt > 0) return;
+    autosaveAt = AUTOSAVE_STEPS;
+    if (world.exists("victory_manager") || world.exists("gameover_manager")) return;
+    saveGame(true);
+  };
 
   const step = () => {
     input.beginStep();
@@ -307,6 +375,7 @@ async function main() {
     world.step(input, mx, my);
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);
+    autosave();
     if (input.pressed.has(114)) { // F3
       diag.toggle();
       settings.diagnostics = diag.visible;
@@ -438,10 +507,11 @@ async function main() {
     loop.start();
   });
 
-  loop.start();
+  // ?nostart=1: per i test, il mondo resta fermo finche' non lo si avanza
+  if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }
@@ -455,6 +525,11 @@ function drawBackgrounds(r, assets, room, cam) {
     const x1 = b.htiled ? cam.x + cam.w : b.x + t.width, y1 = b.vtiled ? cam.y + cam.h : b.y + t.height;
     r.quad(t, x0, y0, x1, y0, x1, y1, x0, y1, x0 - b.x, y0 - b.y, x1 - b.x, y1 - b.y, 0xffffffff);
   }
+}
+
+// PWA (sw.js): solo dove i service worker sono permessi (https o localhost)
+if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname))) {
+  navigator.serviceWorker.register("./sw.js").catch(() => { /* senza: il gioco va lo stesso, solo non offline */ });
 }
 
 main().catch((e) => {

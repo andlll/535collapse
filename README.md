@@ -18,7 +18,7 @@ Metodo e convenzioni da [andlll/n_redux](https://github.com/andlll/n_redux)
 | `src/objects/<oggetto>/<Evento>.gml` | sì | il codice di ogni evento, leggibile, con le azioni drag & drop rese come GML |
 | `src/scripts/` | sì | gli script GML |
 | `tools/` | sì | la pipeline (Python 3 + Pillow) |
-| `game/` | sì | il motore: `index.html`, `src/` (moduli JS), `package.json` (esbuild) |
+| `game/` | sì | il motore: `index.html`, `src/` (moduli JS), `package.json` (esbuild), PWA (`manifest.webmanifest`, `sw.js`, `icons/` da `tools/09_icons.py`) |
 | `game/assets/`, `game/dist/` | no | atlas, maschere, scene (tools 05–07) e bundle JS: si rigenerano |
 
 ## Rigenerare
@@ -50,7 +50,11 @@ notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
 vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
 **F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
 tetto a 30 fps. Esc (o il pulsante in alto a destra) apre il menu di
-pausa: opzioni grafiche e lingua (EN, IT, ES, PT, DE, FR).
+pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
+salvataggi (uno slot per room nel browser, salvataggio automatico ogni 5
+minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu
+principale). Il gioco si può installare come app (PWA) e, dopo una prima
+partita online, aprire senza rete.
 
 ## Provare
 
@@ -58,9 +62,11 @@ pausa: opzioni grafiche e lingua (EN, IT, ES, PT, DE, FR).
 cd game && npm test                                  # test unitari (node --test)
 python3 -m http.server 8123 --directory game         # in un altro terminale
 node game/test/browser/soak.mjs http://localhost:8123 3000   # Chromium: 3000 passi per room
+node game/test/browser/saves.mjs http://localhost:8123 4000  # salva, ricarica, stato identico
 ```
 
 `soak.mjs` usa Playwright; se il modulo non è nel progetto, la variabile
 `PLAYWRIGHT_MODULE` dice dove trovarlo. Nella pagina, `window.__game`
 espone mondo, griglia, globali e `advance(n)` per far avanzare la
-simulazione senza disegnare.
+simulazione senza disegnare; con `?nostart=1` il mondo resta fermo finché
+non lo si avanza.
