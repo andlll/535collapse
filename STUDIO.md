@@ -19,9 +19,10 @@ completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
 (§3.19), menu principale, campagna e battaglia del menu (§3.20); Fase 4:
-salvataggi, schermo intero, PWA (§4.1). **Prossimo: Fase 5** (GitHub
-Actions e zip per i portali). Il dettaglio di ogni voce sta nella sezione
-citata.
+salvataggi, schermo intero, PWA (§4.1); Fase 5: GitHub Actions, Pages e
+zip per i portali (§5.1). **Prossimo**: verifiche su una GPU vera, Firefox
+e Safari; livelli 3–10 con l'autore. Il dettaglio di ogni voce sta nella
+sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -65,8 +66,8 @@ citata.
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
-- [ ] Difetto n.74 del menu principale (§3.20): lasciato come
-  nell'originale; da confermare.
+- [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
+  Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -119,8 +120,8 @@ citata.
 - [x] Opzioni nel menu di pausa (tetto fps, risoluzione dinamica,
   particelle) e traduzione dei testi del gioco in sei lingue (§3.19).
 - [x] Pulsante schermo intero con ripiego; PWA (§4.1).
-- [ ] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
-  zip per i portali verificato con Playwright in una sottocartella.
+- [x] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
+  zip per i portali verificato con Playwright in una sottocartella (§5.1).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
@@ -2352,9 +2353,9 @@ Draw_GUI, Mouse_GlobalLeftReleased, KeyPress_Escape], `fog_controller` e
 
 **Decisioni dell'autore** (6 ottobre 2026): "73 lascia vuoto, la 75 è un
 easter egg e va lasciato così". n.73: il riquadro della storia parte vuoto
-(corretto); n.75: resta. n.74 ancora da decidere.
+(corretto); n.75: resta. Poi: "la 74 la correggiamo" (corretta).
 
-**Difetti trovati** (lasciati come nell'originale salvo n.73 e n.76):
+**Difetti trovati** (lasciati come nell'originale salvo n.73, n.74 e n.76):
 - **n.73**: il riquadro della storia misura il testo con righe da 40 px
   (`string_height_ext(testo_c,40,…)`) ma lo scrive con righe da 30: il
   riquadro resta più alto del testo. Prima di passare su un livello
@@ -2363,7 +2364,10 @@ easter egg e va lasciato così". n.73: il riquadro della storia parte vuoto
   vuoto finché non si tocca un livello.
 - **n.74**: la riga evidenziata resta quella dell'ultimo livello toccato
   anche quando il puntatore esce dall'elenco (e un clic fuori dalla riga
-  non la avvia).
+  non la avvia). **Corretto** (decisione dell'autore): l'evidenziazione
+  segue il puntatore; la storia e i segnaposto sulla mappa restano quelli
+  dell'ultimo livello toccato, così la storia si legge scendendo col
+  puntatore verso il riquadro.
 - **n.75**: una volta su otto (`irandom_range(1,8)==8`) al posto della
   firma compare una frase in italiano dell'autore ("Non mi interessa se
   sta roba non ingrana quando soffro d'insonnia…"): lasciata, non
@@ -2459,3 +2463,50 @@ degli slot nel menu, salvataggio automatico dopo 18000 passi, schermo
 intero acceso e spento dal menu, opzioni grafiche in spagnolo, service
 worker registrato e manifest servito; 3000 passi senza errori in `menu`,
 `match`, `lvl01`, `lvl02`.
+
+---
+
+## Fase 5 — GitHub Actions, Pages, zip per i portali (6 ottobre 2026)
+
+### 5.1 Pipeline, prove e pubblicazione
+
+**Workflow** (`.github/workflows/build.yml`), a ogni push e pull request,
+sullo stesso schema di quello di NIMBUS (n_redux, `deploy-pages.yml`):
+1. Python 3.11 + Pillow; progetto GameMaker dagli zip (`tools/01`).
+2. **File generati e versionati allineati**: `tools/02` (data/, src/) e
+   `tools/08` (`animTables.js`) rigenerati devono dare gli stessi file del
+   repo (`git diff --exit-code`): nessuno li ha toccati a mano e i tool sono
+   allineati.
+3. Atlas, maschere, scene (`tools/05–07`, ~2,5 minuti).
+4. Node 22, `npm ci`, test unitari, bundle.
+5. Zip per i portali (`tools/10_zip.py`).
+6. Playwright e Chromium (solo nella CI, non fra le dipendenze del
+   progetto), server statico, poi tre prove: `soak.mjs` (3000 passi per
+   room), `saves.mjs` (salva, ricarica, stato identico) e `portal.mjs` (lo
+   zip in un iframe).
+7. Lo zip resta come artefatto della run (`535-collapse-web`); su `main`
+   lo zip estratto si pubblica su GitHub Pages.
+
+Provato in locale su un clone pulito con gli stessi comandi: la pipeline
+dagli zip dà atlas, maschere e scene **identici** a quelli di sviluppo e
+lascia invariati i file versionati; test, bundle, zip e le tre prove nel
+browser passano.
+
+**Zip per i portali** (`tools/10_zip.py` → `build/535-collapse-web.zip`,
+non versionato): alla radice `index.html`, manifest, service worker,
+icone, `dist/` (senza source map) e `assets/`; 34 file, 11,5 MB (10,7
+compressi), sotto i limiti di itch.io, Newgrounds, Game Jolt e CrazyGames.
+Riproducibile (file in ordine, data fissa: quella della versione
+dell'originale, 0.250125).
+
+**Prova del portale** (`game/test/browser/portal.mjs`): lo zip si estrae
+in una sottocartella (`/portal/html5/535/`) e si apre in un iframe di
+un'altra origine senza `allowfullscreen`, come fanno i portali. Controlla
+che ogni richiesta resti nella sottocartella (percorsi relativi) e nessuna
+fallisca, che menu e room partano e facciano 1500 passi senza errori, che
+lo schermo intero risulti non permesso (il pulsante non compare: ripiego
+di §4.1) e che salvare e ricaricare dallo slot funzioni dentro l'iframe.
+
+**Da fare una volta (autore)**: attivare GitHub Pages con sorgente "GitHub
+Actions" (Settings → Pages). Finché non è attivo, il passo di
+pubblicazione su `main` fallisce; la build e le prove no.

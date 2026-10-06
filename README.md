@@ -63,7 +63,14 @@ cd game && npm test                                  # test unitari (node --test
 python3 -m http.server 8123 --directory game         # in un altro terminale
 node game/test/browser/soak.mjs http://localhost:8123 3000   # Chromium: 3000 passi per room
 node game/test/browser/saves.mjs http://localhost:8123 4000  # salva, ricarica, stato identico
+python3 tools/10_zip.py                              # zip per i portali -> build/
+node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```
+
+La CI (`.github/workflows/build.yml`) fa tutto questo a ogni push, dagli
+zip del progetto: pipeline, test, bundle, zip e le tre prove nel browser.
+Lo zip resta come artefatto della run; da `main` il gioco si pubblica su
+GitHub Pages.
 
 `soak.mjs` usa Playwright; se il modulo non è nel progetto, la variabile
 `PLAYWRIGHT_MODULE` dice dove trovarlo. Nella pagina, `window.__game`

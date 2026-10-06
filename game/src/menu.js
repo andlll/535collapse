@@ -90,7 +90,7 @@ export function enemyManagerMenu() {
       i.testo_c = "";
       i.testo_h = 0;
       if (g.campagna !== 1) g.campagna = 0;
-      Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0,
+      Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
                          comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
                          loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0 });
     },
@@ -132,10 +132,16 @@ export function enemyManagerMenu() {
       if (g.campagna === 1) {
         i.c_indhover = +inRect(mx, my, W - 80, 20, W - 20, 70);
         i.c_unlhover = +inRect(mx, my, W - 150, 20, W - 90, 70);
-        // la riga resta "sotto il puntatore" finche' non se ne tocca un'altra [C, n.74]
+        // [Correzione decisa dall'autore, §3.20 n.74] l'originale lasciava
+        // evidenziata l'ultima riga toccata anche col puntatore fuori
+        // dall'elenco: ora l'evidenziazione (e il clic) segue il puntatore;
+        // storia e segnaposto sulla mappa restano quelli dell'ultimo livello
+        // toccato (lvlshown), cosi' la storia si legge scendendo col puntatore
+        i.lvlhover = 0;
         for (let k = 1; k <= 10; k++) {
           if (inRect(mx, my, 30, 35 + 40 * k, 290, 85 + 40 * k) && (k === 1 || g.unlock > k - 1 || k > 2)) i.lvlhover = k;
         }
+        if (i.lvlhover > 0) i.lvlshown = i.lvlhover;
         i.combHover = null;
         i.sblocco_hover = 0;
         if (i.sblocco === 1) {
@@ -271,11 +277,11 @@ function drawCampaign(i, g, d, W, H) {
     d.setColour(DARKRED);
     d.setFont("GUI_1");
     d.setHalign("center");
-    if (i.lvlhover > 0) {
+    if (i.lvlshown > 0) {
       d.sprite("cap1", 0, W / 2 + 663, H / 2 + 78);
       d.text(W / 2 + 663, H / 2 + 128, "1.");
     }
-    if (i.lvlhover > 1) {
+    if (i.lvlshown > 1) {
       d.sprite("cap2", 0, W / 2 + 463, H / 2 + 28);
       d.sprite("fr_corta", 0, W / 2 + 563, H / 2 + 53);
       d.text(W / 2 + 463, H / 2 + 88, "2.");
@@ -292,9 +298,9 @@ function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.99);
   // la storia del livello sotto il puntatore; i livelli 3-10 sono "in arrivo"
   d.setFont("overdue");
-  if (i.lvlhover > 0) {
-    d.roundrectColourExt(30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
-    i.testo_c = STORY[i.lvlhover] ? tr(STORY[i.lvlhover]) : tr("Coming soon");
+  if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
+  if (i.lvlshown > 0) {
+    i.testo_c = STORY[i.lvlshown] ? tr(STORY[i.lvlshown]) : tr("Coming soon");
     // [C, §3.20 n.73] l'altezza si misura con righe da 40 px, il testo si
     // scrive con righe da 30
     i.testo_h = d.stringHeightExt(i.testo_c, 40, W - 80);
