@@ -280,11 +280,11 @@ async function main() {
     world.loadRoom(instances, () => path.initCost());
     // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
     world.create("idle_clicker", 0, 0);
-    // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
-    // difesa (comp=50). [Correzione decisa dall'autore, §3.13 n.51]
-    // nell'originale lo fa il Create del manager, prima di quello delle unita'
-    // che rimette 700: qui dopo.
-    if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
+    // manager Create, "Livelli" [C]: nel livello 1 mette i militari in
+    // difesa (comp=50), ma prima del Create delle unita' che rimette 700:
+    // nell'originale partono in attacco. [§3.13 n.51] qui li si metteva in
+    // difesa dopo; [§7.4, decisione dell'autore] si torna all'originale:
+    // i militari di partenza del livello 1 sono in attacco (comp 700).
     // i gestori del menu e dei nemici di match e lvl02
     if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
     if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }

@@ -65,6 +65,10 @@ export class Draw {
   // suoi tre pulsanti, traslando la proiezione GUI fra Begin ed End.
   tooltipBegin(w) {
     const g = w.g;
+    // [§7.1, segnalazione dell'autore] il testo delle schede (pulsanti di
+    // costruzione, produzione, comportamento) prendeva il colore rimasto
+    // dal disegno precedente: a volte bianco, su fondo bianco. Sempre nero.
+    this.setColour(0);
     this._tipProj = null;
     if (w.room === "menu" || g.minim !== 1) return;
     const ox = w.roomW / g.sz + 60;

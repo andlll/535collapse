@@ -237,11 +237,15 @@ export function campoFondCreate(i, w) {
   i.grass_system = P(w).systemCreate(-1, "grass");
   i.grass_emitter = P(w).emitterCreate(i.grass_system);
   P(w).region(i.grass_emitter, i.x - 145, i.x + 145, i.y - 90, i.y + 90, "diamond", "linear");
-  P(w).stream(i.grass_emitter, GERMOGLIO, 0.1);
+  P(w).stream(i.grass_emitter, GERMOGLIO, 0);
 }
 
+// [§7.5, decisione dell'autore] i germogli nascono quando la semina e'
+// cominciata (vita sopra 1), non appena il cantiere e' piazzato: col
+// flusso frazionario arrotondato per eccesso (vita/6 = 0,17 -> 1 a passo)
+// il cantiere appena creato era gia' pieno di germogli.
 export function campoFondStream(i, w) {
-  P(w).stream(i.grass_emitter, GERMOGLIO, i.life / 6);
+  P(w).stream(i.grass_emitter, GERMOGLIO, i.life > 1 ? i.life / 6 : 0);
 }
 
 // ------------------------------------------------------------------ semi

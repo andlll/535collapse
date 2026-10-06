@@ -41,9 +41,17 @@ function inView(w, i) {
 // verso il punto cliccato (scr_move_master) e lo passa agli altri
 // selezionati. Gira prima degli eventi delle unita' (manager e' creato
 // prima di tutte le unita' in ogni room [C, ordine delle istanze]).
+// [§7.3, segnalazione dell'autore] Solo le unita' col flow field (quelle con
+// `ordo`): le macchine d'assedio non hanno ne' ordo ne' goal_field e vanno
+// con mp_potential_step verso dirox. Prima un ariete o una catapulta
+// selezionati potevano diventare il capo: il goal field mancante faceva
+// fallire l'ordine con un'eccezione, prima dei GlobalRightReleased delle
+// unita', e le macchine non accettavano piu' nessun ordine.
+const flowUnit = (u) => u.ordo !== undefined && !!u.goal_field;
+
 export function movementGeneral(w, p, mx, my) {
   let leader = null;
-  for (const u of w.all("ally_unit")) if (u.selected === 1 && (!leader || u.ordo > leader.ordo)) leader = u;
+  for (const u of w.all("ally_unit")) if (u.selected === 1 && flowUnit(u) && (!leader || u.ordo > leader.ordo)) leader = u;
   if (!leader) return;
   // scr_move_master
   p.free(leader);
@@ -57,7 +65,7 @@ export function movementGeneral(w, p, mx, my) {
   leader.diroy = leader.goal_y;
   const ff = leader.flow_field;
   for (const u of w.all("ally_unit")) {
-    if (u.selected !== 1) continue;
+    if (u.selected !== 1 || !flowUnit(u)) continue;
     u.flow_field = ff; // ds_grid_copy(flow_field, ff_general)
     p.free(u);
     if (p.flowAt(u.flow_field, Math.floor(u.x / GRID), Math.floor(u.y / GRID)) === -1) scrMove(p, u, mx, my);
@@ -90,9 +98,11 @@ export function formation(w, p, mx, my) {
   if (units.length < 2) return;
   if (w.positionMeeting(mx, my, "enemy") || w.positionMeeting(mx, my, "ally_build")
       || w.positionMeeting(mx, my, "natural_parent") || w.positionMeeting(mx, my, "ally_fondamenta")) return;
-  let leader = units[0];
-  for (const u of units) if (u.ordo > leader.ordo) leader = u;
-  const goal = leader.goal_field;
+  // il capo fra le unita' col flow field; con sole macchine d'assedio il
+  // campo serve solo a scegliere le caselle (celle raggiungibili)
+  let leader = null;
+  for (const u of units) if (flowUnit(u) && (!leader || u.ordo > leader.ordo)) leader = u;
+  const goal = leader ? leader.goal_field : p.goalField(mx, my);
   if (!goal) return;
   // direzione di marcia: dal baricentro al punto cliccato
   let cx = 0, cy = 0;
@@ -162,7 +172,8 @@ export function formation(w, p, mx, my) {
     u.dirox = exact ? Math.round(sx) : gx * GRID + GRID / 2;
     u.diroy = exact ? Math.round(sy) : gy * GRID + GRID / 2;
     // il campo comune (in sola lettura) e la propria cella d'arrivo: il
-    // ricalcolo "cella d'arrivo occupata" guarda questa
+    // ricalcolo "cella d'arrivo occupata" guarda questa (non per l'assedio)
+    if (!flowUnit(u) || !leader) continue;
     u.goal_field = goal;
     u.flow_field = leader.flow_field;
     u.goal_x = gx * GRID;
@@ -811,11 +822,25 @@ export function unitDrawEnd(i, w, d, showGroup = true) {
 }
 
 // Draw_GUI [C]: scheda dell'unita' quando e' l'unica selezionata.
+// [§7.2, richiesta dell'autore] Con piu' unita' selezionate l'originale
+// non disegnava nessuna scheda: i pulsanti (istanze invisibili) c'erano ma
+// non si vedevano. Ora, se la selezione e' tutta di un tipo (solo militari o
+// solo civili), la prima unita' selezionata disegna i pulsanti senza la
+// scheda della vita (che diventa il contatore " x N" del manager).
+export function firstSelected(w, civilian) {
+  for (const u of w.all("ally_unit")) {
+    if (u.selected === 1 && (u.object === "ally_omino") === civilian) return u;
+  }
+  return null;
+}
+
 export function unitPanel(i, w, d, icon) {
-  if (i.selected !== 1 || w.g.sel >= 2) return;
+  if (i.selected !== 1) return;
+  const g = w.g, multi = g.sel >= 2;
+  if (multi && (g.milsel !== g.sel || firstSelected(w, false) !== i)) return;
   const white = 0xffffff;
   d.setAlpha(0.69);
-  d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
+  if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
   d.circleColour(450, 50, 30, white, white, false);
   d.circleColour(450, 120, 30, white, white, false);
   d.setFont("GUI_1");
@@ -823,19 +848,28 @@ export function unitPanel(i, w, d, icon) {
   d.setAlpha(0.75);
   d.setValign("middle");
   d.setHalign("center");
-  d.text(325, 120, i.life + " / " + i.slife);
+  if (!multi) d.text(325, 120, i.life + " / " + i.slife);
   d.setAlpha(1);
-  d.sprite(icon, 0, 325, 70);
+  if (!multi) d.sprite(icon, 0, 325, 70);
   d.spriteExt("ico_attacco", 0, 450, 50, 0.5, 0.5, 0, white, 1);
   d.spriteExt("ico_difesa", 0, 450, 120, 0.5, 0.5, 0, white, 1);
+  // con piu' unita' si evidenzia il comportamento solo se e' di tutte
+  let agg = i.comp >= 300, def = i.comp < 300;
+  if (multi) {
+    agg = def = true;
+    for (const u of w.all("ally_unit")) {
+      if (u.selected !== 1) continue;
+      if (u.comp >= 300) def = false; else agg = false;
+    }
+  }
   // make_colour_rgb(183,48,48) e (68,95,198), in BGR
-  if (i.comp >= 300) {
+  if (agg) {
     d.circleColour(450, 50, 30, 0x3030b7, 0x3030b7, false);
     d.spriteExt("ico_attacco_bianco", 0, 450, 50, 0.5, 0.5, 0, white, 1);
   }
   // [Correzione decisa dall'autore, §3.9 n.31] l'originale evidenziava la
   // difesa solo con comp=50, ma il pulsante Difesa mette 200
-  if (i.comp < 300) {
+  if (def) {
     d.circleColour(450, 120, 30, 0xc65f44, 0xc65f44, false);
     d.spriteExt("ico_difesa_bianco", 0, 450, 120, 0.5, 0.5, 0, white, 1);
   }

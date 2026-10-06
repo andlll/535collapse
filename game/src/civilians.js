@@ -13,7 +13,7 @@ import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
-import { phaseOf, walkCycle } from "./units.js";
+import { phaseOf, walkCycle, firstSelected } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -788,22 +788,27 @@ function ominoDrawEnd(i, w, d) {
 // Draw_GUI [C]: scheda del civile con i 10 pulsanti di costruzione e cio' che
 // trasporta.
 function ominoPanel(i, w, d) {
-  if (i.selected !== 1 || w.g.sel >= 2) return;
+  if (i.selected !== 1) return;
+  // [§7.2] con piu' civili (e nessun soldato) i pulsanti di costruzione si
+  // vedono: li disegna il primo civile selezionato, senza la scheda
+  const g = w.g, multi = g.sel >= 2;
+  if (multi && (g.milsel !== 0 || firstSelected(w, true) !== i)) return;
   const white = 0xffffff;
   d.setAlpha(0.69);
-  d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
+  if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
   for (const x of [450, 520, 590, 660, 730]) for (const y of [50, 120]) d.circleColour(x, y, 30, white, white, false);
   d.setFont("GUI_1");
   d.setColour(0);
   d.setAlpha(0.75);
   d.setValign("middle");
   d.setHalign("center");
-  d.text(325, 120, i.life + " / " + i.slife);
+  if (!multi) d.text(325, 120, i.life + " / " + i.slife);
   d.setAlpha(1);
   const ico = (s, x, y) => d.spriteExt(s, 0, x, y, 0.5, 0.5, 0, white, 1);
   ico("ico_casa", 450, 50); ico("ico_torre", 450, 120); ico("ico_magazzino", 520, 50); ico("ico_barn", 590, 50);
   ico("ico_corn", 660, 50); ico("ico_mura", 520, 120); ico("ico_caserma", 590, 120); ico("ico_stalla", 660, 120);
   ico("ico_castello", 730, 120); ico("ico_chiesa", 730, 50);
+  if (multi) return;
   if (!i.gold && !i.wood && !i.food && !i.stone) d.sprite("ico_omino", 0, 325, 70);
   else d.spriteExt("ico_omino", 0, 355, 70, 0.8, 0.8, 0, white, 1);
   for (const [k, s] of [["food", "ico_food"], ["gold", "ico_gold"], ["wood", "ico_wood"], ["stone", "ico_stone"]]) {
