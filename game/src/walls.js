@@ -184,6 +184,12 @@ export function gate(k, p) {
       p.markInstance(i, 1);
       i.enemyCells = p.blockEnemy(i);
       i.mask_index = w.objects[K.gate].mask; w.moved(i);
+      // [§7.4, segnalazione dell'autore] i pilastri (la maschera aperta)
+      // restano ostacolo: liberando tutta la porta chiusa il flow field
+      // passava anche dai pilastri e i soldati (che sul flow field si
+      // muovono senza collisioni) attraversavano la parte solida. Libero
+      // resta solo il varco.
+      p.markInstance(i, 1000);
       i.depth = -i.y;
       Object.assign(i, { life: K.gateLife, slife: K.gateLife, selected: 0, open: 0, openable: 1, arm: 1,
                          fondazione: 0, legno: 0, pietra: 1, hit: 0 });
