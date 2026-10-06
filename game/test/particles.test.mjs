@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Particles, partType } from "../src/particles.js";
-import { fireStep, fireStop, FIRE } from "../src/effects.js";
+import { fireStep, fireStop, rainExtinguish, FIRE } from "../src/effects.js";
 
 test("burst: N particelle dentro la regione, per ogni forma", () => {
   const P = new Particles();
@@ -97,7 +97,25 @@ test("fuoco degli edifici: due sistemi, x visible, vita delle fiamme davanti coi
   const nemica = { x: 0, y: 0, visible: false, onfire: 1, firestarted: 0, life: 200 };
   fireStep(nemica, w, "enemy_caserma");
   assert.equal(nemica.fire_ps.emitters[0].n, 0); // 8*visible
+  nemica.visible = true; // [n.60 corretto] vista dopo l'accensione
+  fireStep(nemica, w, "enemy_caserma");
+  assert.equal(nemica.fire_ps.emitters[0].n, 8);
+  assert.equal(nemica.fire_psf.emitters[0].n, 4);
   fireStop(casa, w);
   assert.equal(casa.fire_ps, null);
   assert.equal(FIRE.campo.front, null);
+});
+
+test("la pioggia spegne gli edifici e le loro fiamme (n.56 corretto)", () => {
+  const P = new Particles();
+  const casa = { object: "casa", parents: ["ally_wooden"], alive: true, x: 0, y: 0, visible: true,
+                 onfire: 1, firestarted: 0, life: 100 };
+  const w = { particles: P, *all(n) { if (n === "ally_wooden") yield casa; } };
+  fireStep(casa, w, "casa");
+  assert.equal(P.systems.length, 2);
+  rainExtinguish(w);
+  assert.equal(casa.onfire, 0);
+  assert.equal(casa.firestarted, 0);
+  assert.equal(casa.fire_ps, null);
+  assert.ok(P.systems.every((ps) => !ps.alive));
 });

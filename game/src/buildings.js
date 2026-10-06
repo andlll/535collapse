@@ -511,17 +511,19 @@ export function campoFond(p) {
     // del mouse al momento dell'alarm.
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
-      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); w.particles.systemDestroy(i.grass_system); }
+      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
       campoFondStream(i, w);
     },
+    // [Correzione decisa dall'autore, §3.17 n.57] i germogli spariscono
+    // con il cantiere anche quando lo si annulla con Canc (l'originale li
+    // distruggeva solo a campo finito)
+    destroy(i, w) { w.particles.systemDestroy(i.grass_system); },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.g.sele === 0) i.selected = 1; },
     rightReleased(i, w) {
       for (const o of w.all("ally_omino")) if (o.selected === 1) o.fieldwork = 1;
       i.buildwork = 1;
     },
-    // [C, §3.16 n.57] Canc non distrugge i germogli: restano per sempre,
-    // emessi al ritmo dell'ultimo passo. Riprodotto.
     keyPress46(i, w) { if (i.selected === 1) { w.destroy(i); w.g.wood += 200; } },
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_corn"); },
   };

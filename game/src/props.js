@@ -5,9 +5,9 @@
 //   `firestarter` attorno a se'.
 // - `firestarter`, `firestarter_small` [C]: sistemi di particelle del fuoco
 //   (effects.js), accesi solo nella view e vicino a un alleato; la notte li
-//   illumina (fog.js). La torcia, visibile, si ridisegna anche nel suo Draw
-//   (part_system_drawit) oltre al disegno automatico del sistema: due volte,
-//   in somma [I, riprodotto].
+//   illumina (fog.js). La torcia, visibile, si disegna nel suo Draw
+//   (part_system_drawit); il disegno automatico, che la raddoppiava, e'
+//   spento (§3.17 n.59).
 // - `palo_1` [C, Create]: segna le sue celle nella griglia dei costi, vita
 //   999 (rimessa a ogni Step) e una torcia (`firestarter_small`) in cima.
 // - `o_statua1..4` [C]: lvl01; un'unita' alleata entro 300 px la attiva:

@@ -15,7 +15,8 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 ## Cose da fare (lista aggiornata a ogni passo)
 
 Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
-completa (nebbia e notte, §3.15) e particelle (§3.16). **Prossimo:
+completa (nebbia e notte, §3.15), particelle (§3.16) e correzioni decise
+dall'autore (§3.17). **Prossimo:
 suggerimenti, dialoghi, obiettivi, vittoria e sconfitta** (la regia dei
 livelli li crea già se esistono: `createIfPorted`). Il dettaglio di ogni
 voce sta nella sezione citata.
@@ -53,14 +54,6 @@ voce sta nella sezione citata.
 - [ ] n.53 (vittoria del livello 2 creata a ogni passo): con la vittoria (§3.13).
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
-- [ ] Nebbia e notte (§3.15): bordi delle ellissi sfumati su ~16 px invece
-  che netti (deviazione da confermare); n.54 (le anteprime dei muri
-  scoprono la nebbia) e n.55 (le statue scoprono ma non danno la vista).
-  Utile uno screenshot dell'originale di notte per confrontare la tinta.
-- [ ] Particelle (§3.16): n.56 (la pioggia spegne ma le fiamme restano),
-  n.57 (germogli che restano dopo Canc), n.58 (l'aquila non si vede mai:
-  direzione voluta?), n.59–61 (torcia disegnata due volte, fiamme dei
-  nemici accesi nella nebbia, gocce quasi orizzontali).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -2103,3 +2096,35 @@ menu.
 - Costi: aggiornamento 0,29 ms a passo con le 18.000 particelle del menu,
   disegno 1,3 ms a fotogramma (SwiftShader, CPU); in `lvl01` 0,13 ms.
 - 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.17 Decisioni dell'autore su nebbia e particelle (6 ottobre 2026)
+
+"L'aquila dovrebbe volare verso alto a destra, probabilmente è solo
+sbagliata la posizione di partenza"; "le gocce di pioggia vanno bene
+così" (n.61 resta); "il resto correggiamolo". I bordi sfumati della nebbia
+(§3.15) restano: non sono un difetto dell'originale ma una scelta del
+porting. Applicato:
+
+- **n.54**: le anteprime dei prolungamenti di muro non vedono né scoprono.
+- **n.55**: le statue attive danno anche la vista, non solo la scoperta.
+- **n.56**: la pioggia spegne anche le fiamme (come la riparazione col
+  legno: sistemi distrutti, `firestarted=0`).
+- **n.57**: annullato con Canc, il cantiere di campo porta via i germogli
+  (Destroy del cantiere).
+- **n.58**: l'aquila parte 10 px sotto il bordo basso della room (x a caso
+  come nell'originale) e la attraversa volando in alto a destra. Nota: in
+  `match` un'aquila è anche piazzata nella room.
+- **n.59**: la torcia del palo si disegna una volta, nel suo Draw
+  (depth −y−90); il disegno automatico del sistema è spento
+  (`autoDraw`, come `part_system_automatic_draw(ps, false)`).
+- **n.60**: le fiamme degli edifici ricalcolano a ogni passo il numero di
+  particelle con `visible`: un edificio nemico incendiato nella nebbia
+  mostra le fiamme appena diventa visibile.
+
+**Verificato**: `npm test`, 27 test (nuovi: anteprime dei muri, statue
+con la vista, pioggia che spegne le fiamme, fiamme che compaiono quando
+l'edificio diventa visibile); Chromium: aquila del manager da (5835, 7005)
+a (10165, 4505) in 1000 passi, 7 torce senza disegno automatico, centro
+spento dalla pioggia senza più fiamme, Canc sul cantiere di campo →
+germogli spariti; 3000 passi senza errori in `match`, `lvl01`, `lvl02`,
+`menu`.

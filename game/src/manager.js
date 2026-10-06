@@ -6,7 +6,7 @@
 
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart } from "./effects.js";
+import { rainStart, rainExtinguish } from "./effects.js";
 
 export class Manager {
   constructor(room, g) {
@@ -150,14 +150,17 @@ export class Manager {
         else this.al.set(0, 4000);
         break;
       case 2: // [C] (il resto e' il ridimensionamento della finestra)
-        // la pioggia spegne gli edifici di legno alleati ogni 10 passi; le
-        // fiamme pero' restano accese (§3.16 n.56, riprodotto)
+        // la pioggia spegne gli edifici di legno alleati ogni 10 passi, con
+        // le loro fiamme (§3.17 n.56)
         this.al.set(2, 10);
-        if (g.raining === 1 && this.world) for (const b of this.world.all("ally_wooden")) b.onfire = 0;
+        if (g.raining === 1 && this.world) rainExtinguish(this.world);
         break;
       case 3: // aquila, ogni 3000 passi
+        // [Correzione decisa dall'autore, §3.17 n.58] l'originale la crea a
+        // y=-10 e, volando in alto a destra, non entrava mai nella room:
+        // qui parte 10 px sotto il bordo basso e la attraversa
         this.al.set(3, 3000);
-        if (this.world) this.world.create("aquila_01", irandomRange(-this.world.roomW, this.world.roomW), -10);
+        if (this.world) this.world.create("aquila_01", irandomRange(-this.world.roomW, this.world.roomW), this.world.roomH + 10);
         break;
       case 4: // pioggia: gocce lungo il bordo alto della room
         this.al.set(6, irandomRange(12000, 15000));

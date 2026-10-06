@@ -64,14 +64,17 @@ function shapeOf(w, i, k) {
 }
 
 // Le istanze che vedono, nell'ordine dei with(...) dell'originale (l'ordine
-// non conta: le ellissi si sommano). `explore`: anche le statue attive
-// (solo blackfog).
+// non conta: le ellissi si sommano).
+// [Correzioni decise dall'autore, §3.17] n.54: le anteprime dei
+// prolungamenti di muro (figlie di ally_build) non vedono; n.55: le statue
+// attive danno anche la vista, non solo la scoperta (`explore` resta per
+// chiarezza: le fonti sono ora le stesse).
+const PREVIEWS = new Set(["oodl", "oosl", "ovbl", "oval"]);
 export function fogSources(w, explore, cb) {
   const k = 1 - w.g.night;
   for (const fam of ["ally_unit", "ally_build", "palo_1"]) {
-    for (const i of w.all(fam)) if (i.alive) cb(i, shapeOf(w, i, k));
+    for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object)) cb(i, shapeOf(w, i, k));
   }
-  if (!explore) return;
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) {
     for (const i of w.all(n)) if (i.alive && i.attiva === 1) cb(i, shapeOf(w, i, k));
   }

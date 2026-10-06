@@ -69,7 +69,9 @@ export class Particles {
   // ------------------------------------------------------------ sistemi
 
   systemCreate(depth = 0) {
-    const ps = { id: ++this.seq, depth, parts: [], emitters: [], alive: true, automatic: true, release: false };
+    // automatic: si aggiorna da solo; autoDraw: si disegna da solo alla sua
+    // depth (part_system_automatic_update / _draw)
+    const ps = { id: ++this.seq, depth, parts: [], emitters: [], alive: true, automatic: true, autoDraw: true, release: false };
     this.systems.push(ps);
     return ps;
   }
@@ -212,7 +214,7 @@ export class Particles {
   // Sistemi da disegnare da soli, in ordine di depth (piu' alta prima; a
   // pari depth in ordine di creazione).
   sorted() {
-    return this.systems.filter((ps) => ps.automatic && ps.parts.length)
+    return this.systems.filter((ps) => ps.autoDraw && ps.parts.length)
       .sort((a, b) => b.depth - a.depth || a.id - b.id);
   }
 

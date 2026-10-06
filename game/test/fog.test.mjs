@@ -89,7 +89,7 @@ test("trucco della nebbia e menu: niente scoperta", () => {
   }
 });
 
-test("statue: scoprono solo se attive, e non danno la vista", () => {
+test("statue: scoprono e danno la vista solo se attive (n.55 corretto)", () => {
   const s = inst("o_statua1", 1000, 1000, { attiva: 0 });
   const w = world([s]);
   const m = new FogMap(ROOM, ROOM);
@@ -99,7 +99,13 @@ test("statue: scoprono solo se attive, e non danno la vista", () => {
   m.update(w);
   assert.ok(m.isExplored(1000, 1000));
   m.compose(w, m.region(500, 500, 1000, 1000));
-  assert.equal(cellAt(m, m.shade, 1000, 1000), SHADE_FOG);
+  assert.equal(cellAt(m, m.shade, 1000, 1000), SHADE_VISIBLE);
+});
+
+test("le anteprime dei muri non vedono (n.54 corretto)", () => {
+  const m = new FogMap(ROOM, ROOM);
+  m.update(world([{ object: "oodl", parents: ["mura_ori", "ally_build", "ally"], x: 1000, y: 1000, alive: true }]));
+  assert.ok(!m.isExplored(1000, 1000));
 });
 
 test("al tramonto l'ellisse rimpicciolisce senza ricoprire; all'alba si riallarga", () => {

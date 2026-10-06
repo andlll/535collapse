@@ -63,8 +63,11 @@ function fireSystem(i, w, reg, depth) {
 }
 
 // "if onfire=1 && firestarted=0 {...}; if onfire=1 && firestarted=1
-// part_type_life(...)" [C]. `visible` conta al momento dell'accensione: un
-// edificio nemico che prende fuoco nella nebbia non avra' fiamme.
+// part_type_life(...)" [C].
+// [Correzione decisa dall'autore, §3.17 n.60] nell'originale le fiamme
+// moltiplicano per `visible` solo all'accensione: un edificio nemico
+// incendiato nella nebbia restava senza fiamme anche una volta visto. Qui
+// il numero si ricalcola a ogni passo.
 export function fireStep(i, w, kind) {
   const F = FIRE[kind];
   if (i.onfire === 1 && i.firestarted === 0) {
@@ -72,8 +75,23 @@ export function fireStep(i, w, kind) {
     if (F.front) [i.fire_psf, i.fire_part] = fireSystem(i, w, F.front, -i.y - 1);
     i.firestarted = 1;
   }
+  if (i.firestarted === 1) {
+    const v = i.visible ? 1 : 0;
+    if (i.fire_ps && i.fire_ps.emitters[0]) i.fire_ps.emitters[0].n = F.back[4] * v;
+    if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
+  }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
     i.fire_part.life = [(F.life[0] - i.life) / 2, (F.life[1] - i.life) / 2];
+  }
+}
+
+// [Correzione decisa dall'autore, §3.17 n.56] la pioggia (manager Alarm_2)
+// spegneva gli edifici (onfire=0) ma lasciava le fiamme accese: qui le
+// spegne come la riparazione col legno.
+export function rainExtinguish(w) {
+  for (const b of w.all("ally_wooden")) {
+    b.onfire = 0;
+    if (b.firestarted === 1) { fireStop(b, w); b.firestarted = 0; }
   }
 }
 
@@ -117,8 +135,12 @@ const TORCIA = partType({
 
 export function fireStarterCreate(i, w, small) {
   // firestarter: part_system_depth(-y-70); firestarter_small non la imposta
-  // e resta alla depth 0 [I: valore predefinito]
+  // e resta alla depth 0 [I: valore predefinito].
+  // [Correzione decisa dall'autore, §3.17 n.59] la torcia si disegnava due
+  // volte (da sola alla depth 0, dietro a tutto, e nel suo Draw a -y-90):
+  // qui solo nel Draw.
   i.fire_ps = P(w).systemCreate(small ? 0 : -i.y - 70);
+  if (small) i.fire_ps.autoDraw = false;
   i.fire_emitter = P(w).emitterCreate(i.fire_ps);
   if (small) P(w).region(i.fire_emitter, i.x - 5, i.x + 5, i.y, i.y + 5, "rectangle", "gaussian");
   else P(w).region(i.fire_emitter, i.x - 20, i.x + 20, i.y, i.y + 10, "rectangle", "gaussian");
@@ -241,9 +263,9 @@ export function seedsThrow(i, w) {
 
 // ---------------------------------------------------------------- aquila
 
-// aquila_01 [C]: creata dal manager ogni 3000 passi (alarm 3) a y=-10,
-// vola a 5 px per passo in direzione 30 e sparisce dopo 3000 passi.
-// Partendo sopra la room e salendo, non entra mai nella view: §3.16 n.58.
+// aquila_01 [C]: creata dal manager ogni 3000 passi (alarm 3), vola a 5 px
+// per passo in direzione 30 (in alto a destra) e sparisce dopo 3000 passi.
+// La partenza e' nel manager (a y=-10 non si vedeva mai: §3.17 n.58).
 export function aquila() {
   return {
     create(i) { i.alarm.set(0, 3000); i.direction = 30; i.speed = 5; },
