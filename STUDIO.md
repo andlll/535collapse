@@ -21,7 +21,8 @@ istanze), poi suggerimenti, dialoghi, vittoria e sconfitta. Il dettaglio
 di ogni voce sta nella sezione citata.
 
 **Per riprendere**
-- Branch `claude/lucid-gauss-ph92vs`; gli asset generati (`game/assets/`,
+- Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
+  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
