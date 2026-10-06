@@ -50,8 +50,11 @@ notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
 vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi (anche
 col puntatore uscito dalla finestra; nelle opzioni grafiche si può
 bloccare il mouse nella finestra), X/Z o la rotella per lo zoom,
-**F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
-tetto a 30 fps. Esc (o il pulsante in alto a destra) apre il menu di
+**F3** per il pannello di diagnostica (anche `?diag=1`: tempo CPU e, se
+il browser lo espone, tempo GPU per frame); `?fps=30` per il
+tetto a 30 fps. Nelle opzioni grafiche "Quality" (Alta, Media, Bassa)
+disegna il mondo a risoluzione ridotta sugli schermi ad alta densita',
+lasciando nitida l'interfaccia. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
 salvataggi (uno slot per room nel browser, salvataggio automatico ogni 5
 minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu

@@ -296,15 +296,25 @@ async function main() {
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);
 
-  // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
-  // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
+  // Dimensioni: la view segue la finestra in pixel CSS (come l'originale).
+  // [§6.8 G1] Il canvas ha pixel reali = CSS x densita' dello schermo (fino a
+  // 2): li' si disegna l'interfaccia, sempre nitida. Il mondo si disegna con
+  // `worldScale` pixel per pixel CSS = densita' limitata dalla qualita'
+  // (Alta: com'e', Media: 1,25, Bassa: 1) x scala dinamica; se e' minore di
+  // quella del canvas passa da una superficie piu' piccola, ingrandita a
+  // schermo pieno prima dell'interfaccia. Prima la scala dinamica
+  // rimpiccioliva tutto il canvas, interfaccia compresa.
+  const QUALITY_CAP = { high: 2, medium: 1.25, low: 1 };
+  let canvasScale = 1, worldScale = 1;
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
-    const k = Math.min(devicePixelRatio || 1, 2) * rscale.scale;
-    canvas.width = Math.max(1, Math.round(w * k));
-    canvas.height = Math.max(1, Math.round(h * k));
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvasScale = dpr;
+    worldScale = Math.min(dpr, QUALITY_CAP[settings.quality] || 2) * rscale.scale;
+    canvas.width = Math.max(1, Math.round(w * canvasScale));
+    canvas.height = Math.max(1, Math.round(h * canvasScale));
     cam.resize(w, h);
   };
   window.addEventListener("resize", resize);
@@ -321,6 +331,7 @@ async function main() {
     }
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
+    resize(); // §6.8 G1: la qualita' cambia la scala del mondo
     // "Blocca il mouse nella finestra" (input.js, §6.1 n.82): si attiva al
     // prossimo clic sul gioco
     input.wantLock = settings.lockMouse && roomName !== "menu";
@@ -413,8 +424,17 @@ async function main() {
   };
 
   let fpsNow = 0;
-  // la scena: mondo, poi l'interfaccia (Draw GUI)
-  const renderScene = () => {
+  // [§6.8 G1] superficie del mondo, quando la sua scala e' minore di quella
+  // del canvas (si ricrea se cambiano misura o contesto)
+  let worldTarget = null;
+  const worldSurface = () => {
+    const W = Math.max(1, Math.round(cam.cssW * worldScale)), H = Math.max(1, Math.round(cam.cssH * worldScale));
+    if (worldTarget && worldTarget.gen === r.generation && worldTarget.t.width === W && worldTarget.t.height === H) return worldTarget.t;
+    if (worldTarget && worldTarget.gen === r.generation) r.deleteTarget(worldTarget.t);
+    worldTarget = { gen: r.generation, t: r.createTarget(W, H) };
+    return worldTarget.t;
+  };
+  const drawWorld = () => {
     drawBackgrounds(r, assets, room, cam);
     draw.reset();
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
@@ -424,6 +444,25 @@ async function main() {
       fogLayer.draw(draw, world, cam);
     });
     manager.drawMouser(draw, world);
+  };
+
+  // la scena: mondo, poi l'interfaccia (Draw GUI)
+  const renderScene = () => {
+    if (worldScale < canvasScale - 1e-6) {
+      const t = worldSurface();
+      r.beginTarget(t, cam.x, cam.y, cam.w, cam.h, clear);
+      drawWorld();
+      r.endTarget();
+      r.setProjection(cam.x, cam.y, cam.w, cam.h);
+      r.setBlend("replace");
+      r.quad(t, cam.x, cam.y, cam.x + cam.w, cam.y, cam.x + cam.w, cam.y + cam.h, cam.x, cam.y + cam.h,
+             0, t.height, t.width, 0, 0xffffffff);
+      r.setBlend("normal");
+    } else {
+      if (worldTarget && worldTarget.gen === r.generation) r.deleteTarget(worldTarget.t);
+      worldTarget = null;
+      drawWorld();
+    }
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
@@ -471,11 +510,13 @@ async function main() {
 
   const render = () => {
     r.beginFrame(cam, clear);
+    r.gpuBegin(); // §6.8 G0
     if (!pause.paused) {
       if (blur) freeBlur();
       renderScene();
       drawCursor();
       r.flush();
+      r.gpuEnd();
       return;
     }
     const B = blurTargets();
@@ -499,6 +540,7 @@ async function main() {
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
     drawCursor();
     r.flush();
+    r.gpuEnd();
   };
 
   let lastRendered = 0, fpsFrames = 0, fpsSince = performance.now();
@@ -520,7 +562,11 @@ async function main() {
         if (lastRendered && rscale.observe(info.now, info.now - lastRendered, 1000 / (loop.fpsCap || 60))) resize();
         lastRendered = info.now;
       }
+      // §6.8 G0: le misure GPU girano solo col pannello aperto
+      r.timing = diag.visible;
+      if (r.timer) r.gpuPoll();
       diag.update(info.now, {
+        gpuTimer: !!r.timer, gpuMs: r.gpuMs, worldScale, canvasScale, quality: settings.quality,
         renderer: r.rendererString, software: r.software, fpsCap: loop.fpsCap,
         drawCalls: r.stats.drawCalls, quads: r.stats.quads, drawn: world.drawn,
         textureBytes: r.textureBytes(), textures: r.textures.size,

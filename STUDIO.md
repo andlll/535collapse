@@ -16,7 +16,8 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 6 ottobre 2026, terza sessione (branch
 `claude/inspiring-cray-dalph5`): correzioni dalla prima prova
-dell'autore (§6.1, n.77–n.89). Seconda sessione (PR #2): Fase 3
+dell'autore (§6.1, n.77–n.89), pathfinding (§6.2–§6.3), arcieri, torri
+e catapulte (§6.4–§6.7), carico della GPU (§6.8). Seconda sessione (PR #2): Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
@@ -166,8 +167,19 @@ sezione citata.
   raggiungibile, a tiro), alleate e nemiche; un tiro ordinato troppo
   vicino arretra e poi tira.
 
+**Carico della GPU (§6.8)**
+- [x] Studio (riempimento 4,7–6,5 schermi a frame, shader con 16 `if`,
+  peso di erba, nebbia e notte, fuochi, interfaccia).
+- [x] G0 tempo GPU per frame nel pannello F3 (dove il browser lo espone).
+- [x] G1 opzione Qualita' (Alta/Media/Bassa): mondo a risoluzione ridotta,
+  interfaccia nitida; la risoluzione dinamica ora riduce solo il mondo.
+- [ ] Proposte da approvare: G2 shader senza catena di `if` (texture a
+  strati), G3 nebbia e notte in un passaggio, G4 suolo cotto in blocchi,
+  G5 erba piu' rada. Prima conviene il dato di F3 sul PC dell'autore.
+
 **Verifiche che mancano**
-- [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
+- [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
+  "GPU per frame" in Alta e in Bassa),
   Firefox, Safari, schermi ad alta densità.
 
 ---
@@ -3016,3 +3028,132 @@ catapulta, 2000 passi, prima → dopo):
 `npm test` 50 test; 5000 passi senza errori nelle quattro room; salvataggi
 identici; zip dei portali; battaglia di `lvl02` senza differenze di costo.
 
+
+### 6.8 Carico della GPU: studio, G0 (tempo GPU in F3) e G1 (qualita')
+
+Domanda dell'autore: "a livello di carico della gpu secondo te si riesce a
+ottimizzare tutto? ho l'impressione che il bottleneck sia li' piu' che
+sulla cpu". Poi: "va bene fai g0 e g1 intanto".
+
+**Limite delle misure.** Nel container la GPU e' emulata dalla CPU
+(SwiftShader): i millisecondi assoluti non valgono per una scheda vera,
+valgono i rapporti fra varianti misurate nelle stesse condizioni. Per
+misurare il disegno si chiude il frame con `readPixels` (in SwiftShader
+`gl.finish` non aspetta davvero la fine del lavoro).
+
+**Studio** (1920×1080 se non detto altrimenti):
+- CPU: la simulazione ~1 ms a passo; preparare il disegno in JavaScript
+  2–4 ms a frame. Una parte piccola dei 16,7 ms di un frame a 60 fps.
+- Riempimento: ogni frame copre lo schermo 4,7–6,5 volte (sfondo intero,
+  pezzi di terreno fino a 3 schermi nel menu, 2500–4000 particelle d'erba,
+  nebbia e notte a schermo intero, in `lvl01` due volte, fuochi,
+  interfaccia).
+- Il costo segue i pixel: a densita' 2 (schermi ad alta risoluzione) il
+  disegno costa ~3,5 volte; il gioco disegnava fino a 2 pixel reali per
+  pixel CSS (`devicePixelRatio` limitato a 2).
+- Lo shader sceglie la texture fra 16 unita' con una catena di `if`
+  (`gl.js`): una variante di prova con un solo campionamento dimezza il
+  costo dei frammenti (173 → 94 ms nell'emulazione). Su Windows Chrome
+  traduce WebGL in Direct3D (ANGLE), dove una catena cosi' puo' eseguire
+  tutti i rami: e' il sospetto principale.
+- Peso delle parti (spegnendole a turno):
+
+  | | erba e spighe | nebbia + notte | fuochi | interfaccia |
+  |---|---|---|---|---|
+  | `match` | ~28% | ~17% | — | ~6% |
+  | `lvl01` | — | ~41% | ~29% | — |
+  | `lvl02` | ~33% | ~30% | ~18% | ~20% |
+  | menu | ~45% | — | — | ~28% |
+
+- Texture: 229–245 MB in GPU, di cui 125 MB del terreno (pagine fino a
+  4088×4072).
+
+**Proposte** (in ordine di guadagno su rischio): G0 tempo GPU in F3; G1
+opzione qualita' (mondo a risoluzione ridotta, interfaccia nitida); G2
+shader senza catena di `if` (pagine in una texture a strati, il terreno
+ritagliato a 2048: ~meta' del costo per pixel, pixel identici); G3 nebbia
+e notte in un solo passaggio; G4 suolo cotto in blocchi ridisegnati solo
+quando cambiano; G5 erba piu' rada o animata meno spesso (scelta
+estetica). Approvate G0 e G1; G2–G5 restano proposte (lista in cima).
+
+**G0 — tempo GPU nel pannello F3** (`gl.js`, `app.js`, `diag.js`).
+- Estensione `EXT_disjoint_timer_query_webgl2`: se il browser la espone,
+  ogni frame (solo col pannello aperto, `r.timing = diag.visible`) sta fra
+  `gpuBegin()` (dopo `beginFrame`) e `gpuEnd()` (dopo l'ultimo `flush`,
+  sia in gioco sia in pausa). Una query `TIME_ELAPSED_EXT` per frame, al
+  massimo 8 in attesa; `gpuPoll()` a ogni frame raccoglie quelle pronte
+  senza bloccare, scarta quelle con `GPU_DISJOINT_EXT` (misura non valida,
+  es. cambio di frequenza) e tiene gli ultimi 60 valori.
+- Il pannello mostra `CPU per frame X ms   GPU per frame M ms (max N)`
+  (media e massimo degli ultimi 60); senza estensione "non disponibile (il
+  browser non espone EXT_disjoint_timer_query_webgl2)"; prima dei primi
+  risultati "in misura...". Chrome la espone su desktop (Windows, Linux,
+  macOS); Firefox e Safari di solito no (contromisura contro gli attacchi
+  di temporizzazione). Se la GPU per frame e' vicina ai 16,7 ms (o ai
+  1000/tetto fps) mentre la CPU e' bassa, il collo di bottiglia e' la GPU.
+- Riga in piu': `qualita' <alta|media|bassa>: mondo X px per px CSS,
+  interfaccia Y`, per vedere la densita' effettiva (qualita' × risoluzione
+  dinamica).
+- Verificato (SwiftShader, 1280×720, dpr 2): l'estensione c'e' e il
+  pannello mostra per esempio "GPU per frame 334,23 ms" in qualita' media.
+
+**G1 — opzione Qualita'** (`app.js`, `gl.js`, `settings.js`, `pause.js`,
+`texts.js`).
+- Nuova impostazione `quality` (`high` predefinita, salvata con le altre):
+  Alta = come prima (fino a 2 pixel per pixel CSS), Media = 1,25, Bassa =
+  1. Nel menu di pausa, opzioni grafiche, voce "Quality: High/Medium/Low"
+  (tradotta nelle sei lingue) prima della risoluzione dinamica; un clic
+  passa Alta → Media → Bassa → Alta e si applica subito.
+- Il canvas resta alla densita' dello schermo (`canvasScale` =
+  `devicePixelRatio`, massimo 2): l'interfaccia, i testi e il cursore
+  restano nitidi. Il mondo ha la sua densita' `worldScale` =
+  min(dpr, tetto della qualita') × scala della risoluzione dinamica.
+- Se `worldScale` e' minore di `canvasScale` il mondo (sfondi, istanze,
+  nebbia, notte, cerchio del puntatore) si disegna in una superficie
+  grande `cssW × worldScale` per `cssH × worldScale`, ricreata solo se
+  cambiano misura o contesto WebGL, e si copia sul canvas con un quad
+  (filtro lineare); poi l'interfaccia (Draw GUI) direttamente sul canvas.
+  Altrimenti si disegna direttamente come prima e la superficie si libera.
+  Alta su uno schermo a densita' 1 o 2, Media e Bassa a densita' 1: nessuna
+  superficie, nessun costo in piu'.
+- Cambiamento collegato: la **risoluzione dinamica** prima riduceva tutto
+  il canvas (interfaccia compresa); ora riduce solo il mondo, con la stessa
+  superficie. La sfocatura della pausa ridisegna la scena dentro la sua
+  superficie come prima (con la superficie del mondo annidata).
+- **Miscela `replace`** (`gl.js`, `setBlend`): la nebbia e la notte si
+  sottraggono con `ZERO, ONE_MINUS_SRC_COLOR`, che azzera anche l'alpha di
+  una superficie. Sul canvas l'alpha non conta, in una superficie si':
+  copiandola con la miscela normale (alpha premoltiplicato) dove l'alpha e'
+  0 il suo colore si somma a quello sotto (il colore della room con cui si
+  pulisce il frame) e il mondo usciva slavato, quasi bianco. La copia del
+  mondo usa quindi `replace` (`ONE, ZERO`: si scrive il colore, l'alpha si
+  ignora). La sfocatura della pausa non ne soffre: le sue copie finiscono
+  in superfici pulite con alpha 1 e con colore nero, e lo sfondo esce
+  giusto (verificato a schermo, prima e dopo).
+
+**Verificato** (SwiftShader, 1280×720, dpr 2, risoluzione dinamica spenta,
+ms per frame, solo i rapporti contano):
+
+| | prima | Alta | Media | Bassa |
+|---|---|---|---|---|
+| `match` | 678 | 642 | 454 (−33%) | 370 (−45%) |
+| `lvl01` | 766 | 750 | 461 (−40%) | 458 (−40%) |
+
+(`lvl01` Media ≈ Bassa: li' pesano nebbia, notte e fuochi a densita' di
+superficie gia' bassa, e la copia finale; resta da vedere su una GPU vera.)
+- Alta: immagine identica pixel per pixel alla versione precedente (hash
+  uguale); la pausa in Alta differisce dal riferimento solo nell'erba
+  animata, quanto due esecuzioni dello stesso riferimento (51 mila pixel,
+  scarto massimo 26–30 su 255).
+- Bassa: stessa immagine, piu' morbida; nessuno slavato (dopo `replace`);
+  pausa con lo sfondo sfocato giusto.
+- Menu: la voce cicla Media → Bassa → Alta → Media, l'impostazione si
+  salva, il canvas resta 2560×1440, F3 mostra "qualita' media: mondo 1,25
+  px per px CSS, interfaccia 2,00".
+- `npm test` 50 test; 5000 passi senza errori nelle quattro room;
+  salvataggi identici; zip dei portali.
+
+**Da provare sul PC dell'autore**: aprire F3 e guardare "GPU per frame"
+(se c'e') in Alta e in Bassa nello stesso punto della mappa. Se in Bassa
+il tempo GPU scende molto, conta il numero di pixel (G1 basta o G4); se
+scende poco, conta il costo per pixel o per particella (G2, G3, G5).

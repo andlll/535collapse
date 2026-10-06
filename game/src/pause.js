@@ -106,6 +106,12 @@ export class PauseMenu {
         this.dirty = true;
         break;
       case "fpsCap": s.fpsCap = b.value; this.actions.graphics(); break;
+      // [§6.8 G1] Alta -> Media -> Bassa -> Alta
+      case "quality":
+        s.quality = { high: "medium", medium: "low", low: "high" }[s.quality] || "medium";
+        this.actions.graphics();
+        this.dirty = true;
+        break;
       default: break;
     }
   }
@@ -166,6 +172,7 @@ export class PauseMenu {
         [tr("Rain: {state}", { state: onOff(s.rain) }), "rain"],
         [tr("Grass and crops: {state}", { state: onOff(s.grass) }), "grass"],
         [tr("Fire and sparks: {state}", { state: onOff(s.fire) }), "fire"],
+        [tr("Quality: {level}", { level: tr({ high: "High", medium: "Medium", low: "Low" }[s.quality] || "High") }), "quality"],
         [tr("Dynamic resolution: {state}", { state: onOff(s.dynamicResolution) }), "dynamicResolution"],
         [tr("Full screen: {state}", { state: onOff(isFullscreen()) }), "fullscreen", !fullscreenAvailable()],
         [tr("Lock mouse in window: {state}", { state: onOff(s.lockMouse) }), "lockMouse", !lockAvailable()],
