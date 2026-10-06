@@ -70,7 +70,8 @@ node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un if
 La CI (`.github/workflows/build.yml`) fa tutto questo a ogni push, dagli
 zip del progetto: pipeline, test, bundle, zip e le tre prove nel browser.
 Lo zip resta come artefatto della run; da `main` il gioco si pubblica su
-GitHub Pages.
+GitHub Pages: https://andlll.github.io/535collapse/ (serve una volta
+Settings → Pages → Source: "GitHub Actions").
 
 `soak.mjs` usa Playwright; se il modulo non è nel progetto, la variabile
 `PLAYWRIGHT_MODULE` dice dove trovarlo. Nella pagina, `window.__game`

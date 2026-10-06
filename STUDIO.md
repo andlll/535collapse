@@ -49,7 +49,10 @@ sezione citata.
   (traduzioni), `save.js`/`snapshot.js` (salvataggi), `fullscreen.js`,
   `app.js` (registrazione dei comportamenti).
 - Prove: anche `game/test/browser/saves.mjs` (salva, ricarica, stato
-  identico). **Se cambia la forma dello stato** (campi delle istanze
+  identico) e `portal.mjs` (lo zip dei portali in un iframe); la CI
+  (`.github/workflows/build.yml`, §5.1) le fa tutte a ogni push e da `main`
+  pubblica il gioco su GitHub Pages: https://andlll.github.io/535collapse/
+  (come NIMBUS). **Se cambia la forma dello stato** (campi delle istanze
   rinominati o con un altro significato) si alza `SAVE_VERSION` in
   `save.js`: i salvataggi vecchi diventano "non validi" invece di caricare
   una partita incoerente.
@@ -96,8 +99,8 @@ sezione citata.
 **Resto del gioco**
 - [x] Particelle (riserva unica): pioggia, erba, chiazze, fuoco (fiamme
   degli edifici, fiammata delle frecce incendiarie, bracieri e torce),
-  spighe dei campi, germogli, semi della semina; aquila (§3.16). Resta
-  `fog_controller` (crea `fog01`, le nuvole del menu): col menu.
+  spighe dei campi, germogli, semi della semina; aquila (§3.16). Le
+  nuvole del menu (`fog_controller`, `fog01`) sono col menu (§3.20).
 - [x] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu) e
   `fog_controller` (le sue nuvole) insieme al menu principale (§3.20).
 - [x] Suggerimenti del tutorial, dialoghi, obiettivi, vittoria e
@@ -107,8 +110,8 @@ sezione citata.
   `progress.js`); livelli 3–10 "in arrivo" (§3.20).
 - [x] Menu di pausa (`mouser`) con opzioni grafiche e lingua (§3.19).
 - [x] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che
-  conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13).
-  Mancano i dialoghi che li accompagnano (voce sopra).
+  conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13);
+  i dialoghi che li accompagnano sono in §3.18.
 - [x] Correzioni decise in Fase 1 (§1.6), applicate coi sistemi: ariete
   60 oro anche col tasto Q, annullare un picchiere restituisce 55 cibo e
   45 legno, centro distrutto −10 popcap, castello e torre senza −5.
