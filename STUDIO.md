@@ -161,6 +161,11 @@ sezione citata.
 - [x] Montagne e tutte le rovine solide fermano le frecce, i boschi no; le
   mura non fermano torri e castello (decisione dell'autore, §6.6).
 
+**Catapulte (§6.7)**
+- [x] Troppo vicine al bersaglio: arretrano in un punto cercato (libero,
+  raggiungibile, a tiro), alleate e nemiche; un tiro ordinato troppo
+  vicino arretra e poi tira.
+
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
   Firefox, Safari, schermi ad alta densità.
@@ -2966,4 +2971,44 @@ ellisse): linea attraverso bloccata, sopra libera, attraverso un bosco
 libera, 7 µs per controllo; battaglia di `lvl02` con 80 soldati in piu'
 senza colpi attraverso edifici o montagne e senza costo in piu'; 5000 passi
 senza errori nelle quattro room; salvataggi identici; zip dei portali.
+
+### 6.7 Catapulte troppo vicine: arretramento
+
+Richiesta dell'autore: "per le catapulte: possiamo migliorare il sistema per
+cui se sono troppo vicine al bersaglio si muovono automaticamente
+indietro? sia alleate che nemiche".
+
+**Prima** (§3.12 n.47): in automatico, carica e ferma, una catapulta con
+l'edificio bersaglio piu' vicino a meno di 300 px (distanza minima di tiro)
+arretrava di 350 px in linea retta dalla parte opposta. Con un ostacolo
+dietro (case, mura, montagne, altre unita') restava incastrata a girare sul
+posto; guardando un solo edificio poteva arretrare a meno di 300 px da un
+altro; un tiro ordinato dal giocatore su un bersaglio troppo vicino non
+faceva nulla.
+
+**Ora** (`siege.js`, `catapultSpot`, `retreatSpot`):
+- il punto d'arrivo si cerca su anelli da 120 a 520 px (24 direzioni): una
+  cella libera, la catapulta ci sta, raggiungibile in linea retta, e da li'
+  l'edificio piu' vicino (quello a cui tirera') e' oltre 300 + 30 px e
+  dentro la gittata meno 30; il piu' vicino, a parita' d'anello quello con
+  l'edificio meno lontano. Se non c'e', l'arretramento dritto di prima;
+- se si blocca per strada si ferma dov'e' (`arriveIfBlocked`, come le unita'
+  di §6.1) e al passo dopo rivaluta;
+- alleata: un clic destro su un nemico a meno di 300 px (prima ignorato)
+  manda la catapulta in un punto da cui il punto cliccato e' a tiro e,
+  arrivata, tira li' (il punto segue il bersaglio se si e' mosso); come il
+  tiro mirato originale, un colpo, poi niente tiro automatico fino al
+  prossimo ordine.
+
+**Verificato** (campo aperto di `match`, edificio a 100 px dalla
+catapulta, 2000 passi, prima → dopo):
+- aperto: uguale (alleata primo tiro al passo 220 → 231; nemica 9 tiri);
+- ostacolo dietro (cinque case): alleata incastrata 1950 passi, 0 tiri →
+  10 tiri, 2 passi ferma; nemica incastrata 1950 passi, 0 tiri → 9 tiri;
+- secondo edificio dove porterebbe l'arretramento dritto: alleata primo
+  tiro al passo 1429 → 466; nemica incastrata 1758 passi, 0 tiri → 9 tiri;
+- tiro ordinato troppo vicino: ignorato → arretra di 200 px e colpisce la
+  casa al passo 195.
+`npm test` 50 test; 5000 passi senza errori nelle quattro room; salvataggi
+identici; zip dei portali; battaglia di `lvl02` senza differenze di costo.
 
