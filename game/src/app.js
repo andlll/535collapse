@@ -468,6 +468,8 @@ async function main() {
       worldTarget = null;
       drawWorld();
     }
+    // [§7.14] vetro: il mondo appena disegnato, ridotto a 1/4 e sfocato
+    draw.setGlass(settings.glass ? glassBackdrop() : null);
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
@@ -478,6 +480,31 @@ async function main() {
     world.drawGUIEnd(draw);
     draw.reset();
     pause.drawButton(draw, cam.cssW);
+    draw.setGlass(null);
+  };
+
+  // [§7.14] Sfondo dei pannelli di vetro: una copia del mondo appena
+  // disegnato (dalla superficie corrente: il canvas, o quella della pausa) a
+  // meta' risoluzione, poi a un quarto, sfocata con una gaussiana. Superfici
+  // ricreate solo se cambia la misura o il contesto.
+  const GLASS_SIGMA = 3; // texel a un quarto di risoluzione
+  let glassT = null;
+  const glassBackdrop = () => {
+    const cur = r.targets && r.targets.length ? r.targets[r.targets.length - 1].t : null;
+    const W = cur ? cur.width : canvas.width, H = cur ? cur.height : canvas.height;
+    if (!(glassT && glassT.gen === r.generation && glassT.W === W && glassT.H === H)) {
+      if (glassT && glassT.gen === r.generation) for (const t of glassT.t) r.deleteTarget(t);
+      const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
+      const qw = Math.max(1, Math.ceil(W / 4)), qh = Math.max(1, Math.ceil(H / 4));
+      glassT = { gen: r.generation, W, H, t: [r.createTarget(hw, hh), r.createTarget(qw, qh), r.createTarget(qw, qh), r.createTarget(qw, qh)] };
+    }
+    const [half, q, tmp, out] = glassT.t;
+    const proj = r.proj;
+    r.grab(half);
+    copy(half, q);
+    r.blur(q, tmp, out, GLASS_SIGMA);
+    r.setProjection(...proj);
+    return out;
   };
 
   // Sfondo del menu di pausa, come in NIMBUS: la scena ferma sfumata e
@@ -547,7 +574,9 @@ async function main() {
     draw.setAlpha(0.4);
     draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
     draw.setAlpha(1);
+    draw.setGlass(settings.glass ? last : null); // §7.14: il pannello di vetro sullo sfondo gia' sfocato
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
+    draw.setGlass(null);
     drawCursor();
     r.flush();
     r.gpuEnd();

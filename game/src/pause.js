@@ -100,7 +100,7 @@ export class PauseMenu {
       case "language": this.actions.language(b.value); this.dirty = true; break;
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
-      case "rain": case "grass": case "fire": case "dynamicResolution": case "autosave": case "lockMouse":
+      case "rain": case "grass": case "fire": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -174,6 +174,7 @@ export class PauseMenu {
         [tr("Fire and sparks: {state}", { state: onOff(s.fire) }), "fire"],
         [tr("Quality: {level}", { level: tr({ high: "High", medium: "Medium", low: "Low" }[s.quality] || "High") }), "quality"],
         [tr("Dynamic resolution: {state}", { state: onOff(s.dynamicResolution) }), "dynamicResolution"],
+        [tr("Glass interface: {state}", { state: onOff(s.glass) }), "glass"],
         [tr("Full screen: {state}", { state: onOff(isFullscreen()) }), "fullscreen", !fullscreenAvailable()],
         [tr("Lock mouse in window: {state}", { state: onOff(s.lockMouse) }), "lockMouse", !lockAvailable()],
       ];
