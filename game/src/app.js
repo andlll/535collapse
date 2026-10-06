@@ -28,6 +28,7 @@ import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBul
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
+import { GroundCache } from "./ground.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -296,6 +297,7 @@ async function main() {
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);
+  const ground = new GroundCache(r, assets, room, world, clear);
 
   // Dimensioni: la view segue la finestra in pixel CSS (come l'originale).
   // [§6.8 G1] Il canvas ha pixel reali = CSS x densita' dello schermo (fino a
@@ -306,6 +308,7 @@ async function main() {
   // schermo pieno prima dell'interfaccia. Prima la scala dinamica
   // rimpiccioliva tutto il canvas, interfaccia compresa.
   const QUALITY_CAP = { high: 2, medium: 1.25, low: 1 };
+  const GRASS_DENSITY = { high: 1, medium: 0.7, low: 0.5 }; // §7.15 G5
   let canvasScale = 1, worldScale = 1;
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight;
@@ -330,6 +333,9 @@ async function main() {
     for (const k of ["rain", "grass", "fire"]) {
       if (settings[k]) world.particles.hidden.delete(k); else world.particles.hidden.add(k);
     }
+    // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000
+    // fili disegnati a ogni fotogramma, fino al 45% del disegno nel menu)
+    world.particles.density.grass = GRASS_DENSITY[settings.quality] ?? 1;
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
     resize(); // §6.8 G1: la qualita' cambia la scala del mondo
@@ -436,7 +442,7 @@ async function main() {
     return worldTarget.t;
   };
   const drawWorld = () => {
-    drawBackgrounds(r, assets, room, cam);
+    ground.draw(cam); // sfondo e suolo cotti in blocchi (§7.16 G4)
     draw.reset();
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
@@ -641,17 +647,6 @@ async function main() {
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
-}
-
-// Sfondi della room ripetuti (green1, city2: 281x250 [C]), sotto a tutto.
-function drawBackgrounds(r, assets, room, cam) {
-  for (const b of room.backgrounds) {
-    const t = assets.bg.get(b.name);
-    if (!t) continue;
-    const x0 = b.htiled ? cam.x : b.x, y0 = b.vtiled ? cam.y : b.y;
-    const x1 = b.htiled ? cam.x + cam.w : b.x + t.width, y1 = b.vtiled ? cam.y + cam.h : b.y + t.height;
-    r.quad(t, x0, y0, x1, y0, x1, y1, x0, y1, x0 - b.x, y0 - b.y, x1 - b.x, y1 - b.y, 0xffffffff);
-  }
 }
 
 // PWA (sw.js): solo dove i service worker sono permessi (https o localhost)

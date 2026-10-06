@@ -715,9 +715,10 @@ export class World {
     const list = this.sorted();
     const P = this.particles, systems = P ? P.sorted() : [];
     let drawn = 0, si = 0;
+    const skip = this.skipDraw;
     for (const i of list) {
       while (si < systems.length && systems[si].depth > i.depth) P.draw(systems[si++], r, this.assets, cam);
-      if (!i.visible) continue;
+      if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
       const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
