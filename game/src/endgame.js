@@ -87,7 +87,7 @@ export function gameoverManager() {
       d.setHalign("center");
       d.text(vw / 2, vh / 2 - 200, tr("Your town hall was destroyed."));
       d.text(vw / 2, vh / 2 - 100, tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
-      d.text(vw / 2, vh / 2, tr("{n} enemy bases were sucessfully destroyed.", { n: g.basidistrutte }));
+      d.text(vw / 2, vh / 2, tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte }));
       d.text(vw / 2, vh / 2 + 100, tr("The final score is {score}", { score }));
     },
   };
@@ -111,13 +111,13 @@ export function objectiveButton() {
         lines.push([148, tr("Number of waves: {n}", { n: g.waves })]);
       }
       if (w.room === "lvl01") {
-        lines.push([58, tr("Reach the norther gates and escape the city")]);
+        lines.push([58, tr("Reach the northern gates and escape the city")]);
         if (g.dialogochest === 1) lines.push([88, tr("Destroy the chests to gather resources")]);
         if (g.lvl01_gate === 1) lines.push([118, tr("Use the barracks to train more soldiers")]);
       }
       if (w.room === "lvl02") {
         lines.push([58, tr("Free the villages under attack ({n}/7)", { n: g.liberati }), g.liberati === 7 ? 43 : 0]);
-        lines.push([88, tr("Use the freed paesants to build your base")]);
+        lines.push([88, tr("Use the freed peasants to build your base")]);
         lines.push([118, tr("Destroy all the enemy buildings"), w.number("enemy_build") === 0 ? 103 : 0]);
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si

@@ -51,7 +51,6 @@ del menu. Il dettaglio di ogni voce sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Refusi nei testi inglesi dell'originale (§3.19 n.72): correggerli?
 - [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
@@ -2277,10 +2276,15 @@ obiettivi e FPS. Qui:
   `draw.js` a lettere ASCII.
 - Schede e riquadro degli obiettivi si allargano se un testo tradotto non
   ci sta (in inglese restano come nell'originale).
-- I testi inglesi restano quelli dell'originale, refusi compresi
-  ("aswell", "reallocatein", "buildingto", "ona", "Out citizens",
-  "norther gates", "paesants", "sucessfully", "Thanks you"): da correggere
-  se l'autore vuole (n.72).
+- **n.72**, refusi dei testi inglesi dell'originale: corretti su decisione
+  dell'autore ("sì, correggi i refusi"). Per ritrovare i testi nel GML:
+  "aswell" → "as well", "reallocatein" → "reallocate in", "buildingto" →
+  "building to", "ona" → "on a", "Out citizens" → "Our citizens",
+  "norther gates" → "northern gates", "paesants" → "peasants",
+  "sucessfully" → "successfully", "Thanks you" → "Thank you", "your
+  building, units" → "your buildings, units", "use shortcut" → "use
+  shortcuts", "archers inside it" → "inside them", "help you defeating"
+  → "help you defeat", "It's over.." e "Not yet.." → "...".
 
 **Verificato**: `npm test`, 32 test (nuovi: ogni testo in tutte le lingue
 con gli stessi segnaposto, dialoghi tradotti, `tr()` con ricaduta

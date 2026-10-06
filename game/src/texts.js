@@ -1,6 +1,7 @@
 // Traduzioni dei testi del gioco (i18n.js, tr()). La chiave e' il testo
-// inglese dell'originale, com'e' nel GML (refusi compresi: si ritrovano
-// cercandoli in src/); i valori sono le traduzioni in it, es, pt, de, fr.
+// inglese dell'originale, com'e' nel GML, con i refusi corretti su
+// decisione dell'autore (STUDIO.md §3.19 n.72: l'elenco per ritrovarli in
+// src/); i valori sono le traduzioni in it, es, pt, de, fr.
 // `{nome}` e' un segnaposto sostituito da tr(). I font del gioco hanno le
 // lettere accentate di queste lingue (tools/05_atlas.py); ß, œ e simili li
 // riduce draw.js.
@@ -139,7 +140,7 @@ export const TEXTS = {
     pt: "Tempo sobrevivido: {h} h {m} min {s} s", de: "Überlebenszeit: {h} Std. {m} Min. {s} Sek.",
     fr: "Temps de survie : {h} h {m} min {s} s" },
   "Number of waves: {n}": { it: "Ondate: {n}", es: "Oleadas: {n}", pt: "Ondas: {n}", de: "Angriffswellen: {n}", fr: "Vagues : {n}" },
-  "Reach the norther gates and escape the city": {
+  "Reach the northern gates and escape the city": {
     it: "Raggiungi le porte a nord e fuggi dalla città", es: "Llega a las puertas del norte y escapa de la ciudad",
     pt: "Chegue aos portões do norte e fuja da cidade", de: "Erreiche die Nordtore und flieh aus der Stadt",
     fr: "Atteins les portes du nord et fuis la ville" },
@@ -155,7 +156,7 @@ export const TEXTS = {
     it: "Libera i villaggi sotto attacco ({n}/7)", es: "Libera las aldeas atacadas ({n}/7)",
     pt: "Liberte as aldeias atacadas ({n}/7)", de: "Befreie die angegriffenen Dörfer ({n}/7)",
     fr: "Libère les villages attaqués ({n}/7)" },
-  "Use the freed paesants to build your base": {
+  "Use the freed peasants to build your base": {
     it: "Costruisci la tua base con i contadini liberati", es: "Construye tu base con los campesinos liberados",
     pt: "Construa sua base com os camponeses libertados", de: "Baue mit den befreiten Bauern deine Basis",
     fr: "Bâtis ta base avec les paysans libérés" },
@@ -188,7 +189,7 @@ export const TEXTS = {
     it: "Hai resistito {h} ore, {m} minuti e {s} secondi.", es: "Resististe {h} horas, {m} minutos y {s} segundos.",
     pt: "Você resistiu {h} horas, {m} minutos e {s} segundos.", de: "Du hast {h} Stunden, {m} Minuten und {s} Sekunden durchgehalten.",
     fr: "Tu as résisté {h} heures, {m} minutes et {s} secondes." },
-  "{n} enemy bases were sucessfully destroyed.": {
+  "{n} enemy bases were successfully destroyed.": {
     it: "Basi nemiche distrutte: {n}.", es: "Bases enemigas destruidas: {n}.", pt: "Bases inimigas destruídas: {n}.",
     de: "Zerstörte feindliche Basen: {n}.", fr: "Bases ennemies détruites : {n}." },
   "The final score is {score}": {
@@ -238,7 +239,7 @@ export const TEXTS = {
     de: "In dieser Demo musst du so lange wie möglich überleben und die feindlichen Basen zerstören. Drücke O, um die Ziele auszublenden.",
     fr: "Dans cette démo, le but est de survivre le plus longtemps possible et de détruire les bases ennemies. Appuie sur O pour masquer les objectifs." },
   "Minimap": { it: "Minimappa", es: "Minimapa", pt: "Minimapa", de: "Minikarte", fr: "Mini-carte" },
-  "On the bottom left of the screen you can see the minimap, showing your building, units, the visible resources and the enemies. Press M to hide/view the minimap. Press Ctrl+Z and Ctrl+X to regulate the minimap size.": {
+  "On the bottom left of the screen you can see the minimap, showing your buildings, units, the visible resources and the enemies. Press M to hide/view the minimap. Press Ctrl+Z and Ctrl+X to regulate the minimap size.": {
     it: "In basso a sinistra c'è la minimappa, con edifici, unità, risorse visibili e nemici. Premi M per nasconderla o mostrarla, Ctrl+Z e Ctrl+X per cambiarne la grandezza.",
     es: "Abajo a la izquierda está el minimapa, con edificios, unidades, recursos visibles y enemigos. Pulsa M para ocultarlo o mostrarlo, Ctrl+Z y Ctrl+X para cambiar su tamaño.",
     pt: "No canto inferior esquerdo fica o minimapa, com edifícios, unidades, recursos visíveis e inimigos. Pressione M para ocultá-lo ou mostrá-lo, Ctrl+Z e Ctrl+X para mudar o tamanho.",
@@ -266,7 +267,7 @@ export const TEXTS = {
     de: "Arbeiter können auch bauen, um die Stadt zu erweitern. Wähle einen Arbeiter, dann oben links ein Gebäude, und setze es auf einen freien Platz, wenn du genug Rohstoffe hast.",
     fr: "Tes ouvriers peuvent aussi construire pour agrandir la ville. Avec un ouvrier sélectionné, choisis un bâtiment en haut à gauche et place-le sur un espace libre, si tu as les ressources nécessaires." },
   "Repairing buildings": { it: "Riparare gli edifici", es: "Reparar edificios", pt: "Reparar edifícios", de: "Gebäude reparieren", fr: "Réparer les bâtiments" },
-  "The more workers you use on a construction site the faster the building will grow. You can also right click with workers selected ona damaged building to stop fires and to repair it from damages.": {
+  "The more workers you use on a construction site the faster the building will grow. You can also right click with workers selected on a damaged building to stop fires and to repair it from damages.": {
     it: "Più lavoratori metti in un cantiere, più in fretta cresce l'edificio. Con i lavoratori selezionati, clic destro su un edificio danneggiato per spegnere il fuoco e ripararlo.",
     es: "Cuantos más trabajadores pongas en una obra, más rápido crece el edificio. Con trabajadores seleccionados, clic derecho en un edificio dañado para apagar el fuego y repararlo.",
     pt: "Quanto mais trabalhadores numa obra, mais rápido o edifício cresce. Com trabalhadores selecionados, clique direito num edifício danificado para apagar o fogo e repará-lo.",
@@ -280,7 +281,7 @@ export const TEXTS = {
     de: "Manche Gebäude erschaffen Einheiten: Klickst du sie an, erscheint oben ein Menü. Einheiten kosten Rohstoffe.",
     fr: "Certains bâtiments créent des unités : en cliquant dessus, un menu apparaît en haut. Créer des unités coûte des ressources." },
   "Shortcuts and undoing creation": { it: "Scorciatoie e annullare", es: "Atajos y cancelar", pt: "Atalhos e cancelar", de: "Tasten und Abbrechen", fr: "Raccourcis et annulation" },
-  "You can also use shortcut to create units. If you change your mind while the process is ongoing, press the back button near the units creation buttons to have your resources back.": {
+  "You can also use shortcuts to create units. If you change your mind while the process is ongoing, press the back button near the units creation buttons to have your resources back.": {
     it: "Puoi creare le unità anche con i tasti. Se cambi idea durante la creazione, premi il pulsante indietro accanto ai pulsanti delle unità e riavrai le risorse.",
     es: "También puedes crear unidades con atajos. Si cambias de idea durante la creación, pulsa el botón de volver junto a los botones de unidades y recuperarás los recursos.",
     pt: "Você também pode criar unidades com atalhos. Se mudar de ideia durante a criação, pressione o botão voltar ao lado dos botões de unidades para recuperar os recursos.",
@@ -315,7 +316,7 @@ export const TEXTS = {
     de: "Rechtsklick auf Ruinen mit ausgewählten Arbeitern, um Stein zu sammeln. Sie bringen ihn ins Lagerhaus.",
     fr: "Clic droit sur les ruines avec des ouvriers sélectionnés pour récolter de la pierre. Ils la porteront aux entrepôts." },
   "Farms - Food resource": { it: "Campi - Cibo", es: "Granjas - Comida", pt: "Fazendas - Comida", de: "Felder - Nahrung", fr: "Fermes - Nourriture" },
-  "Right click on a farm with a worker selected to start collecting food. If you click with multiple workers, they will reallocatein free farms. Food will be stored in barns.": {
+  "Right click on a farm with a worker selected to start collecting food. If you click with multiple workers, they will reallocate in free farms. Food will be stored in barns.": {
     it: "Clic destro su un campo con un lavoratore selezionato per raccogliere cibo. Con più lavoratori, si divideranno tra i campi liberi. Il cibo va nei mulini.",
     es: "Clic derecho en una granja con un trabajador seleccionado para recoger comida. Con varios, se repartirán entre las granjas libres. La comida va a los molinos.",
     pt: "Clique direito numa fazenda com um trabalhador selecionado para coletar comida. Com vários, eles se dividirão entre as fazendas livres. A comida vai para os moinhos.",
@@ -329,7 +330,7 @@ export const TEXTS = {
     de: "Neue Einheiten gibt es nur unter der Bevölkerungsgrenze. Baue mehr Häuser, um sie zu erhöhen.",
     fr: "Pour créer des unités, la population doit être sous la limite. Construis plus de maisons pour l'augmenter." },
   "Garrison": { it: "Presidio", es: "Guarnición", pt: "Guarnição", de: "Besatzung", fr: "Garnison" },
-  "Towers and castles can shoot arrows if you move archers inside it. More archers inside equals more arrows.": {
+  "Towers and castles can shoot arrows if you move archers inside them. More archers inside equals more arrows.": {
     it: "Torri e castelli tirano frecce se ci fai entrare degli arcieri. Più arcieri, più frecce.",
     es: "Torres y castillos disparan flechas si metes arqueros dentro. Más arqueros, más flechas.",
     pt: "Torres e castelos disparam flechas se você colocar arqueiros dentro. Mais arqueiros, mais flechas.",
@@ -343,7 +344,7 @@ export const TEXTS = {
     de: "Mit ausgewählten Soldaten klickst du mit rechts auf Feinde, um sie anzugreifen.",
     fr: "Avec des soldats sélectionnés, clic droit sur l'ennemi pour ordonner l'attaque." },
   "On fire!": { it: "A fuoco!", es: "¡Fuego!", pt: "Fogo!", de: "Feuer!", fr: "Au feu !" },
-  "With infantry units selected (warriors and spearmen) right click on an enemy buildingto order your soldiers to set it on fire.": {
+  "With infantry units selected (warriors and spearmen) right click on an enemy building to order your soldiers to set it on fire.": {
     it: "Con la fanteria selezionata (guerrieri e picchieri), clic destro su un edificio nemico per dargli fuoco.",
     es: "Con infantería seleccionada (guerreros y piqueros), clic derecho en un edificio enemigo para incendiarlo.",
     pt: "Com infantaria selecionada (guerreiros e piqueiros), clique direito num edifício inimigo para incendiá-lo.",
@@ -370,7 +371,7 @@ export const TEXTS = {
     de: "Strg + Linksklick fügt Einheiten hinzu, Alt + Linksklick entfernt sie. Strg + Ziffer speichert eine Gruppe zur Schnellauswahl.",
     fr: "Ctrl + clic gauche ajoute des unités à la sélection, Alt + clic gauche les retire. Ctrl + un chiffre crée un groupe de sélection rapide." },
   "Night": { it: "Notte", es: "Noche", pt: "Noite", de: "Nacht", fr: "Nuit" },
-  "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced aswell.": {
+  "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well.": {
     it: "Di notte si vede meno. I nemici attaccano solo da più vicino, perché anche loro vedono meno.",
     es: "De noche se ve menos. Los enemigos solo atacan desde más cerca, porque también ven menos.",
     pt: "À noite se vê menos. Os inimigos só atacam de mais perto, porque também veem menos.",
@@ -388,13 +389,13 @@ export const TEXTS = {
   "Lumberjacks": { it: "Taglialegna", es: "Leñadores", pt: "Lenhadores", de: "Holzfäller", fr: "Bûcherons" },
   "Gold miners": { it: "Minatori", es: "Mineros", pt: "Mineiros", de: "Goldgräber", fr: "Mineurs" },
   "Sacred statues": { it: "Statue sacre", es: "Estatuas sagradas", pt: "Estátuas sagradas", de: "Heilige Statuen", fr: "Statues sacrées" },
-  "It's over.. The enemy has taken most of the city, they're burning every building to the ground!": {
+  "It's over... The enemy has taken most of the city, they're burning every building to the ground!": {
     it: "È finita... Il nemico ha preso quasi tutta la città e sta bruciando ogni edificio!",
     es: "Se acabó... ¡El enemigo ha tomado casi toda la ciudad y está quemando cada edificio!",
     pt: "Acabou... O inimigo tomou quase toda a cidade e está queimando cada edifício!",
     de: "Es ist vorbei... Der Feind hat fast die ganze Stadt eingenommen und brennt jedes Gebäude nieder!",
     fr: "C'est fini... L'ennemi a pris presque toute la ville et brûle chaque bâtiment !" },
-  "Not yet.. we can still gather an army, break through the gate to the north and escape the city": {
+  "Not yet... we can still gather an army, break through the gate to the north and escape the city": {
     it: "Non ancora... possiamo ancora radunare un esercito, sfondare la porta a nord e fuggire dalla città",
     es: "Todavía no... aún podemos reunir un ejército, romper la puerta del norte y escapar de la ciudad",
     pt: "Ainda não... ainda podemos reunir um exército, romper o portão do norte e fugir da cidade",
@@ -413,7 +414,7 @@ export const TEXTS = {
   "Kill them! No one will survive!": {
     it: "Uccideteli! Nessuno sopravviverà!", es: "¡Matadlos! ¡Nadie sobrevivirá!", pt: "Matem-nos! Ninguém vai sobreviver!",
     de: "Tötet sie! Niemand wird überleben!", fr: "Tuez-les ! Personne ne survivra !" },
-  "Out citizens gifted us gold. Also, we could use those barracks to train more soldiers!": {
+  "Our citizens gifted us gold. Also, we could use those barracks to train more soldiers!": {
     it: "I cittadini ci hanno donato dell'oro. E possiamo usare quelle caserme per addestrare altri soldati!",
     es: "Los ciudadanos nos han regalado oro. ¡Y podemos usar esos cuarteles para entrenar más soldados!",
     pt: "Os cidadãos nos deram ouro. E podemos usar esses quartéis para treinar mais soldados!",
@@ -457,13 +458,13 @@ export const TEXTS = {
     it: "Al lavoro! Te lo prometto: libereremo le campagne", es: "¡Manos a la obra! Te prometo que liberaremos el campo",
     pt: "Mãos à obra! Prometo que vamos libertar o campo", de: "An die Arbeit! Ich verspreche dir, wir befreien das Land",
     fr: "Au travail ! Je te le promets, on libérera les campagnes" },
-  "Thanks you! Sadly I'm the only survivor here, but I will join you!": {
+  "Thank you! Sadly I'm the only survivor here, but I will join you!": {
     it: "Grazie! Purtroppo sono l'unico sopravvissuto, ma mi unirò a voi!",
     es: "¡Gracias! Por desgracia soy el único superviviente, ¡pero me uniré a vosotros!",
     pt: "Obrigado! Infelizmente sou o único sobrevivente, mas vou me juntar a vocês!",
     de: "Danke! Leider bin ich der einzige Überlebende, aber ich schließe mich euch an!",
     fr: "Merci ! Hélas, je suis le seul survivant, mais je me joins à vous !" },
-  "We are safe now! We will help you defeating the enemy!": {
+  "We are safe now! We will help you defeat the enemy!": {
     it: "Ora siamo salvi! Ti aiuteremo a sconfiggere il nemico!", es: "¡Ya estamos a salvo! ¡Te ayudaremos a derrotar al enemigo!",
     pt: "Agora estamos a salvo! Vamos ajudar você a derrotar o inimigo!", de: "Jetzt sind wir in Sicherheit! Wir helfen dir, den Feind zu besiegen!",
     fr: "Nous voilà sauvés ! On t'aidera à vaincre l'ennemi !" },
