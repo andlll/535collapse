@@ -3,7 +3,9 @@
 // Dimensioni [C, manager Create/Alarm_2]: l'originale ridimensiona la view
 // alla finestra del browser per global.scaleview (1 px di mondo = 1 px CSS a
 // zoom 1); X/Z cambiano scaleview di 0,1 fra 1,0 e 1,5 (manager KeyPress_X,
-// KeyPress_Z). Il "-5" sui lati di manager (bi1-5) era per evitare le barre
+// KeyPress_Z). [Correzione decisa dall'autore, §6.1 n.78] qui fino a
+// ZOOM_MAX (2,0) e anche con la rotella, tenendo fermo il punto sotto il
+// puntatore. Il "-5" sui lati di manager (bi1-5) era per evitare le barre
 // di scorrimento della pagina HTML5: qui non serve.
 //
 // Inseguimento [C, room: view che segue "mouser" con bordi hborder/vborder,
@@ -11,9 +13,12 @@
 // tenere il puntatore a `hborder` dal bordo, quindi avvicinandosi al bordo
 // lo schermo scorre. Regola dell'inseguimento [I, runner GMS]: la view si
 // sposta del minimo necessario, poi resta dentro la room.
-// [Deviazione] Se il puntatore esce dal canvas (pagina in un iframe di
-// portale) lo scorrimento si ferma: nell'export HTML5 l'ultima posizione
-// restava valida e la mappa continuava a scorrere da sola.
+// [Correzione decisa dall'autore, §6.1 n.82, al posto della deviazione
+// che fermava lo scorrimento] se il puntatore esce dal canvas resta sul
+// bordo da cui e' uscito e la view continua a scorrere da quella parte
+// finche' non rientra o la finestra perde il fuoco (input.js, edgeHold).
+
+export const ZOOM_MIN = 1, ZOOM_MAX = 2;
 
 export class Camera {
   constructor(roomW, roomH, view) {
@@ -39,8 +44,18 @@ export class Camera {
   }
 
   setScale(s) {
-    this.scaleview = Math.round(Math.min(1.5, Math.max(1, s)) * 10) / 10;
+    this.scaleview = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s)) * 10) / 10;
     this.resize(this.cssW, this.cssH);
+  }
+
+  // Zoom attorno a un punto dello schermo (pixel CSS): il punto di room
+  // sotto il puntatore resta sotto il puntatore (rotella).
+  zoomAt(s, px, py) {
+    const [rx, ry] = this.toRoom(px, py);
+    this.setScale(s);
+    this.x = rx - px * this.scaleview;
+    this.y = ry - py * this.scaleview;
+    this.clamp();
   }
 
   // mouse_x / mouse_y: posizione del puntatore in coordinate di room.

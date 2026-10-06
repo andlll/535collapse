@@ -173,6 +173,32 @@ export class Pathing {
     return [sx, sy, false];
   }
 
+  // [§6.1 n.89] La cella libera piu' vicina a (gx, gy): raggiungibile nel
+  // goal field, non occupata (costo < 1000) e non in `used`; anelli fino a
+  // raggio 9, poi come findValidCellBackwards. Serve al ricalcolo quando la
+  // cella d'arrivo diventa un ostacolo (un'altra unita' ci si e' fermata):
+  // findValidCellBackwards restituiva di nuovo la stessa cella, raggiungibile
+  // ma occupata, e il campo si ricalcolava a ogni passo. E alle caselle
+  // della formazione (units.js, formation).
+  nearestFreeCell(goal, gx, gy, sx, sy, used = null) {
+    for (let range = 0; range < 10; range++) {
+      let best = null, bd = Infinity;
+      for (let dx = -range; dx <= range; dx++) {
+        for (let dy = -range; dy <= range; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== range) continue;
+          const tx = gx + dx, ty = gy + dy;
+          if (!this.inside(tx, ty)) continue;
+          const k = ty * this.gw + tx;
+          if (goal[k] === -1 || this.cost[k] >= 1000 || (used && used.has(k))) continue;
+          const d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; best = [tx, ty]; }
+        }
+      }
+      if (best) return [best[0], best[1], true];
+    }
+    return this.findValidCellBackwards(goal, gx, gy, sx, sy);
+  }
+
   // scr_find_free_spawn_right [C]: se la cella e' occupata, spirale fino a
   // 500 tentativi verso la prima cella libera.
   findFreeSpawn(inst) {
@@ -228,6 +254,26 @@ export function moveFlowField(w, p, inst) {
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+}
+
+// [§6.1 n.89] Arrivo "per rinuncia": le unita' sono solide e si bloccano a
+// vicenda; un'unita' a meno di 400 px dalla propria destinazione (dove si
+// va con mp_potential_step) che non le si e' avvicinata di almeno 2 px da
+// 60 passi piu' uno ogni 2 px di distanza (1 s a un passo, 4 s a 400 px)
+// la prende dove e' (dirox/diroy = x/y: l'arrivo scatta al passo dopo),
+// invece di
+// dondolare dietro le altre finche' il "timer fermati" (alarm 8, 20 s) non
+// la ferma. Solo per gli ordini di spostamento: chi lo chiama lo sa.
+export function arriveIfBlocked(inst) {
+  const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+  if (d > 400) { inst.stuckN = 0; inst.stuckBest = d; return; }
+  if (inst.stuckBest === undefined || d < inst.stuckBest - 2) { inst.stuckBest = d; inst.stuckN = 0; return; }
+  inst.stuckN = (inst.stuckN || 0) + 1;
+  if (inst.stuckN >= 60 + d / 2) {
+    inst.dirox = inst.x;
+    inst.diroy = inst.y;
+    inst.stuckN = 0;
+  }
 }
 
 // mp_potential_step(xg, yg, passo, checkall) con le impostazioni

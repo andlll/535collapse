@@ -514,6 +514,8 @@ export class World {
     // suo GlobalRightReleased (scr_movement_general) gira per primo.
     if (rR && this.hooks.globalRightReleased) this.hooks.globalRightReleased(mx, my);
     global(rR, "globalRightReleased");
+    // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
+    if (rR && this.hooks.afterRightReleased) this.hooks.afterRightReleased(mx, my);
   }
 
   // ------------------------------------------------------------- disegno

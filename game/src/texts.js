@@ -558,6 +558,7 @@ export const TEXTS = {
   "Load game": { it: "Carica partita", es: "Cargar partida", pt: "Carregar jogo", de: "Spiel laden", fr: "Charger une partie" },
   "Save to file": { it: "Salva su file", es: "Guardar en archivo", pt: "Salvar em arquivo", de: "In Datei speichern", fr: "Sauvegarder dans un fichier" },
   "Load from file": { it: "Carica da file", es: "Cargar desde archivo", pt: "Carregar de arquivo", de: "Aus Datei laden", fr: "Charger depuis un fichier" },
+  "Lock mouse in window: {state}": { it: "Blocca il mouse nella finestra: {state}", es: "Bloquear el ratón en la ventana: {state}", pt: "Prender o mouse na janela: {state}", de: "Maus im Fenster halten: {state}", fr: "Bloquer la souris dans la fenêtre : {state}" },
   "Autosave: {state}": { it: "Salvataggio automatico: {state}", es: "Guardado automático: {state}", pt: "Salvamento automático: {state}", de: "Automatisch speichern: {state}", fr: "Sauvegarde auto : {state}" },
   "Game saved": { it: "Partita salvata", es: "Partida guardada", pt: "Jogo salvo", de: "Spiel gespeichert", fr: "Partie sauvegardée" },
   "Game saved automatically": { it: "Partita salvata automaticamente", es: "Partida guardada automáticamente", pt: "Jogo salvo automaticamente", de: "Spiel automatisch gespeichert", fr: "Partie sauvegardée automatiquement" },

@@ -2,7 +2,7 @@
 // una griglia piccola, contro valori calcolati a mano dal GML.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Pathing, GRID } from "../src/pathing.js";
+import { Pathing, GRID, arriveIfBlocked } from "../src/pathing.js";
 
 const fakeWorld = { all: () => [], bbox: () => null, setPos(i, x, y) { i.x = x; i.y = y; } };
 
@@ -44,4 +44,33 @@ test("scr_find_valid_cell_backwards: cella raggiungibile piu' vicina, cercando i
   const [x, y, found] = p.findValidCellBackwards(f, 1, 1, 0, 0);
   assert.equal(found, true);
   assert.deepEqual([x, y], [0, 0]); // primo trovato scorrendo dx=-1.. e dy=-1..
+});
+
+test("§6.1 n.89 nearestFreeCell: la cella libera piu' vicina, non quella occupata ne' quelle gia' prese", () => {
+  const p = grid([".....", ".....", "....."]);
+  const goal = p.goalField(GRID * 2, GRID * 1);
+  p.cost[1 * p.gw + 2] = 1000;                    // la cella d'arrivo si e' occupata
+  const [x, y, ok] = p.nearestFreeCell(goal, 2, 1, 0, 0);
+  assert.equal(ok, true);
+  assert.equal(Math.max(Math.abs(x - 2), Math.abs(y - 1)), 1);  // una vicina
+  assert.ok(p.cost[y * p.gw + x] < 1000);
+  // findValidCellBackwards restituiva la stessa cella occupata
+  assert.deepEqual(p.findValidCellBackwards(goal, 2, 1, 0, 0), [2, 1, true]);
+  // con le vicine gia' prese (formazione) si va piu' in la'
+  const used = new Set();
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) used.add((1 + dy) * p.gw + 2 + dx);
+  const [x2, y2] = p.nearestFreeCell(goal, 2, 1, 0, 0, used);
+  assert.equal(Math.max(Math.abs(x2 - 2), Math.abs(y2 - 1)), 2);
+});
+
+test("§6.1 n.89 arriveIfBlocked: vicina e senza progressi per 60 passi + d/2 prende il posto dov'e'", () => {
+  const u = { x: 100, y: 100, dirox: 140, diroy: 100 };   // a 40 px
+  let k = 0;
+  for (; k < 200 && u.dirox !== u.x; k++) arriveIfBlocked(u);
+  assert.equal(u.dirox, 100);
+  assert.ok(k >= 80 && k <= 82, `passi: ${k}`);
+  // lontana (> 400 px): non rinuncia mai
+  const v = { x: 0, y: 0, dirox: 1000, diroy: 0 };
+  for (let j = 0; j < 500; j++) arriveIfBlocked(v);
+  assert.equal(v.dirox, 1000);
 });

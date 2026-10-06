@@ -8,7 +8,11 @@
 //   usa invece l'alpha che riceve;
 // - nei draw_*_colour col1 e' il centro (cerchi, ellissi, rettangoli
 //   arrotondati) o il primo estremo (linee), col2 il bordo o l'altro estremo;
-// - cerchi a 24 segmenti (draw_set_circle_precision predefinito);
+// - cerchi a 24 segmenti (draw_set_circle_precision predefinito). [§6.1
+//   n.84, decisione dell'autore] qui le curve hanno segmenti di ~6 px (da 16
+//   a 96 per giro) e i bordi di cerchi, ellissi e rettangoli arrotondati
+//   sono sfumati su 1 px (antialiasing per vertice: il canvas WebGL non ha
+//   il multisampling), invece della scalettatura dell'originale;
 // - nel testo "#" va a capo; un numero si scrive senza decimali se intero,
 //   altrimenti con 2 (string() di GMS);
 // - altezza di riga: l'altezza massima dei glifi del font.
@@ -16,7 +20,9 @@
 import { packColor } from "./gl.js";
 import { drawSprite } from "./sprites.js";
 
-const SEG = 24;
+// segmenti per un giro di raggio r (pixel della proiezione corrente)
+const segments = (r) => Math.max(16, Math.min(96, Math.ceil((2 * Math.PI * r) / 6)));
+const AA = 0.5; // meta' della sfumatura del bordo, in pixel
 
 export function gmString(v) {
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
@@ -30,7 +36,7 @@ export function gmString(v) {
 const SUBST = { "ß": "ss", "œ": "oe", "Œ": "Oe", "æ": "ae", "Æ": "Ae", "’": "'", "‘": "'", "“": "\"", "”": "\"",
                 "«": "\"", "»": "\"", "–": "-", "—": "-", "…": "...", "\u00a0": " ", "\u202f": " " };
 const SUBST_RE = new RegExp("[" + Object.keys(SUBST).join("") + "]", "g");
-const plain = (s) => s.replace(SUBST_RE, (ch) => SUBST[ch]);
+export const plain = (s) => s.replace(SUBST_RE, (ch) => SUBST[ch]);
 
 export class Draw {
   constructor(r, assets) {
@@ -51,6 +57,25 @@ export class Draw {
   // ripristina solo il blend, che il renderer azzera a ogni fotogramma.
   reset() {
     this.r.setBlend("normal");
+  }
+
+  // Schede descrittive di pulsanti e unita' (in basso a sinistra, x=20)
+  // [Correzione decisa dall'autore, §6.1 n.85]: con la minimappa aperta
+  // nell'originale la coprivano; qui si spostano alla sua destra, oltre i
+  // suoi tre pulsanti, traslando la proiezione GUI fra Begin ed End.
+  tooltipBegin(w) {
+    const g = w.g;
+    this._tipProj = null;
+    if (w.room === "menu" || g.minim !== 1) return;
+    const ox = w.roomW / g.sz + 60;
+    const [x, y, pw, ph] = this.r.proj;
+    this._tipProj = [x, y, pw, ph];
+    this.r.setProjection(x - ox, y, pw, ph);
+  }
+
+  tooltipEnd() {
+    if (this._tipProj) this.r.setProjection(...this._tipProj);
+    this._tipProj = null;
   }
 
   setAlpha(a) { this.alpha = a; }
@@ -88,13 +113,57 @@ export class Draw {
   }
 
   // Poligono convesso: ventaglio dal centro (colore cIn) al contorno (cOut),
-  // oppure solo il contorno di 1 px se outline.
+  // oppure solo il contorno di 1 px se outline. Bordi sfumati (AA): il
+  // ventaglio arriva mezzo pixel dentro il contorno, poi una striscia va
+  // da cOut a trasparente fino a mezzo pixel fuori (colori premoltiplicati:
+  // trasparente = 0, va bene anche col blend additivo).
   _poly(cx, cy, pts, cIn, cOut, outline) {
-    const n = pts.length;
+    const P = [];
+    for (const p of pts) {
+      const q = P[P.length - 1];
+      if (!q || Math.abs(q[0] - p[0]) > 1e-6 || Math.abs(q[1] - p[1]) > 1e-6) P.push(p);
+    }
+    if (P.length > 2 && Math.abs(P[0][0] - P[P.length - 1][0]) < 1e-6 && Math.abs(P[0][1] - P[P.length - 1][1]) < 1e-6) P.pop();
+    const n = P.length;
+    if (n < 3) return;
+    // normali uscenti dei lati, poi dei vertici (con la correzione dello
+    // spigolo, limitata)
+    const en = [];
     for (let i = 0; i < n; i++) {
-      const [ax, ay] = pts[i], [bx, by] = pts[(i + 1) % n];
-      if (outline) this._line(ax, ay, bx, by, 1, cOut, cOut);
-      else this._tri(cx, cy, ax, ay, bx, by, cIn, cOut, cOut);
+      const [ax, ay] = P[i], [bx, by] = P[(i + 1) % n];
+      const len = Math.hypot(bx - ax, by - ay) || 1;
+      let nx = (by - ay) / len, ny = -(bx - ax) / len;
+      if (nx * ((ax + bx) / 2 - cx) + ny * ((ay + by) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+      en.push([nx, ny]);
+    }
+    const inner = [], outer = [];
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = en[(i + n - 1) % n], [bx, by] = en[i];
+      let nx = ax + bx, ny = ay + by;
+      const len = Math.hypot(nx, ny) || 1;
+      nx /= len; ny /= len;
+      const k = Math.min(2, 1 / Math.max(0.5, nx * bx + ny * by));
+      const [px, py] = P[i];
+      if (outline) {
+        inner.push([px - nx * 2 * AA * k, py - ny * 2 * AA * k]);
+        outer.push([px + nx * 2 * AA * k, py + ny * 2 * AA * k]);
+      } else {
+        inner.push([px - nx * AA * k, py - ny * AA * k]);
+        outer.push([px + nx * AA * k, py + ny * AA * k]);
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const [ix, iy] = inner[i], [jx, jy] = inner[j], [ox, oy] = outer[i], [qx, qy] = outer[j];
+      if (outline) {
+        // contorno di 1 px: profilo a triangolo, trasparente-pieno-trasparente
+        const [ax, ay] = P[i], [bx, by] = P[j];
+        this._quad(ix, iy, jx, jy, bx, by, ax, ay, 0, 0, cOut, cOut);
+        this._quad(ax, ay, bx, by, qx, qy, ox, oy, cOut, cOut, 0, 0);
+      } else {
+        this._tri(cx, cy, ix, iy, jx, jy, cIn, cOut, cOut);
+        this._quad(ix, iy, jx, jy, qx, qy, ox, oy, cOut, cOut, 0, 0);
+      }
     }
   }
 
@@ -123,9 +192,10 @@ export class Draw {
     // sovrapporrebbero) [I]
     const rx = Math.min(xrad / 2, (rgt - l) / 2), ry = Math.min(yrad / 2, (btm - t) / 2);
     const pts = [];
+    const q = Math.max(4, Math.ceil(segments(Math.max(rx, ry)) / 4));
     const corner = (cx, cy, a0) => {
-      for (let i = 0; i <= SEG / 4; i++) {
-        const a = a0 + (i / (SEG / 4)) * (Math.PI / 2);
+      for (let i = 0; i <= q; i++) {
+        const a = a0 + (i / q) * (Math.PI / 2);
         pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
       }
     };
@@ -138,9 +208,9 @@ export class Draw {
 
   ellipseColour(x1, y1, x2, y2, c1, c2, outline = false) {
     const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2, rx = Math.abs(x2 - x1) / 2, ry = Math.abs(y2 - y1) / 2;
-    const pts = [];
-    for (let i = 0; i < SEG; i++) {
-      const a = (i / SEG) * Math.PI * 2;
+    const pts = [], seg = segments(Math.max(rx, ry));
+    for (let i = 0; i < seg; i++) {
+      const a = (i / seg) * Math.PI * 2;
       pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
     }
     this._poly(cx, cy, pts, packColor(c1, this.alpha), packColor(c2, this.alpha), outline);
@@ -253,19 +323,25 @@ export class Draw {
     this.textExt(x, y, str, -1, -1);
   }
 
-  textExt(x, y, str, sep, width) {
+  // draw_text_transformed (solo scala, senza rotazione): il menu di pausa
+  // scrive un po' piu' piccolo dei font del gioco (§6.1 n.87)
+  textTransformed(x, y, str, scale) {
+    this.textExt(x, y, str, -1, -1, scale);
+  }
+
+  textExt(x, y, str, sep, width, scale = 1) {
     const f = this._font();
     if (!f) return;
     const fr = this.a.frame(f.sprite, 0);
     if (!fr) return;
     const [ou, ov] = fr.f.rect;
-    const lh = sep === undefined || sep < 0 ? f.height : sep;
-    const lines = this._lines(str, sep, width);
+    const lh = (sep === undefined || sep < 0 ? f.height : sep) * scale;
+    const lines = this._lines(str, sep, width === undefined || width < 0 ? width : width / scale);
     const total = lines.length * lh;
     let yy = this.valign === "middle" ? y - total / 2 : this.valign === "bottom" ? y - total : y;
     const col = packColor(this.colour, this.alpha);
     for (const line of lines) {
-      const w = this._width(line, f);
+      const w = this._width(line, f) * scale;
       let xx = this.halign === "center" ? x - w / 2 : this.halign === "right" ? x - w : x;
       xx = Math.round(xx);
       const yr = Math.round(yy);
@@ -274,11 +350,11 @@ export class Draw {
         if (!g) continue;
         const [gx, gy, gw, gh, shift, off, yoff = 0] = g;
         if (gw > 0 && gh > 0) {
-          const x0 = xx + off, y0 = yr + yoff;
-          this.r.quad(fr.tex, x0, y0, x0 + gw, y0, x0 + gw, y0 + gh, x0, y0 + gh,
+          const x0 = xx + off * scale, y0 = yr + yoff * scale, x1 = x0 + gw * scale, y1 = y0 + gh * scale;
+          this.r.quad(fr.tex, x0, y0, x1, y0, x1, y1, x0, y1,
                       ou + gx, ov + gy, ou + gx + gw, ov + gy + gh, col);
         }
-        xx += shift;
+        xx += shift * scale;
       }
       yy += lh;
     }

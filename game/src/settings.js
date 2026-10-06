@@ -7,9 +7,10 @@ const KEY = "535.settings";
 const VERSION = 1;
 // rain/grass/fire: categorie di particelle visibili (menu di pausa,
 // opzioni grafiche; particles.js); autosave: salvataggio automatico ogni 5
-// minuti nello slot della room (save.js), attivo di norma come in NIMBUS
+// minuti nello slot della room (save.js), attivo di norma come in NIMBUS;
+// lockMouse: il puntatore resta nel gioco (Pointer Lock, input.js)
 const DEFAULTS = { fpsCap: 60, dynamicResolution: true, diagnostics: false, language: null,
-                   rain: true, grass: true, fire: true, autosave: true };
+                   rain: true, grass: true, fire: true, autosave: true, lockMouse: false };
 
 export function loadSettings() {
   try {

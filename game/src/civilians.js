@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
 import { phaseOf, walkCycle } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -27,9 +27,10 @@ function inView(w, i) {
 
 // Ricalcolo del campo verso (tx, ty) senza scr_free (blocco ripetuto in
 // "arrivi a 10 di cibo" e nei Create degli edifici).
-function goTo(p, i, tx, ty) {
-  const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(tx / GRID), Math.trunc(ty / GRID),
-                                            Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
+function goTo(p, i, tx, ty, freeCell = false) {
+  const find = freeCell ? p.nearestFreeCell : p.findValidCellBackwards;
+  const [cx, cy] = find.call(p, i.goal_field, Math.trunc(tx / GRID), Math.trunc(ty / GRID),
+                             Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
   const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
   i.goal_x = found ? cx * GRID : i.x;
   i.goal_y = found ? cy * GRID : i.y;
@@ -313,6 +314,8 @@ function ominoMove(i, w, p) {
     } else {
       if (!i.goldwork && !i.stonework && !i.buildwork && !i.repairwork && i.foodwork !== 2 && !i.fieldwork) {
         mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        // §6.1 n.89, solo per un semplice spostamento (non verso il legno)
+        if (!i.woodwork && !i.foodwork) arriveIfBlocked(i);
       }
       if (i.goldwork === 1) mp(n("miniera_oro"));
       if (i.stonework === 1) mp(n("stone_parent"));
@@ -333,7 +336,7 @@ function ominoMove(i, w, p) {
   if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && !i.buildwork && !i.repairwork
       && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework) {
     p.free(i);
-    goTo(p, i, i.dirox, i.diroy);
+    goTo(p, i, i.dirox, i.diroy, true); // §6.1 n.89
   }
 }
 
@@ -937,4 +940,23 @@ export function dying() {
     step(i) { i.image_alpha -= 0.025; },
     alarm0(i, w) { w.destroy(i); },
   };
+}
+
+// [Correzione decisa dall'autore, §6.1 n.80] global.idle nell'originale e'
+// tenuto a incrementi (+1/-1 in una trentina di punti fra civili, cantieri
+// ed edifici) e basta un percorso dimenticato perche' il contatore si
+// sfasi per sempre. Qui, dopo ogni passo, si ricalcola dai civili veri
+// (action 0) e si rinumera l'ordine per Spazio (idleorder 1..n, nello
+// stesso ordine di prima).
+export function recountIdle(w) {
+  const g = w.g;
+  const idle = [];
+  for (const o of w.all(OM)) {
+    if (o.action === 0) idle.push(o);
+    else if (o.idling === 1) { o.idling = 0; o.idleorder = 0; }
+  }
+  idle.sort((a, b) => (a.idleorder || 1e9) - (b.idleorder || 1e9) || a.id - b.id);
+  idle.forEach((o, k) => { o.idling = 1; o.idleorder = k + 1; });
+  g.idle = idle.length;
+  for (const ic of w.all("idle_clicker")) if (ic.orderu > g.idle || ic.orderu < 1) ic.orderu = 1;
 }

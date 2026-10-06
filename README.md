@@ -47,7 +47,9 @@ Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
-vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
+vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi (anche
+col puntatore uscito dalla finestra; nelle opzioni grafiche si può
+bloccare il mouse nella finestra), X/Z o la rotella per lo zoom,
 **F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
 tetto a 30 fps. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),

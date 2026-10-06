@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
@@ -165,7 +165,10 @@ export function allyArcher(p) {
           else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
         } else moveFlowField(w, p, i);
       } else {
-        if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) {
+          mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+          arriveIfBlocked(i); // §6.1 n.89
+        }
         if (i.presidiowork === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
         const n = w.nearest(i.x, i.y, "enemy_unit");
         if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
@@ -174,8 +177,9 @@ export function allyArcher(p) {
     if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && i.presidiowork === 0
         && i.warwork === 0 && i.action === 1) {
       p.free(i);
-      const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                                Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
+      // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
+      const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
+                                         Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
       const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
       i.goal_x = found ? cx * GRID : i.x;
       i.goal_y = found ? cy * GRID : i.y;

@@ -22,9 +22,17 @@ import { tr, LANGUAGES, getLanguage } from "./i18n.js";
 import { slotInfo } from "./save.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 
+// Pointer Lock (input.js): non c'e' su alcuni browser e negli iframe che
+// non lo permettono
+const lockAvailable = () => typeof document !== "undefined" && "pointerLockElement" in document
+  && !!(typeof HTMLCanvasElement !== "undefined" && HTMLCanvasElement.prototype.requestPointerLock);
+
 const GREEN = 0x50af4c;           // rgb(76,175,80), il verde di NIMBUS (BGR)
 const PANEL_ALPHA = 0.78, BUTTON_ALPHA = 0.92;
-const BTN_H = 46, BTN_GAP = 14, CAPTION_H = 22, SEG_H = 40;
+const BTN_H = 42, BTN_GAP = 12, CAPTION_H = 20, SEG_H = 36;
+// [Richiesta dell'autore, §6.1 n.87] titolo e scritte un po' piu' piccoli
+// dei font del gioco (gui_sblocco 32 pt, GUI_1 16 pt, overdue 15 pt)
+const TITLE_SCALE = 0.8, TEXT_SCALE = 0.88;
 
 export class PauseMenu {
   // actions: { language(code), restart(), menu(), graphics(changes),
@@ -92,7 +100,7 @@ export class PauseMenu {
       case "language": this.actions.language(b.value); this.dirty = true; break;
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
-      case "rain": case "grass": case "fire": case "dynamicResolution": case "autosave":
+      case "rain": case "grass": case "fire": case "dynamicResolution": case "autosave": case "lockMouse":
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -128,7 +136,7 @@ export class PauseMenu {
     d.setAlpha(alpha);
     d.setHalign("center");
     d.setValign("middle");
-    d.text(x, y, str);
+    d.textTransformed(x, y, str, font === "gui_sblocco" ? TITLE_SCALE : TEXT_SCALE);
   }
 
   // Controllo a segmenti (lingua, limite di fps): il segmento scelto e'
@@ -160,6 +168,7 @@ export class PauseMenu {
         [tr("Fire and sparks: {state}", { state: onOff(s.fire) }), "fire"],
         [tr("Dynamic resolution: {state}", { state: onOff(s.dynamicResolution) }), "dynamicResolution"],
         [tr("Full screen: {state}", { state: onOff(isFullscreen()) }), "fullscreen", !fullscreenAvailable()],
+        [tr("Lock mouse in window: {state}", { state: onOff(s.lockMouse) }), "lockMouse", !lockAvailable()],
       ];
       segCaption = tr("FPS limit");
       segs = [30, 60, 0].map((v) => ({ value: v, label: v ? String(v) : tr("None"), selected: s.fpsCap === v }));
@@ -195,18 +204,18 @@ export class PauseMenu {
     // larghezza: quella di NIMBUS (360) o di piu' se un'etichetta tradotta
     // non ci sta
     d.setFont("GUI_1");
-    const longest = Math.max(...[...before, ...after].map(([l]) => d.stringWidth(l)));
+    const longest = TEXT_SCALE * Math.max(...[...before, ...after].map(([l]) => d.stringWidth(l)));
     d.setFont("gui_sblocco");
-    const titleW = d.stringWidth(title);
-    const panelW = Math.min(Math.max(360, longest + 100, titleW + 60), W - 40);
+    const titleW = TITLE_SCALE * d.stringWidth(title);
+    const panelW = Math.min(Math.max(340, longest + 90, titleW + 60), W - 40);
     const rows = before.length + after.length;
-    const panelH = 96 + rows * (BTN_H + BTN_GAP) + (segs ? CAPTION_H + SEG_H + BTN_GAP : 0) + 20;
+    const panelH = 84 + rows * (BTN_H + BTN_GAP) + (segs ? CAPTION_H + SEG_H + BTN_GAP : 0) + 18;
     const px = (W - panelW) / 2, py = Math.max(10, (H - panelH) / 2);
     d.setAlpha(PANEL_ALPHA);
     d.roundrectColourExt(px, py, px + panelW, py + panelH, 40, 40, c.white, c.white, false);
-    this._label(d, px + panelW / 2, py + 44, title, "gui_sblocco");
+    this._label(d, px + panelW / 2, py + 40, title, "gui_sblocco");
     const btnW = panelW - 60, bx = px + 30;
-    let by = py + 96;
+    let by = py + 84;
     for (const [label, action, off] of before) { this._button(d, bx, by, btnW, BTN_H, label, action, input, off); by += BTN_H + BTN_GAP; }
     if (segs) {
       this._label(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");

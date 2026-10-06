@@ -13,9 +13,13 @@ const P = (w) => w.particles;
 // ------------------------------------------------------------- pioggia
 
 // manager Alarm_4 [C]: sistema a depth -9000, gocce (linee inclinate)
-// emesse lungo il bordo alto della room, 6 a passo.
+// emesse lungo il bordo alto della room, 6 a passo. L'orientamento e'
+// relativo alla direzione (ultimo argomento `true` di
+// part_type_orientation): 160-170 gradi in piu' dei 250-260 del moto, cioe'
+// linee quasi parallele alla caduta (§6.1 n.77: prima era assoluto e le
+// gocce cadevano di traverso).
 const GOCCIA = partType({
-  shape: "line", orientation: [160, 170, 0, 0, false], size: [0.3, 0.5, 0, 0],
+  shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0],
   colour: { rgb: [131, 148, 101, 119, 74, 107] }, speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
   life: [200, 300],
 });

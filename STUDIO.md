@@ -14,7 +14,9 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
+Ultimo aggiornamento: 6 ottobre 2026, terza sessione (branch
+`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
+dell'autore (§6.1, n.77–n.89). Seconda sessione (PR #2): Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
@@ -26,7 +28,8 @@ sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
-  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`); gli asset generati (`game/assets/`,
+  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
+  la terza sessione `claude/inspiring-cray-dalph5`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -62,9 +65,11 @@ sezione citata.
   angoli di `draw_roundrect_colour_ext` (§3.1).
 - [ ] Screenshot o video di fuoco e pioggia: aspetto delle forme di
   particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
-- [ ] Screenshot dell'originale col centro selezionato mentre produce un
-  civile: colore della percentuale, per verificare lo stato di disegno
-  persistente (§3.5).
+- [x] Colore della percentuale di produzione: nero, deciso dall'autore
+  (§6.1 n.79).
+- [ ] Dopo la prova: il blocco dei tasti di costruzione coi soli civili
+  selezionati (§6.1 n.81) non l'ho riprodotto in un caso preciso; se torna,
+  serve la sequenza di clic.
 - [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
@@ -125,6 +130,14 @@ sezione citata.
 - [x] Pulsante schermo intero con ripiego; PWA (§4.1).
 - [x] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
   zip per i portali verificato con Playwright in una sottocartella (§5.1).
+
+**Fase 6: correzioni dalla prova dell'autore**
+- [x] Pioggia, zoom e rotella, percentuale in nero, inattivi, contatori
+  della selezione, scorrimento fuori dalla finestra e blocco del mouse,
+  cursore disegnato dal gioco, angoli sfumati, schede a destra della
+  minimappa, font del gioco nei messaggi HTML, menu di pausa piu'
+  piccolo, contatore FPS e passo fisso, formazione negli spostamenti di
+  gruppo (§6.1).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
@@ -2513,3 +2526,135 @@ di §4.1) e che salvare e ricaricare dallo slot funzioni dentro l'iframe.
 **Da fare una volta (autore)**: attivare GitHub Pages con sorgente "GitHub
 Actions" (Settings → Pages). Finché non è attivo, il passo di
 pubblicazione su `main` fallisce; la build e le prove no.
+
+---
+
+## Fase 6 — correzioni dalla prova dell'autore (6 ottobre 2026)
+
+### 6.1 Prima tornata di segnalazioni
+
+L'autore ha provato il gioco e ha segnalato tredici cose. Tutte corrette
+qui; i numeri continuano quelli dei difetti (n.77–n.89).
+
+- **n.77, pioggia ruotata di 90°** [C]: `part_type_orientation(goccia,
+  160, 170, 0, 0, true)` in manager Alarm_4 ha l'ultimo argomento `true`
+  (orientamento *relativo* alla direzione); il porting lo trattava come
+  assoluto e le gocce erano linee quasi orizzontali che cadevano in
+  verticale. Ora 160–170° in più dei 250–260° del moto: linee quasi
+  parallele alla caduta, leggermente inclinate. La n.61 di §3.16 (che
+  chiedeva di confrontare) era questo errore di lettura.
+- **n.78, zoom**: l'originale va da 1,0 a 1,5 con X/Z; ora fino a 2,0
+  (`ZOOM_MAX` in `camera.js`) e anche con la rotella, che tiene fermo il
+  punto sotto il puntatore. La rotella somma i delta (un touchpad ne
+  manda tanti piccoli): uno scatto ogni ~100 px.
+- **n.79, percentuale di produzione** (caserma, stalla, castello, centro):
+  nera. Nell'originale prende il colore rimasto dal disegno precedente
+  (§3.5); qui colore, font e allineamento si impostano prima di scriverla.
+- **n.80, contatore dei civili inattivi**: `global.idle` è tenuto a
+  incrementi in una trentina di punti (civili, cantieri, edifici); basta un
+  percorso dimenticato perché il numero si sfasi per sempre. Ora dopo ogni
+  passo si ricalcola dai civili con `action` 0 e si rinumera l'ordine per
+  lo Spazio (`recountIdle`, `civilians.js`). Provato: 2 → 5 civili nuovi
+  → 4 con uno morto fermo → 3 con uno in cammino → 3 con quello morto
+  anche lui (prima non scendeva).
+- **n.81, tasti di costruzione coi soli civili**: i pulsanti (e i loro
+  tasti) esistono solo con `global.sel > 0` e `global.milsel` a 0. Anche
+  questi contatori sono a incrementi, e il doppio clic su un'unità (tutte
+  quelle dello stesso tipo nella view) o lo Spazio contano di nuovo le
+  unità già selezionate: `milsel` poteva restare sopra 0 senza soldati
+  selezionati e i pulsanti non comparivano più. Ora `sel`, `milsel`,
+  `firesel`, `arcsel`, `siegsel` si ricontano dopo ogni passo dalle unità
+  selezionate (`recountSelection`, `units.js`). In più un pulsante di
+  costruzione distrutto mentre il puntatore ci stava sopra non riceveva
+  MouseLeave e lasciava `global.sele` a 2: il clic sul terreno non
+  deselezionava più e il rettangolo di selezione non partiva; ora il suo
+  Destroy lo rimette a 0 (come già `omino_clicker` nell'originale). Nota:
+  il caso preciso dell'autore non l'ho riprodotto; i tasti funzionano con
+  un civile selezionato per clic, per rettangolo e dopo soldati
+  selezionati e deselezionati.
+- **n.82, scorrimento ai bordi in finestra**: uscendo dalla finestra il
+  puntatore resta sul bordo da cui è uscito (`edgeHold`, `input.js`) e
+  la view continua a scorrere da quella parte finché non rientra o la
+  finestra perde il fuoco (clic su un'altra finestra, cambio di scheda).
+  Sostituisce la deviazione di §3.1 che fermava lo scorrimento. In più,
+  nelle opzioni grafiche, **"Blocca il mouse nella finestra"** (spento di
+  norma): il canvas cattura il puntatore (Pointer Lock), che non può più
+  uscire; il cursore è quello del gioco e si muove coi movimenti
+  relativi. Esc lo libera (lo fa il browser) e apre il menu di pausa; il
+  clic successivo lo riprende. Negli iframe dei portali funziona solo se
+  la pagina lo permette (`allow="pointer-lock"`), altrimenti non fa nulla.
+- **n.83, freccia del mouse**: il cursore del gioco era un cursore CSS da
+  53×54 px; Chrome rifiuta i cursori sopra i 32 px vicino ai bordi della
+  finestra e mostra la freccia. Ora, come fa il runner con
+  `action_set_cursor`, la freccia del sistema è nascosta e lo sprite
+  `cursore` è disegnato dal gioco sopra a tutto, anche sul menu di pausa.
+- **n.84, angoli arrotondati sgranati**: il canvas WebGL non ha il
+  multisampling; cerchi, ellissi e rettangoli arrotondati ora hanno il
+  bordo sfumato su 1 px (antialiasing per vertice: il poligono arriva
+  mezzo pixel dentro il contorno, poi una striscia sfuma fino a mezzo
+  pixel fuori) e le curve hanno segmenti di ~6 px (da 16 a 96 per giro)
+  invece dei 24 fissi. Anche i contorni di 1 px (riquadro della view
+  sulla minimappa) sono sfumati.
+- **n.85, schede descrittive**: con la minimappa aperta compaiono alla sua
+  destra, oltre i suoi tre pulsanti (`tooltipBegin`/`tooltipEnd` in
+  `draw.js`, che traslano la proiezione), invece che sopra. Vale per
+  tutte le otto schede (costruzioni, civile, unità di caserma, stalla e
+  castello, annulla, attacco/difesa, muro, porta).
+- **n.86, un solo font**: il font del gioco (Seagram tfb) c'è solo come
+  bitmap nell'atlas, non come TTF. I messaggi HTML (caricamento, WebGL2
+  assente, accelerazione hardware assente, contesto perso, salvataggi)
+  ora disegnano i suoi glifi in un canvas 2D (`domtext.js`), senza WebGL;
+  finché l'immagine non è pronta resta il testo semplice. Il pannello di
+  diagnostica F3 resta monospazio (è per chi prova, non per il gioco).
+- **n.87, menu di pausa**: titolo all'80% (`gui_sblocco`) e scritte
+  all'88% (`GUI_1`, `overdue`), pulsanti e spazi un po' più bassi
+  (`draw_text_transformed`, nuovo in `draw.js`: `textTransformed`).
+- **n.88, contatore FPS**: era la media esponenziale di `1000/dt`, che con
+  frame irregolari sovrastima (frame da 10 e 40 ms alternati: 62 invece
+  dei 40 veri). Ora conta i frame disegnati in mezzo secondo. In più il
+  ciclo a passo fisso faceva a volte 0 passi in un frame e 2 nel
+  successivo (rAF a 60 Hz arriva ogni 16,4–16,9 ms, il passo è 16,67): un
+  fotogramma ripetuto che sembra un fps più basso. Ora l'accumulatore ha
+  1,5 ms di tolleranza (`loop.js`): a 60 Hz un passo per frame, in media
+  sempre 60 passi al secondo.
+- **n.89, percorsi di gruppo**: il flow field resta uno solo, quello del
+  capo verso il punto cliccato (leggero, come nell'originale), ma prima
+  tutti avevano anche **lo stesso punto d'arrivo**: vicino al punto ognuno
+  faceva `mp_potential_step` verso quel punto, le unità (solide) si
+  spingevano e la regola "destinazione occupata, arretra di 32/50 px" le
+  fermava a catena in fila prima del punto. In più i seguaci tenevano il
+  `goal_field` dell'ordine precedente: quando il primo arrivava e occupava
+  la cella, gli altri ricalcolavano il campo da quei dati verso la cella
+  ormai occupata, e `scr_find_valid_cell_backwards` restituiva di nuovo
+  quella cella: BFS su tutta la griglia a ogni passo. Ora (`formation`,
+  `units.js`, dopo il GlobalRightReleased delle unità):
+  - ogni unità riceve una **casella sua** attorno al punto cliccato: righe
+    perpendicolari alla direzione di marcia, nella prima riga chi arriva
+    prima (distanza / velocità), in ogni riga lo stesso ordine da sinistra
+    a destra in cui stanno ora (i percorsi non si incrociano); distanze
+    calcolate dalle maschere delle unità vicine; ogni casella è una cella
+    libera, raggiungibile nel campo del capo e diversa dalle altre;
+  - lontano si segue il flow field comune, da 400 px "step towards" verso
+    la propria casella (come l'originale verso il punto cliccato);
+  - il ricalcolo "cella d'arrivo occupata" (cavaliere, fanteria, arcieri,
+    civili) va alla cella **libera** più vicina (`nearestFreeCell`);
+  - un'unità che a meno di 400 px dalla sua casella non si avvicina da 60
+    passi più uno ogni 2 px di distanza si ferma dov'è (`arriveIfBlocked`)
+    invece di dondolare dietro le altre fino al "timer fermati" di 20 s.
+  Solo per gli spostamenti semplici: con un nemico, un edificio, una
+  risorsa o un cantiere sotto il puntatore, o con una sola unità, tutto
+  resta come prima.
+
+**Verificato**: `npm test`, 40 test (nuovi: cella libera più vicina e
+arrivo per rinuncia); Chromium: 14 unità miste (3 cavalieri, guerrieri,
+picchieri, arcieri) mandate a 1100 px: prima a 1200 passi il baricentro
+era a 330 px dal punto cliccato, in fila, due unità ferme solo dal timer;
+ora tutte arrivate in 1000 passi attorno al punto (baricentro a 35 px),
+distanza minima fra unità 49 px; rotella (zoom fino a 2,0 attorno al
+puntatore), scorrimento a destra col puntatore uscito dalla finestra (869
+px in 11 passi), cursore disegnato e freccia nascosta, scheda della casa a
+destra della minimappa, messaggio dell'accelerazione hardware e menu di
+pausa col font del gioco, contatore degli inattivi coi civili che muoiono;
+3000 passi senza errori in `menu`, `match`, `lvl01`, `lvl02`; salvataggi
+con ripristino identico; zip dei portali nell'iframe.
+

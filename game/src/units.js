@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
 
@@ -65,10 +65,111 @@ export function movementGeneral(w, p, mx, my) {
   for (const u of w.all("ally_unit")) if (u !== leader && u.selected === 1) p.free(u);
 }
 
-// ally_unit Keyboard_Escape [C], ereditato da tutte le unita' alleate senza
-// un Escape proprio. [Difetto corretto §3.3 n.13, confermato dall'autore:
-// l'originale decrementava global.sel ma non global.milsel, e i contatori
-// della selezione restavano sporchi]
+// [Correzione decisa dall'autore, §6.1 n.89] Formazione. Dopo l'ordine
+// (scr_movement_general e il GlobalRightReleased di ogni unita') tutti i
+// selezionati avevano lo stesso punto d'arrivo, il punto cliccato: il primo
+// ci arrivava, gli altri vi si ammassavano spingendosi con
+// mp_potential_step e ricalcolando il campo verso la cella ormai occupata.
+// Qui il flow field resta uno solo, quello del capo verso il punto
+// cliccato (leggero, come nell'originale), ma ogni unita' riceve una
+// casella sua attorno a quel punto: righe perpendicolari alla direzione di
+// marcia, nella prima riga le unita' che arrivano prima e, in ogni riga, nello
+// stesso ordine da sinistra a destra in cui stanno ora (cosi' i percorsi
+// non si incrociano). Ogni casella e' una cella libera e raggiungibile nel
+// campo del capo, diversa dalle altre. Lontano si segue il flow field
+// comune, da vicino (400 px) "step towards" verso la propria casella, come
+// gia' faceva l'originale verso il punto cliccato.
+// Solo per un ordine di semplice spostamento: unita' che dopo il proprio
+// GlobalRightReleased vanno esattamente al punto cliccato (nessun nemico,
+// risorsa, cantiere o torre sotto il puntatore).
+export function formation(w, p, mx, my) {
+  const units = [];
+  for (const u of w.all("ally_unit")) {
+    if (u.selected === 1 && u.action === 1 && u.dirox === mx && u.diroy === my) units.push(u);
+  }
+  if (units.length < 2) return;
+  if (w.positionMeeting(mx, my, "enemy") || w.positionMeeting(mx, my, "ally_build")
+      || w.positionMeeting(mx, my, "natural_parent") || w.positionMeeting(mx, my, "ally_fondamenta")) return;
+  let leader = units[0];
+  for (const u of units) if (u.ordo > leader.ordo) leader = u;
+  const goal = leader.goal_field;
+  if (!goal) return;
+  // direzione di marcia: dal baricentro al punto cliccato
+  let cx = 0, cy = 0;
+  for (const u of units) { cx += u.x; cy += u.y; }
+  cx /= units.length; cy /= units.length;
+  let fx = mx - cx, fy = my - cy;
+  const fl = Math.hypot(fx, fy);
+  if (fl < 1) { fx = 0; fy = -1; } else { fx /= fl; fy /= fl; }
+  const lx = -fy, ly = fx; // laterale
+  // ingombro di ogni unita' (maschere: fanteria ~48x46, cavalieri ~91x41,
+  // assedio ~111x96; le unita' sono solide e si bloccano a vicenda). Le
+  // maschere non ruotano con la formazione: due scatole a distanza s lungo
+  // la direzione (dx, dy) non si toccano se s*|dx| >= (larghezze)/2 oppure
+  // s*|dy| >= (altezze)/2.
+  const size = new Map();
+  for (const u of units) {
+    const bb = w.bbox(u);
+    size.set(u, bb ? [bb[2] - bb[0], bb[3] - bb[1]] : [48, 46]);
+  }
+  const apart = (dx, dy, wsum, hsum) => {
+    const a = Math.abs(dx) > 1e-3 ? wsum / 2 / Math.abs(dx) : Infinity;
+    const b = Math.abs(dy) > 1e-3 ? hsum / 2 / Math.abs(dy) : Infinity;
+    return Math.min(a, b);
+  };
+  const MARGIN = 10;
+  const n = units.length;
+  const cols = Math.min(n, Math.ceil(Math.sqrt(n * 2)));
+  const rows = Math.ceil(n / cols);
+  // unita': prima riga a chi arriva prima (distanza / velocita': i cavalieri
+  // vanno a 5, fanteria e arcieri a 4, civili 3, assedio 2), poi a blocchi
+  // di una riga per posizione laterale
+  const lat = (u) => (u.x - cx) * lx + (u.y - cy) * ly;
+  const speed = (u) => (u.object === "ally_cavaliere" ? 5 : u.object === "ally_omino" ? 3
+    : u.object === "ally_ariete" || u.object === "ally_catapulta" ? 2 : 4);
+  const eta = new Map(units.map((u) => [u, pointDistance(u.x, u.y, mx, my) / speed(u)]));
+  units.sort((a, b) => eta.get(a) - eta.get(b));
+  const rowUnits = [];
+  for (let r = 0; r < rows; r++) rowUnits.push(units.slice(r * cols, (r + 1) * cols).sort((a, b) => lat(a) - lat(b)));
+  // posizioni laterali (centrate) e distanza fra le righe
+  const slots = [];
+  let along = 0;
+  const rowMax = rowUnits.map((row) => row.reduce((m, u) => [Math.max(m[0], size.get(u)[0]), Math.max(m[1], size.get(u)[1])], [0, 0]));
+  rowUnits.forEach((row, r) => {
+    if (r > 0) {
+      const [w0, h0] = rowMax[r - 1], [w1, h1] = rowMax[r];
+      along -= apart(fx, fy, w0 + w1 + 2 * MARGIN, h0 + h1 + 2 * MARGIN);
+    }
+    const pos = [0];
+    for (let c = 1; c < row.length; c++) {
+      const [wa, ha] = size.get(row[c - 1]), [wb, hb] = size.get(row[c]);
+      pos.push(pos[c - 1] + apart(lx, ly, wa + wb + 2 * MARGIN, ha + hb + 2 * MARGIN));
+    }
+    const mid = pos[pos.length - 1] / 2;
+    row.forEach((u, c) => slots.push([u, along, pos[c] - mid]));
+  });
+  // il blocco centrato sul punto cliccato
+  const shift = -along / 2;
+  const used = new Set();
+  for (const [u, a, side] of slots) {
+    const sx = mx + fx * (a + shift) + lx * side, sy = my + fy * (a + shift) + ly * side;
+    const [gx, gy, ok] = p.nearestFreeCell(goal, Math.trunc(sx / GRID), Math.trunc(sy / GRID),
+                                           Math.trunc(u.x / GRID), Math.trunc(u.y / GRID), used);
+    if (!ok || goal[gy * p.gw + gx] === -1) continue;
+    used.add(gy * p.gw + gx);
+    // il punto esatto se la sua cella e' libera, se no il centro della cella
+    const exact = Math.trunc(sx / GRID) === gx && Math.trunc(sy / GRID) === gy;
+    u.dirox = exact ? Math.round(sx) : gx * GRID + GRID / 2;
+    u.diroy = exact ? Math.round(sy) : gy * GRID + GRID / 2;
+    // il campo comune (in sola lettura) e la propria cella d'arrivo: il
+    // ricalcolo "cella d'arrivo occupata" guarda questa
+    u.goal_field = goal;
+    u.flow_field = leader.flow_field;
+    u.goal_x = gx * GRID;
+    u.goal_y = gy * GRID;
+  }
+}
+
 export function escapeDeselect(i, w) {
   if (w.g.sele === 0 && i.selected === 1) {
     w.g.sel -= 1;
@@ -450,6 +551,7 @@ export function behaviourClicker(kind) {
       d.setAlpha(0.69);
       const title = tr(attack ? "Aggressive" : "Defensive"), sc = tr("Shortcut: {key}", { key: attack ? "Q" : "A" });
       const ex = d.panelExtra(340, title, null, sc);
+      d.tooltipBegin(w); // §6.1 n.85
       d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, white, white, false);
       d.setAlpha(0.7);
       d.setHalign("left");
@@ -462,6 +564,7 @@ export function behaviourClicker(kind) {
       d.setFont("GUI_1");
       d.setHalign("right");
       d.text(320 + ex, H - 120, sc);
+      d.tooltipEnd(w);
       d.setAlpha(0.99);
       d.circleColour(450, y, 30, white, white, false);
       d.setAlpha(1);
@@ -537,7 +640,10 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
           i.step = 0; i.autospeed = 0; i.alarm.set(0, i.alarm.get(0) + 1);
         } else i.autospeed = speed * iso(i.direction);
       }
-      if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) {
+        mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        arriveIfBlocked(i); // §6.1 n.89
+      }
       if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.targetid.x, i.targetid.y, i.autospeed);
       if (i.warwork === 1 && i.target_eu) mpPotentialStep(w, i, i.target_eu.x, i.target_eu.y, i.autospeed);
       if (i.warwork === 1 && !i.target_eu) {
@@ -550,8 +656,9 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
   if (guard && p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000
       && i.firework === 0 && (warwork4 && !cavalier ? (i.warwork === 0 || i.warwork === 4) : i.warwork === 0)) {
     p.free(i);
-    const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                              Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
+    // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
+    const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
+                                       Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
     const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
     i.goal_x = found ? cx * GRID : i.x;
     i.goal_y = found ? cy * GRID : i.y;
@@ -768,4 +875,29 @@ export function enemyDummy(name) {
     },
     alarm5(i) { i.hit = 0; },
   };
+}
+
+// [Correzione decisa dall'autore, §6.1 n.81] I contatori della selezione
+// (global.sel, milsel, firesel, arcsel, siegsel) nell'originale sono tenuti
+// a incrementi, e il doppio clic (tutte le unita' dello stesso tipo nella
+// view) o lo Spazio sui civili inattivi contano di nuovo anche le unita' gia'
+// selezionate: dopo un doppio clic sui soldati milsel restava > 0 per
+// sempre e con i soli civili selezionati i pulsanti e i tasti di
+// costruzione non comparivano piu'. Qui, dopo ogni passo, si ricontano dalle
+// unita' davvero selezionate.
+export function recountSelection(w) {
+  const g = w.g;
+  let sel = 0, mil = 0;
+  const extra = { firesel: 0, arcsel: 0, siegsel: 0 };
+  for (const u of w.all("ally_unit")) {
+    if (u.selected !== 1) continue;
+    sel++;
+    if (u.object === "ally_omino") continue;
+    mil++;
+    const k = selCounter(w, u);
+    if (k) extra[k]++;
+  }
+  g.sel = sel;
+  g.milsel = mil;
+  Object.assign(g, extra);
 }
