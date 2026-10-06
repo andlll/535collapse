@@ -2996,9 +2996,11 @@ faceva nulla.
   di §6.1) e al passo dopo rivaluta;
 - alleata: un clic destro su un nemico a meno di 300 px (prima ignorato)
   manda la catapulta in un punto da cui il punto cliccato e' a tiro e,
-  arrivata, tira li' (il punto segue il bersaglio se si e' mosso); come il
-  tiro mirato originale, un colpo, poi niente tiro automatico fino al
-  prossimo ordine.
+  arrivata, tira li' (il punto segue il bersaglio se si e' mosso);
+- [Decisione dell'autore] finito un tiro mirato la catapulta torna al tiro
+  automatico (nell'originale restava ferma fino all'ordine successivo);
+  un ordine dato durante il lancio lo interrompe come prima e
+  l'automatico non riparte.
 
 **Verificato** (campo aperto di `match`, edificio a 100 px dalla
 catapulta, 2000 passi, prima → dopo):
@@ -3008,7 +3010,9 @@ catapulta, 2000 passi, prima → dopo):
 - secondo edificio dove porterebbe l'arretramento dritto: alleata primo
   tiro al passo 1429 → 466; nemica incastrata 1758 passi, 0 tiri → 9 tiri;
 - tiro ordinato troppo vicino: ignorato → arretra di 200 px e colpisce la
-  casa al passo 195.
+  casa al passo 195; poi, in automatico, ricarica, si accorge di essere a
+  238 px (sotto i 300), arretra e a 301 px riprende a tirare da sola fino a
+  distruggere la casa.
 `npm test` 50 test; 5000 passi senza errori nelle quattro room; salvataggi
 identici; zip dei portali; battaglia di `lvl02` senza differenze di costo.
 

@@ -222,7 +222,10 @@ function catapultAlarm2(i, w, bulletName) {
     return;
   }
   if (i.step === 2) { i.step = 3; i.alarm.set(2, 45); return; }
-  if (i.step === 3) { i.step = 0; i.action = 0; }
+  // [§6.7, decisione dell'autore] finito il lancio si torna al tiro
+  // automatico: nell'originale, dopo un tiro mirato col clic destro
+  // (automatic 0), la catapulta restava ferma fino all'ordine successivo
+  if (i.step === 3) { i.step = 0; i.action = 0; i.automatic = 1; }
 }
 
 // Alarm_4 [C]: ricarica, cinque fasi da 13 passi
