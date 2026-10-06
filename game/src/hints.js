@@ -23,6 +23,7 @@
 // dialogo che sparisce per altri motivi apre comunque il successivo.
 
 import { c } from "./colours.js";
+import { tr, getLanguage } from "./i18n.js";
 
 const W380 = 380;
 
@@ -59,6 +60,10 @@ const T = {
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
+// [Correzione decisa dall'autore, §3.19 n.70] l'originale ricalcolava a
+// ogni passo l'istanza piu' vicina al puntatore: avvicinandosi per
+// cliccare, la finestra saltava su un'altra unita'. Qui segue l'istanza
+// scelta alla creazione (e ne sceglie un'altra solo se muore).
 const mouse = (obj) => ({ kind: "mouse", obj, follow: true });
 const mouseOnce = (obj) => ({ kind: "mouse", obj, follow: false });
 const vicino = (obj) => ({ kind: "vicino", obj });
@@ -89,16 +94,17 @@ export const HINTS = {
   hint_stone: { anchor: mouse("stone_parent") },
   hint_campi: { anchor: vicino("campo") },
   hint_pop: { anchor: mouseOnce("casa") },
-  // [§3.18 n.64] il presidio si apre anche cliccando una torre, ma si
-  // ancorava al castello piu' vicino: senza castelli l'originale si ferma
-  // con un errore (noone.x); qui resta ferma dove l'ha creata la torre
+  // [Deviazione confermata dall'autore, §3.18 n.64] il presidio si apre
+  // anche cliccando una torre, ma si ancorava al castello piu' vicino:
+  // senza castelli l'originale si ferma con un errore (noone.x); qui resta
+  // ferma dove l'ha creata la torre
   hint_presidio: { anchor: mouse("castello"), click: "pressed" },
   hint_attack: { anchor: vicino("enemy_unit") },
   hint_fire: { anchor: vicino("enemy_build"), next: "hint_fire_2", nextAtSelf: true },
   hint_fire_2: { anchor: vicino("enemy_build"), arm: 10 },
   // hint_multi arma `arm` ma non ha l'Alarm_0 e non lo controlla [C]
   hint_multi: { anchor: vicino("ally_militare"), next: "hint_multi_2", nextAtSelf: true },
-  hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed", oldPanel: true },
+  hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed" },
   hint_night: { anchor: fixed(420, 170) },
 };
 
@@ -188,6 +194,15 @@ function textHeight(w, text) {
   return h;
 }
 
+// Il testo (e quindi l'altezza della finestra) dipende dalla lingua, che si
+// puo' cambiare dal menu di pausa a finestra aperta.
+function measure(i, w) {
+  const l = getLanguage();
+  if (i.lang === l) return;
+  i.lang = l;
+  i.testo_h = textHeight(w, tr(i.testo));
+}
+
 // la finestra in pixel dello schermo, dall'ancora in coordinate di room
 function toScreen(w, x, y) {
   const cam = w.cam, s = cam.scaleview;
@@ -214,10 +229,10 @@ function drawWindow(d, i, titleX, portrait) {
   d.setValign("bottom");
   d.setHalign("left");
   d.setAlpha(0.75);
-  d.text(i.posx + titleX, i.posy + 38, i.titolo);
+  d.text(i.posx + titleX, i.posy + 38, tr(i.titolo));
   d.setValign("top");
   d.setFont("overdue");
-  d.textExt(i.posx + 20, i.posy + 43, i.testo, 30, 340);
+  d.textExt(i.posx + 20, i.posy + 43, tr(i.testo), 30, 340);
   d.setFont("GUI_1");
   d.setValign("middle");
   d.setAlpha(1);
@@ -229,7 +244,11 @@ export function hint(name) {
   const anchorNow = (i, w) => {
     const A = H.anchor;
     if (A.kind === "fixed") { [i.posx, i.posy] = A.pos(w, i); return true; }
-    if (A.kind === "mouse") { place(i, w, w.nearest(w.mouse.x, w.mouse.y, A.obj)); return true; }
+    if (A.kind === "mouse") {
+      if (!A.follow || !i.anchorInst || !i.anchorInst.alive) i.anchorInst = w.nearest(w.mouse.x, w.mouse.y, A.obj);
+      place(i, w, i.anchorInst);
+      return true;
+    }
     if (!i.vicino || !i.vicino.alive) return false; // vicino
     place(i, w, i.vicino);
     return true;
@@ -244,7 +263,7 @@ export function hint(name) {
       Object.assign(i, { titolo, testo, hover: 0, arm: 0 });
       i.sprite_index = null;
       if (H.resource) w.g.resourcehint = 1;
-      i.testo_h = textHeight(w, testo);
+      measure(i, w);
       if (H.anchor.kind === "vicino") i.vicino = w.nearest(w.mouse.x, w.mouse.y, H.anchor.obj);
       i.posx = i.posy = 0;
       if (H.anchor.kind === "mouse" && !w.exists(H.anchor.obj)) [i.posx, i.posy] = toScreen(w, i.x, i.y); // [§3.18 n.64]
@@ -253,36 +272,20 @@ export function hint(name) {
     },
     alarm0(i) { i.arm = 1; },
     step(i, w) {
+      measure(i, w);
       i.hover = over(i, w) ? 1 : 0;
       const A = H.anchor;
       if (A.kind === "vicino") { if (!anchorNow(i, w)) w.destroy(i); }
       else if (A.follow) anchorNow(i, w);
     },
     [H.click === "pressed" ? "globalLeftPressed" : "globalLeftReleased"]: click,
+    // H nasconde i suggerimenti (global.hint). [Correzione decisa
+    // dall'autore, §3.19 n.65] hint_multi_2 non disegna piu' il vecchio
+    // riquadro di prova (azione 2 del suo Draw GUI, alla x,y di room usate
+    // come coordinate dello schermo).
     drawGUI(i, w, d) {
       if (w.g.hint !== 1) return;
       drawWindow(d, i, 20, null);
-      // hint_multi_2, azione 2 [C]: il vecchio riquadro, disegnato alla x,y
-      // dell'istanza (coordinate di room) come se fossero dello schermo
-      // [§3.18 n.65, riprodotto]
-      if (H.oldPanel) {
-        d.setAlpha(0.49);
-        d.roundrectColourExt(i.x, i.y, i.x + 550, i.y + 258, 80, 80, c.white, c.white, false);
-        d.setFont("GUI_1");
-        d.setColour(c.black);
-        d.setValign("bottom");
-        d.setHalign("left");
-        d.setAlpha(0.75);
-        d.text(i.x + 40, i.y + 58, "Multiple selection");
-        d.setFont("overdue");
-        d.text(i.x + 40, i.y + 108, "Ctrl + left click to add units to selection");
-        d.text(i.x + 40, i.y + 148, "Alt + left click to remove units from selection");
-        d.text(i.x + 40, i.y + 188, "Ctrl + numbers (digits) to assign a quick");
-        d.text(i.x + 40, i.y + 228, "selection number to a group.");
-        d.setFont("GUI_1");
-        d.setValign("middle");
-        d.setAlpha(1);
-      }
     },
   };
 }
@@ -295,7 +298,7 @@ export function dialog(name) {
       Object.assign(i, { titolo, testo: D.text, hover: 0, arm: 0 });
       i.sprite_index = null;
       i.parlante = w.nearest(i.x, i.y, obj);
-      i.testo_h = textHeight(w, D.text);
+      measure(i, w);
       i.posx = i.posy = 0;
       place(i, w, i.parlante);
       if (D.arm) i.alarm.set(0, D.arm);
@@ -307,9 +310,11 @@ export function dialog(name) {
     step(i, w) {
       const gone = !i.parlante || !i.parlante.alive;
       if (D.vanish && gone) { w.destroy(i); return; }
+      measure(i, w);
       i.hover = over(i, w) ? 1 : 0;
       // senza `vanish` l'originale leggerebbe parlante.x di un'istanza
-      // morta (errore); qui la finestra resta dov'era [§3.18 n.68]
+      // morta (errore); qui la finestra resta dov'era [deviazione
+      // confermata dall'autore, §3.18 n.68]
       if (!gone) place(i, w, i.parlante);
       if (D.step) D.step(i, w);
     },
@@ -322,8 +327,11 @@ export function dialog(name) {
       if (D.next) w.create(D.next, i.x + (D.nextOffset ? D.nextOffset[0] : 0), i.y + (D.nextOffset ? D.nextOffset[1] : 0));
       if (D.destroy) D.destroy(i, w);
     },
+    // [Correzione decisa dall'autore, §3.19 n.62] H nasconde solo i
+    // suggerimenti del tutorial, non i dialoghi (l'originale nascondeva
+    // anche questi, che pero' restavano cliccabili: in lvl01 la vittoria
+    // arriva chiudendo un dialogo).
     drawGUI(i, w, d) {
-      if (w.g.hint !== 1) return;
       drawWindow(d, i, portrait ? 50 : 20, portrait);
     },
   };
@@ -338,6 +346,14 @@ export function hintOnce(w, name, flag, x, y, cond = true) {
     w.create(name, x, y);
     g[flag] = 1;
   }
+}
+
+// [Correzione decisa dall'autore, §3.19 n.69] casse e picchiere nemico
+// controllavano instance_number(parent_dialogo), un oggetto senza figli
+// (sempre 0): qui "nessun dialogo aperto".
+export function dialogOpen(w) {
+  for (const n of DIALOG_NAMES) if (w.exists(n)) return true;
+  return false;
 }
 
 export const HINT_NAMES = Object.keys(HINTS);

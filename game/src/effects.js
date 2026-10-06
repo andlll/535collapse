@@ -21,7 +21,7 @@ const GOCCIA = partType({
 });
 
 export function rainStart(w) {
-  const ps = P(w).systemCreate(-9000);
+  const ps = P(w).systemCreate(-9000, "rain");
   const em = P(w).emitterCreate(ps);
   P(w).region(em, 0, w.roomW + 300, -16, -16, "line", "linear");
   P(w).stream(em, GOCCIA, 6);
@@ -54,7 +54,7 @@ const fireType = () => partType({
 });
 
 function fireSystem(i, w, reg, depth) {
-  const ps = P(w).systemCreate(depth);
+  const ps = P(w).systemCreate(depth, "fire");
   const t = fireType();
   const em = P(w).emitterCreate(ps);
   P(w).region(em, i.x + reg[0], i.x + reg[1], i.y + reg[2], i.y + reg[3], "rectangle", "gaussian");
@@ -112,7 +112,7 @@ const FLARE = partType({
 });
 
 export function fireFlare(w, x, y) {
-  const ps = P(w).systemCreate(-y - 1);
+  const ps = P(w).systemCreate(-y - 1, "fire");
   const em = P(w).emitterCreate(ps);
   P(w).region(em, x - 5, x + 5, y + 5, y + 5, "rectangle", "gaussian");
   P(w).burst(ps, em, FLARE, 300);
@@ -139,7 +139,7 @@ export function fireStarterCreate(i, w, small) {
   // [Correzione decisa dall'autore, §3.17 n.59] la torcia si disegnava due
   // volte (da sola alla depth 0, dietro a tutto, e nel suo Draw a -y-90):
   // qui solo nel Draw.
-  i.fire_ps = P(w).systemCreate(small ? 0 : -i.y - 70);
+  i.fire_ps = P(w).systemCreate(small ? 0 : -i.y - 70, "fire");
   if (small) i.fire_ps.autoDraw = false;
   i.fire_emitter = P(w).emitterCreate(i.fire_ps);
   if (small) P(w).region(i.fire_emitter, i.x - 5, i.x + 5, i.y, i.y + 5, "rectangle", "gaussian");
@@ -182,7 +182,7 @@ export const DECOR_OBJECTS = Object.keys(DECOR);
 export function decorCreate(i, w) {
   const [t, n] = DECOR[i.object];
   i.sprite_index = null;
-  i.grass_system = P(w).systemCreate(-1);
+  i.grass_system = P(w).systemCreate(-1, "grass");
   const em = P(w).emitterCreate(i.grass_system);
   P(w).region(em, i.x - 500, i.x + 500, i.y - 300, i.y + 300, "ellipse", "gaussian");
   P(w).burst(i.grass_system, em, t, n);
@@ -204,7 +204,7 @@ function diamond(w, ps, i, t, n) {
 }
 
 export function campoCreate(i, w) {
-  i.grass_system = P(w).systemCreate(-1);
+  i.grass_system = P(w).systemCreate(-1, "grass");
   diamond(w, i.grass_system, i, SPIGA, 700);
 }
 
@@ -212,7 +212,7 @@ export function campoStep(i, w) {
   if (i.onfire === 1 && i.firestarted === 0) {
     i.sprite_index = "campo_maggese";
     P(w).systemDestroy(i.grass_system);
-    i.grass_system_black = P(w).systemCreate(-1);
+    i.grass_system_black = P(w).systemCreate(-1, "grass");
     diamond(w, i.grass_system_black, i, SPIGA_BRUCIATA, 1700);
   }
   fireStep(i, w, "campo");
@@ -230,7 +230,7 @@ const GERMOGLIO = partType({ sprite: "part_crop", colour: { list: [c.green, c.wh
                              alpha: [0, 1, 0], orientation: [-15, 15, 0, 4, false], life: [80, 100] });
 
 export function campoFondCreate(i, w) {
-  i.grass_system = P(w).systemCreate(-1);
+  i.grass_system = P(w).systemCreate(-1, "grass");
   i.grass_emitter = P(w).emitterCreate(i.grass_system);
   P(w).region(i.grass_emitter, i.x - 145, i.x + 145, i.y - 90, i.y + 90, "diamond", "linear");
   P(w).stream(i.grass_emitter, GERMOGLIO, 0.1);
@@ -250,7 +250,7 @@ const SEME = partType({ shape: "pixel", size: [1, 1.5, 0, 0], colour: { list: [m
 
 export function seedsThrow(i, w) {
   const Pw = P(w);
-  if (!Pw.exists(w.seeds)) w.seeds = Pw.systemCreate(0);
+  if (!Pw.exists(w.seeds)) w.seeds = Pw.systemCreate(0, "grass");
   const dir = i.direction;
   const handX = i.x + lengthdirX(8, dir), handY = i.y - 40;
   w.seeds.depth = dir > 0 && dir < 181 ? -i.y + 1 : -i.y - 1;

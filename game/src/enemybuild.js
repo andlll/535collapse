@@ -3,7 +3,7 @@
 // oggetti che assegnano un ruolo agli edifici nemici (aggr_assign,
 // def_assign). Trascrizione di src/objects/<oggetto>/; nomi originali.
 
-import { hintOnce } from "./hints.js";
+import { hintOnce, dialogOpen } from "./hints.js";
 import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
 import { fireStep, fireStop } from "./effects.js";
@@ -155,9 +155,8 @@ export function oBox(kind, p) {
         return;
       }
       // o_box2, "dialogo livello 1" [C]: la prima volta che un guerriero e'
-      // entro 200 px. Controlla instance_number(parent_dialogo), un oggetto
-      // senza figli: vale sempre 0 [§3.18 n.69, riprodotto].
-      if (kind === "o_box2" && g.dialogochest === 0) {
+      // entro 200 px, se non c'e' un altro dialogo aperto (§3.19 n.69)
+      if (kind === "o_box2" && g.dialogochest === 0 && !dialogOpen(w)) {
         const war = w.nearest(i.x, i.y, "ally_warrior");
         if (war && w.distanceToInstance(i, war) < 200) { w.create("dialogo_1_3", i.x, i.y); g.dialogochest = 1; }
       }

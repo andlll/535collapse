@@ -11,6 +11,7 @@
 // cantiere e campo finito sono a parte (campoFond, campo). Le mura
 // (orientamento, tratti, porte) sono a parte (da fare).
 
+import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
@@ -136,20 +137,22 @@ export function clicker(fam) {
     drawGUI(i, w, dr) {
       if (i.hover !== 1 && i.active !== 1) return;
       const H = w.cam.cssH, P = d.panel;
+      const title = tr(P.title), desc = tr(P.desc), sc = tr("Shortcut: {key}", { key: P.shortcut[0].slice(-1) });
+      const ex = dr.panelExtra(P.w, title, desc, sc);
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, P.w, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
+      dr.roundrectColourExt(20, H - 150, P.w + ex, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, P.title);
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, H - 90, P.desc);
+      dr.text(40, H - 90, desc);
       dr.setFont("GUI_1");
       for (const [txt, tx] of P.costs) dr.text(tx, H - 50, txt);
       dr.setAlpha(1);
       for (const [, , ico, ix] of P.costs) dr.sprite(ico, 0, ix, H - 50);
       dr.setAlpha(0.7);
       dr.setHalign("right");
-      dr.text(P.shortcut[1], H - 120, P.shortcut[0]);
+      dr.text(P.shortcut[1] + ex, H - 120, sc);
       if (!d.noRing) {
         dr.setAlpha(0.99);
         dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
@@ -774,12 +777,14 @@ export function ominoClicker() {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 370, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Worker"), desc = tr("Gathers resources and builds the town."), sc = tr("Shortcut: {key}", { key: "Q" });
+      const ex = dr.panelExtra(370, title, desc, sc);
+      dr.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Worker");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
-      dr.text(40, H - 90, "Gathers resources and builds the town.");
+      dr.text(40, H - 90, desc);
       dr.setFont("GUI_1");
       dr.text(40, H - 50, "50");
       dr.text(120, H - 50, "1");
@@ -788,7 +793,7 @@ export function ominoClicker() {
       dr.spriteExt("ico_multi", 0, 150, H - 50, 0.5, 0.5, 0, WHITE, 1);
       dr.setAlpha(0.7);
       dr.setHalign("right");
-      dr.text(350, H - 120, "Shortcut: Q");
+      dr.text(350 + ex, H - 120, sc);
       dr.setAlpha(0.99);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
@@ -828,17 +833,19 @@ export function centroCancel() {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
-      dr.roundrectColourExt(20, H - 150, 340, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Cancel"), sc = tr("Shortcut: {key}", { key: "W" });
+      const ex = dr.panelExtra(340, title, null, sc);
+      dr.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
-      dr.text(40, H - 120, "Cancel");
+      dr.text(40, H - 120, title);
       dr.setFont("overdue");
       dr.setValign("top");
-      dr.textExt(40, H - 100, "Cancel the last unit in the creation queue.", 30, 280);
+      dr.textExt(40, H - 100, tr("Cancel the last unit in the creation queue."), 30, 280 + ex);
       dr.setValign("middle");
       dr.setFont("GUI_1");
       dr.setHalign("right");
-      dr.text(320, H - 120, "Shortcut: W");
+      dr.text(320 + ex, H - 120, sc);
       dr.setAlpha(0.99);
       dr.circleColour(520, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);

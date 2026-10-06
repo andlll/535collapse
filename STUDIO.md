@@ -17,8 +17,9 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
-sconfitta (§3.18). **Prossimo: menu principale e campagna**, insieme alla
-battaglia del menu. Il dettaglio di ogni voce sta nella sezione citata.
+sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
+(§3.19). **Prossimo: menu principale e campagna**, insieme alla battaglia
+del menu. Il dettaglio di ogni voce sta nella sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -50,10 +51,9 @@ battaglia del menu. Il dettaglio di ogni voce sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] Suggerimenti e dialoghi (§3.18): n.62 (H nasconde anche i dialoghi),
-  n.63 (tre `hint_legna` fuori schermo in `lvl02`), n.65–67 (vecchio
-  riquadro di `hint_multi_2`, testi fuori centro con lo zoom, sconfitta
-  invisibile), n.69–71; deviazioni n.64 e n.68 da confermare.
+- [ ] Refusi nei testi inglesi dell'originale (§3.19 n.72): correggerli?
+- [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
+  se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -91,8 +91,9 @@ battaglia del menu. Il dettaglio di ogni voce sta nella sezione citata.
 - [x] Suggerimenti del tutorial, dialoghi, obiettivi, vittoria e
   sconfitta (§3.18).
 - [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
-  lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
-  livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
+  lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14,
+  già salvato da `progress.js`); livelli 3–10 "in arrivo".
+- [x] Menu di pausa (`mouser`) con opzioni grafiche e lingua (§3.19).
 - [x] `lvl01`: catena delle 4 porte; `lvl02`: aree difese, area 7 che
   conta per la vittoria (§1.2), `l6exists` falso ad area 6 libera (§3.13).
   Mancano i dialoghi che li accompagnano (voce sopra).
@@ -104,8 +105,9 @@ battaglia del menu. Il dettaglio di ogni voce sta nella sezione citata.
 **Fasi 4 e 5**
 - [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
   esportabile/importabile).
-- [ ] Opzioni nel menu: tetto fps, risoluzione dinamica, diagnostica;
-  i18n dei testi del gioco; pulsante schermo intero con ripiego; PWA.
+- [x] Opzioni nel menu di pausa (tetto fps, risoluzione dinamica,
+  particelle) e traduzione dei testi del gioco in sei lingue (§3.19).
+- [ ] Pulsante schermo intero con ripiego; PWA.
 - [ ] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
   zip per i portali verificato con Playwright in una sottocartella.
 
@@ -2216,3 +2218,75 @@ degli obiettivi; `lvl02` `dialogo_2_0` e i tre `hint_legna` fuori schermo
 centro distrutto → `gameover_manager` invisibile, dopo 760 passi il menu;
 `lvl01` vittoria → clic → `unlock` 2 salvato e menu; 3000 passi senza
 errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.19 Correzioni, menu di pausa e traduzioni (6 ottobre 2026)
+
+**Decisioni dell'autore sui difetti di §3.18**: "per la 62 facciamo che
+con H vengono nascosti solo gli Hint del tutorial e non i dialoghi. Le
+altre risolviamole." Applicato:
+
+- **n.62**: H nasconde solo i suggerimenti; i dialoghi restano visibili.
+- **n.63**: i tre `hint_legna` piazzati in `lvl02` non si creano.
+- **n.64, n.68**: le due deviazioni restano come soluzione (suggerimento
+  del presidio fermo sulla torre senza castelli; dialogo fermo se muore
+  chi parla).
+- **n.65**: `hint_multi_2` non disegna più il vecchio riquadro.
+- **n.66**: testi di vittoria e sconfitta centrati sullo schermo.
+- **n.67**: la schermata di sconfitta è visibile.
+- **n.69**: casse e picchiere nemico aprono il loro dialogo solo se non
+  c'è un altro dialogo aperto (al posto di `parent_dialogo`, senza figli).
+- **n.70**: i suggerimenti ancorati "all'unità più vicina al puntatore"
+  seguono l'istanza scelta all'apertura (un'altra solo se muore).
+- **n.71**: nel menu `hint_iniziale` non si crea.
+
+**Menu di pausa** (`game/src/pause.js`; richiesta dell'autore: "come
+quello di Nimbus, con le opzioni grafiche e la traduzione"). L'originale
+ne ha uno [C, `mouser`]: pulsante in alto a destra o Esc senza nulla di
+selezionato, tutto fermo (`instance_deactivate_all`), "GAME PAUSED",
+Riprendi, Ricomincia, Torna al menu, interruttori di suggerimenti,
+obiettivi e FPS. Qui:
+- stesso pulsante (rettangolo bianco con `icopausa`) ed Esc; in pausa Esc
+  torna indietro o riprende; il mondo non fa passi;
+- aspetto di NIMBUS (`n_redux`, `drawPauseOverlay()`): la scena ferma
+  sfumata (disegnata in una superficie e dimezzata tre volte col filtro
+  lineare, rifatta solo se cambia qualcosa) e scurita al 40%, pannello
+  bianco traslucido, pulsanti a pillola, controlli a segmenti con la scelta
+  in verde; il testo usa i font del gioco;
+- voci: Riprendi, Opzioni grafiche, Suggerimenti/Obiettivi/Contatore FPS
+  (sì/no), Lingua (EN IT ES PT DE FR), Ricomincia livello, Torna al menu;
+- Opzioni grafiche: Pioggia, Erba e spighe, Fiamme e scintille
+  (categorie di particelle: i sistemi spenti non si aggiornano né si
+  disegnano; solo estetica, il gioco non legge le particelle), Risoluzione
+  dinamica, Limite FPS (30 / 60 / Nessuno). Salvate in `535.settings`.
+- Motore: le superfici del renderer si possono annidare (la notte dentro
+  lo sfondo del menu); il ciclo accetta "nessun limite" di fps.
+
+**Traduzioni** (`game/src/i18n.js`, `texts.js`): le sei lingue di NIMBUS.
+- Tutti i testi del gioco: suggerimenti, dialoghi, schede di edifici e
+  unità, obiettivi, vittoria e sconfitta, menu, messaggi del motore (~180
+  testi). La chiave è il testo inglese dell'originale (si ritrova nel
+  GML); se manca una traduzione resta l'inglese. La lingua viene dal
+  browser la prima volta, poi dalle opzioni; cambiarla nel menu vale
+  subito, anche per le finestre aperte.
+- **Font**: i Seagram tfb di GameMaker hanno solo l'ASCII (§2.5).
+  `tools/05_atlas.py` compone le lettere accentate di IT/ES/PT/DE/FR (51
+  per font) dalla lettera di base e da un segno dello stesso font (`` ` ``
+  e il suo specchio, `^`, `~`, due `.`, `,` per la cedille, `?` e `!`
+  capovolti per ¿ ¡), con uno scostamento verticale per le maiuscole: il
+  testo tradotto resta gotico. ß, œ, virgolette e trattini lunghi li riduce
+  `draw.js` a lettere ASCII.
+- Schede e riquadro degli obiettivi si allargano se un testo tradotto non
+  ci sta (in inglese restano come nell'originale).
+- I testi inglesi restano quelli dell'originale, refusi compresi
+  ("aswell", "reallocatein", "buildingto", "ona", "Out citizens",
+  "norther gates", "paesants", "sucessfully", "Thanks you"): da correggere
+  se l'autore vuole (n.72).
+
+**Verificato**: `npm test`, 32 test (nuovi: ogni testo in tutte le lingue
+con gli stessi segnaposto, dialoghi tradotti, `tr()` con ricaduta
+sull'inglese); Chromium: Esc apre la pausa a mondo fermo (contatore dei
+passi fermo), lingua IT e DE dal menu, opzioni grafiche (pioggia spenta e
+salvata), gioco in DE/FR/ES/PT con schede e obiettivi allargati, dialogo
+di `lvl01` in francese, titolo "OPÇÕES GRÁFICAS"; `lvl02` senza
+`hint_legna`, dialogo visibile con H spento; sconfitta visibile; 3000
+passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.

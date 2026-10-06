@@ -24,6 +24,12 @@
 // Le particelle sono oggetti riciclati da un'unica riserva comune a tutti i
 // sistemi (niente allocazioni durante il gioco); ogni sistema le tiene in
 // ordine di nascita.
+//
+// Opzioni grafiche (menu di pausa): ogni sistema ha una categoria (`cat`:
+// "rain", "grass", "fire"); i sistemi di una categoria spenta non si
+// aggiornano e non si disegnano (le particelle restano dove sono e
+// ricompaiono riaccendendola). Solo estetica: il gioco non legge mai le
+// particelle.
 
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { mergeColour } from "./colours.js";
@@ -60,6 +66,7 @@ function distr(kind) {
 
 export class Particles {
   constructor() {
+    this.hidden = new Set(); // categorie spente
     this.systems = [];
     this.pool = [];
     this.seq = 0;
@@ -68,10 +75,10 @@ export class Particles {
 
   // ------------------------------------------------------------ sistemi
 
-  systemCreate(depth = 0) {
+  systemCreate(depth = 0, cat = null) {
     // automatic: si aggiorna da solo; autoDraw: si disegna da solo alla sua
     // depth (part_system_automatic_update / _draw)
-    const ps = { id: ++this.seq, depth, parts: [], emitters: [], alive: true, automatic: true, autoDraw: true, release: false };
+    const ps = { id: ++this.seq, depth, cat, parts: [], emitters: [], alive: true, automatic: true, autoDraw: true, release: false };
     this.systems.push(ps);
     return ps;
   }
@@ -174,7 +181,7 @@ export class Particles {
     let anyDead = false;
     for (const ps of this.systems) {
       if (!ps.alive) { anyDead = true; continue; }
-      if (!ps.automatic) continue;
+      if (!ps.automatic || this.hidden.has(ps.cat)) continue;
       for (const em of ps.emitters) {
         if (!em.type || !em.n) continue;
         if (em.n < 0) { if (Math.random() * -em.n < 1) this.burst(ps, em, em.type, 1); }
@@ -214,14 +221,14 @@ export class Particles {
   // Sistemi da disegnare da soli, in ordine di depth (piu' alta prima; a
   // pari depth in ordine di creazione).
   sorted() {
-    return this.systems.filter((ps) => ps.autoDraw && ps.parts.length)
+    return this.systems.filter((ps) => ps.autoDraw && ps.parts.length && !this.hidden.has(ps.cat))
       .sort((a, b) => b.depth - a.depth || a.id - b.id);
   }
 
   // part_system_drawit / disegno automatico. `cam` per scartare cio' che e'
   // fuori dalla view.
   draw(ps, r, assets, cam) {
-    if (!ps || !ps.alive || !ps.parts.length) return;
+    if (!ps || !ps.alive || !ps.parts.length || this.hidden.has(ps.cat)) return;
     const x0 = cam.x, y0 = cam.y, x1 = cam.x + cam.w, y1 = cam.y + cam.h;
     let blend = null;
     for (const q of ps.parts) {

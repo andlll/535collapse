@@ -5,7 +5,10 @@
 
 const KEY = "535.settings";
 const VERSION = 1;
-const DEFAULTS = { fpsCap: 60, dynamicResolution: true, diagnostics: false, language: null };
+// rain/grass/fire: categorie di particelle visibili (menu di pausa,
+// opzioni grafiche; particles.js)
+const DEFAULTS = { fpsCap: 60, dynamicResolution: true, diagnostics: false, language: null,
+                   rain: true, grass: true, fire: true };
 
 export function loadSettings() {
   try {

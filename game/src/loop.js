@@ -6,7 +6,8 @@
 //   disegna a 30.
 // - Al massimo 5 passi per frame: dopo uno stallo (scheda lenta, debugger) il
 //   gioco rallenta invece di "saltare" in avanti.
-// - Tetto fps 30/60 (opzioni grafiche): a 30 si disegna un frame su due.
+// - Tetto fps 30/60 o nessuno (0, opzioni grafiche): a 30 si disegna un
+//   frame su due, senza tetto si segue lo schermo (90/120 Hz).
 // - Pagina in background (visibilitychange): ciclo fermo, niente passi
 //   recuperati al ritorno.
 
@@ -64,7 +65,7 @@ export class Loop {
     if (steps === MAX_STEPS) this.acc = 0;
     let rendered = false;
     // margine di 2 ms: rAF non arriva mai esattamente ogni 16,67 ms
-    if (now - this.lastRender >= 1000 / this.fpsCap - 2) {
+    if (!this.fpsCap || now - this.lastRender >= 1000 / this.fpsCap - 2) {
       this.render();
       this.lastRender = now;
       rendered = true;

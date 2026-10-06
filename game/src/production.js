@@ -13,6 +13,8 @@
 // sono variabili mai assegnate, cioe' 0 [I, §1.3]. Qui la bandiera
 // assente e' 0 come nell'originale.
 
+import { tr } from "./i18n.js";
+
 const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
 
 // Dati [C]: *_clicker (posizione, tasto, costo, scheda),
@@ -299,12 +301,14 @@ export function unitClicker(prod, type) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       d.setAlpha(0.69);
-      d.roundrectColourExt(20, H - 150, 370, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr(u.title), desc = tr(u.desc), shortcut = tr("Shortcut: {key}", { key: u.shortcut.slice(-1) });
+      const ex = d.panelExtra(370, title, desc, shortcut);
+      d.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       d.setAlpha(0.7);
       d.setHalign("left");
-      d.text(40, H - 120, u.title);
+      d.text(40, H - 120, title);
       d.setFont("overdue");
-      d.text(40, H - 90, u.desc);
+      d.text(40, H - 90, desc);
       d.setFont("GUI_1");
       // ariete e catapulta [C]: costi piu' larghi (130, 210, 240)
       const [x2, x3, xm, xi] = u.wide ? [130, 210, 240, u.obj === "ally_catapulta" ? 180 : 170] : [120, 200, 230, 170];
@@ -317,7 +321,7 @@ export function unitClicker(prod, type) {
       d.spriteExt("ico_multi", 0, xm, H - 50, 0.5, 0.5, 0, WHITE, 1);
       d.setAlpha(0.7);
       d.setHalign("right");
-      d.text(u.wide ? 380 : 350, H - 120, u.shortcut);
+      d.text((u.wide ? 380 : 350) + ex, H - 120, shortcut);
       d.setAlpha(0.99);
       d.circleColour(u.bx, 50, 30, WHITE, WHITE, false);
       d.setAlpha(1);
@@ -369,17 +373,19 @@ export function cancelClicker(prod) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       d.setAlpha(0.69);
-      d.roundrectColourExt(20, H - 150, 340, H - 20, 60, 60, WHITE, WHITE, false);
+      const title = tr("Cancel"), sc = tr("Shortcut: {key}", { key: String.fromCharCode(P.cancelKey) });
+      const ex = d.panelExtra(340, title, null, sc);
+      d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       d.setAlpha(0.7);
       d.setHalign("left");
-      d.text(40, H - 120, "Cancel");
+      d.text(40, H - 120, title);
       d.setFont("overdue");
       d.setValign("top");
-      d.textExt(40, H - 100, "Cancel the last unit in the creation queue.", 30, 280);
+      d.textExt(40, H - 100, tr("Cancel the last unit in the creation queue."), 30, 280 + ex);
       d.setValign("middle");
       d.setFont("GUI_1");
       d.setHalign("right");
-      d.text(320, H - 120, "Shortcut: " + String.fromCharCode(P.cancelKey));
+      d.text(320 + ex, H - 120, sc);
       d.setAlpha(0.99);
       d.circleColour(P.cancelX, 50, 30, WHITE, WHITE, false);
       d.setAlpha(1);

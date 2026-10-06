@@ -4,6 +4,7 @@
 // riguardano altri sistemi stanno con loro: ondate, presidi e controller dei
 // livelli in levels.js, nebbia e notte disegnate in fog.js e fogdraw.js.
 
+import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
 import { rainStart, rainExtinguish } from "./effects.js";
@@ -270,7 +271,7 @@ export class Manager {
       d.text(W - 55, 170, g.idle);
       if (g.fps_show > 0) {
         d.setColour(c.red);
-        d.text(W - 55, 230, "FPS: " + Math.round(fps));
+        d.text(W - 55, 230, tr("FPS: {n}", { n: Math.round(fps) }));
       }
       d.setColour(c.white);
       d.setAlpha(1);

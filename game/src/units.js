@@ -11,6 +11,7 @@
 // l'opzione "variabili non inizializzate = 0" di GMS (option_variableerrors
 // False nel config): qui sono inizializzate esplicitamente a 0.
 
+import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
@@ -447,18 +448,20 @@ export function behaviourClicker(kind) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH, white = 0xffffff, y = attack ? 50 : 120;
       d.setAlpha(0.69);
-      d.roundrectColourExt(20, H - 150, 340, H - 20, 60, 60, white, white, false);
+      const title = tr(attack ? "Aggressive" : "Defensive"), sc = tr("Shortcut: {key}", { key: attack ? "Q" : "A" });
+      const ex = d.panelExtra(340, title, null, sc);
+      d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, white, white, false);
       d.setAlpha(0.7);
       d.setHalign("left");
-      d.text(40, H - 120, attack ? "Aggressive" : "Defensive");
+      d.text(40, H - 120, title);
       d.setFont("overdue");
       d.setValign("top");
-      d.textExt(40, H - 90, attack ? "Military units engage enemy units in a fight at a greater distance."
-                                   : "Military units engage enemy units in a fight only if they are nearby.", 30, 280);
+      d.textExt(40, H - 90, tr(attack ? "Military units engage enemy units in a fight at a greater distance."
+                                      : "Military units engage enemy units in a fight only if they are nearby."), 30, 280 + ex);
       d.setValign("middle"); // fa_center: lo stesso valore di fa_middle [I]
       d.setFont("GUI_1");
       d.setHalign("right");
-      d.text(320, H - 120, attack ? "Shortcut: Q" : "Shortcut: A");
+      d.text(320 + ex, H - 120, sc);
       d.setAlpha(0.99);
       d.circleColour(450, y, 30, white, white, false);
       d.setAlpha(1);

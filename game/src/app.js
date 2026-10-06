@@ -39,6 +39,7 @@ import { Manager } from "./manager.js";
 import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t } from "./i18n.js";
+import { PauseMenu } from "./pause.js";
 
 const ROOMS = ["menu", "match", "lvl01", "lvl02"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
@@ -50,7 +51,11 @@ const params = new URLSearchParams(location.search);
 const settings = loadSettings();
 setLanguage(settings.language);
 
-function message(text, kind = "info") {
+// i messaggi del motore si ricordano per chiave, per tradurli di nuovo se
+// si cambia lingua dal menu di pausa
+let lastMessage = null;
+function message(text, kind = "info", key = null) {
+  lastMessage = key ? [key, kind] : null;
   const el = $("message");
   el.textContent = text;
   el.className = kind;
@@ -72,7 +77,7 @@ async function main() {
     message(t("noWebgl2"), "error");
     return;
   }
-  if (r.software) message(t("softwareWarning"), "warning");
+  if (r.software) message(t("softwareWarning"), "warning", "softwareWarning");
 
   const assets = new Assets(r);
   try {
@@ -213,7 +218,12 @@ async function main() {
   };
   // manager Create (la parte della griglia dei costi) gira dopo che tutte le
   // istanze della room esistono e prima dei loro Create (world.loadRoom).
-  world.loadRoom(room.instances, () => path.initCost());
+  // [Correzioni decise dall'autore, §3.19] n.63: i tre hint_legna piazzati
+  // in lvl02 finivano fuori schermo e bloccavano i suggerimenti del
+  // livello; n.71: nel menu hint_iniziale era nascosto ma cliccabile.
+  const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"] };
+  const instances = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
+  world.loadRoom(instances, () => path.initCost());
   // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
   world.create("idle_clicker", 0, 0);
   // manager Create, "Livelli" [C]: nel livello 1 i militari partono in
@@ -248,8 +258,37 @@ async function main() {
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
   // mouse, Step, poi la view segue il puntatore.
+  // Menu di pausa (pause.js): il mondo si ferma (instance_deactivate_all
+  // dell'originale), passano solo i clic sul pannello.
+  const applyGraphics = () => {
+    for (const k of ["rain", "grass", "fire"]) {
+      if (settings[k]) world.particles.hidden.delete(k); else world.particles.hidden.add(k);
+    }
+    rscale.enabled = settings.dynamicResolution;
+    loop.fpsCap = settings.fpsCap;
+    saveSettings(settings);
+  };
+  const pause = new PauseMenu({
+    g, settings, room: roomName,
+    actions: {
+      language: (code) => {
+        settings.language = setLanguage(code);
+        saveSettings(settings);
+        if (lastMessage) message(t(lastMessage[0]), lastMessage[1], lastMessage[0]);
+      },
+      restart: () => location.reload(),          // room_restart
+      menu: () => world.gotoRoom("menu"),        // room_goto(menu)
+      graphics: applyGraphics,
+    },
+  });
+
   const step = () => {
     input.beginStep();
+    if (pause.paused) {
+      pause.input(input);
+      return;
+    }
+    if (pause.check(input, cam.cssW)) return;
     manager.alarms();
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
@@ -273,8 +312,8 @@ async function main() {
   };
 
   let fpsNow = 0;
-  const render = () => {
-    r.beginFrame(cam, clear);
+  // la scena: mondo, poi l'interfaccia (Draw GUI)
+  const renderScene = () => {
     drawBackgrounds(r, assets, room, cam);
     draw.reset();
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
@@ -292,6 +331,62 @@ async function main() {
     manager.drawGUI(draw, cam, world, fpsNow);
     draw.reset();
     world.drawGUIEnd(draw);
+    draw.reset();
+    pause.drawButton(draw, cam.cssW);
+  };
+
+  // Sfondo del menu di pausa, come in NIMBUS: la scena ferma sfumata e
+  // scurita. Si disegna una volta in una superficie grande come il canvas e
+  // si dimezza tre volte col filtro lineare (1/8: ogni passo media 2x2
+  // pixel); si rifa' solo se cambia qualcosa (apertura, lingua, opzioni,
+  // finestra ridimensionata).
+  let blur = null;
+  const blurTargets = () => {
+    const W = canvas.width, H = canvas.height;
+    if (blur && blur.gen === r.generation && blur.W === W && blur.H === H) return blur;
+    if (blur && blur.gen === r.generation) for (const t of blur.t) r.deleteTarget(t);
+    const t = [1, 2, 4, 8].map((k) => r.createTarget(Math.max(1, Math.ceil(W / k)), Math.max(1, Math.ceil(H / k))));
+    blur = { gen: r.generation, W, H, t };
+    return blur;
+  };
+  const freeBlur = () => {
+    if (blur && blur.gen === r.generation) for (const t of blur.t) r.deleteTarget(t);
+    blur = null;
+  };
+  const copy = (src, dst) => {
+    r.beginTarget(dst, 0, 0, 1, 1, [0, 0, 0]);
+    r.setBlend("normal");
+    r.quad(src, 0, 0, 1, 0, 1, 1, 0, 1, 0, src.height, src.width, 0, 0xffffffff);
+    r.endTarget();
+  };
+
+  const render = () => {
+    r.beginFrame(cam, clear);
+    if (!pause.paused) {
+      if (blur) freeBlur();
+      renderScene();
+      r.flush();
+      return;
+    }
+    const B = blurTargets();
+    if (pause.dirty || B.fresh !== false) {
+      r.beginTarget(B.t[0], cam.x, cam.y, cam.w, cam.h, clear);
+      renderScene();
+      r.endTarget();
+      for (let k = 1; k < 4; k++) copy(B.t[k - 1], B.t[k]);
+      pause.dirty = false;
+      B.fresh = false;
+    }
+    r.setProjection(0, 0, cam.cssW, cam.cssH);
+    r.setBlend("normal");
+    const last = B.t[3];
+    r.quad(last, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, last.height, last.width, 0, 0xffffffff);
+    draw.reset();
+    draw.setColour(0);
+    draw.setAlpha(0.4);
+    draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
+    draw.setAlpha(1);
+    pause.drawPanel(draw, cam.cssW, cam.cssH, input);
     r.flush();
   };
 
@@ -302,7 +397,7 @@ async function main() {
       diag.frame(info);
       if (info.rendered) {
         if (lastRendered) fpsNow = fpsNow * 0.9 + (1000 / Math.max(1, info.now - lastRendered)) * 0.1;
-        if (lastRendered && rscale.observe(info.now, info.now - lastRendered, 1000 / loop.fpsCap)) resize();
+        if (lastRendered && rscale.observe(info.now, info.now - lastRendered, 1000 / (loop.fpsCap || 60))) resize();
         lastRendered = info.now;
       }
       diag.update(info.now, {
@@ -317,6 +412,8 @@ async function main() {
     },
   });
   loop.fpsCap = params.get("fps") === "30" ? 30 : settings.fpsCap;
+  applyGraphics();
+  if (params.get("fps") === "30") loop.fpsCap = 30;
 
   // Perdita del contesto WebGL (driver riavviato, troppa memoria, scheda
   // sospesa): ci si ferma, si ricrea tutto e si ricaricano le texture.
@@ -328,13 +425,14 @@ async function main() {
   canvas.addEventListener("webglcontextrestored", async () => {
     r.init();
     await assets.reload(progress);
-    message(r.software ? t("softwareWarning") : "", "warning");
+    message(r.software ? t("softwareWarning") : "", "warning", r.software ? "softwareWarning" : null);
     loop.start();
   });
 
   loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, ready: true,
+  window.__pause = pause;
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }

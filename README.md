@@ -49,7 +49,8 @@ combattimento, con nebbia di guerra, notte, pioggia e fuoco, suggerimenti
 del tutorial, dialoghi, obiettivi, vittoria e sconfitta; mancano il menu
 e la campagna (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi, X/Z per lo zoom,
 **F3** per il pannello di diagnostica (anche `?diag=1`); `?fps=30` per il
-tetto a 30 fps.
+tetto a 30 fps. Esc (o il pulsante in alto a destra) apre il menu di
+pausa: opzioni grafiche e lingua (EN, IT, ES, PT, DE, FR).
 
 ## Provare
 

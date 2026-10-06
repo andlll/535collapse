@@ -11,7 +11,7 @@
 // con mp_potential_step. Gli attaccanti delle ondate (role 30/31/32,
 // scr_attacca) arrivano col punto 4e.
 
-import { hintOnce } from "./hints.js";
+import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField } from "./pathing.js";
@@ -325,9 +325,9 @@ export function enemyMelee(name, p) {
         // "hint attaccare" [C]: il puntatore entro 60 px, con soldati selezionati
         hintOnce(w, "hint_attack", "attackhint", i.x, i.y,
                  pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 60 && g.milsel > 0);
-        // "dialogo livello 1" [C]: un guerriero alleato entro 300 px
-        // (parent_dialogo non ha figli: §3.18 n.69)
-        if (w.exists("ally_unit") && g.dialogoenemy1 === 0 && w.room === "lvl01") {
+        // "dialogo livello 1" [C]: un guerriero alleato entro 300 px, se non
+        // c'e' un altro dialogo aperto (§3.19 n.69)
+        if (w.exists("ally_unit") && g.dialogoenemy1 === 0 && w.room === "lvl01" && !dialogOpen(w)) {
           const war = w.nearest(i.x, i.y, "ally_warrior");
           if (war && w.distanceToInstance(i, war) < 300) { w.create("dialogo_1_4", i.x, i.y); g.dialogoenemy1 = 1; }
         }

@@ -236,6 +236,8 @@ export class Renderer {
 
   // surface_set_target: da qui si disegna sulla superficie, che copre il
   // rettangolo di room (x, y, w, h) e parte pulita col colore `clearRGB`.
+  // Le superfici si possono annidare (la notte dentro lo sfondo sfumato del
+  // menu di pausa): endTarget torna alla precedente.
   beginTarget(t, x, y, w, h, clearRGB) {
     const gl = this.gl;
     this.flush();
@@ -247,11 +249,11 @@ export class Renderer {
       gl.bindTexture(gl.TEXTURE_2D, null);
       this.slots[i] = null;
     }
+    (this.targets || (this.targets = [])).push({ t, proj: this.proj });
     gl.bindFramebuffer(gl.FRAMEBUFFER, t.fb);
     gl.viewport(0, 0, t.width, t.height);
     gl.clearColor(clearRGB[0], clearRGB[1], clearRGB[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    this.saved = this.proj;
     this.setProjection(x, y, w, h);
   }
 
@@ -259,9 +261,11 @@ export class Renderer {
   endTarget() {
     const gl = this.gl;
     this.flush();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    this.setProjection(...this.saved);
+    const { proj } = this.targets.pop();
+    const outer = this.targets.length ? this.targets[this.targets.length - 1].t : null;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, outer ? outer.fb : null);
+    gl.viewport(0, 0, outer ? outer.width : this.canvas.width, outer ? outer.height : this.canvas.height);
+    this.setProjection(...proj);
   }
 
   textureBytes() {
@@ -307,6 +311,7 @@ export class Renderer {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(clearRGB[0], clearRGB[1], clearRGB[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    this.targets = [];
     gl.uniform4f(this.uView, view.x, view.y, view.w, view.h);
     this.proj = [view.x, view.y, view.w, view.h];
     this.stats.drawCalls = 0;

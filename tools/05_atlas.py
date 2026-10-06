@@ -162,6 +162,122 @@ def extrude(img, pad):
     return out
 
 
+# Lettere accentate delle lingue della traduzione (IT, ES, PT, DE, FR):
+# i font Seagram tfb rasterizzati da GameMaker hanno solo l'ASCII 32-127
+# (STUDIO.md §2.5). Si compongono qui dalla lettera di base e da un segno
+# preso dallo stesso font, cosi' restano gotiche: grave = "`", acuto = "`"
+# specchiato, circonflesso = "^", tilde = "~" ridotta, dieresi = due "."
+# (il punto ridotto), cedille = "," sotto la lettera; "i" senza puntino per
+# i, I accentate; "¿" e "¡" sono "?" e "!" capovolti. Il segno sta sopra
+# l'inchiostro della lettera (sopra l'altezza della x per le minuscole);
+# se esce dalla riga in alto il glifo ha uno scostamento verticale negativo
+# (settimo valore, letto da game/src/draw.js). Il resto (ß, œ, virgolette,
+# trattini lunghi...) lo sostituisce il motore con lettere ASCII.
+ACCENTS = {}
+for _kind, _pairs in {
+    "grave": "aà eè iì oò uù AÀ EÈ IÌ OÒ UÙ",
+    "acute": "aá eé ií oó uú AÁ EÉ IÍ OÓ UÚ",
+    "circ": "aâ eê iî oô uû AÂ EÊ IÎ OÔ UÛ",
+    "tilde": "aã oõ nñ AÃ OÕ NÑ",
+    "diaer": "aä eë iï oö uü yÿ AÄ EË IÏ OÖ UÜ",
+    "cedil": "cç CÇ",
+    "flip": "?¿ !¡",
+}.items():
+    for _p in _pairs.split():
+        ACCENTS[_p[1]] = (_p[0], _kind)
+
+
+def accented_glyphs(sheet, glyphs):
+    """Restituisce (foglio allargato, {codice: [x, y, w, h, shift, offset, yoff]})."""
+    by = {g["character"]: g for g in glyphs}
+
+    def cell(ch):
+        g = by[ord(ch)]
+        return sheet.crop((g["x"], g["y"], g["x"] + g["w"], g["y"] + g["h"])), g
+
+    def ink(im):
+        return im.getchannel("A").point(lambda v: 255 if v > 40 else 0).getbbox()
+
+    xh = ink(cell("x")[0])[1]  # cima della x: altezza delle minuscole
+    marks = {}
+    grave = cell("`")[0]
+    grave = grave.crop(ink(grave))
+    marks["grave"] = grave
+    marks["acute"] = grave.transpose(Image.FLIP_LEFT_RIGHT)
+    circ = cell("^")[0]
+    marks["circ"] = circ.crop(ink(circ))
+    dot = cell(".")[0]
+    dot = dot.crop(ink(dot))
+    tilde = cell("~")[0]
+    tilde = tilde.crop(ink(tilde))
+    comma = cell(",")[0]
+    comma = comma.crop(ink(comma))
+
+    out_imgs = []
+    for ch, (base, kind) in ACCENTS.items():
+        im, g = cell(base)
+        im = im.copy()
+        if base in "iI" and kind != "flip":
+            # senza puntino: via l'inchiostro sopra l'altezza della x (i)
+            if base == "i":
+                px = im.load()
+                for yy in range(min(xh - 1, im.height)):
+                    for xx in range(im.width):
+                        px[xx, yy] = (0, 0, 0, 0)
+        bb = ink(im) or (0, 0, im.width, im.height)
+        cx = (bb[0] + bb[2]) / 2
+        if kind == "flip":
+            body = im.crop(bb).rotate(180)
+            im = Image.new("RGBA", im.size, (0, 0, 0, 0))
+            im.paste(body, (bb[0], bb[1]))
+            out_imgs.append((ch, im, g, 0))
+            continue
+        if kind == "cedil":
+            m = comma.resize((max(1, comma.width * 3 // 4), max(1, comma.height * 3 // 4)), Image.LANCZOS)
+            up = 0
+            pad_b = max(0, bb[3] - 1 + m.height - im.height)
+            canvas = Image.new("RGBA", (im.width, im.height + pad_b), (0, 0, 0, 0))
+            canvas.paste(im, (0, 0))
+            canvas.alpha_composite(m, (int(round(cx - m.width / 2)), bb[3] - 1))
+            out_imgs.append((ch, canvas, g, 0))
+            continue
+        if kind == "diaer":
+            d = dot.resize((max(1, dot.width * 3 // 4), max(1, dot.height * 3 // 4)), Image.LANCZOS)
+            gap = max(1, d.width // 2 + 1)
+            m = Image.new("RGBA", (2 * d.width + gap, d.height), (0, 0, 0, 0))
+            m.paste(d, (0, 0))
+            m.paste(d, (d.width + gap, 0))
+        elif kind == "tilde":
+            tw = max(3, int((bb[2] - bb[0]) * 0.8))
+            m = tilde.resize((tw, max(2, round(tilde.height * tw / tilde.width))), Image.LANCZOS)
+        else:
+            m = marks[kind]
+        top_ink = bb[1] if base.isupper() else min(bb[1], xh)
+        my = top_ink - 1 - m.height
+        up = max(0, -my)
+        canvas = Image.new("RGBA", (im.width, im.height + up), (0, 0, 0, 0))
+        canvas.paste(im, (0, up))
+        canvas.alpha_composite(m, (max(0, min(im.width - m.width, int(round(cx - m.width / 2)))), my + up))
+        out_imgs.append((ch, canvas, g, -up))
+
+    # in una striscia sotto il foglio originale
+    pad = 2
+    row_h = max(im.height for _, im, _, _ in out_imgs) + pad
+    per_row = max(1, sheet.width // (max(im.width for _, im, _, _ in out_imgs) + pad))
+    rows = (len(out_imgs) + per_row - 1) // per_row
+    big = Image.new("RGBA", (sheet.width, sheet.height + rows * row_h + pad), (0, 0, 0, 0))
+    big.paste(sheet, (0, 0))
+    extra = {}
+    x, y = 0, sheet.height + pad
+    for k, (ch, im, g, yoff) in enumerate(out_imgs):
+        if x + im.width > sheet.width:
+            x, y = 0, y + row_h
+        big.paste(im, (x, y))
+        extra[str(ord(ch))] = [x, y, im.width, im.height, g["shift"], g["offset"], yoff]
+        x += im.width + pad
+    return big, extra
+
+
 def particle_shapes():
     """(nome, immagine ritagliata, [x, y, w, h] del ritaglio nella tela 64x64)."""
     import math
@@ -234,6 +350,7 @@ def main():
     manifest["fonts"] = {}
     for fnt in json.load(open(os.path.join(DATA_DIR, "fonts.json"), encoding="utf-8")):
         sheet = Image.open(os.path.join(GMX_DIR, "fonts", fnt["image"])).convert("RGBA")
+        sheet, extra = accented_glyphs(sheet, fnt["glyphs"])
         name = "__font_" + fnt["name"]
         manifest["sprites"][name] = {"group": "gui", "width": sheet.width, "height": sheet.height,
                                      "origin": [0, 0], "scale": 1.0,
@@ -242,8 +359,8 @@ def main():
         manifest["fonts"][fnt["name"]] = {
             "sprite": name, "family": fnt["family"], "size": fnt["size"],
             "height": max(g["h"] for g in fnt["glyphs"]),
-            "glyphs": {str(g["character"]): [g["x"], g["y"], g["w"], g["h"], g["shift"], g["offset"]]
-                       for g in fnt["glyphs"]}}
+            "glyphs": {**{str(g["character"]): [g["x"], g["y"], g["w"], g["h"], g["shift"], g["offset"]]
+                          for g in fnt["glyphs"]}, **extra}}
     manifest["sprites"]["__white"] = {"group": "gui", "width": 8, "height": 8, "origin": [0, 0],
                                       "scale": 1.0, "frames": [{"trim": [0, 0, 8, 8]}]}
     items["gui"].append(("__white", 0, Image.new("RGBA", (8, 8), (255, 255, 255, 255))))
