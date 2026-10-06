@@ -349,6 +349,19 @@ export function moveFlowField(w, p, inst) {
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
 }
 
+// [§6.4] Da (x0, y0) a (x1, y1) a piedi in linea retta: tutte le celle
+// sotto il segmento senza ostacoli (costo < 1000; i primi 16 px no: la
+// cella di chi parte e' occupata da lui).
+export function walkLine(p, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), n = Math.max(1, Math.ceil(len / 8));
+  for (let k = 0; k <= n; k++) {
+    if ((len * k) / n < 16) continue;
+    const gx = Math.floor((x0 + (dx * k) / n) / GRID), gy = Math.floor((y0 + (dy * k) / n) / GRID);
+    if (!p.inside(gx, gy) || p.cost[gy * p.gw + gx] >= 1000) return false;
+  }
+  return true;
+}
+
 // [§6.2 D] Lo "step towards" (mp_potential_step dritto verso dirox/diroy)
 // vale solo se la destinazione e' in vista: nessuna cella non percorribile
 // sulla linea (clearLine nel campo dell'unita'). Prima, sotto i 400 px, si

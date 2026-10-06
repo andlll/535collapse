@@ -15,6 +15,7 @@ import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField } from "./pathing.js";
+import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { phaseOf } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -416,18 +417,46 @@ export function enemyArcher(p) {
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0;
   };
+  // §6.4: a tiro ma nessuno in linea (ranged.js). In marcia verso un punto
+  // di tiro (repos, con warwork 1: con 4 scr_difendi lo riassegnerebbe) si
+  // continua; arrivato si aspetta e si riprova; il guinzaglio (anchorX/Y) si
+  // scioglie quando nessun alleato e' piu' a portata d'inseguimento.
+  const reposition = (i, w, t, range) => {
+    if (i.repos === 1) {
+      if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) >= 12) return;
+      i.repos = 0; i.action = 0; i.warwork = 0; i.speed = 0;
+      i.reposAt = w._stepNo + REPOS_WAIT;
+      return;
+    }
+    if ((i.reposAt || 0) > w._stepNo) return;
+    const spot = firingSpot(w, p, i, t, range);
+    if (!spot) { i.reposAt = w._stepNo + REPOS_WAIT; return; }
+    if (i.action !== 1) i.alarm.set(0, 15);
+    i.action = 1; i.warwork = 1; i.repos = 1; i.dirox = spot[0]; i.diroy = spot[1];
+  };
   const attack = (i, w) => {
     if (!w.exists("ally_unit")) return;
     const k = iso(i.direction), night = w.g.night;
     const n0 = w.nearest(i.x, i.y, "ally_unit");
-    if (w.distanceToInstance(i, n0) < 400 * (1 - 0.5 * night) * k) {
+    const range = 400 * (1 - 0.5 * night) * k;
+    if (w.distanceToInstance(i, n0) < range) {
+      // §6.4: l'alleato piu' vicino a tiro con la linea libera
+      const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);
+      if (!s) {
+        if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; }
+        reposition(i, w, n0, 0.9 * range);
+        return;
+      }
+      i.shot = s;
       if (i.warwork === 2) {
-        i.targetx = n0.x; i.targety = n0.y;
+        i.targetx = s.x; i.targety = s.y;
         i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
       }
-      if (i.warwork !== 2 && i.warwork !== 4) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
+      if (i.warwork !== 2 && i.warwork !== 4) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); i.repos = 0; }
       return;
     }
+    if (i.repos === 1) { i.repos = 0; if (i.action === 1) { i.action = 0; i.warwork = 0; i.speed = 0; } }
+    if (w.distanceToInstance(i, n0) > 720 * (1 - 0.5 * night)) { i.anchorX = null; i.anchorY = null; }
     const chase = (needStill) => {
       const n = w.nearest(i.x, i.y, "ally_unit");
       if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k && (!needStill || i.action !== 1))) return;
@@ -466,9 +495,11 @@ export function enemyArcher(p) {
       if (i.step !== 2) return;
       i.step = 0;
       i.alarm.set(2, 13);
+      // §6.4: al bersaglio scelto se e' ancora in linea, se no niente tiro
+      const a = i.shot && i.shot.alive ? i.shot : null;
+      if (!a || !w.shotClear(i.x, i.y, a.x, a.y)) { i.action = 0; i.warwork = 0; i.step = 0; return; }
       const b = w.create("b_arciere_bullet", i.x, i.y - 40);
-      const a = w.nearest(b.x, b.y, "ally_unit");
-      b.direction = a ? pointDirection(b.x, b.y, a.x, a.y) : i.direction;
+      aimArrow(b, i, a);
       b.speed = 20;
     },
     step(i, w) {

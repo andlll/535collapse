@@ -216,6 +216,39 @@ export class World {
     return best;
   }
 
+  // [§6.4, richiesta dell'autore] Gli edifici fermano le frecce degli arcieri:
+  // edifici alleati (mura, porte e cantieri compresi, non i campi), edifici
+  // nemici (non le casse), edifici della citta' (ocr_*) e rovine. Le unita',
+  // gli alberi, le montagne, i fiumi, statue e colonne no.
+  blocksShots(o) {
+    if (!o.alive || !o.solid) return false;
+    const n = o.object;
+    if (this.is(o, "ally_build")) return n !== "campo" && n !== "campo_fond";
+    if (this.is(o, "enemy_build")) return n !== "o_box1" && n !== "o_box2";
+    return n.startsWith("ocr_") || n === "castelloruin" || n === "chiesaruin" || n === "torreruin";
+  }
+
+  // Linea di tiro libera da (x0, y0) a (x1, y1), i piedi di chi tira e del
+  // bersaglio: nessun edificio (blocksShots) con la sagoma a terra sul
+  // segmento (campioni ogni 8 px; i primi e gli ultimi 20 px non contano:
+  // chi tira o il bersaglio possono stare a ridosso di un muro).
+  shotClear(x0, y0, x1, y1) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    if (len <= 40) return true;
+    const cands = [];
+    this._eachNear([Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)],
+                   (o) => { if (this.blocksShots(o)) cands.push(o); });
+    if (!cands.length) return true;
+    const n = Math.ceil(len / 8);
+    for (let k = 0; k <= n; k++) {
+      const d = (len * k) / n;
+      if (d < 20 || d > len - 20) continue;
+      const px = x0 + (dx * k) / n, py = y0 + (dy * k) / n;
+      for (const o of cands) if (this.pointIn(o, px, py)) return false;
+    }
+    return true;
+  }
+
   // [§6.3 N3] distance_to_object(instance_nearest(i.x, i.y, name)) < r, con
   // lo stesso risultato, ma senza rifare la ricerca quando la risposta e'
   // "no" per certo. Quando e' "no" si guarda quanto sono lontane TUTTE le

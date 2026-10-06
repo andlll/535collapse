@@ -151,6 +151,12 @@ sezione citata.
 - [ ] Da decidere: nemici che escono dalla mappa quando il flow field non
   ha direzione nella loro cella (§6.2, "trovati").
 
+**Arcieri (§6.4)**
+- [x] Tiro solo con la linea libera da edifici (le unita' non contano); se
+  serve si spostano nei paraggi (guinzaglio di 250 px); frecce fermate
+  dagli edifici.
+- [ ] Da decidere: anche montagne e alberi fermano le frecce? Oggi no.
+
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
   Firefox, Safari, schermi ad alta densità.
@@ -2840,4 +2846,63 @@ Usato da `reveal` e da tutti i controlli di vista (`enemies.js`,
   mentre un'unita' si avvicina, nuova unita' accanto, salto, maschera non
   fissa, raggio oltre rmax); 5000 passi senza errori nelle quattro room;
   salvataggi identici; zip dei portali.
+
+### 6.4 Arcieri: linea di tiro e riposizionamento
+
+Richiesta dell'autore: "gli arcieri dovrebbero sparare solo se non ci sono
+edifici nel mezzo, altrimenti il primo livello diventa senza senso. Ok
+sparare tra gli omini. Se non hanno una linea diretta possono spostarsi,
+senza pero' andare lontano".
+
+**Prima** [C]: l'arciere alleato tira al nemico piu' vicino entro 600 px
+(quello nemico all'alleato piu' vicino entro 400, la meta' di notte) e le
+frecce colpiscono solo le unita': attraversavano case, mura e la citta' di
+`lvl01`.
+
+**Cosa ferma le frecce** (`world.blocksShots`): edifici alleati (mura,
+porte e cantieri compresi; non i campi), edifici nemici (non le casse di
+`lvl01`), gli edifici della citta' (`ocr_*`, che nel GML sono
+`natural_parent` come gli alberi: case, tempio, basilica, teatro) e le
+rovine. Non le unita', gli alberi, le montagne, i fiumi, le pietre, le
+statue, le colonne, le fontane, i pali. Si guardano le sagome a terra (le
+maschere): il segmento dai piedi di chi tira ai piedi del bersaglio,
+campioni ogni 8 px, esclusi i primi e gli ultimi 20 (`world.shotClear`).
+
+**Comportamento** (`archery.js`; arciere alleato in `ranged.js`, nemico in
+`enemies.js`):
+- bersaglio: fra i nemici a tiro, il piu' vicino con la linea libera;
+  con un bersaglio scelto dal giocatore (clic destro) solo quello;
+- al rilascio della freccia (fine del caricamento, 56 passi dopo l'inizio)
+  la linea si ricontrolla: se un edificio si e' messo in mezzo il tiro si
+  annulla;
+- nemici a tiro ma nessuno in linea: l'arciere cerca un punto da cui tirare
+  su anelli di 48-240 px attorno a se' (16 direzioni): libero, raggiungibile
+  a piedi in linea retta, a tiro e con la linea libera, il piu' vicino; mai
+  oltre **250 px** dal punto in cui ha cominciato a combattere (l'ancora,
+  cancellata da un ordine del giocatore, dalla fine del combattimento e,
+  per i nemici, quando nessun alleato e' piu' a portata d'inseguimento). Se
+  non c'e' un punto resta fermo e riprova fra 30 passi. L'arciere nemico si
+  sposta con `warwork` 1 (con 4 `scr_difendi` lo riassegnerebbe);
+- la freccia parte 40 px in alto e scende verso i piedi del bersaglio; in
+  volo, se il punto a terra sotto di lei e' dentro un edificio si ferma
+  (cosi' una freccia che manca il bersaglio non attraversa una casa).
+- Torri, castello e centro tirano come prima (sono in alto).
+
+**Verificato** (Chromium, casualita' fissata, prima → dopo):
+- scenario controllato in campo aperto, bersaglio fermo dietro una casa
+  (`ocr_25`, 224x133 px), tiratore a 320 px: con il bersaglio dietro il
+  centro della casa prima 26 colpi su 26 attraverso la casa, ora nessun
+  tiro e nessuno spostamento (servirebbero 550 px di lato, oltre il
+  guinzaglio); con il bersaglio dietro lo spigolo (150 px di lato)
+  l'arciere si sposta di 94 px (il nemico di 93) e mette a segno 25 frecce
+  su 25, nessuna attraverso la casa; con la linea libera tutto come prima
+  (26 su 26);
+- battaglia di `lvl02` con 80 soldati in piu' (un quarto arcieri): 81
+  frecce (prima 88), 0 colpi attraverso edifici, nessun costo in piu'
+  (6,8 → 6,5 ms a passo); `lvl01` verso la citta': prima 8 frecce, una
+  attraverso un edificio; ora nessun tiro senza linea;
+- `npm test`, 48 test (nuovi: cosa ferma e cosa no, bersaglio in linea
+  invece del piu' vicino, punto di tiro dietro lo spigolo, nessun punto
+  oltre il guinzaglio); 5000 passi senza errori in `menu`, `match`,
+  `lvl01`, `lvl02`; salvataggi identici; zip dei portali.
 
