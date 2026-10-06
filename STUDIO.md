@@ -202,9 +202,8 @@ sezione citata.
   scalini (§7.13); interfaccia di vetro, opzione attiva di norma (§7.14).
 - [ ] Da vedere sul PC dell'autore: costo del vetro e di G3/G4 su una
   GPU vera (F3), aspetto del vetro sopra le zone nere della nebbia.
-- [ ] Le rovine di pietra (castello, torre, chiesa) non hanno ancora un
-  comportamento: `stone` non e' mai assegnata nel Create dell'originale
-  (§7.8), da decidere con l'autore quanta pietra danno.
+- [x] Rovine di pietra di castello (500), torre (100) e chiesa (75) portate
+  come risorse, e campi verso una meta dentro un ostacolo (§7.17).
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
@@ -3305,10 +3304,10 @@ finite (`*_morente`, gia' portate) e le rovine. Nel porting mancavano:
   200 passi, sbiadiscono da 760, spariscono a 800 [C]. `barnruin` arma
   due volte `alarm[1]` e mai `alarm[2]`: spariva a 760 senza sbiadire;
   qui come le altre.
-- Trovato, non corretto: le rovine di pietra (`castelloruin`,
-  `torreruin`, `chiesaruin`) non hanno comportamento nel porting e nel
-  Create dell'originale non assegnano `stone`: raccoglierle non le
-  esaurisce mai. Da decidere con l'autore.
+- Le rovine di pietra (`castelloruin`, `torreruin`, `chiesaruin`) non
+  avevano comportamento nel porting: §7.17. (Nella prima stesura di questa
+  voce scrivevo che il loro Create non assegna `stone`: sbagliato, avevo
+  letto solo l'inizio del file; l'autore se lo ricordava.)
 
 ### 7.9 Pioggia
 
@@ -3399,3 +3398,38 @@ uguale (menu e `lvl02` identici al pixel, in `match` un pixel diverso di
 126–150 (-10%), menu pari. Unica differenza d'ordine: il suolo ora sta
 sotto anche ai fiumi e alle montagne in cima alla mappa (y < 0, depth
 > 0), che prima finivano sotto le strade.
+
+### 7.17 Rovine di pietra; meta dentro un ostacolo
+
+Domanda dell'autore: "mi pare fosse 75 o comunque una frazione
+dell'edificio". Il Create delle rovine assegna [C]: `castelloruin` 500,
+`torreruin` 100, `chiesaruin` 75. Nel porting non avevano comportamento
+(non si esaurivano, non segnavano la griglia, nessuna scheda). Ora sono
+risorse di pietra come `pietra_grande` e `pietr_piccolo` (`resource` in
+civilians.js: visibilita' a 400 px, clic destro, scheda, `*_morente` che
+sbiadisce), e nascendo a partita in corso segnano le loro celle (Create
+[C]).
+
+Provandole e' venuto fuori un difetto dei percorsi: la rovina nasce dopo
+che il civile ha calcolato il suo campo, quindi `scr_find_valid_cell_
+backwards` (che guarda il campo vecchio) sceglie come meta una cella ora
+chiusa; la ricerca in ampiezza partiva da li' e non usciva dal blocco di
+celle chiuse: campo vuoto, civile fermo. Correzioni (pathing.js):
+- `goalField`: con la meta dentro un ostacolo si percorre il blocco di
+  celle chiuse che la contiene (al piu' 4096) e la ricerca parte, a valore
+  1, dalle celle libere del suo bordo piu' vicine alla meta (al piu' una
+  cella piu' lontane della piu' vicina: il blocco puo' comprendere gli
+  edifici accanto). Vale anche per i nemici.
+- `moveFlowField`: nel punto piu' basso del campo (cella con un valore ma
+  nessuna vicina piu' bassa) si va verso la destinazione con
+  `mp_potential_step`; se si e' sovrapposti a un'altra unita' ci si separa
+  senza collisioni (verso la meta se non si entra in una cella chiusa, se
+  no lontano dall'altra). La via d'uscita del §7.6 resta per le celle
+  senza valore.
+
+Prova: torre, chiesa e castello costruiti in un punto libero di `match`,
+distrutti, due civili sulla rovina: torre esaurita in 4500–5000 passi,
+chiesa in 3900, castello 418 su 500 in 60000 (deposito a 700 px). Prima
+della correzione dei percorsi una rovina nata accanto al centro restava
+intatta. Le prove precedenti (mischia, magazzino, unita' prodotte,
+assedio) danno gli stessi risultati.

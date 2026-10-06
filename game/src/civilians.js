@@ -851,10 +851,19 @@ export function resource(p, kind) {
                      hint: ["hint_stone", "stonehint"] },
     pietr_piccolo: { amount: ["stone", 450], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietr_piccolo_morente", centroDir: "stonedir",
                      hint: ["hint_stone", "stonehint"] },
+    // [§7.17] rovine di pietra di castello, torre e chiesa [C, *ruin
+    // Create/Step/Destroy/Mouse_*]: come le pietre (senza suggerimento), con
+    // la pietra del loro Create; nascono anche a partita in corso (edificio
+    // distrutto), quindi segnano da sole le loro celle nella griglia.
+    // Mancavano nel porting: non si esaurivano mai.
+    castelloruin: { amount: ["stone", 500], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "castelloruin_morente", centroDir: "stonedir", grid: true },
+    torreruin: { amount: ["stone", 100], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "torreruin_morente", centroDir: "stonedir", grid: true },
+    chiesaruin: { amount: ["stone", 75], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "chiesaruin_morente", centroDir: "stonedir", grid: true },
   }[kind];
   const ALB = ["alb1", "alb2", "alb3", "alb4", "alb5", "alb6", "alb7", "alb8"];
   return {
     create(i, w) {
+      if (cfg.grid) p.markInstance(i, 1000);
       i.selected = 0;
       i[cfg.work] = 0;
       i.depth = -i.y;
@@ -926,8 +935,7 @@ export function resource(p, kind) {
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1 || w.g.sel >= 1) return;
-      const icon = { albero: "ico_albero", albero_fake: "ico_albero", miniera_oro: "ico_miniera",
-                     pietra_grande: "ico_ruin", pietr_piccolo: "ico_ruin" }[kind];
+      const icon = { albero: "ico_albero", albero_fake: "ico_albero", miniera_oro: "ico_miniera" }[kind] || "ico_ruin";
       const res = { wood: "ico_wood", gold: "ico_gold", stone: "ico_stone" }[cfg.amount[0]];
       d.setAlpha(0.69);
       d.roundrectColourExt(260, 20, 390, 150, 60, 60, 0xffffff, 0xffffff, false);

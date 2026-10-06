@@ -160,8 +160,9 @@ async function main() {
   world.register("ally_militare", controlGroups(false));
   world.register("attacco_clicker", behaviourClicker("attacco"));
   world.register("difesa_clicker", behaviourClicker("difesa"));
-  for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo"]) world.register(n, resource(path, n));
-  for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente"]) world.register(n, dying());
+  for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"]) world.register(n, resource(path, n));
+  for (const n of ["albero_morente", "miniera_morente", "pietra_grande_morente", "pietr_piccolo_morente",
+                   "castelloruin_morente", "torreruin_morente", "chiesaruin_morente"]) world.register(n, dying());
   world.register("centro", centroArrows(centro(path)));
   world.register("ally_build", allyBuild());
   world.register("ally_arciere", allyArcher(path));
