@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
@@ -158,7 +158,8 @@ export function allyArcher(p) {
   const move = (i, w) => {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y)) {
+      const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
+      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
           if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);

@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
 
@@ -625,7 +625,8 @@ export function boxSelect(i, w, counter) {
 function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = true, speed = 4 } = {}) {
   if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
   if (i.action === 1) {
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y)) {
+    const moveOrder = i.firework === 0 && (i.warwork === 0 || i.warwork === 4);
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);

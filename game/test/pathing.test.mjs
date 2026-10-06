@@ -74,3 +74,33 @@ test("§6.1 n.89 arriveIfBlocked: vicina e senza progressi per 60 passi + d/2 pr
   for (let j = 0; j < 500; j++) arriveIfBlocked(v);
   assert.equal(v.dirox, 1000);
 });
+
+test("§6.2 C: niente diagonale fra due ostacoli (ne' rasente a uno)", () => {
+  // destinazione in alto a destra; dalla cella (1,2) la diagonale (2,1)
+  // passerebbe fra (2,2) e (1,1), ostacoli
+  const p = grid(["....", ".#..", "..#.", "...."]);
+  const f = p.goalField(GRID * 3, 0);
+  const d = p.flowAt(f, 1, 2);
+  assert.notEqual(d, 45);
+  assert.ok(d === 180 || d === 270, `direzione ${d}`); // aggira l'ostacolo di lato
+  // in campo aperto la diagonale resta
+  const q = grid(["....", "....", "....", "...."]);
+  assert.equal(q.flowAt(q.goalField(GRID * 3, 0), 0, 3), 45);
+});
+
+test("§6.2 D: in campo aperto si punta dritti verso la meta, non a 45 gradi", () => {
+  const rows = []; for (let y = 0; y < 20; y++) rows.push(".".repeat(40));
+  const p = grid(rows);
+  const f = p.goalField(GRID * 39 + 16, GRID * 10 + 16);   // a destra, 2 celle piu' in basso
+  const a = p.steerAt(f, GRID * 30 + 16, GRID * 8 + 16);
+  const ideal = Math.atan2(-(2 * GRID), 9 * GRID) * 180 / Math.PI + 360; // ~347 gradi
+  assert.ok(Math.abs(a - ideal) < 12, `angolo ${a}, dritto ${ideal}`);
+  assert.equal(p.flowAt(f, 30, 8), 315);                  // la cella da sola dice 45 gradi in giu'
+  // dietro un muro: non punta attraverso il muro
+  const m = grid(["........", "..####..", "........"]);
+  const g = m.goalField(GRID * 3 + 16, GRID * 2 + 16);    // sotto il muro
+  const b = m.steerAt(g, GRID * 3 + 16, 16);              // sopra il muro
+  assert.ok(m.clearLine(g, GRID * 3 + 16, 16, GRID * 3 + 16, GRID * 2 + 16) === false);
+  assert.ok(b === 0 || b === 180 || (b > 90 && b < 270) || b < 90, `angolo ${b}`);
+  assert.notEqual(b, 270);                                // non dritto in giu' nel muro
+});

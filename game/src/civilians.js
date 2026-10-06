@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
 import { phaseOf, walkCycle } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -305,7 +305,10 @@ function ominoMove(i, w, p) {
   const mp = (t) => { if (t) mpPotentialStep(w, i, t.x, t.y, i.autospeed); };
   const workreach = (i.goldwork > 0 || i.stonework > 0 || i.woodwork > 0) ? 200 : 0;
   if (i.action === 1) {
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFree(i, i.x, i.y)) {
+    // §6.2 D: senza la destinazione in vista si resta sul percorso (solo per
+    // un semplice spostamento: col lavoro la meta e' la risorsa o l'edificio)
+    const plain = !i.goldwork && !i.stonework && !i.woodwork && !i.buildwork && !i.repairwork && !i.foodwork && !i.fieldwork;
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFree(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);

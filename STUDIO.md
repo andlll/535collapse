@@ -139,6 +139,16 @@ sezione citata.
   piccolo, contatore FPS e passo fisso, formazione negli spostamenti di
   gruppo (§6.1).
 
+**Pathfinding (§6.2)**
+- [x] Studio e misure; A (campi 4–5 volte piu' veloci), B (collisioni
+  senza copie), stessi risultati verificati passo per passo; C (niente
+  spigoli tagliati), D (percorsi dritti, "step towards" solo con la meta
+  in vista).
+- [ ] Studio delle alternative a `instance_nearest` (la voce piu' pesante
+  del passo).
+- [ ] Da decidere: nemici che escono dalla mappa quando il flow field non
+  ha direzione nella loro cella (§6.2, "trovati").
+
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
   Firefox, Safari, schermi ad alta densità.
@@ -2657,4 +2667,108 @@ destra della minimappa, messaggio dell'accelerazione hardware e menu di
 pausa col font del gioco, contatore degli inattivi coi civili che muoiono;
 3000 passi senza errori in `menu`, `match`, `lvl01`, `lvl02`; salvataggi
 con ripristino identico; zip dei portali nell'iframe.
+
+### 6.2 Pathfinding: studio, ottimizzazioni A e B, correzioni C e D
+
+Richiesta dell'autore: studiare il pathfinding (flow field e movimento),
+ottimizzarlo senza cambiarne il comportamento, chiedere prima di
+implementare. Approvate A, B, C, D.
+
+**Misure** (Chromium, profilo a campionamento e micro-benchmark sulle
+griglie vere; SwiftShader, CPU del container):
+- Nel gioco normale il pathfinding non e' la voce principale: in `lvl02` un
+  passo costa ~1,5 ms e il grosso e' `instance_nearest` (~1150 chiamate a
+  passo: alberi nascosti che cercano un'unita' vicina, nemici, difese) con
+  `distance_to_object`.
+- Il pathfinding pesa a picchi: ogni ordine, ogni viaggio di un civile al
+  deposito, ogni ricalcolo fa un BFS su tutta la griglia piu' il flow field
+  su tutte le celle: 2,3 ms in `match` (218×218 celle), 1,05 in `lvl02`;
+  piu' di meta' nel flow field.
+- Contro le maschere grandi (montagne a ellisse, fiumi e montagne precise)
+  un passo di `mp_potential_step` costava ~1 ms: `overlap` copiava l'intera
+  istanza (`{...a, x, y}`) e creava array per ogni riga di maschera.
+- Comportamento: il BFS conta i passi a croce e il flow field ne sceglie 8,
+  quindi la diagonale vince quasi sempre (93% delle celle): percorsi a
+  45 gradi poi dritti. In 40–50 celle per campo la diagonale passava fra due
+  ostacoli (spigoli tagliati: sul flow field non c'e' controllo di
+  collisione).
+
+**A — campi** (`pathing.js`): goal field con indici lineari e coda
+riusata; il flow field non si calcola piu': e' il goal field, e la
+direzione di una cella si ricava quando serve (`flowAt`, stessa regola).
+Memoria per unita' e salvataggi piu' piccoli (slot di `lvl02` da 473 a
+~390 KB). I flow field di angoli dei salvataggi vecchi (`Float32Array`) si
+leggono come prima. Costo per calcolo: `match` 2,0 → 0,43 ms, `lvl01`
+0,8 → 0,2, `lvl02` 1,05 → 0,3.
+
+**B — collisioni** (`world.js`): `overlap`, `pointIn`, `collision_rectangle`
+con gli intervalli delle righe scritti in buffer riusati, senza copiare
+l'istanza; ricerca dei vicini senza `Set` (contrassegno `_qs` per i
+doppioni, stesso ordine di prima; non si salva); gli eventi di collisione
+ricevono una "fotografia" dei vicini come prima (i gestori possono
+spostare o distruggere); mappa degli eventi di collisione per oggetto
+calcolata una volta. Passo contro una montagna: 1,11 → 0,13 ms.
+
+**Verifica di A+B**: vecchia e nuova versione con `Math.random` a seme
+fisso e gli stessi input, digest dello stato (per ogni istanza posizione,
+direzione, azione, vita, destinazione, selezione, frame; globali; griglia
+dei costi) ogni 100 passi: **identici** in 7 scenari fino a 3000 passi
+(`menu`, `match`, `lvl01`, `lvl02` senza input; 30 civili a legno e oro;
+40 soldati in marcia; battaglia di `lvl02`). Lo strumento vede le
+differenze (con semi diversi: diverso dopo 100 passi). Un salvataggio della
+versione vecchia si carica e le unita' camminano coi flow field vecchi.
+
+**C — niente spigoli tagliati** (`flowAt`): una diagonale solo se le due
+celle di lato sono percorribili.
+
+**D — percorsi naturali**:
+- sul flow field l'unita' punta un **punto di passaggio**: segue le
+  direzioni del campo per 6 celle e prende il centro della cella piu'
+  lontana raggiungibile in linea retta (linea "spessa" ±12 px, tutta su
+  celle percorribili); lo tiene finche' non ci arriva (24 px) o non lo
+  vede piu' (`steerAim`; `steerField` non si salva). Sceglierlo a ogni
+  passo lo faceva saltare di una cella e lo sprite tremolava (cambi di
+  direzione dello sprite raddoppiati): misurato e corretto;
+- lo "step towards" (`mp_potential_step` dritto verso la destinazione,
+  sotto i 400 px) solo se la destinazione e' **in vista** (`seesGoal`):
+  prima si andava dritti anche con un ostacolo in mezzo e l'unita'
+  oscillava contro l'ostacolo (decine di passi a 270/300 gradi) fino alla
+  rinuncia. Era un difetto gia' presente, che D rendeva piu' frequente.
+  Solo per gli spostamenti semplici di soldati, arcieri e civili; nemici,
+  attacchi e lavoro dei civili (meta = edificio o risorsa) come prima.
+- Uno spessore della linea pari alla maschera dell'unita' (provato) peggiora:
+  la linea fallisce piu' spesso e l'unita' alterna le due direzioni.
+
+**Verifica di C+D** (una unita' alla volta, 10–12 coppie partenza/arrivo
+a caso lontane dai nemici, stessa casualita', prima → dopo):
+
+| prova | passi | svolte /100 px | cambi di sprite | passi sovrapposti a ostacoli | distanza finale |
+|---|---|---|---|---|---|
+| guerriero `match` | 5868 → 5843 | 9,7 → 8,4 | 53 → 40 | 197 → 107 | 8 → 8 |
+| guerriero `lvl01` | 3369 → 3188 | 6,4 → 2,1 | 276 → 14 | 86 → 134 | 40 → 7 |
+| cavaliere `lvl02` | 3341 → 3122 | 45 → 22,8 | 291 → 37 | 809 → 1020 | 70 → 9 |
+| cavaliere `match` | 3791 → 3777 | 12,5 → 9,5 | 53 → 34 | 253 → 101 | 7 → 7 |
+| arciere `lvl02` | 4163 → 3908 | 39,3 → 23,1 | 318 → 37 | 494 → 305 | 108 → 9 |
+
+Gruppi: 20 soldati verso un punto oltre una montagna, passi sovrapposti
+agli ostacoli 456 → 111, arrivati tutti; 14 unita' in formazione arrivate
+entro 1200 passi; civili al lavoro: stesse risorse raccolte (550), passi
+sovrapposti 636 → 332. I passi sovrapposti salgono un po' dove le unita'
+ora arrivano davvero alla meta invece di fermarsi prima: sul flow field il
+movimento non ha mai controllato le collisioni, e unita' larghe 50–90 px su
+celle da 32 sfiorano i bordi.
+
+**Trovati, non corretti** (da decidere):
+- Un nemico in una cella senza direzione (per lui irraggiungibile: le
+  porte del giocatore sono ostacoli per i nemici, §3.8) tira dritto nella
+  sua direzione ed esce dalla mappa (prova sintetica in `match`: da 2300 a
+  14.000 px dal bersaglio). Uguale prima e dopo.
+- Il primo nemico di un'ondata che arriva a 400 px dal bersaglio ferma
+  tutti gli altri (`role` 31 → 32, `action` 0) [C, scr_movimento_nemici_ff]:
+  e' l'originale; le ondate ripartono con `attacca`.
+
+**Verificato**: `npm test`, 42 test (nuovi: spigoli, punto di passaggio in
+campo aperto e dietro un muro); 5000 passi senza errori in `menu`,
+`match`, `lvl01`, `lvl02`; salvataggi con ripristino identico; zip dei
+portali nell'iframe.
 

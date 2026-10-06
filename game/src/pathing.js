@@ -22,6 +22,8 @@
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 
 export const GRID = 32;
+const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
+const LINE_HALF = 12;  // meta' larghezza predefinita della linea "spessa" (clearLine)
 const DX = [1, -1, 0, 0, 1, -1, 1, -1];
 const DY = [0, 0, -1, 1, -1, -1, 1, 1];
 const DIR = DX.map((dx, i) => pointDirection(0, 0, dx, DY[i]));
@@ -154,9 +156,77 @@ export class Pathing {
       const nx = gx + DX[i], ny = gy + DY[i];
       if (nx < 0 || nx >= gw || ny < 0 || ny >= gh) continue;
       const v = field[k + DY[i] * gw + DX[i]];
-      if (v !== -1 && v < best) { best = v; bi = i; }
+      if (v === -1 || v >= best) continue;
+      // [§6.2 C, decisione dell'autore] una diagonale solo se le due celle
+      // di lato sono percorribili: prima la direzione poteva passare fra due
+      // ostacoli e l'unita' (che sul flow field si muove senza collisioni)
+      // tagliava lo spigolo degli edifici
+      if (i >= 4 && (field[k + DX[i]] === -1 || field[k + DY[i] * gw] === -1)) continue;
+      best = v; bi = i;
     }
     return bi >= 0 ? DIR[bi] : -1;
+  }
+
+  // [§6.2 D, decisione dell'autore] Percorsi naturali. Il BFS conta i passi
+  // "a croce" e il flow field ne sceglie 8: la diagonale vince sempre, e
+  // l'unita' andava a 45 gradi finche' non era allineata e poi dritta (a
+  // "L storta"), a scatti di 45 gradi. Qui da (x, y) si seguono le
+  // direzioni del campo per LOOK celle e si sceglie come punto di passaggio
+  // il centro della cella piu' lontana raggiungibile in linea retta senza
+  // toccare celle non percorribili (linea "spessa", larga quanto l'unita':
+  // clearLine). null se non ce n'e' (si usa la direzione della cella).
+  steerPoint(field, x, y, hw = LINE_HALF, hh = LINE_HALF) {
+    const { gw } = this;
+    let gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+    if (!(field instanceof Int32Array) || !this.inside(gx, gy)) return null;
+    const path = this._path || (this._path = new Int32Array(LOOK * 2));
+    let n = 0;
+    for (let s = 0; s < LOOK; s++) {
+      const d = this.flowAt(field, gx, gy);
+      if (d === -1) break;
+      const i = DIR.indexOf(d);
+      gx += DX[i]; gy += DY[i];
+      if (!this.inside(gx, gy) || field[gy * gw + gx] === -1) break;
+      path[n++] = gx; path[n++] = gy;
+    }
+    for (let j = n - 2; j >= 2; j -= 2) {
+      const tx = path[j] * GRID + GRID / 2, ty = path[j + 1] * GRID + GRID / 2;
+      if (this.clearLine(field, x, y, tx, ty, hw, hh)) return [tx, ty];
+    }
+    return null;
+  }
+
+  // La direzione da (x, y) verso il punto di passaggio, o quella della cella
+  // (-1 se il campo non ha direzione qui). Senza memoria: per i test; le
+  // unita' usano moveFlowField, che il punto lo tiene finche' non ci arriva.
+  steerAt(field, x, y) {
+    const first = this.flowAt(field, Math.floor(x / GRID), Math.floor(y / GRID));
+    if (first === -1) return -1;
+    const pt = this.steerPoint(field, x, y);
+    return pt ? pointDirection(x, y, pt[0], pt[1]) : first;
+  }
+
+  // Linea da (x0, y0) a (x1, y1) tutta su celle percorribili nel campo,
+  // larga quanto l'unita': hw, hh sono le meta' della sua maschera (bbox)
+  // e la larghezza di lato e' la maschera proiettata sulla perpendicolare
+  // alla linea. Campioni ogni 8 px lungo la linea e ogni 16 px di lato.
+  clearLine(field, x0, y0, x1, y1, hw = LINE_HALF, hh = LINE_HALF) {
+    const { gw } = this;
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    if (len < 1) return true;
+    const nx = -dy / len, ny = dx / len;
+    const half = hw * Math.abs(nx) + hh * Math.abs(ny);
+    const lanes = Math.max(1, Math.ceil(half / 16));
+    const steps = Math.ceil(len / 8);
+    for (let k = 1; k <= steps; k++) {
+      const t = k / steps, px = x0 + dx * t, py = y0 + dy * t;
+      for (let l = -lanes; l <= lanes; l++) {
+        const o = (half * l) / lanes;
+        const cx = Math.floor((px + nx * o) / GRID), cy = Math.floor((py + ny * o) / GRID);
+        if (!this.inside(cx, cy) || field[cy * gw + cx] === -1) return false;
+      }
+    }
+    return true;
   }
 
   fieldAt(field, gx, gy) {
@@ -255,12 +325,42 @@ export function scrMove(p, inst, tx, ty) {
 
 // scr_move_flow_field [C]: direzione dalla cella (se valida), avanzamento
 // di autospeed SENZA controllo di collisione.
+// [§6.2 D] la direzione e' quella verso un punto di passaggio lungo il
+// percorso (steerPoint), non piu' quella a scatti di 45 gradi della cella.
+// Il punto si tiene (steerAim, per il campo steerField) finche' non lo si
+// raggiunge (24 px) o non lo si vede piu': scegliendolo a ogni passo
+// saltava di una cella avanti e indietro e lo sprite tremolava fra due
+// direzioni.
 export function moveFlowField(w, p, inst) {
-  const a = p.flowAt(inst.flow_field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
+  const field = inst.flow_field;
+  let a = p.flowAt(field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
+  if (a !== -1 && field instanceof Int32Array) {
+    let aim = inst.steerField === field ? inst.steerAim : null;
+    if (!aim || pointDistance(inst.x, inst.y, aim[0], aim[1]) < 24 || !p.clearLine(field, inst.x, inst.y, aim[0], aim[1])) {
+      aim = p.steerPoint(field, inst.x, inst.y);
+      inst.steerField = field;
+      inst.steerAim = aim;
+    }
+    if (aim) a = pointDirection(inst.x, inst.y, aim[0], aim[1]);
+  }
   if (a !== -1) inst.target_angle = a;
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+}
+
+// [§6.2 D] Lo "step towards" (mp_potential_step dritto verso dirox/diroy)
+// vale solo se la destinazione e' in vista: nessuna cella non percorribile
+// sulla linea (clearLine nel campo dell'unita'). Prima, sotto i 400 px, si
+// andava dritti anche con un edificio, un albero o un fiume in mezzo, e
+// l'unita' oscillava contro l'ostacolo (decine di passi a 270/300 gradi)
+// finche' non rinunciava. Senza vista si continua sul percorso. Solo per i
+// semplici spostamenti (chi chiama lo sa); i flow field di angoli dei
+// salvataggi vecchi non sanno dire cosa e' percorribile: come prima.
+export function seesGoal(p, inst) {
+  const f = inst.flow_field;
+  if (!(f instanceof Int32Array)) return true;
+  return p.clearLine(f, inst.x, inst.y, inst.dirox, inst.diroy);
 }
 
 // [§6.1 n.89] Arrivo "per rinuncia": le unita' sono solide e si bloccano a
