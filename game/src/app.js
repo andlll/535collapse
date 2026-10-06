@@ -442,13 +442,17 @@ async function main() {
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
     world.draw(r, draw, cam, () => {
       manager.drawEnd(draw, world);
-      fogLayer.draw(draw, world, cam);
+      fogLayer.draw();
     });
     manager.drawMouser(draw, world);
   };
 
   // la scena: mondo, poi l'interfaccia (Draw GUI)
   const renderScene = () => {
+    // nebbia e notte composte prima del mondo (§7.13)
+    draw.reset();
+    fogLayer.prepare(draw, world, cam);
+    r.setProjection(cam.x, cam.y, cam.w, cam.h);
     if (worldScale < canvasScale - 1e-6) {
       const t = worldSurface();
       r.beginTarget(t, cam.x, cam.y, cam.w, cam.h, clear);
@@ -477,16 +481,20 @@ async function main() {
   };
 
   // Sfondo del menu di pausa, come in NIMBUS: la scena ferma sfumata e
-  // scurita. Si disegna una volta in una superficie grande come il canvas e
-  // si dimezza tre volte col filtro lineare (1/8: ogni passo media 2x2
-  // pixel); si rifa' solo se cambia qualcosa (apertura, lingua, opzioni,
-  // finestra ridimensionata).
+  // scurita. Si disegna una volta in una superficie grande come il canvas,
+  // si riduce a meta' e si sfoca con una gaussiana separabile (gl.js, blur);
+  // si rifa' solo se cambia qualcosa (apertura, lingua, opzioni, finestra
+  // ridimensionata). [§7.12, richiesta dell'autore] prima erano tre
+  // dimezzamenti col filtro lineare fino a 1/8 e un ingrandimento: una
+  // sfocatura a blocchi. Calcolata una volta sola, puo' costare di piu'.
+  const PAUSE_SIGMA = 7; // texel della superficie a meta' risoluzione
   let blur = null;
   const blurTargets = () => {
     const W = canvas.width, H = canvas.height;
     if (blur && blur.gen === r.generation && blur.W === W && blur.H === H) return blur;
     if (blur && blur.gen === r.generation) for (const t of blur.t) r.deleteTarget(t);
-    const t = [1, 2, 4, 8].map((k) => r.createTarget(Math.max(1, Math.ceil(W / k)), Math.max(1, Math.ceil(H / k))));
+    const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
+    const t = [r.createTarget(W, H), r.createTarget(hw, hh), r.createTarget(hw, hh), r.createTarget(hw, hh)];
     blur = { gen: r.generation, W, H, t };
     return blur;
   };
@@ -525,7 +533,8 @@ async function main() {
       r.beginTarget(B.t[0], cam.x, cam.y, cam.w, cam.h, clear);
       renderScene();
       r.endTarget();
-      for (let k = 1; k < 4; k++) copy(B.t[k - 1], B.t[k]);
+      copy(B.t[0], B.t[1]);
+      r.blur(B.t[1], B.t[2], B.t[3], PAUSE_SIGMA * Math.max(1, canvasScale));
       pause.dirty = false;
       B.fresh = false;
     }

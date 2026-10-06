@@ -158,10 +158,10 @@ export class FogMap {
 
   // Celle che coprono il rettangolo di room, con una cella di margine (il
   // filtro lineare legge le vicine). [x0, y0, x1, y1) in celle.
-  region(x, y, wd, ht) {
+  region(x, y, wd, ht, margin = 1) {
     const C = this.cell;
-    return [Math.max(0, Math.floor(x / C) - 1), Math.max(0, Math.floor(y / C) - 1),
-            Math.min(this.gw, Math.ceil((x + wd) / C) + 1), Math.min(this.gh, Math.ceil((y + ht) / C) + 1)];
+    return [Math.max(0, Math.floor(x / C) - margin), Math.max(0, Math.floor(y / C) - margin),
+            Math.min(this.gw, Math.ceil((x + wd) / C) + margin), Math.min(this.gh, Math.ceil((y + ht) / C) + margin)];
   }
 
   // fog + blackfog per la regione: vista attuale ricalcolata (solo le
