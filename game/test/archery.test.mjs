@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { World } from "../src/world.js";
 import { Pathing } from "../src/pathing.js";
-import { shootable, firingSpot, LEASH } from "../src/archery.js";
+import { shootable, firingSpot, LEASH, towerTarget } from "../src/archery.js";
 
 const unit = { kind: 1, bbox: [0, 0, 31, 31], origin: [16, 16] };
 const house = { kind: 1, bbox: [0, 0, 223, 132], origin: [112, 66] };
@@ -13,6 +13,8 @@ const objects = {
   enemy_warrior: { sprite: "u", mask: "u", parents: ["enemy_unit", "enemy"], depth: 0, solid: true },
   ocr_25: { sprite: "h", mask: "h", parents: ["natural_parent"], depth: 0, solid: true },
   albero: { sprite: "h", mask: "h", parents: ["natural_parent"], depth: 0, solid: true },
+  torre: { sprite: "h", mask: "h", parents: ["ally_build", "ally"], depth: 0, solid: true },
+  mura_ori: { sprite: "h", mask: "h", parents: ["ally_build", "ally"], depth: 0, solid: true },
 };
 const mk = () => {
   const w = new World({ objects, masks: { u: unit, h: house }, assets: { sprites: {} }, g: {}, roomW: 3200, roomH: 3200 });
@@ -65,4 +67,21 @@ test("§6.4 punto di tiro: vicino, con la linea libera e mai oltre il guinzaglio
   const far = w.create("enemy_warrior", 2400, 1000);
   const s2 = firingSpot(w, p, a, far, 540);
   if (s2) assert.ok(Math.hypot(s2[0] - a.anchorX, s2[1] - a.anchorY) <= LEASH);
+});
+
+test("§6.5 edifici che tirano: non li fermano se stessi ne' le mura; scelgono il bersaglio in vista", () => {
+  const [w] = mk();
+  const t = w.create("torre", 1500, 1500);
+  const hidden = w.create("enemy_warrior", 1500, 1170);  // dietro una casa, il piu' vicino
+  w.create("ocr_25", 1500, 1310);
+  assert.equal(towerTarget(w, t, "enemy_unit", 600), null);
+  const open = w.create("enemy_warrior", 1900, 1250);    // piu' lontano, in vista
+  assert.equal(w.nearest(t.x, t.y, "enemy_unit"), hidden);
+  assert.equal(towerTarget(w, t, "enemy_unit", 600), open);
+  // un muro in mezzo non conta per chi tira da un edificio (per un arciere si')
+  const t2 = w.create("torre", 2600, 1500);
+  const e2 = w.create("enemy_warrior", 2600, 1150);
+  w.create("mura_ori", 2600, 1320);
+  assert.equal(towerTarget(w, t2, "enemy_unit", 600), e2);
+  assert.equal(w.shotClear(2600, 1500, 2600, 1150), false);
 });

@@ -155,7 +155,11 @@ sezione citata.
 - [x] Tiro solo con la linea libera da edifici (le unita' non contano); se
   serve si spostano nei paraggi (guinzaglio di 250 px); frecce fermate
   dagli edifici.
+- [x] Torri, castello, centro e torre nemica: non tirano attraverso gli
+  edifici e scelgono un altro bersaglio (§6.5); mura e porte non li
+  fermano (tirano dall'alto).
 - [ ] Da decidere: anche montagne e alberi fermano le frecce? Oggi no.
+  E le mura per torri e castello? Oggi no.
 
 **Verifiche che mancano**
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
@@ -2905,4 +2909,39 @@ campioni ogni 8 px, esclusi i primi e gli ultimi 20 (`world.shotClear`).
   invece del piu' vicino, punto di tiro dietro lo spigolo, nessun punto
   oltre il guinzaglio); 5000 passi senza errori in `menu`, `match`,
   `lvl01`, `lvl02`; salvataggi identici; zip dei portali.
+
+### 6.5 Edifici che tirano: linea di tiro
+
+Richiesta dell'autore: "applichiamo un fix simile a edifici che sparano
+(torri, castelli ecc.): se c'e' un edificio frapposto non sparano e
+scelgono un altro bersaglio".
+
+**Prima** [C]: torre e castello presidiati (una freccia per arciere dentro,
+ogni 50 passi), il centro (una ogni 35) e la torre nemica (due ogni 50)
+tirano al piu' vicino entro 600 px; la freccia (`arciere_bullet_t`,
+`b_arciere_bullet_t`) mira, quando nasce, al piu' vicino al suo punto di
+partenza.
+
+**Ora** (`archery.js`, `towerTarget`, `towerArrow`): il bersaglio e' il piu'
+vicino entro 600 px con la linea libera (`shotClear` dalla base
+dell'edificio ai piedi del bersaglio); se non ce n'e' non si tira e
+l'edificio resta armato (riprova al passo dopo). La freccia nasce gia' con
+il bersaglio (`towerTarget`, impostato prima del suo Create) e in volo si
+ferma contro gli edifici come quelle degli arcieri, con l'altezza vera di
+partenza (base dell'edificio meno la y della freccia: 60-140 px). Per chi
+tira da un edificio non contano l'edificio stesso (la linea parte da dentro
+la sua sagoma) ne' mura e porte (si tira dall'alto: le torri stanno lungo
+le mura). Torre e castello senza presidio non cercano bersagli (non
+avrebbero frecce: prima l'allarme girava a vuoto).
+
+**Verificato** (campo aperto, bersagli fermi, prima → dopo, 1200 passi):
+con un nemico dietro una casa (il piu' vicino) e uno piu' lontano in vista,
+torre 48 colpi tutti dietro la casa → 48 tutti sul bersaglio in vista;
+castello 96 → 96 in vista; centro 35 → 34 in vista; torre nemica 48 → 48 in
+vista; con il solo bersaglio dietro la casa 48/35/48 frecce → nessuna; con
+un muro in mezzo tutto come prima (48 colpi). Battaglia di `lvl02` con 80
+soldati in piu': nessun colpo attraverso edifici, 6,9 → 6,4 ms a passo.
+`npm test` 49 test (nuovo: bersaglio dell'edificio e mura ignorate); 5000
+passi senza errori nelle quattro room; salvataggi identici; zip dei
+portali.
 

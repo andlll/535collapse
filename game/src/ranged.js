@@ -8,7 +8,7 @@ import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
-import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped } from "./archery.js";
+import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
@@ -38,10 +38,12 @@ export function allyArrow(tower) {
   return {
     create(i, w) {
       i.alarm.set(0, 33);
-      // arciere_bullet_t: mira al nemico piu' vicino (torri, castello, centro)
+      // arciere_bullet_t: mira al nemico piu' vicino (torri, castello, centro).
+      // [§6.5] al bersaglio scelto dall'edificio, con la linea libera
       if (tower) {
-        const e = w.nearest(i.x, i.y, "enemy_unit");
+        const e = i.towerTarget && i.towerTarget.alive ? i.towerTarget : w.nearest(i.x, i.y, "enemy_unit");
         if (e) i.direction = pointDirection(i.x, i.y, e.x, e.y);
+        if (i.towerTarget && i.towerFrom) aimArrow(i, i.towerTarget, i.towerFrom.y - i.y, i.towerFrom);
       }
       i.speed = 27;
     },
@@ -94,8 +96,10 @@ export function enemyArrow(tower) {
   return {
     create(i, w) {
       i.alarm.set(0, 33);
-      const a = w.nearest(i.x, i.y, "ally_unit");
+      // [§6.5] le frecce della torre nemica al bersaglio scelto dalla torre
+      const a = i.towerTarget && i.towerTarget.alive ? i.towerTarget : w.nearest(i.x, i.y, "ally_unit");
       if (a) { i.direction = pointDirection(i.x, i.y, a.x, a.y); i.speed = 27; }
+      if (a && i.towerTarget && i.towerFrom) aimArrow(i, a, i.towerFrom.y - i.y, i.towerFrom);
     },
     alarm0(i, w) { w.destroy(i); },
     step(i, w) {
@@ -335,7 +339,7 @@ export function allyArcher(p) {
       const t = i.shot && i.shot.alive ? i.shot : null;
       if (!t || !w.shotClear(i.x, i.y, t.x, t.y)) { i.action = 0; i.warwork = 0; i.step = 0; return; }
       const b = w.create("arciere_bullet", i.x, i.y - 40);
-      aimArrow(b, i, t);
+      aimArrow(b, t);
       b.speed = 20;
     },
     // Alarm_3 (nato in un posto occupato): nessuno lo arma per l'arciere
@@ -471,12 +475,13 @@ export function garrisoned(name, base) {
       hintOnce(w, "hint_presidio", "presidiohint", i.x, i.y);
     },
     step(i, w) {
-      const e = w.nearest(i.x, i.y, "enemy_unit");
-      if (i.arm === 1 && e && w.distanceToInstance(i, e) < 600) {
+      // [§6.5] il nemico piu' vicino entro 600 px con la linea libera
+      const e = i.arm === 1 && i.npresidio > 0 ? towerTarget(w, i, "enemy_unit", 600) : null;
+      if (i.arm === 1 && e) {
         i.arm = 0;
         i.alarm.set(0, 50);
         const pos = e.x > i.x ? G.right : G.left;
-        pos.forEach(([dx, dy], k) => { if (i.npresidio > k) w.create("arciere_bullet_t", i.x + dx, i.y + dy); });
+        pos.forEach(([dx, dy], k) => { if (i.npresidio > k) towerArrow(w, "arciere_bullet_t", i.x + dx, i.y + dy, i, e); });
       }
       base.step(i, w);
       if (!i.alive) return;
@@ -534,11 +539,12 @@ export function centroArrows(base) {
     create(i, w) { base.create(i, w); i.arm = 1; },
     alarm1(i) { i.arm = 1; },
     step(i, w) {
-      const e = w.nearest(i.x, i.y, "enemy_unit");
-      if (i.arm === 1 && e && w.distanceToInstance(i, e) < 600) {
+      // [§6.5] il nemico piu' vicino entro 600 px con la linea libera
+      const e = i.arm === 1 ? towerTarget(w, i, "enemy_unit", 600) : null;
+      if (i.arm === 1 && e) {
         i.arm = 0;
         i.alarm.set(1, 35);
-        w.create("arciere_bullet_t", e.x > i.x ? i.x + 50 : i.x, i.y - 140);
+        towerArrow(w, "arciere_bullet_t", e.x > i.x ? i.x + 50 : i.x, i.y - 140, i, e);
       }
       base.step(i, w);
     },
@@ -577,13 +583,14 @@ export function enemyTower(p) {
         w.destroy(i);
         return;
       }
-      const a = w.nearest(i.x, i.y, "ally_unit");
-      if (i.arm === 1 && a && w.distanceToInstance(i, a) < 600) {
+      // [§6.5] l'alleato piu' vicino entro 600 px con la linea libera
+      const a = i.arm === 1 ? towerTarget(w, i, "ally_unit", 600) : null;
+      if (i.arm === 1 && a) {
         i.arm = 0;
         i.alarm.set(0, 50);
         const dx = a.x > i.x ? 20 : -20;
-        w.create("b_arciere_bullet_t", i.x + dx, i.y - 60);
-        w.create("b_arciere_bullet_t", i.x + dx, i.y - 77);
+        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 60, i, a);
+        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 77, i, a);
       }
     },
     globalLeftPressed(i) { i.selected = 0; },

@@ -499,7 +499,7 @@ export function enemyArcher(p) {
       const a = i.shot && i.shot.alive ? i.shot : null;
       if (!a || !w.shotClear(i.x, i.y, a.x, a.y)) { i.action = 0; i.warwork = 0; i.step = 0; return; }
       const b = w.create("b_arciere_bullet", i.x, i.y - 40);
-      aimArrow(b, i, a);
+      aimArrow(b, a);
       b.speed = 20;
     },
     step(i, w) {

@@ -19,11 +19,12 @@ export const REPOS_WAIT = 30;   // passi fra una ricerca fallita e la successiva
 
 // Il bersaglio: fra le istanze di `name` a tiro (inRange), la piu' vicina
 // (per origine, come instance_nearest) con la linea di tiro libera.
-export function shootable(w, i, name, inRange) {
+// `from`: tira un edificio (i stesso; §6.5).
+export function shootable(w, i, name, inRange, from = null) {
   const c = [];
   for (const o of w.all(name)) if (inRange(o)) c.push(o);
   c.sort((a, b) => ((a.x - i.x) ** 2 + (a.y - i.y) ** 2) - ((b.x - i.x) ** 2 + (b.y - i.y) ** 2));
-  for (const o of c) if (w.shotClear(i.x, i.y, o.x, o.y)) return o;
+  for (const o of c) if (w.shotClear(i.x, i.y, o.x, o.y, from)) return o;
   return null;
 }
 
@@ -54,9 +55,11 @@ export function firingSpot(w, p, i, t, range) {
 // bersaglio: `flight` ricorda il punto a terra di partenza e quello
 // d'arrivo. In volo, il punto a terra sotto la freccia dentro un edificio
 // la ferma (i primi 20 px no, come per la linea di tiro).
-export function aimArrow(b, i, t) {
+// h: l'altezza da cui parte (40 px gli arcieri; per torri, castello e centro
+// la distanza fra la base dell'edificio `from` e la freccia, §6.5).
+export function aimArrow(b, t, h = 40, from = null) {
   b.direction = pointDirection(b.x, b.y, t.x, t.y);
-  b.flight = { sx: b.x, sy: b.y, len: Math.max(1, pointDistance(b.x, b.y, t.x, t.y)) };
+  b.flight = { sx: b.x, sy: b.y, len: Math.max(1, pointDistance(b.x, b.y, t.x, t.y)), h, from };
 }
 
 export function arrowStopped(i, w) {
@@ -64,7 +67,20 @@ export function arrowStopped(i, w) {
   if (!f) return false;
   const run = pointDistance(f.sx, f.sy, i.x, i.y);
   if (run < 20) return false;
-  const gx = i.x, gy = i.y + 40 * Math.max(0, 1 - run / f.len);
-  return !!w._eachNear([gx, gy, gx, gy], (o) => (w.blocksShots(o) && w.pointIn(o, gx, gy) ? o : null));
+  const gx = i.x, gy = i.y + (f.h ?? 40) * Math.max(0, 1 - run / f.len);
+  return !!w._eachNear([gx, gy, gx, gy], (o) => (w.blocksShots(o) && !(f.from && w.ignoredFrom(o, f.from))
+    && w.pointIn(o, gx, gy) ? o : null));
+}
+
+// [§6.5, richiesta dell'autore] Torri, castello, centro e torre nemica:
+// il bersaglio e' il piu' vicino entro `range` con la linea libera (non
+// contano l'edificio stesso, mura e porte); null = non si tira. La freccia
+// creata qui (w.create con init) mira a lui e si ferma contro gli edifici.
+export function towerTarget(w, b, name, range) {
+  return shootable(w, b, name, (o) => w.distanceToInstance(b, o) < range, b);
+}
+
+export function towerArrow(w, obj, x, y, b, t) {
+  return w.create(obj, x, y, { init: (a) => { a.towerTarget = t; a.towerFrom = b; } });
 }
 

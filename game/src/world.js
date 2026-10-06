@@ -228,16 +228,24 @@ export class World {
     return n.startsWith("ocr_") || n === "castelloruin" || n === "chiesaruin" || n === "torreruin";
   }
 
+  // [§6.5] Chi tira da un edificio non e' fermato dall'edificio stesso ne'
+  // da mura e porte.
+  ignoredFrom(o, from) {
+    return o === from || o.object.startsWith("mura_") || o.object.startsWith("porta_");
+  }
+
   // Linea di tiro libera da (x0, y0) a (x1, y1), i piedi di chi tira e del
   // bersaglio: nessun edificio (blocksShots) con la sagoma a terra sul
   // segmento (campioni ogni 8 px; i primi e gli ultimi 20 px non contano:
   // chi tira o il bersaglio possono stare a ridosso di un muro).
-  shotClear(x0, y0, x1, y1) {
+  // `from`: l'edificio da cui si tira (torri, castello, centro: §6.5); non
+  // contano lui e le mura e le porte (si tira dall'alto).
+  shotClear(x0, y0, x1, y1, from = null) {
     const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
     if (len <= 40) return true;
     const cands = [];
     this._eachNear([Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)],
-                   (o) => { if (this.blocksShots(o)) cands.push(o); });
+                   (o) => { if (this.blocksShots(o) && !(from && this.ignoredFrom(o, from))) cands.push(o); });
     if (!cands.length) return true;
     const n = Math.ceil(len / 8);
     for (let k = 0; k <= n; k++) {
