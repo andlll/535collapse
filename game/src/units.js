@@ -16,6 +16,7 @@ import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { meleeSpot } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
 
@@ -657,10 +658,18 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
         arriveIfBlocked(i); // §6.1 n.89
       }
       if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.targetid.x, i.targetid.y, i.autospeed);
-      if (i.warwork === 1 && i.target_eu) mpPotentialStep(w, i, i.target_eu.x, i.target_eu.y, i.autospeed);
+      // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
+      // verso il suo centro (melee.js)
+      if (i.warwork === 1 && i.target_eu) {
+        const [sx, sy] = meleeSpot(w, i, i.target_eu);
+        mpPotentialStep(w, i, sx, sy, i.autospeed);
+      }
       if (i.warwork === 1 && !i.target_eu) {
         const n = w.nearest(i.x, i.y, "enemy_unit");
-        if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
+        if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) {
+          const [sx, sy] = meleeSpot(w, i, n, "enemy_unit");
+          mpPotentialStep(w, i, sx, sy, i.autospeed);
+        }
       }
     }
   }
