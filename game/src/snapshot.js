@@ -16,7 +16,7 @@ import { Alarms } from "./alarms.js";
 import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
-const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField"], classes: { Alarms }, roundKeys: ["parts"] };
+const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "_far", "_bb", "_tStep", "_tSum", "_trk"], classes: { Alarms }, roundKeys: ["parts"] };
 
 export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const P = world.particles;
@@ -62,6 +62,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
     }
     world.moved(i);
   }
+  world.invalidateQueries(); // §6.3: nessuna risposta ricordata di prima
   if (s.seeds) world.seeds = s.seeds;
   if (s.seedEmitter) world.seedEmitter = s.seedEmitter;
   manager.al = s.manager.al;

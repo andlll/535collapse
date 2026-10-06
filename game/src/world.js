@@ -22,6 +22,16 @@ import { drawSprite, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 
 const CELL = 128;
+// [§6.3 N2] scatole di distanceToInstance, riusate
+const DIST_A = [0, 0, 0, 0], DIST_B = [0, 0, 0, 0];
+// [§6.3 N3] istanze "seguite" dai certificati di lontananza: alleati,
+// nemici, risorse ed elementi naturali (non proiettili, effetti, pulsanti)
+const RETRY = 8; // passi fra un tentativo di certificato fallito e il successivo
+const TRACKED = ["ally_unit", "ally_build", "enemy_unit", "enemy_build", "natural_parent"];
+function isTracked(inst) {
+  if (inst._trk === undefined) inst._trk = TRACKED.some((n) => inst.object === n || inst.parents.includes(n));
+  return inst._trk;
+}
 // intervalli di una riga di maschera (overlap, pointIn): coppie inizio/fine
 const SPANS_A = new Float64Array(512), SPANS_B = new Float64Array(512);
 
@@ -42,6 +52,18 @@ export class World {
     this.nextId = 100001;
     this.grid = new Map();
     this._qstamp = 0; // contrassegno delle ricerche dei vicini (_eachNear)
+    // [§6.3 N1] versione del mondo: cresce a ogni spostamento, creazione e
+    // distruzione; instance_nearest ricorda l'ultima risposta per nome
+    this._ver = 0;
+    this._nmemo = new Map();
+    // [§6.3 N3] certificati di lontananza (nearWithin): `_travel` somma, passo
+    // per passo, il massimo spostamento dei lati della scatola fra le istanze
+    // "seguite" (alleati, nemici, risorse); `_epoch` cresce quando ne nasce
+    // una e invalida tutti i certificati
+    this._travel = 0;
+    this._stepMax = 0;
+    this._stepNo = 0;
+    this._epoch = 0;
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
     this.particles = null; // particles.js (app.js)
@@ -115,6 +137,8 @@ export class World {
       cells: null,
     };
     this.instances.push(inst);
+    this._ver++;
+    if (isTracked(inst)) this._epoch++;
     for (const n of [object, ...o.parents]) {
       let l = this.byName.get(n);
       if (!l) this.byName.set(n, (l = []));
@@ -144,7 +168,14 @@ export class World {
     if (!inst.alive) return;
     this.fire(inst, "destroy");
     inst.alive = false;
+    this._ver++;
     this._unindex(inst);
+  }
+
+  // Dopo un ripristino (snapshot.js): niente risposte ricordate valgono piu'.
+  invalidateQueries() {
+    this._ver++;
+    this._epoch++;
   }
 
   is(inst, name) {
@@ -167,14 +198,58 @@ export class World {
   }
 
   // instance_nearest: distanza fra origini [I]
+  // [§6.3 N1] la stessa domanda (punto e nome) col mondo fermo (nessuno
+  // spostato, creato o distrutto: _ver) ha la stessa risposta: si ricorda
+  // l'ultima per nome. Prima l'11-19% delle chiamate era cosi' (p.es. scr_difendi
+  // la ripete per ogni difensore).
   nearest(x, y, name) {
+    const m = this._nmemo.get(name);
+    if (m && m.ver === this._ver && m.x === x && m.y === y) return m.res;
     let best = null, bd = Infinity;
     for (const i of this._list(name)) {
       if (!i.alive) continue;
       const d = (i.x - x) ** 2 + (i.y - y) ** 2;
       if (d < bd) { bd = d; best = i; }
     }
+    if (m) { m.ver = this._ver; m.x = x; m.y = y; m.res = best; }
+    else this._nmemo.set(name, { ver: this._ver, x, y, res: best });
     return best;
+  }
+
+  // [§6.3 N3] distance_to_object(instance_nearest(i.x, i.y, name)) < r, con
+  // lo stesso risultato, ma senza rifare la ricerca quando la risposta e'
+  // "no" per certo. Quando e' "no" si guarda quanto sono lontane TUTTE le
+  // istanze di `name`: se ognuna e' oltre rmax (il raggio piu' grande che il
+  // chiamante potra' chiedere, p.es. di notte) di un margine, la risposta
+  // resta "no" finche' gli spostamenti di tutti (_travel) non possono aver
+  // consumato il margine. Una scatola cambia al massimo di `d` per lato se
+  // si sposta di `d`; due scatole cambiano distanza al massimo di 2*sqrt(2)*d
+  // (si usa 3). Niente certificato se l'istanza o una delle candidate ha la
+  // scatola che dipende dallo sprite (maschera non fissa: puo' cambiare senza
+  // moved()), o se non e' seguita.
+  nearWithin(inst, name, r, rmax = r) {
+    let cs = inst._far;
+    const c = cs && cs[name];
+    if (c && c.margin && c.epoch === this._epoch && r <= c.rmax && 3 * (this._travel + this._stepMax - c.travel) < c.margin) return false;
+    const o = this.nearest(inst.x, inst.y, name);
+    const hit = !!o && this.distanceToInstance(inst, o) < r;
+    // dopo un tentativo fallito (qualcuno troppo vicino) si riprova fra
+    // RETRY passi: in mezzo vale il calcolo normale, il risultato non cambia
+    if (c && c.retry > this._stepNo) return hit;
+    let cert = null;
+    if (!hit && inst.mask_index && isTracked(inst)) {
+      let min = Infinity;
+      for (const x of this._list(name)) {
+        if (!x.alive) continue;
+        if (!x.mask_index || !isTracked(x)) { min = -1; break; }
+        const d = this.distanceToInstance(inst, x);
+        if (d < min) min = d;
+      }
+      if (min - rmax > 0) cert = { epoch: this._epoch, travel: this._travel, margin: min - rmax, rmax, retry: 0 };
+    }
+    if (!cs) cs = inst._far = {};
+    cs[name] = cert || { margin: 0, retry: this._stepNo + RETRY };
+    return hit;
   }
 
   // "girati verso il bersaglio quando attacchi" [C, blocco sprite di
@@ -200,16 +275,22 @@ export class World {
 
   // bbox in coordinate di room, estremi inclusi come in GMS (bbox_right).
   bbox(inst, x = inst.x, y = inst.y) {
+    const out = [0, 0, 0, 0];
+    return this._bboxInto(inst, x, y, out) ? out : null;
+  }
+
+  // [§6.3 N2] lo stesso calcolo scritto in `out`; false senza maschera
+  _bboxInto(inst, x, y, out) {
     const m = this.maskOf(inst);
-    if (!m) return null;
-    const [l, t, r, b] = m.bbox;
-    const [ox, oy] = m.origin;
+    if (!m) return false;
+    const bb = m.bbox, org = m.origin;
     const sx = inst.image_xscale, sy = inst.image_yscale;
-    let x0 = x + (l - ox) * sx, x1 = x + (r + 1 - ox) * sx;
-    let y0 = y + (t - oy) * sy, y1 = y + (b + 1 - oy) * sy;
-    if (x0 > x1) [x0, x1] = [x1, x0];
-    if (y0 > y1) [y0, y1] = [y1, y0];
-    return [x0, y0, x1, y1];
+    let x0 = x + (bb[0] - org[0]) * sx, x1 = x + (bb[2] + 1 - org[0]) * sx;
+    let y0 = y + (bb[1] - org[1]) * sy, y1 = y + (bb[3] + 1 - org[1]) * sy;
+    if (x0 > x1) { const t = x0; x0 = x1; x1 = t; }
+    if (y0 > y1) { const t = y0; y0 = y1; y1 = t; }
+    out[0] = x0; out[1] = y0; out[2] = x1; out[3] = y1;
+    return true;
   }
 
   // Intervalli pieni della maschera di inst (posta in ix, iy) sulla riga y
@@ -300,9 +381,22 @@ export class World {
   // Da chiamare dopo ogni cambio di x, y, sprite o maschera.
   moved(inst) {
     this._unindex(inst);
+    this._ver++;
     if (!inst.alive) return;
     const bb = this.bbox(inst);
     if (!bb) return;
+    if (isTracked(inst)) {
+      // [§6.3 N3] di quanto si sono spostati i lati della scatola in questo
+      // passo (somma delle mosse dell'istanza; il massimo fra le istanze)
+      const p = inst._bb;
+      if (p) {
+        const d = Math.max(Math.abs(bb[0] - p[0]), Math.abs(bb[1] - p[1]), Math.abs(bb[2] - p[2]), Math.abs(bb[3] - p[3]));
+        if (inst._tStep !== this._stepNo) { inst._tStep = this._stepNo; inst._tSum = 0; }
+        inst._tSum += d;
+        if (inst._tSum > this._stepMax) this._stepMax = inst._tSum;
+        p[0] = bb[0]; p[1] = bb[1]; p[2] = bb[2]; p[3] = bb[3];
+      } else inst._bb = [bb[0], bb[1], bb[2], bb[3]];
+    }
     inst.cells = this._cellsOf(bb);
     for (const k of inst.cells) {
       let s = this.grid.get(k);
@@ -413,8 +507,8 @@ export class World {
   }
 
   distanceToInstance(inst, o) {
-    const a = this.bbox(inst), b = o && this.bbox(o);
-    if (!a || !b) return Infinity;
+    const a = DIST_A, b = DIST_B;
+    if (!this._bboxInto(inst, inst.x, inst.y, a) || !o || !this._bboxInto(o, o.x, o.y, b)) return Infinity;
     return Math.hypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
   }
 
@@ -447,6 +541,9 @@ export class World {
     for (const i of live()) this.fire(i, "stepEnd");
     this.instances = live();
     this._compact();
+    this._travel += this._stepMax;
+    this._stepMax = 0;
+    this._stepNo++;
   }
 
   // Eventi di collisione [I, runner GMS]: dopo Step e moto, per ogni istanza

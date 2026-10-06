@@ -225,7 +225,7 @@ export function enemyMelee(name, p) {
   const T = MELEE[name];
   const visibility = (i, w) => {
     const g = w.g, n = 1 - g.night;
-    const near = (obj, r) => distTo(w, i, w.nearest(i.x, i.y, obj)) < r + r * n;
+    const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || (T.palo && near("palo_1", 200)) || i.hit === 1
       || near("castello", 500) || near("torre", 500) || w.room === "menu" || g.fogville === 0;
   };
@@ -412,7 +412,7 @@ export function enemyArcher(p) {
   const name = "enemy_arciere";
   const visibility = (i, w) => {
     const g = w.g, n = 1 - g.night;
-    const near = (obj, r) => distTo(w, i, w.nearest(i.x, i.y, obj)) < r + r * n;
+    const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0;
   };

@@ -503,7 +503,7 @@ export function enemyRam(base) {
     alarm4: undefined,
     step(i, w) {
       const g = w.g, n = 1 - g.night;
-      const near = (obj, r) => { const o = w.nearest(i.x, i.y, obj); return !!o && w.distanceToInstance(i, o) < r + r * n; };
+      const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || g.fogville === 0;
       const diro = i.direction;
@@ -575,7 +575,7 @@ export function enemyCatapult(base) {
     alarm4: catapultReload,
     step(i, w) {
       const g = w.g, n = 1 - g.night;
-      const near = (obj, r) => { const o = w.nearest(i.x, i.y, obj); return !!o && w.distanceToInstance(i, o) < r + r * n; };
+      const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || w.room === "menu" || g.fogville === 0;
       const diro = i.direction;

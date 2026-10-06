@@ -12,13 +12,12 @@ import { creazioneAttaccantiGenerico } from "./levels.js";
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
 // distance_to_object verso un'istanza che potrebbe non esserci: lontanissima
-function distTo(w, i, o) { return o ? w.distanceToInstance(i, o) : Infinity; }
 
 // Visibilita' degli edifici nemici [C]: come le unita', ma una volta visti
 // restano visibili (nessun "else visible=false").
 function revealBuilding(i, w) {
   const g = w.g, n = 1 - g.night;
-  const near = (obj, r) => distTo(w, i, w.nearest(i.x, i.y, obj)) < r + r * n;
+  const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
   if (near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0) i.visible = true;
 }

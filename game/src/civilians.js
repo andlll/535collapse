@@ -823,8 +823,10 @@ function ominoPanel(i, w, d) {
 // alleato e' vicino, e restano visibili.
 function reveal(i, w, dist, fogAware) {
   if (i.visible) return;
-  const u = w.nearest(i.x, i.y, "ally_unit"), b = w.nearest(i.x, i.y, "ally_build");
-  if ((u && w.distanceToInstance(i, u) < dist) || (b && w.distanceToInstance(i, b) < dist)
+  // §6.3 N3: nearWithin da' lo stesso risultato di
+  // distance_to_object(instance_nearest(...)) < dist, senza rifare la
+  // ricerca quando gli alleati sono lontani per certo
+  if (w.nearWithin(i, "ally_unit", dist) || w.nearWithin(i, "ally_build", dist)
       || (fogAware && w.g.fogville === 0)) i.visible = true;
 }
 

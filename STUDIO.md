@@ -144,8 +144,10 @@ sezione citata.
   senza copie), stessi risultati verificati passo per passo; C (niente
   spigoli tagliati), D (percorsi dritti, "step towards" solo con la meta
   in vista).
-- [ ] Studio delle alternative a `instance_nearest` (la voce piu' pesante
-  del passo).
+- [x] Studio delle alternative a `instance_nearest`; N1, N2, N3 (§6.3):
+  stessi risultati, passo -23% in `lvl02`, -18% in `match`.
+- [ ] Eventuale N4 (indice spaziale per `instance_nearest`) quando ci
+  saranno battaglie con 100+ unita' (§6.3).
 - [ ] Da decidere: nemici che escono dalla mappa quando il flow field non
   ha direzione nella loro cella (§6.2, "trovati").
 
@@ -2771,4 +2773,71 @@ celle da 32 sfiorano i bordi.
 campo aperto e dietro un muro); 5000 passi senza errori in `menu`,
 `match`, `lvl01`, `lvl02`; salvataggi con ripristino identico; zip dei
 portali nell'iframe.
+
+### 6.3 `instance_nearest`: studio, N1, N2, N3
+
+**Studio** (chiamate contate per punto del codice, liste scorse, profilo):
+94 chiamate nel codice; ~1160 a passo in `lvl02`, ~530 in `lvl01`, ~510 in
+`match`. Le liste sono corte (10–33 alleati): pesa il numero di chiamate.
+Le principali: `reveal` delle risorse nascoste (~500 a passo: ogni albero,
+miniera, pietra nella nebbia cerca l'alleato piu' vicino), i controlli di
+vista di nemici, edifici nemici, torri, arieti e catapulte ("il piu' vicino
+e' entro r + r*(1-notte)?", ~350), `scr_difendi` (la stessa domanda per
+ogni difensore, 77). L'11–19% delle chiamate ripete la stessa domanda col
+mondo fermo. In `lvl02` il 95% delle risorse nascoste e' a oltre 800 px da
+ogni alleato e l'83% dei nemici a oltre 1200 px. Con 80 soldati in piu'
+il passo sale a 3,4–4,2 ms e `reveal` + `nearest` sono un terzo.
+
+Alternative valutate: N1 memoria, N2 scatole senza array, N3 certificati
+di lontananza, N4 indice spaziale (utile solo con liste lunghe: rimandato),
+N5 controllo ogni N passi (cambia i tempi di rivelazione: scartato).
+Approvate N1, N2, N3.
+
+**N1** (`world.js`, `nearest`): il mondo ha una versione (`_ver`) che cresce
+a ogni `moved`, creazione e distruzione (l'unico punto che sposta le istanze
+e' `setPos`, verificato); `nearest` ricorda l'ultima risposta per nome e la
+rida' per la stessa domanda a versione invariata.
+
+**N2**: `bbox` calcolato in un array riusato (`_bboxInto`) per
+`distanceToInstance`.
+
+**N3** (`nearWithin(i, nome, r, rmax)`): lo stesso risultato di
+`distance_to_object(instance_nearest(i.x, i.y, nome)) < r`. Quando la
+risposta e' "no" si guarda la distanza delle scatole di TUTTE le istanze del
+nome: se il minimo supera `rmax` (il raggio piu' grande che il chiamante
+potra' chiedere: 2,01 r per i controlli di vista, la notte va da -0,005 a
+1,005; il certificato si ricontrolla se arriva un r piu' grande) di un
+margine, la risposta resta "no" finche' gli spostamenti non possono averlo
+consumato. Gli spostamenti: in `moved()` di quanto si sono mossi i lati
+della scatola di ogni istanza "seguita" (alleati, nemici, edifici,
+risorse), sommati per istanza nel passo; `_travel` somma per passo il
+massimo. Due scatole che si spostano di d per lato cambiano distanza al
+massimo di 2*sqrt(2)*d (si usa 3). Una nuova istanza seguita invalida tutti
+i certificati (`_epoch`); un salto (teletrasporto) consuma il margine
+subito. Niente certificato se l'istanza o una candidata ha la scatola che
+dipende dallo sprite (maschera non fissa: `palo_1`, la statua, la casa
+nemica, le casse; l'animazione cambia lo sprite senza `moved()`), e dopo un
+tentativo fallito (qualcuno vicino) si riprova fra 8 passi. I certificati e
+gli altri campi di servizio non si salvano; il ripristino li invalida.
+Usato da `reveal` e da tutti i controlli di vista (`enemies.js`,
+`enemybuild.js`, `ranged.js`, `siege.js`).
+
+**Verifiche**:
+- stato identico passo per passo alla versione precedente (stessa
+  casualita', confronto ogni 100 passi) in 7 scenari, compresa la
+  visibilita' di ogni istanza;
+- prova "ombra": a ogni chiamata di `nearWithin` ricalcolata anche la
+  formula originale: **0 differenze su 9,4 milioni di chiamate** (`lvl02`,
+  `match`, `lvl01`, e `lvl02` con 80 soldati in marcia attraverso la mappa);
+  ricerche saltate 86% in `lvl02`, 82% in `match`, 78% con 80 soldati in
+  piu', 37% in `lvl01` (alleati e nemici vicini);
+- tempo per passo (mediana di 5 misure, riferimento → nuovo): `lvl02` 1,18 →
+  0,92 ms (-23%), `match` 0,75 → 0,62 (-18%), `lvl01` 1,01 → 1,01; `lvl02`
+  con 80 soldati in marcia 4,25 → 3,60 (-15%). Le misure singole oscillano
+  di +-9%: una prima misura di `lvl01` sembrava -24%, era rumore (e un
+  costo vero dei tentativi falliti, tolto con l'attesa di 8 passi);
+- `npm test`, 45 test (nuovi: memoria di nearest, certificato che scade
+  mentre un'unita' si avvicina, nuova unita' accanto, salto, maschera non
+  fissa, raggio oltre rmax); 5000 passi senza errori nelle quattro room;
+  salvataggi identici; zip dei portali.
 
