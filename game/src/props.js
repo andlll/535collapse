@@ -3,9 +3,11 @@
 //
 // - `ocr_*` [C, Create]: gli edifici della citta' con bracieri creano 2 o 3
 //   `firestarter` attorno a se'.
-// - `firestarter`, `firestarter_small` [C]: sistemi di particelle del fuoco.
-//   Qui per ora solo la posizione, che la notte illumina (fog.js); le
-//   fiamme arrivano col sistema di particelle.
+// - `firestarter`, `firestarter_small` [C]: sistemi di particelle del fuoco
+//   (effects.js), accesi solo nella view e vicino a un alleato; la notte li
+//   illumina (fog.js). La torcia, visibile, si ridisegna anche nel suo Draw
+//   (part_system_drawit) oltre al disegno automatico del sistema: due volte,
+//   in somma [I, riprodotto].
 // - `palo_1` [C, Create]: segna le sue celle nella griglia dei costi, vita
 //   999 (rimessa a ogni Step) e una torcia (`firestarter_small`) in cima.
 // - `o_statua1..4` [C]: lvl01; un'unita' alleata entro 300 px la attiva:
@@ -15,6 +17,7 @@
 //   attivata apre `dialogo_statua` (con i dialoghi).
 
 import { pointDistance, pointDirection, degtorad } from "./gm.js";
+import { fireStarterCreate, fireStarterStep } from "./effects.js";
 
 // offset dei bracieri per oggetto [C, Create di ciascun ocr_*]
 const STD = [[-50, -50], [10, -100], [40, -55]];
@@ -38,9 +41,17 @@ export function cityBuilding(name) {
 // visibile ma disegna solo particelle.
 export function fireStarter(hidden) {
   return {
-    create(i) {
+    create(i, w) {
       i.depth = -i.y - 200;
       if (hidden) i.visible = false;
+      fireStarterCreate(i, w, !hidden);
+    },
+    step(i, w) { fireStarterStep(i, w); },
+    // firestarter Draw: depth=-y-70 (invisibile: non gira);
+    // firestarter_small Draw: depth=-y-90, part_system_drawit(fire_ps)
+    draw(i, w, d) {
+      i.depth = -i.y - (hidden ? 70 : 90);
+      w.particles.draw(i.fire_ps, d.r, w.assets, w.cam);
     },
   };
 }

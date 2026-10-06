@@ -14,11 +14,11 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 5 ottobre 2026, seconda sessione. Fase 3 completa:
-punto 5, nebbia e notte (§3.15). **Prossimo: da concordare con l'autore**;
-proposta: particelle (pioggia, fuoco: bracieri e torce esistono già come
-istanze), poi suggerimenti, dialoghi, vittoria e sconfitta. Il dettaglio
-di ogni voce sta nella sezione citata.
+Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
+completa (nebbia e notte, §3.15) e particelle (§3.16). **Prossimo:
+suggerimenti, dialoghi, obiettivi, vittoria e sconfitta** (la regia dei
+livelli li crea già se esistono: `createIfPorted`). Il dettaglio di ogni
+voce sta nella sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -39,7 +39,8 @@ di ogni voce sta nella sezione citata.
   `enemies.js`/`enemybuild.js` (nemici), `buildings.js`/`walls.js`/
   `production.js` (edifici), `levels.js` (regia), `manager.js` (HUD,
   tastiera, minimappa), `fog.js`/`fogdraw.js` (nebbia e notte), `props.js`
-  (statue, pali, bracieri), `app.js` (registrazione dei comportamenti).
+  (statue, pali, bracieri), `particles.js`/`effects.js` (particelle e loro
+  usi), `app.js` (registrazione dei comportamenti).
 
 **Decisioni o materiali che servono all'autore**
 - [ ] Screenshot dell'originale con il pannello delle risorse: raggio degli
@@ -56,6 +57,10 @@ di ogni voce sta nella sezione citata.
   che netti (deviazione da confermare); n.54 (le anteprime dei muri
   scoprono la nebbia) e n.55 (le statue scoprono ma non danno la vista).
   Utile uno screenshot dell'originale di notte per confrontare la tinta.
+- [ ] Particelle (§3.16): n.56 (la pioggia spegne ma le fiamme restano),
+  n.57 (germogli che restano dopo Canc), n.58 (l'aquila non si vede mai:
+  direzione voluta?), n.59–61 (torcia disegnata due volte, fiamme dei
+  nemici accesi nella nebbia, gocce quasi orizzontali).
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -82,14 +87,12 @@ di ogni voce sta nella sezione citata.
   statue, pali e bracieri come fonti di vista e di luce (§3.15).
 
 **Resto del gioco**
-- [ ] Particelle (pool unico): pioggia, erba, chiazze, fuoco (fiamme degli
-  edifici, fiammata delle frecce incendiarie, bracieri e torce:
-  `firestarter*`, già istanze), burst; spighe dei campi,
-  semi della semina; aquila (manager alarm 3), `fog_controller` (crea
-  `fog01`). Fumo (`nubeqq`), mattoni, zolle e sangue sono già oggetti
-  portati.
+- [x] Particelle (riserva unica): pioggia, erba, chiazze, fuoco (fiamme
+  degli edifici, fiammata delle frecce incendiarie, bracieri e torce),
+  spighe dei campi, germogli, semi della semina; aquila (§3.16). Resta
+  `fog_controller` (crea `fog01`, le nuvole del menu): col menu.
 - [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
-  461 righe) insieme al menu principale.
+  461 righe) e `fog_controller` (le sue nuvole) insieme al menu principale.
 - [ ] Suggerimenti del tutorial (`hint_*`, fra cui `hint_night` alla prima
   notte), dialoghi (`dialogo_*`, fra cui `dialogo_statua`), obiettivi
   (`objective_button`), vittoria e sconfitta.
@@ -102,8 +105,7 @@ di ogni voce sta nella sezione citata.
 - [x] Correzioni decise in Fase 1 (§1.6), applicate coi sistemi: ariete
   60 oro anche col tasto Q, annullare un picchiere restituisce 55 cibo e
   45 legno, centro distrutto −10 popcap, castello e torre senza −5.
-- [ ] Fiamme alte della casa da non distruggere (§3.5 n.18): con le
-  particelle.
+- [x] Fiamme alte della casa da non distruggere (§3.5 n.18, §3.16).
 
 **Fasi 4 e 5**
 - [ ] Salvataggi JSON come NIMBUS (versione del formato, checksum, file
@@ -2007,4 +2009,97 @@ con le particelle, dove sono già in lista.
   istanze si muovono), composizione della view 0,1 ms a fotogramma. In
   `lvl01` il passo costa ~0,2 ms in più per le 199 istanze nuove (bracieri
   e torce, come nell'originale).
+- 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.
+
+### 3.16 Particelle (6 ottobre 2026)
+
+**Portato** (`game/src/particles.js`, `effects.js`; forme in
+`tools/05_atlas.py`): un motore `part_system`/`part_type`/`part_emitter`
+alla GameMaker e tutti gli usi che stanno nelle room: pioggia (manager
+Alarm_4/6, trucco Q), spegnimento degli incendi con la pioggia (Alarm_2),
+fiamme degli edifici in fuoco (alleati, nemici, casse, centro, campo),
+fiammata delle frecce incendiarie, bracieri delle città e torce dei pali,
+erba e spighe decorative (`burst_erba1`, `burst_grano1`,
+`chiazzaparticellare`), spighe del campo e campo bruciato, germogli del
+cantiere del campo, semi lanciati dal seminatore; l'aquila (manager
+Alarm_3, è un oggetto). Mancava anche la collisione della freccia
+incendiaria con le casse del livello 1 (`o_box1/2`): portata.
+
+**Motore** [I, regole del runner annotate in `particles.js`]: ogni
+particella pesca alla nascita vita, dimensione, velocità, direzione e
+orientamento dagli intervalli del tipo; incrementi e gravità a ogni passo;
+"wiggle" come oscillazione attorno al valore; colore e alpha a 1, 2 o 3
+valori lungo la vita, `colour_mix` e `colour_rgb` fissi; regioni
+rettangolo, ellisse, rombo e linea con distribuzione lineare o gaussiana;
+stream negativo = probabilità 1/|n|, frazionario = `ceil(n)` (il ciclo
+`for (i=0; i<n; i++)` dell'export HTML5). I sistemi si aggiornano dopo gli
+Step e si disegnano da soli alla loro depth fra le istanze. Le forme
+interne (`pt_shape_flare`, `line`, `pixel`) sono ricreate a mano
+nell'atlas `gui` (64×64, dimensione 1 = 64 px). Le particelle sono oggetti
+riciclati da una riserva comune.
+
+**Numeri** [C]:
+- Fiamme: due sistemi per edificio, dietro (depth −y+1) e davanti (−y−1);
+  casa, mulino, magazzino, casa nemica 6+3 particelle a passo su 70 px;
+  caserme e stalle 8+4 su 150/110 px; centro 8+4 su 130 px; casse 6+3; il
+  campo solo dietro, 6. Moltiplicate per `visible` al momento
+  dell'accensione. La vita delle fiamme davanti cresce coi danni:
+  ((150−vita)/2, (160−vita)/2), (380, 400) le grandi, (430, 460) il
+  centro, (40, 50) le casse.
+- Pioggia: 6 gocce a passo lungo il bordo alto della room, 18–21 px a
+  passo per 200–300 passi, a depth −9000 (sotto nebbia e notte).
+- Erba e spighe: 1700–2600 particelle immobili per oggetto in un'ellisse
+  di 1000×600 px, che ondeggiano; in `match` ~12.700, nel menu ~18.000.
+
+**Correzione decisa dall'autore** (§3.5 n.18): la casa non distrugge più
+le fiamme dietro a ogni passo: brucia come gli altri edifici.
+
+**Deviazioni** (solo memoria): la fiammata delle frecce è un sistema che
+l'originale non distrugge mai; qui sparisce quando le particelle
+finiscono. Il seminatore crea un emettitore a ogni lancio e non lo
+distrugge; qui ce n'è uno solo.
+
+**Difetti e stranezze** [C], riprodotti:
+
+56. La pioggia spegne gli edifici di legno alleati (`onfire=0`: niente più
+    fumo né danni), ma non distrugge le fiamme e lascia `firestarted=1`:
+    le fiamme restano accese finché un civile non ripara col legno o
+    l'edificio non viene distrutto. La pioggia non spegne gli edifici
+    nemici. Raccomandazione: spegnere anche le fiamme, come la
+    riparazione.
+57. Canc su un cantiere di campo non distrugge i germogli: restano per
+    sempre, emessi al ritmo dell'ultimo passo.
+58. L'aquila parte a y=−10, sopra la room, e vola in direzione 30 (verso
+    l'alto): non entra mai nella view. Probabile intenzione: direzione
+    330 (in basso a destra) o partenza dal basso. Da chiedere.
+59. La torcia del palo (`firestarter_small`) è visibile: le sue fiamme si
+    disegnano due volte, in somma, una nel suo Draw (depth −y−90) e una
+    da sole alla depth del sistema, che non è mai impostata (0: dietro a
+    unità ed edifici) [I].
+60. Un edificio nemico che prende fuoco mentre è nella nebbia
+    (`visible=false`) ha fiamme a 0 particelle per sempre, anche quando
+    diventa visibile (lo stream si fissa all'accensione).
+61. Le gocce sono linee orientate a 160–170° (quasi orizzontali, se la
+    linea interna di GameMaker è orizzontale come fa pensare l'erba di
+    `chiazzaparticellare`, "linea verticale" a 85–95°) ma cadono a
+    250–260°. Da confrontare con l'originale.
+
+**Non portati**: `burst_chiazza1/2` e `object314` (distruggono i loro
+sistemi nello stesso Create, quindi non si vedrebbe nulla; non sono in
+nessuna room); `fog_controller` e `fog01` (le nuvole del menu) restano col
+menu.
+
+**Verificato**:
+- `npm test`: 25 test, di cui 6 nuovi in `test/particles.test.mjs`
+  (regioni, vita e riserva, moto e gravità, stream, distruzione, fiamme
+  degli edifici con i numeri della casa e della caserma nemica).
+- Chromium: torce dei pali e bracieri di `lvl01` accesi vicino alle unità;
+  centro in fiamme sotto la pioggia (spento: `onfire` 0, fiamme accese,
+  n.56); cantiere di campo coi germogli e campo bruciato con stoppie,
+  fuoco e fumo; spighe decorative; una freccia incendiaria su una cassa →
+  fiammata di 300 particelle, cassa in fiamme; riparazione col legno →
+  fiamme distrutte; trucco Q → pioggia fermata; 8 semi lanciati che cadono
+  e spariscono.
+- Costi: aggiornamento 0,29 ms a passo con le 18.000 particelle del menu,
+  disegno 1,3 ms a fotogramma (SwiftShader, CPU); in `lvl01` 0,13 ms.
 - 3000 passi senza errori in `match`, `lvl01`, `lvl02`, `menu`.

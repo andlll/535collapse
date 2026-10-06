@@ -11,6 +11,7 @@
 // cantiere e campo finito sono a parte (campoFond, campo). Le mura
 // (orientamento, tratti, porte) sono a parte (da fare).
 
+import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
 
@@ -389,11 +390,10 @@ export function built(fam, p) {
       if (fam === "barn") { i.sprite_index = "mul1"; i.image_index = 0; i.image_speed = 0.3; i.mask_index = "barn_mask"; w.moved(i); }
       if (fam === "magazzino") sendBuildersToWork(i, w, p);
     },
-    destroy(i) { p.markInstance(i, 1); },
-    // Alarm del fuoco [C]: fumo (nubeqq) e -1 vita ogni 70 passi in fiamme
-    // (il fumo e le fiamme arrivano con le particelle; nella casa
-    // l'originale distrugge le fiamme alte al passo dopo: §3.5 n.18, da
-    // correggere quando si portano le particelle).
+    // Destroy [C]: celle libere e, per gli edifici di legno, via le fiamme
+    destroy(i, w) { p.markInstance(i, 1); if (b.fire) fireStop(i, w); },
+    // Alarm del fuoco [C]: fumo (nubeqq) e -1 vita ogni 70 passi in fiamme.
+    // Le fiamme (particelle) sono nello Step: effects.js, fireStep.
     ...(b.fire ? {
       ["alarm" + b.smoke[0]](i, w) {
         i.alarm.set(b.smoke[0], b.smoke[1]);
@@ -412,6 +412,10 @@ export function built(fam, p) {
         return;
       }
       repairEnd(i, w);
+      // [Correzione decisa dall'autore, §3.5 n.18] nella casa l'originale
+      // distruggeva le fiamme dietro a ogni passo (un if senza graffe nella
+      // "fine riparazione"): qui la casa brucia come gli altri edifici.
+      if (b.fire) fireStep(i, w, fam);
       if (b.damage) {
         const [ok, r1, r2] = b.damage;
         if (i.life > i.slife * 0.66 && i.sprite_index !== ok) i.sprite_index = ok;
@@ -501,13 +505,14 @@ export function campoFond(p) {
       i.depth = -1;
       w.g.sele = 0;
       i.alarm.set(0, 1);
-      // (l'erba che cresce, particelle "part_crop": col sistema di particelle)
+      campoFondCreate(i, w);
     },
     // Alarm_0 [C]: come gli altri cantieri, ma con fieldwork e il punto
     // del mouse al momento dell'alarm.
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
-      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
+      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); w.particles.systemDestroy(i.grass_system); }
+      campoFondStream(i, w);
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.g.sele === 0) i.selected = 1; },
@@ -515,6 +520,8 @@ export function campoFond(p) {
       for (const o of w.all("ally_omino")) if (o.selected === 1) o.fieldwork = 1;
       i.buildwork = 1;
     },
+    // [C, §3.16 n.57] Canc non distrugge i germogli: restano per sempre,
+    // emessi al ritmo dell'ultimo passo. Riprodotto.
     keyPress46(i, w) { if (i.selected === 1) { w.destroy(i); w.g.wood += 200; } },
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_corn"); },
   };
@@ -526,14 +533,14 @@ export function campoFond(p) {
 // nessuno la legge (residuo, §3.6).
 export function campo(p) {
   return {
-    create(i) {
+    create(i, w) {
       p.markInstance(i, 1);
       Object.assign(i, { selected: 0, foodwork: 0, life: 100, slife: 100, onfire: 0, firestarted: 0,
                          food: 0, hover: 0, hit: 0 });
       i.alarm.set(0, 120);
       i.alarm.set(2, 30);
       i.alarm.set(3, 5);
-      // (le spighe, 700 particelle "part_crop": col sistema di particelle)
+      campoCreate(i, w);
     },
     alarm0(i) { i.alarm.set(0, 120); if (i.food < 200) i.food += 1; },
     alarm1(i) { i.foodwork = 0; },
@@ -542,8 +549,11 @@ export function campo(p) {
       if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
     },
     alarm3(i) { i.alarm.set(3, 5); if (i.onfire === 1) i.life -= 1; },
-    destroy(i, w) { w.g.farmhover = 0; },
-    step(i, w) { if (i.life <= 0) w.destroy(i); }, // (campo bruciato: col fuoco)
+    destroy(i, w) { w.g.farmhover = 0; campoDestroy(i, w); },
+    step(i, w) {
+      if (i.life <= 0) { w.destroy(i); return; }
+      campoStep(i, w);
+    },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
     mouseEnter(i, w) { w.g.farmhover = 1; i.hover = 1; }, // (+ hint_campi coi suggerimenti)
@@ -596,7 +606,7 @@ export function centro(p) {
       // il centro e' anche deposito del cibo: un "mulino" invisibile sul posto
       w.create("cc_barn", i.x, i.y);
     },
-    destroy(i) { p.markInstance(i, 1); },
+    destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     // centro Alarm_2 e Alarm_3 [C]: fumo ogni 30 passi, -1 vita ogni 70
     alarm2(i, w) {
       i.alarm.set(2, 30);
@@ -628,6 +638,7 @@ export function centro(p) {
         for (const c of w.all("centro_indietro_clicker")) w.destroy(c);
       }
       repairEnd(i, w);
+      fireStep(i, w, "centro");
     },
     // Alarm_0 [C]: avanzamento della produzione (un punto ogni 10 passi);
     // a 100 nasce un civile, se c'e' posto nella popolazione, e va verso la

@@ -28,6 +28,8 @@ import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBul
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
+import { Particles } from "./particles.js";
+import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
@@ -102,6 +104,8 @@ async function main() {
   const world = new World({ objects, masks: masks.sprites, assets, g, roomW: room.width, roomH: room.height });
   world.room = roomName;
   world.cam = cam;
+  world.particles = new Particles();
+  manager.world = world;
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   world.register("ally_cavaliere", cavaliere(path));
@@ -187,6 +191,8 @@ async function main() {
   world.register("firestarter_small", fireStarter(false));
   world.register("palo_1", palo(path));
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) world.register(n, statue());
+  for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
+  world.register("aquila_01", aquila());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
@@ -238,6 +244,7 @@ async function main() {
     manager.step(input, cam, room.width, room.height);
     world.input = input;
     world.step(input, mx, my);
+    world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);
     if (input.pressed.has(114)) { // F3
       diag.toggle();
@@ -292,6 +299,7 @@ async function main() {
         canvasW: canvas.width, canvasH: canvas.height, renderScale: rscale.scale,
         view: `${Math.round(cam.x)},${Math.round(cam.y)} ${Math.round(cam.w)}x${Math.round(cam.h)}`,
         room: roomName, maxTextureSize: r.maxTextureSize, units: r.units,
+        particles: world.particles.count, systems: world.particles.systems.length,
       });
     },
   });

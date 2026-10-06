@@ -5,6 +5,7 @@
 
 import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
+import { fireStep, fireStop } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
@@ -103,10 +104,11 @@ export function enemyBuilding(kind, p) {
     ...(K.produces ? {
       alarm3(i, w) { if (i.role !== 10) creazioneAttaccantiGenerico(i, w); },
     } : {}),
-    destroy(i) { p.markInstance(i, 1); },
+    destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {
       revealBuilding(i, w);
-      // (fiamme: col sistema di particelle; hint_fire coi suggerimenti)
+      fireStep(i, w, kind);
+      // (hint_fire coi suggerimenti)
       if (i.life <= 0) {
         baseCounters(i, w.g, K.bases);
         w.create(K.ruin, i.x, i.y);
@@ -135,11 +137,11 @@ export function oBox(kind, p) {
     },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
     alarm2(i) { i.hit = 0; },
-    destroy(i) { p.markInstance(i, 1); },
+    destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {
       const g = w.g;
       revealBuilding(i, w);
-      if (i.onfire === 1 && i.firestarted === 0) i.firestarted = 1;
+      fireStep(i, w, kind);
       if (i.life <= 0) {
         const premio = irandomRange(1, 3), amount = irandomRange(kind === "o_box1" ? 5 : 3, 8);
         if (premio === 1) { g.gold += 75 * amount; w.create("oro_prizedrawer", i.x, i.y); }

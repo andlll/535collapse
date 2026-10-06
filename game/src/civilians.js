@@ -8,6 +8,7 @@
 // action: 0 fermo, 1 in cammino, 2 taglia legna, 3 scava oro, 4 raccoglie
 // cibo, 5 spacca pietra, 6 costruisce, 7 ripara, 8 semina.
 
+import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
@@ -638,10 +639,11 @@ function otherWorkTick(i, w) {
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
     return;
   }
-  // semina [C]: +5 a ogni scatto (i semi lanciati sono particelle: dopo)
+  // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
   if (i.action === 8) {
     const f = w.nearest(i.buildx, i.buildy, "campo_fond");
     if (f && f.fondazione === 1) { f.life += 5; if (f.life > f.slife) f.life = f.slife; }
+    if (i.step === 2) seedsThrow(i, w);
     i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
     i.alarm.set(2, 13);
     return;
@@ -654,7 +656,7 @@ function otherWorkTick(i, w) {
     }
   } else if (i.action === 7) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
-    // anche il fuoco (le particelle arriveranno col loro sistema)
+    // anche il fuoco (e le fiamme)
     const b = w.nearest(i.repx, i.repy, "ally_build");
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
@@ -663,7 +665,7 @@ function otherWorkTick(i, w) {
     if (b && b.legno === 1 && g.wood > 0) {
       g.wood--; b.life++;
       b.onfire = 0;
-      if (b.firestarted === 1) b.firestarted = 0;
+      if (b.firestarted === 1) { fireStop(b, w); b.firestarted = 0; }
       if (b.life > b.slife) b.life = b.slife;
     }
   } else return;

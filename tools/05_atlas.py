@@ -19,8 +19,9 @@ Gruppi (dalle cartelle di sprite dell'autore, data/sprites.json "folder"):
 
 Nel gruppo gui anche i tre font bitmap rasterizzati da GameMaker (Seagram
 tfb, STUDIO.md §2.5: foglio intero come pseudo-sprite "__font_<nome>", piu'
-la tabella dei glifi in atlas.json "fonts") e "__white", un quadratino
-bianco per rettangoli, cerchi e linee: niente texture in piu' da legare.
+la tabella dei glifi in atlas.json "fonts"), "__white", un quadratino
+bianco per rettangoli, cerchi e linee, e le forme delle particelle
+("__pt_flare", "__pt_line", "__pt_pixel"): niente texture in piu' da legare.
 
 Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
 come sprite di un oggetto ne' nel codice): servono solo a tools/06_masks.py.
@@ -161,6 +162,38 @@ def extrude(img, pad):
     return out
 
 
+def particle_shapes():
+    """(nome, immagine ritagliata, [x, y, w, h] del ritaglio nella tela 64x64)."""
+    import math
+    out = []
+    # flare: bagliore radiale con quattro raggi sottili
+    fl = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    px = fl.load()
+    for y in range(64):
+        for x in range(64):
+            dx, dy = (x + 0.5 - 32) / 32, (y + 0.5 - 32) / 32
+            r = math.hypot(dx, dy)
+            glow = max(0.0, 1 - r) ** 2.5
+            ray = 0.0
+            for along, perp in ((abs(dx), abs(dy)), (abs(dy), abs(dx))):
+                ray = max(ray, math.exp(-perp * 32 / 1.2) * max(0.0, 1 - along) ** 2 * 0.7)
+            px[x, y] = (255, 255, 255, round(255 * min(1.0, glow + ray)))
+    out.append(("__pt_flare", fl, [0, 0, 64, 64]))
+    # line: segmento orizzontale lungo tutta la tela, 5 px di spessore
+    # sfumato, estremi che svaniscono negli ultimi 8 px
+    ln = Image.new("RGBA", (64, 5), (255, 255, 255, 0))
+    px = ln.load()
+    prof = [0.25, 0.75, 1.0, 0.75, 0.25]
+    for x in range(64):
+        end = min(1.0, (min(x, 63 - x) + 0.5) / 8)
+        for y in range(5):
+            px[x, y] = (255, 255, 255, round(255 * prof[y] * end))
+    out.append(("__pt_line", ln, [0, 30, 64, 5]))
+    # pixel: un solo pixel al centro
+    out.append(("__pt_pixel", Image.new("RGBA", (1, 1), (255, 255, 255, 255)), [32, 32, 1, 1]))
+    return out
+
+
 def main():
     need(os.path.join(DATA_DIR, "sprites.json"), "data/sprites.json (lancia 02_extract.py)")
     need(os.path.join(GMX_DIR, "sprites", "images"), "gmx/sprites/images (lancia 01_unpack.py)")
@@ -214,6 +247,13 @@ def main():
     manifest["sprites"]["__white"] = {"group": "gui", "width": 8, "height": 8, "origin": [0, 0],
                                       "scale": 1.0, "frames": [{"trim": [0, 0, 8, 8]}]}
     items["gui"].append(("__white", 0, Image.new("RGBA", (8, 8), (255, 255, 255, 255))))
+    # forme interne delle particelle di GameMaker (pt_shape_flare, line,
+    # pixel): texture 64x64 di GMS ricreate a mano, bianche con l'alpha
+    # [I: l'aspetto esatto va confrontato con uno screenshot dell'originale]
+    for name, crop, trim in particle_shapes():
+        manifest["sprites"][name] = {"group": "gui", "width": 64, "height": 64, "origin": [32, 32],
+                                     "scale": 1.0, "frames": [{"trim": trim}]}
+        items["gui"].append((name, 0, crop))
 
     total_gpu = total_disk = 0
     print("%-9s %-6s %5s %6s %7s %9s %8s" % ("gruppo", "tier", "scala", "frame", "pagine", "GPU MB", "WebP MB"))

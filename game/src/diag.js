@@ -35,6 +35,7 @@ export class Diagnostics {
       `memoria texture ${(data.textureBytes / 1048576).toFixed(0)} MB   texture ${data.textures}`,
       `canvas ${data.canvasW}x${data.canvasH}   scala ${data.renderScale.toFixed(1)}   dpr ${devicePixelRatio}`,
       `view ${data.view}   room ${data.room}`,
+      `particelle ${data.particles} in ${data.systems} sistemi`,
       `MAX_TEXTURE_SIZE ${data.maxTextureSize}   unita' texture ${data.units}`,
     ];
     this.el.textContent = lines.join("\n");

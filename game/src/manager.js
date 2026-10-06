@@ -6,6 +6,7 @@
 
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
+import { rainStart } from "./effects.js";
 
 export class Manager {
   constructor(room, g) {
@@ -17,9 +18,13 @@ export class Manager {
     this.al.set(0, 6000);                          // timer notte
     this.al.set(4, irandomRange(12000, 15000));    // pioggia
     this.al.set(8, 60);                            // orologio
+    this.al.set(2, 100);                           // pioggia che spegne i fuochi
+    this.al.set(3, 100);                           // aquila
+    this.world = null;                             // app.js (pioggia e aquila)
+    this.rain = null;
     if (room === "lvl01") { g.night = 1; this.al.set(1, 100000); }
     if (room === "lvl02") { g.night = 1; this.al.set(1, 1); }
-    // aquila (alarm 3), startflagger (9), bordi solidi (10): con i loro sistemi
+    // startflagger (9), bordi solidi (10): con i loro sistemi
     this.minimHover = this.minimViewHover = this.minimPlusHover = this.minimMinusHover = 0;
     this.minimViewHoverBis = 0;
   }
@@ -75,7 +80,10 @@ export class Manager {
     if (R(86)) g.visia = 0;
   }
 
+  // part_system_destroy(rain); global.raining=0
   stopRain() {
+    if (this.world && this.rain) this.world.particles.systemDestroy(this.rain);
+    this.rain = null;
     this.g.raining = 0;
   }
 
@@ -141,12 +149,25 @@ export class Manager {
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
         else this.al.set(0, 4000);
         break;
-      case 4: // pioggia (le particelle arrivano col loro sistema)
+      case 2: // [C] (il resto e' il ridimensionamento della finestra)
+        // la pioggia spegne gli edifici di legno alleati ogni 10 passi; le
+        // fiamme pero' restano accese (§3.16 n.56, riprodotto)
+        this.al.set(2, 10);
+        if (g.raining === 1 && this.world) for (const b of this.world.all("ally_wooden")) b.onfire = 0;
+        break;
+      case 3: // aquila, ogni 3000 passi
+        this.al.set(3, 3000);
+        if (this.world) this.world.create("aquila_01", irandomRange(-this.world.roomW, this.world.roomW), -10);
+        break;
+      case 4: // pioggia: gocce lungo il bordo alto della room
         this.al.set(6, irandomRange(12000, 15000));
-        if (g.raining === 0) g.raining = 1;
+        if (g.raining === 0) {
+          g.raining = 1;
+          if (this.world) this.rain = rainStart(this.world);
+        }
         break;
       case 6: // fine pioggia
-        g.raining = 0;
+        this.stopRain();
         this.al.set(4, irandomRange(20000, 35000));
         break;
       case 8: // orologio (si ferma a partita persa: gameover_manager)
