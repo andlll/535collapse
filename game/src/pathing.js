@@ -383,6 +383,58 @@ export function moveFlowField(w, p, inst) {
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
 }
 
+// [§7.10, segnalazione dell'autore] Un posto per un'unita' appena prodotta
+// vicino alla bandiera (ax, ay): il centro di una cella da 64 px (a spirale
+// a partire da quella della bandiera) percorribile, dove la sua maschera non
+// tocca altri solidi e che nessun'altra unita' appena prodotta (creation 1)
+// ha gia' come meta (entro 48 px). null se non ce n'e' entro 400 tentativi.
+// Prima due unita' prodotte di seguito ricevevano lo stesso posto (la
+// spirale guardava solo le celle di chi e' gia' fermo) e la seconda,
+// trovatolo occupato, spostava la meta a caso di 32-50 px a ogni passo.
+export function rallySpot(w, p, inst, ax, ay) {
+  const taken = [];
+  for (const u of w.all("ally_unit")) {
+    if (u === inst || u.creation !== 1) continue;
+    if (u.flaggox !== null && u.flaggox !== undefined) taken.push([u.flaggox, u.flaggoy]);
+    if (u.action === 1) taken.push([u.dirox, u.diroy]);
+  }
+  const cs = 64;
+  let gx = Math.floor(ax / cs), gy = Math.floor(ay / cs);
+  let stepLen = 1, dir = 0, done = 0, changes = 0;
+  for (let attempts = 0; attempts < 400; attempts++) {
+    const fx = gx * cs + cs / 2, fy = gy * cs + cs / 2;
+    const cx = Math.floor(fx / GRID), cy = Math.floor(fy / GRID);
+    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && w.placeFree(inst, fx, fy)
+        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < 48 && Math.abs(ty - fy) < 48)) return [fx, fy];
+    if (dir === 0) gx++; else if (dir === 1) gy++; else if (dir === 2) gx--; else gy--;
+    done++;
+    if (done >= stepLen) {
+      done = 0;
+      dir = (dir + 1) % 4;
+      changes++;
+      if (changes % 2 === 0) stepLen++;
+    }
+  }
+  return null;
+}
+
+// [§7.10] Appena prodotta e col posto occupato: un altro posto libero
+// vicino alla stessa bandiera (al piu' ogni 15 passi), e il campo verso di
+// lui (`move`: scrMove o l'equivalente del civile). false se non ce n'e'.
+export function rallyRetry(w, p, inst, move) {
+  if ((inst.rallyTry || 0) > w._stepNo) return true;
+  inst.rallyTry = w._stepNo + 15;
+  if (inst.rallyAx === undefined) {
+    inst.rallyAx = inst.flaggox ?? inst.dirox;
+    inst.rallyAy = inst.flaggoy ?? inst.diroy;
+  }
+  const s = rallySpot(w, p, inst, inst.rallyAx, inst.rallyAy);
+  if (!s) return false;
+  inst.flaggox = s[0]; inst.flaggoy = s[1];
+  move(s[0], s[1]);
+  return true;
+}
+
 // [§6.4] Da (x0, y0) a (x1, y1) a piedi in linea retta: tutte le celle
 // sotto il segmento senza ostacoli (costo < 1000; i primi 16 px no: la
 // cella di chi parte e' occupata da lui).

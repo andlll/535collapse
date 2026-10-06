@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
 import { meleeSpot } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
@@ -296,7 +296,9 @@ export function cavaliere(p) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(50, dir);
           i.diroy += lengthdirY(50, dir);
-        } else {
+        } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) {
+          // [§7.10] un altro posto libero vicino alla bandiera; se non c'e',
+          // come l'originale
           i.dirox += irandomRange(-50, 50);
           i.diroy += irandomRange(-50, 50);
         }
@@ -448,7 +450,7 @@ export function infantry(name, p) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(32, dir);
           i.diroy += lengthdirY(32, dir);
-        } else {
+        } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { // §7.10
           i.dirox += irandomRange(-32, 32);
           i.diroy += irandomRange(-32, 32);
         }
@@ -887,7 +889,8 @@ export function unitPanel(i, w, d, icon) {
 // ------------------------------------------------------------- cadaveri
 
 // *_corpse [C, Create/Step/Alarm_0]: tre fotogrammi di morte (13, 13, 40
-// passi) nella direzione in cui l'unita' guardava, poi l'istanza sparisce.
+// passi) nella direzione in cui l'unita' guardava, l'ultimo sbiadendo, poi
+// l'istanza sparisce.
 export function corpse(name) {
   return {
     create(i) { i.depth = -i.y; i.alarm.set(0, 20); i.step = 0; i.phase = 0; },
@@ -895,6 +898,9 @@ export function corpse(name) {
       ANIM[name](i, w);          // azione 1: sprite (alla prima passata phase=0: nessuno)
       i.depth = -i.y;            // azione 2: direzione
       i.phase = phaseOf(i.direction);
+      // azione 3 [C, "///alpha"]: nell'ultima fase (40 passi) sbiadisce.
+      // [§7.8] mancava nel porting: il cadavere spariva di colpo
+      if (i.step === 3) i.image_alpha -= 0.025;
     },
     alarm0(i, w) {
       if (i.step === 0) { i.step = 1; i.alarm.set(0, 13); return; }

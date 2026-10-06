@@ -23,6 +23,9 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const state = encodeGraph({
     instances: world.instances.filter((i) => i.alive),
     nextId: world.nextId,
+    // [§7.10] il contatore dei passi: le attese scritte come "fino al passo
+    // N" (reposAt, rallyTry, meleeRoute) dopo un caricamento ripartivano da 0
+    stepNo: world._stepNo,
     seeds: world.seeds || null,
     seedEmitter: world.seedEmitter || null,
     g,
@@ -52,6 +55,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   Object.assign(g, s.g);
   world.instances = s.instances;
   world.nextId = s.nextId;
+  world._stepNo = s.stepNo || 0;
   world.byName = new Map();
   world.grid = new Map();
   for (const i of world.instances) {

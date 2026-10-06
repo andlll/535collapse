@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -261,7 +261,7 @@ function ominoStep(i, w, p, stop) {
       const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
       i.dirox += lengthdirX(50, dir);
       i.diroy += lengthdirY(50, dir);
-    } else {
+    } else if (!rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-32, 32);
       i.diroy += irandomRange(-32, 32);
     }
@@ -271,8 +271,10 @@ function ominoStep(i, w, p, stop) {
   // azione 11: "posto occupato (legacy?)"
   if (i.action === 1 && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
       && !w.placeFree(i, i.dirox, i.diroy)) {
-    i.dirox += irandomRange(-30, 30);
-    i.diroy += irandomRange(-30, 30);
+    if (i.creation !== 1 || !rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
+      i.dirox += irandomRange(-30, 30);
+      i.diroy += irandomRange(-30, 30);
+    }
   }
   // azione 12: ordine dei civili inattivi (per il tasto Spazio)
   if (i.action === 0 && i.idling === 0) { i.idling = 1; i.idleorder = g.idle; }

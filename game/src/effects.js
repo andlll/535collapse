@@ -18,8 +18,10 @@ const P = (w) => w.particles;
 // part_type_orientation): 160-170 gradi in piu' dei 250-260 del moto, cioe'
 // linee quasi parallele alla caduta (§6.1 n.77: prima era assoluto e le
 // gocce cadevano di traverso).
+// [§7.9, richiesta dell'autore] gocce 2,5 volte piu' spesse (stessa
+// lunghezza): a 1,5-2,5 px si vedevano poco.
 const GOCCIA = partType({
-  shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0],
+  shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0], scale: [1, 2.5],
   colour: { rgb: [131, 148, 101, 119, 74, 107] }, speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
   life: [200, 300],
 });

@@ -23,7 +23,7 @@ import { enemyManager, enemyManagerLv2, levelStep } from "./levels.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
+import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
@@ -228,6 +228,7 @@ async function main() {
   world.register("cibo_prizedrawer", prizeDrawer("ico_food_prize"));
   world.register("idle_clicker", idleClicker());
   for (const n of Object.keys(objects).filter((k) => k.endsWith("_corpse"))) world.register(n, corpse(n));
+  for (const n of WOOD_RUINS) world.register(n, woodRuin(n));
   for (const n of ["enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) world.register(n, enemyMelee(n, path));
   world.register("atk_signal", atkSignalObject());
   for (const n of Object.keys(CITY_FIRES)) world.register(n, cityBuilding(n));

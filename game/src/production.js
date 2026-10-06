@@ -14,6 +14,7 @@
 // assente e' 0 come nell'originale.
 
 import { tr } from "./i18n.js";
+import { rallySpot } from "./pathing.js";
 
 const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
 
@@ -160,7 +161,9 @@ export function producer(name, base, p) {
         if (ax !== 0) {
           n.alarm.set(10, 10);
           n.creation = 1;
-          [n.flaggox, n.flaggoy] = spiral64(w.path, ax, ay);
+          // [§7.10] un posto libero e non gia' promesso a un'altra unita'
+          // appena prodotta; se non c'e', la spirale dell'originale
+          [n.flaggox, n.flaggoy] = rallySpot(w, w.path, n, ax, ay) || spiral64(w.path, ax, ay);
         } else w.path.occupy(n);
       }
       if (P.slots) for (let k = 0; k < 6; k++) i[SLOTS[k]] = i[SLOTS[k + 1]];
