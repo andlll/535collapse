@@ -1,7 +1,7 @@
 // Renderer WebGL2: un solo shader, quad a lotti, piu' texture per lotto.
 //
 // Ogni vertice porta l'indice della texture (pagina d'atlas o sfondo) e lo
-// shader sceglie il sampler con una catena di if: con 16 unita' di texture
+// shader sceglie il sampler (con un albero di if, §7.11 G2): con 16 unita' di texture
 // (il minimo garantito da WebGL2) tutte le pagine stanno legate insieme e una
 // scena intera e' di solito UNA chiamata di disegno. Si svuota il lotto solo
 // quando serve una texture nuova e le unita' sono finite, o il buffer e' pieno.
@@ -31,11 +31,19 @@ void main() {
   vUnit = int(aUnit + 0.5);
 }`;
 
+// [§7.11 G2] La texture del vertice si sceglie con un albero di confronti
+// (log2(16) = 4 invece di fino a 16 if in catena) e si legge con textureLod
+// al livello 0: le texture non hanno mipmap, quindi i pixel sono identici a
+// texture(), ma una lettura senza derivate puo' stare dentro un ramo vero.
+// Con texture() ANGLE (WebGL su Direct3D, Chrome su Windows) tende ad
+// appiattire i rami e a leggere tutte le unita' a ogni pixel.
+function pickTree(lo, hi) {
+  if (hi - lo === 1) return `t = textureLod(uTex[${lo}], vUv, 0.0);`;
+  const mid = (lo + hi) >> 1;
+  return `if (vUnit < ${mid}) { ${pickTree(lo, mid)} } else { ${pickTree(mid, hi)} }`;
+}
+
 function fragmentShader(units) {
-  let pick = "";
-  for (let i = 0; i < units; i++) {
-    pick += `${i ? "else " : ""}if (vUnit == ${i}) t = texture(uTex[${i}], vUv);\n`;
-  }
   return `#version 300 es
 precision mediump float;
 uniform sampler2D uTex[${units}];
@@ -44,8 +52,8 @@ in vec4 vColor;
 flat in int vUnit;
 out vec4 outColor;
 void main() {
-  vec4 t = vec4(1.0);
-  ${pick}
+  vec4 t;
+  ${pickTree(0, units)}
   outColor = t * vColor;
 }`;
 }
