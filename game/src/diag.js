@@ -27,10 +27,20 @@ export class Diagnostics {
     if (!this.visible || now - this.since < 500) return;
     const secs = (now - this.since) / 1000;
     const fps = this.frames / secs;
+    // [§6.8 G0] tempo GPU per fotogramma (media e massimo degli ultimi
+    // risultati): se si avvicina ai 16,7 ms di un fotogramma a 60 fps, il
+    // limite e' la scheda grafica; se e' basso e gli fps lo sono anche, e'
+    // la CPU (riga sotto) o il browser
+    const g = data.gpuMs || [];
+    const gpu = !data.gpuTimer ? "non disponibile (il browser non espone EXT_disjoint_timer_query_webgl2)"
+      : !g.length ? "in misura..."
+      : `${(g.reduce((a, b) => a + b, 0) / g.length).toFixed(2)} ms (max ${Math.max(...g).toFixed(2)})`;
+    const qn = { high: "alta", medium: "media", low: "bassa" }[data.quality] || data.quality;
     const lines = [
       `GPU: ${data.renderer}${data.software ? "  [SOFTWARE]" : ""}`,
       `fps ${fps.toFixed(0)} (tetto ${data.fpsCap})   passi/s ${(this.steps / secs).toFixed(0)}`,
-      `CPU per frame ${(this.cpu / Math.max(1, this.frames)).toFixed(2)} ms`,
+      `CPU per frame ${(this.cpu / Math.max(1, this.frames)).toFixed(2)} ms   GPU per frame ${gpu}`,
+      `qualita' ${qn}: mondo ${data.worldScale.toFixed(2)} px per px CSS, interfaccia ${data.canvasScale.toFixed(2)}`,
       `chiamate di disegno ${data.drawCalls}   quad ${data.quads}   istanze disegnate ${data.drawn}`,
       `memoria texture ${(data.textureBytes / 1048576).toFixed(0)} MB   texture ${data.textures}`,
       `canvas ${data.canvasW}x${data.canvasH}   scala ${data.renderScale.toFixed(1)}   dpr ${devicePixelRatio}`,

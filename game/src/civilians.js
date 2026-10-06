@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
 import { phaseOf, walkCycle } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -27,9 +27,10 @@ function inView(w, i) {
 
 // Ricalcolo del campo verso (tx, ty) senza scr_free (blocco ripetuto in
 // "arrivi a 10 di cibo" e nei Create degli edifici).
-function goTo(p, i, tx, ty) {
-  const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(tx / GRID), Math.trunc(ty / GRID),
-                                            Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
+function goTo(p, i, tx, ty, freeCell = false) {
+  const find = freeCell ? p.nearestFreeCell : p.findValidCellBackwards;
+  const [cx, cy] = find.call(p, i.goal_field, Math.trunc(tx / GRID), Math.trunc(ty / GRID),
+                             Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
   const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
   i.goal_x = found ? cx * GRID : i.x;
   i.goal_y = found ? cy * GRID : i.y;
@@ -304,7 +305,10 @@ function ominoMove(i, w, p) {
   const mp = (t) => { if (t) mpPotentialStep(w, i, t.x, t.y, i.autospeed); };
   const workreach = (i.goldwork > 0 || i.stonework > 0 || i.woodwork > 0) ? 200 : 0;
   if (i.action === 1) {
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFree(i, i.x, i.y)) {
+    // §6.2 D: senza la destinazione in vista si resta sul percorso (solo per
+    // un semplice spostamento: col lavoro la meta e' la risorsa o l'edificio)
+    const plain = !i.goldwork && !i.stonework && !i.woodwork && !i.buildwork && !i.repairwork && !i.foodwork && !i.fieldwork;
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFree(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
@@ -313,6 +317,8 @@ function ominoMove(i, w, p) {
     } else {
       if (!i.goldwork && !i.stonework && !i.buildwork && !i.repairwork && i.foodwork !== 2 && !i.fieldwork) {
         mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        // §6.1 n.89, solo per un semplice spostamento (non verso il legno)
+        if (!i.woodwork && !i.foodwork) arriveIfBlocked(i);
       }
       if (i.goldwork === 1) mp(n("miniera_oro"));
       if (i.stonework === 1) mp(n("stone_parent"));
@@ -333,7 +339,7 @@ function ominoMove(i, w, p) {
   if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && !i.buildwork && !i.repairwork
       && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework) {
     p.free(i);
-    goTo(p, i, i.dirox, i.diroy);
+    goTo(p, i, i.dirox, i.diroy, true); // §6.1 n.89
   }
 }
 
@@ -817,8 +823,10 @@ function ominoPanel(i, w, d) {
 // alleato e' vicino, e restano visibili.
 function reveal(i, w, dist, fogAware) {
   if (i.visible) return;
-  const u = w.nearest(i.x, i.y, "ally_unit"), b = w.nearest(i.x, i.y, "ally_build");
-  if ((u && w.distanceToInstance(i, u) < dist) || (b && w.distanceToInstance(i, b) < dist)
+  // §6.3 N3: nearWithin da' lo stesso risultato di
+  // distance_to_object(instance_nearest(...)) < dist, senza rifare la
+  // ricerca quando gli alleati sono lontani per certo
+  if (w.nearWithin(i, "ally_unit", dist) || w.nearWithin(i, "ally_build", dist)
       || (fogAware && w.g.fogville === 0)) i.visible = true;
 }
 
@@ -937,4 +945,23 @@ export function dying() {
     step(i) { i.image_alpha -= 0.025; },
     alarm0(i, w) { w.destroy(i); },
   };
+}
+
+// [Correzione decisa dall'autore, §6.1 n.80] global.idle nell'originale e'
+// tenuto a incrementi (+1/-1 in una trentina di punti fra civili, cantieri
+// ed edifici) e basta un percorso dimenticato perche' il contatore si
+// sfasi per sempre. Qui, dopo ogni passo, si ricalcola dai civili veri
+// (action 0) e si rinumera l'ordine per Spazio (idleorder 1..n, nello
+// stesso ordine di prima).
+export function recountIdle(w) {
+  const g = w.g;
+  const idle = [];
+  for (const o of w.all(OM)) {
+    if (o.action === 0) idle.push(o);
+    else if (o.idling === 1) { o.idling = 0; o.idleorder = 0; }
+  }
+  idle.sort((a, b) => (a.idleorder || 1e9) - (b.idleorder || 1e9) || a.id - b.id);
+  idle.forEach((o, k) => { o.idling = 1; o.idleorder = k + 1; });
+  g.idle = idle.length;
+  for (const ic of w.all("idle_clicker")) if (ic.orderu > g.idle || ic.orderu < 1) ic.orderu = 1;
 }

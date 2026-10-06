@@ -7,7 +7,8 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal } from "./pathing.js";
+import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
@@ -37,15 +38,20 @@ export function allyArrow(tower) {
   return {
     create(i, w) {
       i.alarm.set(0, 33);
-      // arciere_bullet_t: mira al nemico piu' vicino (torri, castello, centro)
+      // arciere_bullet_t: mira al nemico piu' vicino (torri, castello, centro).
+      // [§6.5] al bersaglio scelto dall'edificio, con la linea libera
       if (tower) {
-        const e = w.nearest(i.x, i.y, "enemy_unit");
+        const e = i.towerTarget && i.towerTarget.alive ? i.towerTarget : w.nearest(i.x, i.y, "enemy_unit");
         if (e) i.direction = pointDirection(i.x, i.y, e.x, e.y);
+        if (i.towerTarget && i.towerFrom) aimArrow(i, i.towerTarget, i.towerFrom.y - i.y, i.towerFrom);
       }
       i.speed = 27;
     },
     alarm0(i, w) { w.destroy(i); },
-    step(i) { i.image_angle = i.direction; i.depth = -i.y - 5; },
+    step(i, w) {
+      i.image_angle = i.direction; i.depth = -i.y - 5;
+      if (arrowStopped(i, w)) w.destroy(i); // §6.4
+    },
     collisions,
   };
 }
@@ -90,11 +96,16 @@ export function enemyArrow(tower) {
   return {
     create(i, w) {
       i.alarm.set(0, 33);
-      const a = w.nearest(i.x, i.y, "ally_unit");
+      // [§6.5] le frecce della torre nemica al bersaglio scelto dalla torre
+      const a = i.towerTarget && i.towerTarget.alive ? i.towerTarget : w.nearest(i.x, i.y, "ally_unit");
       if (a) { i.direction = pointDirection(i.x, i.y, a.x, a.y); i.speed = 27; }
+      if (a && i.towerTarget && i.towerFrom) aimArrow(i, a, i.towerFrom.y - i.y, i.towerFrom);
     },
     alarm0(i, w) { w.destroy(i); },
-    step(i) { i.image_angle = i.direction; i.depth = -i.y - 5; },
+    step(i, w) {
+      i.image_angle = i.direction; i.depth = -i.y - 5;
+      if (arrowStopped(i, w)) w.destroy(i); // §6.4
+    },
     collisions,
   };
 }
@@ -123,6 +134,27 @@ const ARC = "ally_arciere";
 export function allyArcher(p) {
   const stopHere = (i) => {
     i.action = 0; i.dirox = i.x; i.diroy = i.y; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0;
+    i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4: fine del combattimento
+  };
+  // §6.4: nemici a tiro ma nessuno in linea. Se sta gia' andando verso un
+  // punto di tiro continua; arrivato (o se inseguiva il nemico) si ferma e
+  // cerca un punto vicino col guinzaglio; senza punto resta li' e riprova
+  // fra REPOS_WAIT passi.
+  const reposition = (i, w, t, range) => {
+    if (i.repos === 1) {
+      if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) >= 12) return;
+      i.repos = 0; i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i);
+      i.reposAt = w._stepNo + REPOS_WAIT;
+      return;
+    }
+    if (i.action === 1 && i.warwork === 1) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i); }
+    if ((i.reposAt || 0) > w._stepNo) return;
+    const spot = firingSpot(w, p, i, t, range);
+    if (!spot) { i.reposAt = w._stepNo + REPOS_WAIT; return; }
+    scrMove(p, i, spot[0], spot[1]);
+    i.dirox = spot[0]; i.diroy = spot[1];
+    if (i.action !== 1) { i.alarm.set(0, 15); i.step = 0; }
+    i.action = 1; i.warwork = 4; i.repos = 1;
   };
   const leftClick = (i, w) => {
     const g = w.g;
@@ -158,14 +190,18 @@ export function allyArcher(p) {
   const move = (i, w) => {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y)) {
+      const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
+      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
           if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
           else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
         } else moveFlowField(w, p, i);
       } else {
-        if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) {
+          mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+          arriveIfBlocked(i); // §6.1 n.89
+        }
         if (i.presidiowork === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
         const n = w.nearest(i.x, i.y, "enemy_unit");
         if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
@@ -174,8 +210,9 @@ export function allyArcher(p) {
     if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && i.presidiowork === 0
         && i.warwork === 0 && i.action === 1) {
       p.free(i);
-      const [cx, cy] = p.findValidCellBackwards(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                                Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
+      // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
+      const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
+                                         Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
       const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
       i.goal_x = found ? cx * GRID : i.x;
       i.goal_y = found ? cy * GRID : i.y;
@@ -193,6 +230,7 @@ export function allyArcher(p) {
       if (i.warwork === 1 || i.warwork === 2 || i.action === 2) {
         i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null;
       }
+      i.anchorX = null; i.anchorY = null; // §6.4
       return null;
     }
     if (!(i.atktarget && i.atktarget.alive)) { i.atkorder = 0; i.atktarget = null; }
@@ -202,12 +240,24 @@ export function allyArcher(p) {
     i.targvalid = valid ? 1 : 0;
     const t = i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget;
     if (w.distanceToInstance(i, t) < 600 * k) {
+      // §6.4: il piu' vicino a tiro con la linea libera (o quello scelto, se
+      // e' in linea); se nessuno, ci si sposta nei paraggi
+      const s = i.atkorder === 0 ? shootable(w, i, "enemy_unit", (o) => w.distanceToInstance(i, o) < 600 * k)
+        : (w.shotClear(i.x, i.y, t.x, t.y) ? t : null);
+      if (!s) {
+        if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i); }
+        reposition(i, w, t, 0.9 * 600 * k);
+        return "exit";
+      }
+      i.shot = s;
       if (i.warwork === 2) {
-        i.targetx = t.x; i.targety = t.y;
+        i.targetx = s.x; i.targety = s.y;
         i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
         p.occupy(i);
       }
-      if (i.warwork === 0 || i.warwork === 1) { i.action = 2; p.occupy(i); i.warwork = 2; i.alarm.set(2, 13); }
+      if (i.warwork === 0 || i.warwork === 1 || (i.warwork === 4 && i.repos === 1)) {
+        i.action = 2; p.occupy(i); i.warwork = 2; i.alarm.set(2, 13); i.repos = 0;
+      }
       return "exit";
     } else if (i.warwork === 2) {
       i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0;
@@ -284,9 +334,12 @@ export function allyArcher(p) {
       if (i.step !== 2) return;
       i.step = 0;
       i.alarm.set(2, 13);
+      // §6.4: la freccia va al bersaglio scelto se e' ancora in linea; se
+      // nel frattempo un edificio si e' messo in mezzo, il tiro si annulla
+      const t = i.shot && i.shot.alive ? i.shot : null;
+      if (!t || !w.shotClear(i.x, i.y, t.x, t.y)) { i.action = 0; i.warwork = 0; i.step = 0; return; }
       const b = w.create("arciere_bullet", i.x, i.y - 40);
-      const t = i.atkorder === 0 ? w.nearest(b.x, b.y, "enemy_unit") : i.atktarget;
-      if (t) b.direction = pointDirection(b.x, b.y, t.x, t.y);
+      aimArrow(b, t);
       b.speed = 20;
     },
     // Alarm_3 (nato in un posto occupato): nessuno lo arma per l'arciere
@@ -295,6 +348,7 @@ export function allyArcher(p) {
     alarm10(i, w) {
       if (i.flaggox === null || i.flaggox === undefined) return;
       i.dirox = i.flaggox; i.diroy = i.flaggoy;
+      i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4
       i.alarm.set(8, 3000);
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
@@ -362,6 +416,7 @@ export function allyArcher(p) {
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
       i.alarm.set(8, 1200);
       i.dirox = w.mouse.x; i.diroy = w.mouse.y;
+      i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4: nuovo ordine, niente guinzaglio
       i.creation = 0;
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
@@ -420,12 +475,13 @@ export function garrisoned(name, base) {
       hintOnce(w, "hint_presidio", "presidiohint", i.x, i.y);
     },
     step(i, w) {
-      const e = w.nearest(i.x, i.y, "enemy_unit");
-      if (i.arm === 1 && e && w.distanceToInstance(i, e) < 600) {
+      // [§6.5] il nemico piu' vicino entro 600 px con la linea libera
+      const e = i.arm === 1 && i.npresidio > 0 ? towerTarget(w, i, "enemy_unit", 600) : null;
+      if (i.arm === 1 && e) {
         i.arm = 0;
         i.alarm.set(0, 50);
         const pos = e.x > i.x ? G.right : G.left;
-        pos.forEach(([dx, dy], k) => { if (i.npresidio > k) w.create("arciere_bullet_t", i.x + dx, i.y + dy); });
+        pos.forEach(([dx, dy], k) => { if (i.npresidio > k) towerArrow(w, "arciere_bullet_t", i.x + dx, i.y + dy, i, e); });
       }
       base.step(i, w);
       if (!i.alive) return;
@@ -483,11 +539,12 @@ export function centroArrows(base) {
     create(i, w) { base.create(i, w); i.arm = 1; },
     alarm1(i) { i.arm = 1; },
     step(i, w) {
-      const e = w.nearest(i.x, i.y, "enemy_unit");
-      if (i.arm === 1 && e && w.distanceToInstance(i, e) < 600) {
+      // [§6.5] il nemico piu' vicino entro 600 px con la linea libera
+      const e = i.arm === 1 ? towerTarget(w, i, "enemy_unit", 600) : null;
+      if (i.arm === 1 && e) {
         i.arm = 0;
         i.alarm.set(1, 35);
-        w.create("arciere_bullet_t", e.x > i.x ? i.x + 50 : i.x, i.y - 140);
+        towerArrow(w, "arciere_bullet_t", e.x > i.x ? i.x + 50 : i.x, i.y - 140, i, e);
       }
       base.step(i, w);
     },
@@ -517,7 +574,7 @@ export function enemyTower(p) {
     },
     step(i, w) {
       const g = w.g, n = 1 - g.night;
-      const near = (obj, r) => { const o = w.nearest(i.x, i.y, obj); return !!o && w.distanceToInstance(i, o) < r + r * n; };
+      const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       if (near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500) || near("torre", 500)
           || w.room === "menu" || g.fogville === 0) i.visible = true;
       if (i.life <= 0) {
@@ -526,13 +583,14 @@ export function enemyTower(p) {
         w.destroy(i);
         return;
       }
-      const a = w.nearest(i.x, i.y, "ally_unit");
-      if (i.arm === 1 && a && w.distanceToInstance(i, a) < 600) {
+      // [§6.5] l'alleato piu' vicino entro 600 px con la linea libera
+      const a = i.arm === 1 ? towerTarget(w, i, "ally_unit", 600) : null;
+      if (i.arm === 1 && a) {
         i.arm = 0;
         i.alarm.set(0, 50);
         const dx = a.x > i.x ? 20 : -20;
-        w.create("b_arciere_bullet_t", i.x + dx, i.y - 60);
-        w.create("b_arciere_bullet_t", i.x + dx, i.y - 77);
+        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 60, i, a);
+        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 77, i, a);
       }
     },
     globalLeftPressed(i) { i.selected = 0; },

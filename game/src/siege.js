@@ -11,17 +11,24 @@
 import { fireFlare } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep } from "./pathing.js";
+import { mpPotentialStep, walkLine, arriveIfBlocked, GRID } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const WHITE = 0xffffff;
 
-// distance_to_point [I]: dal bbox al punto
-function distanceToPoint(w, i, px, py) {
-  const b = w.bbox(i);
-  if (!b) return pointDistance(i.x, i.y, px, py);
+// distance_to_point [I]: dal bbox al punto (con l'istanza in x, y)
+function distanceToPoint(w, i, px, py, x = i.x, y = i.y) {
+  const b = w.bbox(i, x, y);
+  if (!b) return pointDistance(x, y, px, py);
   return Math.hypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
+}
+
+// distance_to_object con l'istanza in x, y
+function distanceAt(w, i, x, y, o) {
+  const a = w.bbox(i, x, y), b = o && w.bbox(o);
+  if (!a || !b) return Infinity;
+  return Math.hypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
 }
 
 // --------------------------------------------- parti comuni agli alleati
@@ -215,7 +222,10 @@ function catapultAlarm2(i, w, bulletName) {
     return;
   }
   if (i.step === 2) { i.step = 3; i.alarm.set(2, 45); return; }
-  if (i.step === 3) { i.step = 0; i.action = 0; }
+  // [§6.7, decisione dell'autore] finito il lancio si torna al tiro
+  // automatico: nell'originale, dopo un tiro mirato col clic destro
+  // (automatic 0), la catapulta restava ferma fino all'ordine successivo
+  if (i.step === 3) { i.step = 0; i.action = 0; i.automatic = 1; }
 }
 
 // Alarm_4 [C]: ricarica, cinque fasi da 13 passi
@@ -223,6 +233,42 @@ function catapultReload(i) {
   if (i.action !== 3) return;
   if (i.step < 4) { i.step += 1; i.alarm.set(4, 13); return; }
   i.step = 0; i.loaded = 1; i.action = 0;
+}
+
+// [§6.7, richiesta dell'autore] Dove mettersi per tirare: su anelli da 120
+// a 520 px attorno alla catapulta (24 direzioni), un punto libero,
+// raggiungibile a piedi in linea retta e per cui `score(x, y)` non e' null
+// (da li' si puo' tirare); il piu' vicino, a pari anello quello con lo
+// score piu' basso. null se non c'e'.
+const MIN_SHOT = 300, SHOT_MARGIN = 30;
+function catapultSpot(w, i, score) {
+  const p = w.path;
+  for (const r of [120, 200, 280, 360, 440, 520]) {
+    let best = null, bs = Infinity;
+    for (let a = 0; a < 24; a++) {
+      const x = Math.round(i.x + Math.cos((a * Math.PI) / 12) * r), y = Math.round(i.y + Math.sin((a * Math.PI) / 12) * r);
+      const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+      if (!p.inside(gx, gy) || p.cost[gy * p.gw + gx] >= 1000) continue;
+      const sc = score(x, y);
+      if (sc === null || sc >= bs) continue;
+      if (!w.placeFree(i, x, y) || !walkLine(p, i.x, i.y, x, y)) continue;
+      best = [x, y]; bs = sc;
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+// Arretrare per tirare agli edifici `target`: da li' l'edificio piu' vicino
+// (quello a cui tirera' catapultAuto) dev'essere oltre la distanza minima
+// (piu' un margine) e dentro la gittata; a parita', il piu' vicino.
+function retreatSpot(w, i, target, range) {
+  return catapultSpot(w, i, (x, y) => {
+    const b = w.nearest(x, y, target);
+    if (!b) return null;
+    const d = distanceAt(w, i, x, y, b);
+    return d > MIN_SHOT + SHOT_MARGIN && d < range - SHOT_MARGIN ? d : null;
+  });
 }
 
 // Tiro automatico [C]: ferma o in cammino, carica e in automatico, tira
@@ -246,14 +292,27 @@ function catapultAuto(i, w, target, range) {
       return "exit";
     }
   } else if (i.action === 0) {
-    const away = pointDirection(b.x, b.y, i.x, i.y);
-    i.dirox = i.x + lengthdirX(350, away);
-    i.diroy = i.y + lengthdirY(350, away);
+    // [§6.7] un punto da cui tirare, cercato (libero, raggiungibile, con
+    // l'edificio piu' vicino a tiro); se non c'e', come prima: 350 px dritti
+    // all'indietro
+    const spot = retreatSpot(w, i, target, range);
+    if (spot) { i.dirox = spot[0]; i.diroy = spot[1]; }
+    else {
+      const away = pointDirection(b.x, b.y, i.x, i.y);
+      i.dirox = i.x + lengthdirX(350, away);
+      i.diroy = i.y + lengthdirY(350, away);
+    }
     i.direction = pointDirection(i.x, i.y, b.x, b.y); // (-360: stesso angolo)
-    i.action = 1; i.automatic = 1; i.step = 0;
+    i.action = 1; i.automatic = 1; i.step = 0; i.retreat = 1;
     if (i.speed === 0) i.alarm.set(0, 13);
   }
   return null;
+}
+
+// [§6.7] In cammino verso il punto di tiro: se si blocca (altre unita',
+// un ostacolo) si ferma dov'e' e al passo dopo rivaluta (arriveIfBlocked).
+function retreatStuck(i) {
+  if (i.retreat === 1 && i.action === 1) arriveIfBlocked(i);
 }
 
 // ally_catapulta [C]: vita 100, popolazione 3; tiro fra 300 e 850 px, una
@@ -275,7 +334,26 @@ export function allyCatapult() {
     alarm4: catapultReload,
     step(i, w) {
       if (!C.leftClickAndDeath(i, w)) return;
-      C.moveCommon(i, w, (u) => { u.action = 0; u.automatic = 1; u.warwork = 0; u.speed = 0; });
+      C.moveCommon(i, w, (u) => {
+        u.action = 0; u.automatic = 1; u.warwork = 0; u.speed = 0; u.retreat = 0;
+        // [§6.7] arrivata dove l'ha mandata un tiro ordinato troppo vicino:
+        // tira, se il bersaglio c'e' ancora ed e' a tiro
+        // (al punto cliccato, che segue il bersaglio se si e' mosso: come il
+        // tiro mirato originale, che tira al punto del clic)
+        const t = u.pendingShot;
+        u.pendingShot = null;
+        if (t && t.alive && u.loaded === 1) {
+          const tx = t.x + (u.pendingDx || 0), ty = t.y + (u.pendingDy || 0);
+          const d = distanceToPoint(w, u, tx, ty);
+          if (d < 850 && d > MIN_SHOT) {
+            u.action = 2; u.automatic = 0; u.step = 0;
+            u.direction = pointDirection(u.x, u.y, tx, ty);
+            u.targx = tx; u.targy = ty;
+            u.alarm.set(2, 50);
+          }
+        }
+      });
+      retreatStuck(i);
       ANIM.ally_catapulta(i, w);
       boxSelect(i, w, "siegsel");
       C.destinationBack50(i, w);
@@ -286,6 +364,7 @@ export function allyCatapult() {
     globalRightReleased(i, w) {
       if (i.selected !== 1) return;
       const mx = w.mouse.x, my = w.mouse.y;
+      i.retreat = 0; i.pendingShot = null; // §6.7: un ordine nuovo
       if (w.positionMeeting(mx, my, "enemy") && i.loaded === 1) {
         const d = distanceToPoint(w, i, mx, my);
         if (d < 850 && d > 300 && i.action !== 2) {
@@ -294,6 +373,22 @@ export function allyCatapult() {
           i.targx = mx; i.targy = my;
           i.alarm.set(2, 50);
           return;
+        }
+        // [§6.7] troppo vicino: arretra in un punto da cui il bersaglio e' a
+        // tiro e, arrivata, tira (nell'originale non succedeva nulla)
+        const e = w.instancePosition(mx, my, "enemy");
+        if (d <= MIN_SHOT && e && i.action !== 2) {
+          const spot = catapultSpot(w, i, (x, y) => {
+            const dd = distanceToPoint(w, i, mx, my, x, y);
+            return dd > MIN_SHOT + SHOT_MARGIN && dd < 850 - SHOT_MARGIN ? dd : null;
+          });
+          if (spot) {
+            if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
+            i.automatic = 0; i.dirox = spot[0]; i.diroy = spot[1];
+            i.action = 1; i.step = 0; i.retreat = 1;
+            i.pendingShot = e; i.pendingDx = mx - e.x; i.pendingDy = my - e.y;
+            return;
+          }
         }
       }
       if (!w.positionMeeting(mx, my, "enemy")) {
@@ -503,7 +598,7 @@ export function enemyRam(base) {
     alarm4: undefined,
     step(i, w) {
       const g = w.g, n = 1 - g.night;
-      const near = (obj, r) => { const o = w.nearest(i.x, i.y, obj); return !!o && w.distanceToInstance(i, o) < r + r * n; };
+      const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || g.fogville === 0;
       const diro = i.direction;
@@ -575,7 +670,7 @@ export function enemyCatapult(base) {
     alarm4: catapultReload,
     step(i, w) {
       const g = w.g, n = 1 - g.night;
-      const near = (obj, r) => { const o = w.nearest(i.x, i.y, obj); return !!o && w.distanceToInstance(i, o) < r + r * n; };
+      const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || w.room === "menu" || g.fogville === 0;
       const diro = i.direction;
@@ -589,8 +684,9 @@ export function enemyCatapult(base) {
       i.autospeed = 2 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
-      if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
+      if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; i.retreat = 0; }
       if (i.action === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      retreatStuck(i); // §6.7
       if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       if (w.number("torre_placer") > 0) g.sele = 1;

@@ -22,6 +22,8 @@
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 
 export const GRID = 32;
+const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
+const LINE_HALF = 12;  // meta' larghezza predefinita della linea "spessa" (clearLine)
 const DX = [1, -1, 0, 0, 1, -1, 1, -1];
 const DY = [0, 0, -1, 1, -1, -1, 1, 1];
 const DIR = DX.map((dx, i) => pointDirection(0, 0, dx, DY[i]));
@@ -103,53 +105,128 @@ export class Pathing {
 
   // scr_generate_goal_field [C]: valori BFS, -1 = irraggiungibile.
   // enemy: anche le celle delle porte sono ostacolo (§3.8).
+  // [§6.2, ottimizzazione A] stessi valori di prima (stesso ordine dei
+  // vicini: destra, sinistra, su, giu'), con indici lineari e una coda
+  // riusata invece di due array nuovi a ogni chiamata.
   goalField(goalX, goalY, enemy = false) {
     const block = enemy ? this.enemyBlock : null;
-    const { gw, gh } = this;
-    const f = new Int32Array(gw * gh).fill(-1);
+    const { gw, gh, cost } = this;
+    const N = gw * gh;
+    const f = new Int32Array(N).fill(-1);
     const gx = Math.floor(goalX / GRID), gy = Math.floor(goalY / GRID);
     if (!this.inside(gx, gy)) return f;
-    const qx = new Int32Array(gw * gh), qy = new Int32Array(gw * gh);
+    const q = this.queue || (this.queue = new Int32Array(N));
     let head = 0, tail = 0;
-    qx[tail] = gx; qy[tail++] = gy;
-    f[gy * gw + gx] = 0;
+    const g = gy * gw + gx;
+    f[g] = 0;
+    q[tail++] = g;
     while (head < tail) {
-      const cx = qx[head], cy = qy[head++];
-      const v = f[cy * gw + cx];
-      for (let i = 0; i < 4; i++) {
-        const nx = cx + DX[i], ny = cy + DY[i];
-        if (nx >= 0 && nx < gw && ny >= 0 && ny < gh) {
-          const k = ny * gw + nx;
-          if (f[k] === -1 && this.cost[k] < 1000 && !(block && block[k])) {
-            f[k] = v + 1;
-            qx[tail] = nx; qy[tail++] = ny;
-          }
-        }
-      }
+      const k = q[head++], v = f[k] + 1, x = k % gw;
+      let n;
+      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
     }
     return f;
   }
 
-  // scr_generate_flow_field [C]: angolo in gradi, -1 = nessuna direzione
+  // scr_generate_flow_field [C]: per ogni cella la direzione verso la vicina
+  // (8 direzioni) col valore piu' basso; -1 = nessuna direzione.
+  // [§6.2, ottimizzazione A] il flow field non si calcola piu' per tutte le
+  // celle: e' il goal field stesso, e la direzione di una cella si ricava
+  // quando serve (flowAt), con la stessa regola. Prima erano 47.000 celle
+  // calcolate per leggerne poche decine. I salvataggi vecchi hanno flow
+  // field di angoli (Float32Array): flowAt li legge come prima.
   flowField(goal) {
+    return goal;
+  }
+
+  // Direzione del flow field nella cella (gx, gy): angolo in gradi o -1;
+  // fuori dalla griglia 0, come ds_grid_get [I].
+  flowAt(field, gx, gy) {
+    if (!this.inside(gx, gy)) return 0;
     const { gw, gh } = this;
-    const ff = new Float32Array(gw * gh).fill(-1);
-    for (let y = 0; y < gh; y++) {
-      for (let x = 0; x < gw; x++) {
-        const c = goal[y * gw + x];
-        if (c === -1) continue;
-        let best = c, bi = -1;
-        for (let i = 0; i < 8; i++) {
-          const nx = x + DX[i], ny = y + DY[i];
-          if (nx < 0 || nx >= gw || ny < 0 || ny >= gh) continue;
-          const v = goal[ny * gw + nx];
-          if (v === -1) continue;
-          if (v < best) { best = v; bi = i; }
-        }
-        if (bi >= 0) ff[y * gw + x] = DIR[bi];
+    const k = gy * gw + gx;
+    if (!(field instanceof Int32Array)) return field[k]; // salvataggi vecchi
+    const c = field[k];
+    if (c === -1) return -1;
+    let best = c, bi = -1;
+    for (let i = 0; i < 8; i++) {
+      const nx = gx + DX[i], ny = gy + DY[i];
+      if (nx < 0 || nx >= gw || ny < 0 || ny >= gh) continue;
+      const v = field[k + DY[i] * gw + DX[i]];
+      if (v === -1 || v >= best) continue;
+      // [§6.2 C, decisione dell'autore] una diagonale solo se le due celle
+      // di lato sono percorribili: prima la direzione poteva passare fra due
+      // ostacoli e l'unita' (che sul flow field si muove senza collisioni)
+      // tagliava lo spigolo degli edifici
+      if (i >= 4 && (field[k + DX[i]] === -1 || field[k + DY[i] * gw] === -1)) continue;
+      best = v; bi = i;
+    }
+    return bi >= 0 ? DIR[bi] : -1;
+  }
+
+  // [§6.2 D, decisione dell'autore] Percorsi naturali. Il BFS conta i passi
+  // "a croce" e il flow field ne sceglie 8: la diagonale vince sempre, e
+  // l'unita' andava a 45 gradi finche' non era allineata e poi dritta (a
+  // "L storta"), a scatti di 45 gradi. Qui da (x, y) si seguono le
+  // direzioni del campo per LOOK celle e si sceglie come punto di passaggio
+  // il centro della cella piu' lontana raggiungibile in linea retta senza
+  // toccare celle non percorribili (linea "spessa", larga quanto l'unita':
+  // clearLine). null se non ce n'e' (si usa la direzione della cella).
+  steerPoint(field, x, y, hw = LINE_HALF, hh = LINE_HALF) {
+    const { gw } = this;
+    let gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+    if (!(field instanceof Int32Array) || !this.inside(gx, gy)) return null;
+    const path = this._path || (this._path = new Int32Array(LOOK * 2));
+    let n = 0;
+    for (let s = 0; s < LOOK; s++) {
+      const d = this.flowAt(field, gx, gy);
+      if (d === -1) break;
+      const i = DIR.indexOf(d);
+      gx += DX[i]; gy += DY[i];
+      if (!this.inside(gx, gy) || field[gy * gw + gx] === -1) break;
+      path[n++] = gx; path[n++] = gy;
+    }
+    for (let j = n - 2; j >= 2; j -= 2) {
+      const tx = path[j] * GRID + GRID / 2, ty = path[j + 1] * GRID + GRID / 2;
+      if (this.clearLine(field, x, y, tx, ty, hw, hh)) return [tx, ty];
+    }
+    return null;
+  }
+
+  // La direzione da (x, y) verso il punto di passaggio, o quella della cella
+  // (-1 se il campo non ha direzione qui). Senza memoria: per i test; le
+  // unita' usano moveFlowField, che il punto lo tiene finche' non ci arriva.
+  steerAt(field, x, y) {
+    const first = this.flowAt(field, Math.floor(x / GRID), Math.floor(y / GRID));
+    if (first === -1) return -1;
+    const pt = this.steerPoint(field, x, y);
+    return pt ? pointDirection(x, y, pt[0], pt[1]) : first;
+  }
+
+  // Linea da (x0, y0) a (x1, y1) tutta su celle percorribili nel campo,
+  // larga quanto l'unita': hw, hh sono le meta' della sua maschera (bbox)
+  // e la larghezza di lato e' la maschera proiettata sulla perpendicolare
+  // alla linea. Campioni ogni 8 px lungo la linea e ogni 16 px di lato.
+  clearLine(field, x0, y0, x1, y1, hw = LINE_HALF, hh = LINE_HALF) {
+    const { gw } = this;
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    if (len < 1) return true;
+    const nx = -dy / len, ny = dx / len;
+    const half = hw * Math.abs(nx) + hh * Math.abs(ny);
+    const lanes = Math.max(1, Math.ceil(half / 16));
+    const steps = Math.ceil(len / 8);
+    for (let k = 1; k <= steps; k++) {
+      const t = k / steps, px = x0 + dx * t, py = y0 + dy * t;
+      for (let l = -lanes; l <= lanes; l++) {
+        const o = (half * l) / lanes;
+        const cx = Math.floor((px + nx * o) / GRID), cy = Math.floor((py + ny * o) / GRID);
+        if (!this.inside(cx, cy) || field[cy * gw + cx] === -1) return false;
       }
     }
-    return ff;
+    return true;
   }
 
   fieldAt(field, gx, gy) {
@@ -171,6 +248,32 @@ export class Pathing {
       }
     }
     return [sx, sy, false];
+  }
+
+  // [§6.1 n.89] La cella libera piu' vicina a (gx, gy): raggiungibile nel
+  // goal field, non occupata (costo < 1000) e non in `used`; anelli fino a
+  // raggio 9, poi come findValidCellBackwards. Serve al ricalcolo quando la
+  // cella d'arrivo diventa un ostacolo (un'altra unita' ci si e' fermata):
+  // findValidCellBackwards restituiva di nuovo la stessa cella, raggiungibile
+  // ma occupata, e il campo si ricalcolava a ogni passo. E alle caselle
+  // della formazione (units.js, formation).
+  nearestFreeCell(goal, gx, gy, sx, sy, used = null) {
+    for (let range = 0; range < 10; range++) {
+      let best = null, bd = Infinity;
+      for (let dx = -range; dx <= range; dx++) {
+        for (let dy = -range; dy <= range; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== range) continue;
+          const tx = gx + dx, ty = gy + dy;
+          if (!this.inside(tx, ty)) continue;
+          const k = ty * this.gw + tx;
+          if (goal[k] === -1 || this.cost[k] >= 1000 || (used && used.has(k))) continue;
+          const d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; best = [tx, ty]; }
+        }
+      }
+      if (best) return [best[0], best[1], true];
+    }
+    return this.findValidCellBackwards(goal, gx, gy, sx, sy);
   }
 
   // scr_find_free_spawn_right [C]: se la cella e' occupata, spirale fino a
@@ -222,12 +325,75 @@ export function scrMove(p, inst, tx, ty) {
 
 // scr_move_flow_field [C]: direzione dalla cella (se valida), avanzamento
 // di autospeed SENZA controllo di collisione.
+// [§6.2 D] la direzione e' quella verso un punto di passaggio lungo il
+// percorso (steerPoint), non piu' quella a scatti di 45 gradi della cella.
+// Il punto si tiene (steerAim, per il campo steerField) finche' non lo si
+// raggiunge (24 px) o non lo si vede piu': scegliendolo a ogni passo
+// saltava di una cella avanti e indietro e lo sprite tremolava fra due
+// direzioni.
 export function moveFlowField(w, p, inst) {
-  const a = p.fieldAt(inst.flow_field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
+  const field = inst.flow_field;
+  let a = p.flowAt(field, Math.floor(inst.x / GRID), Math.floor(inst.y / GRID));
+  if (a !== -1 && field instanceof Int32Array) {
+    let aim = inst.steerField === field ? inst.steerAim : null;
+    if (!aim || pointDistance(inst.x, inst.y, aim[0], aim[1]) < 24 || !p.clearLine(field, inst.x, inst.y, aim[0], aim[1])) {
+      aim = p.steerPoint(field, inst.x, inst.y);
+      inst.steerField = field;
+      inst.steerAim = aim;
+    }
+    if (aim) a = pointDirection(inst.x, inst.y, aim[0], aim[1]);
+  }
   if (a !== -1) inst.target_angle = a;
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+}
+
+// [§6.4] Da (x0, y0) a (x1, y1) a piedi in linea retta: tutte le celle
+// sotto il segmento senza ostacoli (costo < 1000; i primi 16 px no: la
+// cella di chi parte e' occupata da lui).
+export function walkLine(p, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), n = Math.max(1, Math.ceil(len / 8));
+  for (let k = 0; k <= n; k++) {
+    if ((len * k) / n < 16) continue;
+    const gx = Math.floor((x0 + (dx * k) / n) / GRID), gy = Math.floor((y0 + (dy * k) / n) / GRID);
+    if (!p.inside(gx, gy) || p.cost[gy * p.gw + gx] >= 1000) return false;
+  }
+  return true;
+}
+
+// [§6.2 D] Lo "step towards" (mp_potential_step dritto verso dirox/diroy)
+// vale solo se la destinazione e' in vista: nessuna cella non percorribile
+// sulla linea (clearLine nel campo dell'unita'). Prima, sotto i 400 px, si
+// andava dritti anche con un edificio, un albero o un fiume in mezzo, e
+// l'unita' oscillava contro l'ostacolo (decine di passi a 270/300 gradi)
+// finche' non rinunciava. Senza vista si continua sul percorso. Solo per i
+// semplici spostamenti (chi chiama lo sa); i flow field di angoli dei
+// salvataggi vecchi non sanno dire cosa e' percorribile: come prima.
+export function seesGoal(p, inst) {
+  const f = inst.flow_field;
+  if (!(f instanceof Int32Array)) return true;
+  return p.clearLine(f, inst.x, inst.y, inst.dirox, inst.diroy);
+}
+
+// [§6.1 n.89] Arrivo "per rinuncia": le unita' sono solide e si bloccano a
+// vicenda; un'unita' a meno di 400 px dalla propria destinazione (dove si
+// va con mp_potential_step) che non le si e' avvicinata di almeno 2 px da
+// 60 passi piu' uno ogni 2 px di distanza (1 s a un passo, 4 s a 400 px)
+// la prende dove e' (dirox/diroy = x/y: l'arrivo scatta al passo dopo),
+// invece di
+// dondolare dietro le altre finche' il "timer fermati" (alarm 8, 20 s) non
+// la ferma. Solo per gli ordini di spostamento: chi lo chiama lo sa.
+export function arriveIfBlocked(inst) {
+  const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+  if (d > 400) { inst.stuckN = 0; inst.stuckBest = d; return; }
+  if (inst.stuckBest === undefined || d < inst.stuckBest - 2) { inst.stuckBest = d; inst.stuckN = 0; return; }
+  inst.stuckN = (inst.stuckN || 0) + 1;
+  if (inst.stuckN >= 60 + d / 2) {
+    inst.dirox = inst.x;
+    inst.diroy = inst.y;
+    inst.stuckN = 0;
+  }
 }
 
 // mp_potential_step(xg, yg, passo, checkall) con le impostazioni

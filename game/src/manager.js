@@ -8,6 +8,7 @@ import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
 import { rainStart, rainExtinguish } from "./effects.js";
+import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 
 export class Manager {
   constructor(room, g) {
@@ -45,13 +46,18 @@ export class Manager {
     if (D(40)) cam.y += k;
     // KeyPress_X / KeyPress_Z: con Ctrl cambia la scala della minimappa,
     // altrimenti lo zoom (non nel menu)
+    // [§6.1 n.78] fino a ZOOM_MAX; la rotella (giu' = allontana) fa lo
+    // stesso attorno al puntatore
     if (P(88)) {
       if (g.sele === 1) g.sz++;
-      else if (g.scaleview < 1.5 && this.room !== "menu") cam.setScale((g.scaleview += 0.1));
+      else if (g.scaleview < ZOOM_MAX && this.room !== "menu") cam.setScale((g.scaleview += 0.1));
     }
     if (P(90)) {
       if (g.sele === 1) g.sz--;
-      else if (g.scaleview > 1 && this.room !== "menu") cam.setScale((g.scaleview -= 0.1));
+      else if (g.scaleview > ZOOM_MIN && this.room !== "menu") cam.setScale((g.scaleview -= 0.1));
+    }
+    if (input.wheelStep && this.room !== "menu") {
+      cam.zoomAt(cam.scaleview + 0.1 * input.wheelStep, input.x, input.y);
     }
     g.scaleview = cam.scaleview;
     // Trucchi [C, tenuti anche fuori dal debug: decisione dell'autore §0.10]:

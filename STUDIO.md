@@ -14,7 +14,10 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
+Ultimo aggiornamento: 6 ottobre 2026, terza sessione (branch
+`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
+dell'autore (§6.1, n.77–n.89), pathfinding (§6.2–§6.3), arcieri, torri
+e catapulte (§6.4–§6.7), carico della GPU (§6.8). Seconda sessione (PR #2): Fase 3
 completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
 dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
 sconfitta (§3.18), correzioni, menu di pausa e traduzioni in sei lingue
@@ -26,7 +29,8 @@ sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
-  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`); gli asset generati (`game/assets/`,
+  PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
+  la terza sessione `claude/inspiring-cray-dalph5`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -62,9 +66,11 @@ sezione citata.
   angoli di `draw_roundrect_colour_ext` (§3.1).
 - [ ] Screenshot o video di fuoco e pioggia: aspetto delle forme di
   particella interne di GameMaker (`pt_shape_flare`, `line`, `pixel`).
-- [ ] Screenshot dell'originale col centro selezionato mentre produce un
-  civile: colore della percentuale, per verificare lo stato di disegno
-  persistente (§3.5).
+- [x] Colore della percentuale di produzione: nero, deciso dall'autore
+  (§6.1 n.79).
+- [ ] Dopo la prova: il blocco dei tasti di costruzione coi soli civili
+  selezionati (§6.1 n.81) non l'ho riprodotto in un caso preciso; se torna,
+  serve la sequenza di clic.
 - [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
   se possibile.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
@@ -126,8 +132,54 @@ sezione citata.
 - [x] Workflow GitHub Actions (atlas, maschere, scene, bundle → Pages);
   zip per i portali verificato con Playwright in una sottocartella (§5.1).
 
+**Fase 6: correzioni dalla prova dell'autore**
+- [x] Pioggia, zoom e rotella, percentuale in nero, inattivi, contatori
+  della selezione, scorrimento fuori dalla finestra e blocco del mouse,
+  cursore disegnato dal gioco, angoli sfumati, schede a destra della
+  minimappa, font del gioco nei messaggi HTML, menu di pausa piu'
+  piccolo, contatore FPS e passo fisso, formazione negli spostamenti di
+  gruppo (§6.1).
+
+**Pathfinding (§6.2)**
+- [x] Studio e misure; A (campi 4–5 volte piu' veloci), B (collisioni
+  senza copie), stessi risultati verificati passo per passo; C (niente
+  spigoli tagliati), D (percorsi dritti, "step towards" solo con la meta
+  in vista).
+- [x] Studio delle alternative a `instance_nearest`; N1, N2, N3 (§6.3):
+  stessi risultati, passo -23% in `lvl02`, -18% in `match`.
+- [ ] Eventuale N4 (indice spaziale per `instance_nearest`) quando ci
+  saranno battaglie con 100+ unita' (§6.3).
+- [ ] Da decidere: nemici che escono dalla mappa quando il flow field non
+  ha direzione nella loro cella (§6.2, "trovati").
+
+**Arcieri (§6.4)**
+- [x] Tiro solo con la linea libera da edifici (le unita' non contano); se
+  serve si spostano nei paraggi (guinzaglio di 250 px); frecce fermate
+  dagli edifici.
+- [x] Torri, castello, centro e torre nemica: non tirano attraverso gli
+  edifici e scelgono un altro bersaglio (§6.5); mura e porte non li
+  fermano (tirano dall'alto).
+- [x] Montagne e tutte le rovine solide fermano le frecce, i boschi no; le
+  mura non fermano torri e castello (decisione dell'autore, §6.6).
+
+**Catapulte (§6.7)**
+- [x] Troppo vicine al bersaglio: arretrano in un punto cercato (libero,
+  raggiungibile, a tiro), alleate e nemiche; un tiro ordinato troppo
+  vicino arretra e poi tira.
+
+**Carico della GPU (§6.8)**
+- [x] Studio (riempimento 4,7–6,5 schermi a frame, shader con 16 `if`,
+  peso di erba, nebbia e notte, fuochi, interfaccia).
+- [x] G0 tempo GPU per frame nel pannello F3 (dove il browser lo espone).
+- [x] G1 opzione Qualita' (Alta/Media/Bassa): mondo a risoluzione ridotta,
+  interfaccia nitida; la risoluzione dinamica ora riduce solo il mondo.
+- [ ] Proposte da approvare: G2 shader senza catena di `if` (texture a
+  strati), G3 nebbia e notte in un passaggio, G4 suolo cotto in blocchi,
+  G5 erba piu' rada. Prima conviene il dato di F3 sul PC dell'autore.
+
 **Verifiche che mancano**
-- [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore),
+- [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
+  "GPU per frame" in Alta e in Bassa),
   Firefox, Safari, schermi ad alta densità.
 
 ---
@@ -2513,3 +2565,595 @@ di §4.1) e che salvare e ricaricare dallo slot funzioni dentro l'iframe.
 **Da fare una volta (autore)**: attivare GitHub Pages con sorgente "GitHub
 Actions" (Settings → Pages). Finché non è attivo, il passo di
 pubblicazione su `main` fallisce; la build e le prove no.
+
+---
+
+## Fase 6 — correzioni dalla prova dell'autore (6 ottobre 2026)
+
+### 6.1 Prima tornata di segnalazioni
+
+L'autore ha provato il gioco e ha segnalato tredici cose. Tutte corrette
+qui; i numeri continuano quelli dei difetti (n.77–n.89).
+
+- **n.77, pioggia ruotata di 90°** [C]: `part_type_orientation(goccia,
+  160, 170, 0, 0, true)` in manager Alarm_4 ha l'ultimo argomento `true`
+  (orientamento *relativo* alla direzione); il porting lo trattava come
+  assoluto e le gocce erano linee quasi orizzontali che cadevano in
+  verticale. Ora 160–170° in più dei 250–260° del moto: linee quasi
+  parallele alla caduta, leggermente inclinate. La n.61 di §3.16 (che
+  chiedeva di confrontare) era questo errore di lettura.
+- **n.78, zoom**: l'originale va da 1,0 a 1,5 con X/Z; ora fino a 2,0
+  (`ZOOM_MAX` in `camera.js`) e anche con la rotella, che tiene fermo il
+  punto sotto il puntatore. La rotella somma i delta (un touchpad ne
+  manda tanti piccoli): uno scatto ogni ~100 px.
+- **n.79, percentuale di produzione** (caserma, stalla, castello, centro):
+  nera. Nell'originale prende il colore rimasto dal disegno precedente
+  (§3.5); qui colore, font e allineamento si impostano prima di scriverla.
+- **n.80, contatore dei civili inattivi**: `global.idle` è tenuto a
+  incrementi in una trentina di punti (civili, cantieri, edifici); basta un
+  percorso dimenticato perché il numero si sfasi per sempre. Ora dopo ogni
+  passo si ricalcola dai civili con `action` 0 e si rinumera l'ordine per
+  lo Spazio (`recountIdle`, `civilians.js`). Provato: 2 → 5 civili nuovi
+  → 4 con uno morto fermo → 3 con uno in cammino → 3 con quello morto
+  anche lui (prima non scendeva).
+- **n.81, tasti di costruzione coi soli civili**: i pulsanti (e i loro
+  tasti) esistono solo con `global.sel > 0` e `global.milsel` a 0. Anche
+  questi contatori sono a incrementi, e il doppio clic su un'unità (tutte
+  quelle dello stesso tipo nella view) o lo Spazio contano di nuovo le
+  unità già selezionate: `milsel` poteva restare sopra 0 senza soldati
+  selezionati e i pulsanti non comparivano più. Ora `sel`, `milsel`,
+  `firesel`, `arcsel`, `siegsel` si ricontano dopo ogni passo dalle unità
+  selezionate (`recountSelection`, `units.js`). In più un pulsante di
+  costruzione distrutto mentre il puntatore ci stava sopra non riceveva
+  MouseLeave e lasciava `global.sele` a 2: il clic sul terreno non
+  deselezionava più e il rettangolo di selezione non partiva; ora il suo
+  Destroy lo rimette a 0 (come già `omino_clicker` nell'originale). Nota:
+  il caso preciso dell'autore non l'ho riprodotto; i tasti funzionano con
+  un civile selezionato per clic, per rettangolo e dopo soldati
+  selezionati e deselezionati.
+- **n.82, scorrimento ai bordi in finestra**: uscendo dalla finestra il
+  puntatore resta sul bordo da cui è uscito (`edgeHold`, `input.js`) e
+  la view continua a scorrere da quella parte finché non rientra o la
+  finestra perde il fuoco (clic su un'altra finestra, cambio di scheda).
+  Sostituisce la deviazione di §3.1 che fermava lo scorrimento. In più,
+  nelle opzioni grafiche, **"Blocca il mouse nella finestra"** (spento di
+  norma): il canvas cattura il puntatore (Pointer Lock), che non può più
+  uscire; il cursore è quello del gioco e si muove coi movimenti
+  relativi. Esc lo libera (lo fa il browser) e apre il menu di pausa; il
+  clic successivo lo riprende. Negli iframe dei portali funziona solo se
+  la pagina lo permette (`allow="pointer-lock"`), altrimenti non fa nulla.
+- **n.83, freccia del mouse**: il cursore del gioco era un cursore CSS da
+  53×54 px; Chrome rifiuta i cursori sopra i 32 px vicino ai bordi della
+  finestra e mostra la freccia. Ora, come fa il runner con
+  `action_set_cursor`, la freccia del sistema è nascosta e lo sprite
+  `cursore` è disegnato dal gioco sopra a tutto, anche sul menu di pausa.
+- **n.84, angoli arrotondati sgranati**: il canvas WebGL non ha il
+  multisampling; cerchi, ellissi e rettangoli arrotondati ora hanno il
+  bordo sfumato su 1 px (antialiasing per vertice: il poligono arriva
+  mezzo pixel dentro il contorno, poi una striscia sfuma fino a mezzo
+  pixel fuori) e le curve hanno segmenti di ~6 px (da 16 a 96 per giro)
+  invece dei 24 fissi. Anche i contorni di 1 px (riquadro della view
+  sulla minimappa) sono sfumati.
+- **n.85, schede descrittive**: con la minimappa aperta compaiono alla sua
+  destra, oltre i suoi tre pulsanti (`tooltipBegin`/`tooltipEnd` in
+  `draw.js`, che traslano la proiezione), invece che sopra. Vale per
+  tutte le otto schede (costruzioni, civile, unità di caserma, stalla e
+  castello, annulla, attacco/difesa, muro, porta).
+- **n.86, un solo font**: il font del gioco (Seagram tfb) c'è solo come
+  bitmap nell'atlas, non come TTF. I messaggi HTML (caricamento, WebGL2
+  assente, accelerazione hardware assente, contesto perso, salvataggi)
+  ora disegnano i suoi glifi in un canvas 2D (`domtext.js`), senza WebGL;
+  finché l'immagine non è pronta resta il testo semplice. Il pannello di
+  diagnostica F3 resta monospazio (è per chi prova, non per il gioco).
+- **n.87, menu di pausa**: titolo all'80% (`gui_sblocco`) e scritte
+  all'88% (`GUI_1`, `overdue`), pulsanti e spazi un po' più bassi
+  (`draw_text_transformed`, nuovo in `draw.js`: `textTransformed`).
+- **n.88, contatore FPS**: era la media esponenziale di `1000/dt`, che con
+  frame irregolari sovrastima (frame da 10 e 40 ms alternati: 62 invece
+  dei 40 veri). Ora conta i frame disegnati in mezzo secondo. In più il
+  ciclo a passo fisso faceva a volte 0 passi in un frame e 2 nel
+  successivo (rAF a 60 Hz arriva ogni 16,4–16,9 ms, il passo è 16,67): un
+  fotogramma ripetuto che sembra un fps più basso. Ora l'accumulatore ha
+  1,5 ms di tolleranza (`loop.js`): a 60 Hz un passo per frame, in media
+  sempre 60 passi al secondo.
+- **n.89, percorsi di gruppo**: il flow field resta uno solo, quello del
+  capo verso il punto cliccato (leggero, come nell'originale), ma prima
+  tutti avevano anche **lo stesso punto d'arrivo**: vicino al punto ognuno
+  faceva `mp_potential_step` verso quel punto, le unità (solide) si
+  spingevano e la regola "destinazione occupata, arretra di 32/50 px" le
+  fermava a catena in fila prima del punto. In più i seguaci tenevano il
+  `goal_field` dell'ordine precedente: quando il primo arrivava e occupava
+  la cella, gli altri ricalcolavano il campo da quei dati verso la cella
+  ormai occupata, e `scr_find_valid_cell_backwards` restituiva di nuovo
+  quella cella: BFS su tutta la griglia a ogni passo. Ora (`formation`,
+  `units.js`, dopo il GlobalRightReleased delle unità):
+  - ogni unità riceve una **casella sua** attorno al punto cliccato: righe
+    perpendicolari alla direzione di marcia, nella prima riga chi arriva
+    prima (distanza / velocità), in ogni riga lo stesso ordine da sinistra
+    a destra in cui stanno ora (i percorsi non si incrociano); distanze
+    calcolate dalle maschere delle unità vicine; ogni casella è una cella
+    libera, raggiungibile nel campo del capo e diversa dalle altre;
+  - lontano si segue il flow field comune, da 400 px "step towards" verso
+    la propria casella (come l'originale verso il punto cliccato);
+  - il ricalcolo "cella d'arrivo occupata" (cavaliere, fanteria, arcieri,
+    civili) va alla cella **libera** più vicina (`nearestFreeCell`);
+  - un'unità che a meno di 400 px dalla sua casella non si avvicina da 60
+    passi più uno ogni 2 px di distanza si ferma dov'è (`arriveIfBlocked`)
+    invece di dondolare dietro le altre fino al "timer fermati" di 20 s.
+  Solo per gli spostamenti semplici: con un nemico, un edificio, una
+  risorsa o un cantiere sotto il puntatore, o con una sola unità, tutto
+  resta come prima.
+
+**Verificato**: `npm test`, 40 test (nuovi: cella libera più vicina e
+arrivo per rinuncia); Chromium: 14 unità miste (3 cavalieri, guerrieri,
+picchieri, arcieri) mandate a 1100 px: prima a 1200 passi il baricentro
+era a 330 px dal punto cliccato, in fila, due unità ferme solo dal timer;
+ora tutte arrivate in 1000 passi attorno al punto (baricentro a 35 px),
+distanza minima fra unità 49 px; rotella (zoom fino a 2,0 attorno al
+puntatore), scorrimento a destra col puntatore uscito dalla finestra (869
+px in 11 passi), cursore disegnato e freccia nascosta, scheda della casa a
+destra della minimappa, messaggio dell'accelerazione hardware e menu di
+pausa col font del gioco, contatore degli inattivi coi civili che muoiono;
+3000 passi senza errori in `menu`, `match`, `lvl01`, `lvl02`; salvataggi
+con ripristino identico; zip dei portali nell'iframe.
+
+### 6.2 Pathfinding: studio, ottimizzazioni A e B, correzioni C e D
+
+Richiesta dell'autore: studiare il pathfinding (flow field e movimento),
+ottimizzarlo senza cambiarne il comportamento, chiedere prima di
+implementare. Approvate A, B, C, D.
+
+**Misure** (Chromium, profilo a campionamento e micro-benchmark sulle
+griglie vere; SwiftShader, CPU del container):
+- Nel gioco normale il pathfinding non e' la voce principale: in `lvl02` un
+  passo costa ~1,5 ms e il grosso e' `instance_nearest` (~1150 chiamate a
+  passo: alberi nascosti che cercano un'unita' vicina, nemici, difese) con
+  `distance_to_object`.
+- Il pathfinding pesa a picchi: ogni ordine, ogni viaggio di un civile al
+  deposito, ogni ricalcolo fa un BFS su tutta la griglia piu' il flow field
+  su tutte le celle: 2,3 ms in `match` (218×218 celle), 1,05 in `lvl02`;
+  piu' di meta' nel flow field.
+- Contro le maschere grandi (montagne a ellisse, fiumi e montagne precise)
+  un passo di `mp_potential_step` costava ~1 ms: `overlap` copiava l'intera
+  istanza (`{...a, x, y}`) e creava array per ogni riga di maschera.
+- Comportamento: il BFS conta i passi a croce e il flow field ne sceglie 8,
+  quindi la diagonale vince quasi sempre (93% delle celle): percorsi a
+  45 gradi poi dritti. In 40–50 celle per campo la diagonale passava fra due
+  ostacoli (spigoli tagliati: sul flow field non c'e' controllo di
+  collisione).
+
+**A — campi** (`pathing.js`): goal field con indici lineari e coda
+riusata; il flow field non si calcola piu': e' il goal field, e la
+direzione di una cella si ricava quando serve (`flowAt`, stessa regola).
+Memoria per unita' e salvataggi piu' piccoli (slot di `lvl02` da 473 a
+~390 KB). I flow field di angoli dei salvataggi vecchi (`Float32Array`) si
+leggono come prima. Costo per calcolo: `match` 2,0 → 0,43 ms, `lvl01`
+0,8 → 0,2, `lvl02` 1,05 → 0,3.
+
+**B — collisioni** (`world.js`): `overlap`, `pointIn`, `collision_rectangle`
+con gli intervalli delle righe scritti in buffer riusati, senza copiare
+l'istanza; ricerca dei vicini senza `Set` (contrassegno `_qs` per i
+doppioni, stesso ordine di prima; non si salva); gli eventi di collisione
+ricevono una "fotografia" dei vicini come prima (i gestori possono
+spostare o distruggere); mappa degli eventi di collisione per oggetto
+calcolata una volta. Passo contro una montagna: 1,11 → 0,13 ms.
+
+**Verifica di A+B**: vecchia e nuova versione con `Math.random` a seme
+fisso e gli stessi input, digest dello stato (per ogni istanza posizione,
+direzione, azione, vita, destinazione, selezione, frame; globali; griglia
+dei costi) ogni 100 passi: **identici** in 7 scenari fino a 3000 passi
+(`menu`, `match`, `lvl01`, `lvl02` senza input; 30 civili a legno e oro;
+40 soldati in marcia; battaglia di `lvl02`). Lo strumento vede le
+differenze (con semi diversi: diverso dopo 100 passi). Un salvataggio della
+versione vecchia si carica e le unita' camminano coi flow field vecchi.
+
+**C — niente spigoli tagliati** (`flowAt`): una diagonale solo se le due
+celle di lato sono percorribili.
+
+**D — percorsi naturali**:
+- sul flow field l'unita' punta un **punto di passaggio**: segue le
+  direzioni del campo per 6 celle e prende il centro della cella piu'
+  lontana raggiungibile in linea retta (linea "spessa" ±12 px, tutta su
+  celle percorribili); lo tiene finche' non ci arriva (24 px) o non lo
+  vede piu' (`steerAim`; `steerField` non si salva). Sceglierlo a ogni
+  passo lo faceva saltare di una cella e lo sprite tremolava (cambi di
+  direzione dello sprite raddoppiati): misurato e corretto;
+- lo "step towards" (`mp_potential_step` dritto verso la destinazione,
+  sotto i 400 px) solo se la destinazione e' **in vista** (`seesGoal`):
+  prima si andava dritti anche con un ostacolo in mezzo e l'unita'
+  oscillava contro l'ostacolo (decine di passi a 270/300 gradi) fino alla
+  rinuncia. Era un difetto gia' presente, che D rendeva piu' frequente.
+  Solo per gli spostamenti semplici di soldati, arcieri e civili; nemici,
+  attacchi e lavoro dei civili (meta = edificio o risorsa) come prima.
+- Uno spessore della linea pari alla maschera dell'unita' (provato) peggiora:
+  la linea fallisce piu' spesso e l'unita' alterna le due direzioni.
+
+**Verifica di C+D** (una unita' alla volta, 10–12 coppie partenza/arrivo
+a caso lontane dai nemici, stessa casualita', prima → dopo):
+
+| prova | passi | svolte /100 px | cambi di sprite | passi sovrapposti a ostacoli | distanza finale |
+|---|---|---|---|---|---|
+| guerriero `match` | 5868 → 5843 | 9,7 → 8,4 | 53 → 40 | 197 → 107 | 8 → 8 |
+| guerriero `lvl01` | 3369 → 3188 | 6,4 → 2,1 | 276 → 14 | 86 → 134 | 40 → 7 |
+| cavaliere `lvl02` | 3341 → 3122 | 45 → 22,8 | 291 → 37 | 809 → 1020 | 70 → 9 |
+| cavaliere `match` | 3791 → 3777 | 12,5 → 9,5 | 53 → 34 | 253 → 101 | 7 → 7 |
+| arciere `lvl02` | 4163 → 3908 | 39,3 → 23,1 | 318 → 37 | 494 → 305 | 108 → 9 |
+
+Gruppi: 20 soldati verso un punto oltre una montagna, passi sovrapposti
+agli ostacoli 456 → 111, arrivati tutti; 14 unita' in formazione arrivate
+entro 1200 passi; civili al lavoro: stesse risorse raccolte (550), passi
+sovrapposti 636 → 332. I passi sovrapposti salgono un po' dove le unita'
+ora arrivano davvero alla meta invece di fermarsi prima: sul flow field il
+movimento non ha mai controllato le collisioni, e unita' larghe 50–90 px su
+celle da 32 sfiorano i bordi.
+
+**Trovati, non corretti** (da decidere):
+- Un nemico in una cella senza direzione (per lui irraggiungibile: le
+  porte del giocatore sono ostacoli per i nemici, §3.8) tira dritto nella
+  sua direzione ed esce dalla mappa (prova sintetica in `match`: da 2300 a
+  14.000 px dal bersaglio). Uguale prima e dopo.
+- Il primo nemico di un'ondata che arriva a 400 px dal bersaglio ferma
+  tutti gli altri (`role` 31 → 32, `action` 0) [C, scr_movimento_nemici_ff]:
+  e' l'originale; le ondate ripartono con `attacca`.
+
+**Verificato**: `npm test`, 42 test (nuovi: spigoli, punto di passaggio in
+campo aperto e dietro un muro); 5000 passi senza errori in `menu`,
+`match`, `lvl01`, `lvl02`; salvataggi con ripristino identico; zip dei
+portali nell'iframe.
+
+### 6.3 `instance_nearest`: studio, N1, N2, N3
+
+**Studio** (chiamate contate per punto del codice, liste scorse, profilo):
+94 chiamate nel codice; ~1160 a passo in `lvl02`, ~530 in `lvl01`, ~510 in
+`match`. Le liste sono corte (10–33 alleati): pesa il numero di chiamate.
+Le principali: `reveal` delle risorse nascoste (~500 a passo: ogni albero,
+miniera, pietra nella nebbia cerca l'alleato piu' vicino), i controlli di
+vista di nemici, edifici nemici, torri, arieti e catapulte ("il piu' vicino
+e' entro r + r*(1-notte)?", ~350), `scr_difendi` (la stessa domanda per
+ogni difensore, 77). L'11–19% delle chiamate ripete la stessa domanda col
+mondo fermo. In `lvl02` il 95% delle risorse nascoste e' a oltre 800 px da
+ogni alleato e l'83% dei nemici a oltre 1200 px. Con 80 soldati in piu'
+il passo sale a 3,4–4,2 ms e `reveal` + `nearest` sono un terzo.
+
+Alternative valutate: N1 memoria, N2 scatole senza array, N3 certificati
+di lontananza, N4 indice spaziale (utile solo con liste lunghe: rimandato),
+N5 controllo ogni N passi (cambia i tempi di rivelazione: scartato).
+Approvate N1, N2, N3.
+
+**N1** (`world.js`, `nearest`): il mondo ha una versione (`_ver`) che cresce
+a ogni `moved`, creazione e distruzione (l'unico punto che sposta le istanze
+e' `setPos`, verificato); `nearest` ricorda l'ultima risposta per nome e la
+rida' per la stessa domanda a versione invariata.
+
+**N2**: `bbox` calcolato in un array riusato (`_bboxInto`) per
+`distanceToInstance`.
+
+**N3** (`nearWithin(i, nome, r, rmax)`): lo stesso risultato di
+`distance_to_object(instance_nearest(i.x, i.y, nome)) < r`. Quando la
+risposta e' "no" si guarda la distanza delle scatole di TUTTE le istanze del
+nome: se il minimo supera `rmax` (il raggio piu' grande che il chiamante
+potra' chiedere: 2,01 r per i controlli di vista, la notte va da -0,005 a
+1,005; il certificato si ricontrolla se arriva un r piu' grande) di un
+margine, la risposta resta "no" finche' gli spostamenti non possono averlo
+consumato. Gli spostamenti: in `moved()` di quanto si sono mossi i lati
+della scatola di ogni istanza "seguita" (alleati, nemici, edifici,
+risorse), sommati per istanza nel passo; `_travel` somma per passo il
+massimo. Due scatole che si spostano di d per lato cambiano distanza al
+massimo di 2*sqrt(2)*d (si usa 3). Una nuova istanza seguita invalida tutti
+i certificati (`_epoch`); un salto (teletrasporto) consuma il margine
+subito. Niente certificato se l'istanza o una candidata ha la scatola che
+dipende dallo sprite (maschera non fissa: `palo_1`, la statua, la casa
+nemica, le casse; l'animazione cambia lo sprite senza `moved()`), e dopo un
+tentativo fallito (qualcuno vicino) si riprova fra 8 passi. I certificati e
+gli altri campi di servizio non si salvano; il ripristino li invalida.
+Usato da `reveal` e da tutti i controlli di vista (`enemies.js`,
+`enemybuild.js`, `ranged.js`, `siege.js`).
+
+**Verifiche**:
+- stato identico passo per passo alla versione precedente (stessa
+  casualita', confronto ogni 100 passi) in 7 scenari, compresa la
+  visibilita' di ogni istanza;
+- prova "ombra": a ogni chiamata di `nearWithin` ricalcolata anche la
+  formula originale: **0 differenze su 9,4 milioni di chiamate** (`lvl02`,
+  `match`, `lvl01`, e `lvl02` con 80 soldati in marcia attraverso la mappa);
+  ricerche saltate 86% in `lvl02`, 82% in `match`, 78% con 80 soldati in
+  piu', 37% in `lvl01` (alleati e nemici vicini);
+- tempo per passo (mediana di 5 misure, riferimento → nuovo): `lvl02` 1,18 →
+  0,92 ms (-23%), `match` 0,75 → 0,62 (-18%), `lvl01` 1,01 → 1,01; `lvl02`
+  con 80 soldati in marcia 4,25 → 3,60 (-15%). Le misure singole oscillano
+  di +-9%: una prima misura di `lvl01` sembrava -24%, era rumore (e un
+  costo vero dei tentativi falliti, tolto con l'attesa di 8 passi);
+- `npm test`, 45 test (nuovi: memoria di nearest, certificato che scade
+  mentre un'unita' si avvicina, nuova unita' accanto, salto, maschera non
+  fissa, raggio oltre rmax); 5000 passi senza errori nelle quattro room;
+  salvataggi identici; zip dei portali.
+
+### 6.4 Arcieri: linea di tiro e riposizionamento
+
+Richiesta dell'autore: "gli arcieri dovrebbero sparare solo se non ci sono
+edifici nel mezzo, altrimenti il primo livello diventa senza senso. Ok
+sparare tra gli omini. Se non hanno una linea diretta possono spostarsi,
+senza pero' andare lontano".
+
+**Prima** [C]: l'arciere alleato tira al nemico piu' vicino entro 600 px
+(quello nemico all'alleato piu' vicino entro 400, la meta' di notte) e le
+frecce colpiscono solo le unita': attraversavano case, mura e la citta' di
+`lvl01`.
+
+**Cosa ferma le frecce** (`world.blocksShots`): edifici alleati (mura,
+porte e cantieri compresi; non i campi), edifici nemici (non le casse di
+`lvl01`), gli edifici della citta' (`ocr_*`, che nel GML sono
+`natural_parent` come gli alberi: case, tempio, basilica, teatro) e le
+rovine. Non le unita', gli alberi, le montagne, i fiumi, le pietre, le
+statue, le colonne, le fontane, i pali. Si guardano le sagome a terra (le
+maschere): il segmento dai piedi di chi tira ai piedi del bersaglio,
+campioni ogni 8 px, esclusi i primi e gli ultimi 20 (`world.shotClear`).
+
+**Comportamento** (`archery.js`; arciere alleato in `ranged.js`, nemico in
+`enemies.js`):
+- bersaglio: fra i nemici a tiro, il piu' vicino con la linea libera;
+  con un bersaglio scelto dal giocatore (clic destro) solo quello;
+- al rilascio della freccia (fine del caricamento, 56 passi dopo l'inizio)
+  la linea si ricontrolla: se un edificio si e' messo in mezzo il tiro si
+  annulla;
+- nemici a tiro ma nessuno in linea: l'arciere cerca un punto da cui tirare
+  su anelli di 48-240 px attorno a se' (16 direzioni): libero, raggiungibile
+  a piedi in linea retta, a tiro e con la linea libera, il piu' vicino; mai
+  oltre **250 px** dal punto in cui ha cominciato a combattere (l'ancora,
+  cancellata da un ordine del giocatore, dalla fine del combattimento e,
+  per i nemici, quando nessun alleato e' piu' a portata d'inseguimento). Se
+  non c'e' un punto resta fermo e riprova fra 30 passi. L'arciere nemico si
+  sposta con `warwork` 1 (con 4 `scr_difendi` lo riassegnerebbe);
+- la freccia parte 40 px in alto e scende verso i piedi del bersaglio; in
+  volo, se il punto a terra sotto di lei e' dentro un edificio si ferma
+  (cosi' una freccia che manca il bersaglio non attraversa una casa).
+- Torri, castello e centro tirano come prima (sono in alto).
+
+**Verificato** (Chromium, casualita' fissata, prima → dopo):
+- scenario controllato in campo aperto, bersaglio fermo dietro una casa
+  (`ocr_25`, 224x133 px), tiratore a 320 px: con il bersaglio dietro il
+  centro della casa prima 26 colpi su 26 attraverso la casa, ora nessun
+  tiro e nessuno spostamento (servirebbero 550 px di lato, oltre il
+  guinzaglio); con il bersaglio dietro lo spigolo (150 px di lato)
+  l'arciere si sposta di 94 px (il nemico di 93) e mette a segno 25 frecce
+  su 25, nessuna attraverso la casa; con la linea libera tutto come prima
+  (26 su 26);
+- battaglia di `lvl02` con 80 soldati in piu' (un quarto arcieri): 81
+  frecce (prima 88), 0 colpi attraverso edifici, nessun costo in piu'
+  (6,8 → 6,5 ms a passo); `lvl01` verso la citta': prima 8 frecce, una
+  attraverso un edificio; ora nessun tiro senza linea;
+- `npm test`, 48 test (nuovi: cosa ferma e cosa no, bersaglio in linea
+  invece del piu' vicino, punto di tiro dietro lo spigolo, nessun punto
+  oltre il guinzaglio); 5000 passi senza errori in `menu`, `match`,
+  `lvl01`, `lvl02`; salvataggi identici; zip dei portali.
+
+### 6.5 Edifici che tirano: linea di tiro
+
+Richiesta dell'autore: "applichiamo un fix simile a edifici che sparano
+(torri, castelli ecc.): se c'e' un edificio frapposto non sparano e
+scelgono un altro bersaglio".
+
+**Prima** [C]: torre e castello presidiati (una freccia per arciere dentro,
+ogni 50 passi), il centro (una ogni 35) e la torre nemica (due ogni 50)
+tirano al piu' vicino entro 600 px; la freccia (`arciere_bullet_t`,
+`b_arciere_bullet_t`) mira, quando nasce, al piu' vicino al suo punto di
+partenza.
+
+**Ora** (`archery.js`, `towerTarget`, `towerArrow`): il bersaglio e' il piu'
+vicino entro 600 px con la linea libera (`shotClear` dalla base
+dell'edificio ai piedi del bersaglio); se non ce n'e' non si tira e
+l'edificio resta armato (riprova al passo dopo). La freccia nasce gia' con
+il bersaglio (`towerTarget`, impostato prima del suo Create) e in volo si
+ferma contro gli edifici come quelle degli arcieri, con l'altezza vera di
+partenza (base dell'edificio meno la y della freccia: 60-140 px). Per chi
+tira da un edificio non contano l'edificio stesso (la linea parte da dentro
+la sua sagoma) ne' mura e porte (si tira dall'alto: le torri stanno lungo
+le mura). Torre e castello senza presidio non cercano bersagli (non
+avrebbero frecce: prima l'allarme girava a vuoto).
+
+**Verificato** (campo aperto, bersagli fermi, prima → dopo, 1200 passi):
+con un nemico dietro una casa (il piu' vicino) e uno piu' lontano in vista,
+torre 48 colpi tutti dietro la casa → 48 tutti sul bersaglio in vista;
+castello 96 → 96 in vista; centro 35 → 34 in vista; torre nemica 48 → 48 in
+vista; con il solo bersaglio dietro la casa 48/35/48 frecce → nessuna; con
+un muro in mezzo tutto come prima (48 colpi). Battaglia di `lvl02` con 80
+soldati in piu': nessun colpo attraverso edifici, 6,9 → 6,4 ms a passo.
+`npm test` 49 test (nuovo: bersaglio dell'edificio e mura ignorate); 5000
+passi senza errori nelle quattro room; salvataggi identici; zip dei
+portali.
+
+### 6.6 Montagne e rovine fermano le frecce
+
+Decisione dell'autore: "applichiamo il blocco anche con montagne, ma non con
+boschi, si' invece con rovine, comprese quelle usate per minare la pietra.
+Le mura non devono bloccare torri e castello".
+
+`world.blocksShots` ora conta anche le montagne (`montagna_*`) e tutte le
+rovine solide: quelle da cui si estrae la pietra (`stone_parent`: anche
+`pietra_grande` e `pietr_piccolo`, che sono un tempio e un tempietto
+crollati, oltre alle rovine di castello, chiesa e torre) e le rovine del
+centro (`ccruin`). Restano trasparenti boschi e alberi, fiumi, statue,
+colonne, fontane e le macerie non solide degli edifici distrutti (case,
+magazzini, stalle: le unita' ci camminano sopra). Mura e porte non fermano
+chi tira da un edificio (torri, castello e centro, §6.5): gia' cosi'.
+
+**Verificato**: `npm test`, 50 test (nuovo: montagna e rovina fermano,
+bosco e fiume no); Chromium su `montagna_2` di `match` (maschera grande a
+ellisse): linea attraverso bloccata, sopra libera, attraverso un bosco
+libera, 7 µs per controllo; battaglia di `lvl02` con 80 soldati in piu'
+senza colpi attraverso edifici o montagne e senza costo in piu'; 5000 passi
+senza errori nelle quattro room; salvataggi identici; zip dei portali.
+
+### 6.7 Catapulte troppo vicine: arretramento
+
+Richiesta dell'autore: "per le catapulte: possiamo migliorare il sistema per
+cui se sono troppo vicine al bersaglio si muovono automaticamente
+indietro? sia alleate che nemiche".
+
+**Prima** (§3.12 n.47): in automatico, carica e ferma, una catapulta con
+l'edificio bersaglio piu' vicino a meno di 300 px (distanza minima di tiro)
+arretrava di 350 px in linea retta dalla parte opposta. Con un ostacolo
+dietro (case, mura, montagne, altre unita') restava incastrata a girare sul
+posto; guardando un solo edificio poteva arretrare a meno di 300 px da un
+altro; un tiro ordinato dal giocatore su un bersaglio troppo vicino non
+faceva nulla.
+
+**Ora** (`siege.js`, `catapultSpot`, `retreatSpot`):
+- il punto d'arrivo si cerca su anelli da 120 a 520 px (24 direzioni): una
+  cella libera, la catapulta ci sta, raggiungibile in linea retta, e da li'
+  l'edificio piu' vicino (quello a cui tirera') e' oltre 300 + 30 px e
+  dentro la gittata meno 30; il piu' vicino, a parita' d'anello quello con
+  l'edificio meno lontano. Se non c'e', l'arretramento dritto di prima;
+- se si blocca per strada si ferma dov'e' (`arriveIfBlocked`, come le unita'
+  di §6.1) e al passo dopo rivaluta;
+- alleata: un clic destro su un nemico a meno di 300 px (prima ignorato)
+  manda la catapulta in un punto da cui il punto cliccato e' a tiro e,
+  arrivata, tira li' (il punto segue il bersaglio se si e' mosso);
+- [Decisione dell'autore] finito un tiro mirato la catapulta torna al tiro
+  automatico (nell'originale restava ferma fino all'ordine successivo);
+  un ordine dato durante il lancio lo interrompe come prima e
+  l'automatico non riparte.
+
+**Verificato** (campo aperto di `match`, edificio a 100 px dalla
+catapulta, 2000 passi, prima → dopo):
+- aperto: uguale (alleata primo tiro al passo 220 → 231; nemica 9 tiri);
+- ostacolo dietro (cinque case): alleata incastrata 1950 passi, 0 tiri →
+  10 tiri, 2 passi ferma; nemica incastrata 1950 passi, 0 tiri → 9 tiri;
+- secondo edificio dove porterebbe l'arretramento dritto: alleata primo
+  tiro al passo 1429 → 466; nemica incastrata 1758 passi, 0 tiri → 9 tiri;
+- tiro ordinato troppo vicino: ignorato → arretra di 200 px e colpisce la
+  casa al passo 195; poi, in automatico, ricarica, si accorge di essere a
+  238 px (sotto i 300), arretra e a 301 px riprende a tirare da sola fino a
+  distruggere la casa.
+`npm test` 50 test; 5000 passi senza errori nelle quattro room; salvataggi
+identici; zip dei portali; battaglia di `lvl02` senza differenze di costo.
+
+
+### 6.8 Carico della GPU: studio, G0 (tempo GPU in F3) e G1 (qualita')
+
+Domanda dell'autore: "a livello di carico della gpu secondo te si riesce a
+ottimizzare tutto? ho l'impressione che il bottleneck sia li' piu' che
+sulla cpu". Poi: "va bene fai g0 e g1 intanto".
+
+**Limite delle misure.** Nel container la GPU e' emulata dalla CPU
+(SwiftShader): i millisecondi assoluti non valgono per una scheda vera,
+valgono i rapporti fra varianti misurate nelle stesse condizioni. Per
+misurare il disegno si chiude il frame con `readPixels` (in SwiftShader
+`gl.finish` non aspetta davvero la fine del lavoro).
+
+**Studio** (1920×1080 se non detto altrimenti):
+- CPU: la simulazione ~1 ms a passo; preparare il disegno in JavaScript
+  2–4 ms a frame. Una parte piccola dei 16,7 ms di un frame a 60 fps.
+- Riempimento: ogni frame copre lo schermo 4,7–6,5 volte (sfondo intero,
+  pezzi di terreno fino a 3 schermi nel menu, 2500–4000 particelle d'erba,
+  nebbia e notte a schermo intero, in `lvl01` due volte, fuochi,
+  interfaccia).
+- Il costo segue i pixel: a densita' 2 (schermi ad alta risoluzione) il
+  disegno costa ~3,5 volte; il gioco disegnava fino a 2 pixel reali per
+  pixel CSS (`devicePixelRatio` limitato a 2).
+- Lo shader sceglie la texture fra 16 unita' con una catena di `if`
+  (`gl.js`): una variante di prova con un solo campionamento dimezza il
+  costo dei frammenti (173 → 94 ms nell'emulazione). Su Windows Chrome
+  traduce WebGL in Direct3D (ANGLE), dove una catena cosi' puo' eseguire
+  tutti i rami: e' il sospetto principale.
+- Peso delle parti (spegnendole a turno):
+
+  | | erba e spighe | nebbia + notte | fuochi | interfaccia |
+  |---|---|---|---|---|
+  | `match` | ~28% | ~17% | — | ~6% |
+  | `lvl01` | — | ~41% | ~29% | — |
+  | `lvl02` | ~33% | ~30% | ~18% | ~20% |
+  | menu | ~45% | — | — | ~28% |
+
+- Texture: 229–245 MB in GPU, di cui 125 MB del terreno (pagine fino a
+  4088×4072).
+
+**Proposte** (in ordine di guadagno su rischio): G0 tempo GPU in F3; G1
+opzione qualita' (mondo a risoluzione ridotta, interfaccia nitida); G2
+shader senza catena di `if` (pagine in una texture a strati, il terreno
+ritagliato a 2048: ~meta' del costo per pixel, pixel identici); G3 nebbia
+e notte in un solo passaggio; G4 suolo cotto in blocchi ridisegnati solo
+quando cambiano; G5 erba piu' rada o animata meno spesso (scelta
+estetica). Approvate G0 e G1; G2–G5 restano proposte (lista in cima).
+
+**G0 — tempo GPU nel pannello F3** (`gl.js`, `app.js`, `diag.js`).
+- Estensione `EXT_disjoint_timer_query_webgl2`: se il browser la espone,
+  ogni frame (solo col pannello aperto, `r.timing = diag.visible`) sta fra
+  `gpuBegin()` (dopo `beginFrame`) e `gpuEnd()` (dopo l'ultimo `flush`,
+  sia in gioco sia in pausa). Una query `TIME_ELAPSED_EXT` per frame, al
+  massimo 8 in attesa; `gpuPoll()` a ogni frame raccoglie quelle pronte
+  senza bloccare, scarta quelle con `GPU_DISJOINT_EXT` (misura non valida,
+  es. cambio di frequenza) e tiene gli ultimi 60 valori.
+- Il pannello mostra `CPU per frame X ms   GPU per frame M ms (max N)`
+  (media e massimo degli ultimi 60); senza estensione "non disponibile (il
+  browser non espone EXT_disjoint_timer_query_webgl2)"; prima dei primi
+  risultati "in misura...". Chrome la espone su desktop (Windows, Linux,
+  macOS); Firefox e Safari di solito no (contromisura contro gli attacchi
+  di temporizzazione). Se la GPU per frame e' vicina ai 16,7 ms (o ai
+  1000/tetto fps) mentre la CPU e' bassa, il collo di bottiglia e' la GPU.
+- Riga in piu': `qualita' <alta|media|bassa>: mondo X px per px CSS,
+  interfaccia Y`, per vedere la densita' effettiva (qualita' × risoluzione
+  dinamica).
+- Verificato (SwiftShader, 1280×720, dpr 2): l'estensione c'e' e il
+  pannello mostra per esempio "GPU per frame 334,23 ms" in qualita' media.
+
+**G1 — opzione Qualita'** (`app.js`, `gl.js`, `settings.js`, `pause.js`,
+`texts.js`).
+- Nuova impostazione `quality` (`high` predefinita, salvata con le altre):
+  Alta = come prima (fino a 2 pixel per pixel CSS), Media = 1,25, Bassa =
+  1. Nel menu di pausa, opzioni grafiche, voce "Quality: High/Medium/Low"
+  (tradotta nelle sei lingue) prima della risoluzione dinamica; un clic
+  passa Alta → Media → Bassa → Alta e si applica subito.
+- Il canvas resta alla densita' dello schermo (`canvasScale` =
+  `devicePixelRatio`, massimo 2): l'interfaccia, i testi e il cursore
+  restano nitidi. Il mondo ha la sua densita' `worldScale` =
+  min(dpr, tetto della qualita') × scala della risoluzione dinamica.
+- Se `worldScale` e' minore di `canvasScale` il mondo (sfondi, istanze,
+  nebbia, notte, cerchio del puntatore) si disegna in una superficie
+  grande `cssW × worldScale` per `cssH × worldScale`, ricreata solo se
+  cambiano misura o contesto WebGL, e si copia sul canvas con un quad
+  (filtro lineare); poi l'interfaccia (Draw GUI) direttamente sul canvas.
+  Altrimenti si disegna direttamente come prima e la superficie si libera.
+  Alta su uno schermo a densita' 1 o 2, Media e Bassa a densita' 1: nessuna
+  superficie, nessun costo in piu'.
+- Cambiamento collegato: la **risoluzione dinamica** prima riduceva tutto
+  il canvas (interfaccia compresa); ora riduce solo il mondo, con la stessa
+  superficie. La sfocatura della pausa ridisegna la scena dentro la sua
+  superficie come prima (con la superficie del mondo annidata).
+- **Miscela `replace`** (`gl.js`, `setBlend`): la nebbia e la notte si
+  sottraggono con `ZERO, ONE_MINUS_SRC_COLOR`, che azzera anche l'alpha di
+  una superficie. Sul canvas l'alpha non conta, in una superficie si':
+  copiandola con la miscela normale (alpha premoltiplicato) dove l'alpha e'
+  0 il suo colore si somma a quello sotto (il colore della room con cui si
+  pulisce il frame) e il mondo usciva slavato, quasi bianco. La copia del
+  mondo usa quindi `replace` (`ONE, ZERO`: si scrive il colore, l'alpha si
+  ignora). La sfocatura della pausa non ne soffre: le sue copie finiscono
+  in superfici pulite con alpha 1 e con colore nero, e lo sfondo esce
+  giusto (verificato a schermo, prima e dopo).
+
+**Verificato** (SwiftShader, 1280×720, dpr 2, risoluzione dinamica spenta,
+ms per frame, solo i rapporti contano):
+
+| | prima | Alta | Media | Bassa |
+|---|---|---|---|---|
+| `match` | 678 | 642 | 454 (−33%) | 370 (−45%) |
+| `lvl01` | 766 | 750 | 461 (−40%) | 458 (−40%) |
+
+(`lvl01` Media ≈ Bassa: li' pesano nebbia, notte e fuochi a densita' di
+superficie gia' bassa, e la copia finale; resta da vedere su una GPU vera.)
+- Alta: immagine identica pixel per pixel alla versione precedente (hash
+  uguale); la pausa in Alta differisce dal riferimento solo nell'erba
+  animata, quanto due esecuzioni dello stesso riferimento (51 mila pixel,
+  scarto massimo 26–30 su 255).
+- Bassa: stessa immagine, piu' morbida; nessuno slavato (dopo `replace`);
+  pausa con lo sfondo sfocato giusto.
+- Menu: la voce cicla Media → Bassa → Alta → Media, l'impostazione si
+  salva, il canvas resta 2560×1440, F3 mostra "qualita' media: mondo 1,25
+  px per px CSS, interfaccia 2,00".
+- `npm test` 50 test; 5000 passi senza errori nelle quattro room;
+  salvataggi identici; zip dei portali.
+
+**Da provare sul PC dell'autore**: aprire F3 e guardare "GPU per frame"
+(se c'e') in Alta e in Bassa nello stesso punto della mappa. Se in Bassa
+il tempo GPU scende molto, conta il numero di pixel (G1 basta o G4); se
+scende poco, conta il costo per pixel o per particella (G2, G3, G5).

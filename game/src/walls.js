@@ -259,6 +259,7 @@ export function mplus(name) {
       dr.setAlpha(0.69);
       const title = tr("Wall"), desc = tr("Structure that can be built in both directions.");
       const ex = dr.panelExtra(390, title, desc, null);
+      dr.tooltipBegin(w); // §6.1 n.85
       dr.roundrectColourExt(20, H - 150, 390 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
@@ -272,6 +273,7 @@ export function mplus(name) {
       dr.setAlpha(0.7);
       dr.setHalign("right");
       dr.setAlpha(1);
+      dr.tooltipEnd(w);
     },
   };
 }
@@ -423,6 +425,7 @@ export function gateClicker() {
       dr.setAlpha(0.69);
       const title = tr("Gate"), desc = tr("Creates a self-opening gate in the wall."), sc = tr("Shortcut: {key}", { key: "Q" });
       const ex = dr.panelExtra(370, title, desc, sc);
+      dr.tooltipBegin(w); // §6.1 n.85
       dr.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
@@ -433,12 +436,13 @@ export function gateClicker() {
       dr.text(40, H - 50, "100");
       dr.setHalign("right");
       dr.text(350 + ex, H - 120, sc);
+      dr.setAlpha(1);
+      dr.sprite("ico_gold", 0, 95, H - 50);
+      dr.tooltipEnd(w);
       dr.setAlpha(0.99);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
       dr.spriteExt("ico_gate", 0, 450, 50, 0.5, 0.5, 0, WHITE, 1);
-      dr.setAlpha(1);
-      dr.sprite("ico_gold", 0, 95, H - 50);
     },
   };
 }

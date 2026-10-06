@@ -121,6 +121,11 @@ export function clicker(fam) {
     alarm0(i, w) { w.destroy(i); },
     mouseEnter(i, w) { i.hover = 1; w.g.sele = 2; },
     mouseLeave(i, w) { i.hover = 0; w.g.sele = 0; },
+    // [§6.1 n.81] distrutto sotto il puntatore (selezione cambiata) non
+    // riceve MouseLeave: sele restava 2 e il clic sul terreno non
+    // deselezionava piu', ne' partiva il rettangolo di selezione (come gia'
+    // fa il Destroy di omino_clicker nell'originale)
+    destroy(i, w) { if (i.hover === 1) w.g.sele = 0; },
     leftReleased(i, w) { activate(i, w, true); },
     // KeyPress del tasto [C]: lo stesso senza il controllo "un solo placer"
     // (solo la casa lo controlla anche da tastiera)
@@ -140,6 +145,7 @@ export function clicker(fam) {
       const title = tr(P.title), desc = tr(P.desc), sc = tr("Shortcut: {key}", { key: P.shortcut[0].slice(-1) });
       const ex = dr.panelExtra(P.w, title, desc, sc);
       dr.setAlpha(0.69);
+      dr.tooltipBegin(w); // §6.1 n.85
       dr.roundrectColourExt(20, H - 150, P.w + ex, H - 20, P.r || 60, P.r || 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
@@ -153,6 +159,7 @@ export function clicker(fam) {
       dr.setAlpha(0.7);
       dr.setHalign("right");
       dr.text(P.shortcut[1] + ex, H - 120, sc);
+      dr.tooltipEnd(w);
       if (!d.noRing) {
         dr.setAlpha(0.99);
         dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
@@ -704,6 +711,11 @@ export function centro(p) {
       if (i.progression > 0) {
         dr.roundrectColourExt(420, 90, 550, 150, 60, 60, WHITE, WHITE, false);
         dr.roundrectColourExt(420, 90, 480 + 0.7 * i.progression, 150, 60, 60, GREEN, GREEN, false);
+        // [Correzione decisa dall'autore, §6.1 n.79] la percentuale in nero:
+        // nell'originale prendeva il colore rimasto dal disegno precedente
+        dr.setFont("GUI_1");
+        dr.setColour(BLACK);
+        dr.setValign("middle");
         dr.setAlpha(0.7);
         dr.setHalign("center");
         dr.text(520, 120, i.progression + "%");
@@ -779,6 +791,7 @@ export function ominoClicker() {
       dr.setAlpha(0.69);
       const title = tr("Worker"), desc = tr("Gathers resources and builds the town."), sc = tr("Shortcut: {key}", { key: "Q" });
       const ex = dr.panelExtra(370, title, desc, sc);
+      dr.tooltipBegin(w); // §6.1 n.85
       dr.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
@@ -794,6 +807,7 @@ export function ominoClicker() {
       dr.setAlpha(0.7);
       dr.setHalign("right");
       dr.text(350 + ex, H - 120, sc);
+      dr.tooltipEnd(w);
       dr.setAlpha(0.99);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
@@ -835,6 +849,7 @@ export function centroCancel() {
       dr.setAlpha(0.69);
       const title = tr("Cancel"), sc = tr("Shortcut: {key}", { key: "W" });
       const ex = dr.panelExtra(340, title, null, sc);
+      dr.tooltipBegin(w); // §6.1 n.85
       dr.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       dr.setAlpha(0.7);
       dr.setHalign("left");
@@ -846,6 +861,7 @@ export function centroCancel() {
       dr.setFont("GUI_1");
       dr.setHalign("right");
       dr.text(320 + ex, H - 120, sc);
+      dr.tooltipEnd(w);
       dr.setAlpha(0.99);
       dr.circleColour(520, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);

@@ -76,6 +76,14 @@ export class Renderer {
     this.rendererString = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
     this.software = this.slowContext || SOFTWARE.test(this.rendererString);
     this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    // [§6.8 G0] tempo GPU per fotogramma (pannello F3): query di
+    // temporizzazione, se il browser le espone (Chrome desktop di solito si',
+    // Firefox e Safari spesso no)
+    this.timer = gl.getExtension("EXT_disjoint_timer_query_webgl2");
+    this.timing = false;   // le misure girano solo col pannello aperto
+    this.gpuQuery = null;  // query del fotogramma in corso
+    this.gpuPending = [];  // query chiuse, in attesa del risultato
+    this.gpuMs = [];       // risultati recenti in ms
     this.units = Math.min(16, gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS));
     // cresce a ogni contesto nuovo: chi tiene oggetti GL propri (fogdraw.js)
     // sa che deve ricrearli
@@ -268,6 +276,41 @@ export class Renderer {
     this.setProjection(...proj);
   }
 
+  // [§6.8 G0] Misura del tempo GPU di un fotogramma: gpuBegin dopo
+  // beginFrame, gpuEnd dopo l'ultimo flush. Il risultato arriva qualche
+  // fotogramma dopo (gpuPoll); le misure "disgiunte" (la GPU ha cambiato
+  // frequenza o e' stata interrotta) si scartano. Una sola query attiva alla
+  // volta, come chiede WebGL2.
+  gpuBegin() {
+    if (!this.timer || !this.timing || this.gpuQuery || this.gpuPending.length > 8) return;
+    const gl = this.gl;
+    this.gpuQuery = gl.createQuery();
+    gl.beginQuery(this.timer.TIME_ELAPSED_EXT, this.gpuQuery);
+  }
+
+  gpuEnd() {
+    if (!this.gpuQuery) return;
+    this.flush();
+    this.gl.endQuery(this.timer.TIME_ELAPSED_EXT);
+    this.gpuPending.push(this.gpuQuery);
+    this.gpuQuery = null;
+  }
+
+  gpuPoll() {
+    const gl = this.gl;
+    while (this.gpuPending.length) {
+      const q = this.gpuPending[0];
+      if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) break;
+      const disjoint = gl.getParameter(this.timer.GPU_DISJOINT_EXT);
+      if (!disjoint) {
+        this.gpuMs.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6);
+        if (this.gpuMs.length > 60) this.gpuMs.shift();
+      }
+      gl.deleteQuery(q);
+      this.gpuPending.shift();
+    }
+  }
+
   textureBytes() {
     let b = 0;
     for (const t of this.textures) b += t.bytes;
@@ -296,6 +339,12 @@ export class Renderer {
     if (mode === "add") {
       gl.blendEquation(gl.FUNC_ADD);
       gl.blendFunc(gl.ONE, gl.ONE);
+    } else if (mode === "replace") {
+      // [§6.8] copia di una superficie su un'altra o sul canvas, alpha
+      // ignorato: la sottrazione di nebbia e notte (sotto) azzera l'alpha
+      // delle superfici, e con la miscela normale traspariva lo sfondo
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.ONE, gl.ZERO);
     } else if (mode === "subtract") {
       gl.blendEquation(gl.FUNC_ADD);
       gl.blendFunc(gl.ZERO, gl.ONE_MINUS_SRC_COLOR);

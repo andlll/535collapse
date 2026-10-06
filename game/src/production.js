@@ -196,6 +196,11 @@ export function producer(name, base, p) {
         d.setAlpha(0.69);
         d.roundrectColourExt(420, 90, 550, 150, 60, 60, WHITE, WHITE, false);
         d.roundrectColourExt(420, 90, 480 + (70 / 100) * i.progression, 150, 60, 60, GREEN, GREEN, false);
+        // [Correzione decisa dall'autore, §6.1 n.79] la percentuale in nero:
+        // nell'originale prendeva il colore rimasto dal disegno precedente
+        d.setFont("GUI_1");
+        d.setColour(BLACK);
+        d.setValign("middle");
         d.setAlpha(0.7);
         d.setHalign("center");
         d.text(520, 120, i.progression + "%");
@@ -303,6 +308,7 @@ export function unitClicker(prod, type) {
       d.setAlpha(0.69);
       const title = tr(u.title), desc = tr(u.desc), shortcut = tr("Shortcut: {key}", { key: u.shortcut.slice(-1) });
       const ex = d.panelExtra(370, title, desc, shortcut);
+      d.tooltipBegin(w); // §6.1 n.85
       d.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       d.setAlpha(0.7);
       d.setHalign("left");
@@ -322,6 +328,7 @@ export function unitClicker(prod, type) {
       d.setAlpha(0.7);
       d.setHalign("right");
       d.text((u.wide ? 380 : 350) + ex, H - 120, shortcut);
+      d.tooltipEnd(w);
       d.setAlpha(0.99);
       d.circleColour(u.bx, 50, 30, WHITE, WHITE, false);
       d.setAlpha(1);
@@ -375,6 +382,7 @@ export function cancelClicker(prod) {
       d.setAlpha(0.69);
       const title = tr("Cancel"), sc = tr("Shortcut: {key}", { key: String.fromCharCode(P.cancelKey) });
       const ex = d.panelExtra(340, title, null, sc);
+      d.tooltipBegin(w); // §6.1 n.85
       d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, WHITE, WHITE, false);
       d.setAlpha(0.7);
       d.setHalign("left");
@@ -386,6 +394,7 @@ export function cancelClicker(prod) {
       d.setFont("GUI_1");
       d.setHalign("right");
       d.text(320 + ex, H - 120, sc);
+      d.tooltipEnd(w);
       d.setAlpha(0.99);
       d.circleColour(P.cancelX, 50, 30, WHITE, WHITE, false);
       d.setAlpha(1);

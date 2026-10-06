@@ -15,14 +15,14 @@ import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
-import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE } from "./units.js";
+import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, levelStep } from "./levels.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
-import { omino, resource, dying } from "./civilians.js";
+import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink,
          prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
@@ -44,6 +44,7 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
+import { loadDomFont, setDomText } from "./domtext.js";
 
 const ROOMS = ["menu", "match", "lvl01", "lvl02"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
@@ -61,16 +62,20 @@ let lastMessage = null;
 function message(text, kind = "info", key = null) {
   lastMessage = key ? [key, kind] : null;
   const el = $("message");
-  el.textContent = text;
+  setDomText(el, text, { font: "overdue", width: msgWidth() });
   el.className = kind;
   el.hidden = !text;
 }
+
+// larghezza utile dei riquadri dei messaggi (max-width in index.html meno
+// il padding)
+const msgWidth = () => Math.min(window.innerWidth * 0.9, 720) - 32;
 
 // messaggio breve (salvataggi), in alto, sparisce da solo
 let toastTimer = 0;
 function toast(text, kind = "info") {
   const el = $("toast");
-  el.textContent = text;
+  setDomText(el, text, { font: "overdue", width: msgWidth() });
   el.className = kind;
   el.hidden = false;
   clearTimeout(toastTimer);
@@ -84,6 +89,8 @@ function progress(done, total) {
 }
 
 async function main() {
+  loadDomFont(); // §6.1 n.86: i messaggi HTML col font del gioco
+  setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   const canvas = $("game");
   const r = new Renderer(canvas);
   try {
@@ -104,16 +111,21 @@ async function main() {
 
   const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
-  $("loading-text").textContent = t("loading");
+  setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
                     room.backgrounds.map((b) => b.name), progress);
 
-  const [objects, masks, cursor] = await Promise.all(
-    ["objects.json", "masks.json", "cursor.json"].map(async (f) => (await fetch("assets/" + f)).json()));
-  // il cursore del gioco (mouser Create: action_set_cursor(cursore) [C])
-  canvas.style.cursor = `url(assets/${cursor.file}) ${cursor.origin[0]} ${cursor.origin[1]}, auto`;
+  const [objects, masks] = await Promise.all(
+    ["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
+  // Il cursore del gioco (mouser Create: action_set_cursor(cursore) [C]),
+  // come lo fa il runner: la freccia del sistema nascosta e lo sprite
+  // disegnato dal gioco sopra a tutto (drawCursor). [§6.1 n.83] Prima era
+  // un cursore CSS da 53x54 px, che Chrome rifiuta vicino ai bordi della
+  // finestra (sopra i 32 px) mostrando la freccia.
+  canvas.style.cursor = "none";
   const cam = new Camera(room.width, room.height, room.views[0]);
   const input = new Input(canvas);
+  input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();
   rscale.enabled = settings.dynamicResolution;
   const diag = new Diagnostics($("diag"));
@@ -238,6 +250,9 @@ async function main() {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
     if (roomName !== "menu") movementGeneral(world, path, mx, my);
   };
+  world.hooks.afterRightReleased = (mx, my) => {
+    if (roomName !== "menu") formation(world, path, mx, my); // §6.1 n.89
+  };
   // manager Create (la parte della griglia dei costi) gira dopo che tutte le
   // istanze della room esistono e prima dei loro Create (world.loadRoom).
   // [Correzioni decise dall'autore, §3.19] n.63: i tre hint_legna piazzati
@@ -281,15 +296,25 @@ async function main() {
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);
 
-  // Dimensioni: la view segue la finestra in pixel CSS (come l'originale),
-  // il canvas ha pixel reali = CSS x densita' dello schermo x scala dinamica.
+  // Dimensioni: la view segue la finestra in pixel CSS (come l'originale).
+  // [§6.8 G1] Il canvas ha pixel reali = CSS x densita' dello schermo (fino a
+  // 2): li' si disegna l'interfaccia, sempre nitida. Il mondo si disegna con
+  // `worldScale` pixel per pixel CSS = densita' limitata dalla qualita'
+  // (Alta: com'e', Media: 1,25, Bassa: 1) x scala dinamica; se e' minore di
+  // quella del canvas passa da una superficie piu' piccola, ingrandita a
+  // schermo pieno prima dell'interfaccia. Prima la scala dinamica
+  // rimpiccioliva tutto il canvas, interfaccia compresa.
+  const QUALITY_CAP = { high: 2, medium: 1.25, low: 1 };
+  let canvasScale = 1, worldScale = 1;
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
-    const k = Math.min(devicePixelRatio || 1, 2) * rscale.scale;
-    canvas.width = Math.max(1, Math.round(w * k));
-    canvas.height = Math.max(1, Math.round(h * k));
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvasScale = dpr;
+    worldScale = Math.min(dpr, QUALITY_CAP[settings.quality] || 2) * rscale.scale;
+    canvas.width = Math.max(1, Math.round(w * canvasScale));
+    canvas.height = Math.max(1, Math.round(h * canvasScale));
     cam.resize(w, h);
   };
   window.addEventListener("resize", resize);
@@ -306,6 +331,11 @@ async function main() {
     }
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
+    resize(); // §6.8 G1: la qualita' cambia la scala del mondo
+    // "Blocca il mouse nella finestra" (input.js, §6.1 n.82): si attiva al
+    // prossimo clic sul gioco
+    input.wantLock = settings.lockMouse && roomName !== "menu";
+    if (!input.wantLock) input.unlock();
     saveSettings(settings);
   };
   // Salvataggi (save.js, snapshot.js; menu di pausa, "Salva e carica")
@@ -345,6 +375,8 @@ async function main() {
       },
     },
   });
+  // puntatore liberato (Esc, cambio di finestra) a gioco in corso: pausa
+  input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) pause.open(); };
   // "Full screen" e "Load game" del menu principale (menu.js)
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
@@ -373,6 +405,8 @@ async function main() {
     manager.step(input, cam, room.width, room.height);
     world.input = input;
     world.step(input, mx, my);
+    recountIdle(world); // §6.1 n.80
+    recountSelection(world); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);
     autosave();
@@ -381,7 +415,7 @@ async function main() {
       settings.diagnostics = diag.visible;
       saveSettings(settings);
     }
-    if (cam.follow && input.inside) {
+    if (cam.follow && (input.inside || input.edgeHold)) {
       const [mx, my] = cam.toRoom(input.x, input.y); // mouser Step: x=mouse_x, y=mouse_y
       cam.followPoint(mx, my);
     } else {
@@ -390,8 +424,17 @@ async function main() {
   };
 
   let fpsNow = 0;
-  // la scena: mondo, poi l'interfaccia (Draw GUI)
-  const renderScene = () => {
+  // [§6.8 G1] superficie del mondo, quando la sua scala e' minore di quella
+  // del canvas (si ricrea se cambiano misura o contesto)
+  let worldTarget = null;
+  const worldSurface = () => {
+    const W = Math.max(1, Math.round(cam.cssW * worldScale)), H = Math.max(1, Math.round(cam.cssH * worldScale));
+    if (worldTarget && worldTarget.gen === r.generation && worldTarget.t.width === W && worldTarget.t.height === H) return worldTarget.t;
+    if (worldTarget && worldTarget.gen === r.generation) r.deleteTarget(worldTarget.t);
+    worldTarget = { gen: r.generation, t: r.createTarget(W, H) };
+    return worldTarget.t;
+  };
+  const drawWorld = () => {
     drawBackgrounds(r, assets, room, cam);
     draw.reset();
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
@@ -401,6 +444,25 @@ async function main() {
       fogLayer.draw(draw, world, cam);
     });
     manager.drawMouser(draw, world);
+  };
+
+  // la scena: mondo, poi l'interfaccia (Draw GUI)
+  const renderScene = () => {
+    if (worldScale < canvasScale - 1e-6) {
+      const t = worldSurface();
+      r.beginTarget(t, cam.x, cam.y, cam.w, cam.h, clear);
+      drawWorld();
+      r.endTarget();
+      r.setProjection(cam.x, cam.y, cam.w, cam.h);
+      r.setBlend("replace");
+      r.quad(t, cam.x, cam.y, cam.x + cam.w, cam.y, cam.x + cam.w, cam.y + cam.h, cam.x, cam.y + cam.h,
+             0, t.height, t.width, 0, 0xffffffff);
+      r.setBlend("normal");
+    } else {
+      if (worldTarget && worldTarget.gen === r.generation) r.deleteTarget(worldTarget.t);
+      worldTarget = null;
+      drawWorld();
+    }
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();
@@ -438,12 +500,23 @@ async function main() {
     r.endTarget();
   };
 
+  // il cursore, ultimo, in pixel CSS (non nello sfondo sfumato della pausa)
+  const drawCursor = () => {
+    if (!input.inside && !input.locked) return;
+    r.setProjection(0, 0, cam.cssW, cam.cssH);
+    draw.reset();
+    draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
+  };
+
   const render = () => {
     r.beginFrame(cam, clear);
+    r.gpuBegin(); // §6.8 G0
     if (!pause.paused) {
       if (blur) freeBlur();
       renderScene();
+      drawCursor();
       r.flush();
+      r.gpuEnd();
       return;
     }
     const B = blurTargets();
@@ -465,20 +538,35 @@ async function main() {
     draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
     draw.setAlpha(1);
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
+    drawCursor();
     r.flush();
+    r.gpuEnd();
   };
 
-  let lastRendered = 0;
+  let lastRendered = 0, fpsFrames = 0, fpsSince = performance.now();
   const loop = new Loop({
     speed: room.speed, step, render,
     onFrame: (info) => {
       diag.frame(info);
       if (info.rendered) {
-        if (lastRendered) fpsNow = fpsNow * 0.9 + (1000 / Math.max(1, info.now - lastRendered)) * 0.1;
+        // [§6.1 n.88] fps = frame disegnati nell'ultimo mezzo secondo diviso
+        // il tempo trascorso; prima era la media esponenziale di 1000/dt, che
+        // con frame irregolari sovrastima (10 e 40 ms alternati: 62 invece
+        // di 40)
+        fpsFrames++;
+        if (info.now - fpsSince >= 500) {
+          fpsNow = (1000 * fpsFrames) / (info.now - fpsSince);
+          fpsFrames = 0;
+          fpsSince = info.now;
+        }
         if (lastRendered && rscale.observe(info.now, info.now - lastRendered, 1000 / (loop.fpsCap || 60))) resize();
         lastRendered = info.now;
       }
+      // §6.8 G0: le misure GPU girano solo col pannello aperto
+      r.timing = diag.visible;
+      if (r.timer) r.gpuPoll();
       diag.update(info.now, {
+        gpuTimer: !!r.timer, gpuMs: r.gpuMs, worldScale, canvasScale, quality: settings.quality,
         renderer: r.rendererString, software: r.software, fpsCap: loop.fpsCap,
         drawCalls: r.stats.drawCalls, quads: r.stats.quads, drawn: world.drawn,
         textureBytes: r.textureBytes(), textures: r.textures.size,

@@ -12,6 +12,13 @@
 //   recuperati al ritorno.
 
 const MAX_STEPS = 5;
+// [§6.1 n.88] Tolleranza dell'accumulatore: rAF a 60 Hz non arriva mai
+// esattamente ogni 16,67 ms (16,4, 16,9...) e un frame un po' in anticipo
+// faceva 0 passi e il successivo 2: un fotogramma ripetuto, a scatti, che
+// sembra un fps piu' basso di quello misurato. Con 1,5 ms di tolleranza
+// ogni frame a 60 Hz fa un passo; in media i passi restano 60 al secondo
+// (l'accumulatore puo' scendere fino a -1,5 ms e recupera).
+const SLACK = 1.5;
 
 export class Loop {
   constructor({ speed = 60, step, render, onFrame }) {
@@ -57,7 +64,7 @@ export class Loop {
     this.acc += Math.min(250, now - this.last);
     this.last = now;
     let steps = 0;
-    while (this.acc >= this.stepMs && steps < MAX_STEPS) {
+    while (this.acc >= this.stepMs - SLACK && steps < MAX_STEPS) {
       this.step();
       this.acc -= this.stepMs;
       steps++;
