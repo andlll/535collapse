@@ -30,6 +30,9 @@ import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js"
 import { FogMap } from "./fog.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
+import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
+import { victoryManager, gameoverManager, objectiveButton } from "./endgame.js";
+import { loadUnlock } from "./progress.js";
 import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
@@ -105,7 +108,12 @@ async function main() {
   world.room = roomName;
   world.cam = cam;
   world.particles = new Particles();
+  world.gfx = draw; // per string_height_ext nei Create (hints.js)
   manager.world = world;
+  g.unlock = loadUnlock();
+  // room_goto: il menu e la campagna non sono ancora portati, si ricarica la
+  // pagina sulla room
+  world.hooks.roomGoto = (name) => { location.search = "?room=" + name; };
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   world.register("ally_cavaliere", cavaliere(path));
@@ -190,7 +198,12 @@ async function main() {
   world.register("firestarter", fireStarter(true));
   world.register("firestarter_small", fireStarter(false));
   world.register("palo_1", palo(path));
-  for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) world.register(n, statue());
+  for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4", "o_statua1_real"]) world.register(n, statue());
+  for (const n of HINT_NAMES) world.register(n, hint(n));
+  for (const n of DIALOG_NAMES) world.register(n, dialog(n));
+  world.register("victory_manager", victoryManager());
+  world.register("gameover_manager", gameoverManager());
+  world.register("objective_button", objectiveButton());
   for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
   world.register("aquila_01", aquila());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
@@ -209,7 +222,7 @@ async function main() {
   // che rimette 700: qui dopo.
   if (roomName === "lvl01") for (const u of world.all("ally_militare")) u.comp = 50;
   // i gestori dei nemici di match e lvl02
-  if (roomName === "match") world.create("enemy_manager", 0, 0);
+  if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
   if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };

@@ -11,6 +11,7 @@
 // l'opzione "variabili non inizializzate = 0" di GMS (option_variableerrors
 // False nel config): qui sono inizializzate esplicitamente a 0.
 
+import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
@@ -140,7 +141,7 @@ export function cavaliere(p) {
           i.selected = 1;
           g.milsel += 1;
           if (i.dc === 0) g.sel += 1;
-          // + hint_multi la prima volta (con i suggerimenti)
+          hintOnce(w, "hint_multi", "multihint", i.x, i.y);
           if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
         }
         if (g.sele === -1) {
@@ -263,7 +264,7 @@ export function infantry(name, p) {
       i.selected = 1;
       g.milsel += 1;
       g.firesel++;
-      // + hint_multi la prima volta (con i suggerimenti)
+      hintOnce(w, "hint_multi", "multihint", i.x, i.y);
       if (i.dc === 0) g.sel += 1;
       if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
     }

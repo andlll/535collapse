@@ -3,6 +3,7 @@
 // oggetti che assegnano un ruolo agli edifici nemici (aggr_assign,
 // def_assign). Trascrizione di src/objects/<oggetto>/; nomi originali.
 
+import { hintOnce } from "./hints.js";
 import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
 import { fireStep, fireStop } from "./effects.js";
@@ -108,7 +109,10 @@ export function enemyBuilding(kind, p) {
     step(i, w) {
       revealBuilding(i, w);
       fireStep(i, w, kind);
-      // (hint_fire coi suggerimenti)
+      // "hint mandare a fuoco" [C]: il puntatore entro 80 px, con soldati
+      // selezionati
+      hintOnce(w, "hint_fire", "firehint", i.x, i.y,
+               pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.milsel > 0);
       if (i.life <= 0) {
         baseCounters(i, w.g, K.bases);
         w.create(K.ruin, i.x, i.y);
@@ -150,8 +154,13 @@ export function oBox(kind, p) {
         w.destroy(i);
         return;
       }
-      // o_box2: dialogo_1_3 la prima volta che un guerriero si avvicina
-      // (coi dialoghi)
+      // o_box2, "dialogo livello 1" [C]: la prima volta che un guerriero e'
+      // entro 200 px. Controlla instance_number(parent_dialogo), un oggetto
+      // senza figli: vale sempre 0 [§3.18 n.69, riprodotto].
+      if (kind === "o_box2" && g.dialogochest === 0) {
+        const war = w.nearest(i.x, i.y, "ally_warrior");
+        if (war && w.distanceToInstance(i, war) < 200) { w.create("dialogo_1_3", i.x, i.y); g.dialogochest = 1; }
+      }
     },
   };
 }

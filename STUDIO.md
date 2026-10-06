@@ -15,11 +15,10 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 ## Cose da fare (lista aggiornata a ogni passo)
 
 Ultimo aggiornamento: 6 ottobre 2026, seconda sessione (PR #2). Fase 3
-completa (nebbia e notte, §3.15), particelle (§3.16) e correzioni decise
-dall'autore (§3.17). **Prossimo:
-suggerimenti, dialoghi, obiettivi, vittoria e sconfitta** (la regia dei
-livelli li crea già se esistono: `createIfPorted`). Il dettaglio di ogni
-voce sta nella sezione citata.
+completa (nebbia e notte, §3.15), particelle (§3.16), correzioni decise
+dall'autore (§3.17), suggerimenti, dialoghi, obiettivi, vittoria e
+sconfitta (§3.18). **Prossimo: menu principale e campagna**, insieme alla
+battaglia del menu. Il dettaglio di ogni voce sta nella sezione citata.
 
 **Per riprendere**
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
@@ -51,7 +50,10 @@ voce sta nella sezione citata.
 - [ ] Screenshot dell'originale col centro selezionato mentre produce un
   civile: colore della percentuale, per verificare lo stato di disegno
   persistente (§3.5).
-- [ ] n.53 (vittoria del livello 2 creata a ogni passo): con la vittoria (§3.13).
+- [ ] Suggerimenti e dialoghi (§3.18): n.62 (H nasconde anche i dialoghi),
+  n.63 (tre `hint_legna` fuori schermo in `lvl02`), n.65–67 (vecchio
+  riquadro di `hint_multi_2`, testi fuori centro con lo zoom, sconfitta
+  invisibile), n.69–71; deviazioni n.64 e n.68 da confermare.
 - [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 
@@ -86,9 +88,8 @@ voce sta nella sezione citata.
   `fog_controller` (crea `fog01`, le nuvole del menu): col menu.
 - [ ] Menu di `enemy_manager_menu` (la battaglia dimostrativa del menu,
   461 righe) e `fog_controller` (le sue nuvole) insieme al menu principale.
-- [ ] Suggerimenti del tutorial (`hint_*`, fra cui `hint_night` alla prima
-  notte), dialoghi (`dialogo_*`, fra cui `dialogo_statua`), obiettivi
-  (`objective_button`), vittoria e sconfitta.
+- [x] Suggerimenti del tutorial, dialoghi, obiettivi, vittoria e
+  sconfitta (§3.18).
 - [ ] Menu principale e campagna: pulsanti, mappa, sottomenu livelli,
   lucchetto a 5 cifre, sblocco **persistente** che parte da 1 (§0.14);
   livelli 3–10 "in arrivo"; menu di pausa (`mouser`).
@@ -2128,3 +2129,90 @@ a (10165, 4505) in 1000 passi, 7 torce senza disegno automatico, centro
 spento dalla pioggia senza più fiamme, Canc sul cantiere di campo →
 germogli spariti; 3000 passi senza errori in `match`, `lvl01`, `lvl02`,
 `menu`.
+
+### 3.18 Suggerimenti, dialoghi, obiettivi, vittoria e sconfitta (6 ottobre 2026)
+
+**Portato** (`game/src/hints.js`, `endgame.js`, `progress.js`): i 26
+suggerimenti (`hint_*`), i 25 dialoghi (`dialogo_*`), `objective_button`,
+`victory_manager`, `gameover_manager`; tutte le attivazioni negli oggetti
+già portati (risorse, campo, casa, edifici nemici, picchiere nemico,
+selezione delle unità, torre e castello, prima notte, casse del livello
+1); `o_statua1_real` (la quinta statua di `lvl01`, figlia di `ally_build`);
+il bandierino del centro distrutto. La regia dei livelli, che li creava
+"se portati", ora li crea davvero.
+
+**Come funziona** [C]:
+- Suggerimenti e dialoghi sono **la stessa finestra** (confronto evento
+  per evento): rettangolo bianco di 380 px, titolo, testo a capo a 340 px,
+  ritratto di chi parla nei dialoghi; si chiude cliccandoci sopra. Le
+  differenze sono una tabella: ancora (posizione fissa sullo schermo,
+  istanza più vicina al puntatore, istanza seguita finché esiste, chi
+  parla), clic premuto o rilasciato, attesa prima del clic (`arm`, 10 o 30
+  passi), finestra successiva. I suggerimenti si concatenano nel clic, i
+  dialoghi nel Destroy.
+- Tutorial di `match`: `hint_iniziale` è piazzato nella room e apre la
+  catena vista → risorse → inattivi → obiettivi (2) → minimappa →
+  selezione → raccolta → costruzione → riparazione → creazione (3).
+  `hint_resource` abilita i suggerimenti delle risorse (legna, oro, pietra,
+  campi, case). Gli altri compaiono la prima volta che succede qualcosa
+  (soldati selezionati, puntatore su un edificio nemico, prima notte…),
+  solo se non c'è già una finestra aperta. H li nasconde.
+- Dialoghi: `lvl01` dall'apertura (0→1→2, che crea gli obiettivi), le
+  casse, il picchiere nemico, le porte; chiudere `dialogo_1_8` è la
+  vittoria. `lvl02`: il villaggio (2_0…2_5, con magazzino, pali e
+  obiettivi), le liberazioni, la base nemica (2_13 sposta la view), la
+  caserma degli arcieri.
+- Obiettivi: riquadro in alto a destra (O), con contatori e righe barrate
+  in `lvl02`.
+- Vittoria: schermo bianco, "VICTORY"; in `match` il punteggio parziale e
+  un clic fa continuare la partita; nella campagna il codice del livello
+  successivo, e il clic sblocca il livello (**persistente**,
+  `localStorage`, versione del formato, parte da 1: decisione §0.14/§0.15,
+  confluirà nei salvataggi) e torna al menu.
+- Sconfitta: il centro distrutto crea `gameover_manager`; dopo 760 passi
+  si torna al menu. `room_goto` per ora ricarica la pagina sulla room.
+
+**Correzione decisa dall'autore** (§3.14 n.53): la vittoria del livello 2
+si crea una volta sola.
+
+**Difetti e stranezze** [C], riprodotti salvo dove detto:
+
+62. H (`global.hint`) nasconde anche i **dialoghi**, che però restano
+    cliccabili e bloccano la storia: in `lvl01` la vittoria arriva
+    chiudendo un dialogo che, coi suggerimenti spenti, non si vede.
+    Raccomandazione: H solo per i suggerimenti.
+63. In `lvl02` tre `hint_legna` sono piazzati nella room: alla creazione
+    si ancorano all'albero più vicino al puntatore (0, 0), finiscono fuori
+    dallo schermo (y ≈ −6000) e, essendo finestre aperte, bloccano tutti i
+    suggerimenti del livello. Raccomandazione: toglierli dalla room.
+64. Il suggerimento del presidio si apre anche cliccando una torre, ma si
+    ancora al castello più vicino: senza castelli l'originale si ferma con
+    un errore (`noone.x`). **Deviazione**: resta sulla torre.
+65. `hint_multi_2` disegna anche un vecchio riquadro alla sua x, y di room
+    usate come coordinate dello schermo (di solito fuori schermo).
+66. Vittoria e sconfitta centrano i testi su `view_wview/2`, la misura
+    della view nella room: con lo zoom a 1,5 sono fuori centro (come n.29).
+67. `gameover_manager` è invisibile nel GMX: GameMaker non esegue il suo
+    Draw GUI e la schermata di sconfitta **non compare mai**; dopo 12,7 s
+    si torna al menu. Raccomandazione: renderlo visibile.
+68. I dialoghi senza il controllo "chi parla è morto" leggerebbero la
+    posizione di un'istanza distrutta (errore). **Deviazione**: la
+    finestra resta dov'era.
+69. Casse e picchiere nemico controllano `instance_number(parent_dialogo)`,
+    un oggetto senza figli: vale sempre 0 (probabile intenzione:
+    `parent_hint`, cioè non sovrapporre i dialoghi).
+70. Alcuni suggerimenti (selezione, costruzione, creazione, oro, pietra,
+    presidio) seguono l'istanza **più vicina al puntatore**: avvicinandosi
+    per cliccarli possono saltare su un'altra unità.
+71. Nel menu `hint_iniziale` esiste ma è nascosto (`global.hint=3`): un
+    clic in quel punto fa avanzare la catena senza vederla.
+
+**Verificato**: `npm test`, 29 test (nuovi: tabelle complete rispetto al
+progetto, seguiti esistenti, "una volta sola"); Chromium: catena del
+tutorial di `match` da `hint_iniziale` a `hint_select` cliccando le
+finestre; `lvl01` dialoghi 1_0 → 1_1 → 1_2 col ritratto, poi il riquadro
+degli obiettivi; `lvl02` `dialogo_2_0` e i tre `hint_legna` fuori schermo
+(n.63); `match` con le tre basi distrutte → vittoria col punteggio;
+centro distrutto → `gameover_manager` invisibile, dopo 760 passi il menu;
+`lvl01` vittoria → clic → `unlock` 2 salvato e menu; 3000 passi senza
+errori in `match`, `lvl01`, `lvl02`, `menu`.

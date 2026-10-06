@@ -124,6 +124,12 @@ export class World {
     return this.byName.get(name) || [];
   }
 
+  // room_goto: app.js ricarica la pagina sulla room (il menu e la campagna
+  // non sono ancora portati)
+  gotoRoom(name) {
+    if (this.hooks.roomGoto) this.hooks.roomGoto(name);
+  }
+
   // a fine passo: via le istanze distrutte dalle liste dell'indice
   _compact() {
     for (const [n, l] of this.byName) {

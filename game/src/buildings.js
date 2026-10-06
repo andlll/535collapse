@@ -11,6 +11,7 @@
 // cantiere e campo finito sono a parte (campoFond, campo). Le mura
 // (orientamento, tratti, porte) sono a parte (da fare).
 
+import { hintOnce } from "./hints.js";
 import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
@@ -412,6 +413,11 @@ export function built(fam, p) {
         return;
       }
       repairEnd(i, w);
+      // casa Step, "casa hint" [C]: il puntatore entro 80 px
+      if (fam === "casa") {
+        hintOnce(w, "hint_pop", "casahint", i.x, i.y,
+                 pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.resourcehint === 1);
+      }
       // [Correzione decisa dall'autore, §3.5 n.18] nella casa l'originale
       // distruggeva le fiamme dietro a ogni passo (un if senza graffe nella
       // "fine riparazione"): qui la casa brucia come gli altri edifici.
@@ -558,7 +564,11 @@ export function campo(p) {
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
-    mouseEnter(i, w) { w.g.farmhover = 1; i.hover = 1; }, // (+ hint_campi coi suggerimenti)
+    mouseEnter(i, w) {
+      w.g.farmhover = 1;
+      hintOnce(w, "hint_campi", "foodhint", i.x, i.y, w.g.resourcehint === 1);
+      i.hover = 1;
+    },
     mouseLeave(i, w) { w.g.farmhover = 0; i.hover = 0; },
     rightReleased(i, w) {
       for (const c of w.all("centro")) if (c.selected === 1) Object.assign(c, { woodir: 0, goldir: 0, stonedir: 0, foodir: 1 });
@@ -626,8 +636,10 @@ export function centro(p) {
         // [Correzione decisa dall'autore §1.6 n.3] -10, quanto ha dato
         g.popcap -= 10;
         g.gameover = 1;
+        const flag = w.nearest(i.x, i.y - 100, "flag_r");
+        if (flag) w.destroy(flag);
         w.create("ccruin", i.x, i.y);
-        // + gameover_manager (con vittoria e sconfitta)
+        w.create("gameover_manager", 0, 0);
         w.destroy(i);
         return;
       }

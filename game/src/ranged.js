@@ -4,6 +4,7 @@
 // le bandiere. Trascrizione di src/objects/<oggetto>/; nomi originali.
 // (L'arciere nemico e' in enemies.js con gli altri nemici.)
 
+import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep } from "./pathing.js";
@@ -139,7 +140,7 @@ export function allyArcher(p) {
       if (i.dc === 0) g.sel += 1;
       if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
     }
-    // (+ hint_multi in match, coi suggerimenti)
+    hintOnce(w, "hint_multi", "multihint", i.x, i.y, w.room === "match");
     if (g.sele === -1) {
       if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; g.arcsel -= 1; }
       i.selected = 0;
@@ -411,6 +412,13 @@ export function garrisoned(name, base) {
       for (let k = 1; k <= 4; k++) i["flagged" + k] = 0;
     },
     alarm0(i) { i.arm = 1; },
+    // Mouse_LeftReleased [C]: selezione (il castello non nel menu) e, la
+    // prima volta, il suggerimento sul presidio
+    leftReleased(i, w) {
+      if (name === "castello" && w.room === "menu") return;
+      base.leftReleased(i, w);
+      hintOnce(w, "hint_presidio", "presidiohint", i.x, i.y);
+    },
     step(i, w) {
       const e = w.nearest(i.x, i.y, "enemy_unit");
       if (i.arm === 1 && e && w.distanceToInstance(i, e) < 600) {

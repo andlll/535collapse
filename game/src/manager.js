@@ -143,7 +143,14 @@ export class Manager {
     switch (i) {
       case 0: // passaggio giorno-notte
         if (g.night < 1) { g.night += 0.005; this.al.set(0, 1); }
-        else this.al.set(1, 2000); // + hint_night la prima volta (con i suggerimenti)
+        else {
+          this.al.set(1, 2000);
+          // la prima notte, il suggerimento sotto il puntatore [C]
+          if (g.nighthint === 0 && this.world) {
+            this.world.create("hint_night", this.world.mouse.x, this.world.mouse.y);
+            g.nighthint = 1;
+          }
+        }
         break;
       case 1: // passaggio notte-giorno
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
@@ -244,7 +251,8 @@ export class Manager {
         d.setAlpha(1);
       }
     }
-    if (this.room !== "menu" && !g.victory) {
+    // [C] if room!=menu && instance_number(victory_manager)=0
+    if (this.room !== "menu" && world.number("victory_manager") === 0) {
       d.setAlpha(0.69);
       d.roundrectColourExt(20, 20, 230, 150, 60, 60, c.white, c.white, false);  // risorse
       d.roundrectColourExt(W - 90, 100, W - 20, 200, 60, 60, c.white, c.white, false); // inattivi
