@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo (Fase 8, §8.1–§8.11). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello (Fase 8, §8.1–§8.12). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3621,3 +3621,13 @@ marcia (oltre 20 px).
 
 Con le 14 unita' gia' presenti in `lvl02` (ordini verso punti
 raggiungibili) ora arrivano tutte; prima ne restavano indietro 4–7.
+
+### 8.12 Menu di pausa senza pannello
+
+Richiesta dell'autore: tolto il grande rettangolo arrotondato che
+conteneva titolo e pulsanti; i pulsanti stanno direttamente sullo sfondo
+sfocato e scurito. Il titolo (PAUSA, OPZIONI GRAFICHE, SALVA E CARICA) e
+le didascalie dei controlli a segmenti (Lingua, Limite FPS) hanno un alone
+bianco morbido per staccare dallo sfondo (`_glowLabel` in pause.js: copie
+bianche del testo su cinque anelli da 5 a 1 px, 16 direzioni, opacita' dal
+4% al 20%, poi il testo nero).
