@@ -354,10 +354,12 @@ def derived_sprites():
     sp = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
     sp.alpha_composite(s, (pad, pad))
     solid = sp.getchannel("A").point(lambda v: 255 if v >= 90 else 0).filter(ImageFilter.MaxFilter(3))
-    ol = Image.new("RGBA", sp.size, (28, 22, 12, 0))
-    ol.putalpha(solid.point(lambda v: 200 if v else 0))
-    ol.alpha_composite(sp)
-    out.append(("spiga", "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    for name, col, oa in (("spiga", (28, 22, 12), 200), ("spiga_morbida", (92, 70, 30), 90)):
+        ol = Image.new("RGBA", sp.size, col + (0,))
+        ol.putalpha(solid.point(lambda v: oa if v else 0))
+        ol.alpha_composite(sp)
+        out.append((name, "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    out.append(("spiga_nuda", "ambiente", sp, (6 + pad, 37 + pad)))
     return out
 
 
