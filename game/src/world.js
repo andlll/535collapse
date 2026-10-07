@@ -728,6 +728,9 @@ export class World {
     const P = this.particles, systems = P ? P.sorted() : [];
     let drawn = 0, si = 0;
     const skip = this.skipDraw;
+    // [Richiesta dell'autore] "drawBelow": a terra, sopra il suolo e sotto
+    // tutte le istanze (la linea verso il punto di raccolta degli edifici)
+    for (const i of list) if (i.visible) this.fire(i, "drawBelow", d);
     for (const i of list) {
       while (si < systems.length && systems[si].depth > i.depth) P.draw(systems[si++], r, this.assets, cam);
       if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)

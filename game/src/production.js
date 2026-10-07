@@ -168,13 +168,17 @@ export function producer(name, base, p) {
       if (P.slots) for (let k = 0; k < 6; k++) i[SLOTS[k]] = i[SLOTS[k + 1]];
     },
     // Draw_End [C]: la bandiera di raccolta (dal punto di uscita) e la vita.
-    // [Richiesta dell'autore] bandierina animata e linea tratteggiata
-    // (Draw.rallyPoint) invece di freccia e linea piena
-    drawEnd(i, w, d) {
+    // [Richiesta dell'autore] bandierina animata e linea tratteggiata, la
+    // linea a terra sotto l'edificio (Draw.rallyLine e rallyFlag) invece di
+    // freccia e linea piena
+    drawBelow(i, w, d) {
       if (i.flagx !== 0 && i.flagy !== 0 && i.selected === 1) {
         const [fx, fy] = P.spawn === "castle" ? [i.x + 150, i.y + 100] : [i.x, i.y];
-        d.rallyPoint(fx, fy, i.flagx, i.flagy, w._stepNo);
+        d.rallyLine(fx, fy, i.flagx, i.flagy);
       }
+    },
+    drawEnd(i, w, d) {
+      if (i.flagx !== 0 && i.flagy !== 0 && i.selected === 1) d.rallyFlag(i.flagx, i.flagy, w._stepNo);
       if (base.drawEnd) base.drawEnd(i, w, d);
     },
     globalLeftPressed(i, w) {

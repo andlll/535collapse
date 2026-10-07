@@ -727,9 +727,14 @@ export function centro(p) {
     globalRightReleased(i, w) { if (i.selected === 1) { i.flagx = w.mouse.x; i.flagy = w.mouse.y; } },
     leftReleased: base.leftReleased,
     rightReleased(i, w) { if (i.life < i.slife) sendRepair(i, w); },
+    // [Richiesta dell'autore] la linea tratteggiata verso la bandiera, a
+    // terra sotto gli edifici (World.draw)
+    drawBelow(i, w, dr) {
+      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyLine(i.x, i.y, i.flagx, i.flagy);
+    },
     drawEnd(i, w, dr) {
-      // [Richiesta dell'autore] bandierina e linea tratteggiata (Draw.rallyPoint)
-      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyPoint(i.x, i.y, i.flagx, i.flagy, w._stepNo);
+      // [Richiesta dell'autore] bandierina (la linea e' nel drawBelow)
+      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyFlag(i.flagx, i.flagy, w._stepNo);
       if (i.selected === 1) lifeBar(dr, i);
       if (i.hover === 1 || i.hit === 1) lifeBar(dr, i);
     },

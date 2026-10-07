@@ -3557,8 +3557,13 @@ edificio (centro, caserma, stalla, castello...) era segnato con la freccia
 la bandierina arancione animata del presidio alleato (`rflag`, 3
 fotogrammi a 0,1 per passo; `bflag`, blu, e' delle torri nemiche) al 60%
 di opacita', e la linea e' tratteggiata (tratti di 14 px,
-vuoti di 10): `Draw.rallyPoint` e `Draw.dashedLine`. La freccia resta per
-la destinazione delle unita' selezionate.
+vuoti di 10): `Draw.rallyFlag`, `Draw.rallyLine`, `Draw.dashedLine`. La
+freccia resta per la destinazione delle unita' selezionate. Poi, su
+richiesta dell'autore, la linea passa **sotto** l'edificio: si disegna in
+un nuovo evento `drawBelow` che `World.draw` chiama dopo il suolo e prima
+di tutte le istanze (quindi sta sotto anche a unita', alberi, campi e
+agli altri edifici, e di notte si scurisce col resto del terreno); la
+bandierina resta nel Draw End, sopra.
 
 ### 8.10 Barra della vita in stile vetro
 
