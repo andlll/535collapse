@@ -34,6 +34,71 @@ export function rainStart(w) {
   return ps;
 }
 
+// [§8.13, richiesta dell'autore] Anelli delle gocce sul fiume quando
+// piove: a ogni passo, RIPPLE_TRIES punti a caso nella view; dove c'e'
+// acqua (la mappa dell'acqua degli sprite del fiume, tools/06_masks.py)
+// nasce un anello (pt_shape_ring) schiacciato come il resto della vista
+// isometrica, che si allarga e sbiadisce. Il sistema sta a depth -21:
+// sopra il fiume (0) e la sua animazione (-20), sotto unita' ed edifici;
+// categoria "rain" (spento con la pioggia nelle opzioni grafiche).
+const RIPPLE_TRIES = 36;
+const ANELLO = partType({
+  shape: "ring", size: [0.06, 0.1, 0.014, 0], scale: [1, 0.5],
+  colour: { rgb: [215, 235, 225, 245, 230, 250] }, alpha: [0.95, 0.6, 0], life: [32, 44],
+});
+const ANELLO2 = partType({
+  shape: "ring", size: [0.02, 0.03, 0.009, 0], scale: [1, 0.5],
+  colour: { rgb: [215, 235, 225, 245, 230, 250] }, alpha: [0.8, 0.4, 0], life: [26, 34],
+});
+
+// Mappa dell'acqua della room in celle da 8 px, dalle istanze del fiume
+// (una volta: sono ferme). null se nella room non c'e' acqua.
+function waterMap(w) {
+  if (w._water !== undefined) return w._water;
+  const C = 8, gw = Math.ceil(w.roomW / C), gh = Math.ceil(w.roomH / C);
+  let grid = null;
+  for (const i of w.instances) {
+    const m = i.alive && i.sprite_index && w.masks[i.sprite_index];
+    const wt = m && m.water;
+    if (!wt) continue;
+    if (!grid) grid = new Uint8Array(gw * gh);
+    const raw = atob(wt.bits), sx = i.image_xscale || 1, sy = i.image_yscale || 1;
+    const [ox, oy] = m.origin;
+    // ogni cella della room il cui centro cade su una cella d'acqua dello sprite
+    const x0 = i.x + (0 - ox) * sx, x1 = i.x + (m.size[0] - ox) * sx;
+    const y0 = i.y + (0 - oy) * sy, y1 = i.y + (m.size[1] - oy) * sy;
+    const cx0 = Math.max(0, Math.floor(Math.min(x0, x1) / C)), cx1 = Math.min(gw - 1, Math.floor(Math.max(x0, x1) / C));
+    const cy0 = Math.max(0, Math.floor(Math.min(y0, y1) / C)), cy1 = Math.min(gh - 1, Math.floor(Math.max(y0, y1) / C));
+    for (let cy = cy0; cy <= cy1; cy++) {
+      for (let cx = cx0; cx <= cx1; cx++) {
+        const lx = ((cx + 0.5) * C - i.x) / sx + ox, ly = ((cy + 0.5) * C - i.y) / sy + oy;
+        const kx = Math.floor(lx / wt.cell), ky = Math.floor(ly / wt.cell);
+        if (kx < 0 || ky < 0 || kx >= wt.w || ky >= wt.h) continue;
+        const k = ky * wt.w + kx;
+        if (raw.charCodeAt(k >> 3) & (1 << (k & 7))) grid[cy * gw + cx] = 1;
+      }
+    }
+  }
+  w._water = grid ? { C, gw, gh, grid } : null;
+  return w._water;
+}
+
+export function rainRipples(w, cam) {
+  const P_ = P(w);
+  if (P_.hidden.has("rain")) return;
+  const wm = waterMap(w);
+  if (!wm) return;
+  let ps = P_.systems.find((s) => s.alive && s.kind === "ripples");
+  if (!ps) { ps = P_.systemCreate(-21, "rain"); ps.kind = "ripples"; }
+  for (let k = 0; k < RIPPLE_TRIES; k++) {
+    const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+    const cx = Math.floor(x / wm.C), cy = Math.floor(y / wm.C);
+    if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) continue;
+    P_.create(ps, x, y, ANELLO, 1);
+    P_.create(ps, x, y, ANELLO2, 1);
+  }
+}
+
 // ---------------------------------------------------------------- fuoco
 
 // Fiamme degli edifici in fuoco [C, Step di ciascun edificio]: due sistemi,

@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello (Fase 8, §8.1–§8.12). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3631,3 +3631,26 @@ le didascalie dei controlli a segmenti (Lingua, Limite FPS) hanno un alone
 bianco morbido per staccare dallo sfondo (`_glowLabel` in pause.js: copie
 bianche del testo su cinque anelli da 5 a 1 px, 16 direzioni, opacita' dal
 4% al 20%, poi il testo nero).
+
+### 8.13 Anelli delle gocce sul fiume
+
+Richiesta dell'autore: quando piove, anelli delle gocce sull'acqua del
+fiume.
+- **Dove c'e' acqua**: gli sprite del fiume (`fiume1`... `fiume2_3`, fino
+  a 2179x1210 px) contengono anche la roccia della montagna, quindi la
+  maschera di collisione non basta. `tools/06_masks.py` aggiunge alle
+  maschere dei `fiume*` una mappa dell'acqua in celle da 8 px: una cella
+  e' acqua se almeno il 60% dei suoi pixel e' verde-azzurro ((g+b)/2 - r >
+  8; la roccia e' grigia). Nel gioco la mappa della room si compone una
+  volta dalle istanze del fiume (`waterMap` in effects.js).
+- **Anelli**: la forma `pt_shape_ring` di GameMaker (`__pt_ring` in
+  `tools/05_atlas.py`: anello di raggio 27 px con 7 px di tratto
+  sfumato). A ogni passo di pioggia 36 punti a caso nella view; dove c'e'
+  acqua nascono due anelli concentrici schiacciati a meta' in altezza
+  (vista isometrica), che si allargano (fino a ~35 px) e sbiadiscono in
+  meno di un secondo. Sistema di particelle a depth -21 (sopra il fiume e
+  la sua animazione, sotto unita' ed edifici), categoria "rain": si spegne
+  con la pioggia nelle opzioni grafiche e si salva con le altre
+  particelle.
+- Prove: `match` col fiume in vista, 100–200 anelli vivi; soak e
+  salvataggi senza errori, salvataggio durante la pioggia.

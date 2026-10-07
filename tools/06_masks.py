@@ -16,9 +16,17 @@ ricalcolato qui; le differenze vengono stampate.
 Formato bitmap: righe del bbox codificate come intervalli pieni
 [[inizio, fine), ...] per riga (RLE), in coordinate dello sprite.
 
+[§8.13] Per gli sprite del fiume (fiume*) anche dove c'e' acqua: lo
+sprite contiene anche la roccia della montagna, quindi la maschera non
+basta. Celle da WATER_CELL px; una cella e' acqua se almeno il 60% dei suoi
+pixel opachi e' verde-azzurro ((g+b)/2 - r > 8, la roccia e' grigia).
+Bit per cella, riga per riga, in base64 ("water": {cell, w, h, bits}).
+Serve agli anelli della pioggia sul fiume (effects.js).
+
 Scrive game/assets/masks.json (non versionato).
 Uso:  python3 tools/06_masks.py
 """
+import base64
 import json
 import os
 import sys
@@ -55,6 +63,33 @@ def rle(mask, bbox):
     return rows
 
 
+WATER_CELL = 8
+
+
+def water_cells(img):
+    im = img.convert("RGBA")
+    W, H = im.size
+    cw, ch = (W + WATER_CELL - 1) // WATER_CELL, (H + WATER_CELL - 1) // WATER_CELL
+    px = im.load()
+    bits = bytearray((cw * ch + 7) // 8)
+    n = 0
+    for cy in range(ch):
+        for cx in range(cw):
+            wet = tot = 0
+            for y in range(cy * WATER_CELL, min(H, (cy + 1) * WATER_CELL)):
+                for x in range(cx * WATER_CELL, min(W, (cx + 1) * WATER_CELL)):
+                    r, g, b, a = px[x, y]
+                    if a > 200:
+                        tot += 1
+                        if (g + b) / 2 - r > 8:
+                            wet += 1
+            if tot and wet >= 0.6 * WATER_CELL * WATER_CELL:
+                k = cy * cw + cx
+                bits[k >> 3] |= 1 << (k & 7)
+                n += 1
+    return {"cell": WATER_CELL, "w": cw, "h": ch, "bits": base64.b64encode(bytes(bits)).decode()}, n
+
+
 def main():
     need(os.path.join(DATA_DIR, "sprites.json"), "data/sprites.json (lancia 02_extract.py)")
     sprites = json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
@@ -87,6 +122,9 @@ def main():
         if s["colkind"] == 0:
             e["sepmasks"] = s["sepmasks"]
             e["frames"] = [rle(m, bbox) for m in masks]
+        if s["name"].startswith("fiume"):
+            e["water"], n = water_cells(frames[0])
+            print("acqua: %s, %d celle da %d px" % (s["name"], n, WATER_CELL))
         out[s["name"]] = e
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:

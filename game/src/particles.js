@@ -35,7 +35,7 @@ import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { mergeColour } from "./colours.js";
 import { drawSprite } from "./sprites.js";
 
-const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel" };
+const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring" };
 const TAU = Math.PI * 2;
 
 const rand = (a, b) => a + Math.random() * (b - a);
