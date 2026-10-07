@@ -515,6 +515,21 @@ export class World {
     return !this.instancePlace(inst, x, y, null, true);
   }
 
+  // place_free che non conta i solidi della famiglia `name` (§8.11: chi va
+  // alla sua casella della formazione passa sopra gli alleati)
+  placeFreeExcept(inst, x, y, name) {
+    const bb = this.bbox(inst, x, y);
+    if (!bb) return true;
+    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !this.is(o, name)
+      && this.overlap(inst, x, y, o) ? o : null));
+  }
+
+  // [§8.11] libero per chi va alla sua casella della formazione (vedi sopra)
+  placeFreeForSlot(inst, x, y) {
+    return inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY
+      ? this.placeFreeExcept(inst, x, y, "ally_unit") : this.placeFree(inst, x, y);
+  }
+
   placeEmpty(inst, x, y) {
     return !this.instancePlace(inst, x, y, null, false);
   }

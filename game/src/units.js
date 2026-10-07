@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
@@ -82,15 +82,22 @@ export function movementGeneral(w, p, mx, my) {
 // Qui il flow field resta uno solo, quello del capo verso il punto
 // cliccato (leggero, come nell'originale), ma ogni unita' riceve una
 // casella sua attorno a quel punto: righe perpendicolari alla direzione di
-// marcia, nella prima riga le unita' che arrivano prima e, in ogni riga, nello
-// stesso ordine da sinistra a destra in cui stanno ora (cosi' i percorsi
-// non si incrociano). Ogni casella e' una cella libera e raggiungibile nel
+// marcia e, in ogni riga, nello stesso ordine da sinistra a destra in cui
+// stanno ora (cosi' i percorsi non si incrociano). [Richiesta dell'autore,
+// §8.11] le righe vanno per ruolo (ROLE): davanti i cavalieri, poi
+// guerrieri e picchieri, arcieri, macchine d'assedio e in fondo i civili;
+// ogni ruolo comincia una riga nuova e, dentro un ruolo, le prime righe
+// vanno a chi arriva prima (prima era cosi' per tutte le righe). Ogni casella e' una cella libera e raggiungibile nel
 // campo del capo, diversa dalle altre. Lontano si segue il flow field
 // comune, da vicino (400 px) "step towards" verso la propria casella, come
 // gia' faceva l'originale verso il punto cliccato.
 // Solo per un ordine di semplice spostamento: unita' che dopo il proprio
 // GlobalRightReleased vanno esattamente al punto cliccato (nessun nemico,
 // risorsa, cantiere o torre sotto il puntatore).
+// [§8.11] ordine delle righe della formazione, dalla testa
+const ROLE = { ally_cavaliere: 0, ally_warrior: 1, ally_picchiere: 1, ally_arciere: 2,
+               ally_ariete: 3, ally_catapulta: 3, ally_omino: 4 };
+
 export function formation(w, p, mx, my) {
   const units = [];
   for (const u of w.all("ally_unit")) {
@@ -131,17 +138,23 @@ export function formation(w, p, mx, my) {
   const MARGIN = 10;
   const n = units.length;
   const cols = Math.min(n, Math.ceil(Math.sqrt(n * 2)));
-  const rows = Math.ceil(n / cols);
-  // unita': prima riga a chi arriva prima (distanza / velocita': i cavalieri
-  // vanno a 5, fanteria e arcieri a 4, civili 3, assedio 2), poi a blocchi
-  // di una riga per posizione laterale
+  // unita': per ruolo e, nel ruolo, prima chi arriva prima (distanza /
+  // velocita': i cavalieri vanno a 5, fanteria e arcieri a 4, civili 3,
+  // assedio 2), a blocchi di una riga per posizione laterale
   const lat = (u) => (u.x - cx) * lx + (u.y - cy) * ly;
   const speed = (u) => (u.object === "ally_cavaliere" ? 5 : u.object === "ally_omino" ? 3
     : u.object === "ally_ariete" || u.object === "ally_catapulta" ? 2 : 4);
   const eta = new Map(units.map((u) => [u, pointDistance(u.x, u.y, mx, my) / speed(u)]));
-  units.sort((a, b) => eta.get(a) - eta.get(b));
+  const role = new Map(units.map((u) => [u, ROLE[u.object] ?? 1]));
+  units.sort((a, b) => role.get(a) - role.get(b) || eta.get(a) - eta.get(b));
   const rowUnits = [];
-  for (let r = 0; r < rows; r++) rowUnits.push(units.slice(r * cols, (r + 1) * cols).sort((a, b) => lat(a) - lat(b)));
+  for (let k = 0; k < n;) {
+    const r = role.get(units[k]);
+    let e = k;
+    while (e < n && e - k < cols && role.get(units[e]) === r) e++;
+    rowUnits.push(units.slice(k, e).sort((a, b) => lat(a) - lat(b)));
+    k = e;
+  }
   // posizioni laterali (centrate) e distanza fra le righe
   const slots = [];
   let along = 0;
@@ -172,6 +185,7 @@ export function formation(w, p, mx, my) {
     const exact = Math.trunc(sx / GRID) === gx && Math.trunc(sy / GRID) === gy;
     u.dirox = exact ? Math.round(sx) : gx * GRID + GRID / 2;
     u.diroy = exact ? Math.round(sy) : gy * GRID + GRID / 2;
+    u.formX = u.dirox; u.formY = u.diroy; // §8.11, onFormationSlot
     // il campo comune (in sola lettura) e la propria cella d'arrivo (non
     // per l'assedio)
     if (!flowUnit(u) || !leader) continue;
@@ -291,7 +305,8 @@ export function cavaliere(p) {
       // azione 8: rettangolo di selezione
       boxSelect(i, w, false);
       // azione 9: se il punto d'arrivo e' occupato, arretra di 50 verso di se'
-      if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+      // (non sulla casella della formazione: §8.11)
+      if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) {
         if (i.creation !== 1) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(50, dir);
@@ -448,7 +463,7 @@ export function infantry(name, p) {
       // [Richiesta dell'autore] non per chi va a dare fuoco: la sua meta e'
       // un posto libero attorno all'edificio (flowMovement); spostata cosi'
       // arrivava all'unita' stessa, che si fermava senza dare fuoco
-      if (i.action === 1 && i.firework !== 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+      if (i.action === 1 && i.firework !== 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // e §8.11
         if (i.creation !== 1) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(32, dir);
@@ -646,6 +661,10 @@ export function boxSelect(i, w, counter) {
 // Varianti [C]: il guerriero, quando e' vicino, rallenta a 0 se tocca un
 // alleato di rango piu' alto in movimento (nearRank) e insegue il nemico
 // piu' vicino fino a 400 px compresi.
+// [§8.11] Le macchine d'assedio non hanno `ordo`: chi le toccava mentre
+// si muovevano aspettava (confronto con undefined sempre falso), e loro,
+// solide, erano ferme contro di lui: stallo. Ora sulle macchine si passa
+// (il flow field non ha collisioni) e non si rallenta per loro.
 function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
   // [Richiesta dell'autore, come §7.7] chi va a dare fuoco punta a un posto
@@ -670,18 +689,19 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   }
   if (i.action === 1) {
     const moveOrder = i.firework === 0 && (i.warwork === 0 || i.warwork === 4);
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
-        if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
+        if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
         else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
       } else {
         moveFlowField(w, p, i);
       }
     } else {
       if (nearRank) {
-        const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
-        if (otro && !(otro.ordo < i.ordo || otro.action !== 1)) {
+        // §8.11: verso la casella della formazione si passa sopra gli alleati
+        const otro = !onFormationSlot(i) && w.instancePlace(i, i.x, i.y, "ally_unit");
+        if (otro && otro.ordo !== undefined && !(otro.ordo < i.ordo || otro.action !== 1)) {
           i.step = 0; i.autospeed = 0; i.alarm.set(0, i.alarm.get(0) + 1);
         } else i.autospeed = speed * iso(i.direction);
       }

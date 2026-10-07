@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -179,7 +179,7 @@ export function allyArcher(p) {
     }
   };
   const destination = (i, w) => {
-    if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+    if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // §8.11
       if (i.creation !== 1) {
         const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
         i.dirox += lengthdirX(32, d); i.diroy += lengthdirY(32, d);
@@ -191,10 +191,10 @@ export function allyArcher(p) {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
       const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
+      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
-          if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
+          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
           else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
         } else moveFlowField(w, p, i);
       } else {

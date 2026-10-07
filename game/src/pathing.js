@@ -532,6 +532,15 @@ export function seesGoal(p, inst) {
 // invece di
 // dondolare dietro le altre finche' il "timer fermati" (alarm 8, 20 s) non
 // la ferma. Solo per gli ordini di spostamento: chi lo chiama lo sa.
+// [§8.11] L'unita' va verso la casella che le ha dato la formazione
+// (units.js, formation): e' gia' libera e diversa da quella degli altri,
+// quindi la regola "destinazione occupata" (che la spostava verso l'unita',
+// fino a fermarla dov'era, se un compagno ci passava sopra) non si applica;
+// e verso la casella si passa sopra gli alleati (mpPotentialStep,
+// World.placeFreeForSlot): le righe vanno per ruolo e chi deve finire
+// davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
+export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
+
 export function arriveIfBlocked(inst) {
   const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
   if (d > 400) { inst.stuckN = 0; inst.stuckBest = d; return; }
@@ -556,7 +565,9 @@ export function arriveIfBlocked(inst) {
 export function mpPotentialStep(w, inst, xg, yg, step, checkall = false) {
   const MAXROT = 30, ROT = 3, AHEAD = 3;
   if (step <= 0) return false;
-  const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y) : w.placeFree(inst, x, y));
+  const slot = !checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy; // §8.11
+  const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y)
+    : slot ? w.placeFreeExcept(inst, x, y, "ally_unit") : w.placeFree(inst, x, y));
   if (pointDistance(inst.x, inst.y, xg, yg) <= step) {
     if (free(xg, yg)) {
       w.setPos(inst, xg, yg);

@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta (Fase 8, §8.1–§8.10). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo (Fase 8, §8.1–§8.11). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3578,3 +3578,46 @@ nella meta' alta della parte piena (provato al 40%: l'autore lo voleva
 piu' tenue; sparisce sotto i 5 px di parte piena). Senza l'opzione resta
 la pillola del §8.8. Di notte il bordo chiaro stacca la barra dal blu
 meglio del bordo nero.
+
+### 8.11 Formazione per ruolo
+
+Richiesta dell'autore: nello spostamento di gruppo, davanti i cavalieri,
+poi guerrieri e picchieri, arcieri, macchine d'assedio e in fondo i
+civili. In `formation` (units.js) le righe ora vanno per ruolo (`ROLE`);
+ogni ruolo comincia una riga nuova (un gruppo piccolo fa una riga corta,
+centrata) e dentro un ruolo le prime righe vanno a chi arriva prima; in
+ogni riga resta l'ordine laterale attuale. Le caselle sono giuste da
+subito; perche' le unita' ci arrivassero sono servite tre correzioni,
+tutte vere anche prima (con l'ordine d'arrivo i sorpassi erano rari e i
+difetti si vedevano meno):
+- **destinazione occupata**: se sulla casella passava un compagno, la
+  regola dell'originale spostava la meta verso l'unita' (32–50 px a
+  passo) finche' l'unita' "arrivava" dov'era. Sulla casella della
+  formazione (`formX`/`formY`, `onFormationSlot` in pathing.js) la regola
+  non si applica: fanteria, cavalieri, arcieri, civili, assedio;
+- **sorpassi**: chi deve finire davanti spesso parte dietro e si fermava
+  contro chi era gia' arrivato. Verso la propria casella si passa sopra
+  gli alleati (`World.placeFreeExcept`/`placeFreeForSlot`, in
+  `mpPotentialStep` e nella scelta fra flow field e passo diretto), mai
+  attraverso edifici e alberi; il guerriero non si ferma piu' quando tocca
+  un alleato di rango piu' alto (nearRank) mentre va alla casella. Se la
+  casella resta occupata, l'arrivo "per rinuncia" (§6.1 n.89), ora anche
+  per le macchine d'assedio;
+- **stallo con l'assedio**: le macchine non hanno `ordo`; chi le toccava
+  in movimento aspettava (confronto con undefined sempre falso) e loro,
+  solide, restavano ferme contro di lui. Ora sulle macchine si passa.
+
+Prova: 19 unita' (3 cavalieri, 4 guerrieri, 3 picchieri, 4 arcieri,
+catapulta, ariete, 3 civili) sparse a caso in una zona aperta di `match` e
+di `lvl02`, nemici tolti, ordine a 700–800 px in cinque direzioni, 20 s.
+"Inversioni": coppie di ruoli diversi nell'ordine sbagliato lungo la
+marcia (oltre 20 px).
+
+| 10 ordini | prima | dopo |
+|---|---|---|
+| inversioni (su 137 coppie per ordine) | 22–65 | 0 (una volta 3) |
+| unita' a piu' di 400 px dalla meta | 4–13 per ordine | 0 |
+| unita' fuori dalla propria casella | 1–5 | 0 |
+
+Con le 14 unita' gia' presenti in `lvl02` (ordini verso punti
+raggiungibili) ora arrivano tutte; prima ne restavano indietro 4–7.
