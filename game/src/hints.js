@@ -55,7 +55,7 @@ const T = {
   hint_fire: ["On fire!", "With infantry units selected (warriors and spearmen) right click on an enemy building to order your soldiers to set it on fire."],
   hint_fire_2: ["Not on fire", "Stone buildings (towers, walls, castles) cannot be set on fire, so you will need warmachines like catapults or siege rams in order to destroy them."],
   hint_multi: ["Multiple selection", "Double click on a unit to select all your units of the same type in your screenspace. Left click and drag to select multiple units."],
-  hint_multi_2: ["Multiple selection", "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Ctrl + numbers (digits) to assign a quick selection number to a group."],
+  hint_multi_2: ["Multiple selection", "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Shift + numbers (digits) to assign a quick selection number to a group, then the number alone to select it."],
   hint_night: ["Night", "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well."],
 };
 

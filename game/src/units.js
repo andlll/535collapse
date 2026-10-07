@@ -526,17 +526,24 @@ export function infantry(name, p) {
 // ally_militare KeyPress_0..9 e ally_omino KeyPress_0..9 [C]: con Ctrl
 // (sele=1) i selezionati entrano nel gruppo N (0 vale 10); senza, il numero
 // seleziona il gruppo e deseleziona gli altri. I civili non contano in milsel.
+// [Richiesta dell'autore] Ctrl + 1-9 e' la scorciatoia del cambio di scheda
+// in Chrome, Edge e Firefox, e la pagina non puo' bloccarla: il gruppo si
+// assegna anche con Shift + numero (Ctrl resta dove il browser lo lascia
+// passare). Shift non aveva altri usi. Il modificatore si legge al
+// keydown della cifra (input.js), non al passo.
 export function controlGroups(civilian) {
   const b = {};
   for (let k = 0; k <= 9; k++) {
     const n = k === 0 ? 10 : k;
     b["keyPress" + (48 + k)] = (i, w) => {
       const g = w.g;
-      if (g.sele === 0) {
+      const inp = w.input, key = 48 + k;
+      const assign = g.sele === 1 || !!(inp && inp.pressedShift && (inp.pressedShift.has(key) || inp.pressedCtrl.has(key)));
+      if (g.sele === 0 && !assign) {
         if (i.assi === n && i.selected === 0) { g.sel += 1; if (!civilian) g.milsel += 1; i.selected = 1; }
         if (i.assi !== n && i.selected === 1) { g.sel -= 1; if (!civilian) g.milsel -= 1; i.selected = 0; }
       }
-      if (g.sele === 1 && i.selected === 1) i.assi = n;
+      if (assign && i.selected === 1) i.assi = n;
     };
   }
   return b;

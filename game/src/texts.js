@@ -364,12 +364,12 @@ export const TEXTS = {
     pt: "Clique duplo numa unidade para selecionar todas do mesmo tipo na tela. Clique e arraste para selecionar várias.",
     de: "Doppelklick auf eine Einheit wählt alle gleichen auf dem Bildschirm aus. Klicke und ziehe, um mehrere auszuwählen.",
     fr: "Double-clic sur une unité pour sélectionner toutes celles du même type à l'écran. Clique et fais glisser pour en sélectionner plusieurs." },
-  "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Ctrl + numbers (digits) to assign a quick selection number to a group.": {
-    it: "Ctrl + clic sinistro aggiunge unità alla selezione, Alt + clic sinistro le toglie. Ctrl + un numero assegna un gruppo di selezione rapida.",
-    es: "Ctrl + clic izquierdo añade unidades a la selección, Alt + clic izquierdo las quita. Ctrl + un número asigna un grupo de selección rápida.",
-    pt: "Ctrl + clique esquerdo adiciona unidades à seleção, Alt + clique esquerdo as remove. Ctrl + um número atribui um grupo de seleção rápida.",
-    de: "Strg + Linksklick fügt Einheiten hinzu, Alt + Linksklick entfernt sie. Strg + Ziffer speichert eine Gruppe zur Schnellauswahl.",
-    fr: "Ctrl + clic gauche ajoute des unités à la sélection, Alt + clic gauche les retire. Ctrl + un chiffre crée un groupe de sélection rapide." },
+  "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Shift + numbers (digits) to assign a quick selection number to a group, then the number alone to select it.": {
+    it: "Ctrl + clic sinistro aggiunge unità alla selezione, Alt + clic sinistro le toglie. Shift + un numero assegna un gruppo di selezione rapida, il numero da solo lo riseleziona.",
+    es: "Ctrl + clic izquierdo añade unidades a la selección, Alt + clic izquierdo las quita. Shift + un número asigna un grupo de selección rápida, el número solo lo vuelve a seleccionar.",
+    pt: "Ctrl + clique esquerdo adiciona unidades à seleção, Alt + clique esquerdo as remove. Shift + um número atribui um grupo de seleção rápida, o número sozinho o seleciona de novo.",
+    de: "Strg + Linksklick fügt Einheiten hinzu, Alt + Linksklick entfernt sie. Umschalt + Ziffer speichert eine Gruppe zur Schnellauswahl, die Ziffer allein wählt sie wieder aus.",
+    fr: "Ctrl + clic gauche ajoute des unités à la sélection, Alt + clic gauche les retire. Maj + un chiffre crée un groupe de sélection rapide, le chiffre seul le sélectionne à nouveau." },
   "Night": { it: "Notte", es: "Noche", pt: "Noite", de: "Nacht", fr: "Nuit" },
   "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well.": {
     it: "Di notte si vede meno. I nemici attaccano solo da più vicino, perché anche loro vedono meno.",

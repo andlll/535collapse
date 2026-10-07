@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom (Fase 8, §8.1–§8.6). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift (Fase 8, §8.1–§8.7). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3519,3 +3519,23 @@ meta' strada. Solo disegno: maschere e logica non cambiano.
 Zoom massimo (allontanato) da 2,0 a **1,7** (`ZOOM_MAX`, camera.js); i
 salvataggi fatti oltre tornano a 1,7. Il suggerimento "Visuale" del
 tutorial dice che si puo' usare la rotella del mouse, nelle sei lingue.
+
+### 8.7 Gruppi di unita': Shift + numero
+
+Nell'originale Ctrl + cifra assegna i selezionati al gruppo N, la cifra
+da sola lo riseleziona [C]. Nel browser Ctrl + 1–9 e' la scorciatoia del
+cambio di scheda (Chrome, Edge, Firefox; Cmd + cifra su Mac) e Chrome ed
+Edge non la lasciano bloccare alla pagina. Ora:
+- il gruppo si assegna anche con **Shift + cifra** (Shift non aveva usi);
+  Ctrl + cifra resta dove il browser lo lascia passare, e sul keydown di
+  Ctrl + cifra la pagina chiede di non cambiare scheda (`preventDefault`:
+  basta dove il browser non se la riserva);
+- Shift e Ctrl si leggono al keydown della cifra (`pressedShift`,
+  `pressedCtrl` in input.js), non al passo: con fotogrammi lenti il
+  modificatore poteva essere gia' rilasciato e la cifra riselezionava il
+  gruppo invece di assegnarlo (succedeva anche con Ctrl);
+- il suggerimento "Selezione multipla" dice Shift + numero, nelle sei
+  lingue.
+
+Prova (Chromium, `lvl02`): tre militari con Shift + 2, due con Ctrl + 3,
+poi 2 e 3 riselezionano esattamente quei gruppi.
