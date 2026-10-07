@@ -319,6 +319,48 @@ def particle_shapes():
     return out
 
 
+def derived_sprites():
+    """Sprite ricavati da quelli dell'autore [§8.16, richiesta dell'autore]:
+    (nome, gruppo, immagine a tela intera, origine).
+
+    campo_grano  il campo coltivato: campo_maggese (terra arata) ricolorato
+                 color paglia; la luminosita' di ogni pixel resta (solchi,
+                 grana e bordo scuro), il colore e' quello delle spighe.
+                 Prende il posto di campo1 (le righe di verdure).
+    spiga        part_crop a meta' risoluzione con un contorno scuro di 1 px
+                 (a meta' risoluzione, cosi' a zoom 1 resta di 1-2 px a
+                 schermo); i campi la disegnano a righe (effects.js).
+    """
+    from PIL import ImageFilter
+    img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
+    out = []
+    # campo_grano: luminanza relativa a quella media della terra arata
+    # (174, 119, 65) per il colore paglia
+    m = img("campo_maggese")
+    ref, straw = 0.299 * 174 + 0.587 * 119 + 0.114 * 65, (214, 186, 112)
+    px = m.load()
+    for y in range(m.height):
+        for x in range(m.width):
+            r, g, b, a = px[x, y]
+            if a:
+                k = (0.299 * r + 0.587 * g + 0.114 * b) / ref
+                px[x, y] = tuple(min(255, round(t * k)) for t in straw) + (a,)
+    out.append(("campo_grano", "edifici", m, (150, 96)))
+    # spiga: meta' risoluzione, 2 px di margine, contorno dove l'alpha della
+    # spiga e' almeno 90 (i peli piu' tenui restano senza contorno)
+    c = img("part_crop")
+    s = c.resize((round(c.width / 2), round(c.height / 2)), Image.LANCZOS)
+    pad = 2
+    sp = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
+    sp.alpha_composite(s, (pad, pad))
+    solid = sp.getchannel("A").point(lambda v: 255 if v >= 90 else 0).filter(ImageFilter.MaxFilter(3))
+    ol = Image.new("RGBA", sp.size, (28, 22, 12, 0))
+    ol.putalpha(solid.point(lambda v: 200 if v else 0))
+    ol.alpha_composite(sp)
+    out.append(("spiga", "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    return out
+
+
 def main():
     need(os.path.join(DATA_DIR, "sprites.json"), "data/sprites.json (lancia 02_extract.py)")
     need(os.path.join(GMX_DIR, "sprites", "images"), "gmx/sprites/images (lancia 01_unpack.py)")
@@ -353,6 +395,11 @@ def main():
                                    Image.LANCZOS)
             entry["frames"].append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
             items[g].append((s["name"], i, crop))
+    for name, g, im, (ox, oy) in derived_sprites():
+        bb = im.getchannel("A").getbbox()
+        manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
+                                     "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
+        items[g].append((name, 0, im.crop(bb)))
 
     # font e pixel bianco nel gruppo gui (non ritagliati: le coordinate dei
     # glifi restano quelle del foglio di GameMaker)

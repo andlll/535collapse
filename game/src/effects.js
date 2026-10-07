@@ -261,8 +261,8 @@ export function decorCreate(i, w) {
 
 // ---------------------------------------------------------------- campi
 
-// campo Create [C]: 700 spighe nel rombo del campo
-const SPIGA = partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] });
+// campo Create [C]: 700 spighe nel rombo del campo (part_crop, alpha
+// 0,3-0,7, depth -1); ora a righe, cropRows qui sotto (§8.16)
 // campo Step, quando prende fuoco [C]: le spighe spariscono, 1700 spighe
 // bruciate che svaniscono in 700-800 passi, sprite "campo_maggese"
 const SPIGA_BRUCIATA = partType({ sprite: "part_crop", size: [0.2, 0.35, 0, 0], colour: { list: [c.black, c.black, c.gray] },
@@ -274,15 +274,45 @@ function diamond(w, ps, i, t, n) {
   P(w).burst(ps, em, t, n);
 }
 
+// [Richiesta dell'autore, §8.16] Il grano a righe. Prima 700 spighe sparse
+// nel rombo, semitrasparenti, tutte in un sistema a depth -1: sotto ogni
+// unita', il contadino ci camminava sopra. Ora righe orizzontali ogni
+// CROP_ROW px, ognuna un sistema a depth -y della riga: le righe davanti al
+// contadino (piu' in basso) si disegnano dopo di lui e lo coprono fino alle
+// ginocchia, "immerso" nel grano. Le spighe ("spiga", tools/05_atlas.py:
+// part_crop a meta' risoluzione con un contorno scuro di 1 px) sono opache,
+// tinte di giallo, ogni 9-13 px lungo la riga; ondeggiano come prima. Il
+// fondo e' "campo_grano" (la terra arata color paglia) invece di campo1.
+const CROP_ROW = 12;
+const SPIGA_RIGA = partType({ sprite: "spiga", size: [0.7, 1, 0, 0], ...SWAY, alpha: [1],
+                              colour: { mix: [makeColourRgb(255, 226, 150), makeColourRgb(255, 210, 118)] } });
+
+function cropRows(i, w) {
+  const rows = [];
+  for (let dy = -84; dy <= 84; dy += CROP_ROW) {
+    const hw = 145 * (1 - Math.abs(dy) / 90) - 8; // meta' larghezza del rombo, meno il margine
+    if (hw < 4) continue;
+    const y = i.y + dy;
+    const ps = P(w).systemCreate(-y, "grass");
+    for (let x = -hw + Math.random() * 9; x < hw; x += 9 + Math.random() * 4) {
+      P(w).create(ps, i.x + x + (Math.random() * 4 - 2), y + (Math.random() * 3 - 1.5), SPIGA_RIGA, 1);
+    }
+    rows.push(ps);
+  }
+  return rows;
+}
+
 export function campoCreate(i, w) {
-  i.grass_system = P(w).systemCreate(-1, "grass");
-  diamond(w, i.grass_system, i, SPIGA, 700);
+  i.sprite_index = "campo_grano";
+  i.crop_rows = cropRows(i, w);
 }
 
 export function campoStep(i, w) {
   if (i.onfire === 1 && i.firestarted === 0) {
     i.sprite_index = "campo_maggese";
-    P(w).systemDestroy(i.grass_system);
+    P(w).systemDestroy(i.grass_system); // (i salvataggi di prima delle righe)
+    for (const ps of i.crop_rows || []) P(w).systemDestroy(ps);
+    i.crop_rows = [];
     i.grass_system_black = P(w).systemCreate(-1, "grass");
     diamond(w, i.grass_system_black, i, SPIGA_BRUCIATA, 1700);
   }
@@ -291,6 +321,7 @@ export function campoStep(i, w) {
 
 export function campoDestroy(i, w) {
   P(w).systemDestroy(i.grass_system);
+  for (const ps of i.crop_rows || []) P(w).systemDestroy(ps);
   P(w).systemDestroy(i.grass_system_black);
   fireStop(i, w);
 }

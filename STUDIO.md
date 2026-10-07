@@ -3715,3 +3715,30 @@ le posizioni dell'originale restano dove c'e' spazio; altrimenti ogni icona
 sta 6 px dopo il suo numero (misurato con `stringWidth`) e ogni numero 12
 px dopo l'icona prima. Anche il "3" della popolazione non tocca piu'
 l'icona.
+
+### 8.16 Campi di grano a righe
+
+Richiesta dell'autore: spighe con un leggero contorno nero, a righe
+orizzontali ognuna con depth -y (il contadino "immerso" nel grano), e il
+fondo del campo coltivato uguale al campo vuoto ma giallastro come le
+spighe, al posto delle righe di verdure di `campo1`.
+- **Sprite derivati** (`derived_sprites` in tools/05_atlas.py, generati
+  con l'atlas come le forme delle particelle): `spiga` e' `part_crop` a
+  meta' risoluzione con un contorno (28, 22, 12) all'80% di 1 px attorno ai
+  pixel con alpha >= 90 (i peli piu' tenui restano senza); a meta'
+  risoluzione, cosi' alle dimensioni a cui si disegna il contorno resta di
+  1-2 px a schermo. `campo_grano` e' `campo_maggese` ricolorato: ogni pixel
+  tiene la luminosita' relativa alla media della terra arata (solchi, grana,
+  bordo scuro) e prende il colore paglia (214, 186, 112). Un tint
+  moltiplicativo (image_blend) sulla terra arata arancione non arriva al
+  giallo paglia: per questo e' uno sprite a parte.
+- **Righe** (`cropRows` in effects.js): una riga ogni 12 px nel rombo del
+  campo, ognuna un sistema di particelle a depth -y della riga (categoria
+  "grass": si spegne con l'opzione grafica e si salva come prima). Spighe
+  ogni 9-13 px lungo la riga (+-2 px), opache, tinte fra (255, 226, 150) e
+  (255, 210, 118), dimensione 0,7-1; ondeggiano come prima. Le righe piu'
+  in basso del contadino si disegnano dopo di lui e lo coprono fino a
+  meta'. Circa 180 spighe per campo invece di 700.
+- Il campo in fiamme resta com'era (terra arata, spighe bruciate). Il
+  fantasma del piazzamento usa `campo_grano`. Le spighe decorative sparse
+  sulla mappa (`burst_grano1`) non sono cambiate.
