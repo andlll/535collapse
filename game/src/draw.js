@@ -204,7 +204,7 @@ export class Draw {
     this.alpha = a0;
     if (fw) this.roundrectColourExt(x1, y1, x1 + fw, y1 + H, H, H, col, col, false);
     if (fw > 5) {
-      this.alpha = a0 * 0.4;
+      this.alpha = a0 * 0.22; // [autore] riflesso smorzato (era 0,4)
       this.roundrectColourExt(x1 + 2, y1 + 1, x1 + fw - 2, y1 + H / 2, H / 2, H / 2, 0xffffff, 0xffffff, false);
     }
     this.alpha = a0 * 0.45;

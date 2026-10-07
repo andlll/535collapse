@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola, punto di raccolta (Fase 8, §8.1–§8.9). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta (Fase 8, §8.1–§8.10). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3559,3 +3559,17 @@ fotogrammi a 0,1 per passo; `bflag`, blu, e' delle torri nemiche) al 60%
 di opacita', e la linea e' tratteggiata (tratti di 14 px,
 vuoti di 10): `Draw.rallyPoint` e `Draw.dashedLine`. La freccia resta per
 la destinazione delle unita' selezionate.
+
+### 8.10 Barra della vita in stile vetro
+
+Richiesta dell'autore: un minimo di effetto vetro anche sulla barra della
+vita. Niente sfocatura: a 8 px non si vedrebbe, e le barre sono disegnate
+nel mondo, prima della copia sfocata che fa da sfondo ai pannelli (§7.14);
+con molte unita' selezionate sarebbero decine di passaggi in piu'. Con
+l'opzione "Interfaccia di vetro" (`Draw.glassStyle`, da app.js) la pillola
+del §8.8 ha il fondo nero al 55% (il terreno si intravede), un bordo
+bianco di 1 px al 45% al posto di quello nero e un riflesso bianco al 22%
+nella meta' alta della parte piena (provato al 40%: l'autore lo voleva
+piu' tenue; sparisce sotto i 5 px di parte piena). Senza l'opzione resta
+la pillola del §8.8. Di notte il bordo chiaro stacca la barra dal blu
+meglio del bordo nero.
