@@ -250,8 +250,9 @@ function drawTitle(i, d, W, H) {
     d.text(W / 2, (y1 + y2) / 2, label);
   }
   d.setFont("overdue");
-  // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75]
-  d.text(W / 2, H - 50, i.testo !== 8 ? "Mount Fuji Software, 2025"
+  // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75];
+  // [richiesta dell'autore] l'anno della firma e' 2026 (l'originale: 2025)
+  d.text(W / 2, H - 50, i.testo !== 8 ? "Mount Fuji Software, 2026"
     : "Non mi interessa se sta roba non ingrana quando soffro d'insonnia e non dormo da una settimana");
   d.setHalign("left");
   // [Richiesta dell'autore] la versione del porting (l'originale: 0.250125)

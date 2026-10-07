@@ -3451,7 +3451,8 @@ al centro, larghi 400 e alti 70 (prima 100; "Load game" e "Full screen"
 erano in alto a destra e a sinistra), a 20 px l'uno dall'altro; l'ultimo
 finisce a 100 px dal fondo. Il logo sta a meta' dello spazio sopra la
 colonna (al piu' a y=350). La versione in basso a sinistra e' **0.2601**
-(l'originale scriveva 0.250125). `menu.js`, `titleButtons`.
+(l'originale scriveva 0.250125); la firma al centro e' "Mount Fuji
+Software, 2026" (era 2025). `menu.js`, `titleButtons`.
 
 ### 8.2 Campagna: vetro sulla mappa, solo i livelli giocabili
 
