@@ -3554,7 +3554,8 @@ disegnava i suoi due rettangoli.
 Richiesta dell'autore: il punto verso cui vanno le unita' prodotte da un
 edificio (centro, caserma, stalla, castello...) era segnato con la freccia
 `director_blue` e una linea bianca piena dal punto di uscita [C]. Ora e'
-la bandierina blu animata del presidio (`bflag`, 3 fotogrammi a 0,1 per
-passo) al 60% di opacita', e la linea e' tratteggiata (tratti di 14 px,
+la bandierina arancione animata del presidio alleato (`rflag`, 3
+fotogrammi a 0,1 per passo; `bflag`, blu, e' delle torri nemiche) al 60%
+di opacita', e la linea e' tratteggiata (tratti di 14 px,
 vuoti di 10): `Draw.rallyPoint` e `Draw.dashedLine`. La freccia resta per
 la destinazione delle unita' selezionate.

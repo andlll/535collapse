@@ -309,14 +309,15 @@ export class Draw {
   }
 
   // [Richiesta dell'autore] Punto di raccolta di un edificio che produce
-  // unita': una linea bianca tratteggiata da (x0, y0) alla bandierina blu
-  // animata (bflag, la stessa del presidio: 0,1 fotogrammi per passo) in
+  // unita': una linea bianca tratteggiata da (x0, y0) alla bandierina
+  // arancione animata (rflag, la stessa del presidio alleato; bflag e' delle
+  // torri nemiche: 0,1 fotogrammi per passo) in
   // trasparenza, al posto della freccia (director_blue) e della linea piena
   // dell'originale. `step`: il passo corrente, per l'animazione.
   rallyPoint(x0, y0, fx, fy, step) {
     this.dashedLine(x0, y0, fx, fy, 2, 0xffffff);
-    const n = this.a.sprites.bflag ? this.a.sprites.bflag.frames.length : 1;
-    this.spriteExt("bflag", Math.floor(step * 0.1) % n, fx, fy, 1, 1, 0, 0xffffff, 0.6 * this.alpha);
+    const n = this.a.sprites.rflag ? this.a.sprites.rflag.frames.length : 1;
+    this.spriteExt("rflag", Math.floor(step * 0.1) % n, fx, fy, 1, 1, 0, 0xffffff, 0.6 * this.alpha);
   }
 
   triangleColour(x1, y1, x2, y2, x3, y3, c1, c2, c3, outline = false) {
