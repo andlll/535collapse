@@ -205,12 +205,12 @@ export const TEXTS = {
     de: "Fenster wie dieses erscheinen, um dir zu helfen. Klicke auf einen Tipp für den nächsten Schritt. Drücke H, um die Tipps aus- oder einzublenden.",
     fr: "Des fenêtres comme celle-ci apparaîtront pour t'aider. Clique sur un conseil pour passer au suivant. Appuie sur H pour masquer ou afficher les conseils." },
   "Visualization": { it: "Visuale", es: "Vista", pt: "Visão", de: "Ansicht", fr: "Vue" },
-  "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out using the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode.": {
-    it: "Avvicina il mouse ai bordi per spostarti sulla mappa, o usa le frecce. Usa Z e X per lo zoom. Premi F10 (Cmd+F su Mac) per lo schermo intero.",
-    es: "Acerca el ratón a los bordes para moverte por el mapa, o usa las flechas. Usa Z y X para el zoom. Pulsa F10 (Cmd+F en Mac) para la pantalla completa.",
-    pt: "Aproxime o mouse das bordas para se mover pelo mapa, ou use as setas. Use Z e X para o zoom. Pressione F10 (Cmd+F no Mac) para a tela cheia.",
-    de: "Bewege die Maus an den Rand, um über die Karte zu scrollen, oder nutze die Pfeiltasten. Zoome mit Z und X. Drücke F10 (Cmd+F am Mac) für den Vollbildmodus.",
-    fr: "Approche la souris des bords pour parcourir la carte, ou utilise les flèches. Zoome avec Z et X. Appuie sur F10 (Cmd+F sur Mac) pour le plein écran." },
+  "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out with the mouse wheel or the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode.": {
+    it: "Avvicina il mouse ai bordi per spostarti sulla mappa, o usa le frecce. Usa la rotella del mouse o Z e X per lo zoom. Premi F10 (Cmd+F su Mac) per lo schermo intero.",
+    es: "Acerca el ratón a los bordes para moverte por el mapa, o usa las flechas. Usa la rueda del ratón o Z y X para el zoom. Pulsa F10 (Cmd+F en Mac) para la pantalla completa.",
+    pt: "Aproxime o mouse das bordas para se mover pelo mapa, ou use as setas. Use a roda do mouse ou Z e X para o zoom. Pressione F10 (Cmd+F no Mac) para a tela cheia.",
+    de: "Bewege die Maus an den Rand, um über die Karte zu scrollen, oder nutze die Pfeiltasten. Zoome mit dem Mausrad oder mit Z und X. Drücke F10 (Cmd+F am Mac) für den Vollbildmodus.",
+    fr: "Approche la souris des bords pour parcourir la carte, ou utilise les flèches. Zoome avec la molette de la souris ou avec Z et X. Appuie sur F10 (Cmd+F sur Mac) pour le plein écran." },
   "Resources": { it: "Risorse", es: "Recursos", pt: "Recursos", de: "Rohstoffe", fr: "Ressources" },
   "On top of the screen you will find the resource tree. Gather resources with your workers to expand your city and build a powerful army.": {
     it: "In alto trovi le tue risorse. Raccoglile con i lavoratori per ingrandire la città e creare un esercito potente.",

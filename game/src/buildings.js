@@ -295,7 +295,8 @@ export function fond(fam, p) {
     // Step [C]: fasi del cantiere, poi l'edificio finito.
     step(i, w) {
       d.phases.forEach(([t, spr], k) => {
-        if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; i.sprite_index = spr; }
+        // [Richiesta dell'autore] il passaggio di fase in dissolvenza
+        if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; w.swapSprite(i, spr); }
       });
       if (i.life >= i.slife) {
         const b = w.create(fam, i.x, i.y);
@@ -305,6 +306,8 @@ export function fond(fam, p) {
           b.mask_index = "c" + i.tipo + "m";
           w.moved(b);
         }
+        // l'edificio finito compare in dissolvenza sul cantiere
+        w.swapSprite(b, b.sprite_index, i.sprite_index);
         w.destroy(i);
       }
     },
@@ -434,9 +437,10 @@ export function built(fam, p) {
       if (b.fire) fireStep(i, w, fam);
       if (b.damage) {
         const [ok, r1, r2] = b.damage;
-        if (i.life > i.slife * 0.66 && i.sprite_index !== ok) i.sprite_index = ok;
-        if (i.life < i.slife * 0.66 && i.life >= i.slife * 0.33 && i.sprite_index !== r1) i.sprite_index = r1;
-        if (i.life < i.slife * 0.33 && i.sprite_index !== r2) i.sprite_index = r2;
+        // [Richiesta dell'autore] il cambio di sprite in dissolvenza
+        if (i.life > i.slife * 0.66 && i.sprite_index !== ok) w.swapSprite(i, ok);
+        if (i.life < i.slife * 0.66 && i.life >= i.slife * 0.33 && i.sprite_index !== r1) w.swapSprite(i, r1);
+        if (i.life < i.slife * 0.33 && i.sprite_index !== r2) w.swapSprite(i, r2);
       }
     },
     globalLeftPressed(i) { i.selected = 0; },

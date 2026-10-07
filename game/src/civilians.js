@@ -338,8 +338,10 @@ function ominoMove(i, w, p) {
   // Ricalcolo se la destinazione e' occupata.
   // [Correzione decisa dall'autore, §3.4 n.14] l'originale crea qui anche
   // un legno_prizedrawer (l'icona "+legno" che sale): resto di debug.
+  // [Richiesta dell'autore] solo per il cibo (campi e mulino): negli
+  // spostamenti semplici ognuno ha gia' la sua casella (units.js, formation)
   if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && !i.buildwork && !i.repairwork
-      && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework) {
+      && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework && i.foodwork) {
     p.free(i);
     goTo(p, i, i.dirox, i.diroy, true); // §6.1 n.89
   }

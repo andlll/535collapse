@@ -14,14 +14,18 @@
 // - Dietro, la battaglia: le unita' della room si attaccano a ondate (ogni
 //   9000 passi, la prima dopo 120) e la nebbia passa.
 //
-// - [Fase 4] "Load game" (in alto a destra): le partite salvate di ogni
-//   room (save.js, una per room, con la data) e "Load from file"; "Full
-//   screen" in alto a sinistra (dove il browser lo permette).
+// - [Fase 4] "Load game": le partite salvate di ogni room (save.js, una per
+//   room, con la data) e "Load from file"; "Full screen" (dove il browser
+//   lo permette).
 //
 // [Decisioni dell'autore, §0.14/§0.15] lo sblocco e' persistente e parte da
 // 1 (l'originale lo rimetteva a 2 a ogni apertura del menu); i livelli 3-10
-// sono nell'elenco "in arrivo" (non giocabili). [§3.20, testi] i testi
-// passano da tr().
+// erano nell'elenco "in arrivo" (non giocabili): [richiesta dell'autore]
+// ora l'elenco mostra solo i livelli sbloccati e giocabili. [§3.20, testi]
+// i testi passano da tr().
+//
+// [Richiesta dell'autore] i quattro pulsanti della schermata iniziale in
+// colonna, alti uguali (titleButtons).
 
 import { c, makeColourRgb, mergeColour } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
@@ -41,13 +45,32 @@ export const STORY = {
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
                 7: [0, 7, 3, 6, 0], 8: [7, 6, 3, 0, 8], 9: [3, 5, 1, 6, 0], 10: [2, 1, 9, 4, 7] };
 const DARKRED = makeColourRgb(139, 0, 0);
+// [Richiesta dell'autore] nell'elenco solo i livelli sbloccati e giocabili:
+// niente piu' livelli bloccati ne' "in arrivo"
+const shownLevel = (g, n) => !!ROOMS[n] && (n === 1 || g.unlock > n - 1);
+const shownCount = (g) => LEVELS.reduce((m, _, k) => (shownLevel(g, k + 1) ? k + 1 : m), 0);
 const WHEEL_X = [-240, -120, 0, 120, 240];
 
 const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 
-// [Fase 4] il pulsante "Load game" e il pannello delle partite salvate
-const LOAD_BTN = (W) => [W - 340, 20, W - 20, 80];
-const FULL_BTN = [20, 20, 340, 80];
+// [Richiesta dell'autore] i pulsanti della schermata iniziale in una
+// colonna, tutti alti BTN_H: "Play the tutorial", "Campaign - Collapse",
+// "Load game" (prima in alto a destra) e "Full screen" (prima in alto a
+// sinistra, solo dove il browser lo permette). L'ultimo finisce a 100 px
+// dal fondo, dove finiva "Campaign - Collapse". [x1, y1, x2, y2] per chiave.
+const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
+function titleButtons(W, H) {
+  const keys = ["tutorial", "campaign", "load"];
+  if (fullscreenAvailable()) keys.push("full");
+  const top = H - 100 - keys.length * BTN_H - (keys.length - 1) * BTN_GAP;
+  const out = { top };
+  keys.forEach((k, n) => {
+    const y = top + n * (BTN_H + BTN_GAP);
+    out[k] = [W / 2 - BTN_W / 2, y, W / 2 + BTN_W / 2, y + BTN_H];
+  });
+  return out;
+}
+// [Fase 4] il pannello delle partite salvate
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
@@ -118,10 +141,11 @@ export function enemyManagerMenu() {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH, mx = w.input.x, my = w.input.y;
       g.sele = -1; // nel menu le unita' non si selezionano
       if (g.campagna === 0 && i.loadmenu === 0) {
-        i.hover = +inRect(mx, my, W / 2 - 200, H - 400, W / 2 + 200, H - 300);
-        i.campagnahover = +inRect(mx, my, W / 2 - 200, H - 200, W / 2 + 200, H - 100);
-        i.loadhover = +inRect(mx, my, ...LOAD_BTN(W));
-        i.fullhover = +(fullscreenAvailable() && inRect(mx, my, ...FULL_BTN));
+        const b = titleButtons(W, H);
+        i.hover = +inRect(mx, my, ...b.tutorial);
+        i.campagnahover = +inRect(mx, my, ...b.campaign);
+        i.loadhover = +inRect(mx, my, ...b.load);
+        i.fullhover = +(!!b.full && inRect(mx, my, ...b.full));
       } else {
         i.hover = i.campagnahover = i.loadhover = i.fullhover = 0;
       }
@@ -139,7 +163,7 @@ export function enemyManagerMenu() {
         // toccato (lvlshown), cosi' la storia si legge scendendo col puntatore
         i.lvlhover = 0;
         for (let k = 1; k <= 10; k++) {
-          if (inRect(mx, my, 30, 35 + 40 * k, 290, 85 + 40 * k) && (k === 1 || g.unlock > k - 1 || k > 2)) i.lvlhover = k;
+          if (inRect(mx, my, 30, 35 + 40 * k, 290, 85 + 40 * k) && shownLevel(g, k)) i.lvlhover = k;
         }
         if (i.lvlhover > 0) i.lvlshown = i.lvlhover;
         i.combHover = null;
@@ -209,39 +233,33 @@ export function enemyManagerMenu() {
 }
 
 function drawTitle(i, d, W, H) {
-  // [Fase 4] "Load game"
-  const [lx1, ly1, lx2, ly2] = LOAD_BTN(W);
-  d.setAlpha(i.loadhover ? 0.99 : 0.69);
-  d.roundrectColourExt(lx1, ly1, lx2, ly2, 60, 60, c.white, c.white, false);
-  d.setAlpha(i.campagnahover ? 0.99 : 0.69);
-  d.roundrectColourExt(W / 2 - 200, H - 200, W / 2 + 200, H - 100, 60, 60, c.white, c.white, false);
-  d.setAlpha(i.hover ? 0.99 : 0.69);
-  d.roundrectColourExt(W / 2 - 200, H - 400, W / 2 + 200, H - 300, 60, 60, c.white, c.white, false);
+  const b = titleButtons(W, H);
+  const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
+               ["load", i.loadhover, tr("Load game")],
+               ["full", i.fullhover, tr(isFullscreen() ? "Exit full screen" : "Full screen")]];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("GUI_1");
-  d.setColour(c.black);
-  d.setAlpha(0.75);
-  d.text(W / 2, H - 150, tr("Campaign - Collapse"));
-  d.text(W / 2, H - 350, tr("Play the tutorial"));
-  d.text((lx1 + lx2) / 2, (ly1 + ly2) / 2, tr("Load game"));
-  if (fullscreenAvailable()) {
-    const [fx1, fy1, fx2, fy2] = FULL_BTN;
-    d.setAlpha(i.fullhover ? 0.99 : 0.69);
-    d.roundrectColourExt(fx1, fy1, fx2, fy2, 60, 60, c.white, c.white, false);
+  for (const [k, hov, label] of btn) {
+    if (!b[k]) continue;
+    const [x1, y1, x2, y2] = b[k];
+    d.setAlpha(hov ? 0.99 : 0.69);
+    d.roundrectColourExt(x1, y1, x2, y2, 60, 60, c.white, c.white, false);
+    d.setColour(c.black);
     d.setAlpha(0.75);
-    d.text((fx1 + fx2) / 2, (fy1 + fy2) / 2, tr(isFullscreen() ? "Exit full screen" : "Full screen"));
+    d.text(W / 2, (y1 + y2) / 2, label);
   }
   d.setFont("overdue");
   // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75]
   d.text(W / 2, H - 50, i.testo !== 8 ? "Mount Fuji Software, 2025"
     : "Non mi interessa se sta roba non ingrana quando soffro d'insonnia e non dormo da una settimana");
   d.setHalign("left");
-  d.text(20, H - 50, "0.250125");
+  // [Richiesta dell'autore] la versione del porting (l'originale: 0.250125)
+  d.text(20, H - 50, "0.2601");
   d.setAlpha(1);
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
-  // con finestre alte meno di 830 px: sale a meta' dello spazio libero
-  d.sprite("logo535", 0, W / 2, Math.min(350, (H - 400) / 2));
+  // con finestre basse: sale a meta' dello spazio sopra i pulsanti
+  d.sprite("logo535", 0, W / 2, Math.min(350, b.top / 2));
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu
@@ -272,6 +290,9 @@ function drawLoad(i, d, W, H) {
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
   d.sprite("mappa_camp", 0, W / 2, H / 2);
+  // [Richiesta dell'autore] i pannelli di vetro sfocano la mappa, non la
+  // battaglia sotto
+  d.refreshGlass();
   if (i.sblocco === 0 && g.unlock > 0) {
     // segnaposto dei livelli sulla mappa
     d.setColour(DARKRED);
@@ -290,13 +311,13 @@ function drawCampaign(i, g, d, W, H) {
     d.setFont("overdue");
   }
   d.setAlpha(0.69);
-  d.roundrectColourExt(20, 20, 300, 490, 60, 60, c.white, c.white, false);
+  d.roundrectColourExt(20, 20, 300, 90 + 40 * shownCount(g), 60, 60, c.white, c.white, false);
   d.setAlpha(i.c_indhover ? 0.99 : 0.69);
   d.circleColour(W - 50, 50, 30, c.white, c.white, false);
   d.setAlpha(i.c_unlhover ? 0.99 : 0.69);
   if (i.sblocco === 0) d.circleColour(W - 120, 50, 30, c.white, c.white, false);
   d.setAlpha(0.99);
-  // la storia del livello sotto il puntatore; i livelli 3-10 sono "in arrivo"
+  // la storia del livello sotto il puntatore
   d.setFont("overdue");
   if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
   if (i.lvlshown > 0) {
@@ -317,9 +338,8 @@ function drawCampaign(i, g, d, W, H) {
   d.setFont("overdue");
   LEVELS.forEach((name, k) => {
     const n = k + 1;
-    if (n <= 2 && !(n === 1 || g.unlock > n - 1)) return;
-    // [Decisione dell'autore, §0.15] 3-10 sempre in elenco, piu' chiari
-    d.setAlpha(n <= 2 ? 0.8 : 0.4);
+    if (!shownLevel(g, n)) return;
+    d.setAlpha(0.8);
     d.text(40, 60 + 40 * n, n + ". " + tr(name));
   });
   d.setValign("top");

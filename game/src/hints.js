@@ -32,7 +32,7 @@ const W380 = 380;
 // [titolo, testo]
 const T = {
   hint_iniziale: ["Hints", "Windows like this one will appear to help you. Click on a hint window for the next step. Press H to disable or enable all hint windows."],
-  hint_vista: ["Visualization", "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out using the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode."],
+  hint_vista: ["Visualization", "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out with the mouse wheel or the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode."],
   hint_resource_tree: ["Resources", "On top of the screen you will find the resource tree. Gather resources with your workers to expand your city and build a powerful army."],
   hint_idle: ["Idling workers", "On top right of the screen you can monitor how many workers are idling. Click the button or press the spacebar to select them."],
   hint_objective: ["Objectives", "Next to it, you can find the objectives of the current map. Complete them to win the level."],

@@ -477,6 +477,7 @@ async function main() {
     }
     // [§7.14] vetro: il mondo appena disegnato, ridotto a 1/4 e sfocato
     draw.setGlass(settings.glass ? glassBackdrop() : null);
+    draw.glassGrab = glassBackdrop;
     // Draw GUI: coordinate in pixel CSS della finestra
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     draw.reset();

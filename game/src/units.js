@@ -16,7 +16,7 @@ import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
-import { meleeSpot } from "./melee.js";
+import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
 
@@ -172,8 +172,8 @@ export function formation(w, p, mx, my) {
     const exact = Math.trunc(sx / GRID) === gx && Math.trunc(sy / GRID) === gy;
     u.dirox = exact ? Math.round(sx) : gx * GRID + GRID / 2;
     u.diroy = exact ? Math.round(sy) : gy * GRID + GRID / 2;
-    // il campo comune (in sola lettura) e la propria cella d'arrivo: il
-    // ricalcolo "cella d'arrivo occupata" guarda questa (non per l'assedio)
+    // il campo comune (in sola lettura) e la propria cella d'arrivo (non
+    // per l'assedio)
     if (!flowUnit(u) || !leader) continue;
     u.goal_field = goal;
     u.flow_field = leader.flow_field;
@@ -306,7 +306,7 @@ export function cavaliere(p) {
       // azione 10
       if (w.number("torre_placer") > 0) g.sele = 1;
       // azione 11: movimento
-      flowMovement(i, w, p, { cavalier: true });
+      flowMovement(i, w, p);
       // azione 12: attacco
       if (autoAttack(i, w, p) === "exit") return;
       // azione 13: pulsanti attacco/difesa
@@ -358,11 +358,11 @@ const INFANTRY = {
   ally_warrior: { rank: 3, life: 75, corpse: "warrior_corpse", icon: "ico_guerriero", alarm8: 3000,
                   damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4 },
                   // il guerriero e' la versione piu' recente
-                  clickFirst: false, exactStop: false, nearRank: true, warwork4: true, move100: true,
+                  clickFirst: false, exactStop: false, nearRank: true, move100: true,
                   faceTarget: true, rally100: true, occupyAtCreate: false, globalLeft: false },
   ally_picchiere: { rank: 2, life: 60, corpse: "picchiere_corpse", icon: "ico_picchiere", alarm8: 1200,
                     damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8 },
-                    clickFirst: true, exactStop: true, nearRank: false, warwork4: false, move100: false,
+                    clickFirst: true, exactStop: true, nearRank: false, move100: false,
                     faceTarget: false, rally100: false, occupyAtCreate: true, globalLeft: true },
 };
 
@@ -444,8 +444,11 @@ export function infantry(name, p) {
       }
       ANIM[name](i, w);
       boxSelect(i, w, true);
-      // destinazione occupata: 32 px verso di se' (a caso se appena creato)
-      if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+      // destinazione occupata: 32 px verso di se' (a caso se appena creato).
+      // [Richiesta dell'autore] non per chi va a dare fuoco: la sua meta e'
+      // un posto libero attorno all'edificio (flowMovement); spostata cosi'
+      // arrivava all'unita' stessa, che si fermava senza dare fuoco
+      if (i.action === 1 && i.firework !== 1 && !w.placeFree(i, i.dirox, i.diroy)) {
         if (i.creation !== 1) {
           const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
           i.dirox += lengthdirX(32, dir);
@@ -458,16 +461,20 @@ export function infantry(name, p) {
       behaviourButtons(i, w);
       // dare fuoco alle case (firework, action 6)
       if (i.targetid && !i.targetid.alive) { i.targetid = null; i.firework = 0; }
-      if (i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70) {
+      // [Richiesta dell'autore] non addosso a un alleato, se puo' ancora
+      // spostarsi (flowMovement); bloccato cosi' per 60 passi, comunque
+      const fireNear = i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70;
+      const fireOver = fireNear && i.action === 1 && !!w.instancePlace(i, i.x, i.y, "ally_unit");
+      i.fireWait = fireOver ? (i.fireWait || 0) + 1 : 0;
+      if (fireNear && (!fireOver || i.fireWait > 60)) {
+        i.fireWait = 0;
         i.firework = 0;
         i.direction = pointDirection(i.x, i.y, i.targetid.x, i.targetid.y);
         i.step = 0;
         i.alarm.set(4, 13);
         i.action = 6;
       }
-      // [Difetto corretto §3.3 n.12, confermato dall'autore] nel picchiere
-      // il ricalcolo passa dirox anche come y, come nel cavaliere
-      flowMovement(i, w, p, { nearRank: T.nearRank, warwork4: T.warwork4 });
+      flowMovement(i, w, p, { nearRank: T.nearRank });
       if (autoAttack(i, w, p, { move100: T.move100, faceTarget: T.faceTarget }) === "exit") return;
       if (!T.clickFirst) leftClick(i, w);
     },
@@ -625,19 +632,37 @@ export function boxSelect(i, w, counter) {
 // Step "Movimento con flow field" [C, guerriero azione 9 / cavaliere
 // azione 11]: lontano (>400) o sovrapposto si segue il flow field, dando
 // la precedenza all'alleato con `ordo` piu' alto; vicino si usa
-// mp_potential_step. Poi, se la cella d'arrivo e' diventata un ostacolo, si
-// ricalcola il campo.
-// Differenze del cavaliere [C]: il ricalcolo non controlla action=1 e
-// accetta solo warwork=0 (il guerriero anche 4).
-// [Difetto corretto §3.3 n.12, confermato dall'autore] nel cavaliere il
-// ricalcolo passava dirox anche come y: scr_find_valid_cell_backwards(dirox
-// div 32, dirox div 32, ...). Qui usa diroy come il guerriero.
+// mp_potential_step.
+// [Richiesta dell'autore] l'originale poi, se la cella d'arrivo era
+// diventata un ostacolo (il primo arrivato ci si era fermato), ricalcolava
+// il campo verso la cella libera piu' vicina. Con le caselle della
+// formazione (formation) ogni unita' ha gia' una destinazione sua: il
+// ricalcolo e' tolto (anche negli arcieri e negli spostamenti dei civili).
 // Varianti [C]: il guerriero, quando e' vicino, rallenta a 0 se tocca un
 // alleato di rango piu' alto in movimento (nearRank) e insegue il nemico
-// piu' vicino fino a 400 px compresi; il ricalcolo accetta warwork 0 o 4
-// (warwork4) e solo in movimento (cavalier=false).
-function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = true, speed = 4 } = {}) {
+// piu' vicino fino a 400 px compresi.
+function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
+  // [Richiesta dell'autore, come §7.7] chi va a dare fuoco punta a un posto
+  // libero attorno all'edificio (che diventa la meta), non tutti al suo
+  // centro. Vicino e sovrapposto a un alleato (col flow field si passa uno
+  // sull'altro) va dritto verso il proprio posto, passando sopra gli
+  // alleati ma non attraverso edifici e alberi, finche' non si separa:
+  // prima si fermava a dare fuoco addosso a chi era arrivato per primo.
+  if (i.action === 1 && i.firework === 1 && i.targetid) {
+    [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && w.instancePlace(i, i.x, i.y, "ally_unit")) {
+      const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
+      const d = Math.min(i.autospeed, pointDistance(i.x, i.y, i.dirox, i.diroy));
+      const nx = i.x + lengthdirX(d, dir), ny = i.y + lengthdirY(d, dir);
+      const o = w.instancePlace(i, nx, ny, null, true);
+      if (!o || w.is(o, "ally_unit")) {
+        i.direction = dir;
+        w.setPos(i, nx, ny);
+        return;
+      }
+    }
+  }
   if (i.action === 1) {
     const moveOrder = i.firework === 0 && (i.warwork === 0 || i.warwork === 4);
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
@@ -659,7 +684,8 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
         mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
         arriveIfBlocked(i); // §6.1 n.89
       }
-      if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.targetid.x, i.targetid.y, i.autospeed);
+      // a dare fuoco: verso il proprio posto (qui sopra)
+      if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
       // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
       // verso il suo centro (melee.js)
       if (i.warwork === 1 && i.target_eu) {
@@ -674,20 +700,6 @@ function flowMovement(i, w, p, { cavalier = false, nearRank = false, warwork4 = 
         }
       }
     }
-  }
-  const guard = cavalier ? true : i.action === 1;
-  if (guard && p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000
-      && i.firework === 0 && (warwork4 && !cavalier ? (i.warwork === 0 || i.warwork === 4) : i.warwork === 0)) {
-    p.free(i);
-    // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
-    const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                       Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
-    const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
-    i.goal_x = found ? cx * GRID : i.x;
-    i.goal_y = found ? cy * GRID : i.y;
-    generateFields(p, i, i.goal_x, i.goal_y);
-    i.dirox = i.goal_x;
-    i.diroy = i.goal_y;
   }
 }
 

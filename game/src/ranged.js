@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -207,18 +207,9 @@ export function allyArcher(p) {
         if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
     }
-    if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && i.presidiowork === 0
-        && i.warwork === 0 && i.action === 1) {
-      p.free(i);
-      // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
-      const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                         Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
-      const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
-      i.goal_x = found ? cx * GRID : i.x;
-      i.goal_y = found ? cy * GRID : i.y;
-      generateFields(p, i, i.goal_x, i.goal_y);
-      i.dirox = i.goal_x; i.diroy = i.goal_y;
-    }
+    // [Richiesta dell'autore] niente piu' ricalcolo del campo quando la
+    // cella d'arrivo diventa un ostacolo: ognuno ha la sua casella
+    // (units.js, formation e flowMovement)
   };
   // azione 14, attacco [C]: tira entro 600 px (al bersaglio scelto col
   // click destro, se c'e'), si avvicina entro `comp` a un nemico visibile.

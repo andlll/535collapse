@@ -14,8 +14,10 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 6 ottobre 2026, quarta sessione (branch
-`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
+Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
+`claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
+fuoco agli edifici, dissolvenze, zoom (Fase 8, §8.1–§8.6). Quarta
+sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
 dell'autore (§6.1, n.77–n.89), pathfinding (§6.2–§6.3), arcieri, torri
@@ -33,7 +35,8 @@ sezione citata.
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
-  `claude/gpu-optimizations-bugs-o3mfcc`); gli asset generati (`game/assets/`,
+  `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
+  `claude/menu-fire-crossfade`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -3433,3 +3436,86 @@ chiesa in 3900, castello 418 su 500 in 60000 (deposito a 700 px). Prima
 della correzione dei percorsi una rovina nata accanto al centro restava
 intatta. Le prove precedenti (mischia, magazzino, unita' prodotte,
 assedio) danno gli stessi risultati.
+
+## Fase 8 — terza tornata di richieste dell'autore (7 ottobre 2026)
+
+Prove: `npm test` (50), 3000 passi nelle quattro room senza errori,
+salvataggi identici, zip dei portali, e una prova mirata per voce
+(scenari sotto, con `window.__game`).
+
+### 8.1 Menu principale
+
+I quattro pulsanti della schermata iniziale ("Play the tutorial",
+"Campaign - Collapse", "Load game", "Full screen") stanno in una colonna
+al centro, larghi 400 e alti 70 (prima 100; "Load game" e "Full screen"
+erano in alto a destra e a sinistra), a 20 px l'uno dall'altro; l'ultimo
+finisce a 100 px dal fondo. Il logo sta a meta' dello spazio sopra la
+colonna (al piu' a y=350). La versione in basso a sinistra e' **0.2601**
+(l'originale scriveva 0.250125). `menu.js`, `titleButtons`.
+
+### 8.2 Campagna: vetro sulla mappa, solo i livelli giocabili
+
+- Lo sfondo dei pannelli di vetro (§7.14) si cattura dopo il mondo, prima
+  del Draw GUI; la mappa della campagna si disegna nel Draw GUI, quindi
+  l'elenco dei livelli mostrava sfocata la battaglia del menu e
+  "tagliava" la mappa. Ora `Draw.refreshGlass()` ricattura lo sfondo dallo
+  schermo dopo la mappa (una sfocatura in piu' per fotogramma, solo in
+  questa schermata e solo col vetro attivo).
+- L'elenco mostra solo i livelli sbloccati e giocabili: spariscono i
+  bloccati e i 3–10 "in arrivo" (§0.15), il pannello si accorcia di
+  conseguenza.
+
+### 8.3 Dare fuoco agli edifici: posti attorno all'edificio
+
+Segnalazione: con piu' unita' a dare fuoco allo stesso edificio "si
+incasinano", come in mischia prima del §7.7. Nell'originale i fanti vanno
+verso il centro dell'edificio (`mp_potential_step`) e cominciano a 70 px;
+in piu' la loro destinazione, dentro l'edificio, e' "occupata" e il
+blocco "destinazione occupata" la sposta di 32 px verso l'unita' a ogni
+passo, finche' l'unita' ci arriva e si ferma **senza dare fuoco** (resta
+con `firework` 1). Correzioni:
+- chi va a dare fuoco punta a un posto attorno all'edificio
+  (`meleeSpot(..., FIRE)`, melee.js): settori di 30 gradi e, se il posto
+  vicino e' occupato da alberi o altri edifici, piu' in fuori (12, 32 o
+  52 px dal bordo: il fuoco parte entro 70); il posto diventa la meta
+  (`dirox`/`diroy`), che non si sposta piu'. La regola "a contatto: resta
+  dov'e'" vale solo in mischia;
+- chi e' sovrapposto a un alleato (col flow field si passa uno
+  sull'altro) va dritto verso il proprio posto, senza attraversare edifici
+  e alberi, e comincia a dare fuoco solo quando si e' separato (o dopo 60
+  passi bloccato cosi');
+- i nemici (frecce incendiarie da 200 px) usano gli stessi posti.
+
+| prova: 8 fanti da 400 px, 11 edifici di `lvl02` e `match` | prima | dopo |
+|---|---|---|
+| fanti che danno fuoco dopo 120 passi | 30/88 | 42/88 |
+| fanti che danno fuoco dopo 480 passi | 33/88 (gli altri fermi) | 80/88 |
+
+Dare fuoco anche da sovrapposti farebbe arrivare a 82/88, ma con 5 volte
+le sovrapposizioni (89 coppie contro 17): proprio l'effetto da evitare.
+
+### 8.4 Spostamenti di gruppo: tolto il ricalcolo "cella occupata"
+
+L'originale, quando la cella d'arrivo diventava un ostacolo (il primo
+arrivato ci si fermava), ricalcolava il campo degli altri verso la cella
+libera piu' vicina (§6.1 n.89). Con le caselle della formazione (§6.1
+n.89) ognuno ha gia' una destinazione sua: richiesta dell'autore, il
+ricalcolo e' tolto da fanteria, cavalieri e arcieri e, nei civili, resta
+solo per il cibo (campi e mulino). Tre ordini a 14 unita' di `lvl02`
+danno gli stessi arrivi di prima.
+
+### 8.5 Dissolvenza fra gli sprite
+
+Le fasi dei cantieri (casa, caserma, stalla, chiesa, torre, castello,
+mura), l'edificio finito che sostituisce il cantiere e i danni degli
+edifici di pietra (castello, chiesa, torre: normale, `*_r1`, `*_r2`)
+cambiano sprite in dissolvenza: `World.swapSprite` (30 passi, mezzo
+secondo). Nella prima meta' lo sprite nuovo compare sopra il vecchio,
+nella seconda il vecchio sparisce sotto il nuovo: niente trasparenze a
+meta' strada. Solo disegno: maschere e logica non cambiano.
+
+### 8.6 Zoom
+
+Zoom massimo (allontanato) da 2,0 a **1,7** (`ZOOM_MAX`, camera.js); i
+salvataggi fatti oltre tornano a 1,7. Il suggerimento "Visuale" del
+tutorial dice che si puo' usare la rotella del mouse, nelle sei lingue.

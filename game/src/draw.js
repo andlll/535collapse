@@ -64,6 +64,11 @@ export class Draw {
 
   // §7.14: la superficie sfocata per i pannelli di vetro (null: niente vetro)
   setGlass(t) { this.glass = this._glassTex = t || null; }
+  // [Richiesta dell'autore] lo sfondo del vetro e' il mondo: un pannello
+  // sopra qualcosa disegnato nel Draw GUI (la mappa della campagna) lo
+  // "tagliava". refreshGlass() lo ricattura dallo schermo cosi' com'e' ora
+  // (glassGrab: app.js), se il vetro e' attivo.
+  refreshGlass() { if (this._glassTex && this.glassGrab) this.setGlass(this.glassGrab()); }
 
   // Schede descrittive di pulsanti e unita' (in basso a sinistra, x=20)
   // [Correzione decisa dall'autore, §6.1 n.85]: con la minimappa aperta

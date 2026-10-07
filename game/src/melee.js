@@ -54,20 +54,29 @@ function slotPoint(w, i, t, ang, extra = 0) {
 }
 
 // Il primo settore libero attorno a `t` partendo da `pref` e alternando i
-// lati: { ang, x, y } o null. Non prende il settore.
-function freeSlot(w, i, t, pref, taken) {
-  for (let k = 0; k < 360 / SEP; k++) {
+// lati: { ang, x, y } o null. Non prende il settore. In ogni settore si
+// prova a ciascuna distanza in piu' di `extras` (in mischia solo a
+// contatto).
+function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0]) {
+  for (let k = 0; k < 360 / sep; k++) {
     for (const s of k === 0 ? [1] : [1, -1]) {
-      const ang = (pref + s * k * SEP + 360) % 360;
-      if (taken && taken.some((a) => angDiff(a, ang) < SEP - 1)) continue;
-      const [x, y] = slotPoint(w, i, t, ang);
-      const o = w.instancePlace(i, x, y, null, true);
-      if (o && o !== t) continue;
-      return { ang, x, y };
+      const ang = (pref + s * k * sep + 360) % 360;
+      if (taken && taken.some((a) => angDiff(a, ang) < sep - 1)) continue;
+      for (const extra of extras) {
+        const [x, y] = slotPoint(w, i, t, ang, extra);
+        const o = w.instancePlace(i, x, y, null, true);
+        if (o && o !== t) continue;
+        return { ang, x, y };
+      }
     }
   }
   return null;
 }
+
+// [Richiesta dell'autore] Posti per dare fuoco a un edificio: il fuoco
+// parte entro 70 px, quindi non serve il contatto; settori piu' fitti e,
+// se il posto vicino e' occupato (alberi, altri edifici), piu' in fuori.
+export const FIRE = { sep: 30, extras: [12, 32, 52] };
 
 // Costo di un posto: la strada (dritta, o lungo l'orbita se il posto e'
 // dall'altra parte del bersaglio).
@@ -81,20 +90,21 @@ function cost(w, i, t, s) {
 // vero, attorno a un nemico della famiglia `fam` vicino a `t`. Da chiamare a
 // ogni passo dell'inseguimento. Restituisce il punto verso cui muoversi
 // (il posto, un punto dell'orbita per arrivarci, o il centro di `t`).
-export function meleeSpot(w, i, t, fam = null) {
+export function meleeSpot(w, i, t, fam = null, ring = null) {
   if (!t) return null;
-  const go = goTo(w, i, t, fam);
+  const go = goTo(w, i, t, fam, ring || { sep: SEP, extras: [0] });
   i.meleeGo = go;
   return go;
 }
 
-function goTo(w, i, t, fam) {
+function goTo(w, i, t, fam, ring) {
   const all = claims(w);
   const takenOf = (o) => all.get(o) || [];
   const claim = (o, ang) => { const l = all.get(o); if (l) l.push(ang); else all.set(o, [ang]); };
-  // gia' a contatto con il bersaglio: resta dov'e' (il colpo parte a 10 px)
+  // gia' a contatto con il bersaglio: resta dov'e' (il colpo parte a 10 px;
+  // solo in mischia)
   const [tcx, tcy] = centre(w, t);
-  if (w.distanceToInstance(i, t) < GAP + 2) {
+  if (ring.extras[0] === 0 && w.distanceToInstance(i, t) < GAP + 2) {
     claim(t, pointDirection(tcx, tcy, i.x, i.y));
     i.meleeT = t.id; i.meleeSpot = [i.x, i.y];
     return [i.x, i.y];
@@ -126,7 +136,7 @@ function goTo(w, i, t, fam) {
     let pref = mine ? i.meleeAng : pointDirection(ocx, ocy, i.x, i.y);
     const taken = takenOf(o).slice();
     if (skip && skip[0] === o.id && skip[1] !== undefined) taken.push(skip[1]);
-    const s = freeSlot(w, i, o, pref, taken);
+    const s = freeSlot(w, i, o, pref, taken, ring.sep, ring.extras);
     if (!s) continue;
     // chi ha gia' un posto lo tiene, a meno di uno molto migliore
     const c = cost(w, i, o, s) - (mine && s.ang === i.meleeAng ? 40 : 0);
