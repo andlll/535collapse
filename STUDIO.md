@@ -3654,3 +3654,64 @@ fiume.
   particelle.
 - Prove: `match` col fiume in vista, 100–200 anelli vivi; soak e
   salvataggi senza errori, salvataggio durante la pioggia.
+
+### 8.14 Macchine d'assedio col flow field "largo"
+
+Segnalazione dell'autore: ariete e catapulta si incastravano di continuo.
+Nell'originale non hanno flow field [C]: vanno solo con
+`mp_potential_step` verso dirox/diroy, e con un edificio, un bosco o un
+fiume in mezzo spingevano contro l'ostacolo. Richiesta: dargli il flow
+field, ma meno permissivo nei passaggi (sono ingombranti: non passano dove
+passa un soldato).
+- **Ostacoli fissi**: `Pathing.solid` segna le celle di edifici, elementi
+  naturali e mura (`markInstance`), senza quelle occupate dalle unita'
+  ferme (un'unita' ferma resta un ostacolo di una cella sola). Si salva con
+  la griglia dei costi; nei salvataggi di prima si ricava dai costi.
+- **Campo largo**: `wideMask` chiude le celle a meno di `SIEGE_CLEAR` (1)
+  celle, anche in diagonale, da un ostacolo fisso (per i nemici anche dalle
+  porte); `goalField(..., wide)` le salta. Il centro della macchina sta solo
+  dove ci sono 3x3 celle libere: servono varchi di almeno 3 celle (96 px;
+  la maschera e' 111x96), un soldato ne usa uno di una. I varchi delle
+  porte (3 celle fra i pilastri) restano percorribili.
+- **Movimento** (`siegeMove` in pathing.js): come la fanteria, lontano
+  (oltre 400 px) col flow field, vicino con `mp_potential_step` se la meta
+  e' in vista, se la macchina e' in fondo al campo o nella fascia attorno a
+  un ostacolo (l'ariete che va a colpire un edificio), e solo se non e'
+  sovrapposta a niente (col campo si muove senza collisioni e puo' sfiorare
+  un albero: da li' `mp_potential_step` non la muoveva piu'). Il campo e'
+  della macchina (`siegeField`) e si ricalcola quando la meta cambia cella:
+  subito se si sposta di oltre 3 celle, se no al piu' ogni 15 passi (i
+  nemici spostano la meta a caso quando e' occupata, l'ariete alleato la
+  arretra di 50 px).
+- **Meta irraggiungibile** (varco troppo stretto, l'altra riva): il campo
+  porta alla cella raggiungibile piu' vicina alla meta (`nearestReached`,
+  con una ricerca dalla macchina) e li' la macchina arriva, invece di
+  spingere contro l'ostacolo.
+- **Arrivo per rinuncia** (§6.1 n.89) anche per i semplici spostamenti
+  delle macchine alleate (non all'attacco di un edificio).
+
+Prova: un ariete o una catapulta alla volta, nemici tolti, verso 12 punti
+a caso a oltre 900 px (fino a 10000 passi).
+
+| arrivate entro 64 px | prima | dopo |
+|---|---|---|
+| `match` (4000 passi) | 0/12 (quasi tutte ferme vicino alla partenza) | 5/12 |
+| `lvl02` | 4/12 | 12/12 |
+
+In `match` le altre sono state distrutte dalle torri nemiche lungo la
+strada o avevano una meta irraggiungibile per la macchina (si sono fermate
+nel punto piu' vicino). In `lvl01` il sud comunica col nord solo con
+corridoi nel bosco di 1–2 celle: da sud una macchina raggiunge 2 dei 28
+edifici nemici (un soldato tutti), finche' i civili non aprono un varco
+tagliando alberi. Per renderle piu' o meno ingombranti basta cambiare
+`SIEGE_CLEAR`.
+
+### 8.15 Costi di ariete e catapulta nella scheda del castello
+
+Segnalazione dell'autore: nella scheda di ariete e catapulta il costo in
+legno a tre cifre ("250", "200") finiva sopra l'icona del legno, che
+restava a x=90 come per i costi a due cifre. In `unitClicker` (production.js)
+le posizioni dell'originale restano dove c'e' spazio; altrimenti ogni icona
+sta 6 px dopo il suo numero (misurato con `stringWidth`) e ogni numero 12
+px dopo l'icona prima. Anche il "3" della popolazione non tocca piu'
+l'icona.

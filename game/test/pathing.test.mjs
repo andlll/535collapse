@@ -6,9 +6,15 @@ import { Pathing, GRID, arriveIfBlocked } from "../src/pathing.js";
 
 const fakeWorld = { all: () => [], bbox: () => null, setPos(i, x, y) { i.x = x; i.y = y; } };
 
+// "#" ostacolo fisso (edifici, alberi: anche in `solid`), "u" cella
+// occupata da un'unita' ferma (solo il costo)
 function grid(rows) {
   const p = new Pathing(fakeWorld, rows[0].length * GRID, rows.length * GRID);
-  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch === "#") p.cost[y * p.gw + x] = 1000; }));
+  rows.forEach((r, y) => [...r].forEach((ch, x) => {
+    if (ch === "#" || ch === "u") p.cost[y * p.gw + x] = 1000;
+    if (ch === "#") p.solid[y * p.gw + x] = 1;
+  }));
+  p.solidVer++;
   return p;
 }
 
@@ -103,4 +109,34 @@ test("§6.2 D: in campo aperto si punta dritti verso la meta, non a 45 gradi", (
   assert.ok(m.clearLine(g, GRID * 3 + 16, 16, GRID * 3 + 16, GRID * 2 + 16) === false);
   assert.ok(b === 0 || b === 180 || (b > 90 && b < 270) || b < 90, `angolo ${b}`);
   assert.notEqual(b, 270);                                // non dritto in giu' nel muro
+});
+
+test("assedio: il campo largo non passa dai varchi stretti in cui passa un soldato", () => {
+  // muro con un varco di una cella (colonna 4) e uno di tre (colonne 9-11)
+  const rows = ["..............", "..............", "####.####...##", "..............", ".............."];
+  const p = grid(rows);
+  const at = (f, x, y) => f[y * p.gw + x];
+  const soldier = p.goalField(GRID * 4 + 16, GRID * 4 + 16);
+  assert.equal(at(soldier, 4, 2), 2);                     // il soldato passa dal varco stretto
+  const siege = p.goalField(GRID * 4 + 16, GRID * 4 + 16, false, true);
+  assert.equal(at(siege, 4, 2), -1);                      // la macchina no
+  assert.equal(at(siege, 10, 2) !== -1, true);            // dal varco largo si'
+  assert.equal(at(siege, 9, 2), -1);                      // ma solo dal suo centro
+  assert.ok(at(siege, 4, 0) > at(soldier, 4, 0));         // e il giro e' piu' lungo
+  // le unita' ferme non allargano l'ostacolo (solo la loro cella)
+  const q = grid(["......", "......", "..u...", "......", "......"]);
+  const fq = q.goalField(GRID * 5 + 16, GRID * 2 + 16, false, true);
+  assert.equal(fq[2 * q.gw + 2], -1);
+  assert.notEqual(fq[2 * q.gw + 1], -1);
+  assert.notEqual(fq[1 * q.gw + 2], -1);
+  // la maschera segue gli ostacoli che cambiano
+  q.solid[0] = 1; q.cost[0] = 1000; q.solidVer++;
+  assert.equal(q.wideMask(false)[1 * q.gw + 1], 1);
+});
+
+test("assedio: nearestReached, la cella raggiunta piu' vicina a una meta irraggiungibile", () => {
+  const p = grid(["....#....", "....#....", "....#...."]);
+  const from = p.goalField(16, 16, false, true);          // dalla riva sinistra
+  const c = p.nearestReached(from, 7, 1);                  // meta sull'altra riva
+  assert.deepEqual(c, [2, 1]);                             // a ridosso dell'ostacolo, per quanto la macchina ci sta
 });

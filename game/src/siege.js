@@ -7,11 +7,13 @@
 // Le macchine d'assedio non hanno flow field: si muovono solo con
 // mp_potential_step (azione drag & drop action_potential_step) verso
 // dirox/diroy, e non hanno `ordo` [C].
+// [§8.14] Ora hanno un flow field loro, "largo" (non passano
+// dai varchi stretti): siegeMove in pathing.js. Restano senza `ordo`.
 
 import { fireFlare } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, walkLine, arriveIfBlocked, GRID, onFormationSlot } from "./pathing.js";
+import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -102,10 +104,13 @@ function siegeCommon(name, corpseName, icon) {
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) onArrive(i);
-      if (i.action === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.action === 1) siegeMove(w, w.path, i);
       // [§8.11] sulla casella della formazione: se resta occupata, arriva
       // dov'e' (come fanteria e civili, pathing.js)
-      if (i.action === 1 && onFormationSlot(i)) arriveIfBlocked(i);
+      // [§8.14] e cosi' per ogni semplice spostamento (non
+      // all'attacco di un edificio, warwork 1; il punto di tiro della
+      // catapulta ha retreatStuck)
+      if (i.action === 1 && (onFormationSlot(i) || ((i.warwork === 0 || i.warwork === 4) && i.retreat !== 1))) arriveIfBlocked(i);
     },
     // "se posto in cui fermarsi e' occupato": 50 px verso di se'
     destinationBack50(i, w) {
@@ -615,7 +620,7 @@ export function enemyRam(base) {
       i.autospeed = 2 * iso(i.direction);
       i.depth = -i.y;
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
-      if (i.action === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.action === 1) siegeMove(w, w.path, i);
       if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       if (w.number("torre_placer") > 0) g.sele = 1;
@@ -688,7 +693,7 @@ export function enemyCatapult(base) {
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; i.retreat = 0; }
-      if (i.action === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.action === 1) siegeMove(w, w.path, i);
       retreatStuck(i); // §6.7
       if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
