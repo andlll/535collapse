@@ -14,8 +14,10 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 6 ottobre 2026, quarta sessione (branch
-`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
+Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
+`claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
+sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
 dell'autore (§6.1, n.77–n.89), pathfinding (§6.2–§6.3), arcieri, torri
@@ -33,7 +35,8 @@ sezione citata.
 - Un branch nuovo da `main` per ogni sessione (una PR per sessione: la
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
-  `claude/gpu-optimizations-bugs-o3mfcc`); gli asset generati (`game/assets/`,
+  `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
+  `claude/menu-fire-crossfade`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -3433,3 +3436,221 @@ chiesa in 3900, castello 418 su 500 in 60000 (deposito a 700 px). Prima
 della correzione dei percorsi una rovina nata accanto al centro restava
 intatta. Le prove precedenti (mischia, magazzino, unita' prodotte,
 assedio) danno gli stessi risultati.
+
+## Fase 8 — terza tornata di richieste dell'autore (7 ottobre 2026)
+
+Prove: `npm test` (50), 3000 passi nelle quattro room senza errori,
+salvataggi identici, zip dei portali, e una prova mirata per voce
+(scenari sotto, con `window.__game`).
+
+### 8.1 Menu principale
+
+I quattro pulsanti della schermata iniziale ("Play the tutorial",
+"Campaign - Collapse", "Load game", "Full screen") stanno in una colonna
+al centro, larghi 400 e alti 70 (prima 100; "Load game" e "Full screen"
+erano in alto a destra e a sinistra), a 20 px l'uno dall'altro; l'ultimo
+finisce a 100 px dal fondo. Il logo sta a meta' dello spazio sopra la
+colonna (al piu' a y=350). La versione in basso a sinistra e' **0.2601**
+(l'originale scriveva 0.250125); la firma al centro e' "Mount Fuji
+Software, 2026" (era 2025). `menu.js`, `titleButtons`.
+
+### 8.2 Campagna: vetro sulla mappa, solo i livelli giocabili
+
+- Lo sfondo dei pannelli di vetro (§7.14) si cattura dopo il mondo, prima
+  del Draw GUI; la mappa della campagna si disegna nel Draw GUI, quindi
+  l'elenco dei livelli mostrava sfocata la battaglia del menu e
+  "tagliava" la mappa. Ora `Draw.refreshGlass()` ricattura lo sfondo dallo
+  schermo dopo la mappa (una sfocatura in piu' per fotogramma, solo in
+  questa schermata e solo col vetro attivo).
+- L'elenco mostra solo i livelli sbloccati e giocabili: spariscono i
+  bloccati e i 3–10 "in arrivo" (§0.15), il pannello si accorcia di
+  conseguenza.
+
+### 8.3 Dare fuoco agli edifici: posti attorno all'edificio
+
+Segnalazione: con piu' unita' a dare fuoco allo stesso edificio "si
+incasinano", come in mischia prima del §7.7. Nell'originale i fanti vanno
+verso il centro dell'edificio (`mp_potential_step`) e cominciano a 70 px;
+in piu' la loro destinazione, dentro l'edificio, e' "occupata" e il
+blocco "destinazione occupata" la sposta di 32 px verso l'unita' a ogni
+passo, finche' l'unita' ci arriva e si ferma **senza dare fuoco** (resta
+con `firework` 1). Correzioni:
+- chi va a dare fuoco punta a un posto attorno all'edificio
+  (`meleeSpot(..., FIRE)`, melee.js): settori di 30 gradi e, se il posto
+  vicino e' occupato da alberi o altri edifici, piu' in fuori (12, 32 o
+  52 px dal bordo: il fuoco parte entro 70); il posto diventa la meta
+  (`dirox`/`diroy`), che non si sposta piu'. La regola "a contatto: resta
+  dov'e'" vale solo in mischia;
+- chi e' sovrapposto a un alleato (col flow field si passa uno
+  sull'altro) va dritto verso il proprio posto, senza attraversare edifici
+  e alberi, e comincia a dare fuoco solo quando si e' separato (o dopo 60
+  passi bloccato cosi');
+- i nemici (frecce incendiarie da 200 px) usano gli stessi posti.
+
+| prova: 8 fanti da 400 px, 11 edifici di `lvl02` e `match` | prima | dopo |
+|---|---|---|
+| fanti che danno fuoco dopo 120 passi | 30/88 | 42/88 |
+| fanti che danno fuoco dopo 480 passi | 33/88 (gli altri fermi) | 80/88 |
+
+Dare fuoco anche da sovrapposti farebbe arrivare a 82/88, ma con 5 volte
+le sovrapposizioni (89 coppie contro 17): proprio l'effetto da evitare.
+
+### 8.4 Spostamenti di gruppo: tolto il ricalcolo "cella occupata"
+
+L'originale, quando la cella d'arrivo diventava un ostacolo (il primo
+arrivato ci si fermava), ricalcolava il campo degli altri verso la cella
+libera piu' vicina (§6.1 n.89). Con le caselle della formazione (§6.1
+n.89) ognuno ha gia' una destinazione sua: richiesta dell'autore, il
+ricalcolo e' tolto da fanteria, cavalieri e arcieri e, nei civili, resta
+solo per il cibo (campi e mulino). Tre ordini a 14 unita' di `lvl02`
+danno gli stessi arrivi di prima.
+
+### 8.5 Dissolvenza fra gli sprite
+
+Le fasi dei cantieri (casa, caserma, stalla, chiesa, torre, castello,
+mura), l'edificio finito che sostituisce il cantiere e i danni degli
+edifici di pietra (castello, chiesa, torre: normale, `*_r1`, `*_r2`)
+cambiano sprite in dissolvenza: `World.swapSprite` (30 passi, mezzo
+secondo). Nella prima meta' lo sprite nuovo compare sopra il vecchio,
+nella seconda il vecchio sparisce sotto il nuovo: niente trasparenze a
+meta' strada. Solo disegno: maschere e logica non cambiano.
+
+### 8.6 Zoom
+
+Zoom massimo (allontanato) da 2,0 a **1,7** (`ZOOM_MAX`, camera.js); i
+salvataggi fatti oltre tornano a 1,7. Il suggerimento "Visuale" del
+tutorial dice che si puo' usare la rotella del mouse, nelle sei lingue.
+
+### 8.7 Gruppi di unita': Shift + numero
+
+Nell'originale Ctrl + cifra assegna i selezionati al gruppo N, la cifra
+da sola lo riseleziona [C]. Nel browser Ctrl + 1–9 e' la scorciatoia del
+cambio di scheda (Chrome, Edge, Firefox; Cmd + cifra su Mac) e Chrome ed
+Edge non la lasciano bloccare alla pagina. Decisione dell'autore: i gruppi
+si assegnano solo con **Shift + cifra** (Shift non aveva usi); Ctrl +
+cifra non fa piu' nulla nel gioco e il browser resta libero di cambiare
+scheda.
+- Shift si legge al keydown della cifra (`pressedShift` in input.js),
+  non al passo: con fotogrammi lenti il modificatore poteva essere gia'
+  rilasciato e la cifra riselezionava il gruppo invece di assegnarlo
+  (succedeva anche con Ctrl nell'originale);
+- il suggerimento "Selezione multipla" dice Shift + numero, nelle sei
+  lingue.
+
+Prova (Chromium, `lvl02`): tre militari con Shift + 2, poi 2 riseleziona
+esattamente quel gruppo.
+
+### 8.8 Barra della vita a pillola
+
+Richiesta dell'autore, per coerenza con i pannelli arrotondati: le barre
+della vita (unita', civili, edifici, mura, nemici, torre col presidio)
+sono a pillola: fondo nero arrotondato che fa da bordo di 1 px, parte
+piena (verde o blu) arrotondata anche lei, negli stessi pixel delle barre
+rettangolari dell'originale (`Draw.lifeBar`). Prima ogni oggetto
+disegnava i suoi due rettangoli.
+
+### 8.9 Punto di raccolta: bandierina e linea tratteggiata
+
+Richiesta dell'autore: il punto verso cui vanno le unita' prodotte da un
+edificio (centro, caserma, stalla, castello...) era segnato con la freccia
+`director_blue` e una linea bianca piena dal punto di uscita [C]. Ora e'
+la bandierina arancione animata del presidio alleato (`rflag`, 3
+fotogrammi a 0,1 per passo; `bflag`, blu, e' delle torri nemiche) al 60%
+di opacita', e la linea e' tratteggiata (tratti di 14 px,
+vuoti di 10): `Draw.rallyFlag`, `Draw.rallyLine`, `Draw.dashedLine`. La
+freccia resta per la destinazione delle unita' selezionate. Poi, su
+richiesta dell'autore, la linea passa **sotto** l'edificio: si disegna in
+un nuovo evento `drawBelow` che `World.draw` chiama dopo il suolo e prima
+di tutte le istanze (quindi sta sotto anche a unita', alberi, campi e
+agli altri edifici, e di notte si scurisce col resto del terreno); la
+bandierina resta nel Draw End, sopra.
+
+### 8.10 Barra della vita in stile vetro
+
+Richiesta dell'autore: un minimo di effetto vetro anche sulla barra della
+vita. Niente sfocatura: a 8 px non si vedrebbe, e le barre sono disegnate
+nel mondo, prima della copia sfocata che fa da sfondo ai pannelli (§7.14);
+con molte unita' selezionate sarebbero decine di passaggi in piu'. Con
+l'opzione "Interfaccia di vetro" (`Draw.glassStyle`, da app.js) la pillola
+del §8.8 ha il fondo nero al 55% (il terreno si intravede), un bordo
+bianco di 1 px al 45% al posto di quello nero e un riflesso bianco al 22%
+nella meta' alta della parte piena (provato al 40%: l'autore lo voleva
+piu' tenue; sparisce sotto i 5 px di parte piena). Senza l'opzione resta
+la pillola del §8.8. Di notte il bordo chiaro stacca la barra dal blu
+meglio del bordo nero.
+
+### 8.11 Formazione per ruolo
+
+Richiesta dell'autore: nello spostamento di gruppo, davanti i cavalieri,
+poi guerrieri e picchieri, arcieri, macchine d'assedio e in fondo i
+civili. In `formation` (units.js) le righe ora vanno per ruolo (`ROLE`);
+ogni ruolo comincia una riga nuova (un gruppo piccolo fa una riga corta,
+centrata) e dentro un ruolo le prime righe vanno a chi arriva prima; in
+ogni riga resta l'ordine laterale attuale. Le caselle sono giuste da
+subito; perche' le unita' ci arrivassero sono servite tre correzioni,
+tutte vere anche prima (con l'ordine d'arrivo i sorpassi erano rari e i
+difetti si vedevano meno):
+- **destinazione occupata**: se sulla casella passava un compagno, la
+  regola dell'originale spostava la meta verso l'unita' (32–50 px a
+  passo) finche' l'unita' "arrivava" dov'era. Sulla casella della
+  formazione (`formX`/`formY`, `onFormationSlot` in pathing.js) la regola
+  non si applica: fanteria, cavalieri, arcieri, civili, assedio;
+- **sorpassi**: chi deve finire davanti spesso parte dietro e si fermava
+  contro chi era gia' arrivato. Verso la propria casella si passa sopra
+  gli alleati (`World.placeFreeExcept`/`placeFreeForSlot`, in
+  `mpPotentialStep` e nella scelta fra flow field e passo diretto), mai
+  attraverso edifici e alberi; il guerriero non si ferma piu' quando tocca
+  un alleato di rango piu' alto (nearRank) mentre va alla casella. Se la
+  casella resta occupata, l'arrivo "per rinuncia" (§6.1 n.89), ora anche
+  per le macchine d'assedio;
+- **stallo con l'assedio**: le macchine non hanno `ordo`; chi le toccava
+  in movimento aspettava (confronto con undefined sempre falso) e loro,
+  solide, restavano ferme contro di lui. Ora sulle macchine si passa.
+
+Prova: 19 unita' (3 cavalieri, 4 guerrieri, 3 picchieri, 4 arcieri,
+catapulta, ariete, 3 civili) sparse a caso in una zona aperta di `match` e
+di `lvl02`, nemici tolti, ordine a 700–800 px in cinque direzioni, 20 s.
+"Inversioni": coppie di ruoli diversi nell'ordine sbagliato lungo la
+marcia (oltre 20 px).
+
+| 10 ordini | prima | dopo |
+|---|---|---|
+| inversioni (su 137 coppie per ordine) | 22–65 | 0 (una volta 3) |
+| unita' a piu' di 400 px dalla meta | 4–13 per ordine | 0 |
+| unita' fuori dalla propria casella | 1–5 | 0 |
+
+Con le 14 unita' gia' presenti in `lvl02` (ordini verso punti
+raggiungibili) ora arrivano tutte; prima ne restavano indietro 4–7.
+
+### 8.12 Menu di pausa senza pannello
+
+Richiesta dell'autore: tolto il grande rettangolo arrotondato che
+conteneva titolo e pulsanti; i pulsanti stanno direttamente sullo sfondo
+sfocato e scurito. Il titolo (PAUSA, OPZIONI GRAFICHE, SALVA E CARICA) e
+le didascalie dei controlli a segmenti (Lingua, Limite FPS) hanno un alone
+bianco morbido per staccare dallo sfondo (`_glowLabel` in pause.js: copie
+bianche del testo su cinque anelli da 5 a 1 px, 16 direzioni, opacita' dal
+4% al 20%, poi il testo nero).
+
+### 8.13 Anelli delle gocce sul fiume
+
+Richiesta dell'autore: quando piove, anelli delle gocce sull'acqua del
+fiume.
+- **Dove c'e' acqua**: gli sprite del fiume (`fiume1`... `fiume2_3`, fino
+  a 2179x1210 px) contengono anche la roccia della montagna, quindi la
+  maschera di collisione non basta. `tools/06_masks.py` aggiunge alle
+  maschere dei `fiume*` una mappa dell'acqua in celle da 8 px: una cella
+  e' acqua se almeno il 60% dei suoi pixel e' verde-azzurro ((g+b)/2 - r >
+  8; la roccia e' grigia). Nel gioco la mappa della room si compone una
+  volta dalle istanze del fiume (`waterMap` in effects.js).
+- **Anelli**: la forma `pt_shape_ring` di GameMaker (`__pt_ring` in
+  `tools/05_atlas.py`: anello di raggio 27 px con 7 px di tratto
+  sfumato). A ogni passo di pioggia 36 punti a caso nella view; dove c'e'
+  acqua nascono due anelli concentrici schiacciati a meta' in altezza
+  (vista isometrica), che si allargano (fino a ~35 px) e sbiadiscono in
+  meno di un secondo. Sistema di particelle a depth -21 (sopra il fiume e
+  la sua animazione, sotto unita' ed edifici), categoria "rain": si spegne
+  con la pioggia nelle opzioni grafiche e si salva con le altre
+  particelle.
+- Prove: `match` col fiume in vista, 100–200 anelli vivi; soak e
+  salvataggi senza errori, salvataggio durante la pioggia.

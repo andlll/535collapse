@@ -15,7 +15,7 @@ import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField } from "./pathing.js";
-import { meleeSpot } from "./melee.js";
+import { meleeSpot, FIRE } from "./melee.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { phaseOf } from "./units.js";
 
@@ -210,7 +210,13 @@ function enemyAttack(i, w, T) {
 // fermo entro 400 px (meno di notte) da un edificio di legno, senza civili
 // entro 400 px, ci va e a 200 px gli lancia frecce incendiarie (Alarm_4).
 function enemyFireHouses(i, w) {
-  if (i.firework === 1 && i.warwork !== 2 && i.targetid && pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200) {
+  // [Richiesta dell'autore, come §7.7] verso un posto libero attorno
+  // all'edificio (melee.js), non tutti verso il suo centro
+  if (i.firework === 1 && i.warwork !== 2 && i.targetid && i.targetid.alive && i.action === 1) {
+    [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+  }
+  if (i.firework === 1 && i.warwork !== 2 && i.targetid
+      && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70)) {
     i.firework = 0;
     i.direction = pointDirection(i.x, i.y, i.targetid.x, i.targetid.y);
     i.step = 0;
@@ -319,7 +325,7 @@ export function enemyMelee(name, p) {
       ANIM[name](i, w);
       // destinazione occupata ([§7.7] tranne il posto attorno al bersaglio,
       // gia' scelto libero: spostarlo a caso faceva tremare i nemici)
-      const onSpot = i.warwork === 1 && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1];
+      const onSpot = (i.warwork === 1 || i.firework === 1) && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1];
       if (onSpot) { /* niente */ } else if (T.place === "back50") {
         if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) {
           const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
@@ -373,15 +379,13 @@ export function enemyMelee(name, p) {
     keyPress27(i, w) { if (w.g.sele === 0 && i.selected === 1) i.selected = 0; },
     drawEnd(i, w, d) {
       if (i.selected === 1 || i.hover === 1) {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.blue, C.blue, C.blue, C.blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
         d.sprite("circ_1", 0, i.x, i.y);
         if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
         d.sprite("director_blue", 0, i.foodx, i.foody);
       }
       if (i.hit === 1 && w.room !== "menu") {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.blue, C.blue, C.blue, C.blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
       }
     },
     drawGUI(i, w, d) {

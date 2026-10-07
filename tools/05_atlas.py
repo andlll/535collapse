@@ -307,6 +307,15 @@ def particle_shapes():
     out.append(("__pt_line", ln, [0, 30, 64, 5]))
     # pixel: un solo pixel al centro
     out.append(("__pt_pixel", Image.new("RGBA", (1, 1), (255, 255, 255, 255)), [32, 32, 1, 1]))
+    # ring (pt_shape_ring): anello di raggio 27 px, spessore ~7 px sfumato
+    # [richiesta dell'autore, §8.13: gli anelli della pioggia sul fiume]
+    rg = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    px = rg.load()
+    for y in range(64):
+        for x in range(64):
+            d = abs(math.hypot(x + 0.5 - 32, y + 0.5 - 32) - 27)
+            px[x, y] = (255, 255, 255, round(255 * max(0.0, 1 - d / 3.6)))
+    out.append(("__pt_ring", rg, [0, 0, 64, 64]))
     return out
 
 

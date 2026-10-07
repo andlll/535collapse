@@ -73,8 +73,9 @@ export function wallFond(k, p) {
     alarm0(i, w) { armBuilders(i, w, p, "buildwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
       if (i.selected === 1 && w.number(plusNames[0]) === 0) plusButtons(w, i, k);
-      if (i.life >= i.slife) { w.create(K.wall, i.x, i.y); w.destroy(i); return; }
-      if (i.phase === 0 && i.life > i.slife / 2 && i.sprite_index !== K.f2) { i.sprite_index = K.f2; i.phase = 1; }
+      // [Richiesta dell'autore] fasi e tratto finito in dissolvenza
+      if (i.life >= i.slife) { const m = w.create(K.wall, i.x, i.y); w.swapSprite(m, m.sprite_index, i.sprite_index); w.destroy(i); return; }
+      if (i.phase === 0 && i.life > i.slife / 2 && i.sprite_index !== K.f2) { w.swapSprite(i, K.f2); i.phase = 1; }
     },
     globalLeftPressed(i, w) {
       if (lastHover(w, plusNames[0]) !== 1 && lastHover(w, plusNames[1]) !== 1) {

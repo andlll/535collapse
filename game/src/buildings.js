@@ -295,7 +295,8 @@ export function fond(fam, p) {
     // Step [C]: fasi del cantiere, poi l'edificio finito.
     step(i, w) {
       d.phases.forEach(([t, spr], k) => {
-        if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; i.sprite_index = spr; }
+        // [Richiesta dell'autore] il passaggio di fase in dissolvenza
+        if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; w.swapSprite(i, spr); }
       });
       if (i.life >= i.slife) {
         const b = w.create(fam, i.x, i.y);
@@ -305,6 +306,8 @@ export function fond(fam, p) {
           b.mask_index = "c" + i.tipo + "m";
           w.moved(b);
         }
+        // l'edificio finito compare in dissolvenza sul cantiere
+        w.swapSprite(b, b.sprite_index, i.sprite_index);
         w.destroy(i);
       }
     },
@@ -343,8 +346,7 @@ export function panel(dr, i, ico) {
 }
 
 export function lifeBar(dr, i, col = GREEN) {
-  dr.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
-  dr.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, col, col, col, col, false);
+  dr.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, col);
 }
 
 // --------------------------------------------------------- edifici finiti
@@ -434,9 +436,10 @@ export function built(fam, p) {
       if (b.fire) fireStep(i, w, fam);
       if (b.damage) {
         const [ok, r1, r2] = b.damage;
-        if (i.life > i.slife * 0.66 && i.sprite_index !== ok) i.sprite_index = ok;
-        if (i.life < i.slife * 0.66 && i.life >= i.slife * 0.33 && i.sprite_index !== r1) i.sprite_index = r1;
-        if (i.life < i.slife * 0.33 && i.sprite_index !== r2) i.sprite_index = r2;
+        // [Richiesta dell'autore] il cambio di sprite in dissolvenza
+        if (i.life > i.slife * 0.66 && i.sprite_index !== ok) w.swapSprite(i, ok);
+        if (i.life < i.slife * 0.66 && i.life >= i.slife * 0.33 && i.sprite_index !== r1) w.swapSprite(i, r1);
+        if (i.life < i.slife * 0.33 && i.sprite_index !== r2) w.swapSprite(i, r2);
       }
     },
     globalLeftPressed(i) { i.selected = 0; },
@@ -724,11 +727,14 @@ export function centro(p) {
     globalRightReleased(i, w) { if (i.selected === 1) { i.flagx = w.mouse.x; i.flagy = w.mouse.y; } },
     leftReleased: base.leftReleased,
     rightReleased(i, w) { if (i.life < i.slife) sendRepair(i, w); },
+    // [Richiesta dell'autore] la linea tratteggiata verso la bandiera, a
+    // terra sotto gli edifici (World.draw)
+    drawBelow(i, w, dr) {
+      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyLine(i.x, i.y, i.flagx, i.flagy);
+    },
     drawEnd(i, w, dr) {
-      if (i.flagx !== null && i.flagy !== null && i.selected === 1) {
-        dr.sprite("director_blue", 0, i.flagx, i.flagy);
-        dr.lineWidthColour(i.x, i.y, i.flagx, i.flagy, 2, WHITE, WHITE);
-      }
+      // [Richiesta dell'autore] bandierina (la linea e' nel drawBelow)
+      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyFlag(i.flagx, i.flagy, w._stepNo);
       if (i.selected === 1) lifeBar(dr, i);
       if (i.hover === 1 || i.hit === 1) lifeBar(dr, i);
     },

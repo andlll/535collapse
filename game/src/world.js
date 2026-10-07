@@ -22,6 +22,8 @@ import { drawSprite, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 
 const CELL = 128;
+// [Richiesta dell'autore] passi della dissolvenza fra due sprite (swapSprite)
+export const FADE = 30;
 // [§6.3 N2] scatole di distanceToInstance, riusate
 const DIST_A = [0, 0, 0, 0], DIST_B = [0, 0, 0, 0];
 // [§6.3 N3] istanze "seguite" dai certificati di lontananza: alleati,
@@ -103,6 +105,15 @@ export class World {
     const h = this.handler(inst, ev);
     if (h && inst.alive) h(inst, this, ...args);
     return !!h;
+  }
+
+  // [Richiesta dell'autore] Cambio di sprite con dissolvenza (FADE passi):
+  // le fasi dei cantieri e i danni degli edifici di pietra. `from`: lo
+  // sprite da cui si parte (di norma quello attuale; per un edificio appena
+  // finito, quello del cantiere che sostituisce).
+  swapSprite(inst, spr, from = inst.sprite_index) {
+    if (from && from !== spr) { inst.fadeFrom = from; inst.fadeT = FADE; }
+    inst.sprite_index = spr;
   }
 
   // -------------------------------------------------------------- istanze
@@ -504,6 +515,21 @@ export class World {
     return !this.instancePlace(inst, x, y, null, true);
   }
 
+  // place_free che non conta i solidi della famiglia `name` (§8.11: chi va
+  // alla sua casella della formazione passa sopra gli alleati)
+  placeFreeExcept(inst, x, y, name) {
+    const bb = this.bbox(inst, x, y);
+    if (!bb) return true;
+    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !this.is(o, name)
+      && this.overlap(inst, x, y, o) ? o : null));
+  }
+
+  // [§8.11] libero per chi va alla sua casella della formazione (vedi sopra)
+  placeFreeForSlot(inst, x, y) {
+    return inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY
+      ? this.placeFreeExcept(inst, x, y, "ally_unit") : this.placeFree(inst, x, y);
+  }
+
   placeEmpty(inst, x, y) {
     return !this.instancePlace(inst, x, y, null, false);
   }
@@ -577,6 +603,7 @@ export class World {
     // moto automatico da speed/direction, applicato dopo Step [I]
     for (const i of live()) {
       if (i.speed) this.setPos(i, i.x + lengthdirX(i.speed, i.direction), i.y + lengthdirY(i.speed, i.direction));
+      if (i.fadeT > 0 && --i.fadeT === 0) i.fadeFrom = null;
       if (i.persistentDraw && i.sprite_index) {
         const s = this.assets.sprites[i.sprite_index];
         if (s && s.frames.length > 1) i.image_index = (i.image_index + i.image_speed) % s.frames.length;
@@ -716,13 +743,28 @@ export class World {
     const P = this.particles, systems = P ? P.sorted() : [];
     let drawn = 0, si = 0;
     const skip = this.skipDraw;
+    // [Richiesta dell'autore] "drawBelow": a terra, sopra il suolo e sotto
+    // tutte le istanze (la linea verso il punto di raccolta degli edifici)
+    for (const i of list) if (i.visible) this.fire(i, "drawBelow", d);
     for (const i of list) {
       while (si < systems.length && systems[si].depth > i.depth) P.draw(systems[si++], r, this.assets, cam);
       if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
       const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
-      if (!bb || bb[2] < vx0 || bb[0] > vx1 || bb[3] < vy0 || bb[1] > vy1) continue;
+      const fade = i.fadeT > 0 && i.fadeFrom;
+      const out = (b) => !b || b[2] < vx0 || b[0] > vx1 || b[3] < vy0 || b[1] > vy1;
+      if (out(bb) && !(fade && !out(spriteBounds(this.assets, i.fadeFrom, i.x, i.y, i.image_xscale, i.image_yscale)))) continue;
+      if (fade) {
+        // dissolvenza (swapSprite): nella prima meta' il nuovo compare sopra
+        // il vecchio, nella seconda il vecchio sparisce sotto il nuovo
+        const t = 1 - i.fadeT / FADE, a = i.image_alpha;
+        drawSprite(r, this.assets, i.fadeFrom, 0, i.x, i.y, i.image_xscale, i.image_yscale, i.image_angle,
+                   i.image_blend, a * Math.min(1, 2 * (1 - t)));
+        if (drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
+                       i.image_yscale, i.image_angle, i.image_blend, a * Math.min(1, 2 * t))) drawn++;
+        continue;
+      }
       if (drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }

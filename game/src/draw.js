@@ -64,6 +64,11 @@ export class Draw {
 
   // §7.14: la superficie sfocata per i pannelli di vetro (null: niente vetro)
   setGlass(t) { this.glass = this._glassTex = t || null; }
+  // [Richiesta dell'autore] lo sfondo del vetro e' il mondo: un pannello
+  // sopra qualcosa disegnato nel Draw GUI (la mappa della campagna) lo
+  // "tagliava". refreshGlass() lo ricattura dallo schermo cosi' com'e' ora
+  // (glassGrab: app.js), se il vetro e' attivo.
+  refreshGlass() { if (this._glassTex && this.glassGrab) this.setGlass(this.glassGrab()); }
 
   // Schede descrittive di pulsanti e unita' (in basso a sinistra, x=20)
   // [Correzione decisa dall'autore, §6.1 n.85]: con la minimappa aperta
@@ -177,6 +182,36 @@ export class Draw {
     }
   }
 
+  // [Richiesta dell'autore] Barra della vita a pillola, coerente con i
+  // pannelli arrotondati dell'interfaccia: un fondo nero arrotondato che
+  // fa da bordo di 1 px e dentro la parte piena (`col`), arrotondata anche
+  // lei. Occupa i pixel delle barre rettangolari dell'originale: 50 di vita
+  // da `x1`, 7 di altezza da `y1` (draw_rectangle include l'ultimo pixel).
+  // Con l'interfaccia di vetro (glassStyle, app.js) niente sfocatura (a 8 px
+  // non si vedrebbe e le barre sono nel mondo, prima della copia sfocata),
+  // solo l'aspetto: fondo scuro semitrasparente, bordo chiaro e un riflesso
+  // nella meta' alta della parte piena.
+  lifeBar(x1, y1, frac, col) {
+    const f = Math.max(0, Math.min(1, frac)), W = 51, H = 8, a0 = this.alpha;
+    const fw = f > 0 ? Math.max(2, W * f) : 0;
+    if (!this.glassStyle) {
+      this.roundrectColourExt(x1 - 1, y1 - 1, x1 + W + 1, y1 + H + 1, H + 2, H + 2, 0, 0, false);
+      if (fw) this.roundrectColourExt(x1, y1, x1 + fw, y1 + H, H, H, col, col, false);
+      return;
+    }
+    this.alpha = a0 * 0.55;
+    this.roundrectColourExt(x1 - 1, y1 - 1, x1 + W + 1, y1 + H + 1, H + 2, H + 2, 0, 0, false);
+    this.alpha = a0;
+    if (fw) this.roundrectColourExt(x1, y1, x1 + fw, y1 + H, H, H, col, col, false);
+    if (fw > 5) {
+      this.alpha = a0 * 0.22; // [autore] riflesso smorzato (era 0,4)
+      this.roundrectColourExt(x1 + 2, y1 + 1, x1 + fw - 2, y1 + H / 2, H / 2, H / 2, 0xffffff, 0xffffff, false);
+    }
+    this.alpha = a0 * 0.45;
+    this.roundrectColourExt(x1 - 1, y1 - 1, x1 + W + 1, y1 + H + 1, H + 2, H + 2, 0xffffff, 0xffffff, true);
+    this.alpha = a0;
+  }
+
   rectangle(x1, y1, x2, y2, outline = false) {
     const col = packColor(this.colour, this.alpha);
     this.rectangleColour(x1, y1, x2, y2, col, col, col, col, outline, true);
@@ -278,6 +313,33 @@ export class Draw {
 
   lineWidthColour(x1, y1, x2, y2, w, c1, c2) {
     this._line(x1, y1, x2, y2, w, packColor(c1, this.alpha), packColor(c2, this.alpha));
+  }
+
+  // Linea tratteggiata: tratti di `dash` px separati da `gap`, dal primo
+  // estremo.
+  dashedLine(x1, y1, x2, y2, w, col, dash = 14, gap = 10) {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (len < 0.5) return;
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len, c = packColor(col, this.alpha);
+    for (let s = 0; s < len; s += dash + gap) {
+      const e = Math.min(len, s + dash);
+      this._line(x1 + ux * s, y1 + uy * s, x1 + ux * e, y1 + uy * e, w, c, c);
+    }
+  }
+
+  // [Richiesta dell'autore] Punto di raccolta di un edificio che produce
+  // unita', al posto della freccia (director_blue) e della linea piena
+  // dell'originale: una linea bianca tratteggiata da (x0, y0) al punto,
+  // disegnata a terra sotto edifici e unita' (rallyLine, nel drawBelow:
+  // World.draw), e la bandierina arancione animata (rallyFlag: rflag, la
+  // stessa del presidio alleato; bflag e' delle torri nemiche; 0,1
+  // fotogrammi per passo) in trasparenza, sopra (Draw End). `step`: il
+  // passo corrente, per l'animazione.
+  rallyLine(x0, y0, fx, fy) { this.dashedLine(x0, y0, fx, fy, 2, 0xffffff); }
+
+  rallyFlag(fx, fy, step) {
+    const n = this.a.sprites.rflag ? this.a.sprites.rflag.frames.length : 1;
+    this.spriteExt("rflag", Math.floor(step * 0.1) % n, fx, fy, 1, 1, 0, 0xffffff, 0.6 * this.alpha);
   }
 
   triangleColour(x1, y1, x2, y2, x3, y3, c1, c2, c3, outline = false) {

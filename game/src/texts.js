@@ -205,12 +205,12 @@ export const TEXTS = {
     de: "Fenster wie dieses erscheinen, um dir zu helfen. Klicke auf einen Tipp für den nächsten Schritt. Drücke H, um die Tipps aus- oder einzublenden.",
     fr: "Des fenêtres comme celle-ci apparaîtront pour t'aider. Clique sur un conseil pour passer au suivant. Appuie sur H pour masquer ou afficher les conseils." },
   "Visualization": { it: "Visuale", es: "Vista", pt: "Visão", de: "Ansicht", fr: "Vue" },
-  "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out using the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode.": {
-    it: "Avvicina il mouse ai bordi per spostarti sulla mappa, o usa le frecce. Usa Z e X per lo zoom. Premi F10 (Cmd+F su Mac) per lo schermo intero.",
-    es: "Acerca el ratón a los bordes para moverte por el mapa, o usa las flechas. Usa Z y X para el zoom. Pulsa F10 (Cmd+F en Mac) para la pantalla completa.",
-    pt: "Aproxime o mouse das bordas para se mover pelo mapa, ou use as setas. Use Z e X para o zoom. Pressione F10 (Cmd+F no Mac) para a tela cheia.",
-    de: "Bewege die Maus an den Rand, um über die Karte zu scrollen, oder nutze die Pfeiltasten. Zoome mit Z und X. Drücke F10 (Cmd+F am Mac) für den Vollbildmodus.",
-    fr: "Approche la souris des bords pour parcourir la carte, ou utilise les flèches. Zoome avec Z et X. Appuie sur F10 (Cmd+F sur Mac) pour le plein écran." },
+  "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out with the mouse wheel or the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode.": {
+    it: "Avvicina il mouse ai bordi per spostarti sulla mappa, o usa le frecce. Usa la rotella del mouse o Z e X per lo zoom. Premi F10 (Cmd+F su Mac) per lo schermo intero.",
+    es: "Acerca el ratón a los bordes para moverte por el mapa, o usa las flechas. Usa la rueda del ratón o Z y X para el zoom. Pulsa F10 (Cmd+F en Mac) para la pantalla completa.",
+    pt: "Aproxime o mouse das bordas para se mover pelo mapa, ou use as setas. Use a roda do mouse ou Z e X para o zoom. Pressione F10 (Cmd+F no Mac) para a tela cheia.",
+    de: "Bewege die Maus an den Rand, um über die Karte zu scrollen, oder nutze die Pfeiltasten. Zoome mit dem Mausrad oder mit Z und X. Drücke F10 (Cmd+F am Mac) für den Vollbildmodus.",
+    fr: "Approche la souris des bords pour parcourir la carte, ou utilise les flèches. Zoome avec la molette de la souris ou avec Z et X. Appuie sur F10 (Cmd+F sur Mac) pour le plein écran." },
   "Resources": { it: "Risorse", es: "Recursos", pt: "Recursos", de: "Rohstoffe", fr: "Ressources" },
   "On top of the screen you will find the resource tree. Gather resources with your workers to expand your city and build a powerful army.": {
     it: "In alto trovi le tue risorse. Raccoglile con i lavoratori per ingrandire la città e creare un esercito potente.",
@@ -364,12 +364,12 @@ export const TEXTS = {
     pt: "Clique duplo numa unidade para selecionar todas do mesmo tipo na tela. Clique e arraste para selecionar várias.",
     de: "Doppelklick auf eine Einheit wählt alle gleichen auf dem Bildschirm aus. Klicke und ziehe, um mehrere auszuwählen.",
     fr: "Double-clic sur une unité pour sélectionner toutes celles du même type à l'écran. Clique et fais glisser pour en sélectionner plusieurs." },
-  "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Ctrl + numbers (digits) to assign a quick selection number to a group.": {
-    it: "Ctrl + clic sinistro aggiunge unità alla selezione, Alt + clic sinistro le toglie. Ctrl + un numero assegna un gruppo di selezione rapida.",
-    es: "Ctrl + clic izquierdo añade unidades a la selección, Alt + clic izquierdo las quita. Ctrl + un número asigna un grupo de selección rápida.",
-    pt: "Ctrl + clique esquerdo adiciona unidades à seleção, Alt + clique esquerdo as remove. Ctrl + um número atribui um grupo de seleção rápida.",
-    de: "Strg + Linksklick fügt Einheiten hinzu, Alt + Linksklick entfernt sie. Strg + Ziffer speichert eine Gruppe zur Schnellauswahl.",
-    fr: "Ctrl + clic gauche ajoute des unités à la sélection, Alt + clic gauche les retire. Ctrl + un chiffre crée un groupe de sélection rapide." },
+  "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Shift + numbers (digits) to assign a quick selection number to a group, then the number alone to select it.": {
+    it: "Ctrl + clic sinistro aggiunge unità alla selezione, Alt + clic sinistro le toglie. Shift + un numero assegna un gruppo di selezione rapida, il numero da solo lo riseleziona.",
+    es: "Ctrl + clic izquierdo añade unidades a la selección, Alt + clic izquierdo las quita. Shift + un número asigna un grupo de selección rápida, el número solo lo vuelve a seleccionar.",
+    pt: "Ctrl + clique esquerdo adiciona unidades à seleção, Alt + clique esquerdo as remove. Shift + um número atribui um grupo de seleção rápida, o número sozinho o seleciona de novo.",
+    de: "Strg + Linksklick fügt Einheiten hinzu, Alt + Linksklick entfernt sie. Umschalt + Ziffer speichert eine Gruppe zur Schnellauswahl, die Ziffer allein wählt sie wieder aus.",
+    fr: "Ctrl + clic gauche ajoute des unités à la sélection, Alt + clic gauche les retire. Maj + un chiffre crée un groupe de sélection rapide, le chiffre seul le sélectionne à nouveau." },
   "Night": { it: "Notte", es: "Noche", pt: "Noite", de: "Nacht", fr: "Nuit" },
   "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well.": {
     it: "Di notte si vede meno. I nemici attaccano solo da più vicino, perché anche loro vedono meno.",

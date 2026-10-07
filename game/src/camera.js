@@ -4,9 +4,10 @@
 // alla finestra del browser per global.scaleview (1 px di mondo = 1 px CSS a
 // zoom 1); X/Z cambiano scaleview di 0,1 fra 1,0 e 1,5 (manager KeyPress_X,
 // KeyPress_Z). [Correzione decisa dall'autore, §6.1 n.78] qui fino a
-// ZOOM_MAX (2,0) e anche con la rotella, tenendo fermo il punto sotto il
-// puntatore. Il "-5" sui lati di manager (bi1-5) era per evitare le barre
-// di scorrimento della pagina HTML5: qui non serve.
+// ZOOM_MAX e anche con la rotella, tenendo fermo il punto sotto il
+// puntatore; [richiesta dell'autore] ZOOM_MAX da 2,0 a 1,7. Il "-5" sui
+// lati di manager (bi1-5) era per evitare le barre di scorrimento della
+// pagina HTML5: qui non serve.
 //
 // Inseguimento [C, room: view che segue "mouser" con bordi hborder/vborder,
 // velocita' -1 = istantanea; mouser Step: x=mouse_x]: la view si sposta per
@@ -18,7 +19,7 @@
 // bordo da cui e' uscito e la view continua a scorrere da quella parte
 // finche' non rientra o la finestra perde il fuoco (input.js, edgeHold).
 
-export const ZOOM_MIN = 1, ZOOM_MAX = 2;
+export const ZOOM_MIN = 1, ZOOM_MAX = 1.7;
 
 export class Camera {
   constructor(roomW, roomH, view) {

@@ -28,7 +28,7 @@ const lockAvailable = () => typeof document !== "undefined" && "pointerLockEleme
   && !!(typeof HTMLCanvasElement !== "undefined" && HTMLCanvasElement.prototype.requestPointerLock);
 
 const GREEN = 0x50af4c;           // rgb(76,175,80), il verde di NIMBUS (BGR)
-const PANEL_ALPHA = 0.78, BUTTON_ALPHA = 0.92;
+const BUTTON_ALPHA = 0.92;
 const BTN_H = 42, BTN_GAP = 12, CAPTION_H = 20, SEG_H = 36;
 // [Richiesta dell'autore, §6.1 n.87] titolo e scritte un po' piu' piccoli
 // dei font del gioco (gui_sblocco 32 pt, GUI_1 16 pt, overdue 15 pt)
@@ -136,6 +136,26 @@ export class PauseMenu {
     if (!disabled) this.rects.push({ x, y, w, h, action });
   }
 
+  // [Richiesta dell'autore] Testo direttamente sullo sfondo sfocato (senza
+  // pannello): un alone bianco di qualche pixel attorno alle lettere nere,
+  // copie bianche semitrasparenti su cinque anelli (da 5 a 1 px) di 16
+  // direzioni, piu' tenui verso l'esterno, poi il testo.
+  _glowLabel(d, x, y, str, font = "GUI_1") {
+    d.setFont(font);
+    d.setColour(c.white);
+    d.setHalign("center");
+    d.setValign("middle");
+    const k = font === "gui_sblocco" ? TITLE_SCALE : TEXT_SCALE;
+    for (const [r, a] of [[5, 0.04], [4, 0.06], [3, 0.09], [2, 0.13], [1, 0.2]]) {
+      d.setAlpha(a);
+      for (let n = 0; n < 16; n++) {
+        const t = (n / 16) * Math.PI * 2;
+        d.textTransformed(x + Math.cos(t) * r, y + Math.sin(t) * r, str, k);
+      }
+    }
+    this._label(d, x, y, str, font, 0.9);
+  }
+
   _label(d, x, y, str, font = "GUI_1", alpha = 0.85) {
     d.setFont(font);
     d.setColour(c.black);
@@ -219,14 +239,14 @@ export class PauseMenu {
     const rows = before.length + after.length;
     const panelH = 84 + rows * (BTN_H + BTN_GAP) + (segs ? CAPTION_H + SEG_H + BTN_GAP : 0) + 18;
     const px = (W - panelW) / 2, py = Math.max(10, (H - panelH) / 2);
-    d.setAlpha(PANEL_ALPHA);
-    d.roundrectColourExt(px, py, px + panelW, py + panelH, 40, 40, c.white, c.white, false);
-    this._label(d, px + panelW / 2, py + 40, title, "gui_sblocco");
+    // [Richiesta dell'autore] niente pannello attorno a titolo e pulsanti:
+    // il titolo e le didascalie con un alone bianco (_glowLabel)
+    this._glowLabel(d, px + panelW / 2, py + 40, title, "gui_sblocco");
     const btnW = panelW - 60, bx = px + 30;
     let by = py + 84;
     for (const [label, action, off] of before) { this._button(d, bx, by, btnW, BTN_H, label, action, input, off); by += BTN_H + BTN_GAP; }
     if (segs) {
-      this._label(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
+      this._glowLabel(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
       by += CAPTION_H;
       this._segments(d, bx, by, btnW, segs, segAction, input);
       by += SEG_H + BTN_GAP;

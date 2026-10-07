@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -179,7 +179,7 @@ export function allyArcher(p) {
     }
   };
   const destination = (i, w) => {
-    if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) {
+    if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // §8.11
       if (i.creation !== 1) {
         const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
         i.dirox += lengthdirX(32, d); i.diroy += lengthdirY(32, d);
@@ -191,10 +191,10 @@ export function allyArcher(p) {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
       const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFree(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
+      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
-          if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
+          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
           else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
         } else moveFlowField(w, p, i);
       } else {
@@ -207,18 +207,9 @@ export function allyArcher(p) {
         if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
     }
-    if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && i.presidiowork === 0
-        && i.warwork === 0 && i.action === 1) {
-      p.free(i);
-      // [§6.1 n.89] la cella libera piu' vicina, non di nuovo quella occupata
-      const [cx, cy] = p.nearestFreeCell(i.goal_field, Math.trunc(i.dirox / GRID), Math.trunc(i.diroy / GRID),
-                                         Math.trunc(i.x / GRID), Math.trunc(i.y / GRID));
-      const found = p.fieldAt(i.goal_field, cx, cy) !== -1;
-      i.goal_x = found ? cx * GRID : i.x;
-      i.goal_y = found ? cy * GRID : i.y;
-      generateFields(p, i, i.goal_x, i.goal_y);
-      i.dirox = i.goal_x; i.diroy = i.goal_y;
-    }
+    // [Richiesta dell'autore] niente piu' ricalcolo del campo quando la
+    // cella d'arrivo diventa un ostacolo: ognuno ha la sua casella
+    // (units.js, formation e flowMovement)
   };
   // azione 14, attacco [C]: tira entro 600 px (al bersaglio scelto col
   // click destro, se c'e'), si avvicina entro `comp` a un nemico visibile.
@@ -520,8 +511,7 @@ export function garrisoned(name, base) {
         // torre Draw_End [C]: barra in alto (y-205) e "n/2"
         if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y + G.textY, i.npresidio + "/" + G.max); d.setHalign("left"); }
         if (i.hover === 1 || i.hit === 1 || i.selected === 1) {
-          d.rectangleColour(i.x - 25, i.y - 205, i.x + 25, i.y - 212, BLACK, BLACK, BLACK, BLACK, false);
-          d.rectangleColour(i.x - 25, i.y - 205, i.x - 25 + (i.life / i.slife) * 50, i.y - 212, GREEN, GREEN, GREEN, GREEN, false);
+          d.lifeBar(i.x - 25, i.y - 212, i.life / i.slife, GREEN);
         }
         return;
       }
@@ -598,8 +588,7 @@ export function enemyTower(p) {
     drawEnd(i, w, d) {
       const blue = 0xff0000;
       if (i.selected === 1 || i.hover === 1 || (i.hit === 1 && w.room === "match")) {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, blue, blue, blue, blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, blue);
       }
     },
     drawGUI(i, w, d) {

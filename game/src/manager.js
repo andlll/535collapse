@@ -7,7 +7,7 @@
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainExtinguish } from "./effects.js";
+import { rainStart, rainExtinguish, rainRipples } from "./effects.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 
 export class Manager {
@@ -128,6 +128,8 @@ export class Manager {
     if (g.gold > 9999) g.gold = 9999;
     if (g.popcap > 99) g.popcap = 99;
     if (this.fogalpha > 0) this.fogalpha -= 0.02;
+    // [§8.13] anelli delle gocce sul fiume
+    if (g.raining === 1 && this.world) rainRipples(this.world, cam);
     // Hover dei pulsanti della minimappa: l'originale confronta mouse_x/y
     // in coordinate di room con i rettangoli GUI riportati nella room
     // (x scaleview); qui si confronta direttamente in coordinate GUI, che e'

@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -254,8 +254,9 @@ function ominoStep(i, w, p, stop) {
     if (inside) { if (i.selected === 0) g.sel += 1; i.selected = 1; }
     else { if (i.selected === 1) g.sel -= 1; i.selected = 0; }
   }
-  // azione 9: punto d'arrivo occupato (solo senza lavoro)
-  if (i.action === 1 && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
+  // azione 9: punto d'arrivo occupato (solo senza lavoro; non sulla
+  // casella della formazione: §8.11)
+  if (i.action === 1 && !onFormationSlot(i) && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
       && !w.placeEmpty(i, i.dirox, i.diroy)) {
     if (i.creation === 0) {
       const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
@@ -268,8 +269,8 @@ function ominoStep(i, w, p, stop) {
   }
   // azione 10: ai depositi e ritorno
   depositStep(i, w, p, stop);
-  // azione 11: "posto occupato (legacy?)"
-  if (i.action === 1 && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
+  // azione 11: "posto occupato (legacy?)" (non sulla casella: §8.11)
+  if (i.action === 1 && !onFormationSlot(i) && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
       && !w.placeFree(i, i.dirox, i.diroy)) {
     if (i.creation !== 1 || !rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-30, 30);
@@ -310,10 +311,10 @@ function ominoMove(i, w, p) {
     // §6.2 D: senza la destinazione in vista si resta sul percorso (solo per
     // un semplice spostamento: col lavoro la meta e' la risorsa o l'edificio)
     const plain = !i.goldwork && !i.stonework && !i.woodwork && !i.buildwork && !i.repairwork && !i.foodwork && !i.fieldwork;
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFree(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
+    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
-        if (otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i);
+        if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
         else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
       } else moveFlowField(w, p, i);
     } else {
@@ -338,8 +339,10 @@ function ominoMove(i, w, p) {
   // Ricalcolo se la destinazione e' occupata.
   // [Correzione decisa dall'autore, §3.4 n.14] l'originale crea qui anche
   // un legno_prizedrawer (l'icona "+legno" che sale): resto di debug.
+  // [Richiesta dell'autore] solo per il cibo (campi e mulino): negli
+  // spostamenti semplici ognuno ha gia' la sua casella (units.js, formation)
   if (p.costAt(Math.trunc(i.goal_x / GRID), Math.trunc(i.goal_y / GRID)) >= 1000 && !i.buildwork && !i.repairwork
-      && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework) {
+      && i.action === 1 && !i.goldwork && !i.woodwork && !i.stonework && i.foodwork) {
     p.free(i);
     goTo(p, i, i.dirox, i.diroy, true); // §6.1 n.89
   }
@@ -757,10 +760,9 @@ function fieldsStep(i, w, p) {
 // Draw_End [C]: barra della vita lunga quanto la vita (50 px), non in
 // proporzione come per i soldati; segnaposto sulla risorsa di destinazione.
 function ominoDrawEnd(i, w, d) {
-  const black = 0, green = 0x008000;
+  const green = 0x008000;
   const bar = () => {
-    d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, black, black, black, black, false);
-    d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + i.life, i.y - 82, green, green, green, green, false);
+    d.lifeBar(i.x - 25, i.y - 82, i.life / 50, green);
   };
   if (i.selected === 1) {
     bar();
