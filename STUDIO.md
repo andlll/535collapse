@@ -3724,14 +3724,20 @@ fondo del campo coltivato uguale al campo vuoto ma giallastro come le
 spighe, al posto delle righe di verdure di `campo1`.
 - **Sprite derivati** (`derived_sprites` in tools/05_atlas.py, generati
   con l'atlas come le forme delle particelle): `spiga` e' `part_crop` a
-  meta' risoluzione con un contorno (28, 22, 12) all'80% di 1 px attorno ai
-  pixel con alpha >= 90 (i peli piu' tenui restano senza); a meta'
-  risoluzione, cosi' alle dimensioni a cui si disegna il contorno resta di
-  1-2 px a schermo. `campo_grano` e' `campo_maggese` ricolorato: ogni pixel
+  meta' risoluzione con un contorno morbido di 1 px, bruno (92, 70, 30) al
+  35%, attorno ai pixel con alpha >= 90 (i peli piu' tenui restano senza);
+  a meta' risoluzione, cosi' alle dimensioni a cui si disegna resta di 1-2
+  px a schermo. `campo_grano` e' `campo_maggese` ricolorato: ogni pixel
   tiene la luminosita' relativa alla media della terra arata (solchi, grana,
-  bordo scuro) e prende il colore paglia (214, 186, 112). Un tint
-  moltiplicativo (image_blend) sulla terra arata arancione non arriva al
-  giallo paglia: per questo e' uno sprite a parte.
+  bordo scuro) e prende un color paglia scuro (165, 126, 66), cosi' le
+  spighe si staccano dal fondo per tono. Un tint moltiplicativo
+  (image_blend) sulla terra arata arancione non arriva al giallo paglia:
+  per questo e' uno sprite a parte.
+- **Stile**: confronto fra cinque varianti (contorno nero di 1 px all'80%,
+  contorno morbido, senza contorno, e le ultime due col fondo piu' scuro).
+  Il contorno nero "sbatteva" con l'acquerello del resto della mappa; senza
+  contorno, col fondo dello stesso colore, le spighe sparivano. L'autore ha
+  scelto contorno morbido e fondo piu' scuro.
 - **Righe** (`cropRows` in effects.js): una riga ogni 12 px nel rombo del
   campo, ognuna un sistema di particelle a depth -y della riga (categoria
   "grass": si spegne con l'opzione grafica e si salva come prima). Spighe
@@ -3742,3 +3748,21 @@ spighe, al posto delle righe di verdure di `campo1`.
 - Il campo in fiamme resta com'era (terra arata, spighe bruciate). Il
   fantasma del piazzamento usa `campo_grano`. Le spighe decorative sparse
   sulla mappa (`burst_grano1`) non sono cambiate.
+
+### 8.17 Spighe decorative a fasce
+
+Richiesta dell'autore: le spighe sparse sulla mappa (`burst_grano1`, 2500
+per macchia in un'ellisse di 1000x600 px) come il grano dei campi (§8.16),
+con la depth -y, le unita' che ci passano in mezzo immerse.
+- `Particles.bands(ps, h)` divide le particelle di un sistema in fasce
+  orizzontali alte h px, un sistema per fascia a depth -y della meta' della
+  fascia (al piu' h/2 px di scarto dalla depth -y di ogni spiga).
+  `decorCreate` sparge le spighe come prima (stesse particelle, stesso
+  aspetto: semitrasparenti, senza contorno) e le divide in fasce da 12 px:
+  44-47 sistemi per macchia. L'erba (`burst_erba1`, `chiazzaparticellare`)
+  resta a depth -1.
+- Costo: in `match` i sistemi di particelle passano da 13 a 191, nel menu
+  da 70 a 295; l'ordinamento per depth costa 0,03 ms a fotogramma, le
+  particelle disegnate sono le stesse, fotogrammi al secondo invariati. Il
+  salvataggio di `match` cresce di ~60 KB (~30 KB compresso).
+- I salvataggi di prima tengono le spighe nel sistema unico a -1.

@@ -107,6 +107,29 @@ export class Particles {
   // piu' particelle, invece di restare vuoto per sempre.
   releaseWhenEmpty(ps) { ps.release = true; }
 
+  // [Richiesta dell'autore, §8.17] Divide le particelle di un sistema in
+  // fasce orizzontali alte h px: un sistema per fascia, a depth -y della
+  // meta' della fascia (al piu' h/2 px di scarto dalla depth -y di ogni
+  // particella). Cosi' le particelle piu' in basso di un'unita' si disegnano
+  // dopo di lei e la coprono. Il sistema di partenza si toglie; restituisce
+  // i sistemi delle fasce, dall'alto in basso.
+  bands(ps, h) {
+    const by = new Map();
+    for (const q of ps.parts) {
+      const k = Math.floor(q.y / h);
+      let l = by.get(k);
+      if (!l) by.set(k, (l = []));
+      l.push(q);
+    }
+    ps.parts.length = 0;
+    this.systemDestroy(ps);
+    return [...by.keys()].sort((a, b) => a - b).map((k) => {
+      const s = this.systemCreate(-(k * h + h / 2), ps.cat);
+      s.parts.push(...by.get(k));
+      return s;
+    });
+  }
+
   // ----------------------------------------------------------- emettitori
 
   emitterCreate(ps) {

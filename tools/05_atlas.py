@@ -324,12 +324,14 @@ def derived_sprites():
     (nome, gruppo, immagine a tela intera, origine).
 
     campo_grano  il campo coltivato: campo_maggese (terra arata) ricolorato
-                 color paglia; la luminosita' di ogni pixel resta (solchi,
-                 grana e bordo scuro), il colore e' quello delle spighe.
+                 color paglia scuro; la luminosita' di ogni pixel resta
+                 (solchi, grana e bordo scuro). Piu' scuro delle spighe, che
+                 si staccano per tono.
                  Prende il posto di campo1 (le righe di verdure).
-    spiga        part_crop a meta' risoluzione con un contorno scuro di 1 px
-                 (a meta' risoluzione, cosi' a zoom 1 resta di 1-2 px a
-                 schermo); i campi la disegnano a righe (effects.js).
+    spiga        part_crop a meta' risoluzione con un contorno morbido di
+                 1 px (bruno, semitrasparente; a meta' risoluzione, cosi' a
+                 zoom 1 resta di 1-2 px a schermo); i campi la disegnano a
+                 righe (effects.js).
     """
     from PIL import ImageFilter
     img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
@@ -337,7 +339,7 @@ def derived_sprites():
     # campo_grano: luminanza relativa a quella media della terra arata
     # (174, 119, 65) per il colore paglia
     m = img("campo_maggese")
-    ref, straw = 0.299 * 174 + 0.587 * 119 + 0.114 * 65, (214, 186, 112)
+    ref, straw = 0.299 * 174 + 0.587 * 119 + 0.114 * 65, (165, 126, 66)
     px = m.load()
     for y in range(m.height):
         for x in range(m.width):
@@ -346,20 +348,19 @@ def derived_sprites():
                 k = (0.299 * r + 0.587 * g + 0.114 * b) / ref
                 px[x, y] = tuple(min(255, round(t * k)) for t in straw) + (a,)
     out.append(("campo_grano", "edifici", m, (150, 96)))
-    # spiga: meta' risoluzione, 2 px di margine, contorno dove l'alpha della
-    # spiga e' almeno 90 (i peli piu' tenui restano senza contorno)
+    # spiga: meta' risoluzione, 2 px di margine, contorno morbido (bruno al
+    # 35%) dove l'alpha della spiga e' almeno 90 (i peli piu' tenui restano
+    # senza contorno)
     c = img("part_crop")
     s = c.resize((round(c.width / 2), round(c.height / 2)), Image.LANCZOS)
     pad = 2
     sp = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
     sp.alpha_composite(s, (pad, pad))
     solid = sp.getchannel("A").point(lambda v: 255 if v >= 90 else 0).filter(ImageFilter.MaxFilter(3))
-    for name, col, oa in (("spiga", (28, 22, 12), 200), ("spiga_morbida", (92, 70, 30), 90)):
-        ol = Image.new("RGBA", sp.size, col + (0,))
-        ol.putalpha(solid.point(lambda v: oa if v else 0))
-        ol.alpha_composite(sp)
-        out.append((name, "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
-    out.append(("spiga_nuda", "ambiente", sp, (6 + pad, 37 + pad)))
+    ol = Image.new("RGBA", sp.size, (92, 70, 30, 0))
+    ol.putalpha(solid.point(lambda v: 90 if v else 0))
+    ol.alpha_composite(sp)
+    out.append(("spiga", "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
     return out
 
 

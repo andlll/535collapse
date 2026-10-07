@@ -250,6 +250,12 @@ const DECOR = {
 };
 export const DECOR_OBJECTS = Object.keys(DECOR);
 
+// [Richiesta dell'autore, §8.17] le spighe sparse (burst_grano1) come il
+// grano dei campi (§8.16): fasce orizzontali di DECOR_BAND px a depth -y
+// (Particles.bands), le unita' che ci passano in mezzo restano immerse.
+// Stesse particelle di prima, nelle stesse posizioni. L'erba resta a -1.
+const DECOR_BAND = 12;
+
 export function decorCreate(i, w) {
   const [t, n] = DECOR[i.object];
   i.sprite_index = null;
@@ -257,6 +263,10 @@ export function decorCreate(i, w) {
   const em = P(w).emitterCreate(i.grass_system);
   P(w).region(em, i.x - 500, i.x + 500, i.y - 300, i.y + 300, "ellipse", "gaussian");
   P(w).burst(i.grass_system, em, t, n);
+  if (i.object === "burst_grano1") {
+    i.grass_rows = P(w).bands(i.grass_system, DECOR_BAND);
+    i.grass_system = null;
+  }
 }
 
 // ---------------------------------------------------------------- campi
@@ -280,9 +290,10 @@ function diamond(w, ps, i, t, n) {
 // CROP_ROW px, ognuna un sistema a depth -y della riga: le righe davanti al
 // contadino (piu' in basso) si disegnano dopo di lui e lo coprono fino alle
 // ginocchia, "immerso" nel grano. Le spighe ("spiga", tools/05_atlas.py:
-// part_crop a meta' risoluzione con un contorno scuro di 1 px) sono opache,
-// tinte di giallo, ogni 9-13 px lungo la riga; ondeggiano come prima. Il
-// fondo e' "campo_grano" (la terra arata color paglia) invece di campo1.
+// part_crop a meta' risoluzione con un contorno morbido, bruno e
+// semitrasparente) sono opache, tinte di giallo, ogni 9-13 px lungo la riga;
+// ondeggiano come prima. Il fondo e' "campo_grano" (la terra arata color
+// paglia scuro, le spighe si staccano per tono) invece di campo1.
 const CROP_ROW = 12;
 const SPIGA_RIGA = partType({ sprite: "spiga", size: [0.7, 1, 0, 0], ...SWAY, alpha: [1],
                               colour: { mix: [makeColourRgb(255, 226, 150), makeColourRgb(255, 210, 118)] } });
