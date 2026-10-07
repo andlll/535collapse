@@ -456,6 +456,7 @@ async function main() {
 
   // la scena: mondo, poi l'interfaccia (Draw GUI)
   const renderScene = () => {
+    draw.glassStyle = settings.glass; // barre della vita in stile vetro (Draw.lifeBar)
     // nebbia e notte composte prima del mondo (§7.13)
     draw.reset();
     fogLayer.prepare(draw, world, cam);
@@ -646,7 +647,7 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }
