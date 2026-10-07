@@ -296,6 +296,29 @@ export class Draw {
     this._line(x1, y1, x2, y2, w, packColor(c1, this.alpha), packColor(c2, this.alpha));
   }
 
+  // Linea tratteggiata: tratti di `dash` px separati da `gap`, dal primo
+  // estremo.
+  dashedLine(x1, y1, x2, y2, w, col, dash = 14, gap = 10) {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (len < 0.5) return;
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len, c = packColor(col, this.alpha);
+    for (let s = 0; s < len; s += dash + gap) {
+      const e = Math.min(len, s + dash);
+      this._line(x1 + ux * s, y1 + uy * s, x1 + ux * e, y1 + uy * e, w, c, c);
+    }
+  }
+
+  // [Richiesta dell'autore] Punto di raccolta di un edificio che produce
+  // unita': una linea bianca tratteggiata da (x0, y0) alla bandierina blu
+  // animata (bflag, la stessa del presidio: 0,1 fotogrammi per passo) in
+  // trasparenza, al posto della freccia (director_blue) e della linea piena
+  // dell'originale. `step`: il passo corrente, per l'animazione.
+  rallyPoint(x0, y0, fx, fy, step) {
+    this.dashedLine(x0, y0, fx, fy, 2, 0xffffff);
+    const n = this.a.sprites.bflag ? this.a.sprites.bflag.frames.length : 1;
+    this.spriteExt("bflag", Math.floor(step * 0.1) % n, fx, fy, 1, 1, 0, 0xffffff, 0.6 * this.alpha);
+  }
+
   triangleColour(x1, y1, x2, y2, x3, y3, c1, c2, c3, outline = false) {
     const [a, b, cc] = [c1, c2, c3].map((x) => packColor(x, this.alpha));
     if (outline) {

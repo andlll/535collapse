@@ -728,10 +728,8 @@ export function centro(p) {
     leftReleased: base.leftReleased,
     rightReleased(i, w) { if (i.life < i.slife) sendRepair(i, w); },
     drawEnd(i, w, dr) {
-      if (i.flagx !== null && i.flagy !== null && i.selected === 1) {
-        dr.sprite("director_blue", 0, i.flagx, i.flagy);
-        dr.lineWidthColour(i.x, i.y, i.flagx, i.flagy, 2, WHITE, WHITE);
-      }
+      // [Richiesta dell'autore] bandierina e linea tratteggiata (Draw.rallyPoint)
+      if (i.flagx !== null && i.flagy !== null && i.selected === 1) dr.rallyPoint(i.x, i.y, i.flagx, i.flagy, w._stepNo);
       if (i.selected === 1) lifeBar(dr, i);
       if (i.hover === 1 || i.hit === 1) lifeBar(dr, i);
     },

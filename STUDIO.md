@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola (Fase 8, §8.1–§8.8). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola, punto di raccolta (Fase 8, §8.1–§8.9). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3547,3 +3547,13 @@ sono a pillola: fondo nero arrotondato che fa da bordo di 1 px, parte
 piena (verde o blu) arrotondata anche lei, negli stessi pixel delle barre
 rettangolari dell'originale (`Draw.lifeBar`). Prima ogni oggetto
 disegnava i suoi due rettangoli.
+
+### 8.9 Punto di raccolta: bandierina e linea tratteggiata
+
+Richiesta dell'autore: il punto verso cui vanno le unita' prodotte da un
+edificio (centro, caserma, stalla, castello...) era segnato con la freccia
+`director_blue` e una linea bianca piena dal punto di uscita [C]. Ora e'
+la bandierina blu animata del presidio (`bflag`, 3 fotogrammi a 0,1 per
+passo) al 60% di opacita', e la linea e' tratteggiata (tratti di 14 px,
+vuoti di 10): `Draw.rallyPoint` e `Draw.dashedLine`. La freccia resta per
+la destinazione delle unita' selezionate.
