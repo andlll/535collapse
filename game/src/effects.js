@@ -239,34 +239,42 @@ export function fireStarterStep(i, w) {
 // che nel Create spargono 1700-2600 particelle immobili (vita 99999999)
 // in un'ellisse di 1000x600 px, a depth -1. L'erba ondeggia (wiggle
 // dell'orientamento).
+// [Richiesta dell'autore, §8.17-18] come il grano dei campi (§8.16): le
+// particelle si dividono in fasce orizzontali di DECOR_BAND px a depth -y
+// (Particles.bands) e le unita' che ci passano in mezzo restano immerse.
+// L'erba aveva un solo colore, quasi nero: part_erba (gia' verde scuro)
+// tinto di un altro verde scuro; ora e' "erba_chiara" (tools/05_atlas.py,
+// part_erba in grigio chiaro) in tre gruppi di verdi, dallo scuro al giallo
+// (il colore a schermo e' circa l'88% di quello della particella).
 const SWAY = { orientation: [-15, 15, 0, 4, false], life: [99999999, 99999999] };
+const DECOR_BAND = 12;
+const erba = (a, b) => partType({ sprite: "erba_chiara", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.35, 0.75],
+                                  colour: { mix: [makeColourRgb(...a), makeColourRgb(...b)] } });
 const DECOR = {
-  burst_erba1: [partType({ sprite: "part_erba", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7],
-                           colour: { mix: [makeColourRgb(61, 77, 46), makeColourRgb(90, 102, 61)] } }), 2600],
-  burst_grano1: [partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] }), 2500],
-  chiazzaparticellare: [partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false],
-                                   colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
-                                   alpha: [1, 0.8], life: [99999999, 99999999] }), 1700],
+  burst_erba1: [[erba([51, 70, 36], [80, 105, 52]), 1100], [erba([80, 105, 52], [114, 132, 66]), 1000],
+                [erba([114, 132, 66], [145, 155, 80]), 500]],
+  burst_grano1: [[partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] }), 2500]],
+  chiazzaparticellare: [[partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false],
+                                    colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
+                                    alpha: [1, 0.8], life: [99999999, 99999999] }), 1700]],
 };
 export const DECOR_OBJECTS = Object.keys(DECOR);
 
-// [Richiesta dell'autore, §8.17] le spighe sparse (burst_grano1) come il
-// grano dei campi (§8.16): fasce orizzontali di DECOR_BAND px a depth -y
-// (Particles.bands), le unita' che ci passano in mezzo restano immerse.
-// Stesse particelle di prima, nelle stesse posizioni. L'erba resta a -1.
-const DECOR_BAND = 12;
-
 export function decorCreate(i, w) {
-  const [t, n] = DECOR[i.object];
   i.sprite_index = null;
-  i.grass_system = P(w).systemCreate(-1, "grass");
-  const em = P(w).emitterCreate(i.grass_system);
+  const ps = P(w).systemCreate(-1, "grass");
+  const em = P(w).emitterCreate(ps);
   P(w).region(em, i.x - 500, i.x + 500, i.y - 300, i.y + 300, "ellipse", "gaussian");
-  P(w).burst(i.grass_system, em, t, n);
-  if (i.object === "burst_grano1") {
-    i.grass_rows = P(w).bands(i.grass_system, DECOR_BAND);
-    i.grass_system = null;
+  // i gruppi in ordine sparso (l'ordine di nascita e' quello di disegno:
+  // a gruppi, i verdi chiari stavano tutti sopra gli scuri)
+  const list = [];
+  for (const [t, n] of DECOR[i.object]) for (let k = 0; k < n; k++) list.push(t);
+  for (let k = list.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [list[k], list[j]] = [list[j], list[k]];
   }
+  for (const t of list) P(w).burst(ps, em, t, 1);
+  i.grass_rows = P(w).bands(ps, DECOR_BAND);
 }
 
 // ---------------------------------------------------------------- campi

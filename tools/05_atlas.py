@@ -328,12 +328,12 @@ def derived_sprites():
                  (solchi, grana e bordo scuro). Piu' scuro delle spighe, che
                  si staccano per tono.
                  Prende il posto di campo1 (le righe di verdure).
-    spiga        part_crop a meta' risoluzione con un contorno morbido di
-                 1 px (bruno, semitrasparente; a meta' risoluzione, cosi' a
-                 zoom 1 resta di 1-2 px a schermo); i campi la disegnano a
-                 righe (effects.js).
+    spiga        part_crop a meta' risoluzione (senza contorno: provati un
+                 contorno nero e uno morbido, §8.16); i campi la
+                 disegnano a righe (effects.js).
+    erba_chiara  part_erba in grigio chiaro, da colorare con la
+                 particella (le macchie d'erba, §8.18).
     """
-    from PIL import ImageFilter
     img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
     out = []
     # campo_grano: luminanza relativa a quella media della terra arata
@@ -348,19 +348,28 @@ def derived_sprites():
                 k = (0.299 * r + 0.587 * g + 0.114 * b) / ref
                 px[x, y] = tuple(min(255, round(t * k)) for t in straw) + (a,)
     out.append(("campo_grano", "edifici", m, (150, 96)))
-    # spiga: meta' risoluzione, 2 px di margine, contorno morbido (bruno al
-    # 35%) dove l'alpha della spiga e' almeno 90 (i peli piu' tenui restano
-    # senza contorno)
+    # spiga: meta' risoluzione, 2 px di margine, senza contorno
     c = img("part_crop")
     s = c.resize((round(c.width / 2), round(c.height / 2)), Image.LANCZOS)
     pad = 2
     sp = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
     sp.alpha_composite(s, (pad, pad))
-    solid = sp.getchannel("A").point(lambda v: 255 if v >= 90 else 0).filter(ImageFilter.MaxFilter(3))
-    ol = Image.new("RGBA", sp.size, (92, 70, 30, 0))
-    ol.putalpha(solid.point(lambda v: 90 if v else 0))
-    ol.alpha_composite(sp)
-    out.append(("spiga", "ambiente", ol, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    out.append(("spiga", "ambiente", sp, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    # erba_chiara: part_erba (verde scuro, media (76, 94, 56)) in grigio
+    # chiaro, stessa grana e stesso alpha; il colore lo da' la particella
+    # (una tinta moltiplicativa puo' solo scurire: sul verde scuro i verdi
+    # chiari e gialli non si ottenevano)
+    e = img("part_erba")
+    px = e.load()
+    for y in range(e.height):
+        for x in range(e.width):
+            r, g, b, a = px[x, y]
+            if a:
+                v = min(255, round((0.299 * r + 0.587 * g + 0.114 * b) / 86 * 225))
+                px[x, y] = (v, v, v, a)
+    meta = next(d for d in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
+                if d["name"] == "part_erba")
+    out.append(("erba_chiara", "ambiente", e, (meta["origin_x"], meta["origin_y"])))
     return out
 
 

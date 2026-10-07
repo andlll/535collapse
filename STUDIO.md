@@ -3724,20 +3724,18 @@ fondo del campo coltivato uguale al campo vuoto ma giallastro come le
 spighe, al posto delle righe di verdure di `campo1`.
 - **Sprite derivati** (`derived_sprites` in tools/05_atlas.py, generati
   con l'atlas come le forme delle particelle): `spiga` e' `part_crop` a
-  meta' risoluzione con un contorno morbido di 1 px, bruno (92, 70, 30) al
-  35%, attorno ai pixel con alpha >= 90 (i peli piu' tenui restano senza);
-  a meta' risoluzione, cosi' alle dimensioni a cui si disegna resta di 1-2
-  px a schermo. `campo_grano` e' `campo_maggese` ricolorato: ogni pixel
-  tiene la luminosita' relativa alla media della terra arata (solchi, grana,
-  bordo scuro) e prende un color paglia scuro (165, 126, 66), cosi' le
-  spighe si staccano dal fondo per tono. Un tint moltiplicativo
-  (image_blend) sulla terra arata arancione non arriva al giallo paglia:
-  per questo e' uno sprite a parte.
+  meta' risoluzione, senza contorno. `campo_grano` e' `campo_maggese`
+  ricolorato: ogni pixel tiene la luminosita' relativa alla media della
+  terra arata (solchi, grana, bordo scuro) e prende un color paglia scuro
+  (165, 126, 66), cosi' le spighe si staccano dal fondo per tono. Un tint
+  moltiplicativo (image_blend) sulla terra arata arancione non arriva al
+  giallo paglia: per questo e' uno sprite a parte.
 - **Stile**: confronto fra cinque varianti (contorno nero di 1 px all'80%,
-  contorno morbido, senza contorno, e le ultime due col fondo piu' scuro).
-  Il contorno nero "sbatteva" con l'acquerello del resto della mappa; senza
-  contorno, col fondo dello stesso colore, le spighe sparivano. L'autore ha
-  scelto contorno morbido e fondo piu' scuro.
+  contorno morbido bruno al 35%, senza contorno, e le ultime due col fondo
+  piu' scuro). Il contorno nero "sbatteva" con l'acquerello del resto della
+  mappa; senza contorno, col fondo dello stesso colore, le spighe
+  sparivano. L'autore ha scelto prima il contorno morbido col fondo scuro,
+  poi senza contorno col fondo scuro.
 - **Righe** (`cropRows` in effects.js): una riga ogni 12 px nel rombo del
   campo, ognuna un sistema di particelle a depth -y della riga (categoria
   "grass": si spegne con l'opzione grafica e si salva come prima). Spighe
@@ -3759,10 +3757,29 @@ con la depth -y, le unita' che ci passano in mezzo immerse.
   fascia (al piu' h/2 px di scarto dalla depth -y di ogni spiga).
   `decorCreate` sparge le spighe come prima (stesse particelle, stesso
   aspetto: semitrasparenti, senza contorno) e le divide in fasce da 12 px:
-  44-47 sistemi per macchia. L'erba (`burst_erba1`, `chiazzaparticellare`)
-  resta a depth -1.
+  44-47 sistemi per macchia. Dal §8.18 anche l'erba.
 - Costo: in `match` i sistemi di particelle passano da 13 a 191, nel menu
   da 70 a 295; l'ordinamento per depth costa 0,03 ms a fotogramma, le
   particelle disegnate sono le stesse, fotogrammi al secondo invariati. Il
   salvataggio di `match` cresce di ~60 KB (~30 KB compresso).
 - I salvataggi di prima tengono le spighe nel sistema unico a -1.
+
+### 8.18 Macchie d'erba a fasce, verdi variati
+
+Richiesta dell'autore: le macchie d'erba (`burst_erba1`, 2600 fili, e
+`chiazzaparticellare`, 1700 trattini) con le fasce a depth -y del §8.17, e
+colori piu' vari: erano tutte scurissime perche', a depth -1 sotto ogni
+cosa, si sovrapponevano in modo strano.
+- Fasce da 12 px per tutte le macchie decorative (`decorCreate`).
+- **Colore dell'erba**: `part_erba` e' gia' verde scuro (media 76, 94, 56)
+  e la particella lo moltiplicava per un altro verde scuro (61-90, 77-102,
+  46-61): a schermo quasi nero, e una tinta moltiplicativa non puo'
+  schiarire. Nuovo sprite derivato `erba_chiara` (part_erba in grigio
+  chiaro, stessa grana e alpha, tools/05_atlas.py) colorato dalla
+  particella in tre gruppi: verde scuro (1100 fili), verde medio (1000),
+  verde chiaro tendente al giallo (500); alpha 0,35-0,75. I gruppi nascono
+  in ordine sparso (l'ordine di nascita e' quello di disegno). Una prima
+  prova piu' chiara si confondeva col terreno.
+- I trattini di `chiazzaparticellare` tengono i loro colori.
+- Costo: in `match` 237 sistemi di particelle, nel menu 344; ordinamento
+  0,01-0,05 ms a fotogramma, fotogrammi al secondo invariati.
