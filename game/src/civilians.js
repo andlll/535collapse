@@ -759,10 +759,9 @@ function fieldsStep(i, w, p) {
 // Draw_End [C]: barra della vita lunga quanto la vita (50 px), non in
 // proporzione come per i soldati; segnaposto sulla risorsa di destinazione.
 function ominoDrawEnd(i, w, d) {
-  const black = 0, green = 0x008000;
+  const green = 0x008000;
   const bar = () => {
-    d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, black, black, black, black, false);
-    d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + i.life, i.y - 82, green, green, green, green, false);
+    d.lifeBar(i.x - 25, i.y - 82, i.life / 50, green);
   };
   if (i.selected === 1) {
     bar();

@@ -346,8 +346,7 @@ export function panel(dr, i, ico) {
 }
 
 export function lifeBar(dr, i, col = GREEN) {
-  dr.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
-  dr.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, col, col, col, col, false);
+  dr.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, col);
 }
 
 // --------------------------------------------------------- edifici finiti

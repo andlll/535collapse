@@ -528,17 +528,15 @@ export function infantry(name, p) {
 // seleziona il gruppo e deseleziona gli altri. I civili non contano in milsel.
 // [Richiesta dell'autore] Ctrl + 1-9 e' la scorciatoia del cambio di scheda
 // in Chrome, Edge e Firefox, e la pagina non puo' bloccarla: il gruppo si
-// assegna anche con Shift + numero (Ctrl resta dove il browser lo lascia
-// passare). Shift non aveva altri usi. Il modificatore si legge al
-// keydown della cifra (input.js), non al passo.
+// assegna con Shift + numero, solo cosi' (Shift non aveva altri usi). Shift
+// si legge al keydown della cifra (input.js), non al passo.
 export function controlGroups(civilian) {
   const b = {};
   for (let k = 0; k <= 9; k++) {
     const n = k === 0 ? 10 : k;
     b["keyPress" + (48 + k)] = (i, w) => {
       const g = w.g;
-      const inp = w.input, key = 48 + k;
-      const assign = g.sele === 1 || !!(inp && inp.pressedShift && (inp.pressedShift.has(key) || inp.pressedCtrl.has(key)));
+      const assign = !!(w.input && w.input.pressedShift && w.input.pressedShift.has(48 + k));
       if (g.sele === 0 && !assign) {
         if (i.assi === n && i.selected === 0) { g.sel += 1; if (!civilian) g.milsel += 1; i.selected = 1; }
         if (i.assi !== n && i.selected === 1) { g.sel -= 1; if (!civilian) g.milsel -= 1; i.selected = 0; }
@@ -831,15 +829,13 @@ function rallyMove(i, w, p, offset100) {
 export function unitDrawEnd(i, w, d, showGroup = true) {
   const C = { black: 0, green: 0x008000 };
   if (i.selected === 1 || i.hover === 1) {
-    d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-    d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.green, C.green, C.green, C.green, false);
+    d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.green);
     d.sprite("circ_1", 0, i.x, i.y);
     if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
     d.sprite("director_blue", 0, i.foodx, i.foody);
   }
   if (i.hit === 1 && w.room !== "menu") {
-    d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-    d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.green, C.green, C.green, C.green, false);
+    d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.green);
   }
   if (showGroup && i.assi && i.assi !== 0) {
     d.setAlpha(0.3);

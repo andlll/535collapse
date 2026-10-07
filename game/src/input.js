@@ -28,11 +28,10 @@ export class Input {
     this._unlockedAt = -1e9;
     this.wheel = 0;
     this._down = new Set(); this._pressed = new Set(); this._released = new Set();
-    // tasti premuti con Shift o Ctrl tenuto (gruppi di unita': units.js,
-    // controlGroups); presi al keydown, perche' il modificatore puo' essere
-    // gia' rilasciato al passo che legge il tasto
+    // tasti premuti con Shift tenuto (gruppi di unita': units.js,
+    // controlGroups); presi al keydown, perche' Shift puo' essere gia'
+    // rilasciato al passo che legge il tasto
     this._pressedShift = new Set(); this.pressedShift = new Set();
-    this._pressedCtrl = new Set(); this.pressedCtrl = new Set();
     this.down = new Set(); this.pressed = new Set(); this.released = new Set();
     this._mdown = [false, false, false];
     this._mp = [false, false, false]; this._mr = [false, false, false];
@@ -109,13 +108,9 @@ export class Input {
       // l'Esc che libera il puntatore e' del browser, non del gioco (a
       // seconda del browser arriva prima o dopo pointerlockchange)
       if (k === 27 && (this.locked || performance.now() - this._unlockedAt < 300)) return;
-      if (!this._down.has(k)) { this._pressed.add(k); if (e.shiftKey) this._pressedShift.add(k); if (e.ctrlKey) this._pressedCtrl.add(k); }
+      if (!this._down.has(k)) { this._pressed.add(k); if (e.shiftKey) this._pressedShift.add(k); }
       this._down.add(k);
       if (PREVENT.has(k)) e.preventDefault();
-      // Ctrl + cifra (gruppi di unita'): dove il browser lo permette, niente
-      // cambio di scheda. Chrome e Edge non lo lasciano bloccare: li' i
-      // gruppi si assegnano con Shift + cifra (units.js, controlGroups)
-      if (e.ctrlKey && k >= 48 && k <= 57) e.preventDefault();
     });
     window.addEventListener("keyup", (e) => {
       const k = keyCode(e);
@@ -150,7 +145,6 @@ export class Input {
     this.down = new Set(this._down);
     this.pressed = this._pressed; this._pressed = new Set();
     this.pressedShift = this._pressedShift; this._pressedShift = new Set();
-    this.pressedCtrl = this._pressedCtrl; this._pressedCtrl = new Set();
     this.released = this._released; this._released = new Set();
     this.mouseDown = this._mdown.slice();
     this.mousePressed = this._mp; this._mp = [false, false, false];

@@ -182,6 +182,17 @@ export class Draw {
     }
   }
 
+  // [Richiesta dell'autore] Barra della vita a pillola, coerente con i
+  // pannelli arrotondati dell'interfaccia: un fondo nero arrotondato che
+  // fa da bordo di 1 px e dentro la parte piena (`col`), arrotondata anche
+  // lei. Occupa i pixel delle barre rettangolari dell'originale: 50 di vita
+  // da `x1`, 7 di altezza da `y1` (draw_rectangle include l'ultimo pixel).
+  lifeBar(x1, y1, frac, col) {
+    const f = Math.max(0, Math.min(1, frac)), W = 51, H = 8;
+    this.roundrectColourExt(x1 - 1, y1 - 1, x1 + W + 1, y1 + H + 1, H + 2, H + 2, 0, 0, false);
+    if (f > 0) this.roundrectColourExt(x1, y1, x1 + Math.max(2, W * f), y1 + H, H, H, col, col, false);
+  }
+
   rectangle(x1, y1, x2, y2, outline = false) {
     const col = packColor(this.colour, this.alpha);
     this.rectangleColour(x1, y1, x2, y2, col, col, col, col, outline, true);

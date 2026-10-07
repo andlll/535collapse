@@ -26,8 +26,7 @@ function enemyBarAndPanel(icon) {
   return {
     drawEnd(i, w, d) {
       const bar = () => {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, BLUE, BLUE, BLUE, BLUE, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, BLUE);
       };
       if (i.selected === 1 || i.hover === 1) bar();
       if (i.hit === 1 && w.room === "match") bar();

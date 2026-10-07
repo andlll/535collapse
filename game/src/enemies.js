@@ -379,15 +379,13 @@ export function enemyMelee(name, p) {
     keyPress27(i, w) { if (w.g.sele === 0 && i.selected === 1) i.selected = 0; },
     drawEnd(i, w, d) {
       if (i.selected === 1 || i.hover === 1) {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.blue, C.blue, C.blue, C.blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
         d.sprite("circ_1", 0, i.x, i.y);
         if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
         d.sprite("director_blue", 0, i.foodx, i.foody);
       }
       if (i.hit === 1 && w.room !== "menu") {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, C.black, C.black, C.black, C.black, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, C.blue, C.blue, C.blue, C.blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
       }
     },
     drawGUI(i, w, d) {

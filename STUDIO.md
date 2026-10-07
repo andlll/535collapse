@@ -16,7 +16,7 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
-fuoco agli edifici, dissolvenze, zoom, gruppi con Shift (Fase 8, §8.1–§8.7). Quarta
+fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola (Fase 8, §8.1–§8.8). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
 dell'autore e lista della GPU completata (Fase 7, §7.1–§7.16). Terza
 sessione (`claude/inspiring-cray-dalph5`): correzioni dalla prima prova
@@ -3525,17 +3525,25 @@ tutorial dice che si puo' usare la rotella del mouse, nelle sei lingue.
 Nell'originale Ctrl + cifra assegna i selezionati al gruppo N, la cifra
 da sola lo riseleziona [C]. Nel browser Ctrl + 1–9 e' la scorciatoia del
 cambio di scheda (Chrome, Edge, Firefox; Cmd + cifra su Mac) e Chrome ed
-Edge non la lasciano bloccare alla pagina. Ora:
-- il gruppo si assegna anche con **Shift + cifra** (Shift non aveva usi);
-  Ctrl + cifra resta dove il browser lo lascia passare, e sul keydown di
-  Ctrl + cifra la pagina chiede di non cambiare scheda (`preventDefault`:
-  basta dove il browser non se la riserva);
-- Shift e Ctrl si leggono al keydown della cifra (`pressedShift`,
-  `pressedCtrl` in input.js), non al passo: con fotogrammi lenti il
-  modificatore poteva essere gia' rilasciato e la cifra riselezionava il
-  gruppo invece di assegnarlo (succedeva anche con Ctrl);
+Edge non la lasciano bloccare alla pagina. Decisione dell'autore: i gruppi
+si assegnano solo con **Shift + cifra** (Shift non aveva usi); Ctrl +
+cifra non fa piu' nulla nel gioco e il browser resta libero di cambiare
+scheda.
+- Shift si legge al keydown della cifra (`pressedShift` in input.js),
+  non al passo: con fotogrammi lenti il modificatore poteva essere gia'
+  rilasciato e la cifra riselezionava il gruppo invece di assegnarlo
+  (succedeva anche con Ctrl nell'originale);
 - il suggerimento "Selezione multipla" dice Shift + numero, nelle sei
   lingue.
 
-Prova (Chromium, `lvl02`): tre militari con Shift + 2, due con Ctrl + 3,
-poi 2 e 3 riselezionano esattamente quei gruppi.
+Prova (Chromium, `lvl02`): tre militari con Shift + 2, poi 2 riseleziona
+esattamente quel gruppo.
+
+### 8.8 Barra della vita a pillola
+
+Richiesta dell'autore, per coerenza con i pannelli arrotondati: le barre
+della vita (unita', civili, edifici, mura, nemici, torre col presidio)
+sono a pillola: fondo nero arrotondato che fa da bordo di 1 px, parte
+piena (verde o blu) arrotondata anche lei, negli stessi pixel delle barre
+rettangolari dell'originale (`Draw.lifeBar`). Prima ogni oggetto
+disegnava i suoi due rettangoli.

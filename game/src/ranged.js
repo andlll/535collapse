@@ -511,8 +511,7 @@ export function garrisoned(name, base) {
         // torre Draw_End [C]: barra in alto (y-205) e "n/2"
         if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y + G.textY, i.npresidio + "/" + G.max); d.setHalign("left"); }
         if (i.hover === 1 || i.hit === 1 || i.selected === 1) {
-          d.rectangleColour(i.x - 25, i.y - 205, i.x + 25, i.y - 212, BLACK, BLACK, BLACK, BLACK, false);
-          d.rectangleColour(i.x - 25, i.y - 205, i.x - 25 + (i.life / i.slife) * 50, i.y - 212, GREEN, GREEN, GREEN, GREEN, false);
+          d.lifeBar(i.x - 25, i.y - 212, i.life / i.slife, GREEN);
         }
         return;
       }
@@ -589,8 +588,7 @@ export function enemyTower(p) {
     drawEnd(i, w, d) {
       const blue = 0xff0000;
       if (i.selected === 1 || i.hover === 1 || (i.hit === 1 && w.room === "match")) {
-        d.rectangleColour(i.x - 25, i.y - 75, i.x + 25, i.y - 82, BLACK, BLACK, BLACK, BLACK, false);
-        d.rectangleColour(i.x - 25, i.y - 75, i.x - 25 + (i.life / i.slife) * 50, i.y - 82, blue, blue, blue, blue, false);
+        d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, blue);
       }
     },
     drawGUI(i, w, d) {
