@@ -19,7 +19,8 @@ Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
 costi nella scheda del castello, campi di grano a righe con depth -y,
 spighe ed erba decorative a fasce, verdi dell'erba, civili che si
 incastravano nella raccolta e nella consegna (§8.14–§8.19); roadmap
-dopo la prima uscita (sezione "Roadmap" qui sotto). Quinta sessione (branch
+dopo la prima uscita (sezione "Roadmap" qui sotto). **Prossimo**: i livelli
+della campagna disegnati in Tiled ("Prossima sessione" qui sotto). Quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
 fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
@@ -85,10 +86,59 @@ sezione citata.
   serve la sequenza di clic.
 - [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
   se possibile.
-- [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
+- [x] Formato con cui disegnare le room dei livelli 3–10 (§0.15): **mockup
+  in Tiled con gli sprite del gioco**, deciso l'8 ottobre 2026 (vedi
+  "Prossima sessione" qui sotto).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
+
+**Prossima sessione: livelli della campagna disegnati in Tiled**
+(deciso con l'autore l'8 ottobre 2026; salvo bug sparuti, le prossime
+sessioni sono per i livelli 3–10)
+- Perche' Tiled (mapeditor.org, gratuito, Windows/Mac/Linux): l'autore
+  vuole vedere la resa finale prima di consegnare la room, senza passare da
+  GameMaker; un'immagine piatta (PNG) andrebbe riconosciuta sprite per
+  sprite (errori con alberi sovrapposti e oggetti simili), mentre Tiled
+  salva nome e posizione di ogni oggetto: la conversione e' esatta.
+  Scartate: tavolozza di colori con legenda (non mostra la resa), editor
+  dentro il gioco (resta per piu' avanti: roadmap R6).
+- [ ] **Formato scenario** (roadmap R2) in una cartella sua, `scenari/`:
+  `data/rooms/` si cancella e si riscrive da `tools/02_extract.py` a ogni
+  giro (e la CI controlla che resti uguale ai file GameMaker), quindi le
+  room nuove non possono stare li'. Contenuto minimo: dimensioni, istanze
+  (oggetto, x, y, eventuali campi), vista iniziale, risorse iniziali; con
+  versione. Il gioco e `tools/07_scene.py` lo caricano come le room di oggi.
+  La logica del livello (obiettivi, dialoghi, ondate) per ora nel codice,
+  come lvl01 e lvl02 (`levels.js`).
+- [ ] **Kit per Tiled**, generato da uno script dagli sprite (come l'atlas):
+  - un tileset "collezione di immagini" per categoria (terreno: 10
+    montagne, 7 fiumi, 5 strade, 4 sentieri, chiazze; natura; risorse;
+    edifici del giocatore; edifici e unita' nemiche; unita' del giocatore;
+    citta' romana), ogni immagine col nome dell'oggetto e l'origine dello
+    sprite (Tiled ancora gli oggetti in basso a sinistra: lo script ne
+    tiene conto);
+  - un file mappa vuoto della dimensione del livello, coi livelli di
+    oggetti (terreno sotto, il resto sopra) e l'ordine di disegno
+    "dall'alto in basso" (Tiled disegna dopo chi sta piu' in basso, come la
+    depth -y del gioco);
+  - segnaposto per cio' che Tiled non mostra: macchie di erba e spighe
+    decorative (un'immagine della macchia com'e' nel gioco), chiazze; le
+    unita' si vedono in una sola posa (nel gioco si animano da sole);
+  - un "pennello bosco": una forma su un livello apposito che lo script
+    riempie di alberi (per non piazzarne centinaia a mano).
+- [ ] **Script Tiled -> scenario** (`tools/`): legge il file di Tiled
+  (JSON o TMX), converte posizioni e origini, riempie le aree bosco, scrive
+  lo scenario; controlla oggetti sconosciuti e coordinate fuori mappa.
+- [ ] **Vista d'insieme per l'autore**: per ogni livello un'immagine della
+  mappa intera con gli sprite veri e qualche screenshot a zoom normale dal
+  gioco; correzioni ridisegnando in Tiled o a parole.
+- [ ] **Collaudo**: ricostruire in Tiled un pezzo di `match` (o tutta la
+  room, convertita in file di Tiled da uno script) e verificare che lo
+  scenario che ne esce, nel gioco, sia identico all'originale (stesse
+  istanze, stesse posizioni, screenshot uguali).
+- [ ] Poi il livello 3: dall'autore l'idea (obiettivo, partenza, nemici,
+  dialoghi), le dimensioni e il file di Tiled.
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -229,7 +279,8 @@ l'ordine e' una proposta, le date no. Le decisioni gia' prese sono in
 grassetto.
 
 **Prima uscita**
-- [ ] Livelli della campagna 3–10 (formato delle room: §0.15).
+- [ ] Livelli della campagna 3–10, disegnati in Tiled (formato scenario e
+  kit: "Prossima sessione" qui sopra).
 - [ ] Verifiche su una GPU vera, Firefox, Safari; nome definitivo; GitHub
   Pages attivo (liste qui sopra).
 
