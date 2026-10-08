@@ -324,14 +324,26 @@ export function unitClicker(prod, type) {
       d.text(40, H - 90, desc);
       d.setFont("GUI_1");
       // ariete e catapulta [C]: costi piu' larghi (130, 210, 240)
+      // [Segnalazione dell'autore, §8.15] ma la prima icona restava a 90: il
+      // numero a tre cifre del legno ("250", "200") le finiva sopra. Ogni
+      // icona sta ad almeno GAP px dal suo numero (misurato) e ogni numero ad
+      // almeno 12 px dall'icona prima; dove c'e' gia' spazio, le posizioni di
+      // prima.
       const [x2, x3, xm, xi] = u.wide ? [130, 210, 240, u.obj === "ally_catapulta" ? 180 : 170] : [120, 200, 230, 170];
-      d.text(40, H - 50, u.costs[0][0]);
-      d.text(x2, H - 50, u.costs[1][0]);
-      d.text(x3, H - 50, u.pop || "2");
+      const GAP = 6, ICO = 15, MULTI = 16; // meta' larghezza (visibile) delle icone; ico_multi a 0,5
+      const [n1, n2, n3] = [u.costs[0][0], u.costs[1][0], u.pop || "2"];
+      const i1 = Math.max(90, 40 + d.stringWidth(n1) + GAP + ICO);
+      const t2 = Math.max(x2, i1 + ICO + 12);
+      const i2 = Math.max(xi, t2 + d.stringWidth(n2) + GAP + ICO);
+      const t3 = Math.max(x3, i2 + ICO + 12);
+      const i3 = Math.max(xm, t3 + d.stringWidth(n3) + GAP + MULTI);
+      d.text(40, H - 50, n1);
+      d.text(t2, H - 50, n2);
+      d.text(t3, H - 50, n3);
       d.setAlpha(1);
-      d.sprite(u.costs[0][1], 0, 90, H - 50);
-      d.sprite(u.costs[1][1], 0, xi, H - 50);
-      d.spriteExt("ico_multi", 0, xm, H - 50, 0.5, 0.5, 0, WHITE, 1);
+      d.sprite(u.costs[0][1], 0, i1, H - 50);
+      d.sprite(u.costs[1][1], 0, i2, H - 50);
+      d.spriteExt("ico_multi", 0, i3, H - 50, 0.5, 0.5, 0, WHITE, 1);
       d.setAlpha(0.7);
       d.setHalign("right");
       d.text((u.wide ? 380 : 350) + ex, H - 120, shortcut);

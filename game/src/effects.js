@@ -239,30 +239,48 @@ export function fireStarterStep(i, w) {
 // che nel Create spargono 1700-2600 particelle immobili (vita 99999999)
 // in un'ellisse di 1000x600 px, a depth -1. L'erba ondeggia (wiggle
 // dell'orientamento).
+// [Richiesta dell'autore, §8.17-18] come il grano dei campi (§8.16): le
+// particelle si dividono in fasce orizzontali di DECOR_BAND px a depth -y
+// (Particles.bands) e le unita' che ci passano in mezzo restano immerse.
+// L'erba aveva un solo colore, quasi nero: part_erba (gia' verde scuro)
+// tinto di un altro verde scuro; ora e' "erba_chiara" (tools/05_atlas.py,
+// part_erba in grigio chiaro) in tre gruppi di verdi, dallo scuro al giallo
+// (il colore a schermo e' circa l'88% di quello della particella).
 const SWAY = { orientation: [-15, 15, 0, 4, false], life: [99999999, 99999999] };
+const DECOR_BAND = 12;
+const erba = (a, b) => partType({ sprite: "erba_chiara", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.35, 0.75],
+                                  colour: { mix: [makeColourRgb(...a), makeColourRgb(...b)] } });
 const DECOR = {
-  burst_erba1: [partType({ sprite: "part_erba", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7],
-                           colour: { mix: [makeColourRgb(61, 77, 46), makeColourRgb(90, 102, 61)] } }), 2600],
-  burst_grano1: [partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] }), 2500],
-  chiazzaparticellare: [partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false],
-                                   colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
-                                   alpha: [1, 0.8], life: [99999999, 99999999] }), 1700],
+  burst_erba1: [[erba([51, 70, 36], [80, 105, 52]), 1100], [erba([80, 105, 52], [114, 132, 66]), 1000],
+                [erba([114, 132, 66], [145, 155, 80]), 500]],
+  burst_grano1: [[partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] }), 2500]],
+  chiazzaparticellare: [[partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false],
+                                    colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
+                                    alpha: [1, 0.8], life: [99999999, 99999999] }), 1700]],
 };
 export const DECOR_OBJECTS = Object.keys(DECOR);
 
 export function decorCreate(i, w) {
-  const [t, n] = DECOR[i.object];
   i.sprite_index = null;
-  i.grass_system = P(w).systemCreate(-1, "grass");
-  const em = P(w).emitterCreate(i.grass_system);
+  const ps = P(w).systemCreate(-1, "grass");
+  const em = P(w).emitterCreate(ps);
   P(w).region(em, i.x - 500, i.x + 500, i.y - 300, i.y + 300, "ellipse", "gaussian");
-  P(w).burst(i.grass_system, em, t, n);
+  // i gruppi in ordine sparso (l'ordine di nascita e' quello di disegno:
+  // a gruppi, i verdi chiari stavano tutti sopra gli scuri)
+  const list = [];
+  for (const [t, n] of DECOR[i.object]) for (let k = 0; k < n; k++) list.push(t);
+  for (let k = list.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [list[k], list[j]] = [list[j], list[k]];
+  }
+  for (const t of list) P(w).burst(ps, em, t, 1);
+  i.grass_rows = P(w).bands(ps, DECOR_BAND);
 }
 
 // ---------------------------------------------------------------- campi
 
-// campo Create [C]: 700 spighe nel rombo del campo
-const SPIGA = partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] });
+// campo Create [C]: 700 spighe nel rombo del campo (part_crop, alpha
+// 0,3-0,7, depth -1); ora a righe, cropRows qui sotto (§8.16)
 // campo Step, quando prende fuoco [C]: le spighe spariscono, 1700 spighe
 // bruciate che svaniscono in 700-800 passi, sprite "campo_maggese"
 const SPIGA_BRUCIATA = partType({ sprite: "part_crop", size: [0.2, 0.35, 0, 0], colour: { list: [c.black, c.black, c.gray] },
@@ -274,15 +292,46 @@ function diamond(w, ps, i, t, n) {
   P(w).burst(ps, em, t, n);
 }
 
+// [Richiesta dell'autore, §8.16] Il grano a righe. Prima 700 spighe sparse
+// nel rombo, semitrasparenti, tutte in un sistema a depth -1: sotto ogni
+// unita', il contadino ci camminava sopra. Ora righe orizzontali ogni
+// CROP_ROW px, ognuna un sistema a depth -y della riga: le righe davanti al
+// contadino (piu' in basso) si disegnano dopo di lui e lo coprono fino alle
+// ginocchia, "immerso" nel grano. Le spighe ("spiga", tools/05_atlas.py:
+// part_crop a meta' risoluzione con un contorno morbido, bruno e
+// semitrasparente) sono opache, tinte di giallo, ogni 9-13 px lungo la riga;
+// ondeggiano come prima. Il fondo e' "campo_grano" (la terra arata color
+// paglia scuro, le spighe si staccano per tono) invece di campo1.
+const CROP_ROW = 12;
+const SPIGA_RIGA = partType({ sprite: "spiga", size: [0.7, 1, 0, 0], ...SWAY, alpha: [1],
+                              colour: { mix: [makeColourRgb(255, 226, 150), makeColourRgb(255, 210, 118)] } });
+
+function cropRows(i, w) {
+  const rows = [];
+  for (let dy = -84; dy <= 84; dy += CROP_ROW) {
+    const hw = 145 * (1 - Math.abs(dy) / 90) - 8; // meta' larghezza del rombo, meno il margine
+    if (hw < 4) continue;
+    const y = i.y + dy;
+    const ps = P(w).systemCreate(-y, "grass");
+    for (let x = -hw + Math.random() * 9; x < hw; x += 9 + Math.random() * 4) {
+      P(w).create(ps, i.x + x + (Math.random() * 4 - 2), y + (Math.random() * 3 - 1.5), SPIGA_RIGA, 1);
+    }
+    rows.push(ps);
+  }
+  return rows;
+}
+
 export function campoCreate(i, w) {
-  i.grass_system = P(w).systemCreate(-1, "grass");
-  diamond(w, i.grass_system, i, SPIGA, 700);
+  i.sprite_index = "campo_grano";
+  i.crop_rows = cropRows(i, w);
 }
 
 export function campoStep(i, w) {
   if (i.onfire === 1 && i.firestarted === 0) {
     i.sprite_index = "campo_maggese";
-    P(w).systemDestroy(i.grass_system);
+    P(w).systemDestroy(i.grass_system); // (i salvataggi di prima delle righe)
+    for (const ps of i.crop_rows || []) P(w).systemDestroy(ps);
+    i.crop_rows = [];
     i.grass_system_black = P(w).systemCreate(-1, "grass");
     diamond(w, i.grass_system_black, i, SPIGA_BRUCIATA, 1700);
   }
@@ -291,6 +340,7 @@ export function campoStep(i, w) {
 
 export function campoDestroy(i, w) {
   P(w).systemDestroy(i.grass_system);
+  for (const ps of i.crop_rows || []) P(w).systemDestroy(ps);
   P(w).systemDestroy(i.grass_system_black);
   fireStop(i, w);
 }

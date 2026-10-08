@@ -4,7 +4,8 @@
 //   eventi e delle ricerche), con l'id successivo;
 // - global.* (g), gli allarmi del manager (notte, pioggia, orologio...),
 //   la sua dissolvenza della nebbia e il sistema della pioggia;
-// - la griglia dei costi e quella delle porte (pathing.js), la griglia
+// - la griglia dei costi, quella delle porte e quella degli ostacoli fissi
+//   (pathing.js), la griglia
 //   della scoperta della nebbia (fog.js; vista e ombra si ricalcolano a
 //   ogni disegno), i sistemi di particelle con le particelle vive
 //   (l'erba decorativa dura per sempre) e i semi della semina;
@@ -31,7 +32,7 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
     seedEmitter: world.seedEmitter || null,
     g,
     manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain },
-    path: { cost: path.cost, enemyBlock: path.enemyBlock },
+    path: { cost: path.cost, enemyBlock: path.enemyBlock, solid: path.solid },
     fog: { explored: fog.explored },
     particles: { systems: P.systems, seq: P.seq },
     cam: { x: cam.x, y: cam.y, scaleview: cam.scaleview },
@@ -75,6 +76,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.rain = s.manager.rain;
   path.cost.set(s.path.cost);
   path.enemyBlock.set(s.path.enemyBlock);
+  path.restoreSolid(s.path.solid); // i salvataggi di prima non l'hanno
   fog.explored.set(s.fog.explored);
   const P = world.particles;
   P.systems = s.particles.systems;

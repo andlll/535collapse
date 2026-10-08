@@ -59,7 +59,7 @@ export const FAM = {
   // campo [C, campo_clicker]: niente fasi ne' vita nella tabella (cantiere
   // e campo hanno codice proprio, campoFond e campo qui sotto); scheda piu'
   // larga con angoli da 80.
-  campo: { key: 82, bx: 660, by: 50, cost: { wood: 200 }, ico: "ico_corn", ghost: "campo1",
+  campo: { key: 82, bx: 660, by: 50, cost: { wood: 200 }, ico: "ico_corn", ghost: "campo_grano", // §8.16 (era campo1)
            panel: { w: 430, r: 80, title: "Farm", desc: "Produces food resource when occupied by a worker.",
                     costs: [["200", 40, "ico_wood", 95]], shortcut: ["Shortcut: R", 410] } },
   // mura [C, mura_clicker, mura_placer]: C ruota (posiz 0 orizzontale, 1

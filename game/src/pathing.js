@@ -24,6 +24,8 @@ import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
 const LINE_HALF = 12;  // meta' larghezza predefinita della linea "spessa" (clearLine)
+export const SIEGE_CLEAR = 1;  // celle libere attorno al centro di una macchina d'assedio (wideMask)
+const SIEGE_RECALC = 15;       // passi fra due ricalcoli del campo di una macchina (siegeMove)
 const DX = [1, -1, 0, 0, 1, -1, 1, -1];
 const DY = [0, 0, -1, 1, -1, -1, 1, 1];
 const DIR = DX.map((dx, i) => pointDirection(0, 0, dx, DY[i]));
@@ -38,6 +40,14 @@ export class Pathing {
     // percorribili per il giocatore (cost libero) ma ostacolo per i nemici:
     // contatore di porte per cella, letto solo dai goal field dei nemici.
     this.enemyBlock = new Uint8Array(this.gw * this.gh);
+    // [§8.14] gli ostacoli fissi (edifici, elementi
+    // naturali, mura: quelli di markInstance), senza le celle occupate dalle
+    // unita' ferme; servono al campo "largo" delle macchine d'assedio
+    // (wideMask). solidVer cambia a ogni modifica: le maschere si ricalcolano.
+    this.solid = new Uint8Array(this.gw * this.gh);
+    this.solidVer = 0;
+    this._wide = [null, null];
+    this._wideVer = [-1, -1];
   }
 
   // Segna l'ostacolo "solo per i nemici" sulle celle toccate dalla maschera
@@ -46,11 +56,22 @@ export class Pathing {
   blockEnemy(inst) {
     const cells = this._cellsOf(inst);
     for (const k of cells) this.enemyBlock[k]++;
+    this.solidVer++;
     return cells;
   }
 
   unblockEnemy(cells) {
     for (const k of cells) if (this.enemyBlock[k] > 0) this.enemyBlock[k]--;
+    this.solidVer++;
+  }
+
+  // Dopo un caricamento (snapshot.js): gli ostacoli fissi salvati o, nei
+  // salvataggi di prima, quelli della griglia dei costi (con le celle delle
+  // unita' ferme: al piu' una macchina d'assedio gira attorno a un soldato).
+  restoreSolid(solid) {
+    if (solid) this.solid.set(solid);
+    else for (let k = 0; k < this.cost.length; k++) this.solid[k] = this.cost[k] >= 1000 ? 1 : 0;
+    this.solidVer++;
   }
 
   _cellsOf(inst) {
@@ -82,6 +103,8 @@ export class Pathing {
   // manager Create, "Inseriamo gli ostacoli" [C]
   initCost() {
     this.cost.fill(0);
+    this.solid.fill(0);
+    this.solidVer++;
     for (const fam of ["ally_build", "enemy_build", "natural_parent"]) {
       for (const inst of this.w.all(fam)) this.markInstance(inst, 1000);
     }
@@ -89,7 +112,33 @@ export class Pathing {
 
   // collision_rectangle sulla cella, maschera precisa, solo quell'istanza [C]
   markInstance(inst, value) {
-    for (const k of this._cellsOf(inst)) this.cost[k] = value;
+    const s = value >= 1000 ? 1 : 0;
+    for (const k of this._cellsOf(inst)) { this.cost[k] = value; this.solid[k] = s; }
+    this.solidVer++;
+  }
+
+  // [§8.14] Le celle in cui non puo' stare il centro di una
+  // macchina d'assedio: un ostacolo fisso (per i nemici anche una porta) a
+  // meno di SIEGE_CLEAR celle, anche in diagonale. Le macchine (maschera
+  // 111x96 px) passano solo da varchi di almeno 2 * SIEGE_CLEAR + 1 celle,
+  // dove un soldato passa da una cella sola. Tenuta finche' gli ostacoli
+  // non cambiano.
+  wideMask(enemy) {
+    const e = enemy ? 1 : 0;
+    if (this._wideVer[e] === this.solidVer && this._wide[e]) return this._wide[e];
+    const { gw, gh, solid } = this, block = enemy ? this.enemyBlock : null, R = SIEGE_CLEAR;
+    const m = this._wide[e] || (this._wide[e] = new Uint8Array(gw * gh));
+    m.fill(0);
+    for (let y = 0; y < gh; y++) {
+      for (let x = 0; x < gw; x++) {
+        const k = y * gw + x;
+        if (!solid[k] && !(block && block[k])) continue;
+        const y1 = Math.min(gh - 1, y + R), x0 = Math.max(0, x - R), x1 = Math.min(gw - 1, x + R);
+        for (let yy = Math.max(0, y - R); yy <= y1; yy++) m.fill(1, yy * gw + x0, yy * gw + x1 + 1);
+      }
+    }
+    this._wideVer[e] = this.solidVer;
+    return m;
   }
 
   // scr_free / scr_occupy [C]
@@ -108,8 +157,11 @@ export class Pathing {
   // [§6.2, ottimizzazione A] stessi valori di prima (stesso ordine dei
   // vicini: destra, sinistra, su, giu'), con indici lineari e una coda
   // riusata invece di due array nuovi a ogni chiamata.
-  goalField(goalX, goalY, enemy = false) {
+  // wide: il campo delle macchine d'assedio, chiuse anche le celle di
+  // wideMask.
+  goalField(goalX, goalY, enemy = false, wide = false) {
     const block = enemy ? this.enemyBlock : null;
+    const wm = wide ? this.wideMask(enemy) : null;
     const { gw, gh, cost } = this;
     const N = gw * gh;
     const f = new Int32Array(N).fill(-1);
@@ -118,18 +170,32 @@ export class Pathing {
     const q = this.queue || (this.queue = new Int32Array(N));
     let head = 0, tail = 0;
     const g = gy * gw + gx;
-    const shut = (k) => cost[k] >= 1000 || (block && block[k]);
+    const shut = (k) => cost[k] >= 1000 || (block && block[k]) || (wm && wm[k]);
     if (shut(g) && this._seedAround(f, q, g, shut)) tail = this._seeds;
     else { f[g] = 0; q[tail++] = g; }
     while (head < tail) {
       const k = q[head++], v = f[k] + 1, x = k % gw;
       let n;
-      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
-      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
-      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
-      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n])) { f[n] = v; q[tail++] = n; }
+      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
     }
     return f;
+  }
+
+  // La cella raggiunta nel campo (valore != -1) piu' vicina a (gx, gy); a
+  // pari distanza quella col valore piu' basso. null se il campo e' vuoto.
+  nearestReached(field, gx, gy) {
+    const { gw } = this;
+    let best = null, bd = Infinity, bv = Infinity;
+    for (let k = 0; k < field.length; k++) {
+      const v = field[k];
+      if (v === -1) continue;
+      const x = k % gw, y = (k - x) / gw, d = (x - gx) ** 2 + (y - gy) ** 2;
+      if (d < bd || (d === bd && v < bv)) { bd = d; bv = v; best = [x, y]; }
+    }
+    return best;
   }
 
   // [§7.17] Meta dentro un ostacolo (una rovina nata dopo che il civile
@@ -443,6 +509,60 @@ export function moveFlowField(w, p, inst) {
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
   w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+}
+
+// [Segnalazione dell'autore, §8.14] Le macchine d'assedio col flow field.
+// Prima andavano solo con mp_potential_step verso dirox/diroy [C] e con un
+// edificio, un bosco o un fiume in mezzo si incastravano contro l'ostacolo.
+// Ora come la fanteria: lontano (oltre 400 px) o senza vista sulla meta il
+// flow field, vicino e in vista mp_potential_step. Il campo e' "largo"
+// (goalField con wide, wideMask): ingombranti, non passano dai varchi stretti
+// in cui passa un soldato. E' della macchina (siegeField) e si ricalcola
+// quando la meta cambia cella: subito se si sposta di piu' di 3 celle (un
+// ordine nuovo), se no al piu' ogni SIEGE_RECALC passi (i nemici spostano a
+// caso la meta quando e' occupata, l'ariete alleato la arretra di 50 px).
+// Se da dove e' la meta non si raggiunge (un varco troppo stretto, un'altra
+// riva) il campo porta alla cella raggiungibile piu' vicina alla meta e li'
+// la macchina arriva (dirox, diroy = x, y), invece di spingere contro
+// l'ostacolo.
+export function siegeMove(w, p, i) {
+  const enemy = (i.parents || []).includes("enemy_unit");
+  const gx = Math.floor(i.dirox / GRID), gy = Math.floor(i.diroy / GRID);
+  const goal = p.inside(gx, gy) ? gy * p.gw + gx : -1;
+  if (goal !== i.siegeGoal) {
+    const old = i.siegeGoal ?? -1, ox = old % p.gw, oy = (old - ox) / p.gw;
+    const jump = old < 0 || goal < 0 || Math.max(Math.abs(gx - ox), Math.abs(gy - oy)) > 3;
+    if (jump || !i.siegeField || (i.siegeAt || 0) <= w._stepNo) {
+      i.siegeGoal = goal;
+      i.siegeAt = w._stepNo + SIEGE_RECALC;
+      i.siegeEnd = false;
+      let f = goal < 0 ? null : p.goalField(i.dirox, i.diroy, enemy, true);
+      const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
+      if (f && p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) {
+        const c = p.nearestReached(p.goalField(i.x, i.y, enemy, true), gx, gy);
+        f = c ? p.goalField(c[0] * GRID + GRID / 2, c[1] * GRID + GRID / 2, enemy, true) : null;
+        i.siegeEnd = !!c;
+      }
+      i.siegeField = f;
+    }
+  }
+  const f = i.siegeField;
+  const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID), v = f ? p.fieldAt(f, sx, sy) : -1;
+  if (i.siegeEnd && (v === 0 || (v !== -1 && p.flowAt(f, sx, sy) === -1))) { i.dirox = i.x; i.diroy = i.y; return; }
+  // vicino (400 px) e libero, con collisioni: se la meta e' in vista, se la
+  // macchina e' in fondo al campo o se e' nella fascia attorno a un ostacolo
+  // (la meta e' un edificio da colpire: col campo andava avanti e indietro
+  // fra la fascia e la sua cella piu' vicina). Sovrapposta a un albero o a un
+  // edificio (il campo non ha collisioni) mp_potential_step non la muoveva
+  // piu': si va col campo finche' non si stacca.
+  const near = pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && w.placeFree(i, i.x, i.y)
+    && (v === -1 || p.flowAt(f, sx, sy) === -1 || p.clearLine(f, i.x, i.y, i.dirox, i.diroy));
+  if (!f || near) {
+    mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+    return;
+  }
+  i.flow_field = f;
+  moveFlowField(w, p, i);
 }
 
 // [§7.10, segnalazione dell'autore] Un posto per un'unita' appena prodotta

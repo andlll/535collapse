@@ -319,6 +319,60 @@ def particle_shapes():
     return out
 
 
+def derived_sprites():
+    """Sprite ricavati da quelli dell'autore [§8.16, richiesta dell'autore]:
+    (nome, gruppo, immagine a tela intera, origine).
+
+    campo_grano  il campo coltivato: campo_maggese (terra arata) ricolorato
+                 color paglia scuro; la luminosita' di ogni pixel resta
+                 (solchi, grana e bordo scuro). Piu' scuro delle spighe, che
+                 si staccano per tono.
+                 Prende il posto di campo1 (le righe di verdure).
+    spiga        part_crop a meta' risoluzione (senza contorno: provati un
+                 contorno nero e uno morbido, §8.16); i campi la
+                 disegnano a righe (effects.js).
+    erba_chiara  part_erba in grigio chiaro, da colorare con la
+                 particella (le macchie d'erba, §8.18).
+    """
+    img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
+    out = []
+    # campo_grano: luminanza relativa a quella media della terra arata
+    # (174, 119, 65) per il colore paglia
+    m = img("campo_maggese")
+    ref, straw = 0.299 * 174 + 0.587 * 119 + 0.114 * 65, (165, 126, 66)
+    px = m.load()
+    for y in range(m.height):
+        for x in range(m.width):
+            r, g, b, a = px[x, y]
+            if a:
+                k = (0.299 * r + 0.587 * g + 0.114 * b) / ref
+                px[x, y] = tuple(min(255, round(t * k)) for t in straw) + (a,)
+    out.append(("campo_grano", "edifici", m, (150, 96)))
+    # spiga: meta' risoluzione, 2 px di margine, senza contorno
+    c = img("part_crop")
+    s = c.resize((round(c.width / 2), round(c.height / 2)), Image.LANCZOS)
+    pad = 2
+    sp = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
+    sp.alpha_composite(s, (pad, pad))
+    out.append(("spiga", "ambiente", sp, (6 + pad, 37 + pad)))  # origine di part_crop (12, 73) / 2
+    # erba_chiara: part_erba (verde scuro, media (76, 94, 56)) in grigio
+    # chiaro, stessa grana e stesso alpha; il colore lo da' la particella
+    # (una tinta moltiplicativa puo' solo scurire: sul verde scuro i verdi
+    # chiari e gialli non si ottenevano)
+    e = img("part_erba")
+    px = e.load()
+    for y in range(e.height):
+        for x in range(e.width):
+            r, g, b, a = px[x, y]
+            if a:
+                v = min(255, round((0.299 * r + 0.587 * g + 0.114 * b) / 86 * 225))
+                px[x, y] = (v, v, v, a)
+    meta = next(d for d in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
+                if d["name"] == "part_erba")
+    out.append(("erba_chiara", "ambiente", e, (meta["origin_x"], meta["origin_y"])))
+    return out
+
+
 def main():
     need(os.path.join(DATA_DIR, "sprites.json"), "data/sprites.json (lancia 02_extract.py)")
     need(os.path.join(GMX_DIR, "sprites", "images"), "gmx/sprites/images (lancia 01_unpack.py)")
@@ -353,6 +407,11 @@ def main():
                                    Image.LANCZOS)
             entry["frames"].append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
             items[g].append((s["name"], i, crop))
+    for name, g, im, (ox, oy) in derived_sprites():
+        bb = im.getchannel("A").getbbox()
+        manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
+                                     "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
+        items[g].append((name, 0, im.crop(bb)))
 
     # font e pixel bianco nel gruppo gui (non ritagliati: le coordinate dei
     # glifi restano quelle del foglio di GameMaker)

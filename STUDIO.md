@@ -14,7 +14,13 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
+Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
+`claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
+costi nella scheda del castello, campi di grano a righe con depth -y,
+spighe ed erba decorative a fasce, verdi dell'erba, civili che si
+incastravano nella raccolta e nella consegna (§8.14–§8.19); roadmap
+dopo la prima uscita (sezione "Roadmap" qui sotto). **Prossimo**: i livelli
+della campagna disegnati in Tiled ("Prossima sessione" qui sotto). Quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
 fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
@@ -36,7 +42,7 @@ sezione citata.
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
   `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
-  `claude/menu-fire-crossfade`); gli asset generati (`game/assets/`,
+  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -59,7 +65,8 @@ sezione citata.
   (traduzioni), `save.js`/`snapshot.js` (salvataggi), `fullscreen.js`,
   `app.js` (registrazione dei comportamenti).
 - Prove: anche `game/test/browser/saves.mjs` (salva, ricarica, stato
-  identico) e `portal.mjs` (lo zip dei portali in un iframe); la CI
+  identico), `portal.mjs` (lo zip dei portali in un iframe), `workers.mjs`
+  e `deposit.mjs` (civili al lavoro e consegna su ordine, §8.19, fuori dalla CI); la CI
   (`.github/workflows/build.yml`, §5.1) le fa tutte a ogni push e da `main`
   pubblica il gioco su GitHub Pages: https://andlll.github.io/535collapse/
   (come NIMBUS). **Se cambia la forma dello stato** (campi delle istanze
@@ -79,10 +86,59 @@ sezione citata.
   serve la sequenza di clic.
 - [ ] Traduzioni (§3.19): scritte da me, da far rileggere a madrelingua
   se possibile.
-- [ ] Formato con cui disegnare le room dei livelli 3–10 (§0.15).
+- [x] Formato con cui disegnare le room dei livelli 3–10 (§0.15): **mockup
+  in Tiled con gli sprite del gioco**, deciso l'8 ottobre 2026 (vedi
+  "Prossima sessione" qui sotto).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
+
+**Prossima sessione: livelli della campagna disegnati in Tiled**
+(deciso con l'autore l'8 ottobre 2026; salvo bug sparuti, le prossime
+sessioni sono per i livelli 3–10)
+- Perche' Tiled (mapeditor.org, gratuito, Windows/Mac/Linux): l'autore
+  vuole vedere la resa finale prima di consegnare la room, senza passare da
+  GameMaker; un'immagine piatta (PNG) andrebbe riconosciuta sprite per
+  sprite (errori con alberi sovrapposti e oggetti simili), mentre Tiled
+  salva nome e posizione di ogni oggetto: la conversione e' esatta.
+  Scartate: tavolozza di colori con legenda (non mostra la resa), editor
+  dentro il gioco (resta per piu' avanti: roadmap R6).
+- [ ] **Formato scenario** (roadmap R2) in una cartella sua, `scenari/`:
+  `data/rooms/` si cancella e si riscrive da `tools/02_extract.py` a ogni
+  giro (e la CI controlla che resti uguale ai file GameMaker), quindi le
+  room nuove non possono stare li'. Contenuto minimo: dimensioni, istanze
+  (oggetto, x, y, eventuali campi), vista iniziale, risorse iniziali; con
+  versione. Il gioco e `tools/07_scene.py` lo caricano come le room di oggi.
+  La logica del livello (obiettivi, dialoghi, ondate) per ora nel codice,
+  come lvl01 e lvl02 (`levels.js`).
+- [ ] **Kit per Tiled**, generato da uno script dagli sprite (come l'atlas):
+  - un tileset "collezione di immagini" per categoria (terreno: 10
+    montagne, 7 fiumi, 5 strade, 4 sentieri, chiazze; natura; risorse;
+    edifici del giocatore; edifici e unita' nemiche; unita' del giocatore;
+    citta' romana), ogni immagine col nome dell'oggetto e l'origine dello
+    sprite (Tiled ancora gli oggetti in basso a sinistra: lo script ne
+    tiene conto);
+  - un file mappa vuoto della dimensione del livello, coi livelli di
+    oggetti (terreno sotto, il resto sopra) e l'ordine di disegno
+    "dall'alto in basso" (Tiled disegna dopo chi sta piu' in basso, come la
+    depth -y del gioco);
+  - segnaposto per cio' che Tiled non mostra: macchie di erba e spighe
+    decorative (un'immagine della macchia com'e' nel gioco), chiazze; le
+    unita' si vedono in una sola posa (nel gioco si animano da sole);
+  - un "pennello bosco": una forma su un livello apposito che lo script
+    riempie di alberi (per non piazzarne centinaia a mano).
+- [ ] **Script Tiled -> scenario** (`tools/`): legge il file di Tiled
+  (JSON o TMX), converte posizioni e origini, riempie le aree bosco, scrive
+  lo scenario; controlla oggetti sconosciuti e coordinate fuori mappa.
+- [ ] **Vista d'insieme per l'autore**: per ogni livello un'immagine della
+  mappa intera con gli sprite veri e qualche screenshot a zoom normale dal
+  gioco; correzioni ridisegnando in Tiled o a parole.
+- [ ] **Collaudo**: ricostruire in Tiled un pezzo di `match` (o tutta la
+  room, convertita in file di Tiled da uno script) e verificare che lo
+  scenario che ne esce, nel gioco, sia identico all'originale (stesse
+  istanze, stesse posizioni, screenshot uguali).
+- [ ] Poi il livello 3: dall'autore l'idea (obiettivo, partenza, nemici,
+  dialoghi), le dimensioni e il file di Tiled.
 
 **Vertical slice su `match` (Fase 3)**
 - [x] 1. Manager, interfaccia, font (§3.1).
@@ -212,6 +268,102 @@ sezione citata.
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
   "GPU per frame" in Alta e in Bassa),
   Firefox, Safari, schermi ad alta densità.
+
+---
+
+## Roadmap (8 ottobre 2026)
+
+Discussa con l'autore l'8 ottobre 2026, senza implementare niente: dove
+puo' andare il gioco dopo la prima uscita. Ogni tappa usa la precedente;
+l'ordine e' una proposta, le date no. Le decisioni gia' prese sono in
+grassetto.
+
+**Prima uscita**
+- [ ] Livelli della campagna 3–10, disegnati in Tiled (formato scenario e
+  kit: "Prossima sessione" qui sopra).
+- [ ] Verifiche su una GPU vera, Firefox, Safari; nome definitivo; GitHub
+  Pages attivo (liste qui sopra).
+
+**R1. Squadre e controllori (la base di tutto il resto)**
+Oggi il giocatore sono gli oggetti `ally_*` e l'IA i `enemy_*`, e i bersagli
+si cercano per famiglia (`nearest(..., "enemy_build")`). L'asimmetria fra
+le unita' e' **solo estetica** (autore): stesse unita', colori diversi.
+- Una **squadra** su ogni istanza; "nemico" diventa "di un'altra squadra".
+  Tocca quasi tutti i comportamenti: prima di cominciare, un conteggio dei
+  punti che dipendono da ally/enemy per stimarlo.
+- Un **controllore** per squadra che da' gli ordini con gli stessi comandi:
+  giocatore locale, IA dei barbari (quella di oggi), IA "romana" (R3),
+  giocatore remoto (R5). Le unita' non sanno chi le comanda.
+- Stato per squadra: risorse, popolazione, selezione e contatori (oggi
+  globali singoli in `g` e `selected`), nebbia.
+- **Colori dal proprio lato**: ognuno vede le proprie unita' ed edifici
+  rossi e quelli dell'avversario blu; la simulazione conosce solo le
+  squadre, il colore lo sceglie il disegno. **Gli sprite blu esistono gia'
+  tutti** (autore), anche di civili ed edifici: vanno solo caricati (oggi
+  l'atlas ha le versioni `b_*` delle sole unita' militari).
+- **Si usa prima nella campagna** (autore): alcuni scenari della campagna con
+  un avversario che gioca come il giocatore, poi la stessa logica si adatta
+  al 1 contro 1. Se quei livelli fanno parte della prima uscita, R1 (e R3)
+  vanno prima dell'uscita: [?] da decidere con l'autore.
+- Verifica: la campagna di oggi deve restare identica (squadra del
+  giocatore contro controllore "barbari"); soak, salvataggi e prove mirate
+  prima e dopo.
+
+**R2. Scenari come dati**
+- Un formato di scenario proprio, con versione (come i salvataggi),
+  indipendente dai file GameMaker da cui oggi derivano le room: istanze
+  (oggetto, x, y, squadra), squadre e controllori, risorse iniziali,
+  condizioni di vittoria e sconfitta, impostazioni dell'IA.
+- **Regole dichiarative, mai codice nei file** (saranno scambiati fra
+  sconosciuti): condizioni e trigger ("distruggi X: vittoria", "al minuto 5
+  un'ondata"). La logica scritta a mano dei livelli (`levels.js`) passa a
+  questo formato un po' alla volta.
+- Validazione rigorosa al caricamento: solo oggetti noti, coordinate dentro
+  la mappa, dimensioni massime.
+- La griglia dei percorsi si ricava gia' dalle istanze (`initCost`): una
+  mappa nuova non chiede altro.
+
+**R3. IA "romana"**
+- L'IA di oggi non raccoglie e non costruisce: i barbari producono a tempo e
+  attaccano a ondate. Un avversario che gioca come il giocatore deve gestire
+  un'economia (civili alle risorse, costruzioni, quando attaccare).
+- Prima a copione (sequenza di costruzione, ondate a tempo; difficolta' con
+  bonus alle risorse), poi migliorata. Serve gia' agli scenari della
+  campagna di R1.
+
+**R4. Schermaglia: giocatore contro PC**
+- **3–4 mappe simmetriche** (autore), scritte nel formato di R2 (a mano o
+  generate da uno script) anche prima dell'editor: collaudano il formato.
+
+**R5. 1 contro 1 online (aggiornamento o espansione dopo l'uscita)**
+- **Host autorevole**: un giocatore simula, l'altro manda i comandi e riceve
+  lo stato (solo cio' che cambia, 10–20 volte al secondo, interpolato). Il
+  lockstep deterministico e' scartato: `Math.random` in tutta la logica, e
+  seno, coseno, `atan2` e `hypot` non danno per forza gli stessi bit in
+  Chrome, Firefox e Safari (desync). Lo stato completo (`snapshot.js`)
+  serve per chi entra e per risincronizzare.
+- WebRTC (DataChannel) fra i due browser; un piccolo servizio di
+  segnalazione; un relay TURN per il 10–20% di reti che non si collegano
+  direttamente (costo di banda), o in alternativa un relay WebSocket.
+- Partita con un codice da condividere o un link di invito.
+- **Prima di tutto**: verificare portale per portale regole e Content
+  Security Policy dell'iframe per le connessioni esterne, e se offrono un
+  SDK per il multiplayer.
+- In partita online niente pausa ne' salvataggi; disconnessioni, ritardo
+  sugli ordini del client (mascherato dal segnalino del clic).
+
+**R6. Editor di mappe e scenari condivisi (espansione)**
+- Un editor nel gioco che produce file di scenario (R2); scambio fra
+  giocatori via file JSON con import/export come i salvataggi (funziona
+  anche nell'iframe dei portali). A quel punto e' soprattutto interfaccia:
+  formato, validazione e caricamento esistono gia'.
+
+**Idee aperte (non decise)**
+- [?] Piu' di due giocatori (2 contro 2, tutti contro tutti) sopra R1 e R5.
+- [?] Replay delle partite: con R1 bastano lo scenario e i comandi registrati,
+  ma la riproduzione ha gli stessi limiti di determinismo del lockstep.
+- [?] Un elenco di scenari della comunita' dentro il gioco (serve un
+  servizio per ospitarli).
 
 ---
 
@@ -3654,3 +3806,212 @@ fiume.
   particelle.
 - Prove: `match` col fiume in vista, 100–200 anelli vivi; soak e
   salvataggi senza errori, salvataggio durante la pioggia.
+
+### 8.14 Macchine d'assedio col flow field "largo"
+
+Segnalazione dell'autore: ariete e catapulta si incastravano di continuo.
+Nell'originale non hanno flow field [C]: vanno solo con
+`mp_potential_step` verso dirox/diroy, e con un edificio, un bosco o un
+fiume in mezzo spingevano contro l'ostacolo. Richiesta: dargli il flow
+field, ma meno permissivo nei passaggi (sono ingombranti: non passano dove
+passa un soldato).
+- **Ostacoli fissi**: `Pathing.solid` segna le celle di edifici, elementi
+  naturali e mura (`markInstance`), senza quelle occupate dalle unita'
+  ferme (un'unita' ferma resta un ostacolo di una cella sola). Si salva con
+  la griglia dei costi; nei salvataggi di prima si ricava dai costi.
+- **Campo largo**: `wideMask` chiude le celle a meno di `SIEGE_CLEAR` (1)
+  celle, anche in diagonale, da un ostacolo fisso (per i nemici anche dalle
+  porte); `goalField(..., wide)` le salta. Il centro della macchina sta solo
+  dove ci sono 3x3 celle libere: servono varchi di almeno 3 celle (96 px;
+  la maschera e' 111x96), un soldato ne usa uno di una. I varchi delle
+  porte (3 celle fra i pilastri) restano percorribili.
+- **Movimento** (`siegeMove` in pathing.js): come la fanteria, lontano
+  (oltre 400 px) col flow field, vicino con `mp_potential_step` se la meta
+  e' in vista, se la macchina e' in fondo al campo o nella fascia attorno a
+  un ostacolo (l'ariete che va a colpire un edificio), e solo se non e'
+  sovrapposta a niente (col campo si muove senza collisioni e puo' sfiorare
+  un albero: da li' `mp_potential_step` non la muoveva piu'). Il campo e'
+  della macchina (`siegeField`) e si ricalcola quando la meta cambia cella:
+  subito se si sposta di oltre 3 celle, se no al piu' ogni 15 passi (i
+  nemici spostano la meta a caso quando e' occupata, l'ariete alleato la
+  arretra di 50 px).
+- **Meta irraggiungibile** (varco troppo stretto, l'altra riva): il campo
+  porta alla cella raggiungibile piu' vicina alla meta (`nearestReached`,
+  con una ricerca dalla macchina) e li' la macchina arriva, invece di
+  spingere contro l'ostacolo.
+- **Arrivo per rinuncia** (§6.1 n.89) anche per i semplici spostamenti
+  delle macchine alleate (non all'attacco di un edificio).
+
+Prova: un ariete o una catapulta alla volta, nemici tolti, verso 12 punti
+a caso a oltre 900 px (fino a 10000 passi).
+
+| arrivate entro 64 px | prima | dopo |
+|---|---|---|
+| `match` (4000 passi) | 0/12 (quasi tutte ferme vicino alla partenza) | 5/12 |
+| `lvl02` | 4/12 | 12/12 |
+
+In `match` le altre sono state distrutte dalle torri nemiche lungo la
+strada o avevano una meta irraggiungibile per la macchina (si sono fermate
+nel punto piu' vicino). In `lvl01` il sud comunica col nord solo con
+corridoi nel bosco di 1–2 celle: da sud una macchina raggiunge 2 dei 28
+edifici nemici (un soldato tutti), finche' i civili non aprono un varco
+tagliando alberi. Per renderle piu' o meno ingombranti basta cambiare
+`SIEGE_CLEAR`.
+
+### 8.15 Costi di ariete e catapulta nella scheda del castello
+
+Segnalazione dell'autore: nella scheda di ariete e catapulta il costo in
+legno a tre cifre ("250", "200") finiva sopra l'icona del legno, che
+restava a x=90 come per i costi a due cifre. In `unitClicker` (production.js)
+le posizioni dell'originale restano dove c'e' spazio; altrimenti ogni icona
+sta 6 px dopo il suo numero (misurato con `stringWidth`) e ogni numero 12
+px dopo l'icona prima. Anche il "3" della popolazione non tocca piu'
+l'icona.
+
+### 8.16 Campi di grano a righe
+
+Richiesta dell'autore: spighe con un leggero contorno nero, a righe
+orizzontali ognuna con depth -y (il contadino "immerso" nel grano), e il
+fondo del campo coltivato uguale al campo vuoto ma giallastro come le
+spighe, al posto delle righe di verdure di `campo1`.
+- **Sprite derivati** (`derived_sprites` in tools/05_atlas.py, generati
+  con l'atlas come le forme delle particelle): `spiga` e' `part_crop` a
+  meta' risoluzione, senza contorno. `campo_grano` e' `campo_maggese`
+  ricolorato: ogni pixel tiene la luminosita' relativa alla media della
+  terra arata (solchi, grana, bordo scuro) e prende un color paglia scuro
+  (165, 126, 66), cosi' le spighe si staccano dal fondo per tono. Un tint
+  moltiplicativo (image_blend) sulla terra arata arancione non arriva al
+  giallo paglia: per questo e' uno sprite a parte.
+- **Stile**: confronto fra cinque varianti (contorno nero di 1 px all'80%,
+  contorno morbido bruno al 35%, senza contorno, e le ultime due col fondo
+  piu' scuro). Il contorno nero "sbatteva" con l'acquerello del resto della
+  mappa; senza contorno, col fondo dello stesso colore, le spighe
+  sparivano. L'autore ha scelto prima il contorno morbido col fondo scuro,
+  poi senza contorno col fondo scuro.
+- **Righe** (`cropRows` in effects.js): una riga ogni 12 px nel rombo del
+  campo, ognuna un sistema di particelle a depth -y della riga (categoria
+  "grass": si spegne con l'opzione grafica e si salva come prima). Spighe
+  ogni 9-13 px lungo la riga (+-2 px), opache, tinte fra (255, 226, 150) e
+  (255, 210, 118), dimensione 0,7-1; ondeggiano come prima. Le righe piu'
+  in basso del contadino si disegnano dopo di lui e lo coprono fino a
+  meta'. Circa 180 spighe per campo invece di 700.
+- Il campo in fiamme resta com'era (terra arata, spighe bruciate). Il
+  fantasma del piazzamento usa `campo_grano`. Le spighe decorative sparse
+  sulla mappa (`burst_grano1`) non sono cambiate.
+
+### 8.17 Spighe decorative a fasce
+
+Richiesta dell'autore: le spighe sparse sulla mappa (`burst_grano1`, 2500
+per macchia in un'ellisse di 1000x600 px) come il grano dei campi (§8.16),
+con la depth -y, le unita' che ci passano in mezzo immerse.
+- `Particles.bands(ps, h)` divide le particelle di un sistema in fasce
+  orizzontali alte h px, un sistema per fascia a depth -y della meta' della
+  fascia (al piu' h/2 px di scarto dalla depth -y di ogni spiga).
+  `decorCreate` sparge le spighe come prima (stesse particelle, stesso
+  aspetto: semitrasparenti, senza contorno) e le divide in fasce da 12 px:
+  44-47 sistemi per macchia. Dal §8.18 anche l'erba.
+- Costo: in `match` i sistemi di particelle passano da 13 a 191, nel menu
+  da 70 a 295; l'ordinamento per depth costa 0,03 ms a fotogramma, le
+  particelle disegnate sono le stesse, fotogrammi al secondo invariati. Il
+  salvataggio di `match` cresce di ~60 KB (~30 KB compresso).
+- I salvataggi di prima tengono le spighe nel sistema unico a -1.
+
+### 8.18 Macchie d'erba a fasce, verdi variati
+
+Richiesta dell'autore: le macchie d'erba (`burst_erba1`, 2600 fili, e
+`chiazzaparticellare`, 1700 trattini) con le fasce a depth -y del §8.17, e
+colori piu' vari: erano tutte scurissime perche', a depth -1 sotto ogni
+cosa, si sovrapponevano in modo strano.
+- Fasce da 12 px per tutte le macchie decorative (`decorCreate`).
+- **Colore dell'erba**: `part_erba` e' gia' verde scuro (media 76, 94, 56)
+  e la particella lo moltiplicava per un altro verde scuro (61-90, 77-102,
+  46-61): a schermo quasi nero, e una tinta moltiplicativa non puo'
+  schiarire. Nuovo sprite derivato `erba_chiara` (part_erba in grigio
+  chiaro, stessa grana e alpha, tools/05_atlas.py) colorato dalla
+  particella in tre gruppi: verde scuro (1100 fili), verde medio (1000),
+  verde chiaro tendente al giallo (500); alpha 0,35-0,75. I gruppi nascono
+  in ordine sparso (l'ordine di nascita e' quello di disegno). Una prima
+  prova piu' chiara si confondeva col terreno.
+- I trattini di `chiazzaparticellare` tengono i loro colori.
+- Costo: in `match` 237 sistemi di particelle, nel menu 344; ordinamento
+  0,01-0,05 ms a fotogramma, fotogrammi al secondo invariati.
+
+### 8.19 Civili: raccolta, consegna, sovrapposizioni
+
+Segnalazione dell'autore: i civili ogni tanto si incastrano (fermi in
+cammino, sovrapposti fra loro, da soli in giro su un percorso
+"rettangolare"), soprattutto nella raccolta; mandati al magazzino a
+consegnare, si fermano prima. Prove nuove nel browser:
+`game/test/browser/workers.mjs` (gruppi mandati col clic destro a legno,
+oro, pietra e cibo; consegne, civili fermi, sovrapposizioni) e
+`deposit.mjs` (civili carichi mandati col clic sul deposito). La
+simulazione e' deterministica: ogni caso si riproduce e si osserva passo
+per passo.
+
+Cause trovate e correzioni (tutte in civilians.js):
+- **Percorso verso la risorsa** (`fieldTo`). Per andare a una risorsa si
+  usava `scr_move`: le celle della risorsa sono ostacolo, quindi cercava in
+  quadrati crescenti una cella raggiungibile e prendeva la prima scorrendo
+  dall'angolo in alto a sinistra, non la piu' vicina: in un bosco anche a 8
+  celle dall'albero, dall'altra parte. Il civile ci arrivava e poi andava
+  dritto, con le collisioni, verso l'albero attraverso il bosco: fermo o
+  avanti e indietro. In piu' il tagliaboscaioli cambiava albero (quello
+  abbattuto, o uno piu' vicino) senza un campo nuovo. Ora il campo va verso
+  la risorsa stessa (goalField parte dal bordo libero piu' vicino alla
+  meta), anche al clic, si ricalcola quando l'albero bersaglio cambia (al
+  piu' ogni 20 passi, solo se ci si arriva) e quando miniera o pietra
+  cambiano; se il civile non ci puo' arrivare resta `scr_move`. Un campo
+  per meta e per passo, condiviso da chi va allo stesso posto.
+- **Posti attorno alla risorsa** (`toWorkSpot`): come i soldati in mischia
+  (melee.js, §7.7), settori di 30 gradi a contatto o 8 px piu' in fuori, un
+  civile per settore. Prima tutti andavano verso il centro della risorsa
+  (oro e pietra: della piu' vicina al civile) e arrivavano alla stessa
+  cella. Il "vicino" (100 px) si misura dal bordo della risorsa, non dal
+  centro (da una miniera grande il centro restava oltre i 100 px anche a
+  contatto).
+- **Cominciare a lavorare**: non piu' "cella libera" (costo < 1000) ma
+  "nessun altro civile addosso". Con i posti due civili lavorano anche
+  nella stessa cella da 32 px; prima il secondo spingeva finche' il primo
+  non se ne andava, e col flow field (senza collisioni) due arrivavano uno
+  sull'altro e lavoravano sovrapposti.
+- **Staccarsi** (`separate`): vicino alla meta, un civile addosso a chi
+  cammina o lavora si allontana da tutti insieme (somma delle direzioni;
+  se il passo entra in un ostacolo prova a 45 e 90 gradi). Prima ci si
+  allontanava da una sola cosa: chi toccava un compagno e la miniera
+  oscillava di 2 px all'infinito, e il compagno lo aspettava per sempre.
+  Sopra chi e' fermo si passa, come prima.
+- **Precedenza** (quella dell'originale: passa chi ha l'ordo piu' basso,
+  l'altro aspetta): resta, ma chi aspetta da 60 passi di fila (1 s)
+  riparte, all'80% della velocita' finche' e' sovrapposto. Sulla strada fra
+  miniera e deposito gli passava sopra un portatore dopo l'altro e il
+  civile con l'ordo piu' alto aspettava per sempre (osservato: quattro
+  compagni diversi in 130 passi). Prove scartate: un limite di 30 passi a
+  piena velocita' (due civili camminavano poi per sempre uno sopra
+  l'altro), spostarsi di lato (uscivano dal percorso e si bloccavano), la
+  precedenza senza limite (30 civili fermi nella prova piu' dura).
+- **Consegna su ordine**: col carico, il clic su un deposito che lo prende
+  (legno, oro, pietra: centro o magazzino; cibo: mulino o centro) e' un
+  ordine di consegna (`depositTo`). Prima era un semplice spostamento verso
+  il centro dell'edificio, e la regola "punto d'arrivo occupato" (azioni 9 e
+  11) spostava la meta di 50 px verso il civile a ogni passo finche' non era
+  fuori dall'edificio: si fermava a 14-200 px, oltre i 10 della consegna.
+  Ora ognuno va a un posto sul bordo del deposito, consegna e si ferma li';
+  se in 10 s non ci riesce si ferma dov'e'. Il cibo al magazzino resta un
+  semplice spostamento (il magazzino non e' un granaio).
+
+Prove (`match`, civili creati attorno al centro, nemici tolti):
+
+| | prima | dopo |
+|---|---|---|
+| 16 civili, 2,5 min: legno / oro / pietra / cibo | 460 / 390 / 160 / 430 | 490 / 450 / 210 / 390 |
+| 27 civili, 5 min: legno / oro / pietra / cibo | 520 / 790 / 430 / 630 | 1650 / 1520 / 650 / 740 |
+| 27 civili: fermi in cammino (eventi) | 26 | 0 |
+| 27 civili: cammino ininterrotto piu' lungo | 17601 passi (mai arrivato) | 2256 |
+| 27 civili: civili al lavoro sovrapposti (campioni) | 862 su 2062 | 0 su 4009 |
+| clic sul deposito con 8 civili carichi (centro / magazzino) | 6 / 4 consegnano | 8 / 7 (l'ottavo porta cibo) |
+| un civile carico, clic sul magazzino | non consegna | consegna |
+
+In `lvl02` (centro creato per la prova, 14 civili, 3,3 min): legno 550 ->
+650, oro 330 -> 490, fermi 11 -> 0, sovrapposti al lavoro 290 -> 0. Il
+cibo (contadini) era gia' a posto e resta com'era. Soak e salvataggi senza
+errori.
