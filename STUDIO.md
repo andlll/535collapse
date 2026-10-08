@@ -17,7 +17,8 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
 costi nella scheda del castello, campi di grano a righe con depth -y,
-spighe ed erba decorative a fasce, verdi dell'erba (§8.14–§8.18); roadmap
+spighe ed erba decorative a fasce, verdi dell'erba, civili che si
+incastravano nella raccolta e nella consegna (§8.14–§8.19); roadmap
 dopo la prima uscita (sezione "Roadmap" qui sotto). Quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
 fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
@@ -63,7 +64,8 @@ sezione citata.
   (traduzioni), `save.js`/`snapshot.js` (salvataggi), `fullscreen.js`,
   `app.js` (registrazione dei comportamenti).
 - Prove: anche `game/test/browser/saves.mjs` (salva, ricarica, stato
-  identico) e `portal.mjs` (lo zip dei portali in un iframe); la CI
+  identico), `portal.mjs` (lo zip dei portali in un iframe), `workers.mjs`
+  e `deposit.mjs` (civili al lavoro e consegna su ordine, §8.19, fuori dalla CI); la CI
   (`.github/workflows/build.yml`, §5.1) le fa tutte a ogni push e da `main`
   pubblica il gioco su GitHub Pages: https://andlll.github.io/535collapse/
   (come NIMBUS). **Se cambia la forma dello stato** (campi delle istanze
@@ -3882,3 +3884,83 @@ cosa, si sovrapponevano in modo strano.
 - I trattini di `chiazzaparticellare` tengono i loro colori.
 - Costo: in `match` 237 sistemi di particelle, nel menu 344; ordinamento
   0,01-0,05 ms a fotogramma, fotogrammi al secondo invariati.
+
+### 8.19 Civili: raccolta, consegna, sovrapposizioni
+
+Segnalazione dell'autore: i civili ogni tanto si incastrano (fermi in
+cammino, sovrapposti fra loro, da soli in giro su un percorso
+"rettangolare"), soprattutto nella raccolta; mandati al magazzino a
+consegnare, si fermano prima. Prove nuove nel browser:
+`game/test/browser/workers.mjs` (gruppi mandati col clic destro a legno,
+oro, pietra e cibo; consegne, civili fermi, sovrapposizioni) e
+`deposit.mjs` (civili carichi mandati col clic sul deposito). La
+simulazione e' deterministica: ogni caso si riproduce e si osserva passo
+per passo.
+
+Cause trovate e correzioni (tutte in civilians.js):
+- **Percorso verso la risorsa** (`fieldTo`). Per andare a una risorsa si
+  usava `scr_move`: le celle della risorsa sono ostacolo, quindi cercava in
+  quadrati crescenti una cella raggiungibile e prendeva la prima scorrendo
+  dall'angolo in alto a sinistra, non la piu' vicina: in un bosco anche a 8
+  celle dall'albero, dall'altra parte. Il civile ci arrivava e poi andava
+  dritto, con le collisioni, verso l'albero attraverso il bosco: fermo o
+  avanti e indietro. In piu' il tagliaboscaioli cambiava albero (quello
+  abbattuto, o uno piu' vicino) senza un campo nuovo. Ora il campo va verso
+  la risorsa stessa (goalField parte dal bordo libero piu' vicino alla
+  meta), anche al clic, si ricalcola quando l'albero bersaglio cambia (al
+  piu' ogni 20 passi, solo se ci si arriva) e quando miniera o pietra
+  cambiano; se il civile non ci puo' arrivare resta `scr_move`. Un campo
+  per meta e per passo, condiviso da chi va allo stesso posto.
+- **Posti attorno alla risorsa** (`toWorkSpot`): come i soldati in mischia
+  (melee.js, §7.7), settori di 30 gradi a contatto o 8 px piu' in fuori, un
+  civile per settore. Prima tutti andavano verso il centro della risorsa
+  (oro e pietra: della piu' vicina al civile) e arrivavano alla stessa
+  cella. Il "vicino" (100 px) si misura dal bordo della risorsa, non dal
+  centro (da una miniera grande il centro restava oltre i 100 px anche a
+  contatto).
+- **Cominciare a lavorare**: non piu' "cella libera" (costo < 1000) ma
+  "nessun altro civile addosso". Con i posti due civili lavorano anche
+  nella stessa cella da 32 px; prima il secondo spingeva finche' il primo
+  non se ne andava, e col flow field (senza collisioni) due arrivavano uno
+  sull'altro e lavoravano sovrapposti.
+- **Staccarsi** (`separate`): vicino alla meta, un civile addosso a chi
+  cammina o lavora si allontana da tutti insieme (somma delle direzioni;
+  se il passo entra in un ostacolo prova a 45 e 90 gradi). Prima ci si
+  allontanava da una sola cosa: chi toccava un compagno e la miniera
+  oscillava di 2 px all'infinito, e il compagno lo aspettava per sempre.
+  Sopra chi e' fermo si passa, come prima.
+- **Precedenza** (quella dell'originale: passa chi ha l'ordo piu' basso,
+  l'altro aspetta): resta, ma chi aspetta da 60 passi di fila (1 s)
+  riparte, all'80% della velocita' finche' e' sovrapposto. Sulla strada fra
+  miniera e deposito gli passava sopra un portatore dopo l'altro e il
+  civile con l'ordo piu' alto aspettava per sempre (osservato: quattro
+  compagni diversi in 130 passi). Prove scartate: un limite di 30 passi a
+  piena velocita' (due civili camminavano poi per sempre uno sopra
+  l'altro), spostarsi di lato (uscivano dal percorso e si bloccavano), la
+  precedenza senza limite (30 civili fermi nella prova piu' dura).
+- **Consegna su ordine**: col carico, il clic su un deposito che lo prende
+  (legno, oro, pietra: centro o magazzino; cibo: mulino o centro) e' un
+  ordine di consegna (`depositTo`). Prima era un semplice spostamento verso
+  il centro dell'edificio, e la regola "punto d'arrivo occupato" (azioni 9 e
+  11) spostava la meta di 50 px verso il civile a ogni passo finche' non era
+  fuori dall'edificio: si fermava a 14-200 px, oltre i 10 della consegna.
+  Ora ognuno va a un posto sul bordo del deposito, consegna e si ferma li';
+  se in 10 s non ci riesce si ferma dov'e'. Il cibo al magazzino resta un
+  semplice spostamento (il magazzino non e' un granaio).
+
+Prove (`match`, civili creati attorno al centro, nemici tolti):
+
+| | prima | dopo |
+|---|---|---|
+| 16 civili, 2,5 min: legno / oro / pietra / cibo | 460 / 390 / 160 / 430 | 490 / 450 / 210 / 390 |
+| 27 civili, 5 min: legno / oro / pietra / cibo | 520 / 790 / 430 / 630 | 1650 / 1520 / 650 / 740 |
+| 27 civili: fermi in cammino (eventi) | 26 | 0 |
+| 27 civili: cammino ininterrotto piu' lungo | 17601 passi (mai arrivato) | 2256 |
+| 27 civili: civili al lavoro sovrapposti (campioni) | 862 su 2062 | 0 su 4009 |
+| clic sul deposito con 8 civili carichi (centro / magazzino) | 6 / 4 consegnano | 8 / 7 (l'ottavo porta cibo) |
+| un civile carico, clic sul magazzino | non consegna | consegna |
+
+In `lvl02` (centro creato per la prova, 14 civili, 3,3 min): legno 550 ->
+650, oro 330 -> 490, fermi 11 -> 0, sovrapposti al lavoro 290 -> 0. Il
+cibo (contadini) era gia' a posto e resta com'era. Soak e salvataggi senza
+errori.

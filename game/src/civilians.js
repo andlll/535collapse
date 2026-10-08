@@ -14,6 +14,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
+import { meleeSpot } from "./melee.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -38,6 +39,48 @@ function goTo(p, i, tx, ty, freeCell = false) {
   i.dirox = i.goal_x;
   i.diroy = i.goal_y;
 }
+
+// [Segnalazione dell'autore, §8.19] Il campo verso una risorsa (albero,
+// miniera, pietra) o un deposito: la meta e' la cosa stessa, e goalField
+// parte dalle celle libere del bordo dell'ostacolo vicine alla meta
+// (pathing.js, _seedAround). scr_move cercava invece, in quadrati crescenti
+// attorno al bersaglio, una cella raggiungibile nel campo che il civile
+// aveva gia', e prendeva la prima scorrendo dall'angolo in alto a sinistra:
+// in un bosco anche a 8 celle dall'albero, dall'altra parte. Di li' il
+// civile andava dritto verso l'albero, con le collisioni, attraverso il
+// bosco, e restava fermo o andava avanti e indietro. Un campo per meta e per
+// passo, condiviso in sola lettura da chi va allo stesso posto (come quello
+// del capo negli spostamenti di gruppo). Se il civile da dove e' non ci
+// arriva (risorsa chiusa, l'altra riva) resta scr_move, come prima (o,
+// con fallback false, il campo e la meta di prima: false).
+function fieldTo(w, p, i, tx, ty, fallback = true) {
+  const gx = Math.floor(tx / GRID), gy = Math.floor(ty / GRID), key = gy * p.gw + gx;
+  const old = i.goal_field;
+  const c = w._fieldTo;
+  let f;
+  if (c && c.step === w._stepNo && c.key === key && c.ver === p.solidVer) f = c.f;
+  else {
+    f = p.goalField(tx, ty);
+    w._fieldTo = { step: w._stepNo, key, ver: p.solidVer, f };
+  }
+  const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
+  if (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) {
+    i.goal_field = old;
+    if (fallback) scrMove(p, i, tx, ty);
+    return false;
+  }
+  i.goal_field = f;
+  i.flow_field = p.flowField(f);
+  i.goal_x = gx * GRID;
+  i.goal_y = gy * GRID;
+  return true;
+}
+
+// [§8.19] Carico del civile e deposito che lo prende: legno, oro e pietra al
+// magazzino (ally_magazza: centro o magazzino), cibo al granaio (ally_barn:
+// mulino o centro).
+const carried = (i) => i.wood + i.gold + i.stone + i.food;
+const depositKind = (i) => (i.food > 0 ? "ally_barn" : "ally_magazza");
 
 // --------------------------------------------------------------- civile
 
@@ -157,6 +200,30 @@ function rightClick(i, w) {
   if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; } else i.foodwork = 0;
   if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; } else i.stonework = 0;
   if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+  // [§8.19] verso una risorsa: il campo verso la risorsa cliccata (il campo
+  // del capo, scr_movement_general, va verso una cella trovata come in
+  // scr_move: vedi fieldTo)
+  const kind = i.woodwork === 1 ? "albero" : i.goldwork === 1 ? "miniera_oro" : i.stonework === 1 ? "stone_parent" : null;
+  const r = kind && w.instancePosition(i.dirox, i.diroy, kind);
+  if (r) fieldTo(w, w.path, i, r.x, r.y);
+  // [Segnalazione dell'autore, §8.19] clic su un deposito col carico: va a
+  // consegnare. Prima era un semplice spostamento verso il centro
+  // dell'edificio, e la regola "punto d'arrivo occupato" (azioni 9 e 11)
+  // spostava la meta di 50 px verso il civile a ogni passo finche' non era
+  // fuori dall'edificio: il civile si fermava a 14-200 px, oltre i 10 della
+  // consegna (consegnavano 4 su 8 al magazzino, 6 su 8 al centro). Ora la
+  // meta resta l'edificio, ognuno col campo verso di lui; consegnato, si
+  // ferma li' (depositStep).
+  i.depositTo = null;
+  if (!kind && !i.buildwork && !i.fieldwork && !i.foodwork && carried(i) > 0) {
+    const d = w.instancePosition(i.dirox, i.diroy, depositKind(i));
+    if (d) {
+      i.depositTo = d;
+      i.depositUntil = w._stepNo + 600; // 10 s per consegnare, poi si ferma
+      i.dirox = d.x; i.diroy = d.y;
+      fieldTo(w, w.path, i, d.x, d.y);
+    }
+  }
 }
 
 // Alarm_10 [C]: verso la bandiera dell'edificio che l'ha creato, con il
@@ -165,6 +232,7 @@ function rallyOmino(p) {
   return (i, w) => {
     const g = w.g;
     for (const k of ["stonework", "goldwork", "woodwork", "foodwork", "buildwork"]) if (i[k] === 2) i[k] = 0;
+    i.depositTo = null; // §8.19
     i.dirox = i.flaggox;
     i.diroy = i.flaggoy;
     const at = (n) => w.positionMeeting(i.dirox, i.diroy, n);
@@ -241,6 +309,7 @@ function ominoStep(i, w, p, stop) {
     const t = nearest("albero");
     i.action = 1; i.dirox = t.x; i.diroy = t.y; i.woodwork = 1; i.alarm.set(0, 13);
     i.woodx = i.dirox; i.woody = i.diroy;
+    fieldTo(w, p, i, t.x, t.y); // §8.19: prima restava il campo verso l'albero vecchio
   }
   // azione 7: sprite
   ANIM[OM](i, w);
@@ -255,8 +324,13 @@ function ominoStep(i, w, p, stop) {
     else { if (i.selected === 1) g.sel -= 1; i.selected = 0; }
   }
   // azione 9: punto d'arrivo occupato (solo senza lavoro; non sulla
-  // casella della formazione: §8.11)
-  if (i.action === 1 && !onFormationSlot(i) && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
+  // casella della formazione: §8.11; non verso un deposito: §8.19)
+  if (i.depositTo && !i.depositTo.alive) i.depositTo = null; // §8.19
+  if (i.depositTo && w._stepNo > i.depositUntil) { // §8.19: non ci arriva
+    i.depositTo = null;
+    if (i.action === 1) { i.dirox = i.x; i.diroy = i.y; }
+  }
+  if (i.action === 1 && !onFormationSlot(i) && !i.depositTo && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
       && !w.placeEmpty(i, i.dirox, i.diroy)) {
     if (i.creation === 0) {
       const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
@@ -270,7 +344,7 @@ function ominoStep(i, w, p, stop) {
   // azione 10: ai depositi e ritorno
   depositStep(i, w, p, stop);
   // azione 11: "posto occupato (legacy?)" (non sulla casella: §8.11)
-  if (i.action === 1 && !onFormationSlot(i) && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
+  if (i.action === 1 && !onFormationSlot(i) && !i.depositTo && !i.woodwork && !i.goldwork && !i.foodwork && !i.stonework && !i.buildwork && !i.fieldwork
       && !w.placeFree(i, i.dirox, i.diroy)) {
     if (i.creation !== 1 || !rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-30, 30);
@@ -301,6 +375,60 @@ function ominoStep(i, w, p, stop) {
   }
 }
 
+// [Segnalazione dell'autore, §8.19] Posti attorno alla risorsa, come i
+// soldati in mischia (melee.js, §7.7): settori di 30 gradi, a contatto o 8
+// px piu' in fuori, un civile per settore e nessuno sopra un altro; chi non
+// si avvicina al suo posto ne prova un altro. Prima tutti andavano verso il
+// centro della risorsa: arrivavano alla stessa cella (col flow field anche
+// uno sopra l'altro) e il secondo spingeva contro il primo, o aspettava
+// che la cella si liberasse.
+const WORK = { sep: 30, extras: [0, 8] };
+const WAIT_MAX = 60; // passi di attesa di fila per la precedenza (1 s), ominoMove
+function toWorkSpot(w, i, res) {
+  const s = res && meleeSpot(w, i, res, null, WORK);
+  if (s) mpPotentialStep(w, i, s[0], s[1], i.autospeed);
+}
+
+// [Segnalazione dell'autore, §8.19] Staccarsi dalle unita' addosso: la
+// direzione opposta alla somma delle direzioni verso ciascuna (non verso una
+// sola: chi toccava un compagno e la miniera si allontanava a un passo dal
+// compagno, verso la miniera, e al passo dopo dalla miniera, verso il
+// compagno, 2 px avanti e indietro all'infinito). Se il passo entra in un
+// ostacolo che non e' un'unita' (risorsa, edificio, albero) si prova a 45 e
+// a 90 gradi. false se non c'e' nessuno addosso o nessun passo libero.
+function separate(w, i) {
+  const bb = w.bbox(i);
+  if (!bb) return false;
+  let vx = 0, vy = 0, n = 0;
+  for (const o of w._nearList(bb)) {
+    if (o === i || !o.alive || !o.solid || !w.is(o, "ally_unit") || !w.overlap(i, i.x, i.y, o)) continue;
+    let dx = i.x - o.x, dy = i.y - o.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = Math.cos(a); dy = Math.sin(a); } // uno sull'altro
+    else { dx /= d; dy /= d; }
+    vx += dx; vy += dy; n++;
+  }
+  if (!n) return false;
+  const base = pointDirection(0, 0, vx, vy), step = Math.max(1, i.autospeed);
+  for (const off of [0, 45, -45, 90, -90]) {
+    const a = (base + off + 360) % 360, nx = i.x + lengthdirX(step, a), ny = i.y + lengthdirY(step, a);
+    if (w.placeFreeExcept(i, nx, ny, "ally_unit")) {
+      i.direction = a;
+      w.setPos(i, nx, ny);
+      return true;
+    }
+  }
+  return false;
+}
+
+// La risorsa verso cui va il civile (lavoro 1), o null.
+function workTarget(w, i) {
+  if (i.woodwork === 1) return w.nearest(i.woodx, i.woody, "albero");
+  if (i.goldwork === 1) return w.nearest(i.goldx, i.goldy, "miniera_oro");
+  if (i.stonework === 1) return w.nearest(i.stonex, i.stoney, "stone_parent");
+  return null;
+}
+
 // azione 14 [C]: flow field se lontano (300, o 100 se sta andando a una
 // risorsa) o sovrapposto; da vicino mp_potential_step verso la cosa giusta.
 function ominoMove(i, w, p) {
@@ -311,20 +439,49 @@ function ominoMove(i, w, p) {
     // §6.2 D: senza la destinazione in vista si resta sul percorso (solo per
     // un semplice spostamento: col lavoro la meta e' la risorsa o l'edificio)
     const plain = !i.goldwork && !i.stonework && !i.woodwork && !i.buildwork && !i.repairwork && !i.foodwork && !i.fieldwork;
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
+    // [§8.19] verso una risorsa: 100 px dal suo bordo, non dal suo centro (da
+    // una miniera grande il centro restava oltre i 100 px anche a contatto)
+    const res = workTarget(w, i);
+    const far = res ? w.distanceToInstance(i, res) > 100 : pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach;
+    if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
-        if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
-        else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
-      } else moveFlowField(w, p, i);
+        // [§8.19] vicino alla risorsa o al deposito ci si stacca, tutti e
+        // due, da chi cammina o lavora (separate); sopra chi e' fermo si
+        // passa, come prima (staccandosi, chi trovava un compagno fermo in un
+        // passaggio stretto, accanto al deposito, andava avanti e indietro).
+        // Da lontano la precedenza dell'originale (passa chi ha
+        // l'ordo piu' basso, l'altro aspetta), ma chi aspetta da WAIT_MAX
+        // passi di fila riparte: su una strada trafficata (i portatori che
+        // vanno e vengono dal deposito) gli passava sopra un compagno dopo
+        // l'altro e il civile con l'ordo piu' alto aspettava per sempre.
+        // Finche' resta sovrapposto va all'80%: alla stessa velocita' due
+        // civili con la stessa strada camminavano uno sopra l'altro.
+        if (!far && otro.action !== 0 && separate(w, i)) i.waitN = 0;
+        else if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
+        else if ((i.waitN || 0) >= WAIT_MAX) {
+          const sp = i.autospeed;
+          i.autospeed = sp * 0.8;
+          moveFlowField(w, p, i);
+          i.autospeed = sp;
+        } else { i.waitN = (i.waitN || 0) + 1; i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
+      } else { i.waitN = 0; moveFlowField(w, p, i); }
     } else {
       if (!i.goldwork && !i.stonework && !i.buildwork && !i.repairwork && i.foodwork !== 2 && !i.fieldwork) {
-        mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
-        // §6.1 n.89, solo per un semplice spostamento (non verso il legno)
-        if (!i.woodwork && !i.foodwork) arriveIfBlocked(i);
+        if (i.woodwork === 1) toWorkSpot(w, i, res); // §8.19
+        // [§8.19] consegna su ordine: un posto sul bordo del deposito (chi
+        // ha gia' consegnato si ferma li' accanto e faceva da tappo)
+        else if (i.depositTo) toWorkSpot(w, i, i.depositTo);
+        else mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        // §6.1 n.89, solo per un semplice spostamento (non verso il legno;
+        // non per la consegna su ordine, §8.19: misura i progressi verso il
+        // centro dell'edificio, e chi gli girava attorno per arrivare al suo
+        // posto "arrivava" a 40-60 px; li' vale il limite di depositUntil)
+        if (!i.woodwork && !i.foodwork && !i.depositTo) arriveIfBlocked(i);
       }
-      if (i.goldwork === 1) mp(n("miniera_oro"));
-      if (i.stonework === 1) mp(n("stone_parent"));
+      // [§8.19] al proprio posto attorno alla risorsa (prima: mp_potential_step
+      // verso il centro della miniera o della pietra piu' vicina)
+      if (i.goldwork === 1 || i.stonework === 1) toWorkSpot(w, i, res);
       if (i.buildwork === 1) mp(n("ally_fondamenta", i.buildx, i.buildy));
       if (i.repairwork === 1) mp(n("ally_build", i.repx, i.repy));
       if (i.fieldwork === 1) {
@@ -363,7 +520,7 @@ function depositStep(i, w, p, stop) {
   if (i.action === 2 && i.wood >= 10) {
     if (num("ally_magazza") > 0) {
       toMagazza();
-      generateFields(p, i, i.dirox, i.diroy);
+      fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
       i.alarm.set(0, 13);
       i.woodwork = 2;
     } else { i.action = 0; i.woodwork = 0; i.step = 0; i.speed = 0; g.idle += 1; }
@@ -376,7 +533,7 @@ function depositStep(i, w, p, stop) {
         const t = n("albero");
         i.action = 1; p.free(i); i.dirox = t.x; i.diroy = t.y;
         i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
-        generateFields(p, i, i.dirox, i.diroy);
+        fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
         i.woodwork = 1; i.alarm.set(0, 13); i.woodx = i.dirox; i.woody = i.diroy;
       } else { i.action = 0; i.woodwork = 0; i.step = 0; i.speed = 0; g.idle += 1; }
     }
@@ -385,7 +542,7 @@ function depositStep(i, w, p, stop) {
   if (i.action === 3 && i.gold >= 10) {
     if (num("ally_magazza") > 0) {
       toMagazza();
-      if (i.goldwork !== 2) scrMove(p, i, i.dirox, i.diroy);
+      if (i.goldwork !== 2) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19 (era scr_move)
       i.alarm.set(0, 13);
       i.goldwork = 2;
     } else { stop(i, w); i.woodwork = 0; }
@@ -399,7 +556,7 @@ function depositStep(i, w, p, stop) {
       if (num("miniera_oro") > 0 && visoro) {
         i.action = 1; p.free(i); i.dirox = mine.x; i.diroy = mine.y;
         i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
-        if (i.goldwork !== 1) scrMove(p, i, i.dirox, i.diroy);
+        if (i.goldwork !== 1) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
         i.goldwork = 1; i.alarm.set(0, 13); i.goldx = i.dirox; i.goldy = i.diroy;
       } else { stop(i, w); i.goldwork = 0; }
     }
@@ -409,7 +566,7 @@ function depositStep(i, w, p, stop) {
   if (i.action === 5 && i.stone >= 10) {
     if (num("ally_magazza") > 0) {
       toMagazza();
-      if (i.stonework !== 2) scrMove(p, i, i.dirox, i.diroy);
+      if (i.stonework !== 2) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
       i.alarm.set(0, 13);
       i.stonework = 2;
     } else { stop(i, w); i.goldwork = 0; }
@@ -423,10 +580,16 @@ function depositStep(i, w, p, stop) {
       if (num("stone_parent") > 0 && vispietr) {
         i.action = 1; p.free(i); i.dirox = st.x; i.diroy = st.y;
         i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
-        if (i.stonework !== 1) scrMove(p, i, i.dirox, i.diroy);
+        if (i.stonework !== 1) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
         i.stonework = 1; i.alarm.set(0, 13); i.stonex = i.dirox; i.stoney = i.diroy;
       } else { stop(i, w); i.stonework = 0; }
     }
+  }
+  // [§8.19] consegnato su ordine (clic sul deposito, rightClick): si ferma
+  // dov'e', accanto al deposito (il cibo si scarica in fieldsStep, prima)
+  if (i.depositTo && carried(i) === 0) {
+    i.depositTo = null;
+    if (i.action === 1) { stop(i, w); i.dirox = i.x; i.diroy = i.y; }
   }
 }
 
@@ -436,7 +599,13 @@ function workStep(i, w, p, stop) {
   const g = w.g;
   const n = (name, x = i.x, y = i.y) => w.nearest(x, y, name);
   const num = (name) => w.number(name);
-  const cellFree = () => p.costAt(Math.trunc(i.x / GRID), Math.trunc(i.y / GRID)) < 1000;
+  // [§8.19] non piu' "cella libera" (costo < 1000): con i posti attorno
+  // alla risorsa (toWorkSpot) due civili lavorano anche nella stessa cella
+  // da 32 px, e il secondo restava a spingere finche' il primo non se ne
+  // andava. Basta che nessun altro civile gli stia addosso (col flow field,
+  // senza collisioni, arrivavano uno sull'altro): se no si stacca
+  // (moveFlowField) e cerca posto.
+  const cellFree = () => !w.instancePlace(i, i.x, i.y, OM);
   const begin = (action, tx, ty) => {
     p.occupy(i);
     i.action = action;
@@ -456,6 +625,16 @@ function workStep(i, w, p, stop) {
         begin(2, i.woodx, i.woody);
       } else if (pointDistance(i.x, i.y, i.woodx, i.woody) < 250) {
         const t = n("albero");
+        // [§8.19] l'albero piu' vicino diventa anche la meta, col suo campo
+        // (prima solo woodx: il civile seguiva il campo verso il primo albero
+        // e, finito il campo, andava dritto verso l'altro attraverso il
+        // bosco). Solo se ci si arriva, e al piu' ogni 20 passi.
+        if (pointDistance(t.x, t.y, i.dirox, i.diroy) > 10 && !((i.woodAt || 0) > w._stepNo)) {
+          i.woodAt = w._stepNo + 20;
+          const ox = i.dirox, oy = i.diroy;
+          i.dirox = t.x; i.diroy = t.y;
+          if (!fieldTo(w, p, i, t.x, t.y, false)) { i.dirox = ox; i.diroy = oy; }
+        }
         i.woodx = t.x; i.woody = t.y;
       }
     } else { i.action = 0; i.woodwork = 0; i.step = 0; i.speed = 0; g.idle += 1; }
@@ -466,7 +645,7 @@ function workStep(i, w, p, stop) {
       if (pointDistance(i.woodx, i.woody, t.x, t.y) > 10) {
         const t2 = n("albero");
         i.action = 1; p.free(i); i.dirox = t2.x; i.diroy = t2.y;
-        scrMove(p, i, i.dirox, i.diroy);
+        fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
         i.woodwork = 1; i.alarm.set(0, 13); i.woodx = i.dirox; i.woody = i.diroy;
       }
     }
@@ -483,6 +662,7 @@ function workStep(i, w, p, stop) {
       if (pointDistance(i.goldx, i.goldy, t.x, t.y) > 10) {
         const t2 = n("miniera_oro");
         i.action = 1; p.free(i); i.dirox = t2.x; i.diroy = t2.y;
+        fieldTo(w, p, i, t2.x, t2.y); // §8.19: prima nessun campo nuovo
         i.goldwork = 1; i.alarm.set(0, 13); i.goldx = i.dirox; i.goldy = i.diroy;
       }
     }
@@ -499,6 +679,7 @@ function workStep(i, w, p, stop) {
       if (pointDistance(i.stonex, i.stoney, t.x, t.y) > 10) {
         const t2 = n("stone_parent");
         i.action = 1; p.free(i); i.dirox = t2.x; i.diroy = t2.y;
+        fieldTo(w, p, i, t2.x, t2.y); // §8.19: prima nessun campo nuovo
         i.stonework = 1; i.alarm.set(0, 13); i.stonex = i.dirox; i.stoney = i.diroy;
       }
     }
