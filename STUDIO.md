@@ -14,7 +14,11 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 7 ottobre 2026, quinta sessione (branch
+Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
+`claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
+costi nella scheda del castello, campi di grano a righe con depth -y,
+spighe ed erba decorative a fasce, verdi dell'erba (§8.14–§8.18); roadmap
+dopo la prima uscita (sezione "Roadmap" qui sotto). Quinta sessione (branch
 `claude/menu-fire-crossfade`): menu in colonna, versione 0.2601, campagna,
 fuoco agli edifici, dissolvenze, zoom, gruppi con Shift, barra della vita a pillola e di vetro, punto di raccolta, formazione per ruolo, menu di pausa senza pannello, anelli della pioggia sul fiume (Fase 8, §8.1–§8.13). Quarta
 sessione (`claude/gpu-optimizations-bugs-o3mfcc`): seconda tornata di segnalazioni
@@ -36,7 +40,7 @@ sezione citata.
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
   `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
-  `claude/menu-fire-crossfade`); gli asset generati (`game/assets/`,
+  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -212,6 +216,101 @@ sezione citata.
 - [ ] Prestazioni su una GPU vera (pannello F3 dal PC dell'autore, riga
   "GPU per frame" in Alta e in Bassa),
   Firefox, Safari, schermi ad alta densità.
+
+---
+
+## Roadmap (8 ottobre 2026)
+
+Discussa con l'autore l'8 ottobre 2026, senza implementare niente: dove
+puo' andare il gioco dopo la prima uscita. Ogni tappa usa la precedente;
+l'ordine e' una proposta, le date no. Le decisioni gia' prese sono in
+grassetto.
+
+**Prima uscita**
+- [ ] Livelli della campagna 3–10 (formato delle room: §0.15).
+- [ ] Verifiche su una GPU vera, Firefox, Safari; nome definitivo; GitHub
+  Pages attivo (liste qui sopra).
+
+**R1. Squadre e controllori (la base di tutto il resto)**
+Oggi il giocatore sono gli oggetti `ally_*` e l'IA i `enemy_*`, e i bersagli
+si cercano per famiglia (`nearest(..., "enemy_build")`). L'asimmetria fra
+le unita' e' **solo estetica** (autore): stesse unita', colori diversi.
+- Una **squadra** su ogni istanza; "nemico" diventa "di un'altra squadra".
+  Tocca quasi tutti i comportamenti: prima di cominciare, un conteggio dei
+  punti che dipendono da ally/enemy per stimarlo.
+- Un **controllore** per squadra che da' gli ordini con gli stessi comandi:
+  giocatore locale, IA dei barbari (quella di oggi), IA "romana" (R3),
+  giocatore remoto (R5). Le unita' non sanno chi le comanda.
+- Stato per squadra: risorse, popolazione, selezione e contatori (oggi
+  globali singoli in `g` e `selected`), nebbia.
+- **Colori dal proprio lato**: ognuno vede le proprie unita' ed edifici
+  rossi e quelli dell'avversario blu; la simulazione conosce solo le
+  squadre, il colore lo sceglie il disegno. **Gli sprite blu esistono gia'
+  tutti** (autore), anche di civili ed edifici: vanno solo caricati (oggi
+  l'atlas ha le versioni `b_*` delle sole unita' militari).
+- **Si usa prima nella campagna** (autore): alcuni scenari della campagna con
+  un avversario che gioca come il giocatore, poi la stessa logica si adatta
+  al 1 contro 1. Se quei livelli fanno parte della prima uscita, R1 (e R3)
+  vanno prima dell'uscita: [?] da decidere con l'autore.
+- Verifica: la campagna di oggi deve restare identica (squadra del
+  giocatore contro controllore "barbari"); soak, salvataggi e prove mirate
+  prima e dopo.
+
+**R2. Scenari come dati**
+- Un formato di scenario proprio, con versione (come i salvataggi),
+  indipendente dai file GameMaker da cui oggi derivano le room: istanze
+  (oggetto, x, y, squadra), squadre e controllori, risorse iniziali,
+  condizioni di vittoria e sconfitta, impostazioni dell'IA.
+- **Regole dichiarative, mai codice nei file** (saranno scambiati fra
+  sconosciuti): condizioni e trigger ("distruggi X: vittoria", "al minuto 5
+  un'ondata"). La logica scritta a mano dei livelli (`levels.js`) passa a
+  questo formato un po' alla volta.
+- Validazione rigorosa al caricamento: solo oggetti noti, coordinate dentro
+  la mappa, dimensioni massime.
+- La griglia dei percorsi si ricava gia' dalle istanze (`initCost`): una
+  mappa nuova non chiede altro.
+
+**R3. IA "romana"**
+- L'IA di oggi non raccoglie e non costruisce: i barbari producono a tempo e
+  attaccano a ondate. Un avversario che gioca come il giocatore deve gestire
+  un'economia (civili alle risorse, costruzioni, quando attaccare).
+- Prima a copione (sequenza di costruzione, ondate a tempo; difficolta' con
+  bonus alle risorse), poi migliorata. Serve gia' agli scenari della
+  campagna di R1.
+
+**R4. Schermaglia: giocatore contro PC**
+- **3–4 mappe simmetriche** (autore), scritte nel formato di R2 (a mano o
+  generate da uno script) anche prima dell'editor: collaudano il formato.
+
+**R5. 1 contro 1 online (aggiornamento o espansione dopo l'uscita)**
+- **Host autorevole**: un giocatore simula, l'altro manda i comandi e riceve
+  lo stato (solo cio' che cambia, 10–20 volte al secondo, interpolato). Il
+  lockstep deterministico e' scartato: `Math.random` in tutta la logica, e
+  seno, coseno, `atan2` e `hypot` non danno per forza gli stessi bit in
+  Chrome, Firefox e Safari (desync). Lo stato completo (`snapshot.js`)
+  serve per chi entra e per risincronizzare.
+- WebRTC (DataChannel) fra i due browser; un piccolo servizio di
+  segnalazione; un relay TURN per il 10–20% di reti che non si collegano
+  direttamente (costo di banda), o in alternativa un relay WebSocket.
+- Partita con un codice da condividere o un link di invito.
+- **Prima di tutto**: verificare portale per portale regole e Content
+  Security Policy dell'iframe per le connessioni esterne, e se offrono un
+  SDK per il multiplayer.
+- In partita online niente pausa ne' salvataggi; disconnessioni, ritardo
+  sugli ordini del client (mascherato dal segnalino del clic).
+
+**R6. Editor di mappe e scenari condivisi (espansione)**
+- Un editor nel gioco che produce file di scenario (R2); scambio fra
+  giocatori via file JSON con import/export come i salvataggi (funziona
+  anche nell'iframe dei portali). A quel punto e' soprattutto interfaccia:
+  formato, validazione e caricamento esistono gia'.
+
+**Idee aperte (non decise)**
+- [?] Piu' di due giocatori (2 contro 2, tutti contro tutti) sopra R1 e R5.
+- [?] Replay delle partite: con R1 bastano lo scenario e i comandi registrati,
+  ma la riproduzione ha gli stessi limiti di determinismo del lockstep.
+- [?] Un elenco di scenari della comunita' dentro il gioco (serve un
+  servizio per ospitarli).
 
 ---
 
