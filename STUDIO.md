@@ -4531,3 +4531,14 @@ Tiled per lo spostamento):
   (dialogo_2_5) "Precious workers": senza centro non si creano civili,
   ogni lavoratore perso e' perso per sempre. Sei lingue.
 Soak, salvataggi (lvl02 compreso) e zip senza errori.
+
+### 9.15 Tutorial: via la catapulta di prova
+
+Segnalazione dell'autore: nel tutorial (`match`) all'inizio c'e' una
+catapulta alleata al centro della mappa, lasciata per le prove. C'e' [C]:
+`ally_catapulta` a (3420, 3422) su una mappa di 7000x7000, l'unica della
+room, lontana dalle unita' di partenza (un cavaliere a (3090, 854), due
+civili a nord-ovest). Tolta all'avvio come gli altri oggetti di troppo
+(app.js `DROPPED`). All'avvio: nessuna catapulta, 3 alleati, popolazione
+5 (era 4 e 8). Soak di match: 3 alleati e popolazione 5 come dopo §9.9, ma
+per un altro motivo (allora la catapulta moriva contro la torre nemica).

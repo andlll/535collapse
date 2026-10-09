@@ -270,7 +270,9 @@ async function main() {
   // [Correzioni decise dall'autore, §3.19] n.63: i tre hint_legna piazzati
   // in lvl02 finivano fuori schermo e bloccavano i suggerimenti del
   // livello; n.71: nel menu hint_iniziale era nascosto ma cliccabile.
-  const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"] };
+  // [§9.15] nel tutorial (match) una catapulta alleata da sola al centro
+  // della mappa (3420, 3422): era li' per le prove dell'autore.
+  const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"], match: ["ally_catapulta"] };
   const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
