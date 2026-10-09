@@ -553,7 +553,10 @@ async function main() {
     draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
   };
 
+  let shown = false;
   const render = () => {
+    // il canvas si mostra col primo fotogramma (index.html: prima e' nascosto)
+    if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
     r.beginFrame(cam, clear);
     r.gpuBegin(); // §6.8 G0
     if (!pause.paused) {

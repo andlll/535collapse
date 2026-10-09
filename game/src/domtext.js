@@ -3,16 +3,30 @@
 // n.86] Il font (Seagram tfb) c'e' solo come bitmap nell'atlas `gui`
 // (tools/05_atlas.py), non come TTF: qui si disegnano i suoi glifi in un
 // canvas 2D, senza WebGL, cosi' anche l'avviso "WebGL2 assente" lo usa.
-// Finche' l'immagine non e' pronta resta il testo semplice dell'elemento.
+// Finche' l'immagine non e' pronta l'elemento resta invisibile (prima si
+// vedeva il testo nel font di sistema che a meta' caricamento cambiava);
+// se il font non arriva (errore, o piu' di FONT_WAIT ms) si mostra il
+// testo semplice.
 
 import { plain } from "./draw.js";
 
 let font = null;      // { atlas, img } quando pronto
 let loading = null;
+let gaveUp = false;   // il font non arriva: testo semplice
 const pending = new Map(); // elemento -> [testo, opzioni]
+const FONT_WAIT = 4000;
+
+function flush() {
+  for (const [el, [text, opts]] of pending) {
+    if (font) setDomText(el, text, opts);
+    el.style.visibility = "";
+  }
+  pending.clear();
+}
 
 export function loadDomFont(base = "assets/") {
   if (loading) return loading;
+  const timer = setTimeout(() => { if (!font) { gaveUp = true; flush(); } }, FONT_WAIT);
   loading = (async () => {
     const atlas = await (await fetch(base + "atlas.json")).json();
     const page = atlas.groups.gui.pages[0];
@@ -20,9 +34,7 @@ export function loadDomFont(base = "assets/") {
     img.src = base + page.file;
     await img.decode();
     font = { atlas, img };
-    for (const [el, [text, opts]] of pending) setDomText(el, text, opts);
-    pending.clear();
-  })().catch(() => { /* resta il testo semplice */ });
+  })().catch(() => { gaveUp = true; }).finally(() => { clearTimeout(timer); flush(); });
   return loading;
 }
 
@@ -32,9 +44,14 @@ export function setDomText(el, text, opts = {}) {
   el.setAttribute("aria-label", text);
   if (!font) {
     el.textContent = text;
-    pending.set(el, [text, opts]);
+    // in attesa del font: invisibile (se il font sta arrivando)
+    if (loading && !gaveUp) {
+      el.style.visibility = "hidden";
+      pending.set(el, [text, opts]);
+    } else el.style.visibility = "";
     return;
   }
+  el.style.visibility = "";
   const f = font.atlas.fonts[opts.font || "overdue"];
   const spr = font.atlas.sprites[f.sprite].frames[0].rect;
   const width = opts.width || 600;

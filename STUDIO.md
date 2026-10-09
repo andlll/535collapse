@@ -18,7 +18,8 @@ Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
 script Tiled -> scenario con anteprima e collaudo; maschere di collisione
-che ruotano con lo sprite (Fase 9, §9.1–§9.7).
+che ruotano con lo sprite; schermata di caricamento senza rettangolo nero
+e senza cambio di font (Fase 9, §9.1–§9.8).
 **Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
 gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
@@ -4233,3 +4234,27 @@ gradi ha 1284 celle piene contro 1283 da dritta; costa 53 ms una volta
 (3 ms dritta). Nel gioco (`match`, montagna_3 ruotata di 35 gradi,
 `initCost`) le celle piene seguono la montagna ruotata, col margine che la
 maschera dell'autore ha gia' da dritta. Soak e salvataggi senza errori.
+
+### 9.8 Schermata di caricamento
+
+Segnalazioni dell'autore (9 ottobre 2026):
+
+- **Rettangolo nero in alto a sinistra** per tutto il caricamento: era il
+  canvas del gioco, che prima del primo `resize()` (a caricamento finito)
+  ha la misura predefinita di 300x150 px e, col contesto WebGL senza alpha,
+  e' nero opaco. Ora `#game` parte con `visibility: hidden` (index.html) e
+  `app.js` lo mostra al primo fotogramma disegnato.
+- **Il font che cambia a meta' caricamento**: "Loading…" compariva nel
+  font di sistema e passava al font del gioco quando arrivavano
+  `atlas.json` e la pagina `gui` (`domtext.js`, §6.1 n.86). Ora un elemento
+  che aspetta il font resta invisibile e compare gia' col font del gioco;
+  se il font non arriva (errore, o piu' di 4 s) si mostra il testo
+  semplice. Vale anche per i messaggi del motore (l'avviso "senza
+  accelerazione grafica").
+
+Prova (Chromium, atlas rallentati di 0,7 s, e anche `atlas.json` di 1,5 s):
+a 150, 500, 1200 ms l'angolo in alto a sinistra ha il colore dello sfondo
+(27, 29, 23); la scritta e' invisibile finche' non c'e' il font, poi e'
+subito il canvas col font del gioco (mai il testo di sistema); il canvas
+del gioco si mostra solo dopo il primo fotogramma. Soak e zip dei portali
+senza errori.
