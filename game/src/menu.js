@@ -288,11 +288,14 @@ function drawLoad(i, d, W, H) {
   d.setHalign("left");
 }
 
-// [§9.13] segnalino del livello 3 [dx, dy dal centro della mappa] e freccia
-// [dx, dy, scala x, scala y, angolo]: dal livello 2 (463, 28) verso
-// sinistra e un po' in alto
-const L3_MARK = [-10, 35];
-const L3_ARROW = [245, 28, 3.3, 1.25, 0];
+// [§9.13] segnalino del livello 3 [dx, dy dal centro della mappa], numero
+// [dx, dy] e freccia [dx, dy, scala x, scala y, angolo]: dove li ha
+// disegnati l'autore, subito sopra il livello 2 (463, 28), per lasciare
+// libera la mappa ai livelli che verranno; la freccia del collegamento 1-2
+// appena allungata, dal lato sinistro dei soldati verso il monastero
+const L3_MARK = [403, -81];
+const L3_LABEL = [403, -140];
+const L3_ARROW = [399, 2, 1.2, 1.1, -60];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -315,12 +318,11 @@ function drawCampaign(i, g, d, W, H) {
       d.text(W / 2 + 463, H / 2 + 88, "2.");
     }
     // [§9.13, richiesta dell'autore] il livello 3: il monastero (segnalino
-    // ricavato dallo sprite del corpo, tools/nuovi.py) sulla catena montuosa
-    // al centro della mappa, con la freccia del collegamento 1-2 allungata
+    // ricavato dallo sprite del corpo, tools/nuovi.py) e la freccia dal 2
     if (i.lvlshown > 2) {
       d.sprite("cap_monastero", 0, W / 2 + L3_MARK[0], H / 2 + L3_MARK[1]);
       d.spriteExt("fr_corta", 0, W / 2 + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
-      d.text(W / 2 + L3_MARK[0], H / 2 + L3_MARK[1] + 62, "3.");
+      d.text(W / 2 + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

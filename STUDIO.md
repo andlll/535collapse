@@ -4474,13 +4474,17 @@ segnalino del monastero piccolo come gli altri due (cap1 171x121, cap2
 del collegamento 1-2 (fr_corta).
 - `cap_monastero`: ricavato da `monastero_corpo` (nuovi.json "derivati",
   tools/nuovi.py `derived`, 05 nel gruppo campagna), ritagliato e
-  rimpicciolito a 150x87, origine al centro.
-- menu.js `drawCampaign`: a (-10, +35) dal centro della mappa, sulla parte
-  destra della lunga catena color oliva (che si vede proseguire a
-  sinistra); provato prima a (25, -45), sulla cresta piu' piccola appena
-  sopra, che il segnalino copriva del tutto. La freccia e' `fr_corta`
-  scalata 3,3 x 1,25 a (245, 28): fra il 2 e il 3 ci sono ~355 px contro
-  ~70 fra l'1 e il 2. Numero "3." sotto, come gli altri.
+  rimpicciolito a 120x70, origine al centro.
+- menu.js `drawCampaign` (`L3_MARK`, `L3_LABEL`, `L3_ARROW`): dove l'ha
+  disegnato l'autore su uno screenshot, subito in alto a sinistra del
+  livello 2: segnalino a (403, -81) dal centro della mappa ("al centro"
+  voleva dire in verticale), numero sopra (sotto finiva sulle lance dei
+  soldati), freccia `fr_corta` appena allungata (1,2 x 1,1) e ruotata di
+  -60 gradi, dal fianco sinistro dei soldati verso il monastero. Con l'idea
+  dell'autore che la mappa dovra' contenere dieci livelli: niente frecce
+  stirate attraverso mezza mappa, segnalino rimpicciolito a 120x70.
+  (Prima prova, scartata: al centro della mappa, sulla catena montuosa, con
+  la freccia scalata 3,3.)
 - Nel progetto c'e' anche `cap3` (126x116, un castello con una cupola
   verde), mai usato dal gioco [C]: forse il segnalino pensato per un altro
   livello.
