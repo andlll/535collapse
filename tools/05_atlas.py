@@ -416,6 +416,7 @@ def main():
         for k, (x0, x1, _) in enumerate(d["fette"]):
             extra.append((name + nuovi.SLICE_SEP + str(k), "edifici", nuovi.slice_image(d["image"], x0, x1),
                           tuple(d["origin"])))
+    extra += nuovi.derived()  # [§9.13] segnalini e simili ricavati dagli sprite nuovi
     for name, g, im, (ox, oy) in derived_sprites() + extra:
         bb = im.getchannel("A").getbbox()
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],

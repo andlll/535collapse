@@ -1,7 +1,7 @@
 {
   "formato": "535-nuovi",
   "versione": 1,
-  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi).",
+  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'.",
   "sprites": {
     "monastero_corpo": {
       "origin": "maschera",
@@ -138,6 +138,14 @@
       "solid": false,
       "depth": -9999,
       "kit": false
+    }
+  },
+  "derivati": {
+    "cap_monastero": {
+      "da": "monastero_corpo",
+      "lato": 150,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 3 sulla mappa della campagna (§9.13)"
     }
   }
 }

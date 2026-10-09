@@ -92,3 +92,17 @@ def slice_image(im, x0, x1):
     out = Image.new("RGBA", im.size, (0, 0, 0, 0))
     out.paste(im.crop((x0, 0, x1, im.height)), (x0, 0))
     return out
+
+
+def derived():
+    """[(nome, gruppo, immagine, origine)] degli sprite derivati (nuovi.json
+    "derivati"): uno sprite nuovo rimpicciolito a `lato` px di larghezza,
+    ritagliato sull'alpha, con l'origine al centro."""
+    out = []
+    for name, d in load().get("derivati", {}).items():
+        im = image(d["da"])
+        im = im.crop(im.getchannel("A").getbbox())
+        w = d["lato"]
+        im = im.resize((w, max(1, round(im.height * w / im.width))), Image.LANCZOS)
+        out.append((name, d.get("gruppo", "gui"), im, (im.width // 2, im.height // 2)))
+    return out
