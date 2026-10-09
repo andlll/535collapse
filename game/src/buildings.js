@@ -16,6 +16,7 @@ import { hintOnce } from "./hints.js";
 import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
+import { spawnSlices, destroySlices } from "./scenario.js";
 
 const WHITE = 0xffffff, BLACK = 0, GREEN = 0x008000, RED = 0x0000ff;
 
@@ -456,6 +457,63 @@ export function built(fam, p) {
   };
 }
 
+// [§9.11, richiesta dell'autore] Il monastero del livello 3: come la chiesa
+// (cura le unita' alleate ferite, +3 vita) ma con un'area molto piu' ampia
+// e piu' spesso, e molta piu' vita. Brucia come gli edifici di legno (i
+// nemici gli danno fuoco con le frecce incendiarie, ally_wooden) e i
+// civili lo spengono e lo riparano col legno. Niente rovina: il livello e'
+// perso quando la vita scende sotto la meta' (levels.js, lvl03).
+// Disegnato a fette (scenario.js), come monastero_corpo di cui prende il
+// posto. Il tasto Canc non lo demolisce.
+// ramHit/fireHit: il danno di un colpo d'ariete nemico e di una freccia
+// incendiaria (sugli altri edifici 50 e 5); burn: passi per -1 in fiamme.
+// [Numeri di partenza, da tarare: con 50 a colpo due arieti entrati nel
+// recinto lo portavano a meta' in 17 s.]
+export const MONASTERY = { life: 3000, heal: 3, every: 60, radius: 2000, burn: 10, smoke: 20, ramHit: 20, fireHit: 1 };
+export function monastery(p) {
+  const M = MONASTERY;
+  return {
+    create(i, w) {
+      p.markInstance(i, 1000);
+      Object.assign(i, { life: M.life, slife: M.life, selected: 0, hit: 0, hover: 0, onfire: 0, firestarted: 0,
+                         fondazione: 0, legno: 1, pietra: 0, npresidio: 0, arm: 1, startflagger: 0,
+                         ramHit: M.ramHit, fireHit: M.fireHit });
+      i.depth = -i.y;
+      i.alarm.set(0, M.every); i.alarm.set(1, M.smoke); i.alarm.set(2, M.burn);
+      spawnSlices(i, w, w.objects[i.object].slices);
+      i.persistentDraw = false;
+    },
+    destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); destroySlices(i, w); },
+    alarm0(i, w) {
+      i.alarm.set(0, M.every);
+      for (const u of w.all("ally_unit")) {
+        const diri = pointDirection(u.x, u.y, i.x, i.y);
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(diri * Math.PI / 180))) < M.radius
+            && u.life < u.slife) {
+          w.create("sfx_croce", u.x, u.y);
+          u.life = Math.min(u.slife, u.life + M.heal);
+        }
+      }
+    },
+    alarm1(i, w) {
+      i.alarm.set(1, M.smoke);
+      if (i.onfire === 1) { const f = w.create("nubeqq", i.x + irandomRange(-250, 250), i.y - 100); f.depth = i.depth - 2; }
+    },
+    alarm2(i) { i.alarm.set(2, M.burn); if (i.onfire === 1) i.life -= 1; },
+    step(i, w) {
+      repairEnd(i, w);
+      fireStep(i, w, "monastero");
+    },
+    globalLeftPressed(i) { i.selected = 0; },
+    leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
+    rightReleased(i, w) { if (i.life < i.slife || i.onfire === 1) sendRepair(i, w); },
+    drawEnd(i, w, dr) {
+      if (i.selected === 1 || i.hover === 1 || i.hit === 1 || i.onfire === 1) dr.lifeBar(i.x - 25, i.y - 330, i.life / i.slife, GREEN);
+    },
+    drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_chiesa"); },
+  };
+}
+
 // "fine riparazione" [C, Step di ogni edificio]: l'if senza graffe regge
 // solo `var xpos=x`; `var ypos=y` vale sempre. A edificio danneggiato xpos
 // resta non assegnata, cioe' 0 [I, variabili non inizializzate = 0,
@@ -678,11 +736,12 @@ export function centro(p) {
       if (i.life <= 0) {
         // [Correzione decisa dall'autore §1.6 n.3] -10, quanto ha dato
         g.popcap -= 10;
-        g.gameover = 1;
+        // [§9.11] nel livello 3 si perde solo col monastero
+        if (w.room !== "lvl03") g.gameover = 1;
         const flag = w.nearest(i.x, i.y - 100, "flag_r");
         if (flag) w.destroy(flag);
         w.create("ccruin", i.x, i.y);
-        w.create("gameover_manager", 0, 0);
+        if (w.room !== "lvl03") w.create("gameover_manager", 0, 0);
         w.destroy(i);
         return;
       }

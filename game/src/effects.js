@@ -20,9 +20,12 @@ const P = (w) => w.particles;
 // gocce cadevano di traverso).
 // [§7.9, richiesta dell'autore] gocce 2,5 volte piu' spesse (stessa
 // lunghezza): a 1,5-2,5 px si vedevano poco.
+// [§9.12, richiesta dell'autore] l'originale le colorava di marrone chiaro
+// (part_type_colour_rgb 131-148, 101-119, 74-107 [C]): ora grigio-azzurro
+// chiaro e semitrasparenti, come gli anelli sul fiume.
 const GOCCIA = partType({
   shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0], scale: [1, 2.5],
-  colour: { rgb: [131, 148, 101, 119, 74, 107] }, speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
+  colour: { rgb: [170, 195, 185, 205, 200, 222] }, alpha: [0.55], speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
   life: [200, 300],
 });
 
@@ -64,14 +67,19 @@ function waterMap(w) {
     if (!grid) grid = new Uint8Array(gw * gh);
     const raw = atob(wt.bits), sx = i.image_xscale || 1, sy = i.image_yscale || 1;
     const [ox, oy] = m.origin;
+    // [§9.7] il fiume puo' essere ruotato (image_angle, come in drawSprite)
+    const t = (i.image_angle || 0) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
     // ogni cella della room il cui centro cade su una cella d'acqua dello sprite
-    const x0 = i.x + (0 - ox) * sx, x1 = i.x + (m.size[0] - ox) * sx;
-    const y0 = i.y + (0 - oy) * sy, y1 = i.y + (m.size[1] - oy) * sy;
-    const cx0 = Math.max(0, Math.floor(Math.min(x0, x1) / C)), cx1 = Math.min(gw - 1, Math.floor(Math.max(x0, x1) / C));
-    const cy0 = Math.max(0, Math.floor(Math.min(y0, y1) / C)), cy1 = Math.min(gh - 1, Math.floor(Math.max(y0, y1) / C));
+    const lx0 = (0 - ox) * sx, lx1 = (m.size[0] - ox) * sx, ly0 = (0 - oy) * sy, ly1 = (m.size[1] - oy) * sy;
+    const xs = [lx0 * c + ly0 * s, lx1 * c + ly0 * s, lx0 * c + ly1 * s, lx1 * c + ly1 * s];
+    const ys = [-lx0 * s + ly0 * c, -lx1 * s + ly0 * c, -lx0 * s + ly1 * c, -lx1 * s + ly1 * c];
+    const x0 = i.x + Math.min(...xs), x1 = i.x + Math.max(...xs), y0 = i.y + Math.min(...ys), y1 = i.y + Math.max(...ys);
+    const cx0 = Math.max(0, Math.floor(x0 / C)), cx1 = Math.min(gw - 1, Math.floor(x1 / C));
+    const cy0 = Math.max(0, Math.floor(y0 / C)), cy1 = Math.min(gh - 1, Math.floor(y1 / C));
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
-        const lx = ((cx + 0.5) * C - i.x) / sx + ox, ly = ((cy + 0.5) * C - i.y) / sy + oy;
+        const dx = (cx + 0.5) * C - i.x, dy = (cy + 0.5) * C - i.y;
+        const lx = (dx * c - dy * s) / sx + ox, ly = (dx * s + dy * c) / sy + oy;
         const kx = Math.floor(lx / wt.cell), ky = Math.floor(ly / wt.cell);
         if (kx < 0 || ky < 0 || kx >= wt.w || ky >= wt.h) continue;
         const k = ky * wt.w + kx;
@@ -117,6 +125,10 @@ export const FIRE = {
   o_box1: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   o_box2: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   campo: { back: [-35, 35, -5, 5, 6], front: null, life: [150, 160] },
+  // [§9.11] il monastero (3000 di vita): fiamme su tutto il corpo, e la
+  // loro vita cresce coi danni ma scalata (k), se no a meta' vita
+  // salirebbero per centinaia di passi
+  monastero: { back: [-320, 320, -200, -170, 16], front: [-300, 300, 40, 70, 8], life: [3600, 3650], k: 0.05 },
 };
 
 const fireType = () => partType({
@@ -152,7 +164,8 @@ export function fireStep(i, w, kind) {
     if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    i.fire_part.life = [(F.life[0] - i.life) / 2, (F.life[1] - i.life) / 2];
+    const k = F.k || 1;
+    i.fire_part.life = [(F.life[0] - i.life) / 2 * k, (F.life[1] - i.life) / 2 * k];
   }
 }
 

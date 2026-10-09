@@ -20,7 +20,10 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1d17;
                -webkit-user-select: none; user-select: none; }
-  #game { display: block; position: fixed; inset: 0; cursor: default; }
+  /* nascosto fino al primo fotogramma disegnato (app.js): prima e' un
+     canvas opaco di 300x150 px (la misura predefinita), un rettangolo nero
+     in alto a sinistra per tutto il caricamento */
+  #game { display: block; position: fixed; inset: 0; cursor: default; visibility: hidden; }
   #loading { position: fixed; left: 50%; top: 50%; width: min(60vw, 480px);
              transform: translate(-50%, -50%); color: #e8e2d0;
              font: 16px/1.4 system-ui, sans-serif; text-align: center; }
@@ -44,7 +47,8 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="loading"><div id="loading-text">Loading…</div><div id="loading-track"><div id="loading-bar"></div></div></div>
+<!-- il testo si mostra col font del gioco (domtext.js), non prima -->
+<div id="loading"><div id="loading-text" style="visibility: hidden">Loading…</div><div id="loading-track"><div id="loading-bar"></div></div></div>
 <div id="message" hidden></div>
 <div id="toast" hidden></div>
 <pre id="diag" hidden></pre>

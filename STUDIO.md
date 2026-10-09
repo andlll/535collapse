@@ -14,7 +14,16 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
+Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
+`claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
+categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
+script Tiled -> scenario con anteprima e collaudo; maschere di collisione
+che ruotano con lo sprite; schermata di caricamento senza rettangolo nero
+e senza cambio di font; ordini di attacco e tempi della catapulta; il
+livello 3 (mappa dell'autore) e il monastero, primi sprite nuovi; la
+regia del livello 3, difesa a tempo del monastero (Fase 9, §9.1–§9.11).
+**Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
+gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
 costi nella scheda del castello, campi di grano a righe con depth -y,
 spighe ed erba decorative a fasce, verdi dell'erba, civili che si
@@ -42,7 +51,8 @@ sezione citata.
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
   `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
-  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`); gli asset generati (`game/assets/`,
+  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`, la
+  settima `claude/clever-heisenberg-qbpsex`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -90,6 +100,8 @@ sezione citata.
   in Tiled con gli sprite del gioco**, deciso l'8 ottobre 2026 (vedi
   "Prossima sessione" qui sotto).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] `chiazza01` (§9.6): nell'originale e' chiazza1 o chiazza2 a caso, nel
+  porting sempre chiazza2. Raccomandazione: rimettere il caso.
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
 
@@ -103,7 +115,7 @@ sessioni sono per i livelli 3–10)
   salva nome e posizione di ogni oggetto: la conversione e' esatta.
   Scartate: tavolozza di colori con legenda (non mostra la resa), editor
   dentro il gioco (resta per piu' avanti: roadmap R6).
-- [ ] **Formato scenario** (roadmap R2) in una cartella sua, `scenari/`:
+- [ ] **Formato scenario** (in parte) (roadmap R2) in una cartella sua, `scenari/`:
   `data/rooms/` si cancella e si riscrive da `tools/02_extract.py` a ogni
   giro (e la CI controlla che resti uguale ai file GameMaker), quindi le
   room nuove non possono stare li'. Contenuto minimo: dimensioni, istanze
@@ -111,7 +123,10 @@ sessioni sono per i livelli 3–10)
   versione. Il gioco e `tools/07_scene.py` lo caricano come le room di oggi.
   La logica del livello (obiettivi, dialoghi, ondate) per ora nel codice,
   come lvl01 e lvl02 (`levels.js`).
-- [ ] **Kit per Tiled**, generato da uno script dagli sprite (come l'atlas):
+  **Fatto** (§9.3): il formato, scritto da `tools/12_tiled_import.py`.
+  **Manca**: caricarlo nel gioco e in `tools/07_scene.py` (§9.5).
+- [x] **Kit per Tiled** (§9.1, §9.2: `tools/11_tiled_kit.py`, zip anche
+  come artefatto della CI), generato da uno script dagli sprite (come l'atlas):
   - un tileset "collezione di immagini" per categoria (terreno: 10
     montagne, 7 fiumi, 5 strade, 4 sentieri, chiazze; natura; risorse;
     edifici del giocatore; edifici e unita' nemiche; unita' del giocatore;
@@ -127,13 +142,16 @@ sessioni sono per i livelli 3–10)
     unita' si vedono in una sola posa (nel gioco si animano da sole);
   - un "pennello bosco": una forma su un livello apposito che lo script
     riempie di alberi (per non piazzarne centinaia a mano).
-- [ ] **Script Tiled -> scenario** (`tools/`): legge il file di Tiled
-  (JSON o TMX), converte posizioni e origini, riempie le aree bosco, scrive
+- [x] **Script Tiled -> scenario** (§9.3, `tools/12_tiled_import.py`): legge il file di Tiled
+  (TMX, il formato predefinito di Tiled), converte posizioni e origini, riempie le aree bosco, scrive
   lo scenario; controlla oggetti sconosciuti e coordinate fuori mappa.
-- [ ] **Vista d'insieme per l'autore**: per ogni livello un'immagine della
+- [ ] **Vista d'insieme per l'autore** (in parte) (§9.3: l'immagine della mappa intera
+  c'e', `--anteprima`; mancano gli screenshot dal gioco): per ogni livello un'immagine della
   mappa intera con gli sprite veri e qualche screenshot a zoom normale dal
   gioco; correzioni ridisegnando in Tiled o a parole.
-- [ ] **Collaudo**: ricostruire in Tiled un pezzo di `match` (o tutta la
+- [x] **Collaudo** (§9.4: le tre room intere, istanze identiche; disegno di
+  Tiled uguale a quello con le regole di GameMaker; gli screenshot dal
+  gioco quando il gioco carichera' gli scenari): ricostruire in Tiled un pezzo di `match` (o tutta la
   room, convertita in file di Tiled da uno script) e verificare che lo
   scenario che ne esce, nel gioco, sia identico all'originale (stesse
   istanze, stesse posizioni, screenshot uguali).
@@ -4015,3 +4033,512 @@ In `lvl02` (centro creato per la prova, 14 civili, 3,3 min): legno 550 ->
 650, oro 330 -> 490, fermi 11 -> 0, sovrapposti al lavoro 290 -> 0. Il
 cibo (contadini) era gia' a posto e resta com'era. Soak e salvataggi senza
 errori.
+
+---
+
+## Fase 9 — livelli della campagna in Tiled (9 ottobre 2026)
+
+L'autore ha scaricato Tiled; questa sessione prepara il kit per disegnare
+le mappe dei livelli 3–10 ("Prossima sessione", in cima). Tre file nuovi
+in `tools/`: `tiledkit.py` (categorie, geometria, comune ai due script),
+`11_tiled_kit.py` (il kit) e `12_tiled_import.py` (mappa -> scenario).
+
+### 9.1 Il kit
+
+`python3 tools/11_tiled_kit.py` (dopo `01`, `02`, `07`; 30 s) scrive
+`build/535-tiled-kit/` e lo zip `build/535-tiled-kit.zip` (31 MB); la CI
+lo pubblica come artefatto `535-tiled-kit` di ogni run, cosi' l'autore
+non ha bisogno di Python. Dentro: `LEGGIMI.md` (istruzioni per l'autore),
+`535.tiled-project`, `kit.json`, `tileset/*.tsx`, `img/`, `mappe/`.
+
+- **Nove tileset** "collezione di immagini", 222 tile: terreno (strade,
+  sentieri, prati, erba, fiori), montagne e fiumi (con le chiazze),
+  natura (alberi, erba alta `graa1x`, macchie d'erba e di spighe,
+  aquila), risorse (oro, pietra, rovine), edifici del giocatore (anche
+  mura, porte, cantieri `*_fond`, bandierine), unita' del giocatore,
+  nemici (edifici, casse, unita'), citta' romana (con statue, colonne,
+  fontane), regia (manager, segnali, i 50 suggerimenti e dialoghi). La
+  tile ha come classe il nome dell'oggetto GameMaker e la proprieta'
+  `sprite`. Il catalogo e' in `tiledkit.py` (`category`): ci sono tutti
+  gli oggetti delle room portate (lo script si ferma se ne manca uno) e
+  quelli della stessa famiglia; fuori pulsanti, proiettili, cadaveri,
+  `*_morente`, placer e oggetti di sistema.
+- **Varianti**: per gli oggetti che nel Create scelgono lo sprite a caso
+  (`albero` alb1..alb8, `casa`, `enemy_house`, `chiazza01`) una tile per
+  variante, stessa classe. Nel gioco lo sceglie ancora il gioco; lo
+  scenario ricorda la variante scelta (`sprite`) per quando servira'.
+- **Sprite del gioco**, non del progetto, dove sono diversi: `campo` e'
+  `campo_grano` (§8.16), le macchie `burst_erba1`, `burst_grano1`,
+  `chiazzaparticellare` (particelle senza sprite) sono un'immagine della
+  macchia disegnata con le stesse particelle di `effects.js` (ellisse
+  1000x600 gaussiana, colori, dimensioni, alpha); le unita' sono il primo
+  fotogramma dello sprite dell'oggetto. I segnali di regia sono lo sprite
+  dell'editor GameMaker (o un quadrato) col nome dell'oggetto sotto.
+- **Mappe**: `mappe/nuova.tmx` (6000x6000, griglia di 50 px, un manager,
+  la vista iniziale) e le room `match`, `lvl01`, `lvl02` convertite
+  (esempi per l'autore e collaudo). `--nuova lvl03 4000x6000` ne aggiunge
+  una vuota della misura data. Livelli dal basso: `sfondo` (livello
+  immagine ripetuto, lo sfondo della room), `suolo`, `erba e spighe`,
+  `terreno` (montagne, fiumi), `oggetti`, `boschi`, `regia`; `terreno` e
+  `oggetti` "dall'alto in basso". I livelli sono solo per lavorare comodi:
+  lo script li ignora (tranne `boschi`) e il gioco ordina per depth.
+  Differenza nota: in Tiled `terreno` sta sempre sotto `oggetti`, nel
+  gioco montagne e fiumi (depth -y, origine in alto a sinistra) si
+  mescolano per y; si vede solo per un oggetto proprio sul bordo alto di
+  una montagna o di un fiume. Le macchie d'erba in Tiled stanno sotto
+  tutto; nel gioco a fasce (§8.18).
+- **Progetto di Tiled** (`535.tiled-project`): la cartella del kit e la
+  classe `bosco` (membri `distanza` 90 e `oggetto` albero).
+
+### 9.2 Origini e ordine di disegno
+
+Tiled ancora un oggetto-tile a un punto del riquadro dell'immagine
+(`objectalignment` del tileset, in basso a sinistra di norma) e con
+l'ordine "dall'alto in basso" ordina per la y di quel punto; GameMaker
+mette l'istanza nell'origine dello sprite e la depth -y ordina per la y
+dell'origine. Con l'ancora in basso a sinistra l'anteprima di Tiled
+avrebbe sbagliato l'ordine (un albero ha l'origine 47 px sopra il fondo
+dell'immagine) e ruotato attorno all'angolo. Quindi **ogni immagine del
+kit e' ritagliata sull'alpha e allargata con bordo trasparente finche'
+l'origine sta nel centro esatto**, e i tileset sono allineati al centro:
+in Tiled la posizione dell'oggetto e' la x, y dell'istanza, l'ordine e'
+quello del gioco, rotazione, scala e ribaltamento girano attorno
+all'origine come in GameMaker.
+
+Eccezione: montagne, fiumi e chiazze hanno l'origine in 0,0 [C] e sono
+grandi (montagna10 2342x1461): al centro raddoppierebbero larghezza e
+altezza (55 MB di memoria in Tiled per la sola montagna10). Stanno nel
+tileset `montagne_fiumi`, allineato in alto a sinistra, che e' ancora
+l'origine. In tutto le immagini occupano 217 MB nella memoria di Tiled.
+
+La conversione (`tiledkit.py`, `to_tiled`/`from_tiled`) e' comunque
+generale: per un allineamento (ax, ay) qualsiasi, ribaltamenti
+(scala negativa) e rotazione (Tiled oraria = `image_angle` di GameMaker
+col segno cambiato, verificato su `game/src/sprites.js` `drawSprite`).
+
+### 9.3 Mappa -> scenario
+
+`python3 tools/12_tiled_import.py mappa.tmx [--anteprima [scala]]` legge
+la mappa e i tileset (per nome del file `.tsx`, che devono essere quelli
+del kit), riconosce ogni oggetto dalla tile, riporta la geometria
+all'istanza e scrive `scenari/<nome del file>.json`:
+
+```
+{"format": "535-scenario", "version": 1, "name", "width", "height",
+ "background", "colour", "view": {x, y, w, h},
+ "instances": [{"object", "x", "y", "scale_x", "scale_y", "rotation", "sprite"?}]}
+```
+
+- Ordine delle istanze: l'id degli oggetti di Tiled (l'ordine in cui sono
+  stati messi), come l'ordine di creazione di una room.
+- **Boschi**: ogni rettangolo, ellisse o poligono (anche ruotato) del
+  livello `boschi` diventa alberi, campionamento di Poisson (Bridson) a
+  `distanza` px (predefinita 90: i boschi di `match` hanno la distanza
+  dal vicino piu' vicino a 74 / 107 / 136 px al 10°, 50°, 90° percentile),
+  seme fisso (nome della mappa e id della forma: la stessa forma da' gli
+  stessi alberi). Gli alberi prendono il posto della forma nell'ordine.
+- Vista iniziale: il rettangolo di classe `vista` nel livello `regia`.
+- Avvisi: tile o tileset che non vengono dal kit, classe cambiata a mano,
+  forme fuori da `boschi`, manager mancante o doppio, vista mancante;
+  unita', edifici e risorse con l'origine fuori dalla mappa, il resto solo
+  se non se ne vede niente (l'autore mette montagne e chiazze a cavallo
+  del bordo apposta). Nelle room dell'autore segnala 3 avvisi in `lvl01`
+  (due mura con l'origine a x -150, una casa della citta' fuori mappa) e 4
+  in `lvl02` (un muro sotto il bordo, tre `hint_legna` fuori dai 3200x8000
+  della room, a x 6825 e 4871 e a y 8731 [C]).
+- `--anteprima`: `build/anteprime/<nome>.png`, la mappa intera con le
+  immagini del kit nell'ordine di disegno del gioco (suolo cotto sotto,
+  poi depth decrescente, a parita' ordine di creazione) e i boschi
+  riempiti; e' la "vista d'insieme" per l'autore.
+
+### 9.4 Collaudo
+
+- `12_tiled_import.py --check`: `match`, `lvl01`, `lvl02` -> kit -> scenario
+  danno le stesse istanze di `data/rooms/` (oggetto, x, y esatti, scala a
+  1e-4, rotazione a 1e-3, nello stesso ordine), stessa vista, misure,
+  sfondo e colore: 460, 564 e 475 istanze identiche. Comprese le scale
+  negative e le rotazioni di strade e sentieri (20 istanze in `match`, 10
+  in `lvl02`). E' nella CI.
+- Che Tiled disegni dove disegna il gioco: Tiled 1.8.2 (Ubuntu) con
+  `tmxrasterizer` legge mappe e tileset del kit; il suo disegno e' stato
+  confrontato con quello dell'anteprima (geometria di GameMaker, non quella
+  del kit) nello stesso ordine. Una mappa di prova a scala 1 con case,
+  un guerriero, una strada, il castello, una montagna, una chiazza e un
+  fiume, ribaltati, scalati e ruotati in entrambi gli allineamenti:
+  errore medio 0,5/255, lo 0,1% dei pixel oltre 60/255 (bordi
+  ricampionati). Le tre room a scala 0,15: le differenze sono solo sui
+  bordi (ricampionamento) e sul rettangolo della vista, che Tiled colora.
+- Pennello bosco: rettangolo, ellisse e poligono ruotato riempiti (286
+  alberi a 90 e 70 px, 68 `albero_fake` a 130 px), dentro le forme.
+- Non provato: Tiled nella versione dell'autore (1.11 o successiva) a
+  mano, col mouse. I file sono nel formato 1.10 (`type` per la classe,
+  quello che Tiled 1.10+ scrive e 1.8 legge).
+
+### 9.5 Cosa manca
+
+- Il gioco non carica ancora gli scenari: servono `tools/07_scene.py`
+  (scenari -> `game/assets/rooms/`), il nome nella lista delle room
+  (`app.js` `ROOMS`, `menu.js`, `save.js` `SAVE_ROOMS`) e la regia del
+  livello (`levels.js`, `manager` Create per `room==...`). Da fare col
+  livello 3, quando ci sara' la prima mappa e l'idea del livello.
+- Risorse iniziali e logica del livello: per ora nel codice (§0.15).
+- Screenshot dal gioco per la vista d'insieme, quando il gioco carichera'
+  gli scenari.
+
+### 9.6 Trovato per strada
+
+- `chiazza01` [C]: il Create sceglie `tipo=irandom_range(1,2)` e solo col 2
+  passa a chiazza2; con l'1 resta lo sprite dell'oggetto, chiazza1.
+  `tools/07_scene.py` vede un solo `sprite_index=` e da' a tutte chiazza2:
+  nel porting le chiazze sono sempre chiazza2. Nel kit ci sono tutte e
+  due. Da chiedere all'autore (raccomandazione: rimettere il caso, cambia
+  l'aspetto delle room esistenti).
+- `albero_debug` sta in `match` (una istanza) e non ha comportamento nel
+  porting (non e' fra gli oggetti registrati in `app.js`): nel kit c'e' solo perche' il collaudo
+  ritrovi tutte le istanze.
+
+### 9.7 Maschere ruotate
+
+Richiesta dell'autore (9 ottobre 2026), dopo il kit: poter ruotare in
+Tiled anche montagne, fiumi ed edifici. Il porting ruotava solo il
+disegno (`drawSprite`): bbox e collisioni (`world.js` `_bboxInto`,
+`_spans`) seguivano scala e ribaltamento ma non `image_angle`. In
+GameMaker la maschera ruota con lo sprite [I, runner GMS].
+
+- `_bboxInto`: con `image_angle` (non multiplo di 360) la scatola e'
+  quella dei quattro angoli della maschera girati attorno all'origine,
+  con la stessa rotazione di `drawSprite`.
+- `_spans` -> `_spansRot`: ogni pixel della riga (fra gli estremi chiesti)
+  si riporta nella maschera non ruotata (rotazione inversa, poi la scala)
+  e se ne prova il centro: precisa (righe di intervalli), rettangolo,
+  ellisse, rombo; i pixel pieni consecutivi fanno un intervallo. Tutte le
+  ricerche passano di li' (place_free, instance_place, collision_rectangle,
+  instance_position, la griglia del pathfinding, gli eventi di collisione).
+  `overlap` non prende piu' la scorciatoia "due rettangoli" se uno dei due
+  e' ruotato.
+- Senza rotazione il codice e' quello di prima (stessi risultati).
+- Anche la mappa dell'acqua per gli anelli della pioggia (`effects.js`
+  `waterMap`) segue la rotazione del fiume.
+- Cambia anche per chi ruotava gia': frecce (`image_angle = direction`),
+  proiettili delle macchine che girano su se stessi, l'albero ruotato di
+  -2 gradi e i `directioner` di `lvl02`. Ora come in GameMaker.
+
+Prove: `game/test/rotmask.test.mjs` (muro ruotato di 90: scatola, punti,
+place_free; rettangolo, ellisse e "L" precisa ruotati, scalati e
+ribaltati: ogni punto pieno della maschera riportato nella room e'
+pieno, il buco della "L" resta vuoto; collision_rectangle e overlap a
+45 gradi). Con le maschere vere (montagna_3 a 30 gradi, montagna_10 a
+-75, fiume_2 a 140 ribaltato e schiacciato, casa, castello a 200): su
+40.000 punti a caso la forma ruotata e quella dritta nel punto
+corrispondente differiscono al piu' nello 0,1% (bordi: centro del pixel
+contro intervallo esatto). La griglia del pathfinding di montagna_10 a 30
+gradi ha 1284 celle piene contro 1283 da dritta; costa 53 ms una volta
+(3 ms dritta). Nel gioco (`match`, montagna_3 ruotata di 35 gradi,
+`initCost`) le celle piene seguono la montagna ruotata, col margine che la
+maschera dell'autore ha gia' da dritta. Soak e salvataggi senza errori.
+
+### 9.8 Schermata di caricamento
+
+Segnalazioni dell'autore (9 ottobre 2026):
+
+- **Rettangolo nero in alto a sinistra** per tutto il caricamento: era il
+  canvas del gioco, che prima del primo `resize()` (a caricamento finito)
+  ha la misura predefinita di 300x150 px e, col contesto WebGL senza alpha,
+  e' nero opaco. Ora `#game` parte con `visibility: hidden` (index.html) e
+  `app.js` lo mostra al primo fotogramma disegnato.
+- **Il font che cambia a meta' caricamento**: "Loading…" compariva nel
+  font di sistema e passava al font del gioco quando arrivavano
+  `atlas.json` e la pagina `gui` (`domtext.js`, §6.1 n.86). Ora un elemento
+  che aspetta il font resta invisibile e compare gia' col font del gioco;
+  se il font non arriva (errore, o piu' di 4 s) si mostra il testo
+  semplice. Vale anche per i messaggi del motore (l'avviso "senza
+  accelerazione grafica").
+
+Prova (Chromium, atlas rallentati di 0,7 s, e anche `atlas.json` di 1,5 s):
+a 150, 500, 1200 ms l'angolo in alto a sinistra ha il colore dello sfondo
+(27, 29, 23); la scritta e' invisibile finche' non c'e' il font, poi e'
+subito il canvas col font del gioco (mai il testo di sistema); il canvas
+del gioco si mostra solo dopo il primo fotogramma. Soak e zip dei portali
+senza errori.
+
+### 9.9 Catapulta: ordini di attacco e tempi
+
+Segnalazione dell'autore (9 ottobre 2026): la catapulta spesso ignora gli
+ordini di attacco, o resta ferma e tira dopo troppo tempo; e dopo un tiro
+"ricarica" troppo in fretta.
+
+**Ordini ignorati** [C, `ally_catapulta` Mouse_GlobalRightReleased]: il
+clic destro su un nemico valeva solo con la catapulta carica (`loaded=1`),
+non gia' in mira (`action!=2`) e col punto a 300-850 px. Con un edificio
+nemico a tiro la catapulta e' sempre in mira automatica (action 2) o in
+ricarica (action 3): l'ordine su un altro bersaglio si perdeva sempre.
+Misurato (catapulta con l'edificio A a 520 px, ordine sull'edificio B a
+700 px): tre tiri ad A finche' A non cade, solo poi B; ordinato a meta'
+ciclo, idem. Con B a 1300 px non succedeva niente. Ora (`siege.js`
+`followOrder`) l'ordine resta finche' il bersaglio c'e', col punto
+cliccato relativo al bersaglio (segue un'unita' che si muove):
+- in mira col sasso non ancora partito: la mira passa al bersaglio nuovo;
+- in lancio o in ricarica: aspetta e tira appena carica;
+- oltre 850 px: si avvicina (meta aggiornata se il bersaglio si sposta di
+  100 px) e tira appena e' a tiro;
+- sotto 300 px: si ferma e cerca un punto da cui tirare (§6.7, al piu' una
+  ricerca al secondo); se non c'e', l'ordine si lascia;
+- tira a quel bersaglio un colpo dopo l'altro (prima: un colpo e poi il
+  tiro automatico all'edificio piu' vicino, §6.7); distrutto il bersaglio
+  torna il tiro automatico; un ordine di spostamento cancella l'ordine.
+Al posto di `pendingShot` (§6.7), che copriva solo il caso "troppo vicino".
+
+**Tempi** [C, Alarm_2 e Alarm_4]: 50 passi fermi prima di caricare il
+lancio, 10 + 10 + 45 di lancio, ricarica in cinque fasi da 13 (65): un
+tiro ogni 180 passi, ma il sasso vola 1-3 s, e il tiro dopo partiva poco
+dopo l'arrivo del primo. Ora `AIM` 15 e `RELOAD_STEP` 32: dall'ordine al
+lancio 25 passi invece di 60, un tiro ogni 240 passi (4 s) invece di 180.
+Vale anche per la catapulta nemica (stesse funzioni).
+
+Misure (stessa prova, passi dall'ordine al lancio):
+
+| caso | prima | dopo |
+|---|---|---|
+| ordine su B a tiro, A piu' vicino | A 58, A 238, A 418, B 598 | B 23, B 263, B 503 |
+| ordine su B durante il ciclo su A | A, A, B 478 | A (gia' in volo), B 143 |
+| B a 1300 px | nessun tiro | si avvicina di ~460 px, B 336 |
+| B a 200 px | (§6.7) | arretra, B 136 |
+| ordine su B poi spostamento | — | nessun tiro a B |
+
+Conseguenza sul bilanciamento: in `match` la catapulta di partenza duella
+con una torre nemica; prima distruggeva gli edifici a tiro e si spostava
+con 22 di vita, ora piu' lenta resta piu' a lungo e muore verso il passo
+2250 (soak: alleati 3 e pop 5 invece di 4 e 8 dopo 3000 passi). Se l'autore
+preferisce il ritmo di prima, con la mira veloce: `RELOAD_STEP` 19 (un
+tiro ogni 175 passi). Soak e salvataggi senza errori.
+
+### 9.10 Livello 3 e il monastero: sprite nuovi
+
+L'autore ha caricato su `main` la mappa del livello 3 (`lvl03.tmx`, il
+monastero) e quattro sprite nuovi con le maschere di collisione:
+`monastero_corpo`, `_muro`, `_casetta` (con `_mask.png`) e
+`monastero_piazza` (senza: si cammina sopra). Richiesta: la piazza sotto a
+tutto (depth -1 o -2), il resto -y come gli edifici.
+
+**Contenuti nuovi** (`nuovi/`, versionato; `tools/nuovi.py`): gli sprite in
+`nuovi/sprites/`, oggetti e regole in `nuovi/nuovi.json`. Non passano da
+`gmx/` e `data/` (si rigenerano dagli zip). Li leggono 05 (atlas, gruppo
+edifici), 06 (maschere precise dai `_mask.png`), 07 (oggetti) e 11 (kit,
+tileset `nuovi`, in fondo all'elenco).
+- Origine: "maschera" = baricentro dei pixel della maschera. Negli edifici
+  dell'originale l'origine sta dentro la maschera a circa il 60-75% della
+  sua altezza (casa 0,70, caserma 0,62, castello 0,72, chiesa 0,74): la
+  base dell'edificio.
+- Oggetti: corpo, muro e casetta come gli edifici della citta' romana
+  (`natural_parent`, solidi, depth -y: ostacoli del pathfinding) e fermano
+  le frecce (`blocksShots`, come `ocr_*`); la piazza depth -2, senza
+  maschera.
+- **Fette**: il muro di cinta e' lungo e in diagonale e chiude un cortile;
+  con una sola depth -y o chi sta nel cortile si disegna sopra il muro, o
+  chi sta fuori davanti a un braccio si disegna sotto. Muro e corpo sono
+  quindi disegnati a fette verticali di 64 px (05 le ritaglia,
+  `<sprite>#<n>`), ognuna un'istanza `__fetta` ferma, senza maschera, con
+  la depth del bordo anteriore della maschera nella sua colonna (07:
+  `slices`; `app.js` le crea nel Create dell'oggetto, che tiene la
+  maschera intera e non si disegna). Corretto per chiunque stia fuori
+  dalla base in quella colonna (davanti: dopo; dietro: prima).
+- Nel gioco (`?room=lvl03`, `fogville` 0): monastero intero, senza
+  giunture fra le fette; un guerriero nel cortile e' coperto dal muro, due
+  fuori (davanti al muro e al braccio destro) gli passano davanti, uno
+  dietro il corpo resta nascosto.
+
+**La mappa**: disegnata col kit della prima versione, piu' le quattro tile
+aggiunte a mano in fondo a `citta` (ancorate al centro dell'immagine,
+riconosciute dalle misure). Convertita una volta (con il kit di allora,
+rigenerato dagli strumenti del commit ab24ca4) in `mappe/lvl03.tmx` col kit
+nuovo; riletta da' le stesse 399 istanze. Nella conversione:
+- 52 `albero_debug` (oggetto di prova dell'originale, senza comportamento
+  nel porting, finito nel tileset `natura` con le stesse immagini degli
+  alberi) -> 35 `albero` e 17 `albero_fake`, secondo l'immagine scelta
+  (alb* o alb*_F). Nel kit `albero_debug` ora sta in `regia`, con
+  l'etichetta.
+- una capsula vuota (senza misure) nel livello "erba e spighe": tolta.
+- gli oggetti erano quasi tutti nel livello "erba e spighe" e in "regia":
+  rimessi nei livelli del kit (i livelli non contano per il gioco).
+- Avviso rimasto: un'aquila (`aquila_01`) a y 6224, fuori dalla mappa
+  di 6000.
+**Regola da qui**: tile e tileset nuovi solo in fondo, cosi' le mappe gia'
+disegnate restano valide; gli sprite nuovi li aggiungo io in `nuovi/`.
+
+**Il gioco carica gli scenari** (§9.5): 07 scrive `game/assets/rooms/` anche
+da `scenari/*.json` (vista dello scenario, sfondo, `speed` 60); `lvl03` e'
+fra le room di `app.js` (gruppi core e gioco). Manca ancora la regia del
+livello (obiettivi, nemici, dialoghi, risorse), la campagna (menu) e lo
+slot dei salvataggi nel menu (`SAVE_ROOMS`): sono la prossima tappa.
+CI: gli scenari devono venire dalle mappe di `mappe/` (rigenerati e
+confrontati); soak e salvataggi anche su `lvl03` (3000 passi senza errori;
+salvataggio 2,5 MB, ripristino identico).
+
+### 9.11 Livello 3: la difesa del monastero
+
+L'idea dell'autore (9 ottobre 2026): difesa a tempo. I soldati partono in
+basso a destra; seguendo la strada arrivano a un villaggio che passa al
+giocatore; un abitante avverte che gli invasori vogliono prendere il
+monastero a nord, vicino alle montagne; i soldati decidono di difenderlo;
+la nebbia sul monastero si toglie, la vista ci si sposta e parte il conto
+alla rovescia. Le ondate arrivano dal punto di partenza (arieti contro le
+mura, soldati contro i difensori), sempre piu' grosse; intanto le caserme e
+le stalle della base nemica attaccano il villaggio, e distruggerle li ferma
+(lo dice un dialogo dopo il primo attacco). Il monastero cura come la
+chiesa, molto piu' in largo e piu' spesso; icona della chiesa, molta piu'
+vita. Decisioni dell'autore alle domande: **si perde quando il monastero
+scende sotto meta' vita** (cosi' lo si puo' riparare); **gli arieti
+sfondano la cinta esterna** (mura, porta, torri: pezzi normali), il muro
+del cortile resta un ostacolo; **il villaggio compare all'arrivo**; numeri
+di partenza proposti da me, da tarare giocando. Parere dato all'autore: la
+sconfitta al primo colpo era troppo punitiva; il monastero di pietra non
+brucerebbe (va deciso che brucia); due casse nemiche (`o_box1`, `o_box2`)
+stanno nel villaggio: sono edifici nemici, se erano decorazione vanno
+cambiate (in sospeso).
+
+**Gruppi della mappa** (`scenario.js`, 12, 07): un livello di Tiled
+`gruppo <nome>` mette il gruppo nell'ottavo campo dell'istanza; la regia
+dice cosa farne (`GROUPS`): "nascosto" (non c'e' finche' non lo si crea,
+in `g.heldGroups`, salvato coi globali) o "neutrale" (c'e' come
+`__neutrale`: stesso sprite e maschera, fette comprese, ostacolo
+`natural_parent` di nessuno; `activateGroup` lo sostituisce con l'oggetto
+vero e libera le celle). In `lvl03`: `gruppo citta` (centro, 3 case,
+chiesa, 2 torri) nascosto, `gruppo monastero` (2 mura, 6 mura verticali,
+porta, 2 torri) neutrale; spostati io nella mappa per zona.
+
+**Il monastero** (`buildings.js` `monastery`, oggetto `monastero` in
+`nuovi.json`, non nel kit): alla rivelazione prende il posto di
+`monastero_corpo` (stesso sprite, a fette). Edificio alleato di legno
+(`ally_wooden`: i nemici lo incendiano, i civili lo spengono e lo
+riparano col legno), 3000 di vita, cura +3 ogni 60 passi entro 2000 px
+(la chiesa: ogni 180 entro 800), vista ampia (fog.js: toglie la nebbia
+sul complesso), fiamme su tutto il corpo con la vita delle particelle
+scalata (`FIRE.monastero.k`), barra della vita sopra il tetto, scheda con
+`ico_chiesa`, niente demolizione col tasto Canc. Danni suoi
+(`MONASTERY`): colpo d'ariete 20 (agli altri edifici 50), freccia
+incendiaria 1 e fuoco, in fiamme -1 ogni 10 passi. Misurato prima di
+tararli: con 50 a colpo due arieti entrati nel recinto lo portavano a meta'
+in 17 s; le frecce incendiarie non lo toccavano (mancava in `FIRE_HIT`).
+
+**Regia** (`levels.js` `enemyManagerLv3`, tabella `LV3`): fase 0 marcia
+(arrivo: un'unita' entro 700 px dal centro del villaggio -> il gruppo
+`citta`, 3 civili, +200 cibo e legno, dialoghi 3_1-3_3), fase 1 (chiuso il
+3_3: rivelazione, vista che scivola in 90 passi, dialogo 3_4), fase 2
+difesa di 15 minuti. Ondate (dalla rivelazione): 1 min 2 guerrieri + 2
+picchieri + 1 ariete, poi ogni 2:30 fino a 13:30 (5 guerrieri, 4
+picchieri, 3 arcieri, 2 cavalieri, 3 arieti, 1 catapulta); nascono al
+punto di partenza e marciano col flow field verso la porta; le macchine
+ferme ripartono verso l'edificio alleato piu' vicino alla porta; i fanti
+verso il soldato alleato piu' vicino (entro 1500 px) o, se non c'e' e il
+recinto e' raggiungibile (cinta sfondata), fra la cinta e il muro del
+cortile, dove incendiano il monastero da soli (enemies.js, 400 px).
+Attacchi al villaggio: dal minuto 4, ogni 2, ogni caserma crea 1-3 fanti e
+ogni stalla 1-3 cavalieri, verso l'edificio alleato piu' vicino al
+villaggio; 40 s dopo il primo, il dialogo 3_5 e l'obiettivo "distruggi
+caserme e stalle". I nemici gia' sulla mappa difendono dove sono. Il
+centro distrutto in `lvl03` non e' sconfitta. Obiettivi (endgame.js):
+strada, conto alla rovescia, vita del monastero, base nemica. Vittoria allo
+zero col monastero sopra meta': codice 9 3 0 7 6, sblocca il 4.
+Campagna (menu), slot dei salvataggi, testi in sei lingue.
+
+**Ariete nemico** (siege.js): colpisce anche da fermo, bloccato a meno di
+48 px dall'edificio alleato piu' vicino. Col flow field "largo" (§8.14) a
+una porta chiusa per i nemici restava a 35-37 px e non colpiva mai (a 10
+px dall'originale).
+
+Prove (Chromium, `window.__game`, soldati spostati al villaggio):
+partenza senza centro, 11 neutrali, `monastero_corpo`; arrivo: centro, 3
+case, chiesa, 2 torri, 3 civili, dialogo 3_1; rivelazione: monastero 3000,
+neutrali 0, cinta del giocatore, vista sul monastero. La prima ondata:
+l'ariete abbatte una torre, la porta (600 -> 0), poi le mura; i fanti
+entrano e incendiano il monastero. Senza difendere: sconfitta a 5,3 minuti
+(fuoco dal minuto 2,5 e arieti). Col monastero con vita enorme: vittoria a
+15 minuti. Salvataggio e ripristino identici prima dell'arrivo (gruppi
+tenuti da parte) e a meta' difesa. Soak, salvataggi e zip senza errori.
+Da fare: giocarlo per tarare i numeri; le due casse nel villaggio.
+
+### 9.12 Pioggia grigio-azzurra
+
+Segnalazione dell'autore (9 ottobre 2026): la pioggia sembra marrone. Lo
+e' [C]: manager Alarm_4, `part_type_colour_rgb(goccia, 131, 148, 101, 119,
+74, 107)`, un marrone chiaro, portato fedelmente (effects.js `GOCCIA`). Ora
+grigio-azzurro chiaro (170-195, 185-205, 200-222) e alpha 0,55, come gli
+anelli sul fiume (§8.13). Confronto in `match` con la pioggia forzata: le
+striature rossicce diventano gocce chiare che si staccano dal verde.
+
+### 9.13 Campagna: il segnalino del livello 3
+
+Richiesta dell'autore: sulla mappa della campagna il livello 3 con un
+segnalino del monastero piccolo come gli altri due (cap1 171x121, cap2
+86x116), sulla catena montuosa al centro, collegato al 2 con la freccia
+del collegamento 1-2 (fr_corta).
+- `cap_monastero`: ricavato da `monastero_corpo` (nuovi.json "derivati",
+  tools/nuovi.py `derived`, 05 nel gruppo campagna), ritagliato e
+  rimpicciolito a 120x70, origine al centro.
+- menu.js `drawCampaign` (`L3_MARK`, `L3_LABEL`, `L3_ARROW`): dove l'ha
+  disegnato l'autore su uno screenshot, subito in alto a sinistra del
+  livello 2: segnalino a (403, -81) dal centro della mappa ("al centro"
+  voleva dire in verticale), numero sopra (sotto finiva sulle lance dei
+  soldati), freccia `fr_corta` appena allungata (1,2 x 1,1) e ruotata di
+  -60 gradi, dal fianco sinistro dei soldati verso il monastero. Con l'idea
+  dell'autore che la mappa dovra' contenere dieci livelli: niente frecce
+  stirate attraverso mezza mappa, segnalino rimpicciolito a 120x70.
+  (Prima prova, scartata: al centro della mappa, sulla catena montuosa, con
+  la freccia scalata 3,3.)
+- Nel progetto c'e' anche `cap3` (126x116, un castello con una cupola
+  verde), mai usato dal gioco [C]: forse il segnalino pensato per un altro
+  livello.
+
+Riparazione del monastero (domanda dell'autore): come gli altri edifici di
+legno [C, ally_omino Alarm_2, civilians.js]: ogni civile che ripara toglie
+1 legno e aggiunge 1 vita ogni 13 passi (4,6 vita e 4,6 legno al secondo);
+ogni legno speso spegne anche il fuoco; senza legno non ripara ne' spegne.
+
+### 9.14 Livello 2: fuga dei lavoratori, casa, area dei taglialegna, suggerimenti
+
+Segnalazioni e richieste dell'autore (9 ottobre 2026, con uno screenshot di
+Tiled per lo spostamento):
+- **I lavoratori che scappano all'inizio si incastrano.** enemy_manager_lv2
+  Create [C] da' ai due civili la stessa meta (112, 7449) senza percorso
+  (solo dirox/diroy): uno restava per sempre fra due picchieri fermi a
+  (1123, 7261), l'altro deviava per i nemici e si fermava. Ora ognuno ha la
+  sua meta accanto (a 70 e 50 px uno dall'altro) e il suo flow field
+  (`generateFields`, come per il clic destro): arrivano tutti e due in ~500
+  passi.
+- **lvl02 diventa una mappa del repo** (`mappe/lvl02.tmx`, dalla conversione
+  esatta della room, §9.4): lo scenario `scenari/lvl02.json` prende il posto
+  della room di GameMaker (07 lo scrive dopo); il kit ha la mappa modificata
+  in `mappe/` e la conversione dell'originale in `mappe/originali/`, che usa
+  il collaudo (`12 --check`). D'ora in poi lvl02 si corregge anche in Tiled.
+- **Una casa della citta' (ocr_12) a (1695, 7025)**, sopra il punto dove
+  nascono i due civili dopo il primo combattimento (1645 e 1745, 7109):
+  sembrano uscire da li'. Provato: i civili nascono liberi davanti alla casa.
+- **L'area 3 (i taglialegna) piu' su**: gli 8 difensori (guerriero,
+  2 arcieri, cavaliere, 4 picchieri, prima fra x 1308-1656 e y 5672-5807)
+  spostati di (-280, -500) come nello screenshot, su punti liberi; il
+  rettangolo dell'area e il punto di difesa con loro (AREAS[2]: [870, 4900,
+  1600, 5400, 1220, 5250]). Lo spostamento da solo non bastava: i difensori
+  inseguono chiunque entro 800 px dal punto di difesa (scr_difendi [C]),
+  cioe' quasi tutto il bosco sopra la partenza (misurato: un civile fermo a
+  636 px li faceva partire tutti e 8; con la posizione vecchia era uguale).
+  Raggio di difesa dell'area 3 a 400 (ottavo valore di AREAS, gli altri 800):
+  civile a 832 px nessuno, a 636 e 481 px 2-3 su 8 (la vista dei singoli,
+  gli arcieri), sotto i 400 tutti.
+- **Niente suggerimenti sulla notte e sulla selezione multipla in lvl02 e
+  lvl03** (`newGlobals`: nighthint, multihint gia' a 1).
+- **Suggerimento nuovo in lvl02** (`hint_lavoratori`, nuovi.json; hints.js,
+  in alto come quello della notte): chiuso l'ultimo dialogo iniziale
+  (dialogo_2_5) "Precious workers": senza centro non si creano civili,
+  ogni lavoratore perso e' perso per sempre. Sei lingue.
+Soak, salvataggi (lvl02 compreso) e zip senza errori.
+
+### 9.15 Tutorial: via la catapulta di prova
+
+Segnalazione dell'autore: nel tutorial (`match`) all'inizio c'e' una
+catapulta alleata al centro della mappa, lasciata per le prove. C'e' [C]:
+`ally_catapulta` a (3420, 3422) su una mappa di 7000x7000, l'unica della
+room, lontana dalle unita' di partenza (un cavaliere a (3090, 854), due
+civili a nord-ovest). Tolta all'avvio come gli altri oggetti di troppo
+(app.js `DROPPED`). All'avvio: nessuna catapulta, 3 alleati, popolazione
+5 (era 4 e 8). Soak di match: 3 alleati e popolazione 5 come dopo §9.9, ma
+per un altro motivo (allora la catapulta moriva contro la torre nemica).

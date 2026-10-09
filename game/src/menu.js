@@ -36,7 +36,7 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03" };
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -74,7 +74,7 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 function loadRows(W, H) {
@@ -288,6 +288,15 @@ function drawLoad(i, d, W, H) {
   d.setHalign("left");
 }
 
+// [§9.13] segnalino del livello 3 [dx, dy dal centro della mappa], numero
+// [dx, dy] e freccia [dx, dy, scala x, scala y, angolo]: dove li ha
+// disegnati l'autore, subito sopra il livello 2 (463, 28), per lasciare
+// libera la mappa ai livelli che verranno; la freccia del collegamento 1-2
+// appena allungata, dal lato sinistro dei soldati verso il monastero
+const L3_MARK = [403, -81];
+const L3_LABEL = [403, -140];
+const L3_ARROW = [399, 2, 1.2, 1.1, -60];
+
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
   d.sprite("mappa_camp", 0, W / 2, H / 2);
@@ -307,6 +316,13 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap2", 0, W / 2 + 463, H / 2 + 28);
       d.sprite("fr_corta", 0, W / 2 + 563, H / 2 + 53);
       d.text(W / 2 + 463, H / 2 + 88, "2.");
+    }
+    // [§9.13, richiesta dell'autore] il livello 3: il monastero (segnalino
+    // ricavato dallo sprite del corpo, tools/nuovi.py) e la freccia dal 2
+    if (i.lvlshown > 2) {
+      d.sprite("cap_monastero", 0, W / 2 + L3_MARK[0], H / 2 + L3_MARK[1]);
+      d.spriteExt("fr_corta", 0, W / 2 + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
+      d.text(W / 2 + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

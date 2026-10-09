@@ -240,7 +240,9 @@ export class World {
     const n = o.object;
     if (this.is(o, "ally_build")) return n !== "campo" && n !== "campo_fond";
     if (this.is(o, "enemy_build")) return n !== "o_box1" && n !== "o_box2";
-    return n.startsWith("ocr_") || n.startsWith("montagna_") || n === "ccruin" || this.is(o, "stone_parent");
+    // [§9.10] e il monastero (corpo, casetta, muro di cinta)
+    return n.startsWith("ocr_") || n.startsWith("monastero_") || n.startsWith("montagna_") || n === "ccruin"
+      || this.is(o, "stone_parent");
   }
 
   // [§6.5] Chi tira da un edificio non e' fermato dall'edificio stesso ne'
@@ -345,6 +347,16 @@ export class World {
     let y0 = y + (bb[1] - org[1]) * sy, y1 = y + (bb[3] + 1 - org[1]) * sy;
     if (x0 > x1) { const t = x0; x0 = x1; x1 = t; }
     if (y0 > y1) { const t = y0; y0 = y1; y1 = t; }
+    if (inst.image_angle % 360) {
+      // [§9.7] maschera ruotata come lo sprite (drawSprite): la scatola e'
+      // quella dei quattro angoli girati attorno all'origine
+      const a = -inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+      const lx0 = x0 - x, lx1 = x1 - x, ly0 = y0 - y, ly1 = y1 - y;
+      const ax = lx0 * c, bx = lx1 * c, ay = lx0 * s, by = lx1 * s;
+      const cx = -ly0 * s, dx = -ly1 * s, cy = ly0 * c, dy = ly1 * c;
+      x0 = x + Math.min(ax, bx) + Math.min(cx, dx); x1 = x + Math.max(ax, bx) + Math.max(cx, dx);
+      y0 = y + Math.min(ay, by) + Math.min(cy, dy); y1 = y + Math.max(ay, by) + Math.max(cy, dy);
+    }
     out[0] = x0; out[1] = y0; out[2] = x1; out[3] = y1;
     return true;
   }
@@ -360,6 +372,7 @@ export class World {
     const m = this.maskOf(inst);
     const x0 = bb[0], y0 = bb[1], x1 = bb[2], y1 = bb[3];
     if (y < y0 || y >= y1) return 0;
+    if (inst.image_angle % 360) return this._spansRot(inst, m, ix, iy, y, ax > x0 ? ax : x0, bx < x1 ? bx : x1, out);
     let n = 0;
     if (m.kind === 1 || m.kind === 2 || m.kind === 3) {
       let s = x0, e = x1;
@@ -389,6 +402,49 @@ export class World {
     return n;
   }
 
+  // [§9.7] Riga y di una maschera ruotata (image_angle): GameMaker ruota
+  // la maschera con lo sprite [I]. Ogni pixel della riga fra xa e xb si
+  // riporta nella maschera non ruotata (rotazione inversa di drawSprite, poi
+  // la scala) e si prova il suo centro; i pixel pieni consecutivi fanno un
+  // intervallo. Il caso senza rotazione resta quello esatto qui sopra.
+  _spansRot(inst, m, ix, iy, y, xa, xb, out) {
+    const a = inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const sx = inst.image_xscale, sy = inst.image_yscale;
+    const bb = m.bbox, ox = m.origin[0], oy = m.origin[1];
+    const px0 = Math.floor(xa), px1 = Math.ceil(xb);
+    // centro del primo pixel in coordinate della maschera, e il passo di un pixel
+    const dx = px0 + 0.5 - ix, dy = y + 0.5 - iy;
+    let u = (dx * c - dy * s) / sx + ox, v = (dx * s + dy * c) / sy + oy;
+    const du = c / sx, dv = s / sy;
+    const kind = m.kind;
+    const cx = (bb[0] + bb[2] + 1) / 2, cy = (bb[1] + bb[3] + 1) / 2;
+    const rx = (bb[2] + 1 - bb[0]) / 2, ry = (bb[3] + 1 - bb[1]) / 2;
+    const frames = m.frames;
+    const f = kind === 1 || kind === 2 || kind === 3 ? null
+      : frames[m.sepmasks ? (Math.floor(inst.image_index) % frames.length) : 0];
+    let n = 0, start = -1;
+    for (let px = px0; px < px1; px++, u += du, v += dv) {
+      let full = false;
+      if (u >= bb[0] && u < bb[2] + 1 && v >= bb[1] && v < bb[3] + 1) {
+        if (kind === 1) full = true;
+        else if (kind === 2) { const p = (u - cx) / rx, q = (v - cy) / ry; full = p * p + q * q <= 1; }
+        else if (kind === 3) full = Math.abs((u - cx) / rx) + Math.abs((v - cy) / ry) <= 1;
+        else {
+          const row = f[Math.floor(v) - bb[1]];
+          if (row) for (let k = 0; k < row.length; k += 2) if (u >= row[k] && u < row[k + 1]) { full = true; break; }
+        }
+      }
+      if (full && start < 0) start = px;
+      else if (!full && start >= 0) {
+        out[n++] = start > xa ? start : xa; out[n++] = px < xb ? px : xb; start = -1;
+        // spazio finito: il resto della riga, per eccesso, in un intervallo solo
+        if (n >= out.length - 2) { start = px; break; }
+      }
+    }
+    if (start >= 0) { out[n++] = start > xa ? start : xa; out[n++] = px1 < xb ? px1 : xb; }
+    return n;
+  }
+
   // Le due maschere si toccano? a e b nelle posizioni (ax, ay), (b.x, b.y).
   overlap(a, ax, ay, b) {
     const ba = this.bbox(a, ax, ay), bb = this.bbox(b);
@@ -397,7 +453,7 @@ export class World {
     const y0 = Math.max(ba[1], bb[1]), y1 = Math.min(ba[3], bb[3]);
     if (x0 >= x1 || y0 >= y1) return false;
     const ma = this.maskOf(a), mb = this.maskOf(b);
-    if (ma.kind === 1 && mb.kind === 1) return true;
+    if (ma.kind === 1 && mb.kind === 1 && !(a.image_angle % 360) && !(b.image_angle % 360)) return true;
     for (let y = Math.floor(y0); y < y1; y++) {
       const na = this._spans(a, ax, ay, ba, y, x0, x1, SPANS_A);
       if (!na) continue;

@@ -57,6 +57,8 @@ const T = {
   hint_multi: ["Multiple selection", "Double click on a unit to select all your units of the same type in your screenspace. Left click and drag to select multiple units."],
   hint_multi_2: ["Multiple selection", "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Shift + numbers (digits) to assign a quick selection number to a group, then the number alone to select it."],
   hint_night: ["Night", "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well."],
+  // [§9.14, richiesta dell'autore] livello 2: niente centro, niente civili nuovi
+  hint_lavoratori: ["Precious workers", "You have no town hall here: you cannot train new workers. Protect them, every worker you lose is lost for good!"],
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
@@ -106,6 +108,7 @@ export const HINTS = {
   hint_multi: { anchor: vicino("ally_militare"), next: "hint_multi_2", nextAtSelf: true },
   hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed" },
   hint_night: { anchor: fixed(420, 170) },
+  hint_lavoratori: { anchor: fixed(420, 170) },
 };
 
 // --------------------------------------------------------------- dialoghi
@@ -157,6 +160,7 @@ export const DIALOGS = {
                  text: "You can use our structures. We will also help build new ones!",
                  create: (i, w) => w.create("magazzino", 1655, 6655) },
   dialogo_2_5: { who: SOLDIER2, arm: 10, text: "Let's get to work! I promise you we will free the countryside",
+                 destroy: (i, w) => w.create("hint_lavoratori", 0, 0), // §9.14
                  create: (i, w) => {
                    for (const [x, y] of [[2654, 7571], [1262, 5438], [2842, 3928], [173, 3516], [49, 2174], [2784, 2248], [2876, 1200]]) {
                      w.create("palo_1", x, y);
@@ -176,6 +180,23 @@ export const DIALOGS = {
                   create: (i, w) => w.create("palo_1", 150, 250),
                   click: (i, w) => { w.cam.x = 500; w.cam.y = 600; w.cam.clamp(); } },
   dialogo_2_14: { who: SPY, arm: 10, vanish: true, text: "It seems that this very barracks trains the archers who protect that point." },
+  // livello 3 [§9.11, testi dell'autore riscritti]: la regia e' in
+  // levels.js (enemyManagerLv3), che li crea; chiudere il 3_3 rivela il
+  // monastero
+  dialogo_3_0: { who: SOLDIER2, arm: 30,
+                 text: "We are alone in enemy land... If we follow the road we should reach a village. They could give us support." },
+  dialogo_3_1: { who: [...VILLAGER, "Villager"], arm: 30, next: "dialogo_3_2",
+                 text: "Soldiers! Welcome, our village is yours. But listen: the invaders are trying to seize the monastery north of here, near the mountains!" },
+  dialogo_3_2: { who: [...VILLAGER, "Villager"], arm: 30, next: "dialogo_3_3",
+                 text: "Its walls are strong and the monks heal the wounded. If it falls, nothing will stop them." },
+  dialogo_3_3: { who: SOLDIER2, arm: 30,
+                 text: "Then we will defend the monastery! From its fortified position we can stop their advance.",
+                 destroy: (i, w) => { for (const m of w.all("enemy_manager_lv3")) m.revealAsked = 1; } },
+  dialogo_3_4: { who: SOLDIER2, arm: 30, timeout: 900,
+                 text: "The monastery is ours. Hold it until the end of the countdown: if it is damaged beyond half, it is lost. Watch out for their rams!" },
+  dialogo_3_5: { who: [...VILLAGER, "Villager"], arm: 30,
+                 text: "The attacks on the village come from the enemy base to the south-west. Destroy its barracks and stables and they will stop!" },
+  dialogo_3_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "Hold on! Just one more minute!" },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

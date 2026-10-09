@@ -4,7 +4,7 @@
 // diversamente (STUDIO.md §0.10, §0.15).
 
 export function newGlobals(room) {
-  return {
+  const g = {
     // risorse [Deviazione decisa dall'autore: manager Create aveva valori di
     // test 10000/5000/5000/0 e popcap 990; quelli giusti sono 100/50/50/0 e
     // popcap 0]
@@ -45,4 +45,8 @@ export function newGlobals(room) {
     // mouser Create: cosa c'e' sotto il puntatore (colore del cerchio)
     minierahover: 0, alberhover: 0, farmhover: 0, stonehover: 0, buildhover: 0, preshover: 0,
   };
+  // [§9.14, richiesta dell'autore] nei livelli 2 e 3 niente suggerimenti
+  // sulla notte e sulla selezione multipla: "gia' visti"
+  if (room === "lvl02" || room === "lvl03") { g.nighthint = 1; g.multihint = 1; }
+  return g;
 }

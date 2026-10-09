@@ -20,6 +20,10 @@ Metodo e convenzioni da [andlll/n_redux](https://github.com/andlll/n_redux)
 | `tools/` | sì | la pipeline (Python 3 + Pillow) |
 | `game/` | sì | il motore: `index.html`, `src/` (moduli JS), `package.json` (esbuild), PWA (`manifest.webmanifest`, `sw.js`, `icons/` da `tools/09_icons.py`) |
 | `game/assets/`, `game/dist/` | no | atlas, maschere, scene (tools 05–07) e bundle JS: si rigenerano |
+| `build/535-tiled-kit/` | no | il kit per disegnare le mappe in Tiled (tools 11), e il suo zip |
+| `mappe/` | sì | le mappe dei livelli nuovi disegnate in Tiled (`lvl03.tmx`, ...) |
+| `scenari/` | sì | le stesse mappe convertite per il gioco (tools 12); la CI controlla che corrispondano |
+| `nuovi/` | sì | sprite e oggetti nuovi dell'autore (il monastero): `nuovi.json`, `sprites/` |
 
 ## Rigenerare
 
@@ -43,7 +47,7 @@ python3 -m http.server 8000 --directory game
 ```
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02` per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03` per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
@@ -61,6 +65,21 @@ salvataggi (uno slot per room nel browser, salvataggio automatico ogni 5
 minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
+
+## Mappe in Tiled
+
+I livelli nuovi si disegnano in [Tiled](https://www.mapeditor.org) con gli
+sprite del gioco (STUDIO.md §9). Il kit (tileset per categoria, mappa
+vuota, le room `match`, `lvl01` e `lvl02` gia' convertite, istruzioni in
+`LEGGIMI.md`) si genera dagli zip, dopo `tools/01`, `02` e `07`, o si
+scarica dalla CI (artefatto `535-tiled-kit` di ogni run):
+
+```bash
+python3 tools/11_tiled_kit.py                    # -> build/535-tiled-kit/ e build/535-tiled-kit.zip
+python3 tools/11_tiled_kit.py --nuova lvl03 4000x6000   # in piu' una mappa vuota di quella misura
+python3 tools/12_tiled_import.py mappa.tmx --anteprima  # -> scenari/mappa.json, build/anteprime/mappa.png
+python3 tools/12_tiled_import.py --check         # collaudo: room -> Tiled -> stesse istanze
+```
 
 ## Provare
 

@@ -30,7 +30,7 @@ export function victoryManager() {
       if (i.clicloc !== 1) return;
       w.destroy(i);
       const g = w.g;
-      const next = { lvl01: 2, lvl02: 3 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -53,7 +53,8 @@ export function victoryManager() {
         d.text(vw / 2, vh / 2 - 100, tr("You destroyed all the secondary enemy bases"));
         d.text(vw / 2, vh / 2, tr("Your partial score is {score}", { score }));
       }
-      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1" }[w.room];
+      if (w.room === "lvl03") d.text(vw / 2, vh / 2 - 100, tr("The monastery has held out: the invaders' advance is broken"));
+      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -85,7 +86,7 @@ export function gameoverManager() {
       if (i.fogalpha < 1) return;
       d.setColour(c.white);
       d.setHalign("center");
-      d.text(vw / 2, vh / 2 - 200, tr("Your town hall was destroyed."));
+      d.text(vw / 2, vh / 2 - 200, w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed."));
       d.text(vw / 2, vh / 2 - 100, tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       d.text(vw / 2, vh / 2, tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte }));
       d.text(vw / 2, vh / 2 + 100, tr("The final score is {score}", { score }));
@@ -102,6 +103,7 @@ export function objectiveButton() {
       const g = w.g, W = w.cam.cssW;
       if (g.obj !== 1) return;
       const nobs = w.room === "match" ? 4 : 3;
+      const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
       // [y, testo, barrato]
       const lines = [];
       if (w.room === "match") {
@@ -119,6 +121,20 @@ export function objectiveButton() {
         lines.push([58, tr("Free the villages under attack ({n}/7)", { n: g.liberati }), g.liberati === 7 ? 43 : 0]);
         lines.push([88, tr("Use the freed peasants to build your base")]);
         lines.push([118, tr("Destroy all the enemy buildings"), w.number("enemy_build") === 0 ? 103 : 0]);
+      }
+      // [§9.11] livello 3: prima il villaggio, poi il conto alla rovescia,
+      // la vita del monastero e (saputo da dove vengono) la base nemica
+      if (w.room === "lvl03") {
+        const L = g.l3 || { phase: 0 };
+        if (L.phase !== 2) lines.push([58, tr("Follow the road to reach the village")]);
+        else {
+          lines.push([58, tr("Defend the monastery: {t}", { t: mmss(L.left) })]);
+          lines.push([88, tr("Monastery: {life} / {slife} (lost below half)", { life: L.life, slife: L.slife })]);
+          if (L.baseKnown) {
+            const done = w.number("enemy_caserma") + w.number("enemy_stalla") === 0;
+            lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
+          }
+        }
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta

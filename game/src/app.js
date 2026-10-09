@@ -19,12 +19,13 @@ import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDumm
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, levelStep } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, levelStep } from "./levels.js";
+import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
-         prizeDrawer, idleClicker, buildButtons } from "./buildings.js";
+         prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
 import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
@@ -47,10 +48,10 @@ import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from 
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
-const ROOMS = ["menu", "match", "lvl01", "lvl02"];
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03"]; // lvl03: scenario da Tiled (§9.10)
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
-                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"] };
+                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -153,6 +154,14 @@ async function main() {
   };
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
+  // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
+  // tiene la maschera intera e non si disegna; nel Create nasce una
+  // "__fetta" per ogni striscia verticale dello sprite, ferma, con la depth
+  // del bordo anteriore della maschera in quella colonna
+  for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
+  world.register("__neutrale", neutral());       // §9.11 (scenario.js)
+  world.register("monastero", monastery(path));  // §9.11 (buildings.js)
+  world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -261,8 +270,12 @@ async function main() {
   // [Correzioni decise dall'autore, §3.19] n.63: i tre hint_legna piazzati
   // in lvl02 finivano fuori schermo e bloccavano i suggerimenti del
   // livello; n.71: nel menu hint_iniziale era nascosto ma cliccabile.
-  const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"] };
-  const instances = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
+  // [§9.15] nel tutorial (match) una catapulta alleata da sola al centro
+  // della mappa (3420, 3422): era li' per le prove dell'autore.
+  const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"], match: ["ally_catapulta"] };
+  const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
+  // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
+  const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
   world.fog = fog;
   // Partita salvata (save.js, snapshot.js): ?load=slot (localStorage) o
@@ -281,6 +294,8 @@ async function main() {
     g.unlock = Math.max(g.unlock || 1, loadUnlock()); // lo sblocco non torna indietro
   } else {
     world.loadRoom(instances, () => path.initCost());
+    g.heldGroups = held;
+    for (const e of neutrals) createNeutral(world, e);
     // manager Create, in fondo: instance_create(0,0,idle_clicker) [C]
     world.create("idle_clicker", 0, 0);
     // manager Create, "Livelli" [C]: nel livello 1 mette i militari in
@@ -292,6 +307,7 @@ async function main() {
     if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
     if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
+    if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
   }
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };
@@ -553,7 +569,10 @@ async function main() {
     draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
   };
 
+  let shown = false;
   const render = () => {
+    // il canvas si mostra col primo fotogramma (index.html: prima e' nascosto)
+    if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
     r.beginFrame(cam, clear);
     r.gpuBegin(); // §6.8 G0
     if (!pause.paused) {

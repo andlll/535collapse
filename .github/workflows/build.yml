@@ -51,6 +51,23 @@ jobs:
           python3 tools/06_masks.py
           python3 tools/07_scene.py
 
+      # STUDIO.md §9: il kit per Tiled (artefatto da scaricare) e il collaudo:
+      # le room dell'autore convertite in mappe di Tiled e rilette devono
+      # ridare le stesse istanze
+      - name: Kit per Tiled e collaudo (tools/11, 12)
+        run: |
+          python3 tools/11_tiled_kit.py
+          python3 tools/12_tiled_import.py --check
+          # gli scenari versionati devono venire dalle mappe di mappe/
+          for m in mappe/*.tmx; do python3 tools/12_tiled_import.py "$m" > /dev/null; done
+          git diff --stat --exit-code -- scenari
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 535-tiled-kit
+          path: build/535-tiled-kit.zip
+          if-no-files-found: error
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -84,8 +101,8 @@ jobs:
         run: |
           python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
-          node game/test/browser/soak.mjs http://localhost:8123 3000
-          node game/test/browser/saves.mjs http://localhost:8123 4000
+          node game/test/browser/soak.mjs http://localhost:8123 3000 menu match lvl01 lvl02 lvl03
+          node game/test/browser/saves.mjs http://localhost:8123 4000 match lvl01 lvl02 lvl03
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
       - uses: actions/upload-artifact@v4

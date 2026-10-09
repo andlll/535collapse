@@ -574,4 +574,74 @@ export const TEXTS = {
   "Full screen": { it: "Schermo intero", es: "Pantalla completa", pt: "Tela cheia", de: "Vollbild", fr: "Plein écran" },
   "Exit full screen": { it: "Esci da schermo intero", es: "Salir de pantalla completa", pt: "Sair da tela cheia", de: "Vollbild beenden", fr: "Quitter le plein écran" },
   "Full screen: {state}": { it: "Schermo intero: {state}", es: "Pantalla completa: {state}", pt: "Tela cheia: {state}", de: "Vollbild: {state}", fr: "Plein écran : {state}" },
+  // ------------------------------------------------- livello 3 (§9.11)
+  "We are alone in enemy land... If we follow the road we should reach a village. They could give us support.": {
+    it: "Siamo soli in terra nemica... Seguendo la strada dovremmo arrivare a un villaggio. Potrebbero darci supporto.",
+    es: "Estamos solos en tierra enemiga... Si seguimos el camino deberíamos llegar a una aldea. Podrían darnos apoyo.",
+    pt: "Estamos sozinhos em terra inimiga... Se seguirmos a estrada devemos chegar a uma aldeia. Eles podem nos dar apoio.",
+    de: "Wir sind allein im Feindesland... Wenn wir der Straße folgen, sollten wir ein Dorf erreichen. Sie könnten uns helfen.",
+    fr: "Nous sommes seuls en terre ennemie... En suivant la route, nous devrions atteindre un village. Ils pourraient nous aider." },
+  "Soldiers! Welcome, our village is yours. But listen: the invaders are trying to seize the monastery north of here, near the mountains!": {
+    it: "Soldati! Benvenuti, il nostro villaggio è vostro. Ma ascoltate: gli invasori stanno cercando di prendere il monastero a nord di qui, vicino alle montagne!",
+    es: "¡Soldados! Bienvenidos, nuestra aldea es vuestra. Pero escuchad: ¡los invasores intentan tomar el monasterio al norte de aquí, cerca de las montañas!",
+    pt: "Soldados! Bem-vindos, nossa aldeia é de vocês. Mas escutem: os invasores estão tentando tomar o mosteiro ao norte daqui, perto das montanhas!",
+    de: "Soldaten! Willkommen, unser Dorf gehört euch. Aber hört: Die Eindringlinge wollen das Kloster nördlich von hier einnehmen, nahe den Bergen!",
+    fr: "Soldats ! Bienvenue, notre village est à vous. Mais écoutez : les envahisseurs veulent prendre le monastère au nord d'ici, près des montagnes !" },
+  "Its walls are strong and the monks heal the wounded. If it falls, nothing will stop them.": {
+    it: "Le sue mura sono solide e i monaci curano i feriti. Se cade, niente li fermerà.",
+    es: "Sus murallas son fuertes y los monjes curan a los heridos. Si cae, nada los detendrá.",
+    pt: "Suas muralhas são fortes e os monges curam os feridos. Se ele cair, nada os deterá.",
+    de: "Seine Mauern sind stark und die Mönche heilen die Verwundeten. Wenn es fällt, hält sie nichts mehr auf.",
+    fr: "Ses murs sont solides et les moines soignent les blessés. S'il tombe, rien ne les arrêtera." },
+  "Then we will defend the monastery! From its fortified position we can stop their advance.": {
+    it: "Allora difenderemo il monastero! Dalla sua posizione fortificata possiamo fermare la loro avanzata.",
+    es: "¡Entonces defenderemos el monasterio! Desde su posición fortificada podemos detener su avance.",
+    pt: "Então defenderemos o mosteiro! De sua posição fortificada podemos deter o avanço deles.",
+    de: "Dann verteidigen wir das Kloster! Von seiner befestigten Stellung aus können wir ihren Vormarsch aufhalten.",
+    fr: "Alors nous défendrons le monastère ! Depuis sa position fortifiée, nous pouvons arrêter leur avancée." },
+  "The monastery is ours. Hold it until the end of the countdown: if it is damaged beyond half, it is lost. Watch out for their rams!": {
+    it: "Il monastero è nostro. Tenetelo fino alla fine del conto alla rovescia: se è danneggiato oltre la metà, è perduto. Attenti ai loro arieti!",
+    es: "El monasterio es nuestro. Resistid hasta el final de la cuenta atrás: si se daña más de la mitad, está perdido. ¡Cuidado con sus arietes!",
+    pt: "O mosteiro é nosso. Mantenham-no até o fim da contagem regressiva: se for danificado além da metade, está perdido. Cuidado com os aríetes!",
+    de: "Das Kloster gehört uns. Haltet es bis zum Ende des Countdowns: Wird es über die Hälfte beschädigt, ist es verloren. Achtet auf ihre Rammböcke!",
+    fr: "Le monastère est à nous. Tenez-le jusqu'à la fin du compte à rebours : s'il est endommagé au-delà de la moitié, il est perdu. Attention à leurs béliers !" },
+  "The attacks on the village come from the enemy base to the south-west. Destroy its barracks and stables and they will stop!": {
+    it: "Gli attacchi al villaggio arrivano dalla base nemica a sud-ovest. Distruggete le sue caserme e le sue stalle e finiranno!",
+    es: "Los ataques a la aldea vienen de la base enemiga al suroeste. ¡Destruid sus cuarteles y sus establos y pararán!",
+    pt: "Os ataques à aldeia vêm da base inimiga a sudoeste. Destruam seus quartéis e estábulos e eles vão parar!",
+    de: "Die Angriffe auf das Dorf kommen aus dem feindlichen Lager im Südwesten. Zerstört seine Kasernen und Ställe, dann hören sie auf!",
+    fr: "Les attaques contre le village viennent de la base ennemie au sud-ouest. Détruisez ses casernes et ses écuries et elles cesseront !" },
+  "Hold on! Just one more minute!": {
+    it: "Resistete! Solo un altro minuto!", es: "¡Aguantad! ¡Solo un minuto más!", pt: "Aguentem! Só mais um minuto!",
+    de: "Haltet durch! Nur noch eine Minute!", fr: "Tenez bon ! Plus qu'une minute !" },
+  "Follow the road to reach the village": {
+    it: "Segui la strada fino al villaggio", es: "Sigue el camino hasta la aldea", pt: "Siga a estrada até a aldeia",
+    de: "Folge der Straße bis zum Dorf", fr: "Suis la route jusqu'au village" },
+  "Defend the monastery: {t}": {
+    it: "Difendi il monastero: {t}", es: "Defiende el monasterio: {t}", pt: "Defenda o mosteiro: {t}",
+    de: "Verteidige das Kloster: {t}", fr: "Défends le monastère : {t}" },
+  "Monastery: {life} / {slife} (lost below half)": {
+    it: "Monastero: {life} / {slife} (perso sotto la metà)", es: "Monasterio: {life} / {slife} (perdido bajo la mitad)",
+    pt: "Mosteiro: {life} / {slife} (perdido abaixo da metade)", de: "Kloster: {life} / {slife} (verloren unter der Hälfte)",
+    fr: "Monastère : {life} / {slife} (perdu sous la moitié)" },
+  "Destroy the enemy barracks and stables": {
+    it: "Distruggi le caserme e le stalle nemiche", es: "Destruye los cuarteles y los establos enemigos",
+    pt: "Destrua os quartéis e os estábulos inimigos", de: "Zerstöre die feindlichen Kasernen und Ställe",
+    fr: "Détruis les casernes et les écuries ennemies" },
+  "The monastery has held out: the invaders' advance is broken": {
+    it: "Il monastero ha resistito: l'avanzata degli invasori è spezzata", es: "El monasterio ha resistido: el avance de los invasores está roto",
+    pt: "O mosteiro resistiu: o avanço dos invasores foi quebrado", de: "Das Kloster hat standgehalten: Der Vormarsch der Eindringlinge ist gebrochen",
+    fr: "Le monastère a tenu : l'avancée des envahisseurs est brisée" },
+  "The monastery has fallen.": {
+    it: "Il monastero è caduto.", es: "El monasterio ha caído.", pt: "O mosteiro caiu.", de: "Das Kloster ist gefallen.",
+    fr: "Le monastère est tombé." },
+  // ------------------------------------------------- livello 2 (§9.14)
+  "Precious workers": { it: "Lavoratori preziosi", es: "Trabajadores valiosos", pt: "Trabalhadores preciosos",
+                        de: "Wertvolle Arbeiter", fr: "Ouvriers précieux" },
+  "You have no town hall here: you cannot train new workers. Protect them, every worker you lose is lost for good!": {
+    it: "Qui non hai un centro: non puoi creare nuovi lavoratori. Proteggili, ogni lavoratore che perdi è perso per sempre!",
+    es: "Aquí no tienes un centro urbano: no puedes entrenar nuevos trabajadores. ¡Protégelos, cada trabajador que pierdes se pierde para siempre!",
+    pt: "Aqui você não tem um centro: não pode treinar novos trabalhadores. Proteja-os, cada trabalhador perdido é perdido para sempre!",
+    de: "Hier hast du kein Rathaus: Du kannst keine neuen Arbeiter ausbilden. Beschütze sie, jeder verlorene Arbeiter ist für immer verloren!",
+    fr: "Ici, tu n'as pas d'hôtel de ville : tu ne peux pas former de nouveaux ouvriers. Protège-les, chaque ouvrier perdu l'est pour toujours !" },
 };
