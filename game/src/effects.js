@@ -64,14 +64,19 @@ function waterMap(w) {
     if (!grid) grid = new Uint8Array(gw * gh);
     const raw = atob(wt.bits), sx = i.image_xscale || 1, sy = i.image_yscale || 1;
     const [ox, oy] = m.origin;
+    // [§9.7] il fiume puo' essere ruotato (image_angle, come in drawSprite)
+    const t = (i.image_angle || 0) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
     // ogni cella della room il cui centro cade su una cella d'acqua dello sprite
-    const x0 = i.x + (0 - ox) * sx, x1 = i.x + (m.size[0] - ox) * sx;
-    const y0 = i.y + (0 - oy) * sy, y1 = i.y + (m.size[1] - oy) * sy;
-    const cx0 = Math.max(0, Math.floor(Math.min(x0, x1) / C)), cx1 = Math.min(gw - 1, Math.floor(Math.max(x0, x1) / C));
-    const cy0 = Math.max(0, Math.floor(Math.min(y0, y1) / C)), cy1 = Math.min(gh - 1, Math.floor(Math.max(y0, y1) / C));
+    const lx0 = (0 - ox) * sx, lx1 = (m.size[0] - ox) * sx, ly0 = (0 - oy) * sy, ly1 = (m.size[1] - oy) * sy;
+    const xs = [lx0 * c + ly0 * s, lx1 * c + ly0 * s, lx0 * c + ly1 * s, lx1 * c + ly1 * s];
+    const ys = [-lx0 * s + ly0 * c, -lx1 * s + ly0 * c, -lx0 * s + ly1 * c, -lx1 * s + ly1 * c];
+    const x0 = i.x + Math.min(...xs), x1 = i.x + Math.max(...xs), y0 = i.y + Math.min(...ys), y1 = i.y + Math.max(...ys);
+    const cx0 = Math.max(0, Math.floor(x0 / C)), cx1 = Math.min(gw - 1, Math.floor(x1 / C));
+    const cy0 = Math.max(0, Math.floor(y0 / C)), cy1 = Math.min(gh - 1, Math.floor(y1 / C));
     for (let cy = cy0; cy <= cy1; cy++) {
       for (let cx = cx0; cx <= cx1; cx++) {
-        const lx = ((cx + 0.5) * C - i.x) / sx + ox, ly = ((cy + 0.5) * C - i.y) / sy + oy;
+        const dx = (cx + 0.5) * C - i.x, dy = (cy + 0.5) * C - i.y;
+        const lx = (dx * c - dy * s) / sx + ox, ly = (dx * s + dy * c) / sy + oy;
         const kx = Math.floor(lx / wt.cell), ky = Math.floor(ly / wt.cell);
         if (kx < 0 || ky < 0 || kx >= wt.w || ky >= wt.h) continue;
         const k = ky * wt.w + kx;

@@ -478,7 +478,9 @@ montagna o di un fiume.
   (`albero` = alb1…alb8). Nel gioco lo sprite lo sceglie ancora il gioco, a
   caso: la variante in Tiled e' solo per vedere l'effetto.
 - **Unita'**: si vedono in una sola posa; nel gioco si animano e si girano
-  da sole.
+  da sole. Non ribaltarle e non ingrandirle: cambiano sprite da sole.
+- Rotazione, ribaltamento e scala valgono anche per le collisioni: una
+  montagna o un fiume ruotati bloccano le unita' nella forma ruotata.
 - **Macchie d'erba e di spighe** (`burst_erba1`, `burst_grano1`,
   `chiazzaparticellare`): nel gioco sono migliaia di fili d'erba in
   un'ellisse di 1000x600 px; l'immagine del kit e' una macchia com'e' in
@@ -486,6 +488,23 @@ montagna o di un fiume.
   passano in mezzo; in Tiled stanno sopra.
 - Un oggetto si nasconde solo in Tiled col pulsante dell'occhio del
   livello; per toglierlo dal gioco va cancellato.
+
+## Spostare e scegliere fra oggetti sovrapposti
+
+- Strumento *Select Objects* (**S**): clic e trascina per spostare; le
+  frecce spostano di 1 px; X e Y esatti nel pannello *Properties*.
+- **Blocca i livelli** che non stai toccando (lucchetto nel pannello
+  *Layers*): un livello bloccato non si seleziona. E' il modo piu' comodo,
+  soprattutto per `suolo` e `terreno`: strade, montagne e fiumi hanno
+  immagini grandi (con bordo trasparente) e "prendono" i clic.
+- **Pannello *Objects*** (*View → Views and Toolbars → Objects*): l'elenco
+  di tutti gli oggetti, livello per livello. Un clic nell'elenco seleziona
+  l'oggetto nella mappa anche se e' coperto; poi lo sposti con le frecce o
+  coi campi X e Y.
+- **Alt + clic** sull'oggetto: seleziona quello sotto; ripetendo si passa
+  al successivo.
+- **Alt + trascinamento**: sposta l'oggetto sotto il cursore senza
+  cambiare la selezione.
 
 ## Boschi (il pennello)
 

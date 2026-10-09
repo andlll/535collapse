@@ -17,7 +17,8 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
-script Tiled -> scenario con anteprima e collaudo (Fase 9, §9.1–§9.5).
+script Tiled -> scenario con anteprima e collaudo; maschere di collisione
+che ruotano con lo sprite (Fase 9, §9.1–§9.7).
 **Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
 gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
@@ -4192,3 +4193,43 @@ all'istanza e scrive `scenari/<nome del file>.json`:
 - `albero_debug` sta in `match` (una istanza) e non ha comportamento nel
   porting (non e' fra gli oggetti registrati in `app.js`): nel kit c'e' solo perche' il collaudo
   ritrovi tutte le istanze.
+
+### 9.7 Maschere ruotate
+
+Richiesta dell'autore (9 ottobre 2026), dopo il kit: poter ruotare in
+Tiled anche montagne, fiumi ed edifici. Il porting ruotava solo il
+disegno (`drawSprite`): bbox e collisioni (`world.js` `_bboxInto`,
+`_spans`) seguivano scala e ribaltamento ma non `image_angle`. In
+GameMaker la maschera ruota con lo sprite [I, runner GMS].
+
+- `_bboxInto`: con `image_angle` (non multiplo di 360) la scatola e'
+  quella dei quattro angoli della maschera girati attorno all'origine,
+  con la stessa rotazione di `drawSprite`.
+- `_spans` -> `_spansRot`: ogni pixel della riga (fra gli estremi chiesti)
+  si riporta nella maschera non ruotata (rotazione inversa, poi la scala)
+  e se ne prova il centro: precisa (righe di intervalli), rettangolo,
+  ellisse, rombo; i pixel pieni consecutivi fanno un intervallo. Tutte le
+  ricerche passano di li' (place_free, instance_place, collision_rectangle,
+  instance_position, la griglia del pathfinding, gli eventi di collisione).
+  `overlap` non prende piu' la scorciatoia "due rettangoli" se uno dei due
+  e' ruotato.
+- Senza rotazione il codice e' quello di prima (stessi risultati).
+- Anche la mappa dell'acqua per gli anelli della pioggia (`effects.js`
+  `waterMap`) segue la rotazione del fiume.
+- Cambia anche per chi ruotava gia': frecce (`image_angle = direction`),
+  proiettili delle macchine che girano su se stessi, l'albero ruotato di
+  -2 gradi e i `directioner` di `lvl02`. Ora come in GameMaker.
+
+Prove: `game/test/rotmask.test.mjs` (muro ruotato di 90: scatola, punti,
+place_free; rettangolo, ellisse e "L" precisa ruotati, scalati e
+ribaltati: ogni punto pieno della maschera riportato nella room e'
+pieno, il buco della "L" resta vuoto; collision_rectangle e overlap a
+45 gradi). Con le maschere vere (montagna_3 a 30 gradi, montagna_10 a
+-75, fiume_2 a 140 ribaltato e schiacciato, casa, castello a 200): su
+40.000 punti a caso la forma ruotata e quella dritta nel punto
+corrispondente differiscono al piu' nello 0,1% (bordi: centro del pixel
+contro intervallo esatto). La griglia del pathfinding di montagna_10 a 30
+gradi ha 1284 celle piene contro 1283 da dritta; costa 53 ms una volta
+(3 ms dritta). Nel gioco (`match`, montagna_3 ruotata di 35 gradi,
+`initCost`) le celle piene seguono la montagna ruotata, col margine che la
+maschera dell'autore ha gia' da dritta. Soak e salvataggi senza errori.
