@@ -4456,3 +4456,12 @@ entrano e incendiano il monastero. Senza difendere: sconfitta a 5,3 minuti
 15 minuti. Salvataggio e ripristino identici prima dell'arrivo (gruppi
 tenuti da parte) e a meta' difesa. Soak, salvataggi e zip senza errori.
 Da fare: giocarlo per tarare i numeri; le due casse nel villaggio.
+
+### 9.12 Pioggia grigio-azzurra
+
+Segnalazione dell'autore (9 ottobre 2026): la pioggia sembra marrone. Lo
+e' [C]: manager Alarm_4, `part_type_colour_rgb(goccia, 131, 148, 101, 119,
+74, 107)`, un marrone chiaro, portato fedelmente (effects.js `GOCCIA`). Ora
+grigio-azzurro chiaro (170-195, 185-205, 200-222) e alpha 0,55, come gli
+anelli sul fiume (§8.13). Confronto in `match` con la pioggia forzata: le
+striature rossicce diventano gocce chiare che si staccano dal verde.

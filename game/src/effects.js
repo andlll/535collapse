@@ -20,9 +20,12 @@ const P = (w) => w.particles;
 // gocce cadevano di traverso).
 // [§7.9, richiesta dell'autore] gocce 2,5 volte piu' spesse (stessa
 // lunghezza): a 1,5-2,5 px si vedevano poco.
+// [§9.12, richiesta dell'autore] l'originale le colorava di marrone chiaro
+// (part_type_colour_rgb 131-148, 101-119, 74-107 [C]): ora grigio-azzurro
+// chiaro e semitrasparenti, come gli anelli sul fiume.
 const GOCCIA = partType({
   shape: "line", orientation: [160, 170, 0, 0, true], size: [0.3, 0.5, 0, 0], scale: [1, 2.5],
-  colour: { rgb: [131, 148, 101, 119, 74, 107] }, speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
+  colour: { rgb: [170, 195, 185, 205, 200, 222] }, alpha: [0.55], speed: [18, 21, 0.1, 0], direction: [250, 260, 0, 0],
   life: [200, 300],
 });
 
