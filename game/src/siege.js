@@ -213,6 +213,16 @@ export function allyRam() {
 // parabola che torna a terra sul bersaglio (catapulta_bullet Step).
 const LAUNCH = { 1: [-44, -62], 2: [-38, -50], 3: [0, -44], 4: [39, -59], 5: [45, -72], 6: [35, -89], 7: [0, -85], 8: [-35, -89] };
 
+// [§9.9, richiesta dell'autore] Tempi del tiro, alleate e nemiche.
+// Nell'originale [C]: 50 passi fermi prima di caricare il lancio (alarm[2]
+// =50), poi 10 + 10 + 45 di lancio, poi la ricarica in cinque fasi da 13
+// (65): un tiro ogni 180 passi, ma il sasso vola 1-3 s e il successivo
+// partiva quasi appena atterrato il primo, dopo un secondo di attesa
+// immobile all'ordine. Ora 15 passi di mira e cinque fasi di ricarica da
+// 32: dall'ordine al lancio 25 passi invece di 60, un tiro ogni 240 passi
+// (4 s) invece di 180.
+const AIM = 15, RELOAD_STEP = 32;
+
 function catapultAlarm2(i, w, bulletName) {
   if (i.action !== 2) return;
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 10); return; }
@@ -233,13 +243,14 @@ function catapultAlarm2(i, w, bulletName) {
   // [§6.7, decisione dell'autore] finito il lancio si torna al tiro
   // automatico: nell'originale, dopo un tiro mirato col clic destro
   // (automatic 0), la catapulta restava ferma fino all'ordine successivo
-  if (i.step === 3) { i.step = 0; i.action = 0; i.automatic = 1; }
+  // [§9.9] con un ordine di attacco ancora valido resta su quel bersaglio
+  if (i.step === 3) { i.step = 0; i.action = 0; i.automatic = i.order ? 0 : 1; }
 }
 
 // Alarm_4 [C]: ricarica, cinque fasi da 13 passi
 function catapultReload(i) {
   if (i.action !== 3) return;
-  if (i.step < 4) { i.step += 1; i.alarm.set(4, 13); return; }
+  if (i.step < 4) { i.step += 1; i.alarm.set(4, RELOAD_STEP); return; }
   i.step = 0; i.loaded = 1; i.action = 0;
 }
 
@@ -296,7 +307,7 @@ function catapultAuto(i, w, target, range) {
       i.action = 2; i.step = 0;
       i.direction = pointDirection(i.x, i.y, b.x, b.y);
       i.targx = b.x; i.targy = b.y;
-      i.alarm.set(2, 50);
+      i.alarm.set(2, AIM);
       return "exit";
     }
   } else if (i.action === 0) {
@@ -323,9 +334,78 @@ function retreatStuck(i) {
   if (i.retreat === 1 && i.action === 1) arriveIfBlocked(i);
 }
 
+// [§9.9, richiesta dell'autore] Ordine di attacco (clic destro su un
+// nemico, unita' o edificio). Nell'originale [C] valeva solo con la
+// catapulta carica e non gia' in mira, e solo a 300-850 px: vicino a un
+// edificio nemico la catapulta e' quasi sempre in mira (tiro automatico) o
+// in ricarica, e l'ordine si perdeva; piu' lontano di 850 px non succedeva
+// niente. Ora l'ordine resta (i.order, col punto cliccato rispetto al
+// bersaglio) finche' il bersaglio c'e': se la mira non e' ancora partita la
+// si sposta sul bersaglio nuovo, se sta tirando o ricaricando aspetta, se
+// e' lontana si avvicina, se e' troppo vicina arretra; poi tira a quel
+// bersaglio un colpo dopo l'altro. Un ordine di spostamento lo cancella;
+// distrutto il bersaglio torna il tiro automatico.
+const RANGE = 850;
+function aimAt(i, tx, ty) {
+  i.action = 2; i.automatic = 0; i.step = 0;
+  i.direction = pointDirection(i.x, i.y, tx, ty);
+  i.targx = tx; i.targy = ty;
+  i.alarm.set(2, AIM);
+}
+
+function followOrder(i, w) {
+  const t = i.order;
+  if (!t) return;
+  if (!t.alive) {
+    i.order = null; i.automatic = 1;
+    if (i.action === 1 && i.orderGoal) { i.action = 0; i.speed = 0; }
+    i.orderGoal = null;
+    return;
+  }
+  i.automatic = 0;
+  const tx = t.x + i.orderDx, ty = t.y + i.orderDy;
+  const d = distanceToPoint(w, i, tx, ty);
+  const inRange = d < RANGE && d > MIN_SHOT;
+  // in mira, sasso non ancora partito: segue il bersaglio (o lascia perdere
+  // il tiro se il bersaglio e' uscito dalla gittata)
+  if (i.action === 2 && i.step <= 1) {
+    if (inRange) { i.targx = tx; i.targy = ty; i.direction = pointDirection(i.x, i.y, tx, ty); }
+    else i.action = 0;
+    if (i.action === 2) return;
+  }
+  if (i.action !== 0 && i.action !== 1) return; // tira o ricarica: aspetta
+  if (i.retreat === 1 && i.action === 1) return; // arretra verso il punto di tiro
+  if (i.loaded !== 1) return;                    // la ricarica parte dallo Step
+  if (inRange) { i.speed = 0; i.orderGoal = null; aimAt(i, tx, ty); return; }
+  if (d >= RANGE) {
+    // lontano: verso il bersaglio (la meta si aggiorna se si sposta di 100 px)
+    const g = i.orderGoal;
+    if (i.action !== 1 || !g || Math.hypot(t.x - g[0], t.y - g[1]) > 100) {
+      if (i.action !== 1) { i.alarm.set(0, irandomRange(5, 13)); i.step = 0; }
+      i.action = 1; i.dirox = Math.round(t.x); i.diroy = Math.round(t.y);
+      i.orderGoal = [t.x, t.y];
+    }
+    return;
+  }
+  // troppo vicino: fermo, poi un punto da cui tirare (al piu' una ricerca al
+  // secondo, se resta bloccata); se non c'e' l'ordine si lascia
+  if (i.action === 1) { i.action = 0; i.speed = 0; i.orderGoal = null; return; }
+  if (w._stepNo - (i.orderSpotAt ?? -1e9) < 60) return;
+  i.orderSpotAt = w._stepNo;
+  const spot = catapultSpot(w, i, (x, y) => {
+    const dd = distanceToPoint(w, i, tx, ty, x, y);
+    return dd > MIN_SHOT + SHOT_MARGIN && dd < RANGE - SHOT_MARGIN ? dd : null;
+  });
+  if (spot) {
+    i.alarm.set(0, irandomRange(5, 13));
+    i.dirox = spot[0]; i.diroy = spot[1];
+    i.action = 1; i.step = 0; i.retreat = 1;
+  } else { i.order = null; i.automatic = 1; }
+}
+
 // ally_catapulta [C]: vita 100, popolazione 3; tiro fra 300 e 850 px, una
-// volta ogni ~133 passi (50 + 10 + 10 + 45 + ricarica 65). Click destro su un
-// nemico (unita' o edificio) a 300–850 px: tiro mirato.
+// volta ogni 240 passi (§9.9: 15 + 10 + 10 + 45 + ricarica 160). Click
+// destro su un nemico (unita' o edificio): ordine di attacco (sopra).
 export function allyCatapult() {
   const C = siegeCommon("ally_catapulta", "catapulta_corpse", "ico_catapulta");
   return {
@@ -343,68 +423,35 @@ export function allyCatapult() {
     step(i, w) {
       if (!C.leftClickAndDeath(i, w)) return;
       C.moveCommon(i, w, (u) => {
-        u.action = 0; u.automatic = 1; u.warwork = 0; u.speed = 0; u.retreat = 0;
-        // [§6.7] arrivata dove l'ha mandata un tiro ordinato troppo vicino:
-        // tira, se il bersaglio c'e' ancora ed e' a tiro
-        // (al punto cliccato, che segue il bersaglio se si e' mosso: come il
-        // tiro mirato originale, che tira al punto del clic)
-        const t = u.pendingShot;
-        u.pendingShot = null;
-        if (t && t.alive && u.loaded === 1) {
-          const tx = t.x + (u.pendingDx || 0), ty = t.y + (u.pendingDy || 0);
-          const d = distanceToPoint(w, u, tx, ty);
-          if (d < 850 && d > MIN_SHOT) {
-            u.action = 2; u.automatic = 0; u.step = 0;
-            u.direction = pointDirection(u.x, u.y, tx, ty);
-            u.targx = tx; u.targy = ty;
-            u.alarm.set(2, 50);
-          }
-        }
+        u.action = 0; u.automatic = u.order ? 0 : 1; u.warwork = 0; u.speed = 0; u.retreat = 0; u.orderGoal = null;
       });
       retreatStuck(i);
       ANIM.ally_catapulta(i, w);
       boxSelect(i, w, "siegsel");
       C.destinationBack50(i, w);
       C.buttons(i, w);
-      if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, 13); i.step = 0; }
-      catapultAuto(i, w, "enemy_build", 850);
+      if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, RELOAD_STEP); i.step = 0; }
+      followOrder(i, w);
+      catapultAuto(i, w, "enemy_build", RANGE);
     },
     globalRightReleased(i, w) {
       if (i.selected !== 1) return;
       const mx = w.mouse.x, my = w.mouse.y;
-      i.retreat = 0; i.pendingShot = null; // §6.7: un ordine nuovo
-      if (w.positionMeeting(mx, my, "enemy") && i.loaded === 1) {
-        const d = distanceToPoint(w, i, mx, my);
-        if (d < 850 && d > 300 && i.action !== 2) {
-          i.action = 2; i.automatic = 0; i.step = 0;
-          i.direction = pointDirection(i.x, i.y, mx, my);
-          i.targx = mx; i.targy = my;
-          i.alarm.set(2, 50);
-          return;
-        }
-        // [§6.7] troppo vicino: arretra in un punto da cui il bersaglio e' a
-        // tiro e, arrivata, tira (nell'originale non succedeva nulla)
-        const e = w.instancePosition(mx, my, "enemy");
-        if (d <= MIN_SHOT && e && i.action !== 2) {
-          const spot = catapultSpot(w, i, (x, y) => {
-            const dd = distanceToPoint(w, i, mx, my, x, y);
-            return dd > MIN_SHOT + SHOT_MARGIN && dd < 850 - SHOT_MARGIN ? dd : null;
-          });
-          if (spot) {
-            if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
-            i.automatic = 0; i.dirox = spot[0]; i.diroy = spot[1];
-            i.action = 1; i.step = 0; i.retreat = 1;
-            i.pendingShot = e; i.pendingDx = mx - e.x; i.pendingDy = my - e.y;
-            return;
-          }
-        }
+      const e = w.instancePosition(mx, my, "enemy");
+      if (e) {
+        // [§9.9] ordine di attacco: vale in ogni stato (followOrder)
+        i.order = e; i.orderDx = mx - e.x; i.orderDy = my - e.y;
+        i.orderGoal = null; i.orderSpotAt = null;
+        if (i.action === 1) { i.action = 0; i.speed = 0; } // quello che stava facendo si ferma
+        i.retreat = 0;
+        followOrder(i, w);
+        return;
       }
-      if (!w.positionMeeting(mx, my, "enemy")) {
-        if (i.action !== 2 && i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
-        i.automatic = 0;
-        i.dirox = mx; i.diroy = my;
-        i.action = 1; i.step = 0;
-      }
+      i.order = null; i.orderGoal = null; i.retreat = 0;
+      if (i.action !== 2 && i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
+      i.automatic = 0;
+      i.dirox = mx; i.diroy = my;
+      i.action = 1; i.step = 0;
     },
   };
 }
@@ -698,7 +745,7 @@ export function enemyCatapult(base) {
       if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       if (w.number("torre_placer") > 0) g.sele = 1;
-      if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, 13); i.step = 0; }
+      if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, RELOAD_STEP); i.step = 0; }
       const range = (1 - 0.5 * g.night) * 850;
       if (w.exists("fog01")) {
         const f = w.nearest(i.x, i.y, "fog01");

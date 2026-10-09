@@ -19,7 +19,8 @@ Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
 script Tiled -> scenario con anteprima e collaudo; maschere di collisione
 che ruotano con lo sprite; schermata di caricamento senza rettangolo nero
-e senza cambio di font (Fase 9, §9.1–§9.8).
+e senza cambio di font; ordini di attacco e tempi della catapulta (Fase 9,
+§9.1–§9.9).
 **Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
 gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
@@ -4258,3 +4259,54 @@ a 150, 500, 1200 ms l'angolo in alto a sinistra ha il colore dello sfondo
 subito il canvas col font del gioco (mai il testo di sistema); il canvas
 del gioco si mostra solo dopo il primo fotogramma. Soak e zip dei portali
 senza errori.
+
+### 9.9 Catapulta: ordini di attacco e tempi
+
+Segnalazione dell'autore (9 ottobre 2026): la catapulta spesso ignora gli
+ordini di attacco, o resta ferma e tira dopo troppo tempo; e dopo un tiro
+"ricarica" troppo in fretta.
+
+**Ordini ignorati** [C, `ally_catapulta` Mouse_GlobalRightReleased]: il
+clic destro su un nemico valeva solo con la catapulta carica (`loaded=1`),
+non gia' in mira (`action!=2`) e col punto a 300-850 px. Con un edificio
+nemico a tiro la catapulta e' sempre in mira automatica (action 2) o in
+ricarica (action 3): l'ordine su un altro bersaglio si perdeva sempre.
+Misurato (catapulta con l'edificio A a 520 px, ordine sull'edificio B a
+700 px): tre tiri ad A finche' A non cade, solo poi B; ordinato a meta'
+ciclo, idem. Con B a 1300 px non succedeva niente. Ora (`siege.js`
+`followOrder`) l'ordine resta finche' il bersaglio c'e', col punto
+cliccato relativo al bersaglio (segue un'unita' che si muove):
+- in mira col sasso non ancora partito: la mira passa al bersaglio nuovo;
+- in lancio o in ricarica: aspetta e tira appena carica;
+- oltre 850 px: si avvicina (meta aggiornata se il bersaglio si sposta di
+  100 px) e tira appena e' a tiro;
+- sotto 300 px: si ferma e cerca un punto da cui tirare (§6.7, al piu' una
+  ricerca al secondo); se non c'e', l'ordine si lascia;
+- tira a quel bersaglio un colpo dopo l'altro (prima: un colpo e poi il
+  tiro automatico all'edificio piu' vicino, §6.7); distrutto il bersaglio
+  torna il tiro automatico; un ordine di spostamento cancella l'ordine.
+Al posto di `pendingShot` (§6.7), che copriva solo il caso "troppo vicino".
+
+**Tempi** [C, Alarm_2 e Alarm_4]: 50 passi fermi prima di caricare il
+lancio, 10 + 10 + 45 di lancio, ricarica in cinque fasi da 13 (65): un
+tiro ogni 180 passi, ma il sasso vola 1-3 s, e il tiro dopo partiva poco
+dopo l'arrivo del primo. Ora `AIM` 15 e `RELOAD_STEP` 32: dall'ordine al
+lancio 25 passi invece di 60, un tiro ogni 240 passi (4 s) invece di 180.
+Vale anche per la catapulta nemica (stesse funzioni).
+
+Misure (stessa prova, passi dall'ordine al lancio):
+
+| caso | prima | dopo |
+|---|---|---|
+| ordine su B a tiro, A piu' vicino | A 58, A 238, A 418, B 598 | B 23, B 263, B 503 |
+| ordine su B durante il ciclo su A | A, A, B 478 | A (gia' in volo), B 143 |
+| B a 1300 px | nessun tiro | si avvicina di ~460 px, B 336 |
+| B a 200 px | (§6.7) | arretra, B 136 |
+| ordine su B poi spostamento | — | nessun tiro a B |
+
+Conseguenza sul bilanciamento: in `match` la catapulta di partenza duella
+con una torre nemica; prima distruggeva gli edifici a tiro e si spostava
+con 22 di vita, ora piu' lenta resta piu' a lungo e muore verso il passo
+2250 (soak: alleati 3 e pop 5 invece di 4 e 8 dopo 3000 passi). Se l'autore
+preferisce il ritmo di prima, con la mira veloce: `RELOAD_STEP` 19 (un
+tiro ogni 175 passi). Soak e salvataggi senza errori.
