@@ -199,7 +199,7 @@ def catalogue():
             out.insert(0, data[name]["sprite"])
         return out
 
-    new_objs = nuovi.load()["objects"]
+    new_objs = {k: v for k, v in nuovi.load()["objects"].items() if v.get("kit", True) and v["sprite"]}
     new_sprites = nuovi.sprites()
     out = []
     for name in sorted(info):
@@ -221,6 +221,8 @@ def catalogue():
                 im, o = sprite_frame(sp), (sprites[sp]["origin_x"], sprites[sp]["origin_y"])
             out.append((cat, name, sp, im, o))
     for name in tk.regia_objects(info):
+        if name not in data:  # oggetti di regia nuovi (nuovi.json, kit: false)
+            continue
         sp = data[name]["sprite"]
         marker = sprite_frame(sp) if sp else None
         mo = (sprites[sp]["origin_x"], sprites[sp]["origin_y"]) if sp else None
@@ -530,6 +532,16 @@ forma e modifica `distanza` (piu' piccola = piu' fitto) o `oggetto`
 decorazione). La stessa forma da' sempre gli stessi alberi.
 Non e' un'anteprima: in Tiled la forma resta una macchia verde; gli alberi
 li vedi nell'anteprima dello script o nel gioco.
+
+## Gruppi (oggetti che la regia del livello tiene da parte)
+
+Un livello che si chiama `gruppo <nome>` (per esempio `gruppo citta`) mette
+da parte i suoi oggetti: la regia del livello decide quando entrano in
+gioco. In `lvl03`: `gruppo citta` (il villaggio) non c'e' finche' i soldati
+non arrivano, poi compare ed e' tuo; `gruppo monastero` (cinta, porta,
+torri) c'e' da subito ma neutrale, e diventa tuo alla rivelazione. Per
+spostare un oggetto in un gruppo: tasto destro sull'oggetto,
+*Move to Layer*. Per un gruppo nuovo dimmi cosa deve fare.
 
 ## Vista iniziale e regia
 

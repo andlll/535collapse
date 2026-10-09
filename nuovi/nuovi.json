@@ -1,17 +1,143 @@
 {
   "formato": "535-nuovi",
   "versione": 1,
-  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale).",
+  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi).",
   "sprites": {
-    "monastero_corpo": {"origin": "maschera", "fette": 64},
-    "monastero_muro": {"origin": "maschera", "fette": 64},
-    "monastero_casetta": {"origin": "maschera"},
-    "monastero_piazza": {"origin": "centro"}
+    "monastero_corpo": {
+      "origin": "maschera",
+      "fette": 64
+    },
+    "monastero_muro": {
+      "origin": "maschera",
+      "fette": 64
+    },
+    "monastero_casetta": {
+      "origin": "maschera"
+    },
+    "monastero_piazza": {
+      "origin": "centro"
+    }
   },
   "objects": {
-    "monastero_corpo": {"sprite": "monastero_corpo", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
-    "monastero_muro": {"sprite": "monastero_muro", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
-    "monastero_casetta": {"sprite": "monastero_casetta", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
-    "monastero_piazza": {"sprite": "monastero_piazza", "parents": [], "solid": false, "depth": -2}
+    "monastero_corpo": {
+      "sprite": "monastero_corpo",
+      "parents": [
+        "natural_parent"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      }
+    },
+    "monastero_muro": {
+      "sprite": "monastero_muro",
+      "parents": [
+        "natural_parent"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      }
+    },
+    "monastero_casetta": {
+      "sprite": "monastero_casetta",
+      "parents": [
+        "natural_parent"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      }
+    },
+    "monastero_piazza": {
+      "sprite": "monastero_piazza",
+      "parents": [],
+      "solid": false,
+      "depth": -2
+    },
+    "monastero": {
+      "sprite": "monastero_corpo",
+      "parents": [
+        "ally_wooden",
+        "ally_build",
+        "ally"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "il monastero del livello 3 quando e' del giocatore (§9.11): prende il posto di monastero_corpo alla rivelazione"
+    },
+    "enemy_manager_lv3": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false
+    },
+    "dialogo_3_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_3": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_4": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_3_6": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    }
   }
 }

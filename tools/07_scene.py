@@ -102,14 +102,18 @@ def main():
     for name, o in nuovi.load()["objects"].items():
         if name in info:
             raise SystemExit("nuovi/nuovi.json: %s c'e' gia' fra gli oggetti del progetto" % name)
-        sp = nsp[o["sprite"]]
+        sp = nsp[o["sprite"]] if o["sprite"] else None
         entry = {"sprite": o["sprite"], "visible": True, "parents": o.get("parents", []),
                  "mask": None, "solid": bool(o.get("solid")), "draw": True, "depth": o.get("depth", {"y": 0})}
-        if sp["fette"]:
+        if sp and sp["fette"]:
             entry["slices"] = [[o["sprite"] + nuovi.SLICE_SEP + str(k), f] for k, (_, _, f) in enumerate(sp["fette"])]
         info[name] = entry
     info["__fetta"] = {"sprite": None, "visible": True, "parents": [], "mask": None, "solid": False,
                        "draw": True, "depth": 0}
+    # [§9.11] un oggetto di un gruppo "neutrale" della mappa prima che passi
+    # al giocatore: stesso sprite, ostacolo come la citta' romana
+    info["__neutrale"] = {"sprite": None, "visible": True, "parents": ["natural_parent"], "mask": None,
+                          "solid": True, "draw": True, "depth": 0}
     os.makedirs(OUT, exist_ok=True)
     assets = os.path.dirname(OUT)
     with open(os.path.join(assets, "objects.json"), "w", encoding="utf-8", newline="\n") as f:
@@ -152,8 +156,9 @@ def main():
                                   "htiled": True, "vtiled": True, "hspeed": 0, "vspeed": 0, "stretch": False}]
                  if sc["background"] else [],
                  "objects": sorted({i["object"] for i in sc["instances"]}),
+                 # [§9.11] ottavo campo: il gruppo della mappa (livello "gruppo <nome>" in Tiled)
                  "instances": [[i["object"], i["x"], i["y"], i["scale_x"], i["scale_y"], i["rotation"], 4294967295]
-                               for i in sc["instances"]]}
+                               + ([i["group"]] if i.get("group") else []) for i in sc["instances"]]}
         with open(os.path.join(OUT, sc["name"] + ".json"), "w", encoding="utf-8", newline="\n") as f:
             json.dump(scene, f, separators=(",", ":"))
         print("%-6s %4d istanze (scenario %s)" % (sc["name"], len(sc["instances"]), os.path.relpath(p, REPO_DIR)))

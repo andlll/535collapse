@@ -537,6 +537,8 @@ export function fireBullet() {
   for (const [name, dmg] of Object.entries(FIRE_HIT)) {
     collisions[name] = (i, w, other) => { other.onfire = 1; other.life -= dmg; fireFlare(w, i.x, i.y); w.destroy(i); };
   }
+  // [§9.11] il monastero del livello 3: brucia, col suo danno (fireHit)
+  collisions.monastero = (i, w, other) => { other.onfire = 1; other.life -= other.fireHit; fireFlare(w, i.x, i.y); w.destroy(i); };
   for (const name of ["o_box1", "o_box2"]) {
     collisions[name] = (i, w, other) => {
       if (other.life > other.slife / 2) other.onfire = 1;
@@ -640,7 +642,8 @@ export function enemyRam(base) {
       i.step = 0;
       i.alarm.set(2, 13);
       const b = w.nearest(i.x + 50 * Math.cos(degtorad(i.direction)), i.y - 50 * Math.sin(degtorad(i.direction)), "ally_build");
-      if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.slife === 100 ? 5 : 50; }
+      // [§9.11] il monastero del livello 3 ha un danno suo (ramHit)
+      if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.ramHit ?? (b.slife === 100 ? 5 : 50); }
     },
     alarm3(i, w) {
       const dix = i.dirox, diy = i.diroy;
@@ -677,7 +680,12 @@ export function enemyRam(base) {
       if (!w.exists("ally_build")) return;
       const k = iso(i.direction);
       const b = w.nearest(i.x, i.y, "ally_build");
-      if (w.distanceToInstance(i, b) < 10 * k) {
+      // [§9.11] o fermo, bloccato a meno di 48 px: col flow field "largo"
+      // (§8.14) a una porta chiusa per i nemici non arriva a 10 px
+      const d = w.distanceToInstance(i, b);
+      const stuck = d < 48 && ((i.action === 1 && i.x === i.xprevious && i.y === i.yprevious) || i.warwork === 2);
+      if (d < 10 * k || stuck) {
+        if (stuck) i.direction = pointDirection(i.x, i.y, b.x, b.y);
         if (i.warwork === 2) { i.targetx = b.x; i.targety = b.y; i.direction = pointDirection(i.x, i.y, i.targetx, i.targety); }
         if (i.warwork !== 2) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
         return;

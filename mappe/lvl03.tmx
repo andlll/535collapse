@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="120" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="8" nextobjectid="401">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="120" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="10" nextobjectid="401">
  <tileset firstgid="1" source="../tileset/terreno.tsx" />
  <tileset firstgid="13" source="../tileset/montagne_fiumi.tsx" />
  <tileset firstgid="33" source="../tileset/natura.tsx" />
@@ -99,19 +99,9 @@
   <object id="18" gid="33" x="724" y="1200" width="172" height="298" />
   <object id="19" gid="33" x="800" y="1076" width="172" height="298" />
   <object id="20" gid="33" x="608" y="1340" width="172" height="298" />
-  <object id="23" gid="96" x="5585" y="1334" width="586" height="274" />
-  <object id="24" gid="96" x="4736" y="1334" width="586" height="274" />
-  <object id="25" gid="102" x="5160" y="1332" width="588" height="400" />
-  <object id="26" gid="98" x="4517" y="1335" width="180" height="772" />
-  <object id="27" gid="98" x="4515" y="1089" width="180" height="772" />
-  <object id="28" gid="98" x="4515" y="844" width="180" height="772" />
-  <object id="29" gid="98" x="4513" y="600" width="180" height="772" />
-  <object id="30" gid="98" x="4511" y="353" width="180" height="772" />
-  <object id="31" gid="98" x="4512" y="107" width="180" height="772" />
   <object id="43" gid="68" x="235" y="2411" width="138" height="138" />
   <object id="44" gid="68" x="5576" y="5440" width="138" height="138" />
   <object id="45" gid="72" x="3680" y="2992" width="118" height="200" />
-  <object id="46" gid="88" x="896" y="2528" width="508" height="510" />
   <object id="51" gid="127" x="428" y="5488" width="442" height="382" />
   <object id="52" gid="127" x="944" y="5640" width="442" height="382" />
   <object id="53" gid="117" x="1728" y="5800" width="420" height="332" />
@@ -129,14 +119,6 @@
   <object id="65" gid="128" x="220" y="5264" width="246" height="394" />
   <object id="66" gid="128" x="1892" y="5588" width="246" height="394" />
   <object id="67" gid="128" x="2692" y="5524" width="246" height="394" />
-  <object id="68" gid="89" x="1136" y="3072" width="448" height="356" />
-  <object id="69" gid="82" x="408" y="2756" width="204" height="318" />
-  <object id="70" gid="82" x="720" y="2815" width="204" height="318" />
-  <object id="71" gid="82" x="507" y="2983" width="204" height="318" />
-  <object id="72" gid="106" x="2101" y="2887" width="254" height="408" />
-  <object id="73" gid="106" x="1429" y="3248" width="254" height="408" />
-  <object id="74" gid="106" x="4900" y="1450" width="254" height="408" />
-  <object id="75" gid="106" x="5487" y="1431" width="254" height="408" />
   <object id="84" gid="42" x="802" y="4034" width="172" height="298" />
   <object id="85" gid="42" x="774" y="4206" width="172" height="298" />
   <object id="86" gid="42" x="928" y="4194" width="172" height="298" />
@@ -423,5 +405,27 @@
   <object id="78" gid="50" x="360" y="5864" width="74" height="48" />
   <object id="79" gid="50" x="4560" y="6224" width="74" height="48" />
   <object id="400" name="vista iniziale" type="vista" x="3215.39" y="4159.51" width="3000" height="2000" />
+ </objectgroup>
+ <objectgroup id="8" name="gruppo citta" draworder="topdown">
+  <object id="46" gid="88" x="896" y="2528" width="508" height="510" />
+  <object id="68" gid="89" x="1136" y="3072" width="448" height="356" />
+  <object id="69" gid="82" x="408" y="2756" width="204" height="318" />
+  <object id="70" gid="82" x="720" y="2815" width="204" height="318" />
+  <object id="71" gid="82" x="507" y="2983" width="204" height="318" />
+  <object id="72" gid="106" x="2101" y="2887" width="254" height="408" />
+  <object id="73" gid="106" x="1429" y="3248" width="254" height="408" />
+ </objectgroup>
+ <objectgroup id="9" name="gruppo monastero" draworder="topdown">
+  <object id="23" gid="96" x="5585" y="1334" width="586" height="274" />
+  <object id="24" gid="96" x="4736" y="1334" width="586" height="274" />
+  <object id="25" gid="102" x="5160" y="1332" width="588" height="400" />
+  <object id="26" gid="98" x="4517" y="1335" width="180" height="772" />
+  <object id="27" gid="98" x="4515" y="1089" width="180" height="772" />
+  <object id="28" gid="98" x="4515" y="844" width="180" height="772" />
+  <object id="29" gid="98" x="4513" y="600" width="180" height="772" />
+  <object id="30" gid="98" x="4511" y="353" width="180" height="772" />
+  <object id="31" gid="98" x="4512" y="107" width="180" height="772" />
+  <object id="74" gid="106" x="4900" y="1450" width="254" height="408" />
+  <object id="75" gid="106" x="5487" y="1431" width="254" height="408" />
  </objectgroup>
 </map>

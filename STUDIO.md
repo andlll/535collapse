@@ -20,8 +20,8 @@ categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
 script Tiled -> scenario con anteprima e collaudo; maschere di collisione
 che ruotano con lo sprite; schermata di caricamento senza rettangolo nero
 e senza cambio di font; ordini di attacco e tempi della catapulta; il
-livello 3 (mappa dell'autore) e il monastero, primi sprite nuovi (Fase 9,
-§9.1–§9.10).
+livello 3 (mappa dell'autore) e il monastero, primi sprite nuovi; la
+regia del livello 3, difesa a tempo del monastero (Fase 9, §9.1–§9.11).
 **Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
 gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
@@ -4373,3 +4373,86 @@ slot dei salvataggi nel menu (`SAVE_ROOMS`): sono la prossima tappa.
 CI: gli scenari devono venire dalle mappe di `mappe/` (rigenerati e
 confrontati); soak e salvataggi anche su `lvl03` (3000 passi senza errori;
 salvataggio 2,5 MB, ripristino identico).
+
+### 9.11 Livello 3: la difesa del monastero
+
+L'idea dell'autore (9 ottobre 2026): difesa a tempo. I soldati partono in
+basso a destra; seguendo la strada arrivano a un villaggio che passa al
+giocatore; un abitante avverte che gli invasori vogliono prendere il
+monastero a nord, vicino alle montagne; i soldati decidono di difenderlo;
+la nebbia sul monastero si toglie, la vista ci si sposta e parte il conto
+alla rovescia. Le ondate arrivano dal punto di partenza (arieti contro le
+mura, soldati contro i difensori), sempre piu' grosse; intanto le caserme e
+le stalle della base nemica attaccano il villaggio, e distruggerle li ferma
+(lo dice un dialogo dopo il primo attacco). Il monastero cura come la
+chiesa, molto piu' in largo e piu' spesso; icona della chiesa, molta piu'
+vita. Decisioni dell'autore alle domande: **si perde quando il monastero
+scende sotto meta' vita** (cosi' lo si puo' riparare); **gli arieti
+sfondano la cinta esterna** (mura, porta, torri: pezzi normali), il muro
+del cortile resta un ostacolo; **il villaggio compare all'arrivo**; numeri
+di partenza proposti da me, da tarare giocando. Parere dato all'autore: la
+sconfitta al primo colpo era troppo punitiva; il monastero di pietra non
+brucerebbe (va deciso che brucia); due casse nemiche (`o_box1`, `o_box2`)
+stanno nel villaggio: sono edifici nemici, se erano decorazione vanno
+cambiate (in sospeso).
+
+**Gruppi della mappa** (`scenario.js`, 12, 07): un livello di Tiled
+`gruppo <nome>` mette il gruppo nell'ottavo campo dell'istanza; la regia
+dice cosa farne (`GROUPS`): "nascosto" (non c'e' finche' non lo si crea,
+in `g.heldGroups`, salvato coi globali) o "neutrale" (c'e' come
+`__neutrale`: stesso sprite e maschera, fette comprese, ostacolo
+`natural_parent` di nessuno; `activateGroup` lo sostituisce con l'oggetto
+vero e libera le celle). In `lvl03`: `gruppo citta` (centro, 3 case,
+chiesa, 2 torri) nascosto, `gruppo monastero` (2 mura, 6 mura verticali,
+porta, 2 torri) neutrale; spostati io nella mappa per zona.
+
+**Il monastero** (`buildings.js` `monastery`, oggetto `monastero` in
+`nuovi.json`, non nel kit): alla rivelazione prende il posto di
+`monastero_corpo` (stesso sprite, a fette). Edificio alleato di legno
+(`ally_wooden`: i nemici lo incendiano, i civili lo spengono e lo
+riparano col legno), 3000 di vita, cura +3 ogni 60 passi entro 2000 px
+(la chiesa: ogni 180 entro 800), vista ampia (fog.js: toglie la nebbia
+sul complesso), fiamme su tutto il corpo con la vita delle particelle
+scalata (`FIRE.monastero.k`), barra della vita sopra il tetto, scheda con
+`ico_chiesa`, niente demolizione col tasto Canc. Danni suoi
+(`MONASTERY`): colpo d'ariete 20 (agli altri edifici 50), freccia
+incendiaria 1 e fuoco, in fiamme -1 ogni 10 passi. Misurato prima di
+tararli: con 50 a colpo due arieti entrati nel recinto lo portavano a meta'
+in 17 s; le frecce incendiarie non lo toccavano (mancava in `FIRE_HIT`).
+
+**Regia** (`levels.js` `enemyManagerLv3`, tabella `LV3`): fase 0 marcia
+(arrivo: un'unita' entro 700 px dal centro del villaggio -> il gruppo
+`citta`, 3 civili, +200 cibo e legno, dialoghi 3_1-3_3), fase 1 (chiuso il
+3_3: rivelazione, vista che scivola in 90 passi, dialogo 3_4), fase 2
+difesa di 15 minuti. Ondate (dalla rivelazione): 1 min 2 guerrieri + 2
+picchieri + 1 ariete, poi ogni 2:30 fino a 13:30 (5 guerrieri, 4
+picchieri, 3 arcieri, 2 cavalieri, 3 arieti, 1 catapulta); nascono al
+punto di partenza e marciano col flow field verso la porta; le macchine
+ferme ripartono verso l'edificio alleato piu' vicino alla porta; i fanti
+verso il soldato alleato piu' vicino (entro 1500 px) o, se non c'e' e il
+recinto e' raggiungibile (cinta sfondata), fra la cinta e il muro del
+cortile, dove incendiano il monastero da soli (enemies.js, 400 px).
+Attacchi al villaggio: dal minuto 4, ogni 2, ogni caserma crea 1-3 fanti e
+ogni stalla 1-3 cavalieri, verso l'edificio alleato piu' vicino al
+villaggio; 40 s dopo il primo, il dialogo 3_5 e l'obiettivo "distruggi
+caserme e stalle". I nemici gia' sulla mappa difendono dove sono. Il
+centro distrutto in `lvl03` non e' sconfitta. Obiettivi (endgame.js):
+strada, conto alla rovescia, vita del monastero, base nemica. Vittoria allo
+zero col monastero sopra meta': codice 9 3 0 7 6, sblocca il 4.
+Campagna (menu), slot dei salvataggi, testi in sei lingue.
+
+**Ariete nemico** (siege.js): colpisce anche da fermo, bloccato a meno di
+48 px dall'edificio alleato piu' vicino. Col flow field "largo" (§8.14) a
+una porta chiusa per i nemici restava a 35-37 px e non colpiva mai (a 10
+px dall'originale).
+
+Prove (Chromium, `window.__game`, soldati spostati al villaggio):
+partenza senza centro, 11 neutrali, `monastero_corpo`; arrivo: centro, 3
+case, chiesa, 2 torri, 3 civili, dialogo 3_1; rivelazione: monastero 3000,
+neutrali 0, cinta del giocatore, vista sul monastero. La prima ondata:
+l'ariete abbatte una torre, la porta (600 -> 0), poi le mura; i fanti
+entrano e incendiano il monastero. Senza difendere: sconfitta a 5,3 minuti
+(fuoco dal minuto 2,5 e arieti). Col monastero con vita enorme: vittoria a
+15 minuti. Salvataggio e ripristino identici prima dell'arrivo (gruppi
+tenuti da parte) e a meta' difesa. Soak, salvataggi e zip senza errori.
+Da fare: giocarlo per tarare i numeri; le due casse nel villaggio.

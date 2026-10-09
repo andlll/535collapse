@@ -12,6 +12,8 @@
 
 import { irandomRange, pointDistance } from "./gm.js";
 import { freeSpawnEnemy } from "./enemies.js";
+import { activateGroup } from "./scenario.js";
+import { GRID } from "./pathing.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -371,6 +373,205 @@ export function enemyManagerLv2(p) {
       if (i.won !== 1 && [1, 2, 3, 4, 5, 6, 7].every((k) => i["l" + k] === 1) && w.number("enemy_build") === 0) {
         i.won = 1;
         createIfPorted(w, "victory_manager", 0, 0);
+      }
+    },
+  };
+}
+
+// ----------------------------------------------------- livello 3
+
+// [§9.11, idea dell'autore] Il monastero: difesa a tempo. I soldati partono
+// in basso a destra; seguendo la strada arrivano al villaggio (che compare e
+// passa al giocatore, gruppo "citta" della mappa), un abitante li avverte
+// del monastero a nord; chiuso il dialogo il monastero diventa del
+// giocatore (monastero_corpo -> monastero, gruppo "monastero": cinta, porta,
+// torri), la vista ci si sposta e parte il conto alla rovescia. Le ondate
+// arrivano dal punto di partenza (arieti contro la cinta, soldati contro i
+// difensori); dalle caserme e dalle stalle della base nemica partono gli
+// attacchi al villaggio (finche' ce ne sono: distruggerle li ferma).
+// Vittoria: allo zero il monastero ha ancora almeno meta' della vita.
+// Sconfitta: sotto la meta'.
+// Numeri di partenza [decisi con l'autore, da tarare giocando]: 60 passi
+// al secondo, 3600 al minuto.
+const MIN = 3600;
+export const LV3 = {
+  town: [896, 2528], arrive: 700,          // il villaggio: arrivo entro 700 px dal centro
+  spawn: [5750, 5850],                     // dove nascono le ondate (la partenza del giocatore)
+  gate: [5160, 1332],                      // la porta della cinta: meta delle ondate
+  inner: [5372, 1100],                     // fra la cinta e il muro del cortile: a 320 px dal monastero
+  defense: 15 * MIN,                       // durata della difesa
+  townGift: { omini: 3, food: 200, wood: 200 },
+  // ondate (dalla rivelazione): fanti per tipo, arieti, catapulte
+  waves: [
+    { at: 1 * MIN, units: { enemy_warrior: 2, enemy_picchiere: 2 }, rams: 1 },
+    { at: 3.5 * MIN, units: { enemy_warrior: 3, enemy_picchiere: 2, enemy_arciere: 1 }, rams: 1 },
+    { at: 6 * MIN, units: { enemy_warrior: 4, enemy_picchiere: 3, enemy_arciere: 2 }, rams: 2 },
+    { at: 8.5 * MIN, units: { enemy_warrior: 4, enemy_picchiere: 3, enemy_arciere: 2, enemy_cavaliere: 1 }, rams: 2 },
+    { at: 11 * MIN, units: { enemy_warrior: 5, enemy_picchiere: 3, enemy_arciere: 3, enemy_cavaliere: 2 }, rams: 3 },
+    { at: 13.5 * MIN, units: { enemy_warrior: 5, enemy_picchiere: 4, enemy_arciere: 3, enemy_cavaliere: 2 }, rams: 3, catapults: 1 },
+  ],
+  // attacchi al villaggio: il primo 3 minuti dopo la prima ondata, poi ogni
+  // 2; ogni caserma crea `n` fanti, ogni stalla `n` cavalieri
+  baseFirst: 4 * MIN, baseEvery: 2 * MIN, baseN: [1, 1, 2, 2, 2, 3],
+  baseHint: 40 * 60,                       // il dialogo sulla base nemica, dopo il primo attacco
+  lastMinute: 14 * MIN,
+};
+const FANTI = ["enemy_warrior", "enemy_picchiere", "enemy_arciere"];
+
+// nascono nel punto, ognuno in un posto libero, e marciano col flow field
+// verso la meta (ruolo 31; arrivati, 32); `side`: "mon" o "base"
+function march(w, list, x, y, ff, goal, side) {
+  for (const [k, obj] of list.entries()) {
+    const e = w.create(obj, x + (k % 4) * 60 - 90, y + Math.floor(k / 4) * 60 - 60);
+    freeSpawnEnemy(e, w);
+    e.l3 = side;
+    e.defender = 0;
+    if (obj === "enemy_ariete" || obj === "enemy_catapulta") {
+      e.action = 1; e.warwork = 1; e.dirox = goal[0]; e.diroy = goal[1]; e.alarm.set(0, 15);
+      continue;
+    }
+    e.role = 31; e.action = 1; e.flow_field = ff; e.dirox = goal[0]; e.diroy = goal[1];
+    e.alarm.set(0, irandomRange(12, 15));
+  }
+}
+
+export function enemyManagerLv3(p) {
+  const monastery = (w) => w.all("monastero").next().value || null;
+  return {
+    create(i, w) {
+      i.sprite_index = null;
+      Object.assign(i, { phase: 0, t: 0, wave: 0, base: 0, revealAsked: 0, baseHintAt: -1, last: 0, pan: null });
+      // i nemici gia' sulla mappa difendono dove sono (non vanno a cercare i
+      // civili), come in match
+      for (const e of w.all("enemy_unit")) e.defender = 1;
+      w.g.l3 = { phase: 0, left: LV3.defense, life: 0, slife: 0, baseKnown: 0 };
+      i.alarm.set(1, 60);
+    },
+    // il primo dialogo, appena inquadrati i soldati
+    alarm1(i, w) {
+      const s = w.nearest(w.cam.x + w.cam.w / 2, w.cam.y + w.cam.h / 2, "ally_militare");
+      if (s) w.create("dialogo_3_0", s.x, s.y);
+    },
+    step(i, w) {
+      const g = w.g;
+      if (g.victory === 1 || g.gameover === 1) return;
+      // 0: in marcia verso il villaggio
+      if (i.phase === 0) {
+        const u = w.nearest(LV3.town[0], LV3.town[1], "ally_unit");
+        if (u && pointDistance(u.x, u.y, LV3.town[0], LV3.town[1]) < LV3.arrive) {
+          activateGroup(w, "citta");
+          const c = w.nearest(LV3.town[0], LV3.town[1], "centro") || { x: LV3.town[0], y: LV3.town[1] };
+          for (let k = 0; k < LV3.townGift.omini; k++) {
+            const o = w.create("ally_omino", c.x - 60 + k * 60, c.y + 170);
+            freeSpawnEnemy(o, w); // un posto libero (vale per qualunque istanza)
+          }
+          g.food += LV3.townGift.food; g.wood += LV3.townGift.wood;
+          w.create("dialogo_3_1", c.x, c.y + 170);
+          i.phase = 1;
+        }
+        return;
+      }
+      // 1: i dialoghi al villaggio; chiuso l'ultimo, la rivelazione
+      if (i.phase === 1) {
+        if (i.revealAsked !== 1) return;
+        const old = w.all("monastero_corpo").next().value;
+        if (old) { const { x, y } = old; w.destroy(old); w.create("monastero", x, y); }
+        activateGroup(w, "monastero");
+        const m = monastery(w);
+        if (m) {
+          const tx = m.x - w.cam.w / 2, ty = m.y + 250 - w.cam.h / 2;
+          i.pan = { x0: w.cam.x, y0: w.cam.y, x1: tx, y1: ty, k: 0 };
+          w.create("dialogo_3_4", m.x, m.y + 300);
+        }
+        i.ffMon = p.flowField(p.goalField(LV3.gate[0], LV3.gate[1], true));
+        i.phase = 2; i.t = 0; g.l3.phase = 2;
+        return;
+      }
+      // la vista che scivola sul monastero (90 passi)
+      if (i.pan) {
+        const P = i.pan, a = Math.min(1, ++P.k / 90), e = a * a * (3 - 2 * a);
+        w.cam.x = P.x0 + (P.x1 - P.x0) * e; w.cam.y = P.y0 + (P.y1 - P.y0) * e;
+        if (w.cam.clamp) w.cam.clamp();
+        if (a >= 1) i.pan = null;
+      }
+      // 2: la difesa
+      i.t++;
+      const m = monastery(w);
+      g.l3.left = Math.max(0, LV3.defense - i.t);
+      if (m) { g.l3.life = m.life; g.l3.slife = m.slife; }
+      if (!m || m.life < m.slife / 2) {
+        g.gameover = 1; g.l3.lost = 1;
+        w.create("gameover_manager", 0, 0);
+        return;
+      }
+      if (i.t >= LV3.defense) {
+        g.victory = 1;
+        w.create("victory_manager", 0, 0);
+        return;
+      }
+      if (i.last === 0 && i.t >= LV3.lastMinute) { i.last = 1; w.create("dialogo_3_6", m.x, m.y + 300); }
+      // ondate verso la cinta
+      const W = LV3.waves[i.wave];
+      if (W && i.t >= W.at) {
+        i.wave++;
+        const list = [];
+        for (const [obj, n] of Object.entries(W.units)) for (let k = 0; k < n; k++) list.push(obj);
+        for (let k = 0; k < (W.rams || 0); k++) list.push("enemy_ariete");
+        for (let k = 0; k < (W.catapults || 0); k++) list.push("enemy_catapulta");
+        march(w, list, LV3.spawn[0], LV3.spawn[1], i.ffMon, LV3.gate, "mon");
+      }
+      // attacchi al villaggio dalle caserme e dalle stalle nemiche
+      if (i.t >= LV3.baseFirst + i.base * LV3.baseEvery) {
+        const n = LV3.baseN[Math.min(i.base, LV3.baseN.length - 1)];
+        i.base++;
+        const town = w.nearest(LV3.town[0], LV3.town[1], "ally_build");
+        if (town) {
+          const ff = p.flowField(p.goalField(town.x, town.y, true));
+          let sent = 0;
+          for (const c of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
+            const list = [];
+            for (let k = 0; k < n; k++) list.push(c.object === "enemy_stalla" ? "enemy_cavaliere" : FANTI[(i.base + k) % 3]);
+            march(w, list, c.x, c.y + 120, ff, [town.x, town.y], "base");
+            sent += list.length;
+          }
+          if (sent && i.baseHintAt < 0) i.baseHintAt = i.t + LV3.baseHint;
+        }
+      }
+      if (i.baseHintAt >= 0 && i.t >= i.baseHintAt) {
+        i.baseHintAt = -2; g.l3.baseKnown = 1;
+        const c = w.nearest(LV3.town[0], LV3.town[1], "ally_omino") || w.nearest(LV3.town[0], LV3.town[1], "ally_unit");
+        if (c) w.create("dialogo_3_5", c.x, c.y);
+      }
+      // ogni secondo, chi e' arrivato e sta fermo riparte: le macchine verso
+      // l'edificio alleato piu' vicino alla meta (la cinta, poi il resto), i
+      // fanti verso il soldato alleato piu' vicino alla meta se ce n'e' uno
+      // entro 1500 px; se no restano li', e a 400 px da un edificio di legno
+      // (il monastero, le case) gli danno fuoco da soli (enemies.js)
+      // Se non c'e' un soldato da attaccare, i fanti delle ondate entrano nel
+      // cortile appena il monastero e' raggiungibile (cinta sfondata): il
+      // campo verso il monastero si rifa' quando cambiano gli ostacoli.
+      if (i.t % 60 === 0) {
+        if (!i.ffIn || i.ffIn.ver !== p.solidVer) {
+          const goal = p.goalField(LV3.inner[0], LV3.inner[1], true);
+          i.ffIn = { ver: p.solidVer, goal, ff: p.flowField(goal) };
+        }
+        for (const e of w.all("enemy_unit")) {
+          if (!e.l3 || e.action !== 0 || e.role === 31) continue;
+          const [gx, gy] = e.l3 === "mon" ? LV3.gate : LV3.town;
+          const siege = e.object === "enemy_ariete" || e.object === "enemy_catapulta";
+          const t = w.nearest(gx, gy, siege ? "ally_build" : "ally_unit");
+          if (t && (siege || pointDistance(t.x, t.y, gx, gy) <= 1500)) {
+            e.action = 1; e.warwork = 1; e.dirox = t.x; e.diroy = t.y; e.alarm.set(0, 15);
+            continue;
+          }
+          const d = pointDistance(e.x, e.y, LV3.inner[0], LV3.inner[1]);
+          if (e.l3 !== "mon" || siege || d <= 120) continue;
+          if (p.fieldAt(i.ffIn.goal, Math.floor(e.x / GRID), Math.floor(e.y / GRID)) === -1) continue;
+          e.action = 1; e.warwork = 0; e.alarm.set(0, 15);
+          e.dirox = LV3.inner[0] + irandomRange(-120, 120); e.diroy = LV3.inner[1] + irandomRange(-40, 40);
+          // lontani col flow field (si fermano a 400 px, enemies.js), poi dritti
+          if (d > 450) { e.role = 31; e.flow_field = i.ffIn.ff; } else e.role = 32;
+        }
       }
     },
   };

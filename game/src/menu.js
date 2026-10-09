@@ -36,7 +36,7 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03" };
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -74,7 +74,7 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 function loadRows(W, H) {

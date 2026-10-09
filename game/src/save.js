@@ -268,7 +268,7 @@ export async function gunzipBase64(b64) {
 
 // uno slot per room: "535.save.match", "535.save.lvl01", ...
 const slotKey = (room) => "535.save." + room;
-export const SAVE_ROOMS = ["match", "lvl01", "lvl02"];
+export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03"];
 
 // data: { game, v, room, date, state }; ritorna il numero di byte scritti
 export async function saveSlot(data) {

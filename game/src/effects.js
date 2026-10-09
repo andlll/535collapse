@@ -122,6 +122,10 @@ export const FIRE = {
   o_box1: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   o_box2: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   campo: { back: [-35, 35, -5, 5, 6], front: null, life: [150, 160] },
+  // [§9.11] il monastero (3000 di vita): fiamme su tutto il corpo, e la
+  // loro vita cresce coi danni ma scalata (k), se no a meta' vita
+  // salirebbero per centinaia di passi
+  monastero: { back: [-320, 320, -200, -170, 16], front: [-300, 300, 40, 70, 8], life: [3600, 3650], k: 0.05 },
 };
 
 const fireType = () => partType({
@@ -157,7 +161,8 @@ export function fireStep(i, w, kind) {
     if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    i.fire_part.life = [(F.life[0] - i.life) / 2, (F.life[1] - i.life) / 2];
+    const k = F.k || 1;
+    i.fire_part.life = [(F.life[0] - i.life) / 2 * k, (F.life[1] - i.life) / 2 * k];
   }
 }
 

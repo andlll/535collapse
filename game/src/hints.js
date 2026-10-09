@@ -176,6 +176,23 @@ export const DIALOGS = {
                   create: (i, w) => w.create("palo_1", 150, 250),
                   click: (i, w) => { w.cam.x = 500; w.cam.y = 600; w.cam.clamp(); } },
   dialogo_2_14: { who: SPY, arm: 10, vanish: true, text: "It seems that this very barracks trains the archers who protect that point." },
+  // livello 3 [§9.11, testi dell'autore riscritti]: la regia e' in
+  // levels.js (enemyManagerLv3), che li crea; chiudere il 3_3 rivela il
+  // monastero
+  dialogo_3_0: { who: SOLDIER2, arm: 30,
+                 text: "We are alone in enemy land... If we follow the road we should reach a village. They could give us support." },
+  dialogo_3_1: { who: [...VILLAGER, "Villager"], arm: 30, next: "dialogo_3_2",
+                 text: "Soldiers! Welcome, our village is yours. But listen: the invaders are trying to seize the monastery north of here, near the mountains!" },
+  dialogo_3_2: { who: [...VILLAGER, "Villager"], arm: 30, next: "dialogo_3_3",
+                 text: "Its walls are strong and the monks heal the wounded. If it falls, nothing will stop them." },
+  dialogo_3_3: { who: SOLDIER2, arm: 30,
+                 text: "Then we will defend the monastery! From its fortified position we can stop their advance.",
+                 destroy: (i, w) => { for (const m of w.all("enemy_manager_lv3")) m.revealAsked = 1; } },
+  dialogo_3_4: { who: SOLDIER2, arm: 30, timeout: 900,
+                 text: "The monastery is ours. Hold it until the end of the countdown: if it is damaged beyond half, it is lost. Watch out for their rams!" },
+  dialogo_3_5: { who: [...VILLAGER, "Villager"], arm: 30,
+                 text: "The attacks on the village come from the enemy base to the south-west. Destroy its barracks and stables and they will stop!" },
+  dialogo_3_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "Hold on! Just one more minute!" },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

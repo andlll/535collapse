@@ -9,7 +9,7 @@ di alberi le forme del livello "boschi" e scrive lo scenario:
   scenari/<nome>.json   {"format": "535-scenario", "version": 1, "name",
                          "width", "height", "background", "colour", "view",
                          "instances": [{"object", "x", "y", "scale_x",
-                         "scale_y", "rotation", "sprite"?}]}
+                         "scale_y", "rotation", "sprite"?, "group"?}]}
 
 Le istanze sono nell'ordine di creazione di Tiled (l'id dell'oggetto), come
 l'ordine delle istanze di una room di GameMaker; gli alberi di un bosco
@@ -201,6 +201,10 @@ def load_map(path, kit=None):
     entries, view = [], None  # (id, [istanze])
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
+        # [§9.11] livello "gruppo <nome>": gli oggetti che la regia del livello
+        # tiene da parte (creati piu' tardi, o neutrali finche' non passano al
+        # giocatore)
+        group = layer[len("gruppo "):].strip() if layer.lower().startswith("gruppo ") else None
         for o in g.findall("object"):
             oid = int(o.get("id"))
             where = "oggetto %d nel livello %r" % (oid, layer)
@@ -225,6 +229,8 @@ def load_map(path, kit=None):
                         "scale_x": round(sx, 6), "scale_y": round(sy, 6), "rotation": round(ang, 4)}
                 if variants[tile["object"]] > 1:
                     inst["sprite"] = tile["sprite"]
+                if group:
+                    inst["group"] = group
                 # unita', edifici e risorse con l'origine fuori dalla mappa; il
                 # resto (montagne, chiazze a cavallo del bordo) solo se non se
                 # ne vede niente

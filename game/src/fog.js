@@ -53,6 +53,9 @@ function shapeOf(w, i, k) {
   const { x, y } = i;
   if (w.is(i, "castello") || w.is(i, "torre")) return [x, y, 500 + 500 * k, 300 + 300 * k];
   if (w.is(i, "centro")) return [x, y, 300 + 300 * k, 180 + 180 * k];
+  // [§9.11] il monastero del livello 3: alla rivelazione toglie la nebbia
+  // su tutto il complesso
+  if (i.object === "monastero") return [x, y + 200, 1100 + 300 * k, 750 + 200 * k];
   if (w.is(i, "mura_ori") || w.is(i, "mura_ori_fond") || w.is(i, "porta_ori")) {
     return [x, y, 300 + 200 * k, 120 + 120 * k];
   }
