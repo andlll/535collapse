@@ -16,6 +16,7 @@ build/535-tiled-kit.zip:
   mappe/nuova.tmx        mappa vuota 6000x6000 coi livelli gia' pronti
   mappe/<room>.tmx       le room dell'autore (match, lvl01, lvl02) convertite:
                          esempi, e il collaudo del kit (tools/12 --check)
+  mappe/lvl03.tmx ...    i livelli nuovi, copiati da mappe/ del repo
 
 Le macchie d'erba, di spighe e di fili d'erba (burst_erba1, burst_grano1,
 chiazzaparticellare) nel gioco sono particelle senza sprite: nel kit sono
@@ -28,6 +29,7 @@ Uso:
                                                      in piu' una mappa vuota
                                                      mappe/lvl03.tmx 4000x6000
 """
+import glob
 import hashlib
 import importlib.util
 import json
@@ -44,6 +46,7 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import DATA_DIR, GMX_DIR, REPO_DIR, SRC_DIR, TOOLS, need  # noqa: E402
 import tiledkit as tk  # noqa: E402
+import nuovi  # noqa: E402
 
 ROOMS = ["match", "lvl01", "lvl02"]
 # Sprite del gioco diversi da quelli del progetto GameMaker [§8.16]: il campo
@@ -196,10 +199,16 @@ def catalogue():
             out.insert(0, data[name]["sprite"])
         return out
 
+    new_objs = nuovi.load()["objects"]
+    new_sprites = nuovi.sprites()
     out = []
     for name in sorted(info):
-        cat = tk.category(name, info[name])
+        cat = tk.category(name, info[name], new_objs)
         if cat is None:
+            continue
+        if cat == "nuovi":
+            sp = new_objs[name]["sprite"]
+            out.append((cat, name, sp, new_sprites[sp]["image"], tuple(new_sprites[sp]["origin"])))
             continue
         if name in tk.DECOR:
             im, o = decor_image(name, atlas)
@@ -433,7 +442,10 @@ invece, sono tue.
 2. In Tiled: *File → Open File or Project…* e apri `535.tiled-project`
    (aggiunge la classe `bosco` e mostra le cartelle del kit nel pannello
    *Project*).
-3. Apri `mappe/nuova.tmx` e salvala subito con un altro nome
+3. I livelli gia' disegnati sono in `mappe/` (`lvl03.tmx`, il monastero):
+   continua da quelli, **non dalla tua copia vecchia** (e' fatta col kit di
+   prima e qui non torna). Per un livello nuovo apri `mappe/nuova.tmx` e
+   salvala subito con un altro nome
    (*File → Save As…*, per esempio `mappe/lvl03.tmx`), oppure apri una delle
    room dell'autore gia' convertite (`mappe/match.tmx`, `lvl01.tmx`,
    `lvl02.tmx`) per vedere come sono fatte.
@@ -535,6 +547,14 @@ Python: `python3 tools/12_tiled_import.py tuamappa.tmx --anteprima`
 controlla la mappa (oggetti sconosciuti, coordinate fuori mappa, manager
 mancante) e disegna un'immagine della mappa intera con i boschi riempiti.
 
+## Sprite nuovi
+
+I tuoi sprite (il monastero) sono nel tileset `nuovi`. Per aggiungerne
+altri non toccare i tileset del kit: mandami l'immagine (e la maschera di
+collisione `_mask.png`, stessa misura) e dimmi come si comportano; li metto
+io in `nuovi/` e rigenero il kit. Il tileset `nuovi` cresce in fondo, le
+mappe gia' fatte restano valide.
+
 ## Tileset
 
 | Tileset | Contenuto | Tile |
@@ -553,6 +573,11 @@ def main():
         mw = room_to_map(manifest, info, room)
         mw.write(os.path.join(maps, room + ".tmx"))
         print("mappe/%s.tmx: %d oggetti" % (room, mw.next_id - 2))
+    # [§9.10] le mappe dei livelli nuovi (mappe/ del repo), per continuare a
+    # disegnarle col kit
+    for src in sorted(glob.glob(os.path.join(REPO_DIR, "mappe", "*.tmx"))):
+        shutil.copy(src, os.path.join(maps, os.path.basename(src)))
+        print("mappe/%s: dal repo" % os.path.basename(src))
     if "--nuova" in args:
         k = args.index("--nuova")
         name, size = args[k + 1], args[k + 2]

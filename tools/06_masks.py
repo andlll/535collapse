@@ -35,6 +35,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import DATA_DIR, GMX_DIR, REPO_DIR, need  # noqa: E402
+import nuovi  # noqa: E402
 
 OUT = os.path.join(REPO_DIR, "game", "assets", "masks.json")
 
@@ -126,6 +127,16 @@ def main():
             e["water"], n = water_cells(frames[0])
             print("acqua: %s, %d celle da %d px" % (s["name"], n, WATER_CELL))
         out[s["name"]] = e
+    # [§9.10] le maschere degli sprite nuovi (nuovi/sprites/<sprite>_mask.png):
+    # precise, bbox dei pixel pieni
+    for name, d in nuovi.sprites().items():
+        m = d["mask"]
+        if m is None:
+            continue
+        bb = m.getbbox()
+        bbox = [bb[0], bb[1], bb[2] - 1, bb[3] - 1]
+        out[name] = {"kind": 0, "bbox": bbox, "origin": d["origin"], "size": list(m.size),
+                     "sepmasks": False, "frames": [rle(m, bbox)]}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         json.dump({"version": 1, "sprites": out}, f, separators=(",", ":"))

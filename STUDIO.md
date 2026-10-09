@@ -19,8 +19,9 @@ Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
 script Tiled -> scenario con anteprima e collaudo; maschere di collisione
 che ruotano con lo sprite; schermata di caricamento senza rettangolo nero
-e senza cambio di font; ordini di attacco e tempi della catapulta (Fase 9,
-§9.1–§9.9).
+e senza cambio di font; ordini di attacco e tempi della catapulta; il
+livello 3 (mappa dell'autore) e il monastero, primi sprite nuovi (Fase 9,
+§9.1–§9.10).
 **Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
 gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
@@ -4310,3 +4311,65 @@ con 22 di vita, ora piu' lenta resta piu' a lungo e muore verso il passo
 2250 (soak: alleati 3 e pop 5 invece di 4 e 8 dopo 3000 passi). Se l'autore
 preferisce il ritmo di prima, con la mira veloce: `RELOAD_STEP` 19 (un
 tiro ogni 175 passi). Soak e salvataggi senza errori.
+
+### 9.10 Livello 3 e il monastero: sprite nuovi
+
+L'autore ha caricato su `main` la mappa del livello 3 (`lvl03.tmx`, il
+monastero) e quattro sprite nuovi con le maschere di collisione:
+`monastero_corpo`, `_muro`, `_casetta` (con `_mask.png`) e
+`monastero_piazza` (senza: si cammina sopra). Richiesta: la piazza sotto a
+tutto (depth -1 o -2), il resto -y come gli edifici.
+
+**Contenuti nuovi** (`nuovi/`, versionato; `tools/nuovi.py`): gli sprite in
+`nuovi/sprites/`, oggetti e regole in `nuovi/nuovi.json`. Non passano da
+`gmx/` e `data/` (si rigenerano dagli zip). Li leggono 05 (atlas, gruppo
+edifici), 06 (maschere precise dai `_mask.png`), 07 (oggetti) e 11 (kit,
+tileset `nuovi`, in fondo all'elenco).
+- Origine: "maschera" = baricentro dei pixel della maschera. Negli edifici
+  dell'originale l'origine sta dentro la maschera a circa il 60-75% della
+  sua altezza (casa 0,70, caserma 0,62, castello 0,72, chiesa 0,74): la
+  base dell'edificio.
+- Oggetti: corpo, muro e casetta come gli edifici della citta' romana
+  (`natural_parent`, solidi, depth -y: ostacoli del pathfinding) e fermano
+  le frecce (`blocksShots`, come `ocr_*`); la piazza depth -2, senza
+  maschera.
+- **Fette**: il muro di cinta e' lungo e in diagonale e chiude un cortile;
+  con una sola depth -y o chi sta nel cortile si disegna sopra il muro, o
+  chi sta fuori davanti a un braccio si disegna sotto. Muro e corpo sono
+  quindi disegnati a fette verticali di 64 px (05 le ritaglia,
+  `<sprite>#<n>`), ognuna un'istanza `__fetta` ferma, senza maschera, con
+  la depth del bordo anteriore della maschera nella sua colonna (07:
+  `slices`; `app.js` le crea nel Create dell'oggetto, che tiene la
+  maschera intera e non si disegna). Corretto per chiunque stia fuori
+  dalla base in quella colonna (davanti: dopo; dietro: prima).
+- Nel gioco (`?room=lvl03`, `fogville` 0): monastero intero, senza
+  giunture fra le fette; un guerriero nel cortile e' coperto dal muro, due
+  fuori (davanti al muro e al braccio destro) gli passano davanti, uno
+  dietro il corpo resta nascosto.
+
+**La mappa**: disegnata col kit della prima versione, piu' le quattro tile
+aggiunte a mano in fondo a `citta` (ancorate al centro dell'immagine,
+riconosciute dalle misure). Convertita una volta (con il kit di allora,
+rigenerato dagli strumenti del commit ab24ca4) in `mappe/lvl03.tmx` col kit
+nuovo; riletta da' le stesse 399 istanze. Nella conversione:
+- 52 `albero_debug` (oggetto di prova dell'originale, senza comportamento
+  nel porting, finito nel tileset `natura` con le stesse immagini degli
+  alberi) -> 35 `albero` e 17 `albero_fake`, secondo l'immagine scelta
+  (alb* o alb*_F). Nel kit `albero_debug` ora sta in `regia`, con
+  l'etichetta.
+- una capsula vuota (senza misure) nel livello "erba e spighe": tolta.
+- gli oggetti erano quasi tutti nel livello "erba e spighe" e in "regia":
+  rimessi nei livelli del kit (i livelli non contano per il gioco).
+- Avviso rimasto: un'aquila (`aquila_01`) a y 6224, fuori dalla mappa
+  di 6000.
+**Regola da qui**: tile e tileset nuovi solo in fondo, cosi' le mappe gia'
+disegnate restano valide; gli sprite nuovi li aggiungo io in `nuovi/`.
+
+**Il gioco carica gli scenari** (§9.5): 07 scrive `game/assets/rooms/` anche
+da `scenari/*.json` (vista dello scenario, sfondo, `speed` 60); `lvl03` e'
+fra le room di `app.js` (gruppi core e gioco). Manca ancora la regia del
+livello (obiettivi, nemici, dialoghi, risorse), la campagna (menu) e lo
+slot dei salvataggi nel menu (`SAVE_ROOMS`): sono la prossima tappa.
+CI: gli scenari devono venire dalle mappe di `mappe/` (rigenerati e
+confrontati); soak e salvataggi anche su `lvl03` (3000 passi senza errori;
+salvataggio 2,5 MB, ripristino identico).

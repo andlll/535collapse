@@ -240,7 +240,9 @@ export class World {
     const n = o.object;
     if (this.is(o, "ally_build")) return n !== "campo" && n !== "campo_fond";
     if (this.is(o, "enemy_build")) return n !== "o_box1" && n !== "o_box2";
-    return n.startsWith("ocr_") || n.startsWith("montagna_") || n === "ccruin" || this.is(o, "stone_parent");
+    // [§9.10] e il monastero (corpo, casetta, muro di cinta)
+    return n.startsWith("ocr_") || n.startsWith("monastero_") || n.startsWith("montagna_") || n === "ccruin"
+      || this.is(o, "stone_parent");
   }
 
   // [§6.5] Chi tira da un edificio non e' fermato dall'edificio stesso ne'

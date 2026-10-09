@@ -47,10 +47,10 @@ import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from 
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
-const ROOMS = ["menu", "match", "lvl01", "lvl02"];
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03"]; // lvl03: scenario da Tiled (§9.10)
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
-                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"] };
+                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -153,6 +153,22 @@ async function main() {
   };
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
+  // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
+  // tiene la maschera intera e non si disegna; nel Create nasce una
+  // "__fetta" per ogni striscia verticale dello sprite, ferma, con la depth
+  // del bordo anteriore della maschera in quella colonna
+  for (const [name, o] of Object.entries(objects)) {
+    if (!o.slices) continue;
+    world.register(name, {
+      create(i, w) {
+        for (const [sprite, front] of o.slices) {
+          w.create("__fetta", i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle,
+                                          init: (f) => { f.sprite_index = sprite; f.depth = -(i.y + front * i.image_yscale); } });
+        }
+      },
+      draw() { /* lo disegnano le fette */ },
+    });
+  }
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));

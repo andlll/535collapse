@@ -1,0 +1,17 @@
+{
+  "formato": "535-nuovi",
+  "versione": 1,
+  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale).",
+  "sprites": {
+    "monastero_corpo": {"origin": "maschera", "fette": 64},
+    "monastero_muro": {"origin": "maschera", "fette": 64},
+    "monastero_casetta": {"origin": "maschera"},
+    "monastero_piazza": {"origin": "centro"}
+  },
+  "objects": {
+    "monastero_corpo": {"sprite": "monastero_corpo", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
+    "monastero_muro": {"sprite": "monastero_muro", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
+    "monastero_casetta": {"sprite": "monastero_casetta", "parents": ["natural_parent"], "solid": true, "depth": {"y": 0}},
+    "monastero_piazza": {"sprite": "monastero_piazza", "parents": [], "solid": false, "depth": -2}
+  }
+}

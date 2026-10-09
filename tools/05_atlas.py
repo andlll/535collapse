@@ -53,6 +53,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import DATA_DIR, GMX_DIR, REPO_DIR, SRC_DIR, need  # noqa: E402
+import nuovi  # noqa: E402
 
 PAGE = 2048          # lato di pagina predefinito
 PAD = 2
@@ -407,7 +408,15 @@ def main():
                                    Image.LANCZOS)
             entry["frames"].append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
             items[g].append((s["name"], i, crop))
-    for name, g, im, (ox, oy) in derived_sprites():
+    # [§9.10] sprite nuovi dell'autore (nuovi/) e le loro fette, nel gruppo
+    # edifici (caricato in ogni livello)
+    extra = []
+    for name, d in nuovi.sprites().items():
+        extra.append((name, "edifici", d["image"], tuple(d["origin"])))
+        for k, (x0, x1, _) in enumerate(d["fette"]):
+            extra.append((name + nuovi.SLICE_SEP + str(k), "edifici", nuovi.slice_image(d["image"], x0, x1),
+                          tuple(d["origin"])))
+    for name, g, im, (ox, oy) in derived_sprites() + extra:
         bb = im.getchannel("A").getbbox()
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
                                      "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}

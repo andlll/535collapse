@@ -60,6 +60,10 @@ TILESETS = [
     ("nemici", "Edifici e unita' nemiche", "center"),
     ("citta", "Citta' romana, statue, fontane", "center"),
     ("regia", "Regia: manager, suggerimenti, dialoghi, segnali", "center"),
+    # [§9.10] gli sprite nuovi dell'autore (nuovi/nuovi.json). I tileset nuovi
+    # si aggiungono in fondo e le tile nuove in fondo al loro tileset: le
+    # mappe gia' disegnate restano valide
+    ("nuovi", "Nuovi: il monastero e gli altri sprite dell'autore", "center"),
 ]
 ALIGN = {"center": (0.5, 0.5), "topleft": (0.0, 0.0)}
 
@@ -71,7 +75,7 @@ ALLY_BUILDINGS = ["centro", "casa", "magazzino", "barn", "caserma", "stalla", "c
 ENEMY = ["enemy_house", "enemy_caserma", "enemy_stalla", "enemy_torre", "o_box1", "o_box2",
          "enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_cavaliere", "enemy_ariete",
          "enemy_catapulta"]
-NATURE = ["albero", "albero_fake", "albero_debug", "graa11", "graa12", "graa13", "graa14", "graa15",
+NATURE = ["albero", "albero_fake", "graa11", "graa12", "graa13", "graa14", "graa15",
           "burst_erba1", "burst_grano1", "chiazzaparticellare", "aquila_01"]
 RESOURCES = ["miniera_oro", "pietra_grande", "pietr_piccolo"]
 GROUND = ["strada_2", "strada_5", "strada_6", "strada_7", "strada_8",
@@ -82,8 +86,10 @@ CITY_PROPS = ["o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "
 DECOR = ["burst_erba1", "burst_grano1", "chiazzaparticellare"]
 
 
-def category(name, info):
+def category(name, info, nuovi_objects=()):
     """Tileset dell'oggetto, o None se non si piazza nelle room."""
+    if name in nuovi_objects:
+        return "nuovi"
     if name in ALLY_UNITS:
         return "unita"
     if name in ALLY_BUILDINGS or re.fullmatch(r"\w+_fond", name):
@@ -106,8 +112,11 @@ def category(name, info):
 # Oggetti di regia piazzati nelle room dell'autore o utili da piazzare: i
 # segnalini (sprite dell'editor nella cartella "segnalini") e i suggerimenti
 # e dialoghi del tutorial. Il manager serve in ogni room.
+# albero_debug (una istanza in match, senza comportamento nel porting) sta
+# qui, con l'etichetta, e non fra gli alberi: la si sceglieva per sbaglio
+# (§9.10)
 REGIA = ["manager", "fog_controller", "aggr_assign", "def_assign", "directioner",
-         "lvl1_surface_generato", "dialogo_statua", "hint_iniziale"]
+         "lvl1_surface_generato", "dialogo_statua", "hint_iniziale", "albero_debug"]
 
 
 def regia_objects(objs):
@@ -128,7 +137,7 @@ def layer_of(name, info, cat):
         return "regia"
     d = info["depth"]
     unit = any(p in ("ally_unit", "enemy_unit") for p in info["parents"])
-    if not unit and not isinstance(d, dict) and d >= -1:
+    if not unit and not isinstance(d, dict) and d > -100:  # (la piazza del monastero: -2)
         return "suolo"
     return "oggetti"
 

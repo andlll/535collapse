@@ -58,6 +58,9 @@ jobs:
         run: |
           python3 tools/11_tiled_kit.py
           python3 tools/12_tiled_import.py --check
+          # gli scenari versionati devono venire dalle mappe di mappe/
+          for m in mappe/*.tmx; do python3 tools/12_tiled_import.py "$m" > /dev/null; done
+          git diff --stat --exit-code -- scenari
 
       - uses: actions/upload-artifact@v4
         with:
@@ -98,8 +101,8 @@ jobs:
         run: |
           python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
-          node game/test/browser/soak.mjs http://localhost:8123 3000
-          node game/test/browser/saves.mjs http://localhost:8123 4000
+          node game/test/browser/soak.mjs http://localhost:8123 3000 menu match lvl01 lvl02 lvl03
+          node game/test/browser/saves.mjs http://localhost:8123 4000 match lvl01 lvl02 lvl03
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
       - uses: actions/upload-artifact@v4

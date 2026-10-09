@@ -21,7 +21,9 @@ Metodo e convenzioni da [andlll/n_redux](https://github.com/andlll/n_redux)
 | `game/` | sì | il motore: `index.html`, `src/` (moduli JS), `package.json` (esbuild), PWA (`manifest.webmanifest`, `sw.js`, `icons/` da `tools/09_icons.py`) |
 | `game/assets/`, `game/dist/` | no | atlas, maschere, scene (tools 05–07) e bundle JS: si rigenerano |
 | `build/535-tiled-kit/` | no | il kit per disegnare le mappe in Tiled (tools 11), e il suo zip |
-| `scenari/` | sì | le mappe dei livelli nuovi, convertite da Tiled (tools 12; dal livello 3) |
+| `mappe/` | sì | le mappe dei livelli nuovi disegnate in Tiled (`lvl03.tmx`, ...) |
+| `scenari/` | sì | le stesse mappe convertite per il gioco (tools 12); la CI controlla che corrispondano |
+| `nuovi/` | sì | sprite e oggetti nuovi dell'autore (il monastero): `nuovi.json`, `sprites/` |
 
 ## Rigenerare
 
@@ -45,7 +47,7 @@ python3 -m http.server 8000 --directory game
 ```
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02` per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03` per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
