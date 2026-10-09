@@ -635,4 +635,13 @@ export const TEXTS = {
   "The monastery has fallen.": {
     it: "Il monastero è caduto.", es: "El monasterio ha caído.", pt: "O mosteiro caiu.", de: "Das Kloster ist gefallen.",
     fr: "Le monastère est tombé." },
+  // ------------------------------------------------- livello 2 (§9.14)
+  "Precious workers": { it: "Lavoratori preziosi", es: "Trabajadores valiosos", pt: "Trabalhadores preciosos",
+                        de: "Wertvolle Arbeiter", fr: "Ouvriers précieux" },
+  "You have no town hall here: you cannot train new workers. Protect them, every worker you lose is lost for good!": {
+    it: "Qui non hai un centro: non puoi creare nuovi lavoratori. Proteggili, ogni lavoratore che perdi è perso per sempre!",
+    es: "Aquí no tienes un centro urbano: no puedes entrenar nuevos trabajadores. ¡Protégelos, cada trabajador que pierdes se pierde para siempre!",
+    pt: "Aqui você não tem um centro: não pode treinar novos trabalhadores. Proteja-os, cada trabalhador perdido é perdido para sempre!",
+    de: "Hier hast du kein Rathaus: Du kannst keine neuen Arbeiter ausbilden. Beschütze sie, jeder verlorene Arbeiter ist für immer verloren!",
+    fr: "Ici, tu n'as pas d'hôtel de ville : tu ne peux pas former de nouveaux ouvriers. Protège-les, chaque ouvrier perdu l'est pour toujours !" },
 };

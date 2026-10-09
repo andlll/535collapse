@@ -57,6 +57,8 @@ const T = {
   hint_multi: ["Multiple selection", "Double click on a unit to select all your units of the same type in your screenspace. Left click and drag to select multiple units."],
   hint_multi_2: ["Multiple selection", "Press Ctrl + left click to add units to the selection, Alt + left click to remove them. Press Shift + numbers (digits) to assign a quick selection number to a group, then the number alone to select it."],
   hint_night: ["Night", "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well."],
+  // [§9.14, richiesta dell'autore] livello 2: niente centro, niente civili nuovi
+  hint_lavoratori: ["Precious workers", "You have no town hall here: you cannot train new workers. Protect them, every worker you lose is lost for good!"],
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
@@ -106,6 +108,7 @@ export const HINTS = {
   hint_multi: { anchor: vicino("ally_militare"), next: "hint_multi_2", nextAtSelf: true },
   hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed" },
   hint_night: { anchor: fixed(420, 170) },
+  hint_lavoratori: { anchor: fixed(420, 170) },
 };
 
 // --------------------------------------------------------------- dialoghi
@@ -157,6 +160,7 @@ export const DIALOGS = {
                  text: "You can use our structures. We will also help build new ones!",
                  create: (i, w) => w.create("magazzino", 1655, 6655) },
   dialogo_2_5: { who: SOLDIER2, arm: 10, text: "Let's get to work! I promise you we will free the countryside",
+                 destroy: (i, w) => w.create("hint_lavoratori", 0, 0), // §9.14
                  create: (i, w) => {
                    for (const [x, y] of [[2654, 7571], [1262, 5438], [2842, 3928], [173, 3516], [49, 2174], [2784, 2248], [2876, 1200]]) {
                      w.create("palo_1", x, y);

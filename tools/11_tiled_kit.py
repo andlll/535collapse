@@ -581,10 +581,16 @@ def main():
     write_readme(tk.KIT_DIR, manifest)
     maps = os.path.join(tk.KIT_DIR, "mappe")
     new_map(manifest, *TEMPLATE_SIZE).write(os.path.join(maps, "nuova.tmx"))
+    # [§9.14] una room dell'autore modificata in Tiled (mappe/<room>.tmx del
+    # repo) prende il posto dell'originale nel kit; la conversione
+    # dell'originale va in mappe/originali/ (il collaudo, tools/12 --check)
+    os.makedirs(os.path.join(maps, "originali"), exist_ok=True)
     for room in ROOMS:
         mw = room_to_map(manifest, info, room)
-        mw.write(os.path.join(maps, room + ".tmx"))
-        print("mappe/%s.tmx: %d oggetti" % (room, mw.next_id - 2))
+        edited = os.path.exists(os.path.join(REPO_DIR, "mappe", room + ".tmx"))
+        sub = "originali" if edited else ""
+        mw.write(os.path.join(maps, sub, room + ".tmx"))
+        print("mappe/%s%s.tmx: %d oggetti" % (sub + "/" if sub else "", room, mw.next_id - 2))
     # [§9.10] le mappe dei livelli nuovi (mappe/ del repo), per continuare a
     # disegnarle col kit
     for src in sorted(glob.glob(os.path.join(REPO_DIR, "mappe", "*.tmx"))):

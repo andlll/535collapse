@@ -161,7 +161,8 @@ def main():
                                + ([i["group"]] if i.get("group") else []) for i in sc["instances"]]}
         with open(os.path.join(OUT, sc["name"] + ".json"), "w", encoding="utf-8", newline="\n") as f:
             json.dump(scene, f, separators=(",", ":"))
-        print("%-6s %4d istanze (scenario %s)" % (sc["name"], len(sc["instances"]), os.path.relpath(p, REPO_DIR)))
+        print("%-6s %4d istanze (scenario %s%s)" % (sc["name"], len(sc["instances"]), os.path.relpath(p, REPO_DIR),
+                                                  ", al posto della room di GameMaker" if sc["name"] in ROOMS else ""))
 
 
 if __name__ == "__main__":

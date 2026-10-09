@@ -13,7 +13,7 @@
 import { irandomRange, pointDistance } from "./gm.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
-import { GRID } from "./pathing.js";
+import { GRID, generateFields } from "./pathing.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -294,7 +294,12 @@ export function levelStep(w) {
 // caserma difensiva si ferma (l'effetto voluto, §1.2).
 const AREAS = [
   [2260, 7450, 2920, 7900, 2600, 7700, 110], [2050, 3550, 2950, 4150, 2500, 3850, 120],
-  [1150, 5400, 1880, 5900, 1500, 5750, 130], [120, 3400, 720, 3800, 400, 3600, 140],
+  // [§9.14, richiesta dell'autore] l'area 3 (i taglialegna) piu' su di 500
+  // px e a sinistra di 280, coi suoi difensori (mappe/lvl02.tmx): era
+  // [1150, 5400, 1880, 5900, 1500, 5750, 130]. E il suo raggio di difesa
+  // (ottavo valore; gli altri 800 [C]) a 400: con 800 i difensori partivano
+  // per un civile quasi ovunque nel bosco sopra la partenza (misurato)
+  [870, 4900, 1600, 5400, 1220, 5250, 130, 400], [120, 3400, 720, 3800, 400, 3600, 140],
   [2000, 1900, 2950, 2750, 2500, 2200, 150], [30, 2100, 1050, 2550, 500, 2350, 160],
   [2200, 950, 2950, 1600, 2500, 1300, 170],
 ];
@@ -315,7 +320,16 @@ export function enemyManagerLv2(p) {
       i.sprite_index = null;
       i.alarm.set(4, 15000);
       w.setPos(i, 300, 300);
-      for (const o of w.all("ally_omino")) { o.action = 1; o.dirox = 112; o.diroy = 7449; o.alarm.set(0, 13); }
+      // [Segnalazione dell'autore, §9.14] l'originale dava a tutti la stessa
+      // meta senza percorso: incastrati fra i soldati di partenza restavano
+      // li' per sempre. Qui ognuno ha la sua meta accanto a (112, 7449) e il
+      // suo flow field, come per un ordine col clic destro.
+      let k = 0;
+      for (const o of w.all("ally_omino")) {
+        generateFields(p, o, 112 + 70 * k, 7449 - 50 * k);
+        o.action = 1; o.dirox = 112 + 70 * k; o.diroy = 7449 - 50 * k; o.alarm.set(0, 13);
+        k++;
+      }
       const paisa = w.nearest(w.mouse.x, w.mouse.y, "ally_omino");
       if (paisa) createIfPorted(w, "dialogo_2_0", paisa.x, paisa.y);
       i.liberati1 = 0;
@@ -358,7 +372,7 @@ export function enemyManagerLv2(p) {
           return; // exit
         }
       }
-      for (const [, , , , dx, dy, id] of AREAS) difendi(w, dx, dy, id, 800);
+      for (const [, , , , dx, dy, id, r] of AREAS) difendi(w, dx, dy, id, r || 800);
       if (w.exists("ally_omino")) attacca(i, w, p, 4, 300, "ally_omino");
       if (l6exists) controllerCreaDifensori(w, 6, 30, 500, 2350, 160);
       else for (const c of w.all("enemy_caserma")) if (c.role === 10) c.alarm.set(3, -1);

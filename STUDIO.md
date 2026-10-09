@@ -4493,3 +4493,41 @@ Riparazione del monastero (domanda dell'autore): come gli altri edifici di
 legno [C, ally_omino Alarm_2, civilians.js]: ogni civile che ripara toglie
 1 legno e aggiunge 1 vita ogni 13 passi (4,6 vita e 4,6 legno al secondo);
 ogni legno speso spegne anche il fuoco; senza legno non ripara ne' spegne.
+
+### 9.14 Livello 2: fuga dei lavoratori, casa, area dei taglialegna, suggerimenti
+
+Segnalazioni e richieste dell'autore (9 ottobre 2026, con uno screenshot di
+Tiled per lo spostamento):
+- **I lavoratori che scappano all'inizio si incastrano.** enemy_manager_lv2
+  Create [C] da' ai due civili la stessa meta (112, 7449) senza percorso
+  (solo dirox/diroy): uno restava per sempre fra due picchieri fermi a
+  (1123, 7261), l'altro deviava per i nemici e si fermava. Ora ognuno ha la
+  sua meta accanto (a 70 e 50 px uno dall'altro) e il suo flow field
+  (`generateFields`, come per il clic destro): arrivano tutti e due in ~500
+  passi.
+- **lvl02 diventa una mappa del repo** (`mappe/lvl02.tmx`, dalla conversione
+  esatta della room, §9.4): lo scenario `scenari/lvl02.json` prende il posto
+  della room di GameMaker (07 lo scrive dopo); il kit ha la mappa modificata
+  in `mappe/` e la conversione dell'originale in `mappe/originali/`, che usa
+  il collaudo (`12 --check`). D'ora in poi lvl02 si corregge anche in Tiled.
+- **Una casa della citta' (ocr_12) a (1695, 7025)**, sopra il punto dove
+  nascono i due civili dopo il primo combattimento (1645 e 1745, 7109):
+  sembrano uscire da li'. Provato: i civili nascono liberi davanti alla casa.
+- **L'area 3 (i taglialegna) piu' su**: gli 8 difensori (guerriero,
+  2 arcieri, cavaliere, 4 picchieri, prima fra x 1308-1656 e y 5672-5807)
+  spostati di (-280, -500) come nello screenshot, su punti liberi; il
+  rettangolo dell'area e il punto di difesa con loro (AREAS[2]: [870, 4900,
+  1600, 5400, 1220, 5250]). Lo spostamento da solo non bastava: i difensori
+  inseguono chiunque entro 800 px dal punto di difesa (scr_difendi [C]),
+  cioe' quasi tutto il bosco sopra la partenza (misurato: un civile fermo a
+  636 px li faceva partire tutti e 8; con la posizione vecchia era uguale).
+  Raggio di difesa dell'area 3 a 400 (ottavo valore di AREAS, gli altri 800):
+  civile a 832 px nessuno, a 636 e 481 px 2-3 su 8 (la vista dei singoli,
+  gli arcieri), sotto i 400 tutti.
+- **Niente suggerimenti sulla notte e sulla selezione multipla in lvl02 e
+  lvl03** (`newGlobals`: nighthint, multihint gia' a 1).
+- **Suggerimento nuovo in lvl02** (`hint_lavoratori`, nuovi.json; hints.js,
+  in alto come quello della notte): chiuso l'ultimo dialogo iniziale
+  (dialogo_2_5) "Precious workers": senza centro non si creano civili,
+  ogni lavoratore perso e' perso per sempre. Sei lingue.
+Soak, salvataggi (lvl02 compreso) e zip senza errori.

@@ -291,7 +291,9 @@ def load_map(path, kit=None):
 
 def check_room(room, kit):
     """La room dell'autore -> kit -> scenario deve ridare le stesse istanze."""
-    path = os.path.join(tk.KIT_DIR, "mappe", room + ".tmx")
+    path = os.path.join(tk.KIT_DIR, "mappe", "originali", room + ".tmx")
+    if not os.path.exists(path):
+        path = os.path.join(tk.KIT_DIR, "mappe", room + ".tmx")
     scen, warn = load_map(path, kit)
     r = tk.room_json(room)
     a, b = r["instances"], scen["instances"]
