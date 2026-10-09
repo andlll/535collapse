@@ -51,6 +51,20 @@ jobs:
           python3 tools/06_masks.py
           python3 tools/07_scene.py
 
+      # STUDIO.md §9: il kit per Tiled (artefatto da scaricare) e il collaudo:
+      # le room dell'autore convertite in mappe di Tiled e rilette devono
+      # ridare le stesse istanze
+      - name: Kit per Tiled e collaudo (tools/11, 12)
+        run: |
+          python3 tools/11_tiled_kit.py
+          python3 tools/12_tiled_import.py --check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 535-tiled-kit
+          path: build/535-tiled-kit.zip
+          if-no-files-found: error
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

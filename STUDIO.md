@@ -14,7 +14,12 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
-Ultimo aggiornamento: 8 ottobre 2026, sesta sessione (branch
+Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
+`claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
+categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
+script Tiled -> scenario con anteprima e collaudo (Fase 9, §9.1–§9.5).
+**Prossimo**: la prima mappa disegnata dall'autore; il gioco che carica
+gli scenari (§9.5). Sesta sessione (branch
 `claude/nice-hypatia-ei5efe`): macchine d'assedio col flow field "largo",
 costi nella scheda del castello, campi di grano a righe con depth -y,
 spighe ed erba decorative a fasce, verdi dell'erba, civili che si
@@ -42,7 +47,8 @@ sezione citata.
   PR #1 era `claude/lucid-gauss-ph92vs`, la #2 `claude/punto5-nebbia-notte`,
   la terza sessione `claude/inspiring-cray-dalph5`, la quarta
   `claude/gpu-optimizations-bugs-o3mfcc`, la quinta
-  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`); gli asset generati (`game/assets/`,
+  `claude/menu-fire-crossfade`, la sesta `claude/nice-hypatia-ei5efe`, la
+  settima `claude/clever-heisenberg-qbpsex`); gli asset generati (`game/assets/`,
   `gmx/`) non sono nel repo: si rigenerano con `tools/01`, `02`, `05`,
   `06`, `07` dagli zip (README, "Rigenerare" e "Far girare il gioco").
 - Prove: `npm test` e `game/test/browser/soak.mjs` (README, "Provare").
@@ -90,6 +96,8 @@ sezione citata.
   in Tiled con gli sprite del gioco**, deciso l'8 ottobre 2026 (vedi
   "Prossima sessione" qui sotto).
 - [ ] Nome definitivo della prima uscita ("535 – Collapse", provvisorio).
+- [ ] `chiazza01` (§9.6): nell'originale e' chiazza1 o chiazza2 a caso, nel
+  porting sempre chiazza2. Raccomandazione: rimettere il caso.
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
 
@@ -103,7 +111,7 @@ sessioni sono per i livelli 3–10)
   salva nome e posizione di ogni oggetto: la conversione e' esatta.
   Scartate: tavolozza di colori con legenda (non mostra la resa), editor
   dentro il gioco (resta per piu' avanti: roadmap R6).
-- [ ] **Formato scenario** (roadmap R2) in una cartella sua, `scenari/`:
+- [ ] **Formato scenario** (in parte) (roadmap R2) in una cartella sua, `scenari/`:
   `data/rooms/` si cancella e si riscrive da `tools/02_extract.py` a ogni
   giro (e la CI controlla che resti uguale ai file GameMaker), quindi le
   room nuove non possono stare li'. Contenuto minimo: dimensioni, istanze
@@ -111,7 +119,10 @@ sessioni sono per i livelli 3–10)
   versione. Il gioco e `tools/07_scene.py` lo caricano come le room di oggi.
   La logica del livello (obiettivi, dialoghi, ondate) per ora nel codice,
   come lvl01 e lvl02 (`levels.js`).
-- [ ] **Kit per Tiled**, generato da uno script dagli sprite (come l'atlas):
+  **Fatto** (§9.3): il formato, scritto da `tools/12_tiled_import.py`.
+  **Manca**: caricarlo nel gioco e in `tools/07_scene.py` (§9.5).
+- [x] **Kit per Tiled** (§9.1, §9.2: `tools/11_tiled_kit.py`, zip anche
+  come artefatto della CI), generato da uno script dagli sprite (come l'atlas):
   - un tileset "collezione di immagini" per categoria (terreno: 10
     montagne, 7 fiumi, 5 strade, 4 sentieri, chiazze; natura; risorse;
     edifici del giocatore; edifici e unita' nemiche; unita' del giocatore;
@@ -127,13 +138,16 @@ sessioni sono per i livelli 3–10)
     unita' si vedono in una sola posa (nel gioco si animano da sole);
   - un "pennello bosco": una forma su un livello apposito che lo script
     riempie di alberi (per non piazzarne centinaia a mano).
-- [ ] **Script Tiled -> scenario** (`tools/`): legge il file di Tiled
-  (JSON o TMX), converte posizioni e origini, riempie le aree bosco, scrive
+- [x] **Script Tiled -> scenario** (§9.3, `tools/12_tiled_import.py`): legge il file di Tiled
+  (TMX, il formato predefinito di Tiled), converte posizioni e origini, riempie le aree bosco, scrive
   lo scenario; controlla oggetti sconosciuti e coordinate fuori mappa.
-- [ ] **Vista d'insieme per l'autore**: per ogni livello un'immagine della
+- [ ] **Vista d'insieme per l'autore** (in parte) (§9.3: l'immagine della mappa intera
+  c'e', `--anteprima`; mancano gli screenshot dal gioco): per ogni livello un'immagine della
   mappa intera con gli sprite veri e qualche screenshot a zoom normale dal
   gioco; correzioni ridisegnando in Tiled o a parole.
-- [ ] **Collaudo**: ricostruire in Tiled un pezzo di `match` (o tutta la
+- [x] **Collaudo** (§9.4: le tre room intere, istanze identiche; disegno di
+  Tiled uguale a quello con le regole di GameMaker; gli screenshot dal
+  gioco quando il gioco carichera' gli scenari): ricostruire in Tiled un pezzo di `match` (o tutta la
   room, convertita in file di Tiled da uno script) e verificare che lo
   scenario che ne esce, nel gioco, sia identico all'originale (stesse
   istanze, stesse posizioni, screenshot uguali).
@@ -4015,3 +4029,166 @@ In `lvl02` (centro creato per la prova, 14 civili, 3,3 min): legno 550 ->
 650, oro 330 -> 490, fermi 11 -> 0, sovrapposti al lavoro 290 -> 0. Il
 cibo (contadini) era gia' a posto e resta com'era. Soak e salvataggi senza
 errori.
+
+---
+
+## Fase 9 — livelli della campagna in Tiled (9 ottobre 2026)
+
+L'autore ha scaricato Tiled; questa sessione prepara il kit per disegnare
+le mappe dei livelli 3–10 ("Prossima sessione", in cima). Tre file nuovi
+in `tools/`: `tiledkit.py` (categorie, geometria, comune ai due script),
+`11_tiled_kit.py` (il kit) e `12_tiled_import.py` (mappa -> scenario).
+
+### 9.1 Il kit
+
+`python3 tools/11_tiled_kit.py` (dopo `01`, `02`, `07`; 30 s) scrive
+`build/535-tiled-kit/` e lo zip `build/535-tiled-kit.zip` (31 MB); la CI
+lo pubblica come artefatto `535-tiled-kit` di ogni run, cosi' l'autore
+non ha bisogno di Python. Dentro: `LEGGIMI.md` (istruzioni per l'autore),
+`535.tiled-project`, `kit.json`, `tileset/*.tsx`, `img/`, `mappe/`.
+
+- **Nove tileset** "collezione di immagini", 222 tile: terreno (strade,
+  sentieri, prati, erba, fiori), montagne e fiumi (con le chiazze),
+  natura (alberi, erba alta `graa1x`, macchie d'erba e di spighe,
+  aquila), risorse (oro, pietra, rovine), edifici del giocatore (anche
+  mura, porte, cantieri `*_fond`, bandierine), unita' del giocatore,
+  nemici (edifici, casse, unita'), citta' romana (con statue, colonne,
+  fontane), regia (manager, segnali, i 50 suggerimenti e dialoghi). La
+  tile ha come classe il nome dell'oggetto GameMaker e la proprieta'
+  `sprite`. Il catalogo e' in `tiledkit.py` (`category`): ci sono tutti
+  gli oggetti delle room portate (lo script si ferma se ne manca uno) e
+  quelli della stessa famiglia; fuori pulsanti, proiettili, cadaveri,
+  `*_morente`, placer e oggetti di sistema.
+- **Varianti**: per gli oggetti che nel Create scelgono lo sprite a caso
+  (`albero` alb1..alb8, `casa`, `enemy_house`, `chiazza01`) una tile per
+  variante, stessa classe. Nel gioco lo sceglie ancora il gioco; lo
+  scenario ricorda la variante scelta (`sprite`) per quando servira'.
+- **Sprite del gioco**, non del progetto, dove sono diversi: `campo` e'
+  `campo_grano` (§8.16), le macchie `burst_erba1`, `burst_grano1`,
+  `chiazzaparticellare` (particelle senza sprite) sono un'immagine della
+  macchia disegnata con le stesse particelle di `effects.js` (ellisse
+  1000x600 gaussiana, colori, dimensioni, alpha); le unita' sono il primo
+  fotogramma dello sprite dell'oggetto. I segnali di regia sono lo sprite
+  dell'editor GameMaker (o un quadrato) col nome dell'oggetto sotto.
+- **Mappe**: `mappe/nuova.tmx` (6000x6000, griglia di 50 px, un manager,
+  la vista iniziale) e le room `match`, `lvl01`, `lvl02` convertite
+  (esempi per l'autore e collaudo). `--nuova lvl03 4000x6000` ne aggiunge
+  una vuota della misura data. Livelli dal basso: `sfondo` (livello
+  immagine ripetuto, lo sfondo della room), `suolo`, `erba e spighe`,
+  `terreno` (montagne, fiumi), `oggetti`, `boschi`, `regia`; `terreno` e
+  `oggetti` "dall'alto in basso". I livelli sono solo per lavorare comodi:
+  lo script li ignora (tranne `boschi`) e il gioco ordina per depth.
+  Differenza nota: in Tiled `terreno` sta sempre sotto `oggetti`, nel
+  gioco montagne e fiumi (depth -y, origine in alto a sinistra) si
+  mescolano per y; si vede solo per un oggetto proprio sul bordo alto di
+  una montagna o di un fiume. Le macchie d'erba in Tiled stanno sotto
+  tutto; nel gioco a fasce (§8.18).
+- **Progetto di Tiled** (`535.tiled-project`): la cartella del kit e la
+  classe `bosco` (membri `distanza` 90 e `oggetto` albero).
+
+### 9.2 Origini e ordine di disegno
+
+Tiled ancora un oggetto-tile a un punto del riquadro dell'immagine
+(`objectalignment` del tileset, in basso a sinistra di norma) e con
+l'ordine "dall'alto in basso" ordina per la y di quel punto; GameMaker
+mette l'istanza nell'origine dello sprite e la depth -y ordina per la y
+dell'origine. Con l'ancora in basso a sinistra l'anteprima di Tiled
+avrebbe sbagliato l'ordine (un albero ha l'origine 47 px sopra il fondo
+dell'immagine) e ruotato attorno all'angolo. Quindi **ogni immagine del
+kit e' ritagliata sull'alpha e allargata con bordo trasparente finche'
+l'origine sta nel centro esatto**, e i tileset sono allineati al centro:
+in Tiled la posizione dell'oggetto e' la x, y dell'istanza, l'ordine e'
+quello del gioco, rotazione, scala e ribaltamento girano attorno
+all'origine come in GameMaker.
+
+Eccezione: montagne, fiumi e chiazze hanno l'origine in 0,0 [C] e sono
+grandi (montagna10 2342x1461): al centro raddoppierebbero larghezza e
+altezza (55 MB di memoria in Tiled per la sola montagna10). Stanno nel
+tileset `montagne_fiumi`, allineato in alto a sinistra, che e' ancora
+l'origine. In tutto le immagini occupano 217 MB nella memoria di Tiled.
+
+La conversione (`tiledkit.py`, `to_tiled`/`from_tiled`) e' comunque
+generale: per un allineamento (ax, ay) qualsiasi, ribaltamenti
+(scala negativa) e rotazione (Tiled oraria = `image_angle` di GameMaker
+col segno cambiato, verificato su `game/src/sprites.js` `drawSprite`).
+
+### 9.3 Mappa -> scenario
+
+`python3 tools/12_tiled_import.py mappa.tmx [--anteprima [scala]]` legge
+la mappa e i tileset (per nome del file `.tsx`, che devono essere quelli
+del kit), riconosce ogni oggetto dalla tile, riporta la geometria
+all'istanza e scrive `scenari/<nome del file>.json`:
+
+```
+{"format": "535-scenario", "version": 1, "name", "width", "height",
+ "background", "colour", "view": {x, y, w, h},
+ "instances": [{"object", "x", "y", "scale_x", "scale_y", "rotation", "sprite"?}]}
+```
+
+- Ordine delle istanze: l'id degli oggetti di Tiled (l'ordine in cui sono
+  stati messi), come l'ordine di creazione di una room.
+- **Boschi**: ogni rettangolo, ellisse o poligono (anche ruotato) del
+  livello `boschi` diventa alberi, campionamento di Poisson (Bridson) a
+  `distanza` px (predefinita 90: i boschi di `match` hanno la distanza
+  dal vicino piu' vicino a 74 / 107 / 136 px al 10°, 50°, 90° percentile),
+  seme fisso (nome della mappa e id della forma: la stessa forma da' gli
+  stessi alberi). Gli alberi prendono il posto della forma nell'ordine.
+- Vista iniziale: il rettangolo di classe `vista` nel livello `regia`.
+- Avvisi: tile o tileset che non vengono dal kit, classe cambiata a mano,
+  forme fuori da `boschi`, manager mancante o doppio, vista mancante;
+  unita', edifici e risorse con l'origine fuori dalla mappa, il resto solo
+  se non se ne vede niente (l'autore mette montagne e chiazze a cavallo
+  del bordo apposta). Nelle room dell'autore segnala 3 avvisi in `lvl01`
+  (due mura con l'origine a x -150, una casa della citta' fuori mappa) e 4
+  in `lvl02` (un muro sotto il bordo, tre `hint_legna` fuori dai 3200x8000
+  della room, a x 6825 e 4871 e a y 8731 [C]).
+- `--anteprima`: `build/anteprime/<nome>.png`, la mappa intera con le
+  immagini del kit nell'ordine di disegno del gioco (suolo cotto sotto,
+  poi depth decrescente, a parita' ordine di creazione) e i boschi
+  riempiti; e' la "vista d'insieme" per l'autore.
+
+### 9.4 Collaudo
+
+- `12_tiled_import.py --check`: `match`, `lvl01`, `lvl02` -> kit -> scenario
+  danno le stesse istanze di `data/rooms/` (oggetto, x, y esatti, scala a
+  1e-4, rotazione a 1e-3, nello stesso ordine), stessa vista, misure,
+  sfondo e colore: 460, 564 e 475 istanze identiche. Comprese le scale
+  negative e le rotazioni di strade e sentieri (20 istanze in `match`, 10
+  in `lvl02`). E' nella CI.
+- Che Tiled disegni dove disegna il gioco: Tiled 1.8.2 (Ubuntu) con
+  `tmxrasterizer` legge mappe e tileset del kit; il suo disegno e' stato
+  confrontato con quello dell'anteprima (geometria di GameMaker, non quella
+  del kit) nello stesso ordine. Una mappa di prova a scala 1 con case,
+  un guerriero, una strada, il castello, una montagna, una chiazza e un
+  fiume, ribaltati, scalati e ruotati in entrambi gli allineamenti:
+  errore medio 0,5/255, lo 0,1% dei pixel oltre 60/255 (bordi
+  ricampionati). Le tre room a scala 0,15: le differenze sono solo sui
+  bordi (ricampionamento) e sul rettangolo della vista, che Tiled colora.
+- Pennello bosco: rettangolo, ellisse e poligono ruotato riempiti (286
+  alberi a 90 e 70 px, 68 `albero_fake` a 130 px), dentro le forme.
+- Non provato: Tiled nella versione dell'autore (1.11 o successiva) a
+  mano, col mouse. I file sono nel formato 1.10 (`type` per la classe,
+  quello che Tiled 1.10+ scrive e 1.8 legge).
+
+### 9.5 Cosa manca
+
+- Il gioco non carica ancora gli scenari: servono `tools/07_scene.py`
+  (scenari -> `game/assets/rooms/`), il nome nella lista delle room
+  (`app.js` `ROOMS`, `menu.js`, `save.js` `SAVE_ROOMS`) e la regia del
+  livello (`levels.js`, `manager` Create per `room==...`). Da fare col
+  livello 3, quando ci sara' la prima mappa e l'idea del livello.
+- Risorse iniziali e logica del livello: per ora nel codice (§0.15).
+- Screenshot dal gioco per la vista d'insieme, quando il gioco carichera'
+  gli scenari.
+
+### 9.6 Trovato per strada
+
+- `chiazza01` [C]: il Create sceglie `tipo=irandom_range(1,2)` e solo col 2
+  passa a chiazza2; con l'1 resta lo sprite dell'oggetto, chiazza1.
+  `tools/07_scene.py` vede un solo `sprite_index=` e da' a tutte chiazza2:
+  nel porting le chiazze sono sempre chiazza2. Nel kit ci sono tutte e
+  due. Da chiedere all'autore (raccomandazione: rimettere il caso, cambia
+  l'aspetto delle room esistenti).
+- `albero_debug` sta in `match` (una istanza) e non ha comportamento nel
+  porting (non e' fra gli oggetti registrati in `app.js`): nel kit c'e' solo perche' il collaudo
+  ritrovi tutte le istanze.
