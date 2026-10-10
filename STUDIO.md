@@ -4591,3 +4591,12 @@ cortile, arriva al monastero in 12 s e lo colpisce (-20 a colpo, ~80 di
 vita ogni 4 s al netto della cura); le mura restano a 800. Il livello
 diventa piu' duro: un ariete che passa la porta non si ferma piu' sulle
 mura.
+
+### 9.18 Livello 3: attacchi al villaggio ogni 4 minuti
+
+Richiesta dell'autore (10 ottobre 2026), il livello e' troppo duro: gli
+attacchi dalla base nemica al villaggio ogni 4 minuti invece che ogni 2
+(`LV3.baseEvery`). Il primo resta al minuto 4; poi 8, 12 e 16 (4 attacchi
+invece di 8 nei 20 minuti); la dimensione per attacco resta quella di
+`baseN` (1, 1, 2, 2 fanti o cavalieri per caserma o stalla). Le ondate
+contro il monastero non cambiano.

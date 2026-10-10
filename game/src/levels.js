@@ -434,8 +434,9 @@ export const LV3 = {
     { at: 18.5 * MIN, units: { enemy_warrior: 6, enemy_picchiere: 4, enemy_arciere: 4, enemy_cavaliere: 3 }, rams: 3, catapults: 1 },
   ],
   // attacchi al villaggio: il primo 3 minuti dopo la prima ondata, poi ogni
-  // 2; ogni caserma crea `n` fanti, ogni stalla `n` cavalieri
-  baseFirst: 4 * MIN, baseEvery: 2 * MIN, baseN: [1, 1, 2, 2, 2, 3],
+  // 4 (§9.18: erano ogni 2); ogni caserma crea `n` fanti, ogni stalla `n`
+  // cavalieri
+  baseFirst: 4 * MIN, baseEvery: 4 * MIN, baseN: [1, 1, 2, 2, 2, 3],
   // [§9.16] il dialogo sulla base nemica al primo attacco al villaggio: un
   // nemico partito dalla base entro 500 px da un edificio alleato a meno di
   // 1500 px dal centro del villaggio (le torri comprese, il monastero no)
