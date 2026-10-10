@@ -301,7 +301,12 @@ const L3_ARROW = [399, 2, 1.2, 1.1, -60];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
-  d.sprite("mappa_camp", 0, W / 2, H / 2);
+  // [§9.27] la mappa (1597 px, centrata) si sposta a sinistra quanto serve
+  // perche' il segnalino del livello 1 (la citta', 663 px a destra del
+  // centro, largo 171) resti nello schermo: sotto i 1536 px di larghezza
+  // usciva a destra. A sinistra c'e' comunque l'elenco dei livelli.
+  const MX = W / 2 + Math.min(0, W / 2 - 20 - (663 + 85));
+  d.sprite("mappa_camp", 0, MX, H / 2);
   // [Richiesta dell'autore] i pannelli di vetro sfocano la mappa, non la
   // battaglia sotto
   d.refreshGlass();
@@ -311,20 +316,20 @@ function drawCampaign(i, g, d, W, H) {
     d.setFont("GUI_1");
     d.setHalign("center");
     if (i.lvlshown > 0) {
-      d.sprite("cap1", 0, W / 2 + 663, H / 2 + 78);
-      d.text(W / 2 + 663, H / 2 + 128, "1.");
+      d.sprite("cap1", 0, MX + 663, H / 2 + 78);
+      d.text(MX + 663, H / 2 + 128, "1.");
     }
     if (i.lvlshown > 1) {
-      d.sprite("cap2", 0, W / 2 + 463, H / 2 + 28);
-      d.sprite("fr_corta", 0, W / 2 + 563, H / 2 + 53);
-      d.text(W / 2 + 463, H / 2 + 88, "2.");
+      d.sprite("cap2", 0, MX + 463, H / 2 + 28);
+      d.sprite("fr_corta", 0, MX + 563, H / 2 + 53);
+      d.text(MX + 463, H / 2 + 88, "2.");
     }
     // [§9.13, richiesta dell'autore] il livello 3: il monastero (segnalino
     // ricavato dallo sprite del corpo, tools/nuovi.py) e la freccia dal 2
     if (i.lvlshown > 2) {
-      d.sprite("cap_monastero", 0, W / 2 + L3_MARK[0], H / 2 + L3_MARK[1]);
-      d.spriteExt("fr_corta", 0, W / 2 + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
-      d.text(W / 2 + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
+      d.sprite("cap_monastero", 0, MX + L3_MARK[0], H / 2 + L3_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
+      d.text(MX + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
     }
     d.setColour(c.black);
     d.setFont("overdue");
@@ -387,9 +392,16 @@ function drawLock(i, d, W, H) {
   d.setColour(mergeColour(c.black, c.red, Math.max(0, Math.min(1, i.redamount))));
   WHEEL_X.forEach((dx, k) => d.text(W / 2 + dx, H / 2, i.comb[k]));
   d.setFont("overdue");
-  d.spriteExt("ico_lock", 0, W / 2 - 63, H / 2 + 144, 0.5, 0.5, 0, c.white, 1);
+  // [§9.27] icona e scritta centrate insieme, l'icona a sinistra della
+  // scritta: in francese, spagnolo, portoghese e tedesco la scritta, piu'
+  // lunga, finiva sotto l'icona (che stava ferma a -63)
+  const label = tr("Unlock level"), tw = d.stringWidth(label), ICON = 32, GAP = 10;
+  const left = W / 2 - (ICON + GAP + tw) / 2;
+  d.spriteExt("ico_lock", 0, left + ICON / 2, H / 2 + 144, 0.5, 0.5, 0, c.white, 1);
   d.setColour(c.black);
-  d.text(W / 2 + 17, H / 2 + 145, tr("Unlock level"));
+  d.setHalign("left");
+  d.text(left + ICON + GAP, H / 2 + 145, label);
+  d.setHalign("center");
 }
 
 // fog_controller [C]: 13 nuvole (fog01) attorno a se', di nuovo ogni 2000

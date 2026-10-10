@@ -588,19 +588,25 @@ export function behaviourClicker(kind) {
       d.setAlpha(0.69);
       const title = tr(attack ? "Aggressive" : "Defensive"), sc = tr("Shortcut: {key}", { key: attack ? "Q" : "A" });
       const ex = d.panelExtra(340, title, null, sc);
+      const desc = tr(attack ? "Military units engage enemy units in a fight at a greater distance."
+                             : "Military units engage enemy units in a fight only if they are nearby.");
+      // [§9.27] la scheda cresce verso l'alto quanto serve alla descrizione:
+      // su tre righe (gia' in inglese) l'ultima usciva sotto il riquadro
+      d.setFont("overdue");
+      const up = Math.max(0, d.stringHeightExt(desc, 30, 280 + ex) - 60);
+      d.setFont("GUI_1");
       d.tooltipBegin(w); // §6.1 n.85
-      d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, white, white, false);
+      d.roundrectColourExt(20, H - 150 - up, 340 + ex, H - 20, 60, 60, white, white, false);
       d.setAlpha(0.7);
       d.setHalign("left");
-      d.text(40, H - 120, title);
+      d.text(40, H - 120 - up, title);
       d.setFont("overdue");
       d.setValign("top");
-      d.textExt(40, H - 90, tr(attack ? "Military units engage enemy units in a fight at a greater distance."
-                                      : "Military units engage enemy units in a fight only if they are nearby."), 30, 280 + ex);
+      d.textExt(40, H - 90 - up, desc, 30, 280 + ex);
       d.setValign("middle"); // fa_center: lo stesso valore di fa_middle [I]
       d.setFont("GUI_1");
       d.setHalign("right");
-      d.text(320 + ex, H - 120, sc);
+      d.text(320 + ex, H - 120 - up, sc);
       d.tooltipEnd(w);
       d.setAlpha(0.99);
       d.circleColour(450, y, 30, white, white, false);

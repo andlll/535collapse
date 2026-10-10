@@ -4865,3 +4865,55 @@ per resource - Hover the mouse over the resources to see how many workers
 are gathering each one, and how many are building." Provato in `match`:
 risorse -> lavoratori per risorsa -> inattivi, col clic; testo nel riquadro
 in italiano e in tedesco. i18n.test: 28 suggerimenti.
+
+### 9.27 Interfaccia in sei lingue: testi che sbordano e sovrapposizioni
+
+Richiesta dell'autore (10 ottobre 2026): controllare tutti gli elementi
+dell'interfaccia (schede di unita' ed edifici ecc.) in tutte le lingue:
+testi che escono dai riquadri o sovrapposizioni strane.
+
+**La prova** (`game/test/browser/ui.mjs`, nuova): intercetta i testi, i
+riquadri e le icone disegnati nell'interfaccia (Draw GUI e il pannello del
+menu di pausa; il resto si ridisegna sotto, sfocato) e per ogni schermata
+segnala i testi fuori dallo schermo, quelli che escono dal riquadro che li
+contiene, i testi sovrapposti fra loro o a un'icona e i caratteri che il
+font non ha. Schermate: menu (titolo coi pulsanti accesi, partite salvate,
+campagna coi tre livelli, lucchetto); in partita il pannello delle risorse
+(anche col puntatore sopra), ogni unita' ed edificio selezionato e ogni
+pulsante col puntatore sopra (costruzione, produzione, comportamento), la
+selezione multipla, un nemico, ogni suggerimento e ogni dialogo (la camera
+li porta nello schermo), il menu di pausa nelle tre pagine, gli obiettivi
+di ogni livello e fase, vittoria e sconfitta. Sei lingue, a 1280x720,
+1920x1080 e 1024x600. `STOP=schermata STOPSHOT=file.png` si ferma su una
+schermata e la fotografa.
+
+**Trovato e corretto** (a 1280x720; viste tutte negli screenshot):
+- **Comportamento** (Aggressive/Defensive): la descrizione va su tre righe
+  (gia' in inglese) e l'ultima usciva sotto la scheda. Ora la scheda cresce
+  verso l'alto quanto serve (units.js).
+- **Ariete e catapulta**: la scorciatoia (scritta piu' a destra, 380 [C])
+  usciva di 12 px dal bordo della scheda, in tutte le lingue. Scheda larga
+  400 per loro (production.js).
+- **Obiettivi in spagnolo**: il riquadro si allargava verso sinistra fin
+  sopra l'ultima colonna dei pulsanti di costruzione (e il suggerimento
+  sugli obiettivi lo copriva). Ora si allarga al piu' fino ai pulsanti
+  (bordo destro 760 + 10); oltre, le righe vanno a capo e il riquadro
+  cresce in altezza (endgame.js). Sugli schermi piu' stretti, dove gia'
+  l'originale toccava i pulsanti, resta com'era.
+- **Lucchetto della campagna**: in francese, spagnolo, portoghese e tedesco
+  "Sblocca livello" finiva sotto l'icona del lucchetto. Icona e scritta ora
+  sono centrate insieme (menu.js).
+- **Vittoria nei livelli**: "click anywhere to continue" usciva col font
+  grande delle cifre del codice (restava impostato). Ora col font dei
+  testi.
+- **Schermate finali**: il riquadro degli obiettivi restava sopra la
+  vittoria (sbiadito, e toccava il titolo nelle lingue lunghe); sulla
+  sconfitta il pannello delle risorse, gli inattivi, gli obiettivi e la
+  minimappa si disegnavano sopra lo sfondo nero (in spagnolo gli obiettivi
+  sopra il titolo). Ora sulle schermate finali solo i loro testi.
+- **Mappa della campagna**: centrata, larga 1597 px, sotto i 1536 px di
+  larghezza il segnalino del livello 1 (la citta') usciva a destra. Mappa e
+  segnalini si spostano a sinistra quanto serve (sotto c'e' l'elenco dei
+  livelli).
+Falsi allarmi scartati: la "ß" tedesca (draw.js la scrive "ss"), lo stesso
+testo scritto piu' volte per l'alone del titolo di pausa.

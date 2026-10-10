@@ -250,7 +250,9 @@ export class Manager {
   // manager Draw_GUI [C], coordinate in pixel CSS della finestra (la "port").
   drawGUI(d, cam, world, fps) {
     const g = this.g, W = cam.cssW, H = cam.cssH;
-    if (this.room !== "menu") {
+    // [§9.27] la minimappa non sulle schermate di vittoria e di sconfitta
+    const ending = world.number("victory_manager") > 0 || world.number("gameover_manager") > 0;
+    if (this.room !== "menu" && !ending) {
       if (g.minim === 1) this.drawMinimap(d, cam, world, H);
       else {
         d.setAlpha(this.minimViewHoverBis ? 0.69 : 0.19);
@@ -261,7 +263,9 @@ export class Manager {
       }
     }
     // [C] if room!=menu && instance_number(victory_manager)=0
-    if (this.room !== "menu" && world.number("victory_manager") === 0) {
+    // [§9.27] neanche sulla schermata di sconfitta (il pannello delle risorse
+    // e degli inattivi si disegnava sopra lo sfondo nero)
+    if (this.room !== "menu" && world.number("victory_manager") === 0 && world.number("gameover_manager") === 0) {
       d.setAlpha(0.69);
       d.roundrectColourExt(20, 20, 230, 150, 60, 60, c.white, c.white, false);  // risorse
       d.roundrectColourExt(W - 90, 100, W - 20, 200, 60, 60, c.white, c.white, false); // inattivi
