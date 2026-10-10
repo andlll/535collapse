@@ -65,6 +65,10 @@ const T = {
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
+// a 380 px (la finestra) + 20 dal bordo sinistro del riquadro degli
+// obiettivi (endgame.js, w._objLeft), come l'originale (W-900) col riquadro
+// da W-520
+const objHintPos = (w) => [Math.min(w.cam.cssW - 900, (w._objLeft ?? w.cam.cssW - 520) - 380), 20];
 // [Correzione decisa dall'autore, §3.19 n.70] l'originale ricalcolava a
 // ogni passo l'istanza piu' vicina al puntatore: avvicinandosi per
 // cliccare, la finestra saltava su un'altra unita'. Qui segue l'istanza
@@ -82,8 +86,10 @@ export const HINTS = {
   hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_lavori" },
   hint_lavori: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" }, // §9.26
   hint_idle: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 410, 170] }, click: "pressed", next: "hint_objective" },
-  hint_objective: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, next: "hint_objective2" },
-  hint_objective2: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, arm: 10, next: "hint_minimap" },
+  // [§9.27] accanto al riquadro degli obiettivi anche quando si allarga per
+  // un testo tradotto (a 1920 px, in spagnolo, gli finiva sopra)
+  hint_objective: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, next: "hint_objective2" },
+  hint_objective2: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, arm: 10, next: "hint_minimap" },
   // posy = view_hport - testo_h - 98 - room_height/sz, ricalcolata a ogni passo
   hint_minimap: { anchor: { kind: "fixed", follow: true, pos: (w, i) => [20, w.cam.cssH - i.testo_h - 98 - w.roomH / w.g.sz] },
                   next: "hint_select" },

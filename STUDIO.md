@@ -4915,5 +4915,8 @@ schermata e la fotografa.
   larghezza il segnalino del livello 1 (la citta') usciva a destra. Mappa e
   segnalini si spostano a sinistra quanto serve (sotto c'e' l'elenco dei
   livelli).
+- **Suggerimento sugli obiettivi** (a 1920x1080, in spagnolo): il riquadro,
+  che li' ha spazio per allargarsi, gli finiva sotto. Ora il suggerimento
+  segue il bordo sinistro reale del riquadro (`w._objLeft`, hints.js).
 Falsi allarmi scartati: la "ß" tedesca (draw.js la scrive "ss"), lo stesso
 testo scritto piu' volte per l'alone del titolo di pausa.

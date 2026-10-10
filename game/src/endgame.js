@@ -180,6 +180,7 @@ export function objectiveButton() {
       const extra = lines.reduce((n, [, s]) => n + wrap(s).length - 1, 0);
       d.setAlpha(0.69);
       d.roundrectColourExt(W - 520 - ex, 20, W - 120, 38 + 30 * nobs + 30 * extra, 60, 60, c.white, c.white, false);
+      w._objLeft = W - 520 - ex; // §9.27: il suggerimento sugli obiettivi gli sta accanto (hints.js)
       d.setFont("GUI_1");
       d.setColour(c.black);
       d.setValign("bottom");
