@@ -159,10 +159,14 @@ export class Pathing {
   // riusata invece di due array nuovi a ogni chiamata.
   // wide: il campo delle macchine d'assedio, chiuse anche le celle di
   // wideMask.
-  goalField(goalX, goalY, enemy = false, wide = false) {
+  // [§9.23] fixed: solo gli ostacoli fissi (solid), senza le celle delle
+  // unita' ferme (i civili verso il loro posto attorno a una risorsa, che
+  // passano sopra gli altri: civilians.js)
+  goalField(goalX, goalY, enemy = false, wide = false, fixed = false) {
     const block = enemy ? this.enemyBlock : null;
     const wm = wide ? this.wideMask(enemy) : null;
-    const { gw, gh, cost } = this;
+    const { gw, gh } = this;
+    const cost = fixed ? this._solidCost() : this.cost;
     const N = gw * gh;
     const f = new Int32Array(N).fill(-1);
     const gx = Math.floor(goalX / GRID), gy = Math.floor(goalY / GRID);
@@ -182,6 +186,16 @@ export class Pathing {
       if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
     }
     return f;
+  }
+
+  // la griglia dei soli ostacoli fissi nella forma della griglia dei costi
+  // (1000 = chiuso), tenuta finche' gli ostacoli non cambiano
+  _solidCost() {
+    if (this._solidCostVer === this.solidVer && this._solidCostArr) return this._solidCostArr;
+    const a = this._solidCostArr || (this._solidCostArr = new Int32Array(this.gw * this.gh));
+    for (let k = 0; k < a.length; k++) a[k] = this.solid[k] ? 1000 : 0;
+    this._solidCostVer = this.solidVer;
+    return a;
   }
 
   // La cella raggiunta nel campo (valore != -1) piu' vicina a (gx, gy); a

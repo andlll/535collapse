@@ -4777,3 +4777,54 @@ endgame.js): la riga del conto alla rovescia con "99:99" e quella della
 vita con tante cifre quante la vita massima, tutte alla cifra piu' larga
 del font (`widestDigit`). Misurato col riquadro disegnato (vita 3000, 2999,
 1500, 1111, 1000, 888, 100): prima 754-760, ora sempre 754.
+
+### 9.23 Civili inattivi: prova e correzioni
+
+Richiesta dell'autore (10 ottobre 2026): dopo §9.21, una prova approfondita
+della selezione dei civili inattivi (contatore in alto a destra, Spazio e
+clic sul riquadro: idle_clicker, recountIdle).
+
+**La prova** (`game/test/browser/idle.mjs`, nuova, PASS/FAIL per
+controllo): 1 Spazio scorre gli inattivi uno alla volta, tutti, nello stesso
+ordine a ogni giro, camera centrata e dentro la room; 2 il clic sul
+riquadro aggiunge il prossimo alla selezione (come l'originale), g.sel
+giusto; 3 a giro iniziato alcuni partono e altri si fermano: niente doppioni
+o salti, idleorder 1..n; 4 chi aspetta un posto (§9.21) non e' inattivo;
+5 la miniera finisce e non ce ne sono altre: tutti inattivi; 6 depositi
+distrutti coi civili carichi: tutti inattivi; 6b distrutto il magazzino in
+uso, si porta all'altro; 7 raccolta mista di 4 minuti: nessun civile "perso"
+(in cammino, fermo da oltre 10 s, non in coda) fuori dal contatore; 8 civili
+negli angoli della mappa: camera dentro la room; 9 l'ordine di Spazio dopo
+salvataggio e caricamento.
+
+**Trovato:**
+- **Blocco del gioco** (da §9.21): finita l'ultima miniera, chi ci stava
+  andando arrivava ai posti prenotati senza risorsa (null) e la pagina dava
+  errore. Ora senza risorsa niente posti, e chi va verso una miniera o una
+  pietra che non c'e' piu' (nessuna sulla mappa) si ferma ed e' inattivo.
+- **Miniera finita** (gia' nella release): 9 civili su 20 restavano in
+  cammino per sempre verso il punto della miniera, invisibili al contatore
+  e a Spazio. Risolto da §9.21 e dal punto sopra.
+- **Deposito distrutto** (gia' nella release): chi portava il carico
+  continuava verso il punto del deposito senza arrivare mai. Ora va al
+  deposito piu' vicino (legno, oro, pietra al magazzino o al centro, cibo al
+  granaio o al centro); se non ce n'e' nessuno si ferma col carico, come chi
+  lo riempie senza depositi. Effetto collaterale: anche i contadini col cibo
+  ora vanno verso il granaio col campo verso l'edificio (come gli altri
+  depositi, §8.19) invece che verso una cella vicina, e consegnano di piu'
+  (workers.mjs: cibo 390 -> 540, 740 -> 1070).
+- **Civili persi accanto al posto** (da §9.21): un civile a 17 px dal suo
+  posto andava avanti e indietro di 3 px per sempre. Tre cause, tutte nel
+  ritorno al campo (§9.21) vicino al posto: il campo verso il posto aveva per
+  ostacoli le celle dei civili fermi (vicoli ciechi), partiva dal bordo
+  libero piu' vicino quando il posto sta in una cella toccata dalla risorsa
+  (anche a 200 px), e tornando dal deposito il civile riceveva il campo
+  verso la risorsa e, col posto gia' suo, non si rifaceva quello del posto.
+  Ora: campo coi soli ostacoli fissi (`goalField(..., fixed)`, in
+  pathing.js), verso la cella libera piu' vicina al posto, tenuto a parte
+  (`spotField`), e a meno di 48 px sempre dritti.
+Il resto (Spazio, clic, contatore, ordine, camera, salvataggio) era gia'
+giusto: tutti i controlli passano anche nella release, tranne 5 e 6.
+Dopo: idle.mjs tutto PASS; mining.mjs fermi 0 (oro e pietra, 2,5 e 5 min);
+workers.mjs, consegne, movement.mjs, soak (anche lvl03), salvataggi e
+salvataggio a cantiere attivo senza errori.

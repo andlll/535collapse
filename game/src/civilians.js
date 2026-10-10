@@ -486,19 +486,50 @@ function toResSpot(w, i, res) {
   // vista, dritti (sopra gli altri civili)
   if (i.spotFieldFor !== s || (!i.spotField && w._stepNo >= (i.spotFieldAt || 0))) {
     i.spotFieldFor = s; i.spotFieldAt = w._stepNo + 20;
-    i.spotField = fieldTo(w, w.path, i, s.x, s.y, false);
+    i.spotField = spotFieldTo(w.path, i, s);
   }
   // dritti, ma se in 30 passi non ci si avvicina (lo spigolo di una pietra
   // irregolare contro la maschera) col campo per 60 passi
+  // A meno di 48 px sempre dritti: li' il campo (calcolato con le celle dei
+  // civili fermi in quel momento) faceva andare avanti e indietro di 3 px
+  // accanto al posto, per sempre (idle.mjs, scenario 7)
   const d = pointDistance(i.x, i.y, s.x, s.y);
   if (i.spotBestFor !== s || d < i.spotBest - 2) { i.spotBestFor = s; i.spotBest = d; i.spotN = 0; }
-  else if (++i.spotN >= 30) { i.spotN = 0; i.spotBest = d; i.spotFlowUntil = w._stepNo + 60; }
-  if (i.spotField && (!seesSpot(w.path, i, s) || w._stepNo < (i.spotFlowUntil || 0))) {
+  else if (++i.spotN >= 30) { i.spotN = 0; i.spotBest = d; i.spotFlowUntil = d >= 48 ? w._stepNo + 60 : 0; }
+  if (i.spotField && d >= 48 && (!seesSpot(w.path, i, s) || w._stepNo < (i.spotFlowUntil || 0))) {
+    // il campo del posto (tenuto a parte: tornando dal deposito il civile
+    // riceve il campo verso la risorsa, e col posto gia' suo non si rifaceva)
     i.dirox = s.x; i.diroy = s.y;
+    i.goal_field = i.spotField.goal; i.flow_field = i.spotField.flow;
     moveFlowField(w, w.path, i);
     return;
   }
   mpPotentialStep(w, i, s.x, s.y, i.autospeed, false, true);
+}
+
+// [§9.23] Il campo verso il posto coi soli ostacoli fissi: con le celle dei
+// civili fermi (fieldTo) accanto ai posti nascevano vicoli ciechi e chi ci
+// finiva andava avanti e indietro (idle.mjs, mining.mjs). false se da qui
+// il posto non si raggiunge.
+function spotFieldTo(p, i, s) {
+  // il posto (a 4 px dalla risorsa) puo' stare in una cella toccata dalla
+  // risorsa: allora la meta e' la cella libera piu' vicina (goalField
+  // partirebbe dal bordo libero dell'ostacolo piu' vicino, anche a 200 px)
+  let gx = s.x, gy = s.y;
+  const cx = Math.floor(s.x / GRID), cy = Math.floor(s.y / GRID);
+  if (!p.inside(cx, cy) || p.solid[cy * p.gw + cx]) {
+    let bd = Infinity;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const x = cx + dx, y = cy + dy;
+      if (!p.inside(x, y) || p.solid[y * p.gw + x]) continue;
+      const mx = x * GRID + GRID / 2, my = y * GRID + GRID / 2, d = pointDistance(mx, my, s.x, s.y);
+      if (d < bd) { bd = d; gx = mx; gy = my; }
+    }
+  }
+  const f = p.goalField(gx, gy, false, false, true);
+  const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
+  if (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) return null;
+  return { goal: f, flow: p.flowField(f) };
 }
 
 // Il posto e' in vista: la linea sottile fino a 36 px dal posto non passa
@@ -574,7 +605,7 @@ function ominoMove(i, w, p) {
     const far = res ? w.distanceToInstance(i, res) > 100 : pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach;
     // [§9.21] vicino alla miniera o alla pietra si va al proprio posto anche
     // sovrapposti ad altri civili (toResSpot passa sopra di loro)
-    const atRes = !far && (i.goldwork === 1 || i.stonework === 1);
+    const atRes = !!res && !far && (i.goldwork === 1 || i.stonework === 1);
     if (atRes) toResSpot(w, i, res); // §9.21
     else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
@@ -792,11 +823,29 @@ function workStep(i, w, p, stop) {
     if (num("albero") <= 0) { stop(i, w); i.buildwork = 0; i.woodwork = 0; }
   }
   // oro
+  // [§9.23] il deposito verso cui si porta il carico e' stato distrutto:
+  // verso il piu' vicino; se non ce n'e' piu' nessuno ci si ferma col carico
+  // (inattivo), come chi riempie il carico senza depositi. Prima si
+  // continuava verso il punto in cui era, senza arrivare mai (idle.mjs,
+  // scenario 6)
+  for (const [work, dep] of [["woodwork", "ally_magazza"], ["goldwork", "ally_magazza"], ["stonework", "ally_magazza"], ["foodwork", "ally_barn"]]) {
+    if (i[work] !== 2 || i.action !== 1) continue;
+    if (num(dep) === 0) { stop(i, w); i[work] = 0; continue; }
+    // (la meta e' il deposito o, per il cibo, una cella accanto: 120 px)
+    const d = n(dep, i.dirox, i.diroy);
+    if (pointDistance(d.x, d.y, i.dirox, i.diroy) > 120) {
+      const d2 = n(dep);
+      i.dirox = d2.x; i.diroy = d2.y;
+      fieldTo(w, p, i, d2.x, d2.y);
+    }
+  }
   // [§9.21] la miniera o la pietra verso cui si va e' finita: verso la piu'
   // vicina (come chi ci lavorava, azioni 3 e 5). Prima si continuava col
   // campo verso il punto in cui era, e li' si restava a girare
   for (const [work, name, kx, ky] of [["goldwork", "miniera_oro", "goldx", "goldy"], ["stonework", "stone_parent", "stonex", "stoney"]]) {
-    if (i[work] !== 1 || num(name) === 0) continue;
+    if (i[work] !== 1) continue;
+    // non ce n'e' piu' nessuna: ci si ferma (inattivo), come chi ci lavorava
+    if (num(name) === 0) { stop(i, w); i[work] = 0; i.queueWait = false; continue; }
     const t = n(name, i[kx], i[ky]);
     if (pointDistance(t.x, t.y, i[kx], i[ky]) <= 10) continue;
     const t2 = n(name);
