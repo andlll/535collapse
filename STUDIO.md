@@ -4542,3 +4542,33 @@ civili a nord-ovest). Tolta all'avvio come gli altri oggetti di troppo
 (app.js `DROPPED`). All'avvio: nessuna catapulta, 3 alleati, popolazione
 5 (era 4 e 8). Soak di match: 3 alleati e popolazione 5 come dopo §9.9, ma
 per un altro motivo (allora la catapulta moriva contro la torre nemica).
+
+### 9.16 Livello 3: 20 minuti, campi coltivati al villaggio, avviso sulla base nemica
+
+Richieste dell'autore (10 ottobre 2026):
+- **Difesa di 20 minuti** (era 15; `LV3.defense`). Le ondate seguono lo
+  stesso passo di 2:30 fino alla fine: due in piu', a 16:00 (6 guerrieri,
+  4 picchieri, 3 arcieri, 2 cavalieri, 3 arieti, 1 catapulta) e a 18:30
+  (6, 4, 4, 3, 3 arieti, 1 catapulta); "Ancora un minuto!" a 19:00. Numeri
+  da tarare giocando.
+- **Tre campi gia' coltivati col loro contadino** attorno al centro del
+  villaggio, a destra (`LV3.townFields`), creati all'arrivo con il gruppo
+  `citta`; ogni contadino nasce sul suo campo con `foodwork` 6 (cerca il
+  campo libero piu' vicino) e lavora subito. In piu' dei 3 civili e delle
+  risorse di prima. I campi non stanno sulla stessa x: in fieldsStep il
+  contadino cambia campo solo se cambia la **x** del campo libero piu'
+  vicino [C, `campox != miocampox`]; con i tre campi in colonna, dopo la
+  prima consegna andavano tutti verso quello in basso e due restavano in
+  fila dietro al primo (misurato: un campo lavorato su tre). Sfalsati di 30
+  px: tutti e tre lavorati.
+- **Il dialogo 3_5 sulla base nemica al primo attacco al villaggio**:
+  prima arrivava 40 s dopo la partenza del primo attacco, anche se nessuno
+  era ancora arrivato. Ora quando un nemico partito dalla base arriva a
+  500 px da un edificio alleato a meno di 1500 px dal centro del villaggio
+  (le torri comprese, a tiro: 600 px; il monastero no); con lui
+  l'obiettivo "distruggi caserme e stalle" (`g.l3.baseKnown`, che fa anche
+  da segno "gia' detto" nei salvataggi). Misurato: 24 s dopo la partenza,
+  contro la torre a est.
+Prove (Chromium, `window.__game`, un soldato spostato al villaggio): 3
+campi e 6 civili, contadini al lavoro su tutti e tre i campi; conto alla
+rovescia da 20:00; dialogo 3_5 una volta, all'arrivo del primo attacco.
