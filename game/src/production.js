@@ -314,9 +314,12 @@ export function unitClicker(prod, type) {
       const H = w.cam.cssH;
       d.setAlpha(0.69);
       const title = tr(u.title), desc = tr(u.desc), shortcut = tr("Shortcut: {key}", { key: u.shortcut.slice(-1) });
-      const ex = d.panelExtra(370, title, desc, shortcut);
+      // [§9.27] ariete e catapulta: la scheda larga quanto la loro scorciatoia,
+      // scritta piu' a destra (sotto: 380 [C]); prima usciva di 12 px dal bordo
+      const right = u.wide ? 400 : 370;
+      const ex = d.panelExtra(right, title, desc, shortcut);
       d.tooltipBegin(w); // §6.1 n.85
-      d.roundrectColourExt(20, H - 150, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
+      d.roundrectColourExt(20, H - 150, right + ex, H - 20, 60, 60, WHITE, WHITE, false);
       d.setAlpha(0.7);
       d.setHalign("left");
       d.text(40, H - 120, title);

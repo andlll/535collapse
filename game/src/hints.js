@@ -24,6 +24,7 @@
 
 import { c } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
+import { panTo } from "./camera.js";
 
 const W380 = 380;
 
@@ -34,6 +35,8 @@ const T = {
   hint_iniziale: ["Hints", "Windows like this one will appear to help you. Click on a hint window for the next step. Press H to disable or enable all hint windows."],
   hint_vista: ["Visualization", "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out with the mouse wheel or the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode."],
   hint_resource_tree: ["Resources", "On top of the screen you will find the resource tree. Gather resources with your workers to expand your city and build a powerful army."],
+  // [§9.26, richiesta dell'autore] il pannello delle risorse col puntatore sopra (§9.25)
+  hint_lavori: ["Workers per resource", "Hover the mouse over the resources to see how many workers are gathering each one, and how many are building."],
   hint_idle: ["Idling workers", "On top right of the screen you can monitor how many workers are idling. Click the button or press the spacebar to select them."],
   hint_objective: ["Objectives", "Next to it, you can find the objectives of the current map. Complete them to win the level."],
   hint_objective2: ["Objectives", "For this demo, the goal is to survive as long as possible and to destroy the enemies' bases. Press O to hide the objectives' window."],
@@ -62,6 +65,10 @@ const T = {
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
+// a 380 px (la finestra) + 20 dal bordo sinistro del riquadro degli
+// obiettivi (endgame.js, w._objLeft), come l'originale (W-900) col riquadro
+// da W-520
+const objHintPos = (w) => [Math.min(w.cam.cssW - 900, (w._objLeft ?? w.cam.cssW - 520) - 380), 20];
 // [Correzione decisa dall'autore, §3.19 n.70] l'originale ricalcolava a
 // ogni passo l'istanza piu' vicina al puntatore: avvicinandosi per
 // cliccare, la finestra saltava su un'altra unita'. Qui segue l'istanza
@@ -76,10 +83,13 @@ export const HINTS = {
   // catena del tutorial (hint_iniziale e' piazzato nelle room)
   hint_iniziale: { anchor: fixed(20, 170), next: "hint_vista" },
   hint_vista: { anchor: fixed(20, 170), arm: 10, next: "hint_resource_tree" },
-  hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" },
+  hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_lavori" },
+  hint_lavori: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" }, // §9.26
   hint_idle: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 410, 170] }, click: "pressed", next: "hint_objective" },
-  hint_objective: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, next: "hint_objective2" },
-  hint_objective2: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, arm: 10, next: "hint_minimap" },
+  // [§9.27] accanto al riquadro degli obiettivi anche quando si allarga per
+  // un testo tradotto (a 1920 px, in spagnolo, gli finiva sopra)
+  hint_objective: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, next: "hint_objective2" },
+  hint_objective2: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, arm: 10, next: "hint_minimap" },
   // posy = view_hport - testo_h - 98 - room_height/sz, ricalcolata a ogni passo
   hint_minimap: { anchor: { kind: "fixed", follow: true, pos: (w, i) => [20, w.cam.cssH - i.testo_h - 98 - w.roomH / w.g.sz] },
                   next: "hint_select" },
@@ -174,11 +184,18 @@ export const DIALOGS = {
   dialogo_2_10: { who: [...VILLAGER, "Villagers"], arm: 10, text: "We will always be grateful for your help!" },
   dialogo_2_11: { who: [...VILLAGER, "Gold miners"], arm: 10, text: "This area is full of gold to mine, count on us!" },
   dialogo_2_12: { who: [...VILLAGER, "Villagers"], arm: 10, text: "Thank you for freeing my village!" },
-  // la base nemica: chiudendolo la view salta a (500, 600)
+  // la base nemica: chiudendolo la view saltava a (500, 600) [C]. [§9.19,
+  // richiesta dell'autore] ora ci scivola come sul monastero del livello 3
+  // (camera.js panTo), sulle caserme e la stalla della base, che le spie
+  // hanno trovato: si vedono (gli edifici nemici, una volta visti, restano
+  // visibili [C]); il palo toglie la nebbia attorno
   dialogo_2_13: { who: SPY, arm: 10, vanish: true,
                   text: "Our spies have found the enemy base. It's north of here. Let's destroy it to stop the attacks!",
                   create: (i, w) => w.create("palo_1", 150, 250),
-                  click: (i, w) => { w.cam.x = 500; w.cam.y = 600; w.cam.clamp(); } },
+                  click: (i, w) => {
+                    for (const b of w.all("enemy_build")) if (Math.hypot(b.x - 150, b.y - 250) < 600) b.visible = true;
+                    for (const m of w.all("enemy_manager_lv2")) m.pan = panTo(w, 300, 450);
+                  } },
   dialogo_2_14: { who: SPY, arm: 10, vanish: true, text: "It seems that this very barracks trains the archers who protect that point." },
   // livello 3 [§9.11, testi dell'autore riscritti]: la regia e' in
   // levels.js (enemyManagerLv3), che li crea; chiudere il 3_3 rivela il

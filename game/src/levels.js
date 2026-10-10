@@ -14,6 +14,7 @@ import { irandomRange, pointDistance } from "./gm.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
+import { panTo, panStep } from "./camera.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -347,6 +348,8 @@ export function enemyManagerLv2(p) {
     },
     step(i, w) {
       const g = w.g;
+      // [§9.19] la vista sulla base nemica (la avvia dialogo_2_13)
+      if (i.pan && panStep(w, i.pan)) i.pan = null;
       if (i.liberati1 === 0 && !w.collisionRectangle(760, 6770, 1868, 7450, "enemy_unit", false)) {
         w.create("ally_omino", 1645, 7109);
         w.create("ally_omino", 1745, 7109);
@@ -413,8 +416,14 @@ export const LV3 = {
   spawn: [5750, 5850],                     // dove nascono le ondate (la partenza del giocatore)
   gate: [5160, 1332],                      // la porta della cinta: meta delle ondate
   inner: [5372, 1100],                     // fra la cinta e il muro del cortile: a 320 px dal monastero
-  defense: 15 * MIN,                       // durata della difesa
+  defense: 20 * MIN,                       // durata della difesa (§9.16: era 15 minuti)
   townGift: { omini: 3, food: 200, wood: 200 },
+  // [§9.16, richiesta dell'autore] tre campi gia' coltivati attorno al
+  // centro, a destra, ognuno col suo contadino (dal centro del villaggio).
+  // Non sulla stessa x: il contadino cambia campo solo se cambia la x del
+  // campo libero piu' vicino [C, civilians.js fieldsStep], e con tre campi
+  // in colonna restavano tutti in fila per quello in basso (misurato)
+  townFields: [[430, -225], [460, -25], [490, 175]],
   // ondate (dalla rivelazione): fanti per tipo, arieti, catapulte
   waves: [
     { at: 1 * MIN, units: { enemy_warrior: 2, enemy_picchiere: 2 }, rams: 1 },
@@ -423,12 +432,19 @@ export const LV3 = {
     { at: 8.5 * MIN, units: { enemy_warrior: 4, enemy_picchiere: 3, enemy_arciere: 2, enemy_cavaliere: 1 }, rams: 2 },
     { at: 11 * MIN, units: { enemy_warrior: 5, enemy_picchiere: 3, enemy_arciere: 3, enemy_cavaliere: 2 }, rams: 3 },
     { at: 13.5 * MIN, units: { enemy_warrior: 5, enemy_picchiere: 4, enemy_arciere: 3, enemy_cavaliere: 2 }, rams: 3, catapults: 1 },
+    // [§9.16] le due ondate dei 5 minuti in piu', con lo stesso passo
+    { at: 16 * MIN, units: { enemy_warrior: 6, enemy_picchiere: 4, enemy_arciere: 3, enemy_cavaliere: 2 }, rams: 3, catapults: 1 },
+    { at: 18.5 * MIN, units: { enemy_warrior: 6, enemy_picchiere: 4, enemy_arciere: 4, enemy_cavaliere: 3 }, rams: 3, catapults: 1 },
   ],
   // attacchi al villaggio: il primo 3 minuti dopo la prima ondata, poi ogni
-  // 2; ogni caserma crea `n` fanti, ogni stalla `n` cavalieri
-  baseFirst: 4 * MIN, baseEvery: 2 * MIN, baseN: [1, 1, 2, 2, 2, 3],
-  baseHint: 40 * 60,                       // il dialogo sulla base nemica, dopo il primo attacco
-  lastMinute: 14 * MIN,
+  // 4 (§9.18: erano ogni 2); ogni caserma crea `n` fanti, ogni stalla `n`
+  // cavalieri
+  baseFirst: 4 * MIN, baseEvery: 4 * MIN, baseN: [1, 1, 2, 2, 2, 3],
+  // [§9.16] il dialogo sulla base nemica al primo attacco al villaggio: un
+  // nemico partito dalla base entro 500 px da un edificio alleato a meno di
+  // 1500 px dal centro del villaggio (le torri comprese, il monastero no)
+  baseHintNear: 500, baseHintTown: 1500,
+  lastMinute: 19 * MIN,
 };
 const FANTI = ["enemy_warrior", "enemy_picchiere", "enemy_arciere"];
 
@@ -454,7 +470,7 @@ export function enemyManagerLv3(p) {
   return {
     create(i, w) {
       i.sprite_index = null;
-      Object.assign(i, { phase: 0, t: 0, wave: 0, base: 0, revealAsked: 0, baseHintAt: -1, last: 0, pan: null });
+      Object.assign(i, { phase: 0, t: 0, wave: 0, base: 0, revealAsked: 0, last: 0, pan: null });
       // i nemici gia' sulla mappa difendono dove sono (non vanno a cercare i
       // civili), come in match
       for (const e of w.all("enemy_unit")) e.defender = 1;
@@ -480,6 +496,14 @@ export function enemyManagerLv3(p) {
             freeSpawnEnemy(o, w); // un posto libero (vale per qualunque istanza)
           }
           g.food += LV3.townGift.food; g.wood += LV3.townGift.wood;
+          // [§9.16] i campi e i loro contadini: ognuno nasce sul suo campo e
+          // cerca il campo libero piu' vicino (foodwork 6, civilians.js)
+          for (const [dx, dy] of LV3.townFields) {
+            w.create("campo", c.x + dx, c.y + dy);
+            const o = w.create("ally_omino", c.x + dx, c.y + dy);
+            g.idle -= 1; // non e' fermo
+            o.foodwork = 6; o.action = 1; o.alarm.set(0, 13);
+          }
           w.create("dialogo_3_1", c.x, c.y + 170);
           i.phase = 1;
         }
@@ -493,8 +517,7 @@ export function enemyManagerLv3(p) {
         activateGroup(w, "monastero");
         const m = monastery(w);
         if (m) {
-          const tx = m.x - w.cam.w / 2, ty = m.y + 250 - w.cam.h / 2;
-          i.pan = { x0: w.cam.x, y0: w.cam.y, x1: tx, y1: ty, k: 0 };
+          i.pan = panTo(w, m.x, m.y + 250);
           w.create("dialogo_3_4", m.x, m.y + 300);
         }
         i.ffMon = p.flowField(p.goalField(LV3.gate[0], LV3.gate[1], true));
@@ -502,12 +525,7 @@ export function enemyManagerLv3(p) {
         return;
       }
       // la vista che scivola sul monastero (90 passi)
-      if (i.pan) {
-        const P = i.pan, a = Math.min(1, ++P.k / 90), e = a * a * (3 - 2 * a);
-        w.cam.x = P.x0 + (P.x1 - P.x0) * e; w.cam.y = P.y0 + (P.y1 - P.y0) * e;
-        if (w.cam.clamp) w.cam.clamp();
-        if (a >= 1) i.pan = null;
-      }
+      if (i.pan && panStep(w, i.pan)) i.pan = null;
       // 2: la difesa
       i.t++;
       const m = monastery(w);
@@ -541,20 +559,24 @@ export function enemyManagerLv3(p) {
         const town = w.nearest(LV3.town[0], LV3.town[1], "ally_build");
         if (town) {
           const ff = p.flowField(p.goalField(town.x, town.y, true));
-          let sent = 0;
           for (const c of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
             const list = [];
             for (let k = 0; k < n; k++) list.push(c.object === "enemy_stalla" ? "enemy_cavaliere" : FANTI[(i.base + k) % 3]);
             march(w, list, c.x, c.y + 120, ff, [town.x, town.y], "base");
-            sent += list.length;
           }
-          if (sent && i.baseHintAt < 0) i.baseHintAt = i.t + LV3.baseHint;
         }
       }
-      if (i.baseHintAt >= 0 && i.t >= i.baseHintAt) {
-        i.baseHintAt = -2; g.l3.baseKnown = 1;
-        const c = w.nearest(LV3.town[0], LV3.town[1], "ally_omino") || w.nearest(LV3.town[0], LV3.town[1], "ally_unit");
-        if (c) w.create("dialogo_3_5", c.x, c.y);
+      if (!g.l3.baseKnown && i.t % 15 === 0) {
+        for (const e of w.all("enemy_unit")) {
+          if (e.l3 !== "base") continue;
+          const b = w.nearest(e.x, e.y, "ally_build");
+          if (!b || pointDistance(e.x, e.y, b.x, b.y) > LV3.baseHintNear
+              || pointDistance(b.x, b.y, LV3.town[0], LV3.town[1]) > LV3.baseHintTown) continue;
+          g.l3.baseKnown = 1;
+          const c = w.nearest(LV3.town[0], LV3.town[1], "ally_omino") || w.nearest(LV3.town[0], LV3.town[1], "ally_unit");
+          if (c) w.create("dialogo_3_5", c.x, c.y);
+          break;
+        }
       }
       // ogni secondo, chi e' arrivato e sta fermo riparte: le macchine verso
       // l'edificio alleato piu' vicino alla meta (la cinta, poi il resto), i
@@ -569,8 +591,15 @@ export function enemyManagerLv3(p) {
           const goal = p.goalField(LV3.inner[0], LV3.inner[1], true);
           i.ffIn = { ver: p.solidVer, goal, ff: p.flowField(goal) };
         }
+        // [§9.17, richiesta dell'autore] sfondata la porta, gli arieti delle
+        // ondate vanno al monastero e colpiscono solo quello (siege.js
+        // ramTarget), invece di continuare con le mura e le torri vicine
+        const porta = w.nearest(LV3.gate[0], LV3.gate[1], "porta_ori");
+        if (!porta || pointDistance(porta.x, porta.y, LV3.gate[0], LV3.gate[1]) > 100) {
+          for (const e of w.all("enemy_ariete")) if (e.l3 === "mon") e.ramTarget = m;
+        }
         for (const e of w.all("enemy_unit")) {
-          if (!e.l3 || e.action !== 0 || e.role === 31) continue;
+          if (!e.l3 || e.action !== 0 || e.role === 31 || e.ramTarget) continue;
           const [gx, gy] = e.l3 === "mon" ? LV3.gate : LV3.town;
           const siege = e.object === "enemy_ariete" || e.object === "enemy_catapulta";
           const t = w.nearest(gx, gy, siege ? "ally_build" : "ally_unit");

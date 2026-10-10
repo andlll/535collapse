@@ -60,6 +60,9 @@ export function victoryManager() {
         d.setFont("gui_sblocco");
         d.text(vw / 2, vh / 2 + 300, code);
       }
+      // [§9.27] col font dei testi: dopo il codice restava quello grande
+      // delle cifre (gui_sblocco) e nei livelli la scritta era enorme
+      d.setFont("overdue");
       if (i.clicloc === 1) d.text(vw / 2, vh / 2 + 100, tr("click anywhere to continue"));
     },
   };
@@ -94,6 +97,17 @@ export function gameoverManager() {
   };
 }
 
+// [§9.27] Il bordo destro dei pulsanti in alto a sinistra (colonne da 450 a
+// 730, raggio 30) piu' 10 px
+const TOP_BUTTONS_RIGHT = 770;
+
+// La cifra piu' larga col font corrente (i font non sono a spaziatura fissa)
+function widestDigit(d) {
+  let best = "0", bw = -1;
+  for (const ch of "0123456789") { const cw = d.stringWidth(ch); if (cw > bw) { bw = cw; best = ch; } }
+  return best;
+}
+
 // objective_button [C]: il riquadro degli obiettivi in alto a destra (O lo
 // nasconde). Creato dal manager in match, da dialogo_1_2 e dialogo_2_5.
 export function objectiveButton() {
@@ -102,10 +116,15 @@ export function objectiveButton() {
     drawGUI(i, w, d) {
       const g = w.g, W = w.cam.cssW;
       if (g.obj !== 1) return;
+      // [§9.27] non sopra le schermate di vittoria e di sconfitta
+      if (w.number("victory_manager") || w.number("gameover_manager")) return;
       const nobs = w.room === "match" ? 4 : 3;
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
       // [y, testo, barrato]
       const lines = [];
+      // [§9.22] testi che contano solo per la larghezza del riquadro (non si
+      // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
+      const sizing = [];
       if (w.room === "match") {
         lines.push([58, tr("Survive for the most time possible")]);
         lines.push([88, tr("Destroy the enemy secondary bases ({n}/3)", { n: g.basidistrutte })]);
@@ -130,6 +149,15 @@ export function objectiveButton() {
         else {
           lines.push([58, tr("Defend the monastery: {t}", { t: mmss(L.left) })]);
           lines.push([88, tr("Monastery: {life} / {slife} (lost below half)", { life: L.life, slife: L.slife })]);
+          // [§9.22, richiesta dell'autore] la larghezza non segue la vita
+          // del monastero (che cala in fretta: il riquadro si allargava e
+          // stringeva di continuo) ne' il conto alla rovescia: la si misura
+          // con tutte le cifre alla cifra piu' larga del font, la vita con
+          // quante ne ha la vita massima
+          d.setFont("overdue");
+          const wide = widestDigit(d), digits = (v) => wide.repeat(String(v).length);
+          sizing.push(tr("Defend the monastery: {t}", { t: digits(99) + ":" + digits(99) }));
+          sizing.push(tr("Monastery: {life} / {slife} (lost below half)", { life: digits(L.slife), slife: digits(L.slife) }));
           if (L.baseKnown) {
             const done = w.number("enemy_caserma") + w.number("enemy_stalla") === 0;
             lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
@@ -137,22 +165,36 @@ export function objectiveButton() {
         }
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
-      // allarga verso sinistra se un testo tradotto non ci sta
+      // allarga verso sinistra se un testo tradotto non ci sta.
+      // [§9.27] ma non sopra i pulsanti in alto a sinistra (costruzione,
+      // produzione, comportamento: fino a TOP_BUTTONS_RIGHT): oltre, le righe
+      // vanno a capo e il riquadro cresce in altezza (in spagnolo copriva
+      // l'ultima colonna dei pulsanti). Sugli schermi stretti, dove gia'
+      // l'originale li toccava, resta com'era.
       d.setFont("overdue");
-      const maxW = Math.max(0, ...lines.map(([, s]) => d.stringWidth(s)));
-      const ex = Math.max(0, Math.ceil(maxW - 360));
-      const x = W - 500 - ex;
+      const maxW = Math.max(0, ...lines.map(([, s]) => d.stringWidth(s)), ...sizing.map((s) => d.stringWidth(s)));
+      const room = Math.max(0, W - 520 - TOP_BUTTONS_RIGHT);
+      const ex = Math.min(Math.max(0, Math.ceil(maxW - 360)), room);
+      const x = W - 500 - ex, wrapW = 360 + ex;
+      const wrap = (s) => (d.stringWidth(s) > wrapW ? d._lines(s, 30, wrapW) : [s]);
+      const extra = lines.reduce((n, [, s]) => n + wrap(s).length - 1, 0);
       d.setAlpha(0.69);
-      d.roundrectColourExt(W - 520 - ex, 20, W - 120, 38 + 30 * nobs, 60, 60, c.white, c.white, false);
+      d.roundrectColourExt(W - 520 - ex, 20, W - 120, 38 + 30 * nobs + 30 * extra, 60, 60, c.white, c.white, false);
+      w._objLeft = W - 520 - ex; // §9.27: il suggerimento sugli obiettivi gli sta accanto (hints.js)
       d.setFont("GUI_1");
       d.setColour(c.black);
       d.setValign("bottom");
       d.setHalign("left");
       d.setAlpha(0.75);
       d.setFont("overdue");
+      let down = 0;
       for (const [y, str, strikeY] of lines) {
-        d.text(x, y, str);
-        if (strikeY) { d.setColour(c.black); d.rectangle(x, strikeY, x + d.stringWidth(str), strikeY + 2, false); }
+        for (const piece of wrap(str)) {
+          d.text(x, y + down, piece);
+          if (strikeY) { d.setColour(c.black); d.rectangle(x, strikeY + down, x + d.stringWidth(piece), strikeY + down + 2, false); }
+          down += 30;
+        }
+        down -= 30;
       }
       d.setFont("GUI_1");
       d.setValign("middle");

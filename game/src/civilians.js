@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 
@@ -333,9 +333,7 @@ function ominoStep(i, w, p, stop) {
   if (i.action === 1 && !onFormationSlot(i) && !i.depositTo && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
       && !w.placeEmpty(i, i.dirox, i.diroy)) {
     if (i.creation === 0) {
-      const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-      i.dirox += lengthdirX(50, dir);
-      i.diroy += lengthdirY(50, dir);
+      destinationBack(i, 50); // §9.20
     } else if (!rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-32, 32);
       i.diroy += irandomRange(-32, 32);
@@ -389,6 +387,167 @@ function toWorkSpot(w, i, res) {
   if (s) mpPotentialStep(w, i, s[0], s[1], i.autospeed);
 }
 
+// [§9.21, richiesta dell'autore] Posti prenotati attorno a miniere e pietre.
+// Con 20 civili fra una miniera e un magazzino vicino i posti di meleeSpot
+// (ricalcolati a ogni passo, a settori di 30 gradi) erano meno dei civili e
+// agli angoli quasi uno sull'altro: chi restava senza puntava al centro
+// della risorsa, ci si staccava a ogni passo e un passo su cinque in
+// cammino era un'inversione di marcia. Ora ogni risorsa ha posti fissi che
+// non si toccano, sul bordo (lavoro) e una fila piu' in fuori (attesa):
+// - si prenota, vicino alla risorsa (toWorkSpot era a 100 px), il posto di
+//   lavoro libero piu' vicino; se non ce n'e', quello d'attesa;
+// - il posto resta di chi lo ha finche' va alla risorsa o ci lavora: chi
+//   parte per il deposito lo lascia, e il primo che chiede lo prende (chi
+//   aspetta chiede a ogni passo);
+// - verso il posto si passa sopra gli altri civili (come verso la casella
+//   della formazione, §8.11), al posto d'attesa si sta fermi girati verso la
+//   risorsa (queueWait: gli altri ci passano sopra);
+// - si comincia a lavorare solo al proprio posto (workStep).
+const SPOT_GAP = 4, SPOT_SEP = 6;
+const wantsRes = (o, res) => o.spotRes === res && (o.goldwork === 1 || o.stonework === 1 || o.action === 3 || o.action === 5);
+
+// I posti di `res` per una maschera come quella di `i`: centri delle
+// maschere lungo i lati del rettangolo della risorsa allargato (a SPOT_GAP
+// px, poi una fila piu' in fuori), a distanza di una maschera piu' SPOT_SEP
+function resSpots(w, i, res) {
+  if (res.spots && res.spots.ver === 1) return res.spots;
+  const rb = w.bbox(res), a = w.bbox(i);
+  if (!rb || !a) return null;
+  const cw = a[2] - a[0], ch = a[3] - a[1];
+  const ox = (a[0] + a[2]) / 2 - i.x, oy = (a[1] + a[3]) / 2 - i.y;
+  const ring = (gap) => {
+    const out = [];
+    const x0 = rb[0] - gap - cw / 2, x1 = rb[2] + gap + cw / 2;
+    const y0 = rb[1] - gap - ch / 2, y1 = rb[3] + gap + ch / 2;
+    const nx = Math.max(1, Math.floor((x1 - x0) / (cw + SPOT_SEP)) + 1);
+    const dx = nx > 1 ? (x1 - x0) / (nx - 1) : 0;
+    for (let k = 0; k < nx; k++) { const x = nx > 1 ? x0 + k * dx : (x0 + x1) / 2; out.push([x, y0], [x, y1]); }
+    const ys = y0 + ch + SPOT_SEP, ye = y1 - ch - SPOT_SEP;
+    if (ye >= ys) {
+      const ny = Math.max(1, Math.floor((ye - ys) / (ch + SPOT_SEP)) + 1);
+      const dy = ny > 1 ? (ye - ys) / (ny - 1) : 0;
+      for (let k = 0; k < ny; k++) { const y = ny > 1 ? ys + k * dy : (ys + ye) / 2; out.push([x0, y], [x1, y]); }
+    }
+    return out.map(([cx, cy]) => ({ x: Math.round(cx - ox), y: Math.round(cy - oy), owner: null }));
+  };
+  res.spots = { ver: 1, work: ring(SPOT_GAP), queue: ring(SPOT_GAP + Math.max(cw, ch) + SPOT_SEP + 8) };
+  return res.spots;
+}
+
+// Il posto di `i` attorno a `res` (prenotandolo), o null
+function resSpot(w, i, res) {
+  const S = resSpots(w, i, res);
+  if (!S) return null;
+  const taken = (s) => s.owner && s.owner !== i && s.owner.alive && wantsRes(s.owner, res);
+  const mine = i.spotRes === res ? i.spotRef : null;
+  if (mine && mine.owner === i && !i.spotQ) return mine;
+  const nearest = (list) => {
+    let best = null, bd = Infinity;
+    for (const s of list) {
+      if (taken(s) || !w.placeFreeExcept(i, s.x, s.y, "ally_unit")) continue;
+      const d = pointDistance(i.x, i.y, s.x, s.y);
+      if (d < bd) { bd = d; best = s; }
+    }
+    return best;
+  };
+  const own = (s, q) => {
+    if (mine && mine !== s && mine.owner === i) mine.owner = null;
+    s.owner = i; i.spotRes = res; i.spotRef = s; i.spotQ = q;
+    return s;
+  };
+  const free = nearest(S.work);
+  if (free) return own(free, false);
+  if (mine && mine.owner === i) return mine; // gia' in attesa
+  const q = nearest(S.queue);
+  return q ? own(q, true) : null;
+}
+
+function toResSpot(w, i, res) {
+  const s = resSpot(w, i, res);
+  if (!s) { toWorkSpot(w, i, res); return; } // nessun posto: come prima
+  if (i.spotQ && pointDistance(i.x, i.y, s.x, s.y) < 3) {
+    i.queueWait = true;
+    i.direction = pointDirection(i.x, i.y, res.x, res.y);
+    i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); // fermo, come nell'attesa per la precedenza
+    return;
+  }
+  // dentro la risorsa o un altro ostacolo (col campo, senza collisioni, si
+  // tagliano gli spigoli): fuori, lontano dal suo centro
+  const o = w.instancePlace(i, i.x, i.y, null, true);
+  if (o && !w.is(o, "ally_unit")) {
+    const b = w.bbox(o), cx = b ? (b[0] + b[2]) / 2 : o.x, cy = b ? (b[1] + b[3]) / 2 : o.y;
+    i.direction = pointDirection(cx, cy, i.x, i.y);
+    w.setPos(i, i.x + lengthdirX(i.autospeed, i.direction), i.y + lengthdirY(i.autospeed, i.direction));
+    i.spotFieldFor = null;
+    return;
+  }
+  // il campo verso il posto, una volta per posto (se non riesce, si riprova
+  // dopo 20 passi): dall'altra parte della risorsa la si aggira; vicino e in
+  // vista, dritti (sopra gli altri civili)
+  if (i.spotFieldFor !== s || (!i.spotField && w._stepNo >= (i.spotFieldAt || 0))) {
+    i.spotFieldFor = s; i.spotFieldAt = w._stepNo + 20;
+    i.spotField = spotFieldTo(w.path, i, s);
+  }
+  // dritti, ma se in 30 passi non ci si avvicina (lo spigolo di una pietra
+  // irregolare contro la maschera) col campo per 60 passi
+  // A meno di 48 px sempre dritti: li' il campo (calcolato con le celle dei
+  // civili fermi in quel momento) faceva andare avanti e indietro di 3 px
+  // accanto al posto, per sempre (idle.mjs, scenario 7)
+  const d = pointDistance(i.x, i.y, s.x, s.y);
+  if (i.spotBestFor !== s || d < i.spotBest - 2) { i.spotBestFor = s; i.spotBest = d; i.spotN = 0; }
+  else if (++i.spotN >= 30) { i.spotN = 0; i.spotBest = d; i.spotFlowUntil = d >= 48 ? w._stepNo + 60 : 0; }
+  if (i.spotField && d >= 48 && (!seesSpot(w.path, i, s) || w._stepNo < (i.spotFlowUntil || 0))) {
+    // il campo del posto (tenuto a parte: tornando dal deposito il civile
+    // riceve il campo verso la risorsa, e col posto gia' suo non si rifaceva)
+    i.dirox = s.x; i.diroy = s.y;
+    i.goal_field = i.spotField.goal; i.flow_field = i.spotField.flow;
+    moveFlowField(w, w.path, i);
+    return;
+  }
+  mpPotentialStep(w, i, s.x, s.y, i.autospeed, false, true);
+}
+
+// [§9.23] Il campo verso il posto coi soli ostacoli fissi: con le celle dei
+// civili fermi (fieldTo) accanto ai posti nascevano vicoli ciechi e chi ci
+// finiva andava avanti e indietro (idle.mjs, mining.mjs). false se da qui
+// il posto non si raggiunge.
+function spotFieldTo(p, i, s) {
+  // il posto (a 4 px dalla risorsa) puo' stare in una cella toccata dalla
+  // risorsa: allora la meta e' la cella libera piu' vicina (goalField
+  // partirebbe dal bordo libero dell'ostacolo piu' vicino, anche a 200 px)
+  let gx = s.x, gy = s.y;
+  const cx = Math.floor(s.x / GRID), cy = Math.floor(s.y / GRID);
+  if (!p.inside(cx, cy) || p.solid[cy * p.gw + cx]) {
+    let bd = Infinity;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const x = cx + dx, y = cy + dy;
+      if (!p.inside(x, y) || p.solid[y * p.gw + x]) continue;
+      const mx = x * GRID + GRID / 2, my = y * GRID + GRID / 2, d = pointDistance(mx, my, s.x, s.y);
+      if (d < bd) { bd = d; gx = mx; gy = my; }
+    }
+  }
+  const f = p.goalField(gx, gy, false, false, true);
+  const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
+  if (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) return null;
+  return { goal: f, flow: p.flowField(f) };
+}
+
+// Il posto e' in vista: la linea sottile fino a 36 px dal posto non passa
+// per celle di ostacoli fissi (il posto stesso, a 4 px dalla risorsa, puo'
+// stare in una cella della risorsa)
+function seesSpot(p, i, s) {
+  const d = pointDistance(i.x, i.y, s.x, s.y);
+  if (d <= 36) return true;
+  const k = (d - 36) / d;
+  return p.clearSolid(i.x, i.y, i.x + (s.x - i.x) * k, i.y + (s.y - i.y) * k, 4, 4);
+}
+
+// al proprio posto di lavoro attorno a `res` (o senza posti: come prima)
+function atResSpot(i, res) {
+  if (i.spotRes !== res || !i.spotRef || i.spotRef.owner !== i) return !res || !res.spots;
+  return !i.spotQ && pointDistance(i.x, i.y, i.spotRef.x, i.spotRef.y) < 6;
+}
+
 // [Segnalazione dell'autore, §8.19] Staccarsi dalle unita' addosso: la
 // direzione opposta alla somma delle direzioni verso ciascuna (non verso una
 // sola: chi toccava un compagno e la miniera si allontanava a un passo dal
@@ -432,6 +591,7 @@ function workTarget(w, i) {
 // azione 14 [C]: flow field se lontano (300, o 100 se sta andando a una
 // risorsa) o sovrapposto; da vicino mp_potential_step verso la cosa giusta.
 function ominoMove(i, w, p) {
+  i.queueWait = false; // §9.21: toResSpot lo rimette a ogni passo
   const n = (name, x = i.x, y = i.y) => w.nearest(x, y, name);
   const mp = (t) => { if (t) mpPotentialStep(w, i, t.x, t.y, i.autospeed); };
   const workreach = (i.goldwork > 0 || i.stonework > 0 || i.woodwork > 0) ? 200 : 0;
@@ -443,7 +603,11 @@ function ominoMove(i, w, p) {
     // una miniera grande il centro restava oltre i 100 px anche a contatto)
     const res = workTarget(w, i);
     const far = res ? w.distanceToInstance(i, res) > 100 : pointDistance(i.x, i.y, i.dirox, i.diroy) > 300 - workreach;
-    if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
+    // [§9.21] vicino alla miniera o alla pietra si va al proprio posto anche
+    // sovrapposti ad altri civili (toResSpot passa sopra di loro)
+    const atRes = !!res && !far && (i.goldwork === 1 || i.stonework === 1);
+    if (atRes) toResSpot(w, i, res); // §9.21
+    else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         // [§8.19] vicino alla risorsa o al deposito ci si stacca, tutti e
@@ -457,8 +621,10 @@ function ominoMove(i, w, p) {
         // l'altro e il civile con l'ordo piu' alto aspettava per sempre.
         // Finche' resta sovrapposto va all'80%: alla stessa velocita' due
         // civili con la stessa strada camminavano uno sopra l'altro.
-        if (!far && otro.action !== 0 && separate(w, i)) i.waitN = 0;
-        else if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
+        // [§9.21] chi aspetta al suo posto attorno alla risorsa (queueWait)
+        // conta come fermo: gli si passa sopra
+        if (!far && otro.action !== 0 && !otro.queueWait && separate(w, i)) i.waitN = 0;
+        else if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1 || otro.queueWait) moveFlowField(w, p, i); // §8.11: assedio
         else if ((i.waitN || 0) >= WAIT_MAX) {
           const sp = i.autospeed;
           i.autospeed = sp * 0.8;
@@ -481,7 +647,6 @@ function ominoMove(i, w, p) {
       }
       // [§8.19] al proprio posto attorno alla risorsa (prima: mp_potential_step
       // verso il centro della miniera o della pietra piu' vicina)
-      if (i.goldwork === 1 || i.stonework === 1) toWorkSpot(w, i, res);
       if (i.buildwork === 1) mp(n("ally_fondamenta", i.buildx, i.buildy));
       if (i.repairwork === 1) mp(n("ally_build", i.repx, i.repy));
       if (i.fieldwork === 1) {
@@ -605,7 +770,13 @@ function workStep(i, w, p, stop) {
   // andava. Basta che nessun altro civile gli stia addosso (col flow field,
   // senza collisioni, arrivavano uno sull'altro): se no si stacca
   // (moveFlowField) e cerca posto.
-  const cellFree = () => !w.instancePlace(i, i.x, i.y, OM);
+  // [§9.21] nessun altro civile al lavoro addosso (chi cammina, o aspetta,
+  // passa: prima bastava un compagno di passaggio per non cominciare)
+  const cellFree = () => {
+    const bb = w.bbox(i);
+    return !bb || !w._eachNear(bb, (o) => (o !== i && o.alive && w.is(o, OM) && o.action !== 0 && o.action !== 1
+      && w.overlap(i, i.x, i.y, o) ? o : null));
+  };
   const begin = (action, tx, ty) => {
     p.occupy(i);
     i.action = action;
@@ -652,7 +823,37 @@ function workStep(i, w, p, stop) {
     if (num("albero") <= 0) { stop(i, w); i.buildwork = 0; i.woodwork = 0; }
   }
   // oro
-  if (i.goldwork === 1 && w.distanceToInstance(i, n("miniera_oro", i.goldx, i.goldy)) < 20 && cellFree()) {
+  // [§9.23] il deposito verso cui si porta il carico e' stato distrutto:
+  // verso il piu' vicino; se non ce n'e' piu' nessuno ci si ferma col carico
+  // (inattivo), come chi riempie il carico senza depositi. Prima si
+  // continuava verso il punto in cui era, senza arrivare mai (idle.mjs,
+  // scenario 6)
+  for (const [work, dep] of [["woodwork", "ally_magazza"], ["goldwork", "ally_magazza"], ["stonework", "ally_magazza"], ["foodwork", "ally_barn"]]) {
+    if (i[work] !== 2 || i.action !== 1) continue;
+    if (num(dep) === 0) { stop(i, w); i[work] = 0; continue; }
+    // (la meta e' il deposito o, per il cibo, una cella accanto: 120 px)
+    const d = n(dep, i.dirox, i.diroy);
+    if (pointDistance(d.x, d.y, i.dirox, i.diroy) > 120) {
+      const d2 = n(dep);
+      i.dirox = d2.x; i.diroy = d2.y;
+      fieldTo(w, p, i, d2.x, d2.y);
+    }
+  }
+  // [§9.21] la miniera o la pietra verso cui si va e' finita: verso la piu'
+  // vicina (come chi ci lavorava, azioni 3 e 5). Prima si continuava col
+  // campo verso il punto in cui era, e li' si restava a girare
+  for (const [work, name, kx, ky] of [["goldwork", "miniera_oro", "goldx", "goldy"], ["stonework", "stone_parent", "stonex", "stoney"]]) {
+    if (i[work] !== 1) continue;
+    // non ce n'e' piu' nessuna: ci si ferma (inattivo), come chi ci lavorava
+    if (num(name) === 0) { stop(i, w); i[work] = 0; i.queueWait = false; continue; }
+    const t = n(name, i[kx], i[ky]);
+    if (pointDistance(t.x, t.y, i[kx], i[ky]) <= 10) continue;
+    const t2 = n(name);
+    i[kx] = t2.x; i[ky] = t2.y; i.dirox = t2.x; i.diroy = t2.y;
+    fieldTo(w, p, i, t2.x, t2.y);
+  }
+  const mineAt = i.goldwork === 1 ? n("miniera_oro", i.goldx, i.goldy) : null;
+  if (mineAt && w.distanceToInstance(i, mineAt) < 20 && atResSpot(i, mineAt) && cellFree()) { // §9.21: al proprio posto
     i.goldwork = 0;
     begin(3, i.goldx, i.goldy);
   }
@@ -669,7 +870,8 @@ function workStep(i, w, p, stop) {
     if (num("miniera_oro") <= 0) { stop(i, w); i.buildwork = 0; i.goldwork = 0; }
   }
   // pietra
-  if (i.stonework === 1 && w.distanceToInstance(i, n("stone_parent", i.stonex, i.stoney)) < 15 && cellFree()) {
+  const stoneAt = i.stonework === 1 ? n("stone_parent", i.stonex, i.stoney) : null;
+  if (stoneAt && w.distanceToInstance(i, stoneAt) < 15 && atResSpot(i, stoneAt) && cellFree()) { // §9.21: al proprio posto
     i.stonework = 0;
     begin(5, i.stonex, i.stoney);
   }

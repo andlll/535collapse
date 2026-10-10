@@ -4542,3 +4542,389 @@ civili a nord-ovest). Tolta all'avvio come gli altri oggetti di troppo
 (app.js `DROPPED`). All'avvio: nessuna catapulta, 3 alleati, popolazione
 5 (era 4 e 8). Soak di match: 3 alleati e popolazione 5 come dopo §9.9, ma
 per un altro motivo (allora la catapulta moriva contro la torre nemica).
+
+### 9.16 Livello 3: 20 minuti, campi coltivati al villaggio, avviso sulla base nemica
+
+Richieste dell'autore (10 ottobre 2026):
+- **Difesa di 20 minuti** (era 15; `LV3.defense`). Le ondate seguono lo
+  stesso passo di 2:30 fino alla fine: due in piu', a 16:00 (6 guerrieri,
+  4 picchieri, 3 arcieri, 2 cavalieri, 3 arieti, 1 catapulta) e a 18:30
+  (6, 4, 4, 3, 3 arieti, 1 catapulta); "Ancora un minuto!" a 19:00. Numeri
+  da tarare giocando.
+- **Tre campi gia' coltivati col loro contadino** attorno al centro del
+  villaggio, a destra (`LV3.townFields`), creati all'arrivo con il gruppo
+  `citta`; ogni contadino nasce sul suo campo con `foodwork` 6 (cerca il
+  campo libero piu' vicino) e lavora subito. In piu' dei 3 civili e delle
+  risorse di prima. I campi non stanno sulla stessa x: in fieldsStep il
+  contadino cambia campo solo se cambia la **x** del campo libero piu'
+  vicino [C, `campox != miocampox`]; con i tre campi in colonna, dopo la
+  prima consegna andavano tutti verso quello in basso e due restavano in
+  fila dietro al primo (misurato: un campo lavorato su tre). Sfalsati di 30
+  px: tutti e tre lavorati.
+- **Il dialogo 3_5 sulla base nemica al primo attacco al villaggio**:
+  prima arrivava 40 s dopo la partenza del primo attacco, anche se nessuno
+  era ancora arrivato. Ora quando un nemico partito dalla base arriva a
+  500 px da un edificio alleato a meno di 1500 px dal centro del villaggio
+  (le torri comprese, a tiro: 600 px; il monastero no); con lui
+  l'obiettivo "distruggi caserme e stalle" (`g.l3.baseKnown`, che fa anche
+  da segno "gia' detto" nei salvataggi). Misurato: 24 s dopo la partenza,
+  contro la torre a est.
+Prove (Chromium, `window.__game`, un soldato spostato al villaggio): 3
+campi e 6 civili, contadini al lavoro su tutti e tre i campi; conto alla
+rovescia da 20:00; dialogo 3_5 una volta, all'arrivo del primo attacco.
+
+### 9.17 Livello 3: sfondata la porta, gli arieti vanno al monastero
+
+Richiesta dell'autore (10 ottobre 2026): distrutta la porta, gli arieti
+nemici devono andare verso il monastero invece di continuare ad attaccare
+le altre mura. L'ariete nemico [C] colpisce sempre l'edificio alleato piu'
+vicino (a contatto, o fermo a meno di 48 px: §9.11) e insegue quello piu'
+vicino entro 700 px: caduta la porta, il piu' vicino e' un tratto di mura.
+Ora un ariete puo' avere un bersaglio imposto (siege.js `ramTarget`): ci va
+da qualunque distanza e colpisce solo quello. La regia del livello 3
+(levels.js, controllo di ogni secondo) lo da' agli arieti delle ondate
+(`l3` "mon") appena non c'e' piu' una porta a meno di 100 px da
+`LV3.gate`; prima della porta tutto come prima.
+Prova (Chromium, `window.__game`, senza soldati e torri del monastero): un
+ariete davanti alla porta la abbatte in 16 s, poi gira attorno al muro del
+cortile, arriva al monastero in 12 s e lo colpisce (-20 a colpo, ~80 di
+vita ogni 4 s al netto della cura); le mura restano a 800. Il livello
+diventa piu' duro: un ariete che passa la porta non si ferma piu' sulle
+mura.
+
+### 9.18 Livello 3: attacchi al villaggio ogni 4 minuti
+
+Richiesta dell'autore (10 ottobre 2026), il livello e' troppo duro: gli
+attacchi dalla base nemica al villaggio ogni 4 minuti invece che ogni 2
+(`LV3.baseEvery`). Il primo resta al minuto 4; poi 8, 12 e 16 (4 attacchi
+invece di 8 nei 20 minuti); la dimensione per attacco resta quella di
+`baseN` (1, 1, 2, 2 fanti o cavalieri per caserma o stalla). Le ondate
+contro il monastero non cambiano.
+
+### 9.19 Livello 2: la vista scivola sulla base nemica
+
+Richiesta dell'autore (10 ottobre 2026): quando il gioco dice che gli
+attacchi vengono dalla base nemica in alto (dialogo_2_13, dopo 15000
+passi: "le nostre spie hanno trovato la base nemica, e' a nord"), uno
+scorrimento della vista come quello sul monastero del livello 3.
+- **Prima** [C]: chiudendo il dialogo la view saltava di colpo con
+  l'angolo in alto a sinistra in (500, 600); con la nebbia e gli edifici
+  nemici mai visti, si vedeva poco o niente (le caserme e la stalla sono a
+  (273, 404), (500, 252), (85, 703), il palo che segna la base a (150,
+  250), piu' a sinistra).
+- **Ora** chiudendolo la vista scivola fino a centrarsi sulla base (300,
+  450; contro il bordo della mappa: angolo in (0, 90)), e gli edifici nemici
+  a meno di 600 px dal palo diventano visibili (le spie li hanno trovati;
+  una volta visti restano visibili [C]). Il palo toglie la nebbia attorno:
+  si vedono le due caserme.
+- Lo scorrimento e' ora comune (camera.js `panTo`/`panStep`, tenuto dalla
+  regia del livello: enemy_manager_lv2 e enemy_manager_lv3). Due ritocchi
+  che valgono anche per il monastero: la meta e' gia' dentro la room (prima
+  la view si fermava contro il bordo prima della fine dello scorrimento) e
+  la durata cresce col tragitto (40 px a passo, fra 90 e 180 passi): in
+  lvl02 attraversa quasi tutta la mappa (da y 6500 a 90) in 156 passi.
+Prova (Chromium, `window.__game`, dialogo forzato e chiuso col clic vero):
+la vista da (200, 6500) a (0, 90) in 2,6 s, le caserme visibili, nessun
+errore.
+
+### 9.20 Movimento: unita' che tremolano e girano su se stesse
+
+Segnalazione dell'autore (10 ottobre 2026): dall'ultima release il
+pathfinding sembra peggiorato, soprattutto nelle animazioni (personaggi
+che girano su se stessi, tremolanti); forse e' stato tolto il "fermati se
+un alleato di rango piu' alto e' in collisione con te"?
+
+**Cosa era cambiato.** Fra l'ultima release (PR #7) e quella prima (PR #6)
+il movimento e' identico: stessa prova, stessi numeri, passo per passo. Il
+"fermati" (nearRank del guerriero) e' stato tolto in §8.11 (PR #5), ma solo
+verso la propria casella della formazione. Rimesso cosi' com'era (prova
+qui sotto): prima delle correzioni inversioni -14% e -27% in due semi,
+uguali nel terzo, e i mucchi restavano; con le correzioni nessun guadagno,
+e nel combattimento i nemici giravano di piu' (spin nemici 22-97 -> 170-252).
+Non l'ho reintegrato. Le
+cause vere sono quattro, tutte piu' vecchie (§6.1, §6.2, l'originale):
+
+1. **La "vista" sulla casella guardava il campo** (seesGoal, §6.2 D). Il
+   campo si calcola all'ordine, e' uno per tutto il gruppo e ha per ostacoli
+   anche le celle delle unita' ferme in quel momento (occupy), che poi se ne
+   vanno. Con la formazione la casella non e' la meta del campo: chi
+   arrivava in fondo al campo non "vedeva" la sua casella e restava fra due
+   celle, 5 px avanti e indietro a ogni passo, voltandosi di 180 gradi.
+   Negli incroci fra due gruppi: mucchi di 5-8 unita' sovrapposte e
+   tremolanti per sempre. Ora la linea si guarda contro i soli ostacoli
+   fissi (`clearSolid`: edifici, alberi, acqua).
+2. **"Punto d'arrivo occupato"** [C] (fanteria, cavalieri, arcieri, civili,
+   assedio, nemici): la meta si sposta di 32-50 px verso l'unita'. Se
+   l'unita' era piu' vicina, la meta finiva dall'altra parte, e al passo
+   dopo tornava indietro: la catapulta sovrapposta a un arciere fermo andava
+   fra 1280 e 1330 per sempre. Ora, piu' vicina di cosi', arriva dov'e'
+   (`destinationBack`).
+3. **Arrivo "per rinuncia"** (§6.1 n.89): la distanza migliore restava
+   quella dell'ordine prima; con un ordine nuovo entro 400 px l'unita'
+   sembrava ferma anche camminando e si fermava a 50-100 px dalla casella
+   (meta' del gruppo, a ogni ordine). Ora il conto riparte a ogni meta nuova.
+4. **mp_potential_step** (approssimazione [I]): la direzione gira al piu' di
+   30 gradi a passo, e se in quella direzione il passo era chiuso l'unita'
+   girava senza muoversi, fino a 6 passi, e poi di nuovo: a contatto con
+   altre unita' (mischia, ammucchiate) girava su se stessa. Ora, se la
+   direzione girata e' chiusa ma quella libera no, va per quella.
+   Piu' un dettaglio: staccandosi da un'unita' in fondo al campo
+   (moveFlowField, §7.17) il passo non supera piu' la meta (le macchine
+   d'assedio sulla casella la superavano e tornavano indietro).
+
+**Prova** (`game/test/browser/movement.mjs`, nuova: 20 unita' miste, 8
+ordini di gruppo, 5 incroci, un combattimento con 12 nemici; `spin` = gira
+di almeno 20 gradi muovendosi meno di 1 px; `rev` = inversione di marcia;
+`flick` = lo sprite torna alla faccia di 2-6 passi prima; `late` = in
+cammino a fine ordine; `off` = a oltre 40 px dalla casella):
+
+| | release (PR #7) | ora |
+|---|---|---|
+| match, 3 semi: spin | 406 / 599 / 476 | 9 / 18 / 7 |
+| match, 3 semi: rev | 13594 / 11951 / 10651 | 455 / 361 / 259 |
+| match, 3 semi: flick | 13230 / 11792 / 10492 | 432 / 366 / 222 |
+| match, 3 semi: late / off | 31-33 / 160-167 | 0-4 / 2-3 |
+| lvl02: spin / rev / late / off | 604 / 12505 / 33 / 165 | 7 / 1016 / 2 / 4 |
+| lvl03: spin / rev / late / off | 732 / 10958 / 34 / 159 | 9 / 390 / 0 / 2 |
+| combattimento (match, 3 semi): spin alleati | 406 / 599 / 476 | 9 / 18 / 7 |
+| combattimento: spin nemici | 20 / 157 / 53 | 0 / 0 / 0 |
+
+I civili al lavoro (workers.mjs, 5 configurazioni da 16 a 30 civili): le
+stesse risorse (+-5%), civili fermi 2 eventi in tutto (release 5),
+sovrapposizioni prolungate 2 (release 0, un contadino carico per 8 s).
+Consegne (deposit.mjs) 6 su 6, soak e salvataggi (anche lvl03) senza
+errori. Restano le inversioni nei mucchi della mischia (200-400 per
+combattimento) e qualcuna dell'assedio.
+
+### 9.21 Cantiere affollato: 20 civili fra una miniera e un magazzino
+
+Richiesta dell'autore (10 ottobre 2026): una prova con un magazzino vicino
+a una miniera o a una rovina di pietra e 20 lavoratori che scavano, per
+vedere se si incasinano (la situazione tipica di un RTS).
+
+**La prova** (`game/test/browser/mining.mjs`, nuova): in `match`, nemici
+tolti, un magazzino nuovo a ~150 px dal bordo della miniera d'oro (1847,
+614) o della pietra grande (768, 1179), N civili attorno al magazzino,
+clic destro vero sulla risorsa, N passi. Misure come in movement.mjs
+(fermi, spin, rev, flick), piu' i passi "lenti" in cammino, le coppie
+sovrapposte per oltre 5 s e i passi in coda (sotto). `SAVE=1` salva a fine
+prova, ricarica e confronta.
+
+**Nell'ultima release si incasinavano**, e nelle correzioni di §9.20 ancora
+di piu' (le nuove non toccavano i civili al lavoro): con 20 civili sull'oro,
+in 2,5 minuti, 30834 inversioni di marcia (un passo su quattro in cammino),
+23 civili fermi, 33 coppie sovrapposte a lungo. Le cause:
+- **posti attorno alla risorsa** (meleeSpot, §8.19): ricalcolati a ogni
+  passo a settori di 30 gradi, meno dei civili e agli angoli quasi uno
+  sull'altro; chi restava senza puntava al centro della risorsa, si staccava
+  dagli altri (separate) e al passo dopo ci tornava sopra col campo;
+- **cominciare a lavorare** solo senza nessun civile addosso: bastava uno di
+  passaggio;
+- **pietra finita** (c'era gia'): chi ci stava andando continuava col campo
+  verso il punto in cui era e li' restava a girare (chi ci lavorava invece
+  ripartiva verso la piu' vicina).
+
+**Ora** (civilians.js, solo oro e pietra; il legno e la consegna su ordine
+restano con meleeSpot):
+- ogni risorsa ha **posti fissi** che non si toccano, sul bordo (lavoro) e
+  una fila piu' in fuori (attesa), calcolati una volta sola dalla maschera
+  del civile (`resSpots`, sulla risorsa: salvati con lei);
+- a 100 px dalla risorsa si **prenota** il posto di lavoro libero piu'
+  vicino, o se non ce n'e' quello d'attesa; resta di chi lo ha finche' va
+  alla risorsa o ci lavora, chi parte per il deposito lo lascia e il primo
+  che chiede lo prende (chi aspetta chiede a ogni passo);
+- verso il posto: il campo calcolato una volta per posto (dall'altra parte
+  della risorsa la si aggira), poi dritti quando e' in vista, passando sopra
+  gli altri civili come verso la casella della formazione; se in 30 passi non
+  ci si avvicina (lo spigolo di una pietra irregolare) di nuovo il campo;
+  dentro la risorsa (il campo taglia gli spigoli) si esce allontanandosi dal
+  suo centro;
+- al posto d'attesa si sta **fermi**, girati verso la risorsa (queueWait):
+  gli altri ci passano sopra;
+- si comincia a lavorare solo **al proprio posto**, se nessun altro civile
+  *al lavoro* e' addosso;
+- risorsa finita: chi ci andava va alla piu' vicina.
+
+| 20 civili | release oro 2,5 min | ora | release pietra 2,5 min | ora |
+|---|---|---|---|---|
+| raccolto (al minuto) | 1330 (532) | 1810 (724) | 870 (348) | 1293 (517) |
+| fermi | 23 | 0 | 59 | 1 |
+| inversioni | 30834 | 173 | 46151 | 853 |
+| spin | 8235 | 334 | 3385 | 199 |
+| passi lenti in cammino | 262‰ | 58‰ | 291‰ | 87‰ |
+| coppie sovrapposte > 5 s | 33 | 0 | 103 | 23 |
+
+Con 30 civili sull'oro: 1600 -> 1780 raccolti, fermi 41 -> 0, inversioni
+58030 -> 185, sovrapposte 85 -> 0. In 5 minuti (la pietra grande finisce e
+si va alle rovine vicine): pietra 1337 -> 1538, fermi 89 -> 2, inversioni
+88810 -> 821. Le sovrapposte rimaste (pietra 23-52) sono civili che vanno
+insieme alla rovina successiva, lontano dal magazzino.
+I civili su piu' risorse (workers.mjs, centro come deposito): oro 1520 ->
+1650, 1390 -> 1590, 1600 -> 2040, il resto uguale, fermi e sovrapposti 0.
+movement.mjs, consegne, soak (anche lvl03) e salvataggi senza differenze o
+errori; salvataggio a cantiere attivo (SAVE=1) identico.
+
+### 9.22 Livello 3: riquadro degli obiettivi a larghezza fissa
+
+Segnalazione dell'autore (10 ottobre 2026): il riquadro degli obiettivi e'
+largo quanto il testo (§3.x: si allarga verso sinistra se una riga non ci
+sta), e quando la vita del monastero cala in fretta si ridimensiona di
+continuo. Le cifre del font non sono larghe uguali e la vita perde cifre
+(3000 -> 999): a 1280 px, in inglese, il bordo sinistro andava fra 754 e
+760 px (di piu' nelle lingue con le righe piu' lunghe). Ora in lvl03 la
+larghezza si misura anche su due testi che non si disegnano (`sizing`, in
+endgame.js): la riga del conto alla rovescia con "99:99" e quella della
+vita con tante cifre quante la vita massima, tutte alla cifra piu' larga
+del font (`widestDigit`). Misurato col riquadro disegnato (vita 3000, 2999,
+1500, 1111, 1000, 888, 100): prima 754-760, ora sempre 754.
+
+### 9.23 Civili inattivi: prova e correzioni
+
+Richiesta dell'autore (10 ottobre 2026): dopo §9.21, una prova approfondita
+della selezione dei civili inattivi (contatore in alto a destra, Spazio e
+clic sul riquadro: idle_clicker, recountIdle).
+
+**La prova** (`game/test/browser/idle.mjs`, nuova, PASS/FAIL per
+controllo): 1 Spazio scorre gli inattivi uno alla volta, tutti, nello stesso
+ordine a ogni giro, camera centrata e dentro la room; 2 il clic sul
+riquadro aggiunge il prossimo alla selezione (come l'originale), g.sel
+giusto; 3 a giro iniziato alcuni partono e altri si fermano: niente doppioni
+o salti, idleorder 1..n; 4 chi aspetta un posto (§9.21) non e' inattivo;
+5 la miniera finisce e non ce ne sono altre: tutti inattivi; 6 depositi
+distrutti coi civili carichi: tutti inattivi; 6b distrutto il magazzino in
+uso, si porta all'altro; 7 raccolta mista di 4 minuti: nessun civile "perso"
+(in cammino, fermo da oltre 10 s, non in coda) fuori dal contatore; 8 civili
+negli angoli della mappa: camera dentro la room; 9 l'ordine di Spazio dopo
+salvataggio e caricamento.
+
+**Trovato:**
+- **Blocco del gioco** (da §9.21): finita l'ultima miniera, chi ci stava
+  andando arrivava ai posti prenotati senza risorsa (null) e la pagina dava
+  errore. Ora senza risorsa niente posti, e chi va verso una miniera o una
+  pietra che non c'e' piu' (nessuna sulla mappa) si ferma ed e' inattivo.
+- **Miniera finita** (gia' nella release): 9 civili su 20 restavano in
+  cammino per sempre verso il punto della miniera, invisibili al contatore
+  e a Spazio. Risolto da §9.21 e dal punto sopra.
+- **Deposito distrutto** (gia' nella release): chi portava il carico
+  continuava verso il punto del deposito senza arrivare mai. Ora va al
+  deposito piu' vicino (legno, oro, pietra al magazzino o al centro, cibo al
+  granaio o al centro); se non ce n'e' nessuno si ferma col carico, come chi
+  lo riempie senza depositi. Effetto collaterale: anche i contadini col cibo
+  ora vanno verso il granaio col campo verso l'edificio (come gli altri
+  depositi, §8.19) invece che verso una cella vicina, e consegnano di piu'
+  (workers.mjs: cibo 390 -> 540, 740 -> 1070).
+- **Civili persi accanto al posto** (da §9.21): un civile a 17 px dal suo
+  posto andava avanti e indietro di 3 px per sempre. Tre cause, tutte nel
+  ritorno al campo (§9.21) vicino al posto: il campo verso il posto aveva per
+  ostacoli le celle dei civili fermi (vicoli ciechi), partiva dal bordo
+  libero piu' vicino quando il posto sta in una cella toccata dalla risorsa
+  (anche a 200 px), e tornando dal deposito il civile riceveva il campo
+  verso la risorsa e, col posto gia' suo, non si rifaceva quello del posto.
+  Ora: campo coi soli ostacoli fissi (`goalField(..., fixed)`, in
+  pathing.js), verso la cella libera piu' vicina al posto, tenuto a parte
+  (`spotField`), e a meno di 48 px sempre dritti.
+Il resto (Spazio, clic, contatore, ordine, camera, salvataggio) era gia'
+giusto: tutti i controlli passano anche nella release, tranne 5 e 6.
+Dopo: idle.mjs tutto PASS; mining.mjs fermi 0 (oro e pietra, 2,5 e 5 min);
+workers.mjs, consegne, movement.mjs, soak (anche lvl03), salvataggi e
+salvataggio a cantiere attivo senza errori.
+
+### 9.24 Campagna: la storia del livello 3
+
+Segnalazione dell'autore (10 ottobre 2026): nel menu della campagna il
+livello 3 diceva ancora "Prossimamente". Il livello e' nuovo (§9.11) e
+l'originale non ha un testo: scritto nello stile dei primi due (menu.js
+`STORY[3]`, sei lingue in texts.js), senza dire del villaggio ne' del
+monastero (lo si scopre giocando). Scelta dell'autore fra tre proposte,
+la piu' cupa: "The soldiers are alone, far from home. The invaders are
+seeking one last stronghold to conquer: if that falls too, there will be
+no one left to stop them." Provato nel menu (italiano e tedesco, la lingua
+piu' lunga): nel riquadro.
+
+### 9.25 Pannello delle risorse: i civili su ogni risorsa
+
+Richiesta dell'autore (10 ottobre 2026): col puntatore sul pannello delle
+risorse (in alto a sinistra), invece delle risorse i lavoratori su
+ciascuna. manager.js `drawGUI`: col puntatore nel riquadro (20-230, 20-150
+px) i numeri diventano i civili su cibo, legno, oro e pietra, e al posto
+della popolazione quelli che costruiscono o riparano (icona della casa);
+accanto a ogni numero l'icona della popolazione, piccola, perche' si veda
+che il pannello mostra un'altra cosa. Contano (`workersByResource`) chi
+lavora, chi ci va e chi porta il carico al deposito (il cibo con chi semina
+un campo); gli inattivi no (hanno il loro contatore). Provato in `match`
+con 5 civili sul legno, 4 sull'oro, 3 sulla pietra, 2 sui campi, 2 su una
+casa in costruzione e 1 fermo: 2, 5, 4, 3 e 2.
+
+### 9.26 Tutorial: suggerimento sul pannello delle risorse
+
+Richiesta dell'autore (10 ottobre 2026): far scoprire nel tutorial la
+funzione di §9.25. Suggerimento nuovo `hint_lavori` (nuovi.json, hints.js,
+sei lingue), nella catena iniziale fra le risorse (hint_resource_tree) e i
+civili inattivi (hint_idle), nello stesso posto sotto il pannello: "Workers
+per resource - Hover the mouse over the resources to see how many workers
+are gathering each one, and how many are building." Provato in `match`:
+risorse -> lavoratori per risorsa -> inattivi, col clic; testo nel riquadro
+in italiano e in tedesco. i18n.test: 28 suggerimenti.
+
+### 9.27 Interfaccia in sei lingue: testi che sbordano e sovrapposizioni
+
+Richiesta dell'autore (10 ottobre 2026): controllare tutti gli elementi
+dell'interfaccia (schede di unita' ed edifici ecc.) in tutte le lingue:
+testi che escono dai riquadri o sovrapposizioni strane.
+
+**La prova** (`game/test/browser/ui.mjs`, nuova): intercetta i testi, i
+riquadri e le icone disegnati nell'interfaccia (Draw GUI e il pannello del
+menu di pausa; il resto si ridisegna sotto, sfocato) e per ogni schermata
+segnala i testi fuori dallo schermo, quelli che escono dal riquadro che li
+contiene, i testi sovrapposti fra loro o a un'icona e i caratteri che il
+font non ha. Schermate: menu (titolo coi pulsanti accesi, partite salvate,
+campagna coi tre livelli, lucchetto); in partita il pannello delle risorse
+(anche col puntatore sopra), ogni unita' ed edificio selezionato e ogni
+pulsante col puntatore sopra (costruzione, produzione, comportamento), la
+selezione multipla, un nemico, ogni suggerimento e ogni dialogo (la camera
+li porta nello schermo), il menu di pausa nelle tre pagine, gli obiettivi
+di ogni livello e fase, vittoria e sconfitta. Sei lingue, a 1280x720,
+1920x1080 e 1024x600. `STOP=schermata STOPSHOT=file.png` si ferma su una
+schermata e la fotografa.
+
+**Trovato e corretto** (a 1280x720; viste tutte negli screenshot):
+- **Comportamento** (Aggressive/Defensive): la descrizione va su tre righe
+  (gia' in inglese) e l'ultima usciva sotto la scheda. Ora la scheda cresce
+  verso l'alto quanto serve (units.js).
+- **Ariete e catapulta**: la scorciatoia (scritta piu' a destra, 380 [C])
+  usciva di 12 px dal bordo della scheda, in tutte le lingue. Scheda larga
+  400 per loro (production.js).
+- **Obiettivi in spagnolo**: il riquadro si allargava verso sinistra fin
+  sopra l'ultima colonna dei pulsanti di costruzione (e il suggerimento
+  sugli obiettivi lo copriva). Ora si allarga al piu' fino ai pulsanti
+  (bordo destro 760 + 10); oltre, le righe vanno a capo e il riquadro
+  cresce in altezza (endgame.js). Sugli schermi piu' stretti, dove gia'
+  l'originale toccava i pulsanti, resta com'era.
+- **Lucchetto della campagna**: in francese, spagnolo, portoghese e tedesco
+  "Sblocca livello" finiva sotto l'icona del lucchetto. Icona e scritta ora
+  sono centrate insieme (menu.js).
+- **Vittoria nei livelli**: "click anywhere to continue" usciva col font
+  grande delle cifre del codice (restava impostato). Ora col font dei
+  testi.
+- **Schermate finali**: il riquadro degli obiettivi restava sopra la
+  vittoria (sbiadito, e toccava il titolo nelle lingue lunghe); sulla
+  sconfitta il pannello delle risorse, gli inattivi, gli obiettivi e la
+  minimappa si disegnavano sopra lo sfondo nero (in spagnolo gli obiettivi
+  sopra il titolo). Ora sulle schermate finali solo i loro testi.
+- **Mappa della campagna**: centrata, larga 1597 px, sotto i 1536 px di
+  larghezza il segnalino del livello 1 (la citta') usciva a destra. Mappa e
+  segnalini si spostano a sinistra quanto serve (sotto c'e' l'elenco dei
+  livelli).
+- **Suggerimento sugli obiettivi** (a 1920x1080, in spagnolo): il riquadro,
+  che li' ha spazio per allargarsi, gli finiva sotto. Ora il suggerimento
+  segue il bordo sinistro reale del riquadro (`w._objLeft`, hints.js).
+Falsi allarmi scartati: la "ß" tedesca (draw.js la scrive "ss"), lo stesso
+testo scritto piu' volte per l'alone del titolo di pausa.
+Dopo: a 1280x720 e a 1920x1080 nessun problema in nessuna lingua. A
+1024x600 restano i limiti del layout originale, pensato per almeno 1280
+px e uguali in tutte le lingue (anche in inglese): il riquadro degli
+obiettivi sopra i pulsanti in alto a sinistra, i suggerimenti sugli
+obiettivi e sulla minimappa sopra il pannello delle risorse, "Indietro"
+delle opzioni grafiche e il codice della vittoria del livello 3 sotto il
+bordo dello schermo, e solo in tedesco le schede della casa e delle mura
+oltre il bordo destro. Da decidere con l'autore.

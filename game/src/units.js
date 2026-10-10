@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
@@ -308,9 +308,7 @@ export function cavaliere(p) {
       // (non sulla casella della formazione: §8.11)
       if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) {
         if (i.creation !== 1) {
-          const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-          i.dirox += lengthdirX(50, dir);
-          i.diroy += lengthdirY(50, dir);
+          destinationBack(i, 50); // §9.20
         } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) {
           // [§7.10] un altro posto libero vicino alla bandiera; se non c'e',
           // come l'originale
@@ -465,9 +463,7 @@ export function infantry(name, p) {
       // arrivava all'unita' stessa, che si fermava senza dare fuoco
       if (i.action === 1 && i.firework !== 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // e §8.11
         if (i.creation !== 1) {
-          const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-          i.dirox += lengthdirX(32, dir);
-          i.diroy += lengthdirY(32, dir);
+          destinationBack(i, 32); // §9.20
         } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { // §7.10
           i.dirox += irandomRange(-32, 32);
           i.diroy += irandomRange(-32, 32);
@@ -592,19 +588,25 @@ export function behaviourClicker(kind) {
       d.setAlpha(0.69);
       const title = tr(attack ? "Aggressive" : "Defensive"), sc = tr("Shortcut: {key}", { key: attack ? "Q" : "A" });
       const ex = d.panelExtra(340, title, null, sc);
+      const desc = tr(attack ? "Military units engage enemy units in a fight at a greater distance."
+                             : "Military units engage enemy units in a fight only if they are nearby.");
+      // [§9.27] la scheda cresce verso l'alto quanto serve alla descrizione:
+      // su tre righe (gia' in inglese) l'ultima usciva sotto il riquadro
+      d.setFont("overdue");
+      const up = Math.max(0, d.stringHeightExt(desc, 30, 280 + ex) - 60);
+      d.setFont("GUI_1");
       d.tooltipBegin(w); // §6.1 n.85
-      d.roundrectColourExt(20, H - 150, 340 + ex, H - 20, 60, 60, white, white, false);
+      d.roundrectColourExt(20, H - 150 - up, 340 + ex, H - 20, 60, 60, white, white, false);
       d.setAlpha(0.7);
       d.setHalign("left");
-      d.text(40, H - 120, title);
+      d.text(40, H - 120 - up, title);
       d.setFont("overdue");
       d.setValign("top");
-      d.textExt(40, H - 90, tr(attack ? "Military units engage enemy units in a fight at a greater distance."
-                                      : "Military units engage enemy units in a fight only if they are nearby."), 30, 280 + ex);
+      d.textExt(40, H - 90 - up, desc, 30, 280 + ex);
       d.setValign("middle"); // fa_center: lo stesso valore di fa_middle [I]
       d.setFont("GUI_1");
       d.setHalign("right");
-      d.text(320 + ex, H - 120, sc);
+      d.text(320 + ex, H - 120 - up, sc);
       d.tooltipEnd(w);
       d.setAlpha(0.99);
       d.circleColour(450, y, 30, white, white, false);

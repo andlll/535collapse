@@ -218,6 +218,15 @@ export const TEXTS = {
     pt: "No alto você encontra seus recursos. Colete-os com os trabalhadores para expandir a cidade e criar um exército poderoso.",
     de: "Oben siehst du deine Rohstoffe. Sammle sie mit deinen Arbeitern, um die Stadt zu vergrößern und ein starkes Heer aufzustellen.",
     fr: "En haut se trouvent tes ressources. Récolte-les avec tes ouvriers pour agrandir la ville et bâtir une armée puissante." },
+  // [§9.26] il pannello delle risorse col puntatore sopra
+  "Workers per resource": { it: "Lavoratori per risorsa", es: "Trabajadores por recurso", pt: "Trabalhadores por recurso",
+    de: "Arbeiter pro Rohstoff", fr: "Ouvriers par ressource" },
+  "Hover the mouse over the resources to see how many workers are gathering each one, and how many are building.": {
+    it: "Passa il mouse sulle risorse per vedere quanti lavoratori raccolgono ciascuna e quanti stanno costruendo.",
+    es: "Pasa el ratón sobre los recursos para ver cuántos trabajadores recogen cada uno y cuántos están construyendo.",
+    pt: "Passe o mouse sobre os recursos para ver quantos trabalhadores coletam cada um e quantos estão construindo.",
+    de: "Fahre mit der Maus über die Rohstoffe, um zu sehen, wie viele Arbeiter jeden einzelnen sammeln und wie viele bauen.",
+    fr: "Survole les ressources avec la souris pour voir combien d'ouvriers récoltent chacune et combien construisent." },
   "Idling workers": { it: "Lavoratori inattivi", es: "Trabajadores inactivos", pt: "Trabalhadores ociosos", de: "Untätige Arbeiter", fr: "Ouvriers inactifs" },
   "On top right of the screen you can monitor how many workers are idling. Click the button or press the spacebar to select them.": {
     it: "In alto a destra vedi quanti lavoratori sono inattivi. Clicca il pulsante o premi la barra spaziatrice per selezionarli.",
@@ -551,6 +560,12 @@ export const TEXTS = {
     pt: "Um exército de sobreviventes deixa a cidade rumo às colinas. Sua prioridade é libertar os cidadãos aprisionados pelos invasores.",
     de: "Ein Heer von Überlebenden verlässt die Stadt und zieht in die Hügel. Sein Ziel ist es, die von den Eindringlingen gefangenen Bürger zu befreien.",
     fr: "Une armée de survivants quitte la ville pour les collines. Sa priorité est de libérer les citoyens emprisonnés par les envahisseurs." },
+  "The soldiers are alone, far from home. The invaders are seeking one last stronghold to conquer: if that falls too, there will be no one left to stop them.": {
+    it: "I soldati sono soli, lontani da casa. Gli invasori cercano un ultimo baluardo da conquistare: se cade anche quello, non resterà più nessuno a fermarli.",
+    es: "Los soldados están solos, lejos de casa. Los invasores buscan un último baluarte que conquistar: si también cae, no quedará nadie para detenerlos.",
+    pt: "Os soldados estão sozinhos, longe de casa. Os invasores procuram um último baluarte para conquistar: se também ele cair, não restará ninguém para detê-los.",
+    de: "Die Soldaten sind allein, fern der Heimat. Die Eindringlinge suchen ein letztes Bollwerk, das sie erobern können: Fällt auch dieses, bleibt niemand mehr, der sie aufhalten kann.",
+    fr: "Les soldats sont seuls, loin de chez eux. Les envahisseurs cherchent un dernier bastion à conquérir : s'il tombe lui aussi, il ne restera plus personne pour les arrêter." },
   // ------------------------------------------------------------ salvataggi
   "SAVE AND LOAD": { it: "SALVA E CARICA", es: "GUARDAR Y CARGAR", pt: "SALVAR E CARREGAR", de: "SPEICHERN UND LADEN", fr: "SAUVEGARDER ET CHARGER" },
   "Save and load": { it: "Salva e carica", es: "Guardar y cargar", pt: "Salvar e carregar", de: "Speichern und laden", fr: "Sauvegarder et charger" },
