@@ -620,6 +620,11 @@ function enemyPanel(icon) {
   };
 }
 
+// [§9.17] Il bersaglio imposto dalla regia (ramTarget; livello 3: il
+// monastero, sfondata la porta): l'ariete va solo li' e colpisce solo quello,
+// invece dell'edificio alleato piu' vicino (le altre mura, le torri).
+const forcedTarget = (i) => (i.ramTarget && i.ramTarget.alive ? i.ramTarget : null);
+
 // enemy_ariete [C]: va verso l'edificio alleato piu' vicino entro 700 px
 // (dimezzati di notte) e lo colpisce come l'ariete alleato. Arma l'alarm 9
 // dell'edificio (che non rimette hit a 0): la barra della vita di un
@@ -641,7 +646,7 @@ export function enemyRam(base) {
       if (i.step !== 3) return;
       i.step = 0;
       i.alarm.set(2, 13);
-      const b = w.nearest(i.x + 50 * Math.cos(degtorad(i.direction)), i.y - 50 * Math.sin(degtorad(i.direction)), "ally_build");
+      const b = forcedTarget(i) || w.nearest(i.x + 50 * Math.cos(degtorad(i.direction)), i.y - 50 * Math.sin(degtorad(i.direction)), "ally_build");
       // [§9.11] il monastero del livello 3 ha un danno suo (ramHit)
       if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.ramHit ?? (b.slife === 100 ? 5 : 50); }
     },
@@ -679,7 +684,8 @@ export function enemyRam(base) {
       // attacco
       if (!w.exists("ally_build")) return;
       const k = iso(i.direction);
-      const b = w.nearest(i.x, i.y, "ally_build");
+      const tgt = forcedTarget(i);
+      const b = tgt || w.nearest(i.x, i.y, "ally_build");
       // [§9.11] o fermo, bloccato a meno di 48 px: col flow field "largo"
       // (§8.14) a una porta chiusa per i nemici non arriva a 10 px
       const d = w.distanceToInstance(i, b);
@@ -690,6 +696,14 @@ export function enemyRam(base) {
         if (i.warwork !== 2) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
         return;
       } else if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; }
+      // [§9.17] col bersaglio imposto ci va da qualunque distanza
+      if (tgt) {
+        if (i.warwork === 0 || i.warwork === 1) {
+          if (i.action !== 1) i.alarm.set(0, 15);
+          i.action = 1; i.warwork = 1; i.dirox = tgt.x; i.diroy = tgt.y;
+        }
+        return;
+      }
       const chase = () => {
         const t = w.nearest(i.x, i.y, "ally_build");
         if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k && (i.warwork === 0 || i.warwork === 1)) {

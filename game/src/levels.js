@@ -593,8 +593,15 @@ export function enemyManagerLv3(p) {
           const goal = p.goalField(LV3.inner[0], LV3.inner[1], true);
           i.ffIn = { ver: p.solidVer, goal, ff: p.flowField(goal) };
         }
+        // [§9.17, richiesta dell'autore] sfondata la porta, gli arieti delle
+        // ondate vanno al monastero e colpiscono solo quello (siege.js
+        // ramTarget), invece di continuare con le mura e le torri vicine
+        const porta = w.nearest(LV3.gate[0], LV3.gate[1], "porta_ori");
+        if (!porta || pointDistance(porta.x, porta.y, LV3.gate[0], LV3.gate[1]) > 100) {
+          for (const e of w.all("enemy_ariete")) if (e.l3 === "mon") e.ramTarget = m;
+        }
         for (const e of w.all("enemy_unit")) {
-          if (!e.l3 || e.action !== 0 || e.role === 31) continue;
+          if (!e.l3 || e.action !== 0 || e.role === 31 || e.ramTarget) continue;
           const [gx, gy] = e.l3 === "mon" ? LV3.gate : LV3.town;
           const siege = e.object === "enemy_ariete" || e.object === "enemy_catapulta";
           const t = w.nearest(gx, gy, siege ? "ally_build" : "ally_unit");

@@ -4572,3 +4572,22 @@ Richieste dell'autore (10 ottobre 2026):
 Prove (Chromium, `window.__game`, un soldato spostato al villaggio): 3
 campi e 6 civili, contadini al lavoro su tutti e tre i campi; conto alla
 rovescia da 20:00; dialogo 3_5 una volta, all'arrivo del primo attacco.
+
+### 9.17 Livello 3: sfondata la porta, gli arieti vanno al monastero
+
+Richiesta dell'autore (10 ottobre 2026): distrutta la porta, gli arieti
+nemici devono andare verso il monastero invece di continuare ad attaccare
+le altre mura. L'ariete nemico [C] colpisce sempre l'edificio alleato piu'
+vicino (a contatto, o fermo a meno di 48 px: §9.11) e insegue quello piu'
+vicino entro 700 px: caduta la porta, il piu' vicino e' un tratto di mura.
+Ora un ariete puo' avere un bersaglio imposto (siege.js `ramTarget`): ci va
+da qualunque distanza e colpisce solo quello. La regia del livello 3
+(levels.js, controllo di ogni secondo) lo da' agli arieti delle ondate
+(`l3` "mon") appena non c'e' piu' una porta a meno di 100 px da
+`LV3.gate`; prima della porta tutto come prima.
+Prova (Chromium, `window.__game`, senza soldati e torri del monastero): un
+ariete davanti alla porta la abbatte in 16 s, poi gira attorno al muro del
+cortile, arriva al monastero in 12 s e lo colpisce (-20 a colpo, ~80 di
+vita ogni 4 s al netto della cura); le mura restano a 800. Il livello
+diventa piu' duro: un ariete che passa la porta non si ferma piu' sulle
+mura.
