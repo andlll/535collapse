@@ -41,7 +41,7 @@ export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
   // [§9.24] scritto per il porting: il livello 3 e' nuovo (§9.11)
-  3: "Beyond the hills the road leads deep into enemy land. A handful of soldiers sets out in search of new allies, while the invaders march toward the mountains, where the walls of an ancient monastery still stand.",
+  3: "The soldiers are alone, far from home. The invaders are seeking one last stronghold to conquer: if that falls too, there will be no one left to stop them.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
