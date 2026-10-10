@@ -4763,3 +4763,17 @@ I civili su piu' risorse (workers.mjs, centro come deposito): oro 1520 ->
 1650, 1390 -> 1590, 1600 -> 2040, il resto uguale, fermi e sovrapposti 0.
 movement.mjs, consegne, soak (anche lvl03) e salvataggi senza differenze o
 errori; salvataggio a cantiere attivo (SAVE=1) identico.
+
+### 9.22 Livello 3: riquadro degli obiettivi a larghezza fissa
+
+Segnalazione dell'autore (10 ottobre 2026): il riquadro degli obiettivi e'
+largo quanto il testo (§3.x: si allarga verso sinistra se una riga non ci
+sta), e quando la vita del monastero cala in fretta si ridimensiona di
+continuo. Le cifre del font non sono larghe uguali e la vita perde cifre
+(3000 -> 999): a 1280 px, in inglese, il bordo sinistro andava fra 754 e
+760 px (di piu' nelle lingue con le righe piu' lunghe). Ora in lvl03 la
+larghezza si misura anche su due testi che non si disegnano (`sizing`, in
+endgame.js): la riga del conto alla rovescia con "99:99" e quella della
+vita con tante cifre quante la vita massima, tutte alla cifra piu' larga
+del font (`widestDigit`). Misurato col riquadro disegnato (vita 3000, 2999,
+1500, 1111, 1000, 888, 100): prima 754-760, ora sempre 754.

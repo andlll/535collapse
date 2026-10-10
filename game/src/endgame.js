@@ -94,6 +94,13 @@ export function gameoverManager() {
   };
 }
 
+// La cifra piu' larga col font corrente (i font non sono a spaziatura fissa)
+function widestDigit(d) {
+  let best = "0", bw = -1;
+  for (const ch of "0123456789") { const cw = d.stringWidth(ch); if (cw > bw) { bw = cw; best = ch; } }
+  return best;
+}
+
 // objective_button [C]: il riquadro degli obiettivi in alto a destra (O lo
 // nasconde). Creato dal manager in match, da dialogo_1_2 e dialogo_2_5.
 export function objectiveButton() {
@@ -106,6 +113,9 @@ export function objectiveButton() {
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
       // [y, testo, barrato]
       const lines = [];
+      // [§9.22] testi che contano solo per la larghezza del riquadro (non si
+      // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
+      const sizing = [];
       if (w.room === "match") {
         lines.push([58, tr("Survive for the most time possible")]);
         lines.push([88, tr("Destroy the enemy secondary bases ({n}/3)", { n: g.basidistrutte })]);
@@ -130,6 +140,15 @@ export function objectiveButton() {
         else {
           lines.push([58, tr("Defend the monastery: {t}", { t: mmss(L.left) })]);
           lines.push([88, tr("Monastery: {life} / {slife} (lost below half)", { life: L.life, slife: L.slife })]);
+          // [§9.22, richiesta dell'autore] la larghezza non segue la vita
+          // del monastero (che cala in fretta: il riquadro si allargava e
+          // stringeva di continuo) ne' il conto alla rovescia: la si misura
+          // con tutte le cifre alla cifra piu' larga del font, la vita con
+          // quante ne ha la vita massima
+          d.setFont("overdue");
+          const wide = widestDigit(d), digits = (v) => wide.repeat(String(v).length);
+          sizing.push(tr("Defend the monastery: {t}", { t: digits(99) + ":" + digits(99) }));
+          sizing.push(tr("Monastery: {life} / {slife} (lost below half)", { life: digits(L.slife), slife: digits(L.slife) }));
           if (L.baseKnown) {
             const done = w.number("enemy_caserma") + w.number("enemy_stalla") === 0;
             lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
@@ -139,7 +158,7 @@ export function objectiveButton() {
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta
       d.setFont("overdue");
-      const maxW = Math.max(0, ...lines.map(([, s]) => d.stringWidth(s)));
+      const maxW = Math.max(0, ...lines.map(([, s]) => d.stringWidth(s)), ...sizing.map((s) => d.stringWidth(s)));
       const ex = Math.max(0, Math.ceil(maxW - 360));
       const x = W - 500 - ex;
       d.setAlpha(0.69);
