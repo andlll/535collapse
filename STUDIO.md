@@ -4600,3 +4600,29 @@ attacchi dalla base nemica al villaggio ogni 4 minuti invece che ogni 2
 invece di 8 nei 20 minuti); la dimensione per attacco resta quella di
 `baseN` (1, 1, 2, 2 fanti o cavalieri per caserma o stalla). Le ondate
 contro il monastero non cambiano.
+
+### 9.19 Livello 2: la vista scivola sulla base nemica
+
+Richiesta dell'autore (10 ottobre 2026): quando il gioco dice che gli
+attacchi vengono dalla base nemica in alto (dialogo_2_13, dopo 15000
+passi: "le nostre spie hanno trovato la base nemica, e' a nord"), uno
+scorrimento della vista come quello sul monastero del livello 3.
+- **Prima** [C]: chiudendo il dialogo la view saltava di colpo con
+  l'angolo in alto a sinistra in (500, 600); con la nebbia e gli edifici
+  nemici mai visti, si vedeva poco o niente (le caserme e la stalla sono a
+  (273, 404), (500, 252), (85, 703), il palo che segna la base a (150,
+  250), piu' a sinistra).
+- **Ora** chiudendolo la vista scivola fino a centrarsi sulla base (300,
+  450; contro il bordo della mappa: angolo in (0, 90)), e gli edifici nemici
+  a meno di 600 px dal palo diventano visibili (le spie li hanno trovati;
+  una volta visti restano visibili [C]). Il palo toglie la nebbia attorno:
+  si vedono le due caserme.
+- Lo scorrimento e' ora comune (camera.js `panTo`/`panStep`, tenuto dalla
+  regia del livello: enemy_manager_lv2 e enemy_manager_lv3). Due ritocchi
+  che valgono anche per il monastero: la meta e' gia' dentro la room (prima
+  la view si fermava contro il bordo prima della fine dello scorrimento) e
+  la durata cresce col tragitto (40 px a passo, fra 90 e 180 passi): in
+  lvl02 attraversa quasi tutta la mappa (da y 6500 a 90) in 156 passi.
+Prova (Chromium, `window.__game`, dialogo forzato e chiuso col clic vero):
+la vista da (200, 6500) a (0, 90) in 2,6 s, le caserme visibili, nessun
+errore.

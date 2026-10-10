@@ -14,6 +14,7 @@ import { irandomRange, pointDistance } from "./gm.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
+import { panTo, panStep } from "./camera.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -347,6 +348,8 @@ export function enemyManagerLv2(p) {
     },
     step(i, w) {
       const g = w.g;
+      // [§9.19] la vista sulla base nemica (la avvia dialogo_2_13)
+      if (i.pan && panStep(w, i.pan)) i.pan = null;
       if (i.liberati1 === 0 && !w.collisionRectangle(760, 6770, 1868, 7450, "enemy_unit", false)) {
         w.create("ally_omino", 1645, 7109);
         w.create("ally_omino", 1745, 7109);
@@ -514,8 +517,7 @@ export function enemyManagerLv3(p) {
         activateGroup(w, "monastero");
         const m = monastery(w);
         if (m) {
-          const tx = m.x - w.cam.w / 2, ty = m.y + 250 - w.cam.h / 2;
-          i.pan = { x0: w.cam.x, y0: w.cam.y, x1: tx, y1: ty, k: 0 };
+          i.pan = panTo(w, m.x, m.y + 250);
           w.create("dialogo_3_4", m.x, m.y + 300);
         }
         i.ffMon = p.flowField(p.goalField(LV3.gate[0], LV3.gate[1], true));
@@ -523,12 +525,7 @@ export function enemyManagerLv3(p) {
         return;
       }
       // la vista che scivola sul monastero (90 passi)
-      if (i.pan) {
-        const P = i.pan, a = Math.min(1, ++P.k / 90), e = a * a * (3 - 2 * a);
-        w.cam.x = P.x0 + (P.x1 - P.x0) * e; w.cam.y = P.y0 + (P.y1 - P.y0) * e;
-        if (w.cam.clamp) w.cam.clamp();
-        if (a >= 1) i.pan = null;
-      }
+      if (i.pan && panStep(w, i.pan)) i.pan = null;
       // 2: la difesa
       i.t++;
       const m = monastery(w);

@@ -77,3 +77,24 @@ export class Camera {
     this.y = Math.max(0, Math.min(this.y, this.roomH - this.h));
   }
 }
+
+// [§9.11, §9.19] La vista che scivola fino a centrarsi su (cx, cy), con
+// partenza e arrivo morbidi, in 90 passi o piu' se il tragitto e' lungo
+// (40 px a passo, al massimo 180: in lvl02 attraversa tutta la mappa): panTo la prepara (la meta dentro la
+// room, cosi' il movimento non si ferma prima contro il bordo), panStep la
+// fa avanzare di un passo e dice se e' finita. La tiene la regia del
+// livello (levels.js).
+export function panTo(w, cx, cy) {
+  const c = w.cam;
+  const x1 = Math.max(0, Math.min(cx - c.w / 2, c.roomW - c.w));
+  const y1 = Math.max(0, Math.min(cy - c.h / 2, c.roomH - c.h));
+  const n = Math.round(Math.min(180, Math.max(90, Math.hypot(x1 - c.x, y1 - c.y) / 40)));
+  return { x0: c.x, y0: c.y, x1, y1, k: 0, n };
+}
+
+export function panStep(w, P) {
+  const a = Math.min(1, ++P.k / (P.n || 90)), e = a * a * (3 - 2 * a);
+  w.cam.x = P.x0 + (P.x1 - P.x0) * e; w.cam.y = P.y0 + (P.y1 - P.y0) * e;
+  if (w.cam.clamp) w.cam.clamp();
+  return a >= 1;
+}

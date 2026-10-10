@@ -24,6 +24,7 @@
 
 import { c } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
+import { panTo } from "./camera.js";
 
 const W380 = 380;
 
@@ -174,11 +175,18 @@ export const DIALOGS = {
   dialogo_2_10: { who: [...VILLAGER, "Villagers"], arm: 10, text: "We will always be grateful for your help!" },
   dialogo_2_11: { who: [...VILLAGER, "Gold miners"], arm: 10, text: "This area is full of gold to mine, count on us!" },
   dialogo_2_12: { who: [...VILLAGER, "Villagers"], arm: 10, text: "Thank you for freeing my village!" },
-  // la base nemica: chiudendolo la view salta a (500, 600)
+  // la base nemica: chiudendolo la view saltava a (500, 600) [C]. [§9.19,
+  // richiesta dell'autore] ora ci scivola come sul monastero del livello 3
+  // (camera.js panTo), sulle caserme e la stalla della base, che le spie
+  // hanno trovato: si vedono (gli edifici nemici, una volta visti, restano
+  // visibili [C]); il palo toglie la nebbia attorno
   dialogo_2_13: { who: SPY, arm: 10, vanish: true,
                   text: "Our spies have found the enemy base. It's north of here. Let's destroy it to stop the attacks!",
                   create: (i, w) => w.create("palo_1", 150, 250),
-                  click: (i, w) => { w.cam.x = 500; w.cam.y = 600; w.cam.clamp(); } },
+                  click: (i, w) => {
+                    for (const b of w.all("enemy_build")) if (Math.hypot(b.x - 150, b.y - 250) < 600) b.visible = true;
+                    for (const m of w.all("enemy_manager_lv2")) m.pan = panTo(w, 300, 450);
+                  } },
   dialogo_2_14: { who: SPY, arm: 10, vanish: true, text: "It seems that this very barracks trains the archers who protect that point." },
   // livello 3 [§9.11, testi dell'autore riscritti]: la regia e' in
   // levels.js (enemyManagerLv3), che li crea; chiudere il 3_3 rivela il
