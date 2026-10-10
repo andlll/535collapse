@@ -4920,3 +4920,11 @@ schermata e la fotografa.
   segue il bordo sinistro reale del riquadro (`w._objLeft`, hints.js).
 Falsi allarmi scartati: la "ß" tedesca (draw.js la scrive "ss"), lo stesso
 testo scritto piu' volte per l'alone del titolo di pausa.
+Dopo: a 1280x720 e a 1920x1080 nessun problema in nessuna lingua. A
+1024x600 restano i limiti del layout originale, pensato per almeno 1280
+px e uguali in tutte le lingue (anche in inglese): il riquadro degli
+obiettivi sopra i pulsanti in alto a sinistra, i suggerimenti sugli
+obiettivi e sulla minimappa sopra il pannello delle risorse, "Indietro"
+delle opzioni grafiche e il codice della vittoria del livello 3 sotto il
+bordo dello schermo, e solo in tedesco le schede della casa e delle mura
+oltre il bordo destro. Da decidere con l'autore.
