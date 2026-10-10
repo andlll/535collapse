@@ -4854,3 +4854,14 @@ lavora, chi ci va e chi porta il carico al deposito (il cibo con chi semina
 un campo); gli inattivi no (hanno il loro contatore). Provato in `match`
 con 5 civili sul legno, 4 sull'oro, 3 sulla pietra, 2 sui campi, 2 su una
 casa in costruzione e 1 fermo: 2, 5, 4, 3 e 2.
+
+### 9.26 Tutorial: suggerimento sul pannello delle risorse
+
+Richiesta dell'autore (10 ottobre 2026): far scoprire nel tutorial la
+funzione di §9.25. Suggerimento nuovo `hint_lavori` (nuovi.json, hints.js,
+sei lingue), nella catena iniziale fra le risorse (hint_resource_tree) e i
+civili inattivi (hint_idle), nello stesso posto sotto il pannello: "Workers
+per resource - Hover the mouse over the resources to see how many workers
+are gathering each one, and how many are building." Provato in `match`:
+risorse -> lavoratori per risorsa -> inattivi, col clic; testo nel riquadro
+in italiano e in tedesco. i18n.test: 28 suggerimenti.

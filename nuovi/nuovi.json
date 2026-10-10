@@ -147,6 +147,15 @@
       "solid": false,
       "depth": -9999,
       "kit": false
+    },
+    "hint_lavori": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
     }
   },
   "derivati": {

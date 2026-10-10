@@ -218,6 +218,15 @@ export const TEXTS = {
     pt: "No alto você encontra seus recursos. Colete-os com os trabalhadores para expandir a cidade e criar um exército poderoso.",
     de: "Oben siehst du deine Rohstoffe. Sammle sie mit deinen Arbeitern, um die Stadt zu vergrößern und ein starkes Heer aufzustellen.",
     fr: "En haut se trouvent tes ressources. Récolte-les avec tes ouvriers pour agrandir la ville et bâtir une armée puissante." },
+  // [§9.26] il pannello delle risorse col puntatore sopra
+  "Workers per resource": { it: "Lavoratori per risorsa", es: "Trabajadores por recurso", pt: "Trabalhadores por recurso",
+    de: "Arbeiter pro Rohstoff", fr: "Ouvriers par ressource" },
+  "Hover the mouse over the resources to see how many workers are gathering each one, and how many are building.": {
+    it: "Passa il mouse sulle risorse per vedere quanti lavoratori raccolgono ciascuna e quanti stanno costruendo.",
+    es: "Pasa el ratón sobre los recursos para ver cuántos trabajadores recogen cada uno y cuántos están construyendo.",
+    pt: "Passe o mouse sobre os recursos para ver quantos trabalhadores coletam cada um e quantos estão construindo.",
+    de: "Fahre mit der Maus über die Rohstoffe, um zu sehen, wie viele Arbeiter jeden einzelnen sammeln und wie viele bauen.",
+    fr: "Survole les ressources avec la souris pour voir combien d'ouvriers récoltent chacune et combien construisent." },
   "Idling workers": { it: "Lavoratori inattivi", es: "Trabajadores inactivos", pt: "Trabalhadores ociosos", de: "Untätige Arbeiter", fr: "Ouvriers inactifs" },
   "On top right of the screen you can monitor how many workers are idling. Click the button or press the spacebar to select them.": {
     it: "In alto a destra vedi quanti lavoratori sono inattivi. Clicca il pulsante o premi la barra spaziatrice per selezionarli.",

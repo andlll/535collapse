@@ -35,6 +35,8 @@ const T = {
   hint_iniziale: ["Hints", "Windows like this one will appear to help you. Click on a hint window for the next step. Press H to disable or enable all hint windows."],
   hint_vista: ["Visualization", "Move your mouse close to the borders to navigate the map. You can also use arrow keys. Zoom in and out with the mouse wheel or the Z and X keys. Press F10 (Cmd+F on Mac) to switch to fullscreen mode."],
   hint_resource_tree: ["Resources", "On top of the screen you will find the resource tree. Gather resources with your workers to expand your city and build a powerful army."],
+  // [§9.26, richiesta dell'autore] il pannello delle risorse col puntatore sopra (§9.25)
+  hint_lavori: ["Workers per resource", "Hover the mouse over the resources to see how many workers are gathering each one, and how many are building."],
   hint_idle: ["Idling workers", "On top right of the screen you can monitor how many workers are idling. Click the button or press the spacebar to select them."],
   hint_objective: ["Objectives", "Next to it, you can find the objectives of the current map. Complete them to win the level."],
   hint_objective2: ["Objectives", "For this demo, the goal is to survive as long as possible and to destroy the enemies' bases. Press O to hide the objectives' window."],
@@ -77,7 +79,8 @@ export const HINTS = {
   // catena del tutorial (hint_iniziale e' piazzato nelle room)
   hint_iniziale: { anchor: fixed(20, 170), next: "hint_vista" },
   hint_vista: { anchor: fixed(20, 170), arm: 10, next: "hint_resource_tree" },
-  hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" },
+  hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_lavori" },
+  hint_lavori: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" }, // §9.26
   hint_idle: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 410, 170] }, click: "pressed", next: "hint_objective" },
   hint_objective: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, next: "hint_objective2" },
   hint_objective2: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 900, 20] }, arm: 10, next: "hint_minimap" },
