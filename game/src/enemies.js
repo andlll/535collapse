@@ -14,7 +14,7 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField } from "./pathing.js";
+import { mpPotentialStep, moveFlowField, destinationBack } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { phaseOf } from "./units.js";
@@ -328,8 +328,7 @@ export function enemyMelee(name, p) {
       const onSpot = (i.warwork === 1 || i.firework === 1) && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1];
       if (onSpot) { /* niente */ } else if (T.place === "back50") {
         if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) {
-          const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
-          i.dirox += lengthdirX(50, d); i.diroy += lengthdirY(50, d);
+          destinationBack(i, 50); // §9.20
         }
       } else {
         if (i.action === 1 && !w.placeEmpty(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-20, 20); i.diroy += irandomRange(-20, 20); }

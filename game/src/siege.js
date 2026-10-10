@@ -13,7 +13,7 @@
 import { fireFlare } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot } from "./pathing.js";
+import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinationBack } from "./pathing.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -115,8 +115,7 @@ function siegeCommon(name, corpseName, icon) {
     // "se posto in cui fermarsi e' occupato": 50 px verso di se'
     destinationBack50(i, w) {
       if (i.action === 1 && i.firework !== 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // e §8.11
-        const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
-        i.dirox += lengthdirX(50, d); i.diroy += lengthdirY(50, d);
+        destinationBack(i, 50); // §9.20
       }
     },
     buttons(i, w) {

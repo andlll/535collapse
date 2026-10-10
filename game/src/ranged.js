@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -181,8 +181,7 @@ export function allyArcher(p) {
   const destination = (i, w) => {
     if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // §8.11
       if (i.creation !== 1) {
-        const d = pointDirection(i.dirox, i.diroy, i.x, i.y);
-        i.dirox += lengthdirX(32, d); i.diroy += lengthdirY(32, d);
+        destinationBack(i, 32); // §9.20
       } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { i.dirox += irandomRange(-32, 32); i.diroy += irandomRange(-32, 32); } // §7.10
     }
   };

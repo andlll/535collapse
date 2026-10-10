@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 
@@ -333,9 +333,7 @@ function ominoStep(i, w, p, stop) {
   if (i.action === 1 && !onFormationSlot(i) && !i.depositTo && !i.buildwork && !i.stonework && !i.foodwork && !i.woodwork && !i.goldwork && !i.fieldwork
       && !w.placeEmpty(i, i.dirox, i.diroy)) {
     if (i.creation === 0) {
-      const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-      i.dirox += lengthdirX(50, dir);
-      i.diroy += lengthdirY(50, dir);
+      destinationBack(i, 50); // §9.20
     } else if (!rallyRetry(w, p, i, (x, y) => goTo(p, i, x, y))) { // §7.10
       i.dirox += irandomRange(-32, 32);
       i.diroy += irandomRange(-32, 32);

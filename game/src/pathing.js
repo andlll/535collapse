@@ -325,6 +325,17 @@ export class Pathing {
   // e la larghezza di lato e' la maschera proiettata sulla perpendicolare
   // alla linea. Campioni ogni 8 px lungo la linea e ogni 16 px di lato.
   clearLine(field, x0, y0, x1, y1, hw = LINE_HALF, hh = LINE_HALF) {
+    return this._clear((k) => field[k] === -1, x0, y0, x1, y1, hw, hh);
+  }
+
+  // [§9.20] La stessa linea contro i soli ostacoli fissi (edifici, alberi,
+  // acqua: solid), senza le celle delle unita' ferme (occupy)
+  clearSolid(x0, y0, x1, y1, hw = LINE_HALF, hh = LINE_HALF) {
+    const { solid } = this;
+    return this._clear((k) => solid[k] === 1, x0, y0, x1, y1, hw, hh);
+  }
+
+  _clear(blocked, x0, y0, x1, y1, hw, hh) {
     const { gw } = this;
     const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
     if (len < 1) return true;
@@ -337,7 +348,7 @@ export class Pathing {
       for (let l = -lanes; l <= lanes; l++) {
         const o = (half * l) / lanes;
         const cx = Math.floor((px + nx * o) / GRID), cy = Math.floor((py + ny * o) / GRID);
-        if (!this.inside(cx, cy) || field[cy * gw + cx] === -1) return false;
+        if (!this.inside(cx, cy) || blocked(cy * gw + cx)) return false;
       }
     }
     return true;
@@ -484,6 +495,7 @@ export function moveFlowField(w, p, inst) {
   // e' sovrapposti a un'altra unita' (con le collisioni nessuna delle due si
   // muoverebbe) ci si separa senza collisioni, verso la destinazione se il
   // passo non entra in una cella chiusa, se no lontano dall'altra unita'.
+  let len = inst.autospeed;
   if (a === -1 && field instanceof Int32Array) {
     if (p.inside(gx, gy) && field[gy * p.gw + gx] !== -1) {
       const o = w.instancePlace(inst, inst.x, inst.y, null, true);
@@ -491,6 +503,10 @@ export function moveFlowField(w, p, inst) {
       a = pointDirection(inst.x, inst.y, inst.dirox, inst.diroy);
       const nx = Math.floor((inst.x + lengthdirX(GRID / 2, a)) / GRID), ny = Math.floor((inst.y + lengthdirY(GRID / 2, a)) / GRID);
       if (!p.inside(nx, ny) || field[ny * p.gw + nx] === -1) a = pointDirection(o.x, o.y, inst.x, inst.y);
+      // [§9.20] verso la destinazione non oltre: col passo intero la
+      // superava, tornava indietro al passo dopo e cosi' via (una macchina
+      // d'assedio sulla sua casella, sovrapposta a un soldato fermo)
+      else len = Math.min(len, pointDistance(inst.x, inst.y, inst.dirox, inst.diroy));
     } else {
       const out = p.escapeCell(field, gx, gy, 6);
       if (!out) return;
@@ -508,7 +524,8 @@ export function moveFlowField(w, p, inst) {
   if (a !== -1) inst.target_angle = a;
   // direction in GMS si riporta sempre fra 0 e 360 [I]
   if (inst.target_angle !== undefined) inst.direction = ((inst.target_angle % 360) + 360) % 360;
-  w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
+  if (len < inst.autospeed) w.setPos(inst, inst.dirox, inst.diroy); // l'ultimo pezzo: esatto
+  else w.setPos(inst, inst.x + lengthdirX(inst.autospeed, inst.direction), inst.y + lengthdirY(inst.autospeed, inst.direction));
 }
 
 // [Segnalazione dell'autore, §8.14] Le macchine d'assedio col flow field.
@@ -638,10 +655,16 @@ export function walkLine(p, x0, y0, x1, y1) {
 // finche' non rinunciava. Senza vista si continua sul percorso. Solo per i
 // semplici spostamenti (chi chiama lo sa); i flow field di angoli dei
 // salvataggi vecchi non sanno dire cosa e' percorribile: come prima.
+// [§9.20] La linea si guarda contro gli ostacoli fissi (clearSolid), non
+// nel campo: il campo, calcolato all'ordine e condiviso dal gruppo, ha per
+// ostacoli anche le celle delle unita' ferme in quel momento, che poi se ne
+// vanno. Chi arrivava in fondo al campo senza "vedere" la sua casella
+// andava avanti e indietro di una cella a ogni passo, voltandosi (gli
+// incroci fra due gruppi: decine di unita' ammucchiate e tremolanti).
 export function seesGoal(p, inst) {
   const f = inst.flow_field;
   if (!(f instanceof Int32Array)) return true;
-  return p.clearLine(f, inst.x, inst.y, inst.dirox, inst.diroy);
+  return p.clearSolid(inst.x, inst.y, inst.dirox, inst.diroy);
 }
 
 // [§6.1 n.89] Arrivo "per rinuncia": le unita' sono solide e si bloccano a
@@ -661,8 +684,31 @@ export function seesGoal(p, inst) {
 // davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
 
+// "Punto d'arrivo occupato" [C]: la meta si sposta di `len` px verso
+// l'unita'. [§9.20] Se l'unita' e' piu' vicina di `len`, la meta diventa il
+// punto in cui e' (arriva li'): spostata di tutti i `len` px finiva
+// dall'altra parte, al passo dopo tornava indietro, e un'unita' sovrapposta
+// a un'altra ferma andava avanti e indietro per sempre (misurato: la
+// catapulta fra 1280 e 1330, 2 px a passo, voltandosi ogni volta).
+export function destinationBack(inst, len) {
+  const d = pointDistance(inst.dirox, inst.diroy, inst.x, inst.y);
+  if (d <= len) { inst.dirox = inst.x; inst.diroy = inst.y; return; }
+  const dir = pointDirection(inst.dirox, inst.diroy, inst.x, inst.y);
+  inst.dirox += lengthdirX(len, dir);
+  inst.diroy += lengthdirY(len, dir);
+}
+
+// [§9.20] Il conto riparte a ogni meta nuova: la distanza migliore restava
+// quella dell'ordine prima, e con un ordine nuovo entro 400 px l'unita'
+// sembrava ferma anche camminando (la distanza non scendeva sotto la
+// vecchia) e si fermava a 50-100 px dalla casella.
 export function arriveIfBlocked(inst) {
   const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+  if (inst.stuckGoalX !== inst.dirox || inst.stuckGoalY !== inst.diroy) {
+    inst.stuckGoalX = inst.dirox; inst.stuckGoalY = inst.diroy;
+    inst.stuckN = 0; inst.stuckBest = d;
+    return;
+  }
   if (d > 400) { inst.stuckN = 0; inst.stuckBest = d; return; }
   if (inst.stuckBest === undefined || d < inst.stuckBest - 2) { inst.stuckBest = d; inst.stuckN = 0; return; }
   inst.stuckN = (inst.stuckN || 0) + 1;
@@ -679,7 +725,8 @@ export function arriveIfBlocked(inst) {
 // un'approssimazione con lo stesso contratto. Si prova la direzione del
 // bersaglio, poi a destra e a sinistra di 3 gradi alla volta fino a 180; una
 // direzione va bene se sono liberi sia il passo sia il punto 3 passi avanti;
-// la direzione dell'istanza ruota al massimo di 30 gradi per passo; se
+// la direzione dell'istanza ruota al massimo di 30 gradi per passo (§9.20:
+// se cosi' il passo e' chiuso, si va subito per la direzione libera); se
 // nessuna direzione e' libera l'istanza ruota sul posto. Restituisce true
 // all'arrivo.
 export function mpPotentialStep(w, inst, xg, yg, step, checkall = false) {
@@ -706,8 +753,15 @@ export function mpPotentialStep(w, inst, xg, yg, step, checkall = false) {
       diff = Math.max(-MAXROT, Math.min(MAXROT, diff));
       const nd = (inst.direction + diff + 360) % 360;
       const nx = inst.x + lengthdirX(step, nd), ny = inst.y + lengthdirY(step, nd);
-      inst.direction = nd;
-      if (free(nx, ny)) w.setPos(inst, nx, ny);
+      if (free(nx, ny)) { inst.direction = nd; w.setPos(inst, nx, ny); }
+      else {
+        // [§9.20] la direzione girata di 30 gradi e' chiusa ma quella libera
+        // no: si va per quella. Prima l'unita' girava di 30 gradi a passo
+        // senza muoversi finche' non era allineata (fino a 6 passi): a
+        // contatto con altre unita' girava su se stessa di continuo
+        inst.direction = (d % 360 + 360) % 360;
+        w.setPos(inst, inst.x + lengthdirX(step, d), inst.y + lengthdirY(step, d));
+      }
       return false;
     }
   }

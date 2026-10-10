@@ -4626,3 +4626,72 @@ scorrimento della vista come quello sul monastero del livello 3.
 Prova (Chromium, `window.__game`, dialogo forzato e chiuso col clic vero):
 la vista da (200, 6500) a (0, 90) in 2,6 s, le caserme visibili, nessun
 errore.
+
+### 9.20 Movimento: unita' che tremolano e girano su se stesse
+
+Segnalazione dell'autore (10 ottobre 2026): dall'ultima release il
+pathfinding sembra peggiorato, soprattutto nelle animazioni (personaggi
+che girano su se stessi, tremolanti); forse e' stato tolto il "fermati se
+un alleato di rango piu' alto e' in collisione con te"?
+
+**Cosa era cambiato.** Fra l'ultima release (PR #7) e quella prima (PR #6)
+il movimento e' identico: stessa prova, stessi numeri, passo per passo. Il
+"fermati" (nearRank del guerriero) e' stato tolto in §8.11 (PR #5), ma solo
+verso la propria casella della formazione. Rimesso cosi' com'era (prova
+qui sotto): prima delle correzioni inversioni -14% e -27% in due semi,
+uguali nel terzo, e i mucchi restavano; con le correzioni nessun guadagno,
+e nel combattimento i nemici giravano di piu' (spin nemici 22-97 -> 170-252).
+Non l'ho reintegrato. Le
+cause vere sono quattro, tutte piu' vecchie (§6.1, §6.2, l'originale):
+
+1. **La "vista" sulla casella guardava il campo** (seesGoal, §6.2 D). Il
+   campo si calcola all'ordine, e' uno per tutto il gruppo e ha per ostacoli
+   anche le celle delle unita' ferme in quel momento (occupy), che poi se ne
+   vanno. Con la formazione la casella non e' la meta del campo: chi
+   arrivava in fondo al campo non "vedeva" la sua casella e restava fra due
+   celle, 5 px avanti e indietro a ogni passo, voltandosi di 180 gradi.
+   Negli incroci fra due gruppi: mucchi di 5-8 unita' sovrapposte e
+   tremolanti per sempre. Ora la linea si guarda contro i soli ostacoli
+   fissi (`clearSolid`: edifici, alberi, acqua).
+2. **"Punto d'arrivo occupato"** [C] (fanteria, cavalieri, arcieri, civili,
+   assedio, nemici): la meta si sposta di 32-50 px verso l'unita'. Se
+   l'unita' era piu' vicina, la meta finiva dall'altra parte, e al passo
+   dopo tornava indietro: la catapulta sovrapposta a un arciere fermo andava
+   fra 1280 e 1330 per sempre. Ora, piu' vicina di cosi', arriva dov'e'
+   (`destinationBack`).
+3. **Arrivo "per rinuncia"** (§6.1 n.89): la distanza migliore restava
+   quella dell'ordine prima; con un ordine nuovo entro 400 px l'unita'
+   sembrava ferma anche camminando e si fermava a 50-100 px dalla casella
+   (meta' del gruppo, a ogni ordine). Ora il conto riparte a ogni meta nuova.
+4. **mp_potential_step** (approssimazione [I]): la direzione gira al piu' di
+   30 gradi a passo, e se in quella direzione il passo era chiuso l'unita'
+   girava senza muoversi, fino a 6 passi, e poi di nuovo: a contatto con
+   altre unita' (mischia, ammucchiate) girava su se stessa. Ora, se la
+   direzione girata e' chiusa ma quella libera no, va per quella.
+   Piu' un dettaglio: staccandosi da un'unita' in fondo al campo
+   (moveFlowField, §7.17) il passo non supera piu' la meta (le macchine
+   d'assedio sulla casella la superavano e tornavano indietro).
+
+**Prova** (`game/test/browser/movement.mjs`, nuova: 20 unita' miste, 8
+ordini di gruppo, 5 incroci, un combattimento con 12 nemici; `spin` = gira
+di almeno 20 gradi muovendosi meno di 1 px; `rev` = inversione di marcia;
+`flick` = lo sprite torna alla faccia di 2-6 passi prima; `late` = in
+cammino a fine ordine; `off` = a oltre 40 px dalla casella):
+
+| | release (PR #7) | ora |
+|---|---|---|
+| match, 3 semi: spin | 406 / 599 / 476 | 9 / 18 / 7 |
+| match, 3 semi: rev | 13594 / 11951 / 10651 | 455 / 361 / 259 |
+| match, 3 semi: flick | 13230 / 11792 / 10492 | 432 / 366 / 222 |
+| match, 3 semi: late / off | 31-33 / 160-167 | 0-4 / 2-3 |
+| lvl02: spin / rev / late / off | 604 / 12505 / 33 / 165 | 7 / 1016 / 2 / 4 |
+| lvl03: spin / rev / late / off | 732 / 10958 / 34 / 159 | 9 / 390 / 0 / 2 |
+| combattimento (match, 3 semi): spin alleati | 406 / 599 / 476 | 9 / 18 / 7 |
+| combattimento: spin nemici | 20 / 157 / 53 | 0 / 0 / 0 |
+
+I civili al lavoro (workers.mjs, 5 configurazioni da 16 a 30 civili): le
+stesse risorse (+-5%), civili fermi 2 eventi in tutto (release 5),
+sovrapposizioni prolungate 2 (release 0, un contadino carico per 8 s).
+Consegne (deposit.mjs) 6 su 6, soak e salvataggi (anche lvl03) senza
+errori. Restano le inversioni nei mucchi della mischia (200-400 per
+combattimento) e qualcuna dell'assedio.

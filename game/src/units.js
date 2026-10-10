@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
@@ -308,9 +308,7 @@ export function cavaliere(p) {
       // (non sulla casella della formazione: §8.11)
       if (i.action === 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) {
         if (i.creation !== 1) {
-          const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-          i.dirox += lengthdirX(50, dir);
-          i.diroy += lengthdirY(50, dir);
+          destinationBack(i, 50); // §9.20
         } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) {
           // [§7.10] un altro posto libero vicino alla bandiera; se non c'e',
           // come l'originale
@@ -465,9 +463,7 @@ export function infantry(name, p) {
       // arrivava all'unita' stessa, che si fermava senza dare fuoco
       if (i.action === 1 && i.firework !== 1 && !onFormationSlot(i) && !w.placeFree(i, i.dirox, i.diroy)) { // e §8.11
         if (i.creation !== 1) {
-          const dir = pointDirection(i.dirox, i.diroy, i.x, i.y);
-          i.dirox += lengthdirX(32, dir);
-          i.diroy += lengthdirY(32, dir);
+          destinationBack(i, 32); // §9.20
         } else if (!rallyRetry(w, p, i, (x, y) => scrMove(p, i, x, y))) { // §7.10
           i.dirox += irandomRange(-32, 32);
           i.diroy += irandomRange(-32, 32);
