@@ -270,11 +270,26 @@ export class Manager {
       d.setAlpha(0.75);
       d.setValign("middle");
       d.setHalign("left");
-      d.text(70, 40, g.food);
-      d.text(70, 80, g.wood);
-      d.text(70, 120, g.gold);
-      d.text(160, 40, g.stone);
-      d.text(160, 80, g.pop + "/" + g.popcap);
+      // [§9.25, richiesta dell'autore] col puntatore sul pannello, al posto
+      // delle risorse i civili su ciascuna (e i costruttori al posto della
+      // popolazione), ognuno con l'icona della popolazione, piccola, accanto
+      const inp = world.input;
+      const hover = !!inp && inp.inside && inp.x > 20 && inp.x < 230 && inp.y > 20 && inp.y < 150;
+      const workers = hover ? workersByResource(world) : null;
+      if (workers) {
+        for (const [x, y, n] of [[70, 40, workers.food], [70, 80, workers.wood], [70, 120, workers.gold], [160, 40, workers.stone], [160, 80, workers.build]]) {
+          d.text(x, y, n);
+          d.setAlpha(1);
+          d.spriteExt("ico_multi", 0, x + d.stringWidth(String(n)) + 16, y + 2, 0.26, 0.26, 0, c.white, 1);
+          d.setAlpha(0.75);
+        }
+      } else {
+        d.text(70, 40, g.food);
+        d.text(70, 80, g.wood);
+        d.text(70, 120, g.gold);
+        d.text(160, 40, g.stone);
+        d.text(160, 80, g.pop + "/" + g.popcap);
+      }
       d.setHalign("center");
       d.text(W - 55, 170, g.idle);
       if (g.fps_show > 0) {
@@ -287,7 +302,8 @@ export class Manager {
       d.spriteExt("ico_gold", 0, 50, 120, 0.8, 0.8, 0, c.white, 1);
       d.spriteExt("ico_wood", 0, 50, 80, 0.8, 0.8, 0, c.white, 1);
       d.spriteExt("ico_stone", 0, 140, 40, 0.8, 0.8, 0, c.white, 1);
-      d.spriteExt("ico_multi", 0, 140, 80, 0.4, 0.4, 0, c.white, 1);
+      if (workers) d.spriteExt("ico_casa", 0, 140, 80, 0.42, 0.42, 0, c.white, 1);
+      else d.spriteExt("ico_multi", 0, 140, 80, 0.4, 0.4, 0, c.white, 1);
       d.spriteExt("ico_idle", 0, W - 55, 135, 0.7, 0.7, 0, c.white, 1);
       if (g.sel > 1) {
         d.setAlpha(0.69);
@@ -361,4 +377,21 @@ export class Manager {
       }
     }
   }
+}
+
+// [§9.25] I civili per risorsa: chi raccoglie, chi ci va e chi porta il
+// carico al deposito (il cibo con chi semina un campo); build: chi
+// costruisce o ripara, o ci va. Gli inattivi (action 0) non contano.
+export function workersByResource(world) {
+  const n = { food: 0, wood: 0, gold: 0, stone: 0, build: 0 };
+  for (const o of world.all("ally_omino")) {
+    const a = o.action;
+    if (a === 0) continue;
+    if (a === 2 || o.woodwork === 1 || o.woodwork === 2) n.wood++;
+    else if (a === 3 || o.goldwork === 1 || o.goldwork === 2) n.gold++;
+    else if (a === 5 || o.stonework === 1 || o.stonework === 2) n.stone++;
+    else if (a === 4 || a === 8 || o.foodwork === 1 || o.foodwork === 2 || o.foodwork === 6 || o.fieldwork === 1) n.food++;
+    else if (a === 6 || a === 7 || o.buildwork === 1 || o.repairwork === 1) n.build++;
+  }
+  return n;
 }

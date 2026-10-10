@@ -4840,3 +4840,17 @@ la piu' cupa: "The soldiers are alone, far from home. The invaders are
 seeking one last stronghold to conquer: if that falls too, there will be
 no one left to stop them." Provato nel menu (italiano e tedesco, la lingua
 piu' lunga): nel riquadro.
+
+### 9.25 Pannello delle risorse: i civili su ogni risorsa
+
+Richiesta dell'autore (10 ottobre 2026): col puntatore sul pannello delle
+risorse (in alto a sinistra), invece delle risorse i lavoratori su
+ciascuna. manager.js `drawGUI`: col puntatore nel riquadro (20-230, 20-150
+px) i numeri diventano i civili su cibo, legno, oro e pietra, e al posto
+della popolazione quelli che costruiscono o riparano (icona della casa);
+accanto a ogni numero l'icona della popolazione, piccola, perche' si veda
+che il pannello mostra un'altra cosa. Contano (`workersByResource`) chi
+lavora, chi ci va e chi porta il carico al deposito (il cibo con chi semina
+un campo); gli inattivi no (hanno il loro contatore). Provato in `match`
+con 5 civili sul legno, 4 sull'oro, 3 sulla pietra, 2 sui campi, 2 su una
+casa in costruzione e 1 fermo: 2, 5, 4, 3 e 2.
