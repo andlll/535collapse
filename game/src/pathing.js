@@ -729,10 +729,12 @@ export function arriveIfBlocked(inst) {
 // se cosi' il passo e' chiuso, si va subito per la direzione libera); se
 // nessuna direzione e' libera l'istanza ruota sul posto. Restituisce true
 // all'arrivo.
-export function mpPotentialStep(w, inst, xg, yg, step, checkall = false) {
+export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAllies = false) {
   const MAXROT = 30, ROT = 3, AHEAD = 3;
   if (step <= 0) return false;
-  const slot = !checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy; // §8.11
+  // §8.11 verso la casella della formazione, §9.21 (overAllies) verso il
+  // posto prenotato attorno a una risorsa: sopra gli alleati si passa
+  const slot = overAllies || (!checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy);
   const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y)
     : slot ? w.placeFreeExcept(inst, x, y, "ally_unit") : w.placeFree(inst, x, y));
   if (pointDistance(inst.x, inst.y, xg, yg) <= step) {

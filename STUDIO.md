@@ -4695,3 +4695,71 @@ sovrapposizioni prolungate 2 (release 0, un contadino carico per 8 s).
 Consegne (deposit.mjs) 6 su 6, soak e salvataggi (anche lvl03) senza
 errori. Restano le inversioni nei mucchi della mischia (200-400 per
 combattimento) e qualcuna dell'assedio.
+
+### 9.21 Cantiere affollato: 20 civili fra una miniera e un magazzino
+
+Richiesta dell'autore (10 ottobre 2026): una prova con un magazzino vicino
+a una miniera o a una rovina di pietra e 20 lavoratori che scavano, per
+vedere se si incasinano (la situazione tipica di un RTS).
+
+**La prova** (`game/test/browser/mining.mjs`, nuova): in `match`, nemici
+tolti, un magazzino nuovo a ~150 px dal bordo della miniera d'oro (1847,
+614) o della pietra grande (768, 1179), N civili attorno al magazzino,
+clic destro vero sulla risorsa, N passi. Misure come in movement.mjs
+(fermi, spin, rev, flick), piu' i passi "lenti" in cammino, le coppie
+sovrapposte per oltre 5 s e i passi in coda (sotto). `SAVE=1` salva a fine
+prova, ricarica e confronta.
+
+**Nell'ultima release si incasinavano**, e nelle correzioni di §9.20 ancora
+di piu' (le nuove non toccavano i civili al lavoro): con 20 civili sull'oro,
+in 2,5 minuti, 30834 inversioni di marcia (un passo su quattro in cammino),
+23 civili fermi, 33 coppie sovrapposte a lungo. Le cause:
+- **posti attorno alla risorsa** (meleeSpot, §8.19): ricalcolati a ogni
+  passo a settori di 30 gradi, meno dei civili e agli angoli quasi uno
+  sull'altro; chi restava senza puntava al centro della risorsa, si staccava
+  dagli altri (separate) e al passo dopo ci tornava sopra col campo;
+- **cominciare a lavorare** solo senza nessun civile addosso: bastava uno di
+  passaggio;
+- **pietra finita** (c'era gia'): chi ci stava andando continuava col campo
+  verso il punto in cui era e li' restava a girare (chi ci lavorava invece
+  ripartiva verso la piu' vicina).
+
+**Ora** (civilians.js, solo oro e pietra; il legno e la consegna su ordine
+restano con meleeSpot):
+- ogni risorsa ha **posti fissi** che non si toccano, sul bordo (lavoro) e
+  una fila piu' in fuori (attesa), calcolati una volta sola dalla maschera
+  del civile (`resSpots`, sulla risorsa: salvati con lei);
+- a 100 px dalla risorsa si **prenota** il posto di lavoro libero piu'
+  vicino, o se non ce n'e' quello d'attesa; resta di chi lo ha finche' va
+  alla risorsa o ci lavora, chi parte per il deposito lo lascia e il primo
+  che chiede lo prende (chi aspetta chiede a ogni passo);
+- verso il posto: il campo calcolato una volta per posto (dall'altra parte
+  della risorsa la si aggira), poi dritti quando e' in vista, passando sopra
+  gli altri civili come verso la casella della formazione; se in 30 passi non
+  ci si avvicina (lo spigolo di una pietra irregolare) di nuovo il campo;
+  dentro la risorsa (il campo taglia gli spigoli) si esce allontanandosi dal
+  suo centro;
+- al posto d'attesa si sta **fermi**, girati verso la risorsa (queueWait):
+  gli altri ci passano sopra;
+- si comincia a lavorare solo **al proprio posto**, se nessun altro civile
+  *al lavoro* e' addosso;
+- risorsa finita: chi ci andava va alla piu' vicina.
+
+| 20 civili | release oro 2,5 min | ora | release pietra 2,5 min | ora |
+|---|---|---|---|---|
+| raccolto (al minuto) | 1330 (532) | 1810 (724) | 870 (348) | 1293 (517) |
+| fermi | 23 | 0 | 59 | 1 |
+| inversioni | 30834 | 173 | 46151 | 853 |
+| spin | 8235 | 334 | 3385 | 199 |
+| passi lenti in cammino | 262‰ | 58‰ | 291‰ | 87‰ |
+| coppie sovrapposte > 5 s | 33 | 0 | 103 | 23 |
+
+Con 30 civili sull'oro: 1600 -> 1780 raccolti, fermi 41 -> 0, inversioni
+58030 -> 185, sovrapposte 85 -> 0. In 5 minuti (la pietra grande finisce e
+si va alle rovine vicine): pietra 1337 -> 1538, fermi 89 -> 2, inversioni
+88810 -> 821. Le sovrapposte rimaste (pietra 23-52) sono civili che vanno
+insieme alla rovina successiva, lontano dal magazzino.
+I civili su piu' risorse (workers.mjs, centro come deposito): oro 1520 ->
+1650, 1390 -> 1590, 1600 -> 2040, il resto uguale, fermi e sovrapposti 0.
+movement.mjs, consegne, soak (anche lvl03) e salvataggi senza differenze o
+errori; salvataggio a cantiere attivo (SAVE=1) identico.
