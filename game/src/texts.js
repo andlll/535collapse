@@ -551,6 +551,12 @@ export const TEXTS = {
     pt: "Um exército de sobreviventes deixa a cidade rumo às colinas. Sua prioridade é libertar os cidadãos aprisionados pelos invasores.",
     de: "Ein Heer von Überlebenden verlässt die Stadt und zieht in die Hügel. Sein Ziel ist es, die von den Eindringlingen gefangenen Bürger zu befreien.",
     fr: "Une armée de survivants quitte la ville pour les collines. Sa priorité est de libérer les citoyens emprisonnés par les envahisseurs." },
+  "Beyond the hills the road leads deep into enemy land. A handful of soldiers sets out in search of new allies, while the invaders march toward the mountains, where the walls of an ancient monastery still stand.": {
+    it: "Oltre le colline la strada si addentra in terra nemica. Un pugno di soldati parte in cerca di nuovi alleati, mentre gli invasori marciano verso le montagne, dove resistono ancora le mura di un antico monastero.",
+    es: "Más allá de las colinas, el camino se adentra en tierra enemiga. Un puñado de soldados parte en busca de nuevos aliados, mientras los invasores marchan hacia las montañas, donde aún se alzan los muros de un antiguo monasterio.",
+    pt: "Para além das colinas, a estrada entra em terra inimiga. Um punhado de soldados parte em busca de novos aliados, enquanto os invasores marcham rumo às montanhas, onde ainda se erguem as muralhas de um antigo mosteiro.",
+    de: "Hinter den Hügeln führt die Straße tief in Feindesland. Eine Handvoll Soldaten macht sich auf die Suche nach neuen Verbündeten, während die Eindringlinge auf die Berge zumarschieren, wo noch immer die Mauern eines alten Klosters stehen.",
+    fr: "Au-delà des collines, la route s'enfonce en terre ennemie. Une poignée de soldats part à la recherche de nouveaux alliés, tandis que les envahisseurs marchent vers les montagnes, où se dressent encore les murs d'un ancien monastère." },
   // ------------------------------------------------------------ salvataggi
   "SAVE AND LOAD": { it: "SALVA E CARICA", es: "GUARDAR Y CARGAR", pt: "SALVAR E CARREGAR", de: "SPEICHERN UND LADEN", fr: "SAUVEGARDER ET CHARGER" },
   "Save and load": { it: "Salva e carica", es: "Guardar y cargar", pt: "Salvar e carregar", de: "Speichern und laden", fr: "Sauvegarder et charger" },

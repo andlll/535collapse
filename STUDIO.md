@@ -4828,3 +4828,15 @@ giusto: tutti i controlli passano anche nella release, tranne 5 e 6.
 Dopo: idle.mjs tutto PASS; mining.mjs fermi 0 (oro e pietra, 2,5 e 5 min);
 workers.mjs, consegne, movement.mjs, soak (anche lvl03), salvataggi e
 salvataggio a cantiere attivo senza errori.
+
+### 9.24 Campagna: la storia del livello 3
+
+Segnalazione dell'autore (10 ottobre 2026): nel menu della campagna il
+livello 3 diceva ancora "Prossimamente". Il livello e' nuovo (§9.11) e
+l'originale non ha un testo: scritto nello stile dei primi due (menu.js
+`STORY[3]`, sei lingue in texts.js), fa da ponte col livello 2 e annuncia il
+monastero senza dire del villaggio: "Beyond the hills the road leads deep
+into enemy land. A handful of soldiers sets out in search of new allies,
+while the invaders march toward the mountains, where the walls of an
+ancient monastery still stand." Provato nel menu (italiano e tedesco, la
+lingua piu' lunga): due righe, nel riquadro.
