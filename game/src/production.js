@@ -157,6 +157,11 @@ export function producer(name, base, p) {
         n.dirox = ax; n.diroy = ay; n.action = 1;
       } else if (u) {
         const n = w.create(u.obj, i.x + 20 * sx, i.y + 10 * sy);
+        // [§9.30, segnalazione dell'autore] senza bandiera (o con la bandiera
+        // sull'edificio) l'unita' restava dove nasce, di solito dentro
+        // l'edificio: ora, se ci si sovrappone, va al posto libero piu'
+        // vicino all'uscita
+        if (ax === 0 && !w.placeFree(n, n.x, n.y)) { ax = n.x; ay = n.y; }
         if (ax !== 0) {
           n.alarm.set(10, 10);
           n.creation = 1;

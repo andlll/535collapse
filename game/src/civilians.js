@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
@@ -280,6 +280,17 @@ function rallyOmino(p) {
     if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; }
     if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; }
     if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+    // [§9.30, segnalazione dell'autore] senza un lavoro sotto la bandiera, un
+    // posto libero, raggiungibile e non promesso a un altro vicino alla
+    // bandiera, e la strada col pathfinding passando sopra gli altri civili
+    // (pathing.js, rallySpot e rallyGo), come i soldati
+    const work = i.goldwork || i.woodwork || i.foodwork || i.stonework || i.buildwork || i.fieldwork;
+    const spot = !work && rallySpot(w, p, i, i.flaggox, i.flaggoy);
+    if (spot) {
+      [i.flaggox, i.flaggoy] = spot;
+      rallyGo(p, i);
+      return;
+    }
     // azione 2: flow field verso la bandiera
     p.free(i);
     goTo(p, i, i.flaggox, i.flaggoy);

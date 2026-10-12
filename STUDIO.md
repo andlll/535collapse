@@ -5056,3 +5056,67 @@ Movimento (movement.mjs, 3 semi) e miniera (mining.mjs) identici al commit
 prima; workers.mjs: stesse risorse (oro 480 invece di 470); consegne, civili
 inattivi, mischia, soak e salvataggi senza errori.
 
+### 9.30 Unita' appena prodotte verso la bandiera di raccolta
+
+Segnalazione dell'autore (12 ottobre 2026): con la bandierina in un punto
+vicino il pathfinding non si attiva, e se il punto e' irraggiungibile o
+occupato l'unita' appena creata si incasina. Proposta: attivare comunque il
+pathfinding e trovare subito un altro punto di raccolta valido.
+
+**Cosa succedeva** (prova qui sotto, `match`, caserma vicino al fiume):
+- da vicino (meno di 400 px, nessun edificio o albero sulla linea) l'unita'
+  andava dritta con mp_potential_step: le unita' prodotte prima, gia' ferme
+  al loro posto, la bloccavano; avanti e indietro per secondi (fino a 230
+  inversioni), poi arrivo "per rinuncia" (§6.1 n.89) anche a 190 px dal
+  posto;
+- il posto (rallySpot, §7.10) era libero ma non sempre raggiungibile (oltre
+  la riva, in un bosco chiuso);
+- i posti promessi si escludevano entro 48 px: i cavalieri (91 px)
+  finivano sovrapposti;
+- senza bandiera o con la bandiera sull'edificio l'unita' restava dove
+  nasce, dentro l'edificio;
+- i civili dal centro: lo stesso, senza nemmeno la scelta del posto;
+- in piu' (§9.29) pali e statue perdevano le loro celle nella griglia se
+  accanto spariva un edificio, e le unita' ci finivano contro.
+
+**Ora** (pathing.js, units.js, ranged.js, production.js, civilians.js):
+- `rallySpot`: il posto e' raggiungibile dall'unita' fra gli ostacoli fissi;
+  i posti promessi si escludono entro la misura della maschera;
+- `rallyGo` (al posto di scrMove nell'Alarm_10 di guerriero, picchiere,
+  cavaliere e arciere): campo dei soli ostacoli fissi verso il posto e il
+  posto come una casella della formazione (§8.11): unico, raggiunto anche da
+  vicino col pathfinding quando la linea e' chiusa, passando sopra gli
+  alleati. Se non e' raggiungibile, come prima;
+- `snapToSlot`: arrivata a 10 px dalla casella sovrapposta a un edificio o a
+  un albero (col flow field si passa senza collisioni), l'unita' va sulla
+  casella se e' libera (vale anche per le caselle della formazione);
+- caserma e stalla senza bandiera (o con la bandiera sull'edificio): se
+  l'unita' nasce sovrapposta all'edificio, va al posto libero piu' vicino;
+- civili: senza un lavoro sotto la bandiera, come i soldati; con un lavoro
+  (albero, miniera, campo, cantiere) come prima;
+- `markInstance`: tiene chiuse le celle di chiunque abbia segnato la
+  griglia (gridMark), non solo delle famiglie di initCost.
+
+**Prova** (`game/test/browser/rally.mjs`, nuova, nella CI con 12 direzioni
+a 150 e 300 px; completa con `ANGLES=24 RADII=150,260,380`): l'edificio in
+un posto libero, la bandiera in 72 punti attorno (sull'edificio, su alberi,
+nel fiume, su altre unita', in celle chiuse), 3 unita' per bandiera seguite
+per 1300 passi. Prova completa, 216 unita' per riga; inversioni (di chi non
+lavora) / unita' a oltre 40 px dal posto / sovrapposte a edifici o alberi:
+
+| | prima | ora |
+|---|---|---|
+| match, caserma presso il fiume | 890 (max 230) / 10 / 0 | 15 / 0 / 0 |
+| match, stalla presso il fiume | 105 / 23 / 20 | 77 (max 13) / 0 / 0 |
+| match, caserma presso il centro | 738 / 18 / 2 (1 ferma) | 0 / 0 / 0 |
+| match, stalla presso il centro | 1760 / 35 / 8 | 19 / 0 / 0 |
+| match, centro (civili), due posti | 285 e 969 / 45 e 57 / 3 e 1 | 10 e 0 / 0 / 0 |
+| lvl02, caserma | 343 / 36 / 3 | 6 / 0 / 0 |
+| lvl02, stalla | 1363 (max 338) / 39 / 6 | 17 / 0 / 0 |
+
+Movimento (movement.mjs, 3 semi: inversioni 265/489/203 -> 282/289/204),
+civili al lavoro, consegne, inattivi, miniera, mischia, monastero, soak e
+salvataggi senza differenze di rilievo o errori. Nell'esperimento, creare e
+distruggere edifici di prova liberava le celle di un palo: da li' la
+correzione di `markInstance` per pali e statue.
+

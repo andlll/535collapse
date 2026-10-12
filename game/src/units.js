@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire } from "./siege.js";
@@ -293,6 +293,7 @@ export function cavaliere(p) {
       // azione 4: direzione e arrivo
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      snapToSlot(w, i); // §9.30
       if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction)) {
         i.action = 0; p.occupy(i); i.warwork = 0; i.speed = 0;
       }
@@ -451,6 +452,7 @@ export function infantry(name, p) {
       i.autospeed = 4 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      snapToSlot(w, i); // §9.30
       if (i.action === 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
                                          : pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction))) {
         i.action = 0; p.occupy(i); i.creation = 0; i.warwork = 0; i.speed = 0;
@@ -875,7 +877,7 @@ function rallyMove(i, w, p, offset100) {
   i.action = 1;
   i.warwork = 4;
   if (w.positionMeeting(i.flaggox + (offset100 ? 100 : 0), i.flaggoy, "enemy_unit")) i.warwork = 1;
-  scrMove(p, i, i.flaggox, i.flaggoy);
+  rallyGo(p, i); // §9.30 (era scrMove)
 }
 
 // Draw_End [C, identico in guerriero, picchiere e cavaliere]: barra della

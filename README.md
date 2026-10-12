@@ -90,6 +90,7 @@ node game/test/browser/soak.mjs http://localhost:8123 3000   # Chromium: 3000 pa
 node game/test/browser/saves.mjs http://localhost:8123 4000  # salva, ricarica, stato identico
 node game/test/browser/melee.mjs match                  # mischia: il colpo cominciato arriva fino in fondo
 node game/test/browser/monastery.mjs                    # livello 3: riparare e incendiare il monastero, arieti e mura
+node game/test/browser/rally.mjs                        # unita' appena prodotte verso la bandiera di raccolta
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

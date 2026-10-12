@@ -7,7 +7,7 @@
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -345,7 +345,7 @@ export function allyArcher(p) {
       i.warwork = 4;
       if (w.positionMeeting(i.flaggox, i.flaggoy, "enemy_unit")) i.warwork = 1;
       if (!w.positionMeeting(i.dirox, i.diroy, "torre") && !w.positionMeeting(i.dirox, i.diroy, "castello")) i.presidiowork = 0;
-      scrMove(p, i, i.flaggox, i.flaggoy);
+      rallyGo(p, i); // §9.30 (era scrMove)
     },
     stepBegin(i, w) { if (w.number("torre_placer") > 0) w.g.sele = 1; },
     step(i, w) {
@@ -364,6 +364,7 @@ export function allyArcher(p) {
       i.autospeed = 4 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      snapToSlot(w, i); // §9.30
       if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 && i.atkorder === 0) {
         i.action = 0; i.warwork = 0; i.creation = 0; i.speed = 0;
       }

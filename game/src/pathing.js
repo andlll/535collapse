@@ -120,13 +120,18 @@ export class Pathing {
   // mura ai suoi lati, e gli arieti (che sul flow field si muovono senza
   // collisioni) passavano attraverso il muro, anche con una caserma
   // costruita al posto della porta. Ora restano chiuse le celle che tocca
-  // ancora un altro ostacolo fisso solido (le famiglie di initCost).
+  // ancora un altro ostacolo della griglia: chi l'ha segnata (gridMark) e
+  // non l'ha liberata. [§9.30] Prima solo le famiglie di initCost: i pali e
+  // le statue (props.js), che segnano la griglia da soli, perdevano le loro
+  // celle se accanto spariva un edificio, e le unita' ci andavano contro.
+  // (Nei salvataggi di prima gridMark manca: lo si deduce dalle famiglie.)
   markInstance(inst, value) {
     const s = value >= 1000 ? 1 : 0;
     for (const k of this._cellsOf(inst)) {
       if (!s && this.cost[k] >= 1000 && this._heldByOther(k, inst)) continue;
       this.cost[k] = value; this.solid[k] = s;
     }
+    inst.gridMark = s;
     this.solidVer++;
   }
 
@@ -134,7 +139,8 @@ export class Pathing {
     const w = this.w, gx = k % this.gw, gy = (k - gx) / this.gw;
     const x0 = gx * GRID, y0 = gy * GRID, x1 = x0 + GRID, y1 = y0 + GRID;
     for (const o of w._nearList([x0, y0, x1, y1])) {
-      if (o === inst || !o.alive || !o.solid || !HOLDERS.some((f) => w.is(o, f))) continue;
+      if (o === inst || !o.alive) continue;
+      if (o.gridMark === undefined ? !(o.solid && HOLDERS.some((f) => w.is(o, f))) : o.gridMark !== 1) continue;
       if (w.collisionRectangle(x0, y0, x1, y1, null, true, null, o)) return true;
     }
     return false;
@@ -655,7 +661,12 @@ export function siegeMove(w, p, i) {
 // Prima due unita' prodotte di seguito ricevevano lo stesso posto (la
 // spirale guardava solo le celle di chi e' gia' fermo) e la seconda,
 // trovatolo occupato, spostava la meta a caso di 32-50 px a ogni passo.
+// [§9.30, segnalazione dell'autore] E raggiungibile dall'unita' fra gli
+// ostacoli fissi (verso il posto si passa sopra gli alleati: rallyGo):
+// prima il posto poteva essere oltre la riva del fiume, in un bosco chiuso,
+// dietro un edificio senza passaggio, e l'unita' ci si incastrava.
 export function rallySpot(w, p, inst, ax, ay) {
+  const reach = p.goalField(inst.x, inst.y, false, false, true);
   const taken = [];
   for (const u of w.all("ally_unit")) {
     if (u === inst || u.creation !== 1) continue;
@@ -663,13 +674,16 @@ export function rallySpot(w, p, inst, ax, ay) {
     if (u.action === 1) taken.push([u.dirox, u.diroy]);
   }
   const cs = 64;
+  // [§9.30] i posti gia' promessi a meno della misura della maschera (era
+  // 48 px: i cavalieri, larghi 91, si sovrapponevano ai vicini)
+  const bb = w.bbox(inst), mw = Math.max(48, bb ? bb[2] - bb[0] : 0), mh = Math.max(48, bb ? bb[3] - bb[1] : 0);
   let gx = Math.floor(ax / cs), gy = Math.floor(ay / cs);
   let stepLen = 1, dir = 0, done = 0, changes = 0;
   for (let attempts = 0; attempts < 400; attempts++) {
     const fx = gx * cs + cs / 2, fy = gy * cs + cs / 2;
     const cx = Math.floor(fx / GRID), cy = Math.floor(fy / GRID);
-    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && w.placeFree(inst, fx, fy)
-        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < 48 && Math.abs(ty - fy) < 48)) return [fx, fy];
+    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && reach[cy * p.gw + cx] !== -1 && w.placeFree(inst, fx, fy)
+        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < mw && Math.abs(ty - fy) < mh)) return [fx, fy];
     if (dir === 0) gx++; else if (dir === 1) gy++; else if (dir === 2) gx--; else gy--;
     done++;
     if (done >= stepLen) {
@@ -680,6 +694,31 @@ export function rallySpot(w, p, inst, ax, ay) {
     }
   }
   return null;
+}
+
+// [§9.30, segnalazione dell'autore] Un'unita' appena prodotta verso il suo
+// posto (flaggox, flaggoy: rallySpot) col pathfinding anche da vicino: il
+// campo verso il posto e il posto come una casella della formazione
+// (§8.11, onFormationSlot), cioe' unico e raggiunto passando sopra gli
+// alleati. Prima, sotto i 400 px e senza edifici in mezzo, andava dritta con
+// mp_potential_step e si fermava contro le unita' prodotte prima, gia' al
+// loro posto: avanti e indietro per secondi (fino a 230 inversioni), poi
+// arrivava "per rinuncia" anche a 190 px dal posto.
+// Il campo e' quello dei soli ostacoli fissi: le celle delle unita' ferme
+// (occupy) chiudevano in una sacca chi nasceva fra l'edificio e i compagni.
+export function rallyGo(p, inst) {
+  p.free(inst);
+  const f = p.goalField(inst.flaggox, inst.flaggoy, false, false, true);
+  const gx = Math.trunc(inst.flaggox / GRID), gy = Math.trunc(inst.flaggoy / GRID);
+  const sx = Math.floor(inst.x / GRID), sy = Math.floor(inst.y / GRID);
+  if (p.fieldAt(f, gx, gy) === -1 || (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2))) {
+    scrMove(p, inst, inst.flaggox, inst.flaggoy); // posto non raggiungibile: come prima
+    return;
+  }
+  inst.goal_field = f; inst.flow_field = p.flowField(f);
+  inst.goal_x = gx * GRID; inst.goal_y = gy * GRID;
+  inst.dirox = inst.flaggox; inst.diroy = inst.flaggoy;
+  inst.formX = inst.dirox; inst.formY = inst.diroy;
 }
 
 // [§7.10] Appena prodotta e col posto occupato: un altro posto libero
@@ -748,6 +787,16 @@ export function seesGoal(p, inst) {
 // World.placeFreeForSlot): le righe vanno per ruolo e chi deve finire
 // davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
+
+// [§9.30] Arrivo sulla casella (formazione, posto di raccolta): l'arrivo
+// scatta a 10 px e l'unita', arrivata col flow field (senza collisioni),
+// poteva fermarsi sovrapposta all'edificio da cui era uscita o a un albero.
+// Se e' cosi' e la casella e' libera (gli alleati non contano), ci va.
+export function snapToSlot(w, inst) {
+  if (inst.action !== 1 || !onFormationSlot(inst) || pointDistance(inst.x, inst.y, inst.dirox, inst.diroy) >= 10) return;
+  if (w.placeFreeExcept(inst, inst.x, inst.y, "ally_unit") || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, "ally_unit")) return;
+  w.setPos(inst, inst.dirox, inst.diroy);
+}
 
 // "Punto d'arrivo occupato" [C]: la meta si sposta di `len` px verso
 // l'unita'. [§9.20] Se l'unita' e' piu' vicina di `len`, la meta diventa il
