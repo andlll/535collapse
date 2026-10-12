@@ -4952,8 +4952,9 @@ girata verso di lui, finisce l'animazione e il danno va a lui (se nessun
 altro nemico e' a contatto davanti all'unita', come prima). Finito il
 colpo, se il bersaglio e' ancora lontano riparte a inseguirlo come prima.
 Lo interrompono un ordine del giocatore (clic destro: action 1) e la morte
-del bersaglio. Solo alleati: i nemici (enemies.js, `enemyStrike`) fanno
-ancora come l'originale. Nessun campo dei salvataggi cambia significato
+del bersaglio. **Anche i nemici** (enemies.js, `enemyStrike`, chiesto
+dall'autore dopo la prima prova): l'originale interrompeva il colpo alla
+fase successiva se l'alleato piu' vicino era oltre i 10 px. Nessun campo dei salvataggi cambia significato
 (`swing`, `swingT` sono nuovi e mancano nei vecchi: colpo non impegnato).
 
 **Prova** (`game/test/browser/melee.mjs`, nuova, nella CI): un alleato
@@ -4968,9 +4969,14 @@ colpo si interrompe, un altro nemico lontano non perde vita).
 | cavaliere: prima / ora | 75 / 23 | 5 / 34 | 71 / 0 |
 | guerriero: prima / ora | 66 / 21 | 5 / 29 | 61 / 0 |
 | picchiere: prima / ora | 72 / 21 | 3 / 29 | 69 / 0 |
+| guerriero nemico: prima / ora | 40 / 17 | 11 / 25 | 32 / 0 |
+| picchiere nemico: prima / ora | 35 / 17 | 10 / 25 | 28 / 0 |
+| cavaliere nemico: prima / ora | 40 / 17 | 11 / 24 | 33 / 0 |
 
 ("Arrivati" piu' dei cominciati: col bersaglio ancora a contatto il colpo
 dopo segue senza ricominciare.) Il bersaglio colpito era al piu' a 86-88 px
 (in partita, un nemico che scappa appena comincia il colpo, a 4 px per passo, fino a circa 130-150 px).
 movement.mjs (match, 3 semi), combattimento: spin 9/18/7 -> 7/17/6, rev
-392/293/212 -> 395/268/212; soak e salvataggi senza errori.
+392/293/212 -> 395/268/212 (solo alleati), 202/421/156 (anche i nemici:
+i combattimenti cambiano, alleati rimasti 12/15/10 -> 10/13/10); soak e
+salvataggi senza errori.

@@ -739,12 +739,21 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
 // animazione e danno, anche se il bersaglio intanto si e' allontanato;
 // dopo il colpo, se e' ancora lontano, si riparte a inseguirlo come prima.
 // Un ordine del giocatore (action 1) o la morte del bersaglio lo
-// interrompono.
-function swingOn(i) {
+// interrompono. Lo stesso per i nemici (enemies.js).
+export function swingOn(i) {
   const t = i.swingT;
   if (i.swing !== 1 || i.action !== 2 || i.warwork !== 2 || !t || !t.alive) return false;
   i.direction = pointDirection(i.x, i.y, t.x, t.y);
   return true;
+}
+
+// Alla fine del colpo: chi lo prende. `v` e' la scelta dell'originale (il
+// piu' vicino al punto 30 px davanti); se non e' a contatto e il colpo era
+// impegnato, il bersaglio del colpo.
+export function swingVictim(w, i, v) {
+  const st = i.swing === 1 && i.swingT && i.swingT.alive ? i.swingT : null;
+  i.swing = 0;
+  return st && (!v || w.distanceToInstance(i, v) >= 10) ? st : v;
 }
 
 // Step "Attacco" [C, guerriero azione 10 / cavaliere azione 12]: senza un
@@ -838,10 +847,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   i.step = 0;
   i.alarm.set(2, 13);
   const target = enemySide ? "ally_unit" : "enemy_unit";
-  let v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target);
-  const st = i.swing === 1 && i.swingT && i.swingT.alive ? i.swingT : null;
-  i.swing = 0;
-  if (st && (!v || w.distanceToInstance(i, v) >= 10)) v = st;
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target));
   if (!v) return;
   if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;

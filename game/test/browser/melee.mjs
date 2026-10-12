@@ -2,7 +2,8 @@
 // alleato (cavaliere, guerriero, picchiere) contro un guerriero nemico che
 // si lascia raggiungere e, appena l'alleato comincia a colpire, aspetta
 // qualche passo e scappa (la sua posizione la decide la prova, non la sua
-// intelligenza). Per ogni tipo:
+// intelligenza); poi lo stesso a parti invertite, un nemico (guerriero,
+// picchiere, cavaliere) contro un guerriero alleato. Per ogni tipo:
 //   starts  = colpi cominciati (action che diventa 2)
 //   hits    = colpi arrivati (il bersaglio perde vita)
 //   aborts  = colpi interrotti senza danno (action che lascia il 2 senza
@@ -54,10 +55,10 @@ const res = await page.evaluate(() => {
 
   // Il nemico scappa lungo un cerchio attorno al centro, cosi' resta nella
   // zona aperta per tutta la prova.
-  const kite = (obj, steps) => {
+  const kite = (obj, steps, victim = "enemy_warrior") => {
     clear();
     const a = w.create(obj, CX - 200, CY);
-    const e = w.create("enemy_warrior", CX - 120, CY);
+    const e = w.create(victim, CX - 120, CY);
     G.advance(2);
     let ang = Math.PI, st = "wait", n = 0, ex = e.x, ey = e.y;
     const R = Math.hypot(ex - CX, ey - CY);
@@ -91,6 +92,7 @@ const res = await page.evaluate(() => {
   };
   const out = {};
   for (const obj of ["ally_cavaliere", "ally_warrior", "ally_picchiere"]) out[obj] = kite(obj, 1500);
+  for (const obj of ["enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) out[obj] = kite(obj, 1500, "ally_warrior");
 
   // a meta' colpo, col bersaglio lontano: ordine del giocatore o morte
   const midSwing = (then) => {
@@ -150,7 +152,7 @@ await browser.close();
 console.log(room, JSON.stringify(res, null, 1));
 const bad = [];
 if (errs.length) bad.push("errori: " + errs[0]);
-for (const k of ["ally_cavaliere", "ally_warrior", "ally_picchiere"]) {
+for (const k of ["ally_cavaliere", "ally_warrior", "ally_picchiere", "enemy_warrior", "enemy_picchiere", "enemy_cavaliere"]) {
   const m = res[k];
   if (m.err) { bad.push(k + ": " + m.err); continue; }
   if (m.starts < 10) bad.push(`${k}: solo ${m.starts} colpi cominciati`);
