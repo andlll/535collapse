@@ -273,7 +273,10 @@ async function main() {
   // [§9.15] nel tutorial (match) una catapulta alleata da sola al centro
   // della mappa (3420, 3422): era li' per le prove dell'autore.
   const DROPPED = { lvl02: ["hint_legna"], menu: ["hint_iniziale"], match: ["ally_catapulta"] };
-  const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj));
+  // [§9.36] l'animazione del fiume dell'originale: al suo posto i riflessi,
+  // le increspature e la schiuma su tutta l'acqua (effects.js, waterLife)
+  const DROPPED_ALL = ["fiume_animazione"];
+  const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj) && !DROPPED_ALL.includes(obj));
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);

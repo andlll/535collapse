@@ -41,8 +41,8 @@ export function rainStart(w) {
 // piove: a ogni passo, RIPPLE_TRIES punti a caso nella view; dove c'e'
 // acqua (la mappa dell'acqua degli sprite del fiume, tools/06_masks.py)
 // nasce un anello (pt_shape_ring) schiacciato come il resto della vista
-// isometrica, che si allarga e sbiadisce. Il sistema sta a depth -21:
-// sopra il fiume (0) e la sua animazione (-20), sotto unita' ed edifici;
+// isometrica, che si allarga e sbiadisce. [§9.36] Sopra il pezzo di fiume
+// su cui cade (waterSystem; era a depth -21, sotto il fiume);
 // categoria "rain" (spento con la pioggia nelle opzioni grafiche).
 const RIPPLE_TRIES = 36;
 const ANELLO = partType({
@@ -56,15 +56,20 @@ const ANELLO2 = partType({
 
 // Mappa dell'acqua della room in celle da 8 px, dalle istanze del fiume
 // (una volta: sono ferme). null se nella room non c'e' acqua.
+// [§9.36] owner: per ogni cella il pezzo di fiume che la disegna (fra due
+// sovrapposti quello disegnato dopo, depth piu' bassa), in pieces.
 function waterMap(w) {
   if (w._water !== undefined) return w._water;
   const C = 8, gw = Math.ceil(w.roomW / C), gh = Math.ceil(w.roomH / C);
-  let grid = null;
+  let grid = null, owner = null;
+  const pieces = [], angles = [];
   for (const i of w.instances) {
     const m = i.alive && i.sprite_index && w.masks[i.sprite_index];
     const wt = m && m.water;
     if (!wt) continue;
-    if (!grid) grid = new Uint8Array(gw * gh);
+    if (!grid) { grid = new Uint8Array(gw * gh); owner = new Int32Array(gw * gh).fill(-1); }
+    const pi = pieces.push(i) - 1;
+    const st = [0, 0, 0, 0, 0, 0]; // n, x, y, xx, yy, xy delle celle d'acqua
     const raw = atob(wt.bits), sx = i.image_xscale || 1, sy = i.image_yscale || 1;
     const [ox, oy] = m.origin;
     // [§9.7] il fiume puo' essere ruotato (image_angle, come in drawSprite)
@@ -83,12 +88,48 @@ function waterMap(w) {
         const kx = Math.floor(lx / wt.cell), ky = Math.floor(ly / wt.cell);
         if (kx < 0 || ky < 0 || kx >= wt.w || ky >= wt.h) continue;
         const k = ky * wt.w + kx;
-        if (raw.charCodeAt(k >> 3) & (1 << (k & 7))) grid[cy * gw + cx] = 1;
+        if (raw.charCodeAt(k >> 3) & (1 << (k & 7))) {
+          const c2 = cy * gw + cx;
+          grid[c2] = 1;
+          if (owner[c2] === -1 || pieces[owner[c2]].depth > i.depth) owner[c2] = pi;
+          st[0]++; st[1] += cx; st[2] += cy; st[3] += cx * cx; st[4] += cy * cy; st[5] += cx * cy;
+        }
       }
     }
+    // [§9.36] la direzione del pezzo (asse principale delle sue celle
+    // d'acqua), in gradi come GameMaker (y verso l'alto)
+    const [n, sx_, sy_, sxx, syy, sxy] = st;
+    const vx = sxx / n - (sx_ / n) ** 2, vy = syy / n - (sy_ / n) ** 2, cxy = sxy / n - (sx_ / n) * (sy_ / n);
+    angles.push(n ? -0.5 * Math.atan2(2 * cxy, vx - vy) * 180 / Math.PI : 0);
   }
-  w._water = grid ? { C, gw, gh, grid } : null;
+  w._water = grid ? { C, gw, gh, grid, owner, pieces, angles } : null;
   return w._water;
+}
+
+// [§9.36] Il sistema di particelle di un tipo (kind) sul pezzo di fiume che
+// contiene (x, y): appena sopra di lui (depth del pezzo - 0,5). I pezzi di
+// fiume hanno depth -y [C, fiume_* Create]: a depth fissa (-21) le
+// particelle si disegnavano prima del fiume, che le copriva (anche gli
+// anelli della pioggia, §8.13: si vedevano solo oltre la riva). null se
+// (x, y) non e' acqua.
+function waterAngle(wm, x, y) {
+  return wm.angles[wm.owner[Math.floor(y / wm.C) * wm.gw + Math.floor(x / wm.C)]] || 0;
+}
+
+function waterSystem(w, wm, kind, cat, x, y) {
+  const cx = Math.floor(x / wm.C), cy = Math.floor(y / wm.C);
+  if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) return null;
+  const piece = wm.pieces[wm.owner[cy * wm.gw + cx]];
+  const key = kind + ":" + piece.id;
+  const P_ = P(w);
+  const sys = wm.sys || (wm.sys = new Map());
+  let ps = sys.get(key);
+  if (!ps || !ps.alive) {
+    ps = P_.systems.find((q) => q.alive && q.kind === key); // dopo un caricamento
+    if (!ps) { ps = P_.systemCreate(piece.depth - 0.5, cat); ps.kind = key; }
+    sys.set(key, ps);
+  }
+  return ps;
 }
 
 export function rainRipples(w, cam) {
@@ -96,14 +137,87 @@ export function rainRipples(w, cam) {
   if (P_.hidden.has("rain")) return;
   const wm = waterMap(w);
   if (!wm) return;
-  let ps = P_.systems.find((s) => s.alive && s.kind === "ripples");
-  if (!ps) { ps = P_.systemCreate(-21, "rain"); ps.kind = "ripples"; }
   for (let k = 0; k < RIPPLE_TRIES; k++) {
     const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
-    const cx = Math.floor(x / wm.C), cy = Math.floor(y / wm.C);
-    if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) continue;
+    const ps = waterSystem(w, wm, "ripples", "rain", x, y); // §9.36
+    if (!ps) continue;
     P_.create(ps, x, y, ANELLO, 1);
     P_.create(ps, x, y, ANELLO2, 1);
+  }
+}
+
+// [§9.36, richiesta dell'autore] L'acqua dei fiumi, al posto
+// dell'animazione dell'originale (fiume_animazione: macchie di 129x106 px di
+// puntini bianchi in tre fotogrammi quasi uguali, che tremolavano sul posto,
+// messe a mano solo nel tutorial). Su tutta l'acqua della room (waterMap),
+// senza oggetti da piazzare:
+// - riflessi: trattini chiari, orientati come il pezzo di fiume (l'asse
+//   principale delle sue celle d'acqua), che compaiono e svaniscono in
+//   1,5-2,5 s scivolando appena lungo di lui (RIFLESSI_TRIES punti a caso
+//   nella view a ogni passo);
+// - increspature: ogni tanto un anello che si allarga (in media uno ogni
+//   INCRESPATURA_EVERY passi nella view);
+// - schiuma: puntini fermi lungo le rive (le celle d'acqua accanto alla
+//   terra), creati una volta per room, che "respirano" appena.
+// Sopra il pezzo di fiume che li contiene (waterSystem) e sotto chi gli sta
+// davanti; di notte sotto il filtro della notte come il resto. Categoria "grass" (erba e spighe nelle opzioni grafiche: spenta,
+// spegne anche questi; la qualita' ne dirada la schiuma).
+const RIFLESSI_TRIES = 3, INCRESPATURA_EVERY = 40, SCHIUMA_EVERY = 3;
+// (orientamento e direzione li da' il pezzo di fiume: waterLife)
+const RIFLESSO = partType({
+  shape: "line", size: [0.15, 0.3, 0, 0], scale: [1, 0.8],
+  colour: { rgb: [240, 255, 248, 255, 250, 255] }, alpha: [0, 0.85, 0],
+  speed: [0.04, 0.12, 0, 0], life: [90, 150],
+});
+const INCRESPATURA = partType({
+  shape: "ring", size: [0.03, 0.05, 0.006, 0], scale: [1, 0.5],
+  colour: { rgb: [225, 245, 235, 250, 240, 255] }, alpha: [0.85, 0.45, 0], life: [60, 80],
+});
+const SCHIUMA = [0.4, 0.55].map((a) => partType({
+  shape: "flare", size: [0.1, 0.2, 0, 0.018], scale: [1, 0.55],
+  colour: { rgb: [228, 248, 238, 252, 242, 255] }, alpha: [a], life: [99999999, 99999999],
+}));
+
+export function waterLife(w, cam) {
+  const P_ = P(w);
+  if (P_.hidden.has("grass")) return;
+  const wm = waterMap(w);
+  if (!wm) return;
+  const { C, gw, gh, grid } = wm;
+  // la schiuma, una volta (i salvataggi la riportano: kind "foam:<pezzo>")
+  if (!wm.foam) {
+    wm.foam = true;
+    if (!P_.systems.some((ps) => ps.alive && typeof ps.kind === "string" && ps.kind.startsWith("foam:"))) {
+      let n = 0;
+      for (let cy = 1; cy < gh - 1; cy++) {
+        for (let cx = 1; cx < gw - 1; cx++) {
+          const k = cy * gw + cx;
+          if (!grid[k] || (grid[k - 1] && grid[k + 1] && grid[k - gw] && grid[k + gw])) continue;
+          if (Math.random() * SCHIUMA_EVERY >= 1) continue;
+          n++;
+          const x = (cx + Math.random()) * C, y = (cy + Math.random()) * C;
+          const ps = waterSystem(w, wm, "foam", "grass", x, y);
+          if (ps) P_.create(ps, x, y, SCHIUMA[n % 2], 1);
+        }
+      }
+    }
+  }
+  for (let k = 0; k < RIFLESSI_TRIES; k++) {
+    const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+    const ps = waterSystem(w, wm, "water", "grass", x, y);
+    if (!ps) continue;
+    P_.create(ps, x, y, RIFLESSO, 1);
+    // lungo il fiume, e scivola nello stesso verso
+    const q = ps.parts[ps.parts.length - 1], a = waterAngle(wm, x, y);
+    q.ang = a + (Math.random() * 10 - 5);
+    q.dir = a;
+  }
+  if (Math.random() * INCRESPATURA_EVERY < 1) {
+    for (let k = 0; k < 20; k++) {
+      const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+      const ps = waterSystem(w, wm, "water", "grass", x, y);
+      if (ps) { P_.create(ps, x, y, INCRESPATURA, 1); break; }
+    }
   }
 }
 

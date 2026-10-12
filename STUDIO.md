@@ -5273,3 +5273,37 @@ distrutte; tolti il punteggio finale (sconfitta) e quello parziale (vittoria
 del tutorial), e i due testi da texts.js. ui.mjs (schermate finali in sei
 lingue e tre risoluzioni) senza problemi; soak senza errori.
 
+### 9.36 L'acqua dei fiumi: riflessi, increspature, schiuma
+
+Domanda dell'autore (12 ottobre 2026): l'animazione tremolante sul fiume ha
+senso? Alternative? [C] `fiume_animazione` (anim_fiume, 129x106 px, tre
+fotogrammi di puntini bianchi quasi uguali, image_speed 0,3): tremola sul
+posto invece di scorrere, sono toppe ferme, piazzate a mano (10 nel
+tutorial, nessuna nei livelli 2 e 3). Scelte dall'autore le prime tre
+alternative proposte.
+
+**Ora** (effects.js `waterLife`, dal passo del manager): su tutta l'acqua
+della room (la mappa dell'acqua degli sprite del fiume, §8.13), senza
+oggetti da piazzare:
+- riflessi: trattini chiari orientati come il pezzo di fiume (l'asse
+  principale delle sue celle d'acqua) che compaiono e svaniscono in 1,5-2,5 s
+  scivolando lungo di lui (3 punti a caso nella view a passo);
+- increspature: in media un anello ogni 40 passi nella view;
+- schiuma: puntini fermi lungo le rive (un terzo delle celle d'acqua accanto
+  alla terra), creati una volta per room, che "respirano" appena.
+Categoria "grass" (erba e spighe nelle opzioni grafiche). `fiume_animazione`
+non si carica piu' (app.js, in tutte le room).
+
+**Trovato strada facendo**: i pezzi di fiume hanno depth -y [C, fiume_*
+Create], e gli anelli della pioggia (§8.13) stavano a depth -21: si
+disegnavano prima del fiume, che li copriva (si vedevano solo oltre la
+riva). Ora ogni effetto dell'acqua sta in un sistema per pezzo di fiume,
+appena sopra di lui (depth del pezzo - 0,5: `waterSystem`), anche gli
+anelli della pioggia.
+
+Prova (Chromium): screenshot e GIF prima/dopo nel tutorial, livelli 2 e 3;
+salvataggi con gli effetti, ripristino identico; soak senza errori. Costo
+nel tutorial (1300 particelle in piu', quasi tutte schiuma): ~0,3 ms per
+passo e ~0,4 ms per fotogramma su ~11 ms. Da tarare con l'autore: quantita',
+luminosita', dimensioni.
+
