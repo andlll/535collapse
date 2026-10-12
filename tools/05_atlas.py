@@ -371,7 +371,20 @@ def derived_sprites():
     meta = next(d for d in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
                 if d["name"] == "part_erba")
     out.append(("erba_chiara", "ambiente", e, (meta["origin_x"], meta["origin_y"])))
+    # [§9.37] i fiori delle macchie fiorite (nuovi/particelle/, disegnati al
+    # doppio): meta' risoluzione, origine al piede dello stelo (in basso al
+    # centro), 2 px di margine
+    for name, f in FIORI.items():
+        im = Image.open(os.path.join(REPO_DIR, "nuovi", "particelle", f + ".png")).convert("RGBA")
+        s = im.resize((round(im.width / 2), round(im.height / 2)), Image.LANCZOS)
+        fi = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
+        fi.alpha_composite(s, (pad, pad))
+        out.append((name, "ambiente", fi, (fi.width // 2, pad + s.height - 1)))
     return out
+
+
+FIORI = {"fiore_giallo1": "fiore1_part2x", "fiore_giallo2": "fiore2_part2x",
+         "papavero1": "papavero_part_2x", "papavero2": "papavero_part2_2x"}
 
 
 def main():

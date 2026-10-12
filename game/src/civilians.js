@@ -12,9 +12,10 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
+import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -224,6 +225,33 @@ function rightClick(i, w) {
       fieldTo(w, w.path, i, d.x, d.y);
     }
   }
+  // [§9.29] riparare un complesso (il monastero del livello 3, complex.js):
+  // il campo verso il pezzo piu' vicino, non verso il punto cliccato (spesso
+  // nel cortile chiuso o su un tetto); l'ordine l'ha dato l'edificio nello
+  // stesso passo (sendRepair, repOrder)
+  if (i.repOrder !== w._stepNo) i.repT = null;
+  else if (complexOf(i.repT)) {
+    const f = complexField(w.path, i.repT);
+    const gx = Math.floor(i.x / GRID), gy = Math.floor(i.y / GRID);
+    if (w.path.fieldAt(f, gx, gy) !== -1 || w.path.escapeCell(f, gx, gy, 2)) {
+      i.goal_field = f; i.flow_field = w.path.flowField(f);
+      [i.dirox, i.diroy] = complexPoint(w, i.x, i.y, i.repT);
+    } else i.repT = null; // da qui non ci arriva: come prima
+  }
+}
+
+// [§9.29] Verso il complesso da riparare: col campo; nelle celle che toccano
+// un suo pezzo (fondo del campo) moveFlowField va con le collisioni verso
+// la meta, il punto piu' vicino del complesso, o, sovrapposti a un altro
+// civile, se ne stacca (buildStep comincia a 5 px da un pezzo qualunque).
+// Il punto e' lontano da chi ci sta gia' riparando: dietro di lui il civile
+// restava fermo per sempre.
+function toComplex(w, p, i) {
+  const busy = [];
+  for (const o of w.all("ally_omino")) if (o !== i && o.action === 7 && o.repT === i.repT) busy.push([o.x, o.y]);
+  [i.dirox, i.diroy] = complexPoint(w, i.x, i.y, i.repT, busy);
+  i.repx = i.dirox; i.repy = i.diroy;
+  moveFlowField(w, p, i);
 }
 
 // Alarm_10 [C]: verso la bandiera dell'edificio che l'ha creato, con il
@@ -252,6 +280,17 @@ function rallyOmino(p) {
     if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; }
     if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; }
     if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+    // [§9.30, segnalazione dell'autore] senza un lavoro sotto la bandiera, un
+    // posto libero, raggiungibile e non promesso a un altro vicino alla
+    // bandiera, e la strada col pathfinding passando sopra gli altri civili
+    // (pathing.js, rallySpot e rallyGo), come i soldati
+    const work = i.goldwork || i.woodwork || i.foodwork || i.stonework || i.buildwork || i.fieldwork;
+    const spot = !work && rallySpot(w, p, i, i.flaggox, i.flaggoy);
+    if (spot) {
+      [i.flaggox, i.flaggoy] = spot;
+      rallyGo(p, i);
+      return;
+    }
     // azione 2: flow field verso la bandiera
     p.free(i);
     goTo(p, i, i.flaggox, i.flaggoy);
@@ -595,6 +634,7 @@ function ominoMove(i, w, p) {
   const n = (name, x = i.x, y = i.y) => w.nearest(x, y, name);
   const mp = (t) => { if (t) mpPotentialStep(w, i, t.x, t.y, i.autospeed); };
   const workreach = (i.goldwork > 0 || i.stonework > 0 || i.woodwork > 0) ? 200 : 0;
+  if (i.action === 1 && i.repairwork === 1 && complexOf(i.repT)) { toComplex(w, p, i); return; } // §9.29
   if (i.action === 1) {
     // §6.2 D: senza la destinazione in vista si resta sul percorso (solo per
     // un semplice spostamento: col lavoro la meta e' la risorsa o l'edificio)
@@ -964,8 +1004,9 @@ function buildStep(i, w, p) {
       f.occupato = 1;
     }
   }
-  // riparazione
-  if (i.repairwork === 1 && w.distanceToInstance(i, w.nearest(i.repx, i.repy, "ally_build")) < 5) {
+  // riparazione ([§9.29] di un complesso: da un pezzo qualunque)
+  const rc = complexOf(i.repT);
+  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, "ally_build")) < 5)) {
     i.repairwork = 0;
     p.occupy(i);
     i.action = 7;
@@ -1052,7 +1093,7 @@ function otherWorkTick(i, w) {
   } else if (i.action === 7) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
     // anche il fuoco (e le fiamme)
-    const b = w.nearest(i.repx, i.repy, "ally_build");
+    const b = complexOf(i.repT) || w.nearest(i.repx, i.repy, "ally_build"); // §9.29
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
       if (b.life > b.slife) b.life = b.slife;

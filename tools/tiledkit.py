@@ -76,14 +76,18 @@ ENEMY = ["enemy_house", "enemy_caserma", "enemy_stalla", "enemy_torre", "o_box1"
          "enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_cavaliere", "enemy_ariete",
          "enemy_catapulta"]
 NATURE = ["albero", "albero_fake", "graa11", "graa12", "graa13", "graa14", "graa15",
-          "burst_erba1", "burst_grano1", "chiazzaparticellare", "aquila_01"]
+          "burst_erba1", "burst_grano1", "chiazzaparticellare", "aquila_01",
+          "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba", "fiori_prato"]
 RESOURCES = ["miniera_oro", "pietra_grande", "pietr_piccolo"]
 GROUND = ["strada_2", "strada_5", "strada_6", "strada_7", "strada_8",
           "traccia01", "traccia02", "traccia03", "traccia04", "erba_1", "prato1", "fiorame1"]
 CITY_PROPS = ["o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"]
-# le macchie d'erba, di spighe e di fili d'erba: oggetti senza sprite che
-# spargono particelle (game/src/effects.js DECOR); nel kit un'immagine
-DECOR = ["burst_erba1", "burst_grano1", "chiazzaparticellare"]
+# le macchie d'erba, di spighe e di fili d'erba e le macchie fiorite
+# (§9.37): oggetti senza sprite che spargono particelle (game/src/effects.js
+# DECOR) in un'ellisse con questi semiassi; nel kit un'immagine
+DECOR = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticellare": (500, 300),
+         "fiori_papaveri": (200, 125), "fiori_papaveri_erba": (200, 125), "fiori_gialli_erba": (200, 125),
+         "fiori_prato": (200, 125)}
 
 
 def category(name, info, nuovi_objects=()):

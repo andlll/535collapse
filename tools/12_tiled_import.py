@@ -335,7 +335,7 @@ def game_order(instances, info):
         if any(p in ("ally_unit", "enemy_unit") for p in e.get("parents", [])):
             return -i["y"]
         if i["object"] in tk.DECOR:
-            return -i["y"] + 300  # le fasce piu' alte della macchia
+            return -i["y"] + tk.DECOR[i["object"]][1]  # le fasce piu' alte della macchia
         d = e.get("depth", 0)
         return -i["y"] + d["y"] if isinstance(d, dict) else d
     keyed = [(0 if ground.match(i["object"]) else 1, -depth(i), k, i) for k, i in enumerate(instances)]

@@ -21,7 +21,7 @@
 
 import { tr } from "./i18n.js";
 import { pointDirection } from "./gm.js";
-import { panel, lifeBar, repairEnd, sendRepair, armBuilders } from "./buildings.js";
+import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondLifeBar } from "./buildings.js";
 
 const WHITE = 0xffffff, RED = 0x0000ff;
 
@@ -97,6 +97,7 @@ export function wallFond(k, p) {
       w.g.stone += i.paid;
       destroyAll(w, ...plusNames);
     },
+    drawEnd: fondLifeBar, // §9.34
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_mura"); },
   };
 }

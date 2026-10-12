@@ -15,10 +15,10 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
-import { infantryFire } from "./siege.js";
+import { infantryFire, holdStill } from "./siege.js";
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -293,6 +293,7 @@ export function cavaliere(p) {
       // azione 4: direzione e arrivo
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      snapToSlot(w, i); // §9.30
       if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction)) {
         i.action = 0; p.occupy(i); i.warwork = 0; i.speed = 0;
       }
@@ -335,6 +336,7 @@ export function cavaliere(p) {
     // Mouse_GlobalRightReleased: ordine di movimento
     globalRightReleased(i, w) {
       if (i.selected !== 1) return;
+      if (holdStill(i, w)) return; // §9.31
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
       i.dirox = w.mouse.x;
       i.diroy = w.mouse.y;
@@ -378,6 +380,8 @@ const INFANTRY = {
                     clickFirst: true, exactStop: true, nearRank: false, move100: false,
                     faceTarget: false, rally100: false, occupyAtCreate: true, globalLeft: true },
 };
+
+const FIRE_CHECK = 120; // §9.31: 2 s
 
 export function infantry(name, p) {
   const T = INFANTRY[name];
@@ -451,7 +455,12 @@ export function infantry(name, p) {
       i.autospeed = 4 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
-      if (i.action === 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
+      snapToSlot(w, i); // §9.30
+      // [§9.31] non chi va a dare fuoco: la sua meta e' un posto attorno
+      // all'edificio o una tappa del percorso locale verso di lui (melee.js,
+      // route); arrivato a una tappa si fermava li', col fuoco ancora da
+      // appiccare, e non ripartiva piu'. Si ferma quando comincia a tirare.
+      if (i.action === 1 && i.firework !== 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
                                          : pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction))) {
         i.action = 0; p.occupy(i); i.creation = 0; i.warwork = 0; i.speed = 0;
       }
@@ -472,9 +481,28 @@ export function infantry(name, p) {
       behaviourButtons(i, w);
       // dare fuoco alle case (firework, action 6)
       if (i.targetid && !i.targetid.alive) { i.targetid = null; i.firework = 0; }
+      // [§9.31] chi va a dare fuoco e resta sul posto senza avvicinarsi
+      // all'edificio (meno di 24 px di spostamento netto e nessun progresso
+      // in FIRE_CHECK passi, due volte di fila: nessun posto raggiungibile
+      // attorno, gli altri lati chiusi da altri edifici e i posti liberi presi
+      // da chi gia' tira) si ferma dov'e', invece di andare avanti e indietro
+      // per sempre. Chi sta facendo il giro dell'edificio si sposta: no.
+      if (i.firework === 1 && i.action === 1 && i.targetid) {
+        const d = w.distanceToInstance(i, i.targetid);
+        if (!i.fireChk) i.fireChk = { at: w._stepNo, x: i.x, y: i.y, d, n: 0 };
+        const c = i.fireChk;
+        if (w._stepNo - c.at >= FIRE_CHECK) {
+          const stuck = pointDistance(i.x, i.y, c.x, c.y) < 24 && d > c.d - 4;
+          Object.assign(c, { at: w._stepNo, x: i.x, y: i.y, d, n: stuck ? c.n + 1 : 0 });
+          if (c.n >= 2) { i.firework = 0; i.targetid = null; i.action = 0; i.speed = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); }
+        }
+      } else i.fireChk = null;
       // [Richiesta dell'autore] non addosso a un alleato, se puo' ancora
       // spostarsi (flowMovement); bloccato cosi' per 60 passi, comunque
       const fireNear = i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70;
+      // [§9.31] ne' dentro l'edificio da incendiare (col flow field si passa
+      // senza collisioni): prima ne esce (flowMovement)
+      if (fireNear && w.overlap(i, i.x, i.y, i.targetid)) { flowMovement(i, w, p, { nearRank: T.nearRank }); return; }
       const fireOver = fireNear && i.action === 1 && !!w.instancePlace(i, i.x, i.y, "ally_unit");
       i.fireWait = fireOver ? (i.fireWait || 0) + 1 : 0;
       if (fireNear && (!fireOver || i.fireWait > 60)) {
@@ -677,6 +705,14 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   // prima si fermava a dare fuoco addosso a chi era arrivato per primo.
   if (i.action === 1 && i.firework === 1 && i.targetid) {
     [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    makeWay(w, p, i, "ally_unit"); // §9.31
+    // [§9.31] sovrapposto all'edificio: dritto verso il proprio posto, fuori
+    if (w.overlap(i, i.x, i.y, i.targetid)) {
+      const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
+      i.direction = dir;
+      w.setPos(i, i.x + lengthdirX(i.autospeed, dir), i.y + lengthdirY(i.autospeed, dir));
+      return;
+    }
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && w.instancePlace(i, i.x, i.y, "ally_unit")) {
       const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
       const d = Math.min(i.autospeed, pointDistance(i.x, i.y, i.dirox, i.diroy));
@@ -730,6 +766,32 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   }
 }
 
+// [§9.28, richiesta dell'autore] Colpo portato a termine: nell'originale
+// chi stava colpendo (warwork 2) e vedeva il nemico allontanarsi oltre i
+// 10 px si fermava a meta' colpo ("se stavi attaccando fermati e basta"),
+// senza danno, e ripartiva a inseguirlo: contro chi si muove le unita'
+// iniziavano un colpo dopo l'altro senza finirne nessuno, a scatti. Ora un
+// colpo cominciato a contatto (swing, contro swingT) arriva fino in fondo,
+// animazione e danno, anche se il bersaglio intanto si e' allontanato;
+// dopo il colpo, se e' ancora lontano, si riparte a inseguirlo come prima.
+// Un ordine del giocatore (action 1) o la morte del bersaglio lo
+// interrompono. Lo stesso per i nemici (enemies.js).
+export function swingOn(i) {
+  const t = i.swingT;
+  if (i.swing !== 1 || i.action !== 2 || i.warwork !== 2 || !t || !t.alive) return false;
+  i.direction = pointDirection(i.x, i.y, t.x, t.y);
+  return true;
+}
+
+// Alla fine del colpo: chi lo prende. `v` e' la scelta dell'originale (il
+// piu' vicino al punto 30 px davanti); se non e' a contatto e il colpo era
+// impegnato, il bersaglio del colpo.
+export function swingVictim(w, i, v) {
+  const st = i.swing === 1 && i.swingT && i.swingT.alive ? i.swingT : null;
+  i.swing = 0;
+  return st && (!v || w.distanceToInstance(i, v) >= 10) ? st : v;
+}
+
 // Step "Attacco" [C, guerriero azione 10 / cavaliere azione 12]: senza un
 // bersaglio scelto col clic destro, l'unita' attacca il nemico piu' vicino
 // se e' a meno di 10 px, ci va incontro se e' entro `comp` (700 in attacco,
@@ -756,8 +818,10 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; p.occupy(i); i.alarm.set(2, 13);
       }
+      if (i.action === 2 && i.warwork === 2) { i.swing = 1; i.swingT = ta; } // §9.28
       return "exit";
     }
+    if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (i.warwork === 1 && dist >= i.comp * k) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (dist < i.comp * k && valid && (i.warwork === 0 || i.warwork === 1)) {
@@ -783,8 +847,10 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; i.alarm.set(2, 13); p.occupy(i);
       }
+      if (i.action === 2 && i.warwork === 2) { i.swing = 1; i.swingT = te; } // §9.28
       return "exit";
     }
+    if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null; }
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
       i.dirox = i.target_eu.x;
@@ -806,15 +872,18 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
 // (nel GML alleato non erano dichiarate).
 // Il guerriero controlla che esista un bersaglio e si gira verso di lui
 // prima di colpire (face) [C, ally_warrior Alarm_2].
+// [§9.28] Un colpo portato a termine contro un bersaglio che si e'
+// allontanato (swing, autoAttack) colpisce lui, se nessun nemico e' a
+// contatto davanti all'unita'.
 export function meleeStrike(i, w, table, enemySide, face = false) {
-  if (i.action !== 2) return;
+  if (i.action !== 2) { i.swing = 0; return; }
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
   if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
   if (i.step !== 2) return;
   i.step = 0;
   i.alarm.set(2, 13);
   const target = enemySide ? "ally_unit" : "enemy_unit";
-  const v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target);
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target));
   if (!v) return;
   if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;
@@ -842,7 +911,7 @@ function rallyMove(i, w, p, offset100) {
   i.action = 1;
   i.warwork = 4;
   if (w.positionMeeting(i.flaggox + (offset100 ? 100 : 0), i.flaggoy, "enemy_unit")) i.warwork = 1;
-  scrMove(p, i, i.flaggox, i.flaggoy);
+  rallyGo(p, i); // §9.30 (era scrMove)
 }
 
 // Draw_End [C, identico in guerriero, picchiere e cavaliere]: barra della

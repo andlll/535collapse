@@ -485,6 +485,20 @@ export function enemyManagerLv3(p) {
     step(i, w) {
       const g = w.g;
       if (g.victory === 1 || g.gameover === 1) return;
+      // [§9.31, richiesta dell'autore] all'inizio la vista sui soldati (in
+      // basso a destra, dove parte il dialogo): la view della mappa e' piu'
+      // in alto a sinistra, al buio. Al primo passo, dopo che la view ha
+      // preso la misura della finestra (app.js, resize).
+      if (!i.startView && w._stepNo < 10) { // (non dopo un caricamento)
+        i.startView = 1;
+        let n = 0, sx = 0, sy = 0;
+        for (const u of w.all("ally_militare")) { n++; sx += u.x; sy += u.y; }
+        if (n) {
+          const c = w.cam;
+          c.x = Math.max(0, Math.min(sx / n - c.w / 2, c.roomW - c.w));
+          c.y = Math.max(0, Math.min(sy / n - c.h / 2, c.roomH - c.h));
+        }
+      }
       // 0: in marcia verso il villaggio
       if (i.phase === 0) {
         const u = w.nearest(LV3.town[0], LV3.town[1], "ally_unit");
@@ -593,10 +607,23 @@ export function enemyManagerLv3(p) {
         }
         // [§9.17, richiesta dell'autore] sfondata la porta, gli arieti delle
         // ondate vanno al monastero e colpiscono solo quello (siege.js
-        // ramTarget), invece di continuare con le mura e le torri vicine
+        // ramTarget), invece di continuare con le mura e le torri vicine.
+        // [§9.29] Solo se da dove sono si arriva dentro la cinta (campo
+        // "largo" dei nemici verso LV3.inner): se il giocatore ha chiuso il
+        // varco (una caserma al posto della porta) l'ariete colpisce, come
+        // prima, l'edificio alleato piu' vicino; prima restava fermo davanti
+        // al varco chiuso col monastero come unico bersaglio.
         const porta = w.nearest(LV3.gate[0], LV3.gate[1], "porta_ori");
         if (!porta || pointDistance(porta.x, porta.y, LV3.gate[0], LV3.gate[1]) > 100) {
-          for (const e of w.all("enemy_ariete")) if (e.l3 === "mon") e.ramTarget = m;
+          if (!i.ramIn || i.ramIn.ver !== p.solidVer) {
+            i.ramIn = { ver: p.solidVer, f: p.goalField(LV3.inner[0], LV3.inner[1], true, true) };
+          }
+          for (const e of w.all("enemy_ariete")) {
+            if (e.l3 !== "mon") continue;
+            const gx = Math.floor(e.x / GRID), gy = Math.floor(e.y / GRID);
+            const inside = p.fieldAt(i.ramIn.f, gx, gy) !== -1 || !!p.escapeCell(i.ramIn.f, gx, gy, 2);
+            e.ramTarget = inside ? m : null;
+          }
         }
         for (const e of w.all("enemy_unit")) {
           if (!e.l3 || e.action !== 0 || e.role === 31 || e.ramTarget) continue;

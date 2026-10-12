@@ -4928,3 +4928,421 @@ obiettivi e sulla minimappa sopra il pannello delle risorse, "Indietro"
 delle opzioni grafiche e il codice della vittoria del livello 3 sotto il
 bordo dello schermo, e solo in tedesco le schede della casa e delle mura
 oltre il bordo destro. Da decidere con l'autore.
+
+### 9.28 Mischia: il colpo cominciato arriva fino in fondo
+
+Segnalazione dell'autore (12 ottobre 2026): le unita' militari da mischia
+che attaccano un nemico che si muove cominciano il colpo quando sono
+abbastanza vicine, ma lo interrompono appena il nemico si allontana; nelle
+versioni precedenti il colpo cominciato veniva portato a termine
+(animazione e danno). Chiesto cosi', con correzioni mirate al pathfinding
+invece di rifare il sistema.
+
+**Cosa succedeva** [C, ally_cavaliere / ally_warrior Step, "se stavi
+attaccando fermati e basta"]: il colpo dura tre fasi da 13 passi (Alarm_2,
+il danno alla fine della terza); a ogni passo, se il nemico era oltre i
+10 px, chi stava colpendo (warwork 2) tornava fermo, senza danno, e al
+passo dopo ripartiva a inseguirlo. Contro un nemico che si muove: un colpo
+cominciato dopo l'altro, nessuno finito, a scatti.
+
+**Ora** (units.js, `autoAttack`, `meleeStrike`; cavaliere, guerriero,
+picchiere): un colpo cominciato a contatto (`swing`, contro `swingT`) va
+fino in fondo anche se il bersaglio si allontana: l'unita' resta ferma
+girata verso di lui, finisce l'animazione e il danno va a lui (se nessun
+altro nemico e' a contatto davanti all'unita', come prima). Finito il
+colpo, se il bersaglio e' ancora lontano riparte a inseguirlo come prima.
+Lo interrompono un ordine del giocatore (clic destro: action 1) e la morte
+del bersaglio. **Anche i nemici** (enemies.js, `enemyStrike`, chiesto
+dall'autore dopo la prima prova): l'originale interrompeva il colpo alla
+fase successiva se l'alleato piu' vicino era oltre i 10 px. Nessun campo dei salvataggi cambia significato
+(`swing`, `swingT` sono nuovi e mancano nei vecchi: colpo non impegnato).
+
+**Prova** (`game/test/browser/melee.mjs`, nuova, nella CI): un alleato
+contro un guerriero nemico che si lascia raggiungere e, 6 passi dopo
+l'inizio del colpo, scappa di 90 px; 1500 passi per tipo. Poi, a meta'
+colpo col bersaglio scappato, un ordine di movimento (il colpo si
+interrompe, niente danno, l'unita' parte) e la morte del bersaglio (il
+colpo si interrompe, un altro nemico lontano non perde vita).
+
+| | colpi cominciati | arrivati | interrotti senza danno |
+|---|---|---|---|
+| cavaliere: prima / ora | 75 / 23 | 5 / 34 | 71 / 0 |
+| guerriero: prima / ora | 66 / 21 | 5 / 29 | 61 / 0 |
+| picchiere: prima / ora | 72 / 21 | 3 / 29 | 69 / 0 |
+| guerriero nemico: prima / ora | 40 / 17 | 11 / 25 | 32 / 0 |
+| picchiere nemico: prima / ora | 35 / 17 | 10 / 25 | 28 / 0 |
+| cavaliere nemico: prima / ora | 40 / 17 | 11 / 24 | 33 / 0 |
+
+("Arrivati" piu' dei cominciati: col bersaglio ancora a contatto il colpo
+dopo segue senza ricominciare.) Il bersaglio colpito era al piu' a 86-88 px
+(in partita, un nemico che scappa appena comincia il colpo, a 4 px per passo, fino a circa 130-150 px).
+movement.mjs (match, 3 semi), combattimento: spin 9/18/7 -> 7/17/6, rev
+392/293/212 -> 395/268/212 (solo alleati), 202/421/156 (anche i nemici:
+i combattimenti cambiano, alleati rimasti 12/15/10 -> 10/13/10); soak e
+salvataggi senza errori.
+
+### 9.29 Livello 3: il monastero come un unico edificio, arieti attraverso le mura
+
+Segnalazioni dell'autore (12 ottobre 2026): nel livello 3 i lavoratori non
+riescono a riparare il monastero; gli arieti a volte "scavalcano" le mura
+(porta abbattuta, una caserma costruita al suo posto per murare l'ingresso:
+gli arieti passavano attraverso il muro subito a sinistra della porta). Per
+il monastero due strade proposte dall'autore: un unico oggetto, cosi' che
+frecce incendiarie e riparazione vadano a buon fine, oppure soldati e
+lavoratori che passano dalla porta del cortile. Scelta la prima.
+
+**Arieti attraverso le mura** [C, pathing.js `markInstance`]: un edificio
+distrutto (o la porta che lascia libero il varco) liberava tutte le celle
+della griglia che la sua maschera toccava, anche quelle che toccavano
+ancora un ostacolo accanto. La porta della cinta (maschera larga 471 px)
+copre le estremita' delle mura ai lati: abbattuta, si aprivano 12 celle
+delle mura (3 a sinistra, 3 a destra, su due righe). Gli arieti sul flow
+field si muovono senza collisioni, e da li' passavano dentro il muro; con
+una caserma al posto della porta il buco di sinistra (96 px) restava aperto.
+Ora le celle che tocca ancora un altro ostacolo fisso solido (le famiglie di
+`initCost`) restano chiuse. Vale per tutti i livelli (alberi tagliati
+accanto ad altri alberi, edifici accanto alle mura, le neutrali del livello
+3 che diventano del giocatore).
+In piu' (levels.js): sfondata la porta, l'ariete punta al monastero
+(`ramTarget`, §9.17) solo se da dove e' si arriva dentro la cinta (campo
+"largo" dei nemici verso `LV3.inner`); se il varco e' murato colpisce, come
+prima della porta, l'edificio alleato piu' vicino (la caserma). Prima
+restava fermo davanti al varco col monastero come unico bersaglio.
+
+**Il complesso del monastero** (complex.js, nuovo): il corpo ha accanto il
+muro del cortile e la casetta (ostacoli neutri), e il muro chiude il cortile
+davanti al corpo. I civili mandati a riparare andavano verso il punto
+cliccato (spesso nel cortile chiuso) e poi verso il centro del corpo: dalla
+cinta si fermavano contro il muro del cortile; riparava solo chi arrivava
+da dietro o dal fianco sinistro. I nemici volevano un posto attorno al corpo
+(nel cortile) e tiravano solo a 70 px dal corpo. E la maschera e' solo la
+base: un clic sul tetto o su un'ala non era un clic sul monastero (i civili
+andavano li' a piedi, senza riparare). Ora il muro del cortile e la casetta
+sono pezzi del monastero (`parts`, legati nel Create):
+- **riparazione**: il campo dei civili verso il complesso parte da tutte le
+  celle libere che toccano un pezzo (`goalFieldAround`, solo ostacoli
+  fissi); in fondo si va verso il punto piu' vicino del complesso, lontano
+  da chi sta gia' riparando, e si ripara a 5 px da un pezzo qualunque; a
+  vita piena si fermano (repairEnd: la regola "fine riparazione" ferma solo
+  chi ha cliccato entro 150 px dall'origine dell'edificio, e sul monastero,
+  largo 850 px, chi cliccava piu' in la' restava a riparare spendendo
+  legno [letto nel codice]).
+- **fuoco**: i nemici vanno verso il punto piu' vicino del complesso e
+  tirano da 70 px da un pezzo qualunque; una freccia che colpisce il muro o
+  la casetta colpisce il monastero.
+- **puntatore** (world.js, `pointOver` del comportamento): sul monastero
+  sopra la base di ogni pezzo e sopra tutto cio' che lo sprite disegna al
+  di sopra (tetti, cortile).
+Sprite e maschere dell'autore non cambiano. L'altra strada (la porta del
+cortile percorribile) non basta da sola: le unita' hanno una maschera di
+48x46 px e il varco disegnato e' di circa 45 px in diagonale, con le celle
+da 32 px della griglia.
+
+**Prova** (`game/test/browser/monastery.mjs`, nuova, nella CI; prima / ora):
+
+| | prima | ora |
+|---|---|---|
+| riparazione, 3 civili dalla cinta (clic su tetto, ala, cortile, muro) | +178 / 0 / 0 / 0 | +326 in tutti e 4, 3 al lavoro |
+| riparazione da ovest, da dietro, dal villaggio | +208 (2 su 3) / +330 / 0 | +324 / +332 / +541, 3 su 3 |
+| a vita piena | 2970 su 3000, fermi | 3000, fermi, legno non speso |
+| 3 guerrieri nemici fra la cinta e il cortile | fuoco dopo 1332 passi, -4 | fuoco dopo 70 passi, -69 in 1500 |
+| celle delle mura aperte dopo la porta | 12 su 250 | 0 |
+| caserma al posto della porta, 3 arieti | fermi davanti, mai colpita | la colpiscono, nessuno entra |
+| caserma spostata di +-60 px | dentro le mura 528 / 313 passi, monastero colpito | dentro le mura 0 |
+| varco libero | arrivano al monastero, dentro le mura 484 passi | arrivano al monastero, dentro le mura 0 |
+| salvato e ricaricato | (nessun pezzo) | pezzi legati |
+
+Movimento (movement.mjs, 3 semi) e miniera (mining.mjs) identici al commit
+prima; workers.mjs: stesse risorse (oro 480 invece di 470); consegne, civili
+inattivi, mischia, soak e salvataggi senza errori.
+
+### 9.30 Unita' appena prodotte verso la bandiera di raccolta
+
+Segnalazione dell'autore (12 ottobre 2026): con la bandierina in un punto
+vicino il pathfinding non si attiva, e se il punto e' irraggiungibile o
+occupato l'unita' appena creata si incasina. Proposta: attivare comunque il
+pathfinding e trovare subito un altro punto di raccolta valido.
+
+**Cosa succedeva** (prova qui sotto, `match`, caserma vicino al fiume):
+- da vicino (meno di 400 px, nessun edificio o albero sulla linea) l'unita'
+  andava dritta con mp_potential_step: le unita' prodotte prima, gia' ferme
+  al loro posto, la bloccavano; avanti e indietro per secondi (fino a 230
+  inversioni), poi arrivo "per rinuncia" (§6.1 n.89) anche a 190 px dal
+  posto;
+- il posto (rallySpot, §7.10) era libero ma non sempre raggiungibile (oltre
+  la riva, in un bosco chiuso);
+- i posti promessi si escludevano entro 48 px: i cavalieri (91 px)
+  finivano sovrapposti;
+- senza bandiera o con la bandiera sull'edificio l'unita' restava dove
+  nasce, dentro l'edificio;
+- i civili dal centro: lo stesso, senza nemmeno la scelta del posto;
+- in piu' (§9.29) pali e statue perdevano le loro celle nella griglia se
+  accanto spariva un edificio, e le unita' ci finivano contro.
+
+**Ora** (pathing.js, units.js, ranged.js, production.js, civilians.js):
+- `rallySpot`: il posto e' raggiungibile dall'unita' fra gli ostacoli fissi;
+  i posti promessi si escludono entro la misura della maschera;
+- `rallyGo` (al posto di scrMove nell'Alarm_10 di guerriero, picchiere,
+  cavaliere e arciere): campo dei soli ostacoli fissi verso il posto e il
+  posto come una casella della formazione (§8.11): unico, raggiunto anche da
+  vicino col pathfinding quando la linea e' chiusa, passando sopra gli
+  alleati. Se non e' raggiungibile, come prima;
+- `snapToSlot`: arrivata a 10 px dalla casella sovrapposta a un edificio o a
+  un albero (col flow field si passa senza collisioni), l'unita' va sulla
+  casella se e' libera (vale anche per le caselle della formazione);
+- caserma e stalla senza bandiera (o con la bandiera sull'edificio): se
+  l'unita' nasce sovrapposta all'edificio, va al posto libero piu' vicino;
+- civili: senza un lavoro sotto la bandiera, come i soldati; con un lavoro
+  (albero, miniera, campo, cantiere) come prima;
+- `markInstance`: tiene chiuse le celle di chiunque abbia segnato la
+  griglia (gridMark), non solo delle famiglie di initCost.
+
+**Prova** (`game/test/browser/rally.mjs`, nuova, nella CI con 12 direzioni
+a 150 e 300 px; completa con `ANGLES=24 RADII=150,260,380`): l'edificio in
+un posto libero, la bandiera in 72 punti attorno (sull'edificio, su alberi,
+nel fiume, su altre unita', in celle chiuse), 3 unita' per bandiera seguite
+per 1300 passi. Prova completa, 216 unita' per riga; inversioni (di chi non
+lavora) / unita' a oltre 40 px dal posto / sovrapposte a edifici o alberi:
+
+| | prima | ora |
+|---|---|---|
+| match, caserma presso il fiume | 890 (max 230) / 10 / 0 | 15 / 0 / 0 |
+| match, stalla presso il fiume | 105 / 23 / 20 | 77 (max 13) / 0 / 0 |
+| match, caserma presso il centro | 738 / 18 / 2 (1 ferma) | 0 / 0 / 0 |
+| match, stalla presso il centro | 1760 / 35 / 8 | 19 / 0 / 0 |
+| match, centro (civili), due posti | 285 e 969 / 45 e 57 / 3 e 1 | 10 e 0 / 0 / 0 |
+| lvl02, caserma | 343 / 36 / 3 | 6 / 0 / 0 |
+| lvl02, stalla | 1363 (max 338) / 39 / 6 | 17 / 0 / 0 |
+
+Movimento (movement.mjs, 3 semi: inversioni 265/489/203 -> 282/289/204),
+civili al lavoro, consegne, inattivi, miniera, mischia, monastero, soak e
+salvataggi senza differenze di rilievo o errori. Nell'esperimento, creare e
+distruggere edifici di prova liberava le celle di un palo: da li' la
+correzione di `markInstance` per pali e statue.
+
+### 9.31 Gruppo misto contro un edificio da incendiare; inizio del livello 3
+
+Segnalazioni dell'autore (12 ottobre 2026): con un gruppo misto, clic destro
+su un edificio nemico infiammabile: le unita' che non danno fuoco (arcieri,
+cavalieri) si incasinano invece di restare ferme; dovrebbero non muoversi
+e anzi spostarsi per far passare chi da' fuoco. Per alleati e nemici. E nel
+livello 3 la schermata d'inizio e' al buio: va centrata sulle unita' che
+dialogano in basso a destra.
+
+**Cosa succedeva** [C, enemy_house/caserma/stalla Mouse_RightReleased]: il
+clic sull'edificio da' il fuoco ai fanti selezionati, ma subito dopo il
+GlobalRightReleased di cavalieri e arcieri li manda al punto cliccato,
+dentro l'edificio: si ammassavano contro di lui e davanti ai fanti, che
+giravano attorno e andavano avanti e indietro (fino a 264 inversioni); a
+fine prova fino a 3 unita' sovrapposte all'edificio. In piu' due difetti
+del porting: un fante che andava a dare fuoco si fermava se arrivava a una
+tappa del percorso locale (melee.js, route, §7.7), col fuoco ancora da
+appiccare, e non ripartiva piu'; e col flow field (senza collisioni) poteva
+finire dentro l'edificio e tirare da li'.
+
+**Ora**:
+- `fireOrder` (siege.js): cavalieri e arcieri selezionati restano fermi
+  (`holdOrder`, `holdStill` nel loro GlobalRightReleased; chi sta
+  combattendo continua). Le macchine d'assedio attaccano l'edificio, come
+  prima.
+- `makeWay` (pathing.js): chi va a dare fuoco (fanti alleati e nemici) fa
+  spostare di lato le unita' ferme della sua parte che ha davanti (ogni 10
+  passi, fino a 64 px avanti): di quanto basta perche' le maschere non si
+  tocchino, dalla parte della strada in cui gia' stanno. Non chi combatte,
+  da' fuoco o e' una macchina d'assedio. Nella scelta del posto attorno
+  all'edificio (melee.js, FIRE) un posto occupato da un'unita' ferma che si
+  sposta vale come libero.
+- Fanti alleati che vanno a dare fuoco: niente arrivo sulle tappe (si
+  fermano quando cominciano a tirare); dentro l'edificio ne escono verso il
+  proprio posto prima di tirare; se restano sul posto senza avvicinarsi (meno
+  di 24 px in 2 s, due volte di fila: nessun posto raggiungibile attorno,
+  gli altri lati chiusi da altri edifici) si fermano dove sono invece di
+  oscillare per sempre.
+
+**Prova** (`game/test/browser/fireorder.mjs`, nuova, nella CI; zona aperta
+di `match`; 4 guerrieri, 2 picchieri, 3 cavalieri, 3 arcieri; fanti che
+tirano su 6 / inversioni dei fanti / spostamento massimo di cavalieri e
+arcieri / unita' dentro un edificio alla fine):
+
+| | prima | ora |
+|---|---|---|
+| casa, mescolati | 6 / 264 / 231 px / 1 | 6 / 0 / 56 px / 0 |
+| caserma, mescolati | 6 / 20 / 249 px / 3 | 6 / 3 / 120 px / 0 |
+| casa, cavalieri e arcieri davanti | 5 / 3 / 216 px / 2 | 6 / 57 / 88 px / 0 |
+| caserma, cavalieri e arcieri davanti | 6 / 1 / 191 px / 2 | 6 / 5 / 61 px / 0 |
+| casa, tutti vicini | 6 / 230 / 154 px / 0 | 6 / 0 / 14 px / 0 |
+| nemici contro una casa, fermi davanti | 6 / 114 / 0 / 0 | 6 / 2 / 194 px / 0 |
+| nemici, mescolati | 6 / 74 / 0 / 0 | 6 / 11 / 97 px / 0 |
+
+(I nemici fermi prima non si spostavano mai: i fanti giravano loro attorno.
+Ora si spostano, anche due volte per due fanti diversi.) In mezzo al
+villaggio di `match`, con l'edificio stretto fra chiesa, caserme e stalla e
+un solo lato libero: chi non trova posto ora si ferma (inversioni 915 ->
+166 nel caso peggiore) invece di oscillare.
+
+**Livello 3, inizio** (levels.js): la view della mappa (3215, 4160) era al
+buio, lontana dai soldati (attorno a 5770, 5820). Al primo passo della regia
+la vista va sul baricentro dei soldati (fino al bordo della mappa: sono
+nell'angolo in basso a destra), dopo che la view ha preso la misura della
+finestra; non dopo un caricamento. Il dialogo 3_0 compare accanto a loro.
+
+Movimento (movement.mjs) identico al commit prima; mischia, monastero,
+raccolta, soak e salvataggi senza errori.
+
+### 9.32 Arieti che si sovrappongono attaccando lo stesso edificio
+
+Segnalazione dell'autore (12 ottobre 2026): nel livello 3 gli arieti nemici
+arrivati al monastero si sovrappongono quando iniziano ad attaccare;
+probabilmente succede ovunque.
+
+**Perche'** [C, ally_ariete / enemy_ariete Step]: ogni ariete ha per meta
+l'origine dell'edificio, cioe' un punto dentro di lui. Il campo "largo"
+delle macchine d'assedio (§8.14) porta allora alla cella raggiungibile piu'
+vicina a quel punto, la stessa per tutti, e sul flow field ci si muove
+senza collisioni: al monastero tre arieti finivano nello stesso identico
+punto (4897, 642). Altrove arrivavano in colonna, uno sull'altro, e al
+primo contatto con l'edificio cominciavano a colpire li', sovrapposti.
+
+**Ora** (melee.js `ramSpot`, siege.js):
+- ogni ariete punta a un posto suo attorno all'edificio, con i posti della
+  mischia (§7.7): un settore di 60 gradi per ariete, a contatto o 24 px piu'
+  in fuori, libero e raggiungibile per un ariete (il campo "largo" dalla sua
+  posizione). Arieti alleati e nemici, col bersaglio imposto
+  (`ramTarget`, §9.17) o scelto da soli;
+- un ariete sovrapposto a un altro non comincia a colpire (chi sta gia'
+  colpendo continua) e il suo posto non e' "dove e'" anche se e' a contatto:
+  prosegue fino al suo.
+
+**Prova** (`game/test/browser/rams.mjs`, nuova, nella CI; tre arieti
+contro lo stesso edificio, 2500 passi; passi con due arieti sovrapposti che
+colpiscono entrambi / coppie sovrapposte alla fine):
+
+| | prima | ora |
+|---|---|---|
+| arieti nemici contro una casa (match) | 2311 / 1 | 0 / 0 |
+| arieti alleati contro una caserma (match) | 0 / 0 | 0 / 0 |
+| arieti delle ondate contro il monastero (lvl03) | 1570 / 3 (tutti nello stesso punto) | 0 / 0 |
+
+In viaggio, sul flow field, gli arieti possono ancora passare uno sull'altro
+(come le altre unita'); si separano prima di colpire. Monastero (arieti
+contro mura e caserma), mischia, raccolta, fuoco, soak e salvataggi senza
+errori.
+
+### 9.33 Campo bruciato: nere solo le spighe
+
+Richiesta dell'autore (12 ottobre 2026): un campo di grano bruciato diventa
+tutto nero; nere solo le spighe, non il terreno sotto.
+
+**Perche'** [C, campo Step, "quando prende fuoco"]: le spighe spariscono e
+al loro posto nascono 1700 spighe bruciate (nere e grigie, alpha 0,7) sparse
+su tutto il rombo, che svaniscono in 700-800 passi; il terreno diventa
+`campo_maggese` (la terra arata, marrone). Le 1700 spighe coprono il
+terreno: il campo era una macchia nera.
+
+**Ora** (effects.js `campoStep`): le spighe delle righe (§8.16) diventano
+nere al loro posto (ondeggiano ancora) e svaniscono in 700-800 passi come
+nell'originale; niente spighe in piu'. Il terreno resta la terra arata,
+visibile fra le righe. I salvataggi di prima delle righe (un solo sistema di
+spighe) bruciano come l'originale.
+Prova (Chromium, `match`): screenshot a 40 e 300 passi dall'incendio, prima
+il rombo nero, ora le righe nere sulla terra arata; salvato a meta'
+incendio, ripristino identico. Soak e salvataggi senza errori.
+
+### 9.34 Barra della vita sui cantieri
+
+Richiesta dell'autore (12 ottobre 2026): col puntatore sopra un cantiere si
+dovrebbe vedere la barra della vita, e non succede.
+
+[C] Nell'originale i cantieri (`*_fond`, `mura_*_fond`, `campo_fond`) non
+hanno un Draw_End: la vita si vede solo nella scheda, selezionandoli; la
+barra col puntatore sopra c'e' solo sugli edifici finiti (`casa` Draw_End:
+`selected`, `hover` o `hit`). Ora anche i cantieri la disegnano, con la
+stessa regola e nello stesso punto (`fondLifeBar`, buildings.js, walls.js).
+L'`hover` arrivava gia' (ally_build Mouse_MouseEnter).
+Prova (Chromium, `match`): cantiere di casa, caserma, mura e campo al 40%,
+puntatore sopra: hover 1 e la barra disegnata su tutti e quattro. Soak e
+salvataggi senza errori.
+
+### 9.35 Schermate finali: niente punteggio
+
+Richiesta dell'autore (12 ottobre 2026): nella sconfitta "hai resistito per
+x minuti" solo nel tutorial e nel livello 3; il punteggio via ovunque.
+endgame.js: la sconfitta mostra il titolo, il tempo resistito solo in
+`match` e `lvl03` (le righe salgono negli altri livelli) e le basi
+distrutte; tolti il punteggio finale (sconfitta) e quello parziale (vittoria
+del tutorial), e i due testi da texts.js. ui.mjs (schermate finali in sei
+lingue e tre risoluzioni) senza problemi; soak senza errori.
+
+### 9.36 L'acqua dei fiumi: riflessi, increspature, schiuma
+
+Domanda dell'autore (12 ottobre 2026): l'animazione tremolante sul fiume ha
+senso? Alternative? [C] `fiume_animazione` (anim_fiume, 129x106 px, tre
+fotogrammi di puntini bianchi quasi uguali, image_speed 0,3): tremola sul
+posto invece di scorrere, sono toppe ferme, piazzate a mano (10 nel
+tutorial, nessuna nei livelli 2 e 3). Scelte dall'autore le prime tre
+alternative proposte.
+
+**Ora** (effects.js `waterLife`, dal passo del manager): su tutta l'acqua
+della room (la mappa dell'acqua degli sprite del fiume, §8.13), senza
+oggetti da piazzare:
+- riflessi: trattini chiari orientati come il pezzo di fiume (l'asse
+  principale delle sue celle d'acqua) che compaiono e svaniscono in 1,5-2,5 s
+  scivolando lungo di lui (3 punti a caso nella view a passo);
+- increspature: in media un anello ogni 40 passi nella view;
+- schiuma: puntini fermi lungo le rive (un terzo delle celle d'acqua accanto
+  alla terra), creati una volta per room, che "respirano" appena.
+Categoria "grass" (erba e spighe nelle opzioni grafiche). `fiume_animazione`
+non si carica piu' (app.js, in tutte le room).
+
+**Trovato strada facendo**: i pezzi di fiume hanno depth -y [C, fiume_*
+Create], e gli anelli della pioggia (§8.13) stavano a depth -21: si
+disegnavano prima del fiume, che li copriva (si vedevano solo oltre la
+riva). Ora ogni effetto dell'acqua sta in un sistema per pezzo di fiume,
+appena sopra di lui (depth del pezzo - 0,5: `waterSystem`), anche gli
+anelli della pioggia.
+
+Prova (Chromium): screenshot e GIF prima/dopo nel tutorial, livelli 2 e 3;
+salvataggi con gli effetti, ripristino identico; soak senza errori. Costo
+nel tutorial (1300 particelle in piu', quasi tutte schiuma): ~0,3 ms per
+passo e ~0,4 ms per fotogramma su ~11 ms. Da tarare con l'autore: quantita',
+luminosita', dimensioni.
+
+
+Ritaratura dopo la prima prova dell'autore ("molto molto veloci, un pelo
+piu' visibili"): i riflessi vivono 3,5-5,5 s (erano 1,5-2,5) e scivolano a
+meno di meta' della velocita', piu' grandi e piu' chiari (alpha di picco
+0,95), 2 punti a caso nella view a passo invece di 3 (vivendo il doppio, a
+schermo ce ne sono di piu'); gli anelli si allargano piu' piano (110-140
+passi); la schiuma e' un po' piu' opaca (0,5-0,65) e respira piu' lenta.
+
+### 9.37 Macchie fiorite
+
+Richiesta dell'autore (12 ottobre 2026): macchie di particelle coi fiori
+che ha disegnato (`nuovi/particelle/`: due papaveri e due fiori gialli,
+52x183 px al doppio, lo stelo che tocca il fondo), in combinazioni diverse.
+
+**Sprite**: tools/05_atlas.py (`derived_sprites`, `FIORI`) li riduce a
+meta' (26x92 px, gruppo "ambiente") con l'origine al piede dello stelo:
+`papavero1`, `papavero2`, `fiore_giallo1`, `fiore_giallo2`.
+
+**Oggetti** (nuovi.json, senza sprite, depth -1; effects.js `DECOR`, come
+burst_erba1 a fasce di profondita', §8.17): ellisse 400x250 px (`DECOR_SIZE`;
+le macchie d'erba restano 1000x600), fiori a 0,45-0,7 della misura che
+ondeggiano come l'erba, con una tinta appena piu' scura su alcuni.
+| oggetto               | contenuto                                  |
+|-----------------------|--------------------------------------------|
+| `fiori_papaveri`      | 90 papaveri, senza erba                    |
+| `fiori_papaveri_erba` | l'erba di burst_erba1 (1/6: ~430) + 64 papaveri |
+| `fiori_gialli_erba`   | erba + 64 fiori gialli                     |
+| `fiori_prato`         | erba + 36 papaveri + 36 fiori gialli       |
+Provata prima una versione piu' fitta (fiori a 0,55-0,85, 100-140 per
+macchia): al centro della gaussiana diventavano una chiazza unica di colore.
+
+**Kit di Tiled**: tileset "natura", con l'anteprima com'e' in partita
+(11_tiled_kit `decor_image`, ellisse e semiassi da `tiledkit.DECOR`, che ora
+li tiene per ogni macchia; 12_tiled_import li usa per l'ordine
+dell'anteprima). Categoria "grass" nelle opzioni grafiche (densita').
+
+Prova (Chromium): le quattro macchie nel match con unita' dentro
+(immerse come nell'erba); `npm test`, saves.mjs, ui.mjs, 12 --check
+(match, lvl01, lvl02 identiche).

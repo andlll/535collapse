@@ -14,10 +14,11 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField, destinationBack } from "./pathing.js";
+import { mpPotentialStep, moveFlowField, destinationBack, makeWay } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
+import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
-import { phaseOf } from "./units.js";
+import { phaseOf, swingOn, swingVictim } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
@@ -126,18 +127,22 @@ function enemyMove(i, w, p) {
 }
 
 // Alarm_2, "botte" [C]
+// [§9.28, richiesta dell'autore] Come per gli alleati (units.js, swingOn):
+// l'originale, se l'alleato piu' vicino era oltre i 10 px, interrompeva il
+// colpo a ogni fase, senza danno; ora un colpo cominciato a contatto arriva
+// fino in fondo e colpisce il suo bersaglio anche se si e' allontanato.
 function enemyStrike(i, w, T) {
   const io_x = i.x, io_y = i.y;
   const near = w.nearest(i.x, i.y, "ally_unit");
-  if (!near || w.distanceToInstance(i, near) > 10) { i.action = 0; i.warwork = 0; i.speed = 0; }
-  if (i.action !== 2) return;
+  if ((!near || w.distanceToInstance(i, near) > 10) && !swingOn(i)) { i.action = 0; i.warwork = 0; i.speed = 0; }
+  if (i.action !== 2) { i.swing = 0; return; }
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
   if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
   if (i.step !== 2) return;
   i.step = 0;
   if (T.atkSignal) atkSignal(i, w);
   i.alarm.set(2, 13);
-  const v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), "ally_unit");
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), "ally_unit"));
   if (!v) return;
   v.hit = 1;
   v.alarm.set(5, 47);
@@ -177,8 +182,10 @@ function enemyAttack(i, w, T) {
       if (T.charge) i.chargespeed = 0;
       i.action = 2; i.warwork = 2; i.alarm.set(2, 13);
     }
+    if (i.action === 2 && i.warwork === 2) { i.swing = 1; i.swingT = n0; } // §9.28
     return "exit";
   }
+  if (swingOn(i)) return "exit"; // §9.28: colpo impegnato, girato verso il bersaglio
   // (nessun alleato e warwork 2: non puo' succedere qui, c'e' almeno un ally_unit)
   const chase = (range) => {
     const n = nearest();
@@ -209,14 +216,22 @@ function enemyAttack(i, w, T) {
 // Step "voglio dare fuoco alle case" e "mandare a fuoco" [C]: un nemico
 // fermo entro 400 px (meno di notte) da un edificio di legno, senza civili
 // entro 400 px, ci va e a 200 px gli lancia frecce incendiarie (Alarm_4).
+// [§9.29] Il monastero del livello 3 e' un complesso (complex.js): ci si
+// avvicina al punto piu' vicino di uno qualunque dei suoi pezzi (prima a un
+// posto attorno al corpo, spesso nel cortile chiuso, e ci si fermava
+// contro il muro del cortile) e si tira da 70 px da uno qualunque.
 function enemyFireHouses(i, w) {
+  const cx = complexOf(i.targetid);
   // [Richiesta dell'autore, come §7.7] verso un posto libero attorno
   // all'edificio (melee.js), non tutti verso il suo centro
   if (i.firework === 1 && i.warwork !== 2 && i.targetid && i.targetid.alive && i.action === 1) {
-    [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    if (cx) { [i.dirox, i.diroy] = complexPoint(w, i.x, i.y, cx); i.meleeGo = [i.dirox, i.diroy]; }
+    else [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    makeWay(w, w.path, i, "enemy_unit"); // §9.31
   }
   if (i.firework === 1 && i.warwork !== 2 && i.targetid
-      && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70)) {
+      && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70
+          || (cx && complexNear(w, i, cx, 70)))) {
     i.firework = 0;
     i.direction = pointDirection(i.x, i.y, i.targetid.x, i.targetid.y);
     i.step = 0;
@@ -225,7 +240,9 @@ function enemyFireHouses(i, w) {
   }
   if (i.action !== 0 || i.firework !== 0 || !w.exists("ally_wooden")) return;
   const house = w.nearest(i.x, i.y, "ally_wooden");
-  if (!(w.distanceToInstance(i, house) < 400 * (1 - 0.5 * w.g.night))) return;
+  const hc = complexOf(house); // §9.29: la distanza dal pezzo piu' vicino
+  const hd = hc ? Math.min(w.distanceToInstance(i, house), complexPoint(w, i.x, i.y, hc)[2]) : w.distanceToInstance(i, house);
+  if (!(hd < 400 * (1 - 0.5 * w.g.night))) return;
   const start = () => {
     i.firework = 1; i.warwork = 0; i.action = 1; i.alarm.set(0, 15);
     i.targetid = w.nearest(i.x, i.y, "ally_wooden");

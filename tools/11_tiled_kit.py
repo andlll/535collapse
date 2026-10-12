@@ -19,9 +19,10 @@ build/535-tiled-kit.zip:
   mappe/lvl03.tmx ...    i livelli nuovi, copiati da mappe/ del repo
 
 Le macchie d'erba, di spighe e di fili d'erba (burst_erba1, burst_grano1,
-chiazzaparticellare) nel gioco sono particelle senza sprite: nel kit sono
-un'immagine della macchia com'e' in partita (stesse particelle, stessa
-ellisse di 1000x600 px), disegnata qui una volta.
+chiazzaparticellare) e le macchie fiorite (fiori_*, §9.37) nel gioco sono
+particelle senza sprite: nel kit sono un'immagine della macchia com'e' in
+partita (stesse particelle, stessa ellisse: 1000x600 px, 400x250 i fiori),
+disegnata qui una volta.
 
 Uso:
   python3 tools/11_tiled_kit.py                      kit completo + zip
@@ -129,17 +130,30 @@ def tint(im, rgb, alpha):
 
 def decor_image(name, atlas):
     """La macchia com'e' in partita (game/src/effects.js DECOR, regione
-    ellisse 1000x600 gaussiana, particelle ferme). Origine al centro."""
+    ellisse gaussiana coi semiassi di tk.DECOR, particelle ferme). Origine al
+    centro."""
     rnd = random.Random(name)
-    derived = {n: im for n, _, im, _ in atlas.derived_sprites()}
+    derived = {n: (im, o) for n, _, im, o in atlas.derived_sprites()}
     shapes = {n: im for n, im, _ in atlas.particle_shapes()}
     lerp = lambda a, b, t: tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+    RX, RY = tk.DECOR[name]
+    grass = [(((51, 70, 36), (80, 105, 52)), 1100), (((80, 105, 52), (114, 132, 66)), 1000),
+             (((114, 132, 66), (145, 155, 80)), 500)]
+    erba = lambda k: [(derived["erba_chiara"][0], rnd.uniform(0.4, 0.7), rnd.uniform(-15, 15),
+                       lerp(*c, rnd.random()), 0.35) for c, n in grass for _ in range(round(n / k))]
+    # i fiori: origine al piede dello stelo, non al centro (spostati in su
+    # di meta' altezza)
+    fiore = lambda sp, n: [(derived[sp][0], rnd.uniform(0.45, 0.7), rnd.uniform(-15, 15),
+                            lerp((255, 255, 255), (220, 220, 210), rnd.random()), 1.0) for _ in range(n)]
     if name == "burst_erba1":
-        base = derived["erba_chiara"]
-        groups = [(((51, 70, 36), (80, 105, 52)), 1100), (((80, 105, 52), (114, 132, 66)), 1000),
-                  (((114, 132, 66), (145, 155, 80)), 500)]
-        parts = [(base, rnd.uniform(0.4, 0.7), rnd.uniform(-15, 15), lerp(*c, rnd.random()), 0.35)
-                 for c, n in groups for _ in range(n)]
+        parts = erba(1)
+        rnd.shuffle(parts)
+    elif name.startswith("fiori_"):
+        papaveri = lambda n: fiore("papavero1", n) + fiore("papavero2", n)
+        gialli = lambda n: fiore("fiore_giallo1", n) + fiore("fiore_giallo2", n)
+        parts = {"fiori_papaveri": papaveri(45), "fiori_papaveri_erba": erba(6) + papaveri(32),
+                 "fiori_gialli_erba": erba(6) + gialli(32),
+                 "fiori_prato": erba(6) + papaveri(18) + gialli(18)}[name]
         rnd.shuffle(parts)
     elif name == "burst_grano1":
         base = sprite_frame("part_crop")
@@ -148,8 +162,8 @@ def decor_image(name, atlas):
         base = shapes["__pt_line"]
         parts = [(base, rnd.uniform(0.1, 0.3), rnd.uniform(85, 95),
                   lerp((52, 94, 10), (113, 151, 56), rnd.random()), 1.0) for _ in range(1700)]
-    M = 60
-    out = Image.new("RGBA", (1000 + 2 * M, 600 + 2 * M), (0, 0, 0, 0))
+    M = 80 if name.startswith("fiori_") else 60  # i fiori sporgono in su
+    out = Image.new("RGBA", (2 * RX + 2 * M, 2 * RY + 2 * M), (0, 0, 0, 0))
     cache = {}
     for im, s, ang, col, alpha in parts:
         while True:
@@ -157,15 +171,17 @@ def decor_image(name, atlas):
             v = (rnd.random() + rnd.random() + rnd.random()) / 3
             if (u * 2 - 1) ** 2 + (v * 2 - 1) ** 2 <= 1:
                 break
-        x, y = M + u * 1000, M + v * 600
+        x, y = M + u * 2 * RX, M + v * 2 * RY
         key = (id(im), round(s, 2), round(ang), col, alpha)
         p = cache.get(key)
         if p is None:
             p = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
             p = tint(p, col, alpha).rotate(ang, Image.BICUBIC, expand=True)
             cache[key] = p
+        if any(im is derived[f][0] for f in atlas.FIORI):  # un fiore: il piede dello stelo nel punto
+            y -= im.height * s / 2
         out.alpha_composite(p, (round(x - p.width / 2), round(y - p.height / 2)))
-    return out, (M + 500, M + 300)
+    return out, (M + RX, M + RY)
 
 
 # ------------------------------------------------------------- catalogo

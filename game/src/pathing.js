@@ -29,6 +29,8 @@ const SIEGE_RECALC = 15;       // passi fra due ricalcoli del campo di una macch
 const DX = [1, -1, 0, 0, 1, -1, 1, -1];
 const DY = [0, 0, -1, 1, -1, -1, 1, 1];
 const DIR = DX.map((dx, i) => pointDirection(0, 0, dx, DY[i]));
+// le famiglie degli ostacoli fissi della griglia dei costi [C, manager Create]
+const HOLDERS = ["ally_build", "enemy_build", "natural_parent"];
 
 export class Pathing {
   constructor(world, roomW, roomH) {
@@ -105,16 +107,43 @@ export class Pathing {
     this.cost.fill(0);
     this.solid.fill(0);
     this.solidVer++;
-    for (const fam of ["ally_build", "enemy_build", "natural_parent"]) {
+    for (const fam of HOLDERS) {
       for (const inst of this.w.all(fam)) this.markInstance(inst, 1000);
     }
   }
 
   // collision_rectangle sulla cella, maschera precisa, solo quell'istanza [C]
+  // [§9.29, segnalazione dell'autore] Liberando le celle di un'istanza (un
+  // edificio distrutto, la porta che lascia libero il varco) l'originale le
+  // liberava tutte, anche quelle che toccano ancora un ostacolo vicino: nel
+  // livello 3, abbattuta la porta della cinta, si aprivano le celle delle
+  // mura ai suoi lati, e gli arieti (che sul flow field si muovono senza
+  // collisioni) passavano attraverso il muro, anche con una caserma
+  // costruita al posto della porta. Ora restano chiuse le celle che tocca
+  // ancora un altro ostacolo della griglia: chi l'ha segnata (gridMark) e
+  // non l'ha liberata. [§9.30] Prima solo le famiglie di initCost: i pali e
+  // le statue (props.js), che segnano la griglia da soli, perdevano le loro
+  // celle se accanto spariva un edificio, e le unita' ci andavano contro.
+  // (Nei salvataggi di prima gridMark manca: lo si deduce dalle famiglie.)
   markInstance(inst, value) {
     const s = value >= 1000 ? 1 : 0;
-    for (const k of this._cellsOf(inst)) { this.cost[k] = value; this.solid[k] = s; }
+    for (const k of this._cellsOf(inst)) {
+      if (!s && this.cost[k] >= 1000 && this._heldByOther(k, inst)) continue;
+      this.cost[k] = value; this.solid[k] = s;
+    }
+    inst.gridMark = s;
     this.solidVer++;
+  }
+
+  _heldByOther(k, inst) {
+    const w = this.w, gx = k % this.gw, gy = (k - gx) / this.gw;
+    const x0 = gx * GRID, y0 = gy * GRID, x1 = x0 + GRID, y1 = y0 + GRID;
+    for (const o of w._nearList([x0, y0, x1, y1])) {
+      if (o === inst || !o.alive) continue;
+      if (o.gridMark === undefined ? !(o.solid && HOLDERS.some((f) => w.is(o, f))) : o.gridMark !== 1) continue;
+      if (w.collisionRectangle(x0, y0, x1, y1, null, true, null, o)) return true;
+    }
+    return false;
   }
 
   // [§8.14] Le celle in cui non puo' stare il centro di una
@@ -184,6 +213,34 @@ export class Pathing {
       if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
       if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
       if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+    }
+    return f;
+  }
+
+  // [§9.29] Il campo verso un ostacolo fatto di piu' pezzi (complex.js, il
+  // monastero del livello 3): la ricerca parte, a valore 0, da tutte le
+  // celle libere che toccano una delle sue celle (`cells`). Solo gli
+  // ostacoli fissi, come goalField con fixed.
+  goalFieldAround(cells) {
+    const { gw } = this, N = gw * this.gh, cost = this._solidCost();
+    const f = new Int32Array(N).fill(-1);
+    const q = this.queue || (this.queue = new Int32Array(N));
+    let head = 0, tail = 0;
+    const seed = (n) => { if (f[n] === -1 && cost[n] < 1000) { f[n] = 0; q[tail++] = n; } };
+    for (const k of cells) {
+      const x = k % gw;
+      if (x + 1 < gw) seed(k + 1);
+      if (x > 0) seed(k - 1);
+      if (k >= gw) seed(k - gw);
+      if (k < N - gw) seed(k + gw);
+    }
+    while (head < tail) {
+      const k = q[head++], v = f[k] + 1, x = k % gw;
+      let n;
+      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
     }
     return f;
   }
@@ -604,7 +661,12 @@ export function siegeMove(w, p, i) {
 // Prima due unita' prodotte di seguito ricevevano lo stesso posto (la
 // spirale guardava solo le celle di chi e' gia' fermo) e la seconda,
 // trovatolo occupato, spostava la meta a caso di 32-50 px a ogni passo.
+// [§9.30, segnalazione dell'autore] E raggiungibile dall'unita' fra gli
+// ostacoli fissi (verso il posto si passa sopra gli alleati: rallyGo):
+// prima il posto poteva essere oltre la riva del fiume, in un bosco chiuso,
+// dietro un edificio senza passaggio, e l'unita' ci si incastrava.
 export function rallySpot(w, p, inst, ax, ay) {
+  const reach = p.goalField(inst.x, inst.y, false, false, true);
   const taken = [];
   for (const u of w.all("ally_unit")) {
     if (u === inst || u.creation !== 1) continue;
@@ -612,13 +674,16 @@ export function rallySpot(w, p, inst, ax, ay) {
     if (u.action === 1) taken.push([u.dirox, u.diroy]);
   }
   const cs = 64;
+  // [§9.30] i posti gia' promessi a meno della misura della maschera (era
+  // 48 px: i cavalieri, larghi 91, si sovrapponevano ai vicini)
+  const bb = w.bbox(inst), mw = Math.max(48, bb ? bb[2] - bb[0] : 0), mh = Math.max(48, bb ? bb[3] - bb[1] : 0);
   let gx = Math.floor(ax / cs), gy = Math.floor(ay / cs);
   let stepLen = 1, dir = 0, done = 0, changes = 0;
   for (let attempts = 0; attempts < 400; attempts++) {
     const fx = gx * cs + cs / 2, fy = gy * cs + cs / 2;
     const cx = Math.floor(fx / GRID), cy = Math.floor(fy / GRID);
-    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && w.placeFree(inst, fx, fy)
-        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < 48 && Math.abs(ty - fy) < 48)) return [fx, fy];
+    if (p.inside(cx, cy) && p.cost[cy * p.gw + cx] < 1000 && reach[cy * p.gw + cx] !== -1 && w.placeFree(inst, fx, fy)
+        && !taken.some(([tx, ty]) => Math.abs(tx - fx) < mw && Math.abs(ty - fy) < mh)) return [fx, fy];
     if (dir === 0) gx++; else if (dir === 1) gy++; else if (dir === 2) gx--; else gy--;
     done++;
     if (done >= stepLen) {
@@ -629,6 +694,88 @@ export function rallySpot(w, p, inst, ax, ay) {
     }
   }
   return null;
+}
+
+// [§9.30, segnalazione dell'autore] Un'unita' appena prodotta verso il suo
+// posto (flaggox, flaggoy: rallySpot) col pathfinding anche da vicino: il
+// campo verso il posto e il posto come una casella della formazione
+// (§8.11, onFormationSlot), cioe' unico e raggiunto passando sopra gli
+// alleati. Prima, sotto i 400 px e senza edifici in mezzo, andava dritta con
+// mp_potential_step e si fermava contro le unita' prodotte prima, gia' al
+// loro posto: avanti e indietro per secondi (fino a 230 inversioni), poi
+// arrivava "per rinuncia" anche a 190 px dal posto.
+// Il campo e' quello dei soli ostacoli fissi: le celle delle unita' ferme
+// (occupy) chiudevano in una sacca chi nasceva fra l'edificio e i compagni.
+export function rallyGo(p, inst) {
+  p.free(inst);
+  const f = p.goalField(inst.flaggox, inst.flaggoy, false, false, true);
+  const gx = Math.trunc(inst.flaggox / GRID), gy = Math.trunc(inst.flaggoy / GRID);
+  const sx = Math.floor(inst.x / GRID), sy = Math.floor(inst.y / GRID);
+  if (p.fieldAt(f, gx, gy) === -1 || (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2))) {
+    scrMove(p, inst, inst.flaggox, inst.flaggoy); // posto non raggiungibile: come prima
+    return;
+  }
+  inst.goal_field = f; inst.flow_field = p.flowField(f);
+  inst.goal_x = gx * GRID; inst.goal_y = gy * GRID;
+  inst.dirox = inst.flaggox; inst.diroy = inst.flaggoy;
+  inst.formX = inst.dirox; inst.formY = inst.diroy;
+}
+
+// [§9.31, richiesta dell'autore] Chi va a dare fuoco a un edificio (alleati
+// e nemici) fa spostare di lato le unita' ferme della sua parte che trova
+// sulla strada (al piu' ogni WAY_EVERY passi): prima i fanti spingevano
+// contro arcieri e cavalieri fermi, giravano attorno e andavano avanti e
+// indietro. Si spostano solo le unita' ferme (action 0) che non stanno
+// combattendo e non danno fuoco, e non le macchine d'assedio: di lato
+// rispetto alla strada, dalla parte in cui gia' stanno, in un posto libero
+// (verso il quale si passa sopra gli alleati, come verso una casella della
+// formazione).
+const WAY_EVERY = 10, SIEGE_OBJ = ["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
+// `o` si sposta per far passare `i` (della stessa parte)
+export const canYield = (o, i) => o !== i && o.action === 0 && o.warwork !== 2 && o.firework !== 1
+  && !SIEGE_OBJ.includes(o.object) && !!o.parents && o.parents.includes("enemy_unit") === i.parents.includes("enemy_unit")
+  && (o.parents.includes("enemy_unit") || o.parents.includes("ally_unit"));
+export function makeWay(w, p, i, fam) {
+  if ((i.wayAt || 0) > w._stepNo) return;
+  i.wayAt = w._stepNo + WAY_EVERY;
+  const dist = pointDistance(i.x, i.y, i.dirox, i.diroy);
+  if (dist < 8) return;
+  const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
+  for (const d of [16, 40, 64]) {
+    if (d > dist + 16) break;
+    const o = w.instancePlace(i, i.x + lengthdirX(d, dir), i.y + lengthdirY(d, dir), fam);
+    if (!o || !canYield(o, i)) continue;
+    stepAside(w, p, o, i, dir);
+  }
+}
+
+function stepAside(w, p, o, i, dir) {
+  // distanza (con segno) di `o` dalla strada di `i`, e quanto spostarlo
+  // perche' le due maschere non si tocchino piu' passando
+  const ux = lengthdirX(1, dir), uy = lengthdirY(1, dir), nx = -uy, ny = ux;
+  const off = nx * (o.x - i.x) + ny * (o.y - i.y), side = off >= 0 ? 1 : -1;
+  const half = (inst) => { const b = w.bbox(inst); return b ? ((b[2] - b[0]) / 2) * Math.abs(nx) + ((b[3] - b[1]) / 2) * Math.abs(ny) : 24; };
+  const need = half(o) + half(i) + 8;
+  const fam = o.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit";
+  for (const s of [side, -side]) {
+    for (const extra of [0, 24, 48]) {
+      const len = need + extra - s * off;
+      if (len <= 0) continue;
+      const x = Math.round(o.x + nx * s * len), y = Math.round(o.y + ny * s * len);
+      const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+      if (!p.inside(gx, gy) || p.solid[gy * p.gw + gx] || !w.placeFreeExcept(o, x, y, fam)) continue;
+      p.free(o);
+      if (o.action !== 1 && o.alarm.get(0) < 1) o.alarm.set(0, 13);
+      o.action = 1; o.warwork = 4; o.step = 0;
+      o.dirox = x; o.diroy = y;
+      o.formX = x; o.formY = y;
+      o.goal_field = p.goalField(x, y, false, false, true);
+      o.flow_field = p.flowField(o.goal_field);
+      o.goal_x = gx * GRID; o.goal_y = gy * GRID;
+      return true;
+    }
+  }
+  return false;
 }
 
 // [§7.10] Appena prodotta e col posto occupato: un altro posto libero
@@ -697,6 +844,16 @@ export function seesGoal(p, inst) {
 // World.placeFreeForSlot): le righe vanno per ruolo e chi deve finire
 // davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
+
+// [§9.30] Arrivo sulla casella (formazione, posto di raccolta): l'arrivo
+// scatta a 10 px e l'unita', arrivata col flow field (senza collisioni),
+// poteva fermarsi sovrapposta all'edificio da cui era uscita o a un albero.
+// Se e' cosi' e la casella e' libera (gli alleati non contano), ci va.
+export function snapToSlot(w, inst) {
+  if (inst.action !== 1 || !onFormationSlot(inst) || pointDistance(inst.x, inst.y, inst.dirox, inst.diroy) >= 10) return;
+  if (w.placeFreeExcept(inst, inst.x, inst.y, "ally_unit") || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, "ally_unit")) return;
+  w.setPos(inst, inst.dirox, inst.diroy);
+}
 
 // "Punto d'arrivo occupato" [C]: la meta si sposta di `len` px verso
 // l'unita'. [§9.20] Se l'unita' e' piu' vicina di `len`, la meta diventa il

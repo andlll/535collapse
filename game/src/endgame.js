@@ -38,8 +38,7 @@ export function victoryManager() {
       }
     },
     drawGUI(i, w, d) {
-      const g = w.g, vw = w.cam.cssW, vh = w.cam.cssH;
-      const score = g.seconds + 60 * g.minutes + 3600 * g.hours + 1000 * g.basidistrutte + 1000;
+      const vw = w.cam.cssW, vh = w.cam.cssH;
       d.setColour(c.white);
       d.setAlpha(i.fogalpha);
       d.rectangle(0, 0, vw, vh, false);
@@ -51,7 +50,7 @@ export function victoryManager() {
       d.setFont("overdue");
       if (w.room === "match") {
         d.text(vw / 2, vh / 2 - 100, tr("You destroyed all the secondary enemy bases"));
-        d.text(vw / 2, vh / 2, tr("Your partial score is {score}", { score }));
+        // [§9.35, richiesta dell'autore] niente punteggio
       }
       if (w.room === "lvl03") d.text(vw / 2, vh / 2 - 100, tr("The monastery has held out: the invaders' advance is broken"));
       const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6" }[w.room];
@@ -71,6 +70,8 @@ export function victoryManager() {
 // gameover_manager [C]: creato quando il centro e' distrutto; lo schermo
 // annerisce (+0,02 a passo) con tempo resistito, basi distrutte e
 // punteggio, e dopo 760 passi si torna al menu.
+// [§9.35, richiesta dell'autore] niente punteggio; il tempo resistito solo
+// nel tutorial (match) e nel livello 3 (la difesa a tempo).
 // [Correzione decisa dall'autore, §3.19 n.67] l'oggetto era invisibile
 // (visible=false nel GMX): GameMaker non eseguiva il suo Draw GUI e la
 // schermata non compariva mai. Qui e' visibile.
@@ -81,7 +82,6 @@ export function gameoverManager() {
     step(i) { if (i.fogalpha < 1) i.fogalpha += 0.02; },
     drawGUI(i, w, d) {
       const g = w.g, vw = w.cam.cssW, vh = w.cam.cssH;
-      const score = g.seconds + 60 * g.minutes + 3600 * g.hours + 1000 * g.basidistrutte + g.victory * 1000;
       d.setColour(c.black);
       d.setAlpha(i.fogalpha);
       if (i.fogalpha > 0) d.rectangle(0, 0, vw, vh, false);
@@ -89,10 +89,12 @@ export function gameoverManager() {
       if (i.fogalpha < 1) return;
       d.setColour(c.white);
       d.setHalign("center");
-      d.text(vw / 2, vh / 2 - 200, w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed."));
-      d.text(vw / 2, vh / 2 - 100, tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
-      d.text(vw / 2, vh / 2, tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte }));
-      d.text(vw / 2, vh / 2 + 100, tr("The final score is {score}", { score }));
+      const lines = [w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed.")];
+      if (w.room === "match" || w.room === "lvl03") {
+        lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
+      }
+      lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte }));
+      lines.forEach((t, k) => d.text(vw / 2, vh / 2 - 200 + k * 100, t));
     },
   };
 }
