@@ -5307,3 +5307,42 @@ nel tutorial (1300 particelle in piu', quasi tutte schiuma): ~0,3 ms per
 passo e ~0,4 ms per fotogramma su ~11 ms. Da tarare con l'autore: quantita',
 luminosita', dimensioni.
 
+
+Ritaratura dopo la prima prova dell'autore ("molto molto veloci, un pelo
+piu' visibili"): i riflessi vivono 3,5-5,5 s (erano 1,5-2,5) e scivolano a
+meno di meta' della velocita', piu' grandi e piu' chiari (alpha di picco
+0,95), 2 punti a caso nella view a passo invece di 3 (vivendo il doppio, a
+schermo ce ne sono di piu'); gli anelli si allargano piu' piano (110-140
+passi); la schiuma e' un po' piu' opaca (0,5-0,65) e respira piu' lenta.
+
+### 9.37 Macchie fiorite
+
+Richiesta dell'autore (12 ottobre 2026): macchie di particelle coi fiori
+che ha disegnato (`nuovi/particelle/`: due papaveri e due fiori gialli,
+52x183 px al doppio, lo stelo che tocca il fondo), in combinazioni diverse.
+
+**Sprite**: tools/05_atlas.py (`derived_sprites`, `FIORI`) li riduce a
+meta' (26x92 px, gruppo "ambiente") con l'origine al piede dello stelo:
+`papavero1`, `papavero2`, `fiore_giallo1`, `fiore_giallo2`.
+
+**Oggetti** (nuovi.json, senza sprite, depth -1; effects.js `DECOR`, come
+burst_erba1 a fasce di profondita', §8.17): ellisse 400x250 px (`DECOR_SIZE`;
+le macchie d'erba restano 1000x600), fiori a 0,45-0,7 della misura che
+ondeggiano come l'erba, con una tinta appena piu' scura su alcuni.
+| oggetto               | contenuto                                  |
+|-----------------------|--------------------------------------------|
+| `fiori_papaveri`      | 90 papaveri, senza erba                    |
+| `fiori_papaveri_erba` | l'erba di burst_erba1 (1/6: ~430) + 64 papaveri |
+| `fiori_gialli_erba`   | erba + 64 fiori gialli                     |
+| `fiori_prato`         | erba + 36 papaveri + 36 fiori gialli       |
+Provata prima una versione piu' fitta (fiori a 0,55-0,85, 100-140 per
+macchia): al centro della gaussiana diventavano una chiazza unica di colore.
+
+**Kit di Tiled**: tileset "natura", con l'anteprima com'e' in partita
+(11_tiled_kit `decor_image`, ellisse e semiassi da `tiledkit.DECOR`, che ora
+li tiene per ogni macchia; 12_tiled_import li usa per l'ordine
+dell'anteprima). Categoria "grass" nelle opzioni grafiche (densita').
+
+Prova (Chromium): le quattro macchie nel match con unita' dentro
+(immerse come nell'erba); `npm test`, saves.mjs, ui.mjs, 12 --check
+(match, lvl01, lvl02 identiche).

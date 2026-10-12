@@ -153,7 +153,7 @@ export function rainRipples(w, cam) {
 // senza oggetti da piazzare:
 // - riflessi: trattini chiari, orientati come il pezzo di fiume (l'asse
 //   principale delle sue celle d'acqua), che compaiono e svaniscono in
-//   1,5-2,5 s scivolando appena lungo di lui (RIFLESSI_TRIES punti a caso
+//   3,5-5,5 s scivolando piano lungo di lui (RIFLESSI_TRIES punti a caso
 //   nella view a ogni passo);
 // - increspature: ogni tanto un anello che si allarga (in media uno ogni
 //   INCRESPATURA_EVERY passi nella view);
@@ -162,19 +162,19 @@ export function rainRipples(w, cam) {
 // Sopra il pezzo di fiume che li contiene (waterSystem) e sotto chi gli sta
 // davanti; di notte sotto il filtro della notte come il resto. Categoria "grass" (erba e spighe nelle opzioni grafiche: spenta,
 // spegne anche questi; la qualita' ne dirada la schiuma).
-const RIFLESSI_TRIES = 3, INCRESPATURA_EVERY = 40, SCHIUMA_EVERY = 3;
+const RIFLESSI_TRIES = 2, INCRESPATURA_EVERY = 40, SCHIUMA_EVERY = 3;
 // (orientamento e direzione li da' il pezzo di fiume: waterLife)
 const RIFLESSO = partType({
-  shape: "line", size: [0.15, 0.3, 0, 0], scale: [1, 0.8],
-  colour: { rgb: [240, 255, 248, 255, 250, 255] }, alpha: [0, 0.85, 0],
-  speed: [0.04, 0.12, 0, 0], life: [90, 150],
+  shape: "line", size: [0.18, 0.34, 0, 0], scale: [1, 0.9],
+  colour: { rgb: [245, 255, 250, 255, 252, 255] }, alpha: [0, 0.95, 0],
+  speed: [0.015, 0.045, 0, 0], life: [200, 320],
 });
 const INCRESPATURA = partType({
-  shape: "ring", size: [0.03, 0.05, 0.006, 0], scale: [1, 0.5],
-  colour: { rgb: [225, 245, 235, 250, 240, 255] }, alpha: [0.85, 0.45, 0], life: [60, 80],
+  shape: "ring", size: [0.03, 0.05, 0.0035, 0], scale: [1, 0.5],
+  colour: { rgb: [225, 245, 235, 250, 240, 255] }, alpha: [0.9, 0.5, 0], life: [110, 140],
 });
-const SCHIUMA = [0.4, 0.55].map((a) => partType({
-  shape: "flare", size: [0.1, 0.2, 0, 0.018], scale: [1, 0.55],
+const SCHIUMA = [0.5, 0.65].map((a) => partType({
+  shape: "flare", size: [0.1, 0.2, 0, 0.006], scale: [1, 0.55],
   colour: { rgb: [228, 248, 238, 252, 242, 255] }, alpha: [a], life: [99999999, 99999999],
 }));
 
@@ -385,13 +385,33 @@ const DECOR = {
                                     colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
                                     alpha: [1, 0.8], life: [99999999, 99999999] }), 1700]],
 };
+// [§9.37, richiesta dell'autore] Macchie fiorite piccole (ellisse 400x250 px):
+// i fiori dell'autore (nuovi/particelle/: due papaveri e due fiori gialli,
+// a meta' risoluzione con l'origine al piede dello stelo, tools/05_atlas.py)
+// ondeggiano come l'erba; una tinta appena piu' scura su alcuni varia il
+// tono. L'erba, dove c'e', e' quella di burst_erba1 alla stessa densita'.
+const fiore = (sprite) => partType({ sprite, size: [0.45, 0.7, 0, 0], ...SWAY, alpha: [1],
+                                     colour: { mix: [makeColourRgb(255, 255, 255), makeColourRgb(220, 220, 210)] } });
+const PAPAVERO = [fiore("papavero1"), fiore("papavero2")], GIALLO = [fiore("fiore_giallo1"), fiore("fiore_giallo2")];
+const ERBA_PICCOLA = DECOR.burst_erba1.map(([t, n]) => [t, Math.round(n / 6)]); // 1/6 dell'area
+const fiori = (list, n) => list.map((t) => [t, n]);
+Object.assign(DECOR, {
+  fiori_papaveri: fiori(PAPAVERO, 45),
+  fiori_papaveri_erba: [...ERBA_PICCOLA, ...fiori(PAPAVERO, 32)],
+  fiori_gialli_erba: [...ERBA_PICCOLA, ...fiori(GIALLO, 32)],
+  fiori_prato: [...ERBA_PICCOLA, ...fiori(PAPAVERO, 18), ...fiori(GIALLO, 18)],
+});
+// semiassi dell'ellisse di ogni macchia
+const DECOR_SIZE = { fiori_papaveri: [200, 125], fiori_papaveri_erba: [200, 125], fiori_gialli_erba: [200, 125],
+                     fiori_prato: [200, 125] };
 export const DECOR_OBJECTS = Object.keys(DECOR);
 
 export function decorCreate(i, w) {
   i.sprite_index = null;
   const ps = P(w).systemCreate(-1, "grass");
   const em = P(w).emitterCreate(ps);
-  P(w).region(em, i.x - 500, i.x + 500, i.y - 300, i.y + 300, "ellipse", "gaussian");
+  const [rx, ry] = DECOR_SIZE[i.object] || [500, 300];
+  P(w).region(em, i.x - rx, i.x + rx, i.y - ry, i.y + ry, "ellipse", "gaussian");
   // i gruppi in ordine sparso (l'ordine di nascita e' quello di disegno:
   // a gruppi, i verdi chiari stavano tutti sopra gli scuri)
   const list = [];

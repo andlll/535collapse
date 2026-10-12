@@ -156,6 +156,34 @@
       "solid": false,
       "depth": -9999,
       "kit": false
+    },
+    "fiori_papaveri": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": -1,
+      "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
+    },
+    "fiori_papaveri_erba": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": -1,
+      "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
+    },
+    "fiori_gialli_erba": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": -1,
+      "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
+    },
+    "fiori_prato": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": -1,
+      "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
     }
   },
   "derivati": {
