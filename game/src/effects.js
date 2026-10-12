@@ -339,14 +339,30 @@ export function campoCreate(i, w) {
   i.crop_rows = cropRows(i, w);
 }
 
+// [§9.33, richiesta dell'autore] Bruciando, le spighe delle righe diventano
+// nere (stesse posizioni, ondeggiano ancora) e svaniscono in 700-800 passi
+// come quelle dell'originale. Prima sparivano e al loro posto 1700 spighe
+// nere sparse su tutto il rombo coprivano anche il terreno: il campo
+// diventava una macchia nera. Il terreno resta la terra arata.
+const SPIGA_RIGA_BRUCIATA = partType({ sprite: "spiga", size: [0.7, 1, 0, 0], orientation: SWAY.orientation, life: [700, 800],
+                                       alpha: [1, 1, 0], colour: { list: [makeColourRgb(28, 24, 20), makeColourRgb(34, 30, 26), makeColourRgb(70, 66, 60)] } });
+
 export function campoStep(i, w) {
   if (i.onfire === 1 && i.firestarted === 0) {
     i.sprite_index = "campo_maggese";
-    P(w).systemDestroy(i.grass_system); // (i salvataggi di prima delle righe)
-    for (const ps of i.crop_rows || []) P(w).systemDestroy(ps);
-    i.crop_rows = [];
-    i.grass_system_black = P(w).systemCreate(-1, "grass");
-    diamond(w, i.grass_system_black, i, SPIGA_BRUCIATA, 1700);
+    if (i.grass_system) { // i salvataggi di prima delle righe: come l'originale
+      P(w).systemDestroy(i.grass_system);
+      i.grass_system_black = P(w).systemCreate(-1, "grass");
+      diamond(w, i.grass_system_black, i, SPIGA_BRUCIATA, 1700);
+    }
+    for (const ps of i.crop_rows || []) {
+      for (const q of ps.parts) {
+        q.t = SPIGA_RIGA_BRUCIATA;
+        q.age = 0;
+        q.life = 700 + Math.random() * 100;
+      }
+      P(w).releaseWhenEmpty(ps);
+    }
   }
   fireStep(i, w, "campo");
 }

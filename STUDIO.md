@@ -5228,3 +5228,23 @@ In viaggio, sul flow field, gli arieti possono ancora passare uno sull'altro
 contro mura e caserma), mischia, raccolta, fuoco, soak e salvataggi senza
 errori.
 
+### 9.33 Campo bruciato: nere solo le spighe
+
+Richiesta dell'autore (12 ottobre 2026): un campo di grano bruciato diventa
+tutto nero; nere solo le spighe, non il terreno sotto.
+
+**Perche'** [C, campo Step, "quando prende fuoco"]: le spighe spariscono e
+al loro posto nascono 1700 spighe bruciate (nere e grigie, alpha 0,7) sparse
+su tutto il rombo, che svaniscono in 700-800 passi; il terreno diventa
+`campo_maggese` (la terra arata, marrone). Le 1700 spighe coprono il
+terreno: il campo era una macchia nera.
+
+**Ora** (effects.js `campoStep`): le spighe delle righe (§8.16) diventano
+nere al loro posto (ondeggiano ancora) e svaniscono in 700-800 passi come
+nell'originale; niente spighe in piu'. Il terreno resta la terra arata,
+visibile fra le righe. I salvataggi di prima delle righe (un solo sistema di
+spighe) bruciano come l'originale.
+Prova (Chromium, `match`): screenshot a 40 e 300 passi dall'incendio, prima
+il rombo nero, ora le righe nere sulla terra arata; salvato a meta'
+incendio, ripristino identico. Soak e salvataggi senza errori.
+
