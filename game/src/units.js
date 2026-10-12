@@ -730,6 +730,23 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   }
 }
 
+// [§9.28, richiesta dell'autore] Colpo portato a termine: nell'originale
+// chi stava colpendo (warwork 2) e vedeva il nemico allontanarsi oltre i
+// 10 px si fermava a meta' colpo ("se stavi attaccando fermati e basta"),
+// senza danno, e ripartiva a inseguirlo: contro chi si muove le unita'
+// iniziavano un colpo dopo l'altro senza finirne nessuno, a scatti. Ora un
+// colpo cominciato a contatto (swing, contro swingT) arriva fino in fondo,
+// animazione e danno, anche se il bersaglio intanto si e' allontanato;
+// dopo il colpo, se e' ancora lontano, si riparte a inseguirlo come prima.
+// Un ordine del giocatore (action 1) o la morte del bersaglio lo
+// interrompono.
+function swingOn(i) {
+  const t = i.swingT;
+  if (i.swing !== 1 || i.action !== 2 || i.warwork !== 2 || !t || !t.alive) return false;
+  i.direction = pointDirection(i.x, i.y, t.x, t.y);
+  return true;
+}
+
 // Step "Attacco" [C, guerriero azione 10 / cavaliere azione 12]: senza un
 // bersaglio scelto col clic destro, l'unita' attacca il nemico piu' vicino
 // se e' a meno di 10 px, ci va incontro se e' entro `comp` (700 in attacco,
@@ -756,8 +773,10 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; p.occupy(i); i.alarm.set(2, 13);
       }
+      if (i.action === 2 && i.warwork === 2) { i.swing = 1; i.swingT = ta; } // §9.28
       return "exit";
     }
+    if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (i.warwork === 1 && dist >= i.comp * k) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (dist < i.comp * k && valid && (i.warwork === 0 || i.warwork === 1)) {
@@ -783,8 +802,10 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; i.alarm.set(2, 13); p.occupy(i);
       }
+      if (i.action === 2 && i.warwork === 2) { i.swing = 1; i.swingT = te; } // §9.28
       return "exit";
     }
+    if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null; }
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
       i.dirox = i.target_eu.x;
@@ -806,15 +827,21 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
 // (nel GML alleato non erano dichiarate).
 // Il guerriero controlla che esista un bersaglio e si gira verso di lui
 // prima di colpire (face) [C, ally_warrior Alarm_2].
+// [§9.28] Un colpo portato a termine contro un bersaglio che si e'
+// allontanato (swing, autoAttack) colpisce lui, se nessun nemico e' a
+// contatto davanti all'unita'.
 export function meleeStrike(i, w, table, enemySide, face = false) {
-  if (i.action !== 2) return;
+  if (i.action !== 2) { i.swing = 0; return; }
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
   if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
   if (i.step !== 2) return;
   i.step = 0;
   i.alarm.set(2, 13);
   const target = enemySide ? "ally_unit" : "enemy_unit";
-  const v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target);
+  let v = w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target);
+  const st = i.swing === 1 && i.swingT && i.swingT.alive ? i.swingT : null;
+  i.swing = 0;
+  if (st && (!v || w.distanceToInstance(i, v) >= 10)) v = st;
   if (!v) return;
   if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;

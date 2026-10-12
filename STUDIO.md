@@ -4928,3 +4928,49 @@ obiettivi e sulla minimappa sopra il pannello delle risorse, "Indietro"
 delle opzioni grafiche e il codice della vittoria del livello 3 sotto il
 bordo dello schermo, e solo in tedesco le schede della casa e delle mura
 oltre il bordo destro. Da decidere con l'autore.
+
+### 9.28 Mischia: il colpo cominciato arriva fino in fondo
+
+Segnalazione dell'autore (12 ottobre 2026): le unita' militari da mischia
+che attaccano un nemico che si muove cominciano il colpo quando sono
+abbastanza vicine, ma lo interrompono appena il nemico si allontana; nelle
+versioni precedenti il colpo cominciato veniva portato a termine
+(animazione e danno). Chiesto cosi', con correzioni mirate al pathfinding
+invece di rifare il sistema.
+
+**Cosa succedeva** [C, ally_cavaliere / ally_warrior Step, "se stavi
+attaccando fermati e basta"]: il colpo dura tre fasi da 13 passi (Alarm_2,
+il danno alla fine della terza); a ogni passo, se il nemico era oltre i
+10 px, chi stava colpendo (warwork 2) tornava fermo, senza danno, e al
+passo dopo ripartiva a inseguirlo. Contro un nemico che si muove: un colpo
+cominciato dopo l'altro, nessuno finito, a scatti.
+
+**Ora** (units.js, `autoAttack`, `meleeStrike`; cavaliere, guerriero,
+picchiere): un colpo cominciato a contatto (`swing`, contro `swingT`) va
+fino in fondo anche se il bersaglio si allontana: l'unita' resta ferma
+girata verso di lui, finisce l'animazione e il danno va a lui (se nessun
+altro nemico e' a contatto davanti all'unita', come prima). Finito il
+colpo, se il bersaglio e' ancora lontano riparte a inseguirlo come prima.
+Lo interrompono un ordine del giocatore (clic destro: action 1) e la morte
+del bersaglio. Solo alleati: i nemici (enemies.js, `enemyStrike`) fanno
+ancora come l'originale. Nessun campo dei salvataggi cambia significato
+(`swing`, `swingT` sono nuovi e mancano nei vecchi: colpo non impegnato).
+
+**Prova** (`game/test/browser/melee.mjs`, nuova, nella CI): un alleato
+contro un guerriero nemico che si lascia raggiungere e, 6 passi dopo
+l'inizio del colpo, scappa di 90 px; 1500 passi per tipo. Poi, a meta'
+colpo col bersaglio scappato, un ordine di movimento (il colpo si
+interrompe, niente danno, l'unita' parte) e la morte del bersaglio (il
+colpo si interrompe, un altro nemico lontano non perde vita).
+
+| | colpi cominciati | arrivati | interrotti senza danno |
+|---|---|---|---|
+| cavaliere: prima / ora | 75 / 23 | 5 / 34 | 71 / 0 |
+| guerriero: prima / ora | 66 / 21 | 5 / 29 | 61 / 0 |
+| picchiere: prima / ora | 72 / 21 | 3 / 29 | 69 / 0 |
+
+("Arrivati" piu' dei cominciati: col bersaglio ancora a contatto il colpo
+dopo segue senza ricominciare.) Il bersaglio colpito era al piu' a 86-88 px
+(in partita, un nemico che scappa appena comincia il colpo, a 4 px per passo, fino a circa 130-150 px).
+movement.mjs (match, 3 semi), combattimento: spin 9/18/7 -> 7/17/6, rev
+392/293/212 -> 395/268/212; soak e salvataggi senza errori.
