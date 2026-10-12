@@ -5263,3 +5263,13 @@ Prova (Chromium, `match`): cantiere di casa, caserma, mura e campo al 40%,
 puntatore sopra: hover 1 e la barra disegnata su tutti e quattro. Soak e
 salvataggi senza errori.
 
+### 9.35 Schermate finali: niente punteggio
+
+Richiesta dell'autore (12 ottobre 2026): nella sconfitta "hai resistito per
+x minuti" solo nel tutorial e nel livello 3; il punteggio via ovunque.
+endgame.js: la sconfitta mostra il titolo, il tempo resistito solo in
+`match` e `lvl03` (le righe salgono negli altri livelli) e le basi
+distrutte; tolti il punteggio finale (sconfitta) e quello parziale (vittoria
+del tutorial), e i due testi da texts.js. ui.mjs (schermate finali in sei
+lingue e tre risoluzioni) senza problemi; soak senza errori.
+

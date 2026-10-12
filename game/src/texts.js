@@ -171,9 +171,6 @@ export const TEXTS = {
     it: "Hai distrutto tutte le basi nemiche secondarie", es: "Has destruido todas las bases enemigas secundarias",
     pt: "Você destruiu todas as bases inimigas secundárias", de: "Du hast alle feindlichen Nebenbasen zerstört",
     fr: "Tu as détruit toutes les bases ennemies secondaires" },
-  "Your partial score is {score}": {
-    it: "Il tuo punteggio parziale è {score}", es: "Tu puntuación parcial es {score}",
-    pt: "Sua pontuação parcial é {score}", de: "Dein Zwischenstand: {score}", fr: "Ton score partiel est de {score}" },
   "Code to unlock the next level:": {
     it: "Codice per sbloccare il livello successivo:", es: "Código para desbloquear el siguiente nivel:",
     pt: "Código para desbloquear o próximo nível:", de: "Code für das nächste Level:",
@@ -192,9 +189,6 @@ export const TEXTS = {
   "{n} enemy bases were successfully destroyed.": {
     it: "Basi nemiche distrutte: {n}.", es: "Bases enemigas destruidas: {n}.", pt: "Bases inimigas destruídas: {n}.",
     de: "Zerstörte feindliche Basen: {n}.", fr: "Bases ennemies détruites : {n}." },
-  "The final score is {score}": {
-    it: "Il punteggio finale è {score}", es: "La puntuación final es {score}", pt: "A pontuação final é {score}",
-    de: "Endpunktzahl: {score}", fr: "Le score final est de {score}" },
 
   // ----------------------------------------------------------- suggerimenti
   "Hints": { it: "Suggerimenti", es: "Consejos", pt: "Dicas", de: "Tipps", fr: "Conseils" },
