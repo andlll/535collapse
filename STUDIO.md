@@ -5120,3 +5120,72 @@ salvataggi senza differenze di rilievo o errori. Nell'esperimento, creare e
 distruggere edifici di prova liberava le celle di un palo: da li' la
 correzione di `markInstance` per pali e statue.
 
+### 9.31 Gruppo misto contro un edificio da incendiare; inizio del livello 3
+
+Segnalazioni dell'autore (12 ottobre 2026): con un gruppo misto, clic destro
+su un edificio nemico infiammabile: le unita' che non danno fuoco (arcieri,
+cavalieri) si incasinano invece di restare ferme; dovrebbero non muoversi
+e anzi spostarsi per far passare chi da' fuoco. Per alleati e nemici. E nel
+livello 3 la schermata d'inizio e' al buio: va centrata sulle unita' che
+dialogano in basso a destra.
+
+**Cosa succedeva** [C, enemy_house/caserma/stalla Mouse_RightReleased]: il
+clic sull'edificio da' il fuoco ai fanti selezionati, ma subito dopo il
+GlobalRightReleased di cavalieri e arcieri li manda al punto cliccato,
+dentro l'edificio: si ammassavano contro di lui e davanti ai fanti, che
+giravano attorno e andavano avanti e indietro (fino a 264 inversioni); a
+fine prova fino a 3 unita' sovrapposte all'edificio. In piu' due difetti
+del porting: un fante che andava a dare fuoco si fermava se arrivava a una
+tappa del percorso locale (melee.js, route, §7.7), col fuoco ancora da
+appiccare, e non ripartiva piu'; e col flow field (senza collisioni) poteva
+finire dentro l'edificio e tirare da li'.
+
+**Ora**:
+- `fireOrder` (siege.js): cavalieri e arcieri selezionati restano fermi
+  (`holdOrder`, `holdStill` nel loro GlobalRightReleased; chi sta
+  combattendo continua). Le macchine d'assedio attaccano l'edificio, come
+  prima.
+- `makeWay` (pathing.js): chi va a dare fuoco (fanti alleati e nemici) fa
+  spostare di lato le unita' ferme della sua parte che ha davanti (ogni 10
+  passi, fino a 64 px avanti): di quanto basta perche' le maschere non si
+  tocchino, dalla parte della strada in cui gia' stanno. Non chi combatte,
+  da' fuoco o e' una macchina d'assedio. Nella scelta del posto attorno
+  all'edificio (melee.js, FIRE) un posto occupato da un'unita' ferma che si
+  sposta vale come libero.
+- Fanti alleati che vanno a dare fuoco: niente arrivo sulle tappe (si
+  fermano quando cominciano a tirare); dentro l'edificio ne escono verso il
+  proprio posto prima di tirare; se restano sul posto senza avvicinarsi (meno
+  di 24 px in 2 s, due volte di fila: nessun posto raggiungibile attorno,
+  gli altri lati chiusi da altri edifici) si fermano dove sono invece di
+  oscillare per sempre.
+
+**Prova** (`game/test/browser/fireorder.mjs`, nuova, nella CI; zona aperta
+di `match`; 4 guerrieri, 2 picchieri, 3 cavalieri, 3 arcieri; fanti che
+tirano su 6 / inversioni dei fanti / spostamento massimo di cavalieri e
+arcieri / unita' dentro un edificio alla fine):
+
+| | prima | ora |
+|---|---|---|
+| casa, mescolati | 6 / 264 / 231 px / 1 | 6 / 0 / 56 px / 0 |
+| caserma, mescolati | 6 / 20 / 249 px / 3 | 6 / 3 / 120 px / 0 |
+| casa, cavalieri e arcieri davanti | 5 / 3 / 216 px / 2 | 6 / 57 / 88 px / 0 |
+| caserma, cavalieri e arcieri davanti | 6 / 1 / 191 px / 2 | 6 / 5 / 61 px / 0 |
+| casa, tutti vicini | 6 / 230 / 154 px / 0 | 6 / 0 / 14 px / 0 |
+| nemici contro una casa, fermi davanti | 6 / 114 / 0 / 0 | 6 / 2 / 194 px / 0 |
+| nemici, mescolati | 6 / 74 / 0 / 0 | 6 / 11 / 97 px / 0 |
+
+(I nemici fermi prima non si spostavano mai: i fanti giravano loro attorno.
+Ora si spostano, anche due volte per due fanti diversi.) In mezzo al
+villaggio di `match`, con l'edificio stretto fra chiesa, caserme e stalla e
+un solo lato libero: chi non trova posto ora si ferma (inversioni 915 ->
+166 nel caso peggiore) invece di oscillare.
+
+**Livello 3, inizio** (levels.js): la view della mappa (3215, 4160) era al
+buio, lontana dai soldati (attorno a 5770, 5820). Al primo passo della regia
+la vista va sul baricentro dei soldati (fino al bordo della mappa: sono
+nell'angolo in basso a destra), dopo che la view ha preso la misura della
+finestra; non dopo un caricamento. Il dialogo 3_0 compare accanto a loro.
+
+Movimento (movement.mjs) identico al commit prima; mischia, monastero,
+raccolta, soak e salvataggi senza errori.
+

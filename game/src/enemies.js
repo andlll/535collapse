@@ -14,7 +14,7 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField, destinationBack } from "./pathing.js";
+import { mpPotentialStep, moveFlowField, destinationBack, makeWay } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
@@ -227,6 +227,7 @@ function enemyFireHouses(i, w) {
   if (i.firework === 1 && i.warwork !== 2 && i.targetid && i.targetid.alive && i.action === 1) {
     if (cx) { [i.dirox, i.diroy] = complexPoint(w, i.x, i.y, cx); i.meleeGo = [i.dirox, i.diroy]; }
     else [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    makeWay(w, w.path, i, "enemy_unit"); // §9.31
   }
   if (i.firework === 1 && i.warwork !== 2 && i.targetid
       && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70

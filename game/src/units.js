@@ -15,10 +15,10 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
-import { infantryFire } from "./siege.js";
+import { infantryFire, holdStill } from "./siege.js";
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -336,6 +336,7 @@ export function cavaliere(p) {
     // Mouse_GlobalRightReleased: ordine di movimento
     globalRightReleased(i, w) {
       if (i.selected !== 1) return;
+      if (holdStill(i, w)) return; // §9.31
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
       i.dirox = w.mouse.x;
       i.diroy = w.mouse.y;
@@ -379,6 +380,8 @@ const INFANTRY = {
                     clickFirst: true, exactStop: true, nearRank: false, move100: false,
                     faceTarget: false, rally100: false, occupyAtCreate: true, globalLeft: true },
 };
+
+const FIRE_CHECK = 120; // §9.31: 2 s
 
 export function infantry(name, p) {
   const T = INFANTRY[name];
@@ -453,7 +456,11 @@ export function infantry(name, p) {
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       snapToSlot(w, i); // §9.30
-      if (i.action === 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
+      // [§9.31] non chi va a dare fuoco: la sua meta e' un posto attorno
+      // all'edificio o una tappa del percorso locale verso di lui (melee.js,
+      // route); arrivato a una tappa si fermava li', col fuoco ancora da
+      // appiccare, e non ripartiva piu'. Si ferma quando comincia a tirare.
+      if (i.action === 1 && i.firework !== 1 && (T.exactStop ? i.x === i.dirox && i.y === i.diroy
                                          : pointDistance(i.x, i.y, i.dirox, i.diroy) < 10 * iso(i.direction))) {
         i.action = 0; p.occupy(i); i.creation = 0; i.warwork = 0; i.speed = 0;
       }
@@ -474,9 +481,28 @@ export function infantry(name, p) {
       behaviourButtons(i, w);
       // dare fuoco alle case (firework, action 6)
       if (i.targetid && !i.targetid.alive) { i.targetid = null; i.firework = 0; }
+      // [§9.31] chi va a dare fuoco e resta sul posto senza avvicinarsi
+      // all'edificio (meno di 24 px di spostamento netto e nessun progresso
+      // in FIRE_CHECK passi, due volte di fila: nessun posto raggiungibile
+      // attorno, gli altri lati chiusi da altri edifici e i posti liberi presi
+      // da chi gia' tira) si ferma dov'e', invece di andare avanti e indietro
+      // per sempre. Chi sta facendo il giro dell'edificio si sposta: no.
+      if (i.firework === 1 && i.action === 1 && i.targetid) {
+        const d = w.distanceToInstance(i, i.targetid);
+        if (!i.fireChk) i.fireChk = { at: w._stepNo, x: i.x, y: i.y, d, n: 0 };
+        const c = i.fireChk;
+        if (w._stepNo - c.at >= FIRE_CHECK) {
+          const stuck = pointDistance(i.x, i.y, c.x, c.y) < 24 && d > c.d - 4;
+          Object.assign(c, { at: w._stepNo, x: i.x, y: i.y, d, n: stuck ? c.n + 1 : 0 });
+          if (c.n >= 2) { i.firework = 0; i.targetid = null; i.action = 0; i.speed = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); }
+        }
+      } else i.fireChk = null;
       // [Richiesta dell'autore] non addosso a un alleato, se puo' ancora
       // spostarsi (flowMovement); bloccato cosi' per 60 passi, comunque
       const fireNear = i.firework === 1 && i.warwork !== 2 && i.targetid && w.distanceToInstance(i, i.targetid) < 70;
+      // [§9.31] ne' dentro l'edificio da incendiare (col flow field si passa
+      // senza collisioni): prima ne esce (flowMovement)
+      if (fireNear && w.overlap(i, i.x, i.y, i.targetid)) { flowMovement(i, w, p, { nearRank: T.nearRank }); return; }
       const fireOver = fireNear && i.action === 1 && !!w.instancePlace(i, i.x, i.y, "ally_unit");
       i.fireWait = fireOver ? (i.fireWait || 0) + 1 : 0;
       if (fireNear && (!fireOver || i.fireWait > 60)) {
@@ -679,6 +705,14 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   // prima si fermava a dare fuoco addosso a chi era arrivato per primo.
   if (i.action === 1 && i.firework === 1 && i.targetid) {
     [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    makeWay(w, p, i, "ally_unit"); // §9.31
+    // [§9.31] sovrapposto all'edificio: dritto verso il proprio posto, fuori
+    if (w.overlap(i, i.x, i.y, i.targetid)) {
+      const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
+      i.direction = dir;
+      w.setPos(i, i.x + lengthdirX(i.autospeed, dir), i.y + lengthdirY(i.autospeed, dir));
+      return;
+    }
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && w.instancePlace(i, i.x, i.y, "ally_unit")) {
       const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
       const d = Math.min(i.autospeed, pointDistance(i.x, i.y, i.dirox, i.diroy));

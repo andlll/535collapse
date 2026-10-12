@@ -21,6 +21,7 @@
 // bersaglio, come prima.
 
 import { pointDirection, pointDistance, lengthdirX, lengthdirY } from "./gm.js";
+import { canYield } from "./pathing.js";
 
 const GAP = 4, SEP = 45, STUCK = 40, SPREAD = 160, MAXC = 4;
 
@@ -57,7 +58,9 @@ function slotPoint(w, i, t, ang, extra = 0) {
 // lati: { ang, x, y } o null. Non prende il settore. In ogni settore si
 // prova a ciascuna distanza in piu' di `extras` (in mischia solo a
 // contatto).
-function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0]) {
+// [§9.31] passIdle: un posto occupato da un'unita' ferma della propria parte
+// che si puo' spostare (pathing.js, canYield e makeWay) vale come libero.
+function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = false) {
   for (let k = 0; k < 360 / sep; k++) {
     for (const s of k === 0 ? [1] : [1, -1]) {
       const ang = (pref + s * k * sep + 360) % 360;
@@ -65,7 +68,8 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0]) {
       for (const extra of extras) {
         const [x, y] = slotPoint(w, i, t, ang, extra);
         const o = w.instancePlace(i, x, y, null, true);
-        if (o && o !== t) continue;
+        if (o && o !== t && !(passIdle && canYield(o, i) && !w.instancePlace(i, x, y, "natural_parent", true)
+                             && w.placeFreeExcept(i, x, y, i.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit"))) continue;
         return { ang, x, y };
       }
     }
@@ -76,7 +80,8 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0]) {
 // [Richiesta dell'autore] Posti per dare fuoco a un edificio: il fuoco
 // parte entro 70 px, quindi non serve il contatto; settori piu' fitti e,
 // se il posto vicino e' occupato (alberi, altri edifici), piu' in fuori.
-export const FIRE = { sep: 30, extras: [12, 32, 52] };
+// [§9.31] passIdle: chi e' fermo li' si spostera' (makeWay).
+export const FIRE = { sep: 30, extras: [12, 32, 52], passIdle: true };
 
 // Costo di un posto: la strada (dritta, o lungo l'orbita se il posto e'
 // dall'altra parte del bersaglio).
@@ -136,7 +141,7 @@ function goTo(w, i, t, fam, ring) {
     let pref = mine ? i.meleeAng : pointDirection(ocx, ocy, i.x, i.y);
     const taken = takenOf(o).slice();
     if (skip && skip[0] === o.id && skip[1] !== undefined) taken.push(skip[1]);
-    const s = freeSlot(w, i, o, pref, taken, ring.sep, ring.extras);
+    const s = freeSlot(w, i, o, pref, taken, ring.sep, ring.extras, !!ring.passIdle);
     if (!s) continue;
     // chi ha gia' un posto lo tiene, a meno di uno molto migliore
     const c = cost(w, i, o, s) - (mine && s.ang === i.meleeAng ? 40 : 0);

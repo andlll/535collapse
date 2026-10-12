@@ -485,6 +485,20 @@ export function enemyManagerLv3(p) {
     step(i, w) {
       const g = w.g;
       if (g.victory === 1 || g.gameover === 1) return;
+      // [§9.31, richiesta dell'autore] all'inizio la vista sui soldati (in
+      // basso a destra, dove parte il dialogo): la view della mappa e' piu'
+      // in alto a sinistra, al buio. Al primo passo, dopo che la view ha
+      // preso la misura della finestra (app.js, resize).
+      if (!i.startView && w._stepNo < 10) { // (non dopo un caricamento)
+        i.startView = 1;
+        let n = 0, sx = 0, sy = 0;
+        for (const u of w.all("ally_militare")) { n++; sx += u.x; sy += u.y; }
+        if (n) {
+          const c = w.cam;
+          c.x = Math.max(0, Math.min(sx / n - c.w / 2, c.roomW - c.w));
+          c.y = Math.max(0, Math.min(sy / n - c.h / 2, c.roomH - c.h));
+        }
+      }
       // 0: in marcia verso il villaggio
       if (i.phase === 0) {
         const u = w.nearest(LV3.town[0], LV3.town[1], "ally_unit");

@@ -12,6 +12,7 @@ import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget,
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
+import { holdStill } from "./siege.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000;
@@ -404,6 +405,7 @@ export function allyArcher(p) {
     },
     globalRightReleased(i, w) {
       if (i.selected !== 1) return;
+      if (holdStill(i, w)) return; // §9.31 (siege.js)
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
       i.alarm.set(8, 1200);
       i.dirox = w.mouse.x; i.diroy = w.mouse.y;

@@ -579,12 +579,26 @@ export function infantryFire(i, w) {
 // Click destro su un edificio nemico di legno con fanti selezionati [C,
 // enemy_house / enemy_stalla / enemy_caserma Mouse_RightReleased]: vanno a
 // dargli fuoco.
+// [§9.31, richiesta dell'autore] Gli altri militari selezionati che non
+// danno fuoco (cavalieri, arcieri) restano fermi: il loro GlobalRightReleased
+// (che viene dopo) li mandava al punto cliccato, dentro l'edificio, dove si
+// ammassavano contro di lui e davanti ai fanti (holdOrder: units.js,
+// ranged.js). Le macchine d'assedio lo attaccano, come prima.
 export function fireOrder(i, w) {
   for (const u of w.all("ally_infantry")) {
     if (u.selected !== 1 || u.warwork === 2) continue;
     u.firework = 1; u.warwork = 0; u.action = 1; u.alarm.set(0, 15);
     u.targetid = i; u.dirox = i.x; u.diroy = i.y;
   }
+  for (const n of ["ally_cavaliere", "ally_arciere"]) for (const u of w.all(n)) if (u.selected === 1) u.holdOrder = w._stepNo;
+}
+
+// [§9.31] L'ordine e' un clic su un edificio da incendiare (fireOrder):
+// chi non da' fuoco si ferma dov'e' (chi sta combattendo continua).
+export function holdStill(i, w) {
+  if (i.holdOrder !== w._stepNo) return false;
+  if (i.warwork !== 2) { i.action = 0; i.warwork = 0; i.speed = 0; i.dirox = i.x; i.diroy = i.y; w.path.occupy(i); }
+  return true;
 }
 
 // nubeqq [C]: una nuvoletta di fumo che sale (3 px per passo) e sbiadisce.

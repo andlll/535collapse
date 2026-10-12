@@ -721,6 +721,63 @@ export function rallyGo(p, inst) {
   inst.formX = inst.dirox; inst.formY = inst.diroy;
 }
 
+// [§9.31, richiesta dell'autore] Chi va a dare fuoco a un edificio (alleati
+// e nemici) fa spostare di lato le unita' ferme della sua parte che trova
+// sulla strada (al piu' ogni WAY_EVERY passi): prima i fanti spingevano
+// contro arcieri e cavalieri fermi, giravano attorno e andavano avanti e
+// indietro. Si spostano solo le unita' ferme (action 0) che non stanno
+// combattendo e non danno fuoco, e non le macchine d'assedio: di lato
+// rispetto alla strada, dalla parte in cui gia' stanno, in un posto libero
+// (verso il quale si passa sopra gli alleati, come verso una casella della
+// formazione).
+const WAY_EVERY = 10, SIEGE_OBJ = ["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
+// `o` si sposta per far passare `i` (della stessa parte)
+export const canYield = (o, i) => o !== i && o.action === 0 && o.warwork !== 2 && o.firework !== 1
+  && !SIEGE_OBJ.includes(o.object) && !!o.parents && o.parents.includes("enemy_unit") === i.parents.includes("enemy_unit")
+  && (o.parents.includes("enemy_unit") || o.parents.includes("ally_unit"));
+export function makeWay(w, p, i, fam) {
+  if ((i.wayAt || 0) > w._stepNo) return;
+  i.wayAt = w._stepNo + WAY_EVERY;
+  const dist = pointDistance(i.x, i.y, i.dirox, i.diroy);
+  if (dist < 8) return;
+  const dir = pointDirection(i.x, i.y, i.dirox, i.diroy);
+  for (const d of [16, 40, 64]) {
+    if (d > dist + 16) break;
+    const o = w.instancePlace(i, i.x + lengthdirX(d, dir), i.y + lengthdirY(d, dir), fam);
+    if (!o || !canYield(o, i)) continue;
+    stepAside(w, p, o, i, dir);
+  }
+}
+
+function stepAside(w, p, o, i, dir) {
+  // distanza (con segno) di `o` dalla strada di `i`, e quanto spostarlo
+  // perche' le due maschere non si tocchino piu' passando
+  const ux = lengthdirX(1, dir), uy = lengthdirY(1, dir), nx = -uy, ny = ux;
+  const off = nx * (o.x - i.x) + ny * (o.y - i.y), side = off >= 0 ? 1 : -1;
+  const half = (inst) => { const b = w.bbox(inst); return b ? ((b[2] - b[0]) / 2) * Math.abs(nx) + ((b[3] - b[1]) / 2) * Math.abs(ny) : 24; };
+  const need = half(o) + half(i) + 8;
+  const fam = o.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit";
+  for (const s of [side, -side]) {
+    for (const extra of [0, 24, 48]) {
+      const len = need + extra - s * off;
+      if (len <= 0) continue;
+      const x = Math.round(o.x + nx * s * len), y = Math.round(o.y + ny * s * len);
+      const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+      if (!p.inside(gx, gy) || p.solid[gy * p.gw + gx] || !w.placeFreeExcept(o, x, y, fam)) continue;
+      p.free(o);
+      if (o.action !== 1 && o.alarm.get(0) < 1) o.alarm.set(0, 13);
+      o.action = 1; o.warwork = 4; o.step = 0;
+      o.dirox = x; o.diroy = y;
+      o.formX = x; o.formY = y;
+      o.goal_field = p.goalField(x, y, false, false, true);
+      o.flow_field = p.flowField(o.goal_field);
+      o.goal_x = gx * GRID; o.goal_y = gy * GRID;
+      return true;
+    }
+  }
+  return false;
+}
+
 // [§7.10] Appena prodotta e col posto occupato: un altro posto libero
 // vicino alla stessa bandiera (al piu' ogni 15 passi), e il campo verso di
 // lui (`move`: scrMove o l'equivalente del civile). false se non ce n'e'.
