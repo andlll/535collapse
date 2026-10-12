@@ -330,8 +330,17 @@ export function fond(fam, p) {
       w.destroy(i);
       for (const [r, v] of Object.entries(d.cost)) w.g[r] += v;
     },
+    drawEnd: fondLifeBar, // §9.34
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, d.ico); },
   };
+}
+
+// [§9.34, richiesta dell'autore] La barra della vita anche sui cantieri
+// (edifici, mura, campi), come sugli edifici finiti: selezionati, col
+// puntatore sopra o appena colpiti. Nell'originale i cantieri non avevano
+// un Draw_End: la vita si vedeva solo nella scheda, selezionandoli.
+export function fondLifeBar(i, w, dr) {
+  if (i.selected === 1 || i.hover === 1 || i.hit === 1) lifeBar(dr, i);
 }
 
 export function panel(dr, i, ico) {
@@ -644,6 +653,7 @@ export function campoFond(p) {
       i.buildwork = 1;
     },
     keyPress46(i, w) { if (i.selected === 1) { w.destroy(i); w.g.wood += 200; } },
+    drawEnd: fondLifeBar, // §9.34
     drawGUI(i, w, dr) { if (i.selected === 1) panel(dr, i, "ico_corn"); },
   };
 }

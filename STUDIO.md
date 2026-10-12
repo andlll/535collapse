@@ -5248,3 +5248,18 @@ Prova (Chromium, `match`): screenshot a 40 e 300 passi dall'incendio, prima
 il rombo nero, ora le righe nere sulla terra arata; salvato a meta'
 incendio, ripristino identico. Soak e salvataggi senza errori.
 
+### 9.34 Barra della vita sui cantieri
+
+Richiesta dell'autore (12 ottobre 2026): col puntatore sopra un cantiere si
+dovrebbe vedere la barra della vita, e non succede.
+
+[C] Nell'originale i cantieri (`*_fond`, `mura_*_fond`, `campo_fond`) non
+hanno un Draw_End: la vita si vede solo nella scheda, selezionandoli; la
+barra col puntatore sopra c'e' solo sugli edifici finiti (`casa` Draw_End:
+`selected`, `hover` o `hit`). Ora anche i cantieri la disegnano, con la
+stessa regola e nello stesso punto (`fondLifeBar`, buildings.js, walls.js).
+L'`hover` arrivava gia' (ally_build Mouse_MouseEnter).
+Prova (Chromium, `match`): cantiere di casa, caserma, mura e campo al 40%,
+puntatore sopra: hover 1 e la barra disegnata su tutti e quattro. Soak e
+salvataggi senza errori.
+
