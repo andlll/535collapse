@@ -60,7 +60,9 @@ function slotPoint(w, i, t, ang, extra = 0) {
 // contatto).
 // [§9.31] passIdle: un posto occupato da un'unita' ferma della propria parte
 // che si puo' spostare (pathing.js, canYield e makeWay) vale come libero.
-function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = false) {
+// [§9.32] reach: { p, f } un campo, il posto deve essere raggiungibile
+// (la sua cella, o una a 2 celle).
+function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = false, reach = null) {
   for (let k = 0; k < 360 / sep; k++) {
     for (const s of k === 0 ? [1] : [1, -1]) {
       const ang = (pref + s * k * sep + 360) % 360;
@@ -70,6 +72,10 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = fals
         const o = w.instancePlace(i, x, y, null, true);
         if (o && o !== t && !(passIdle && canYield(o, i) && !w.instancePlace(i, x, y, "natural_parent", true)
                              && w.placeFreeExcept(i, x, y, i.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit"))) continue;
+        if (reach) {
+          const gx = Math.floor(x / 32), gy = Math.floor(y / 32);
+          if (reach.p.fieldAt(reach.f, gx, gy) === -1 && !reach.p.escapeCell(reach.f, gx, gy, 2)) continue;
+        }
         return { ang, x, y };
       }
     }
@@ -82,6 +88,28 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = fals
 // se il posto vicino e' occupato (alberi, altri edifici), piu' in fuori.
 // [§9.31] passIdle: chi e' fermo li' si spostera' (makeWay).
 export const FIRE = { sep: 30, extras: [12, 32, 52], passIdle: true };
+
+// [§9.32, segnalazione dell'autore] Posti per gli arieti attorno
+// all'edificio da colpire. Tutti puntavano all'origine dell'edificio (dentro
+// di lui): il flow field "largo" li portava alla stessa cella raggiungibile
+// piu' vicina e, senza collisioni, finivano uno sopra l'altro (al monastero
+// del livello 3 tre arieti nello stesso punto). Ora un settore di 60 gradi
+// per ariete, a contatto o 24 px piu' in fuori, in un posto libero e
+// raggiungibile per un ariete (il campo "largo" dalla sua posizione, tenuto
+// finche' gli ostacoli non cambiano); la strada la fa siegeMove.
+export function ramSpot(w, i, t) {
+  const p = w.path, enemy = i.parents.includes("enemy_unit");
+  const gx = Math.floor(i.x / 32), gy = Math.floor(i.y / 32);
+  let r = RAM_REACH.get(i);
+  if (!r || r.ver !== p.solidVer || (p.fieldAt(r.f, gx, gy) === -1 && !p.escapeCell(r.f, gx, gy, 2))) {
+    r = { ver: p.solidVer, f: p.goalField(i.x, i.y, enemy, true) };
+    RAM_REACH.set(i, r);
+  }
+  // sovrapposto a un altro ariete non resta dov'e' anche se e' a contatto
+  const noStay = !!w.instancePlace(i, i.x, i.y, i.object);
+  return meleeSpot(w, i, t, null, { sep: 60, extras: [0, 24], noRoute: true, noStay, reach: { p, f: r.f } });
+}
+const RAM_REACH = new WeakMap();
 
 // Costo di un posto: la strada (dritta, o lungo l'orbita se il posto e'
 // dall'altra parte del bersaglio).
@@ -109,7 +137,7 @@ function goTo(w, i, t, fam, ring) {
   // gia' a contatto con il bersaglio: resta dov'e' (il colpo parte a 10 px;
   // solo in mischia)
   const [tcx, tcy] = centre(w, t);
-  if (ring.extras[0] === 0 && w.distanceToInstance(i, t) < GAP + 2) {
+  if (!ring.noStay && ring.extras[0] === 0 && w.distanceToInstance(i, t) < GAP + 2) {
     claim(t, pointDirection(tcx, tcy, i.x, i.y));
     i.meleeT = t.id; i.meleeSpot = [i.x, i.y];
     return [i.x, i.y];
@@ -141,7 +169,7 @@ function goTo(w, i, t, fam, ring) {
     let pref = mine ? i.meleeAng : pointDirection(ocx, ocy, i.x, i.y);
     const taken = takenOf(o).slice();
     if (skip && skip[0] === o.id && skip[1] !== undefined) taken.push(skip[1]);
-    const s = freeSlot(w, i, o, pref, taken, ring.sep, ring.extras, !!ring.passIdle);
+    const s = freeSlot(w, i, o, pref, taken, ring.sep, ring.extras, !!ring.passIdle, ring.reach || null);
     if (!s) continue;
     // chi ha gia' un posto lo tiene, a meno di uno molto migliore
     const c = cost(w, i, o, s) - (mine && s.ang === i.meleeAng ? 40 : 0);
@@ -154,6 +182,7 @@ function goTo(w, i, t, fam, ring) {
   claim(bt, best.ang);
   if (i.meleeT !== bt.id || i.meleeAng !== best.ang) { i.meleeBest = undefined; i.meleeN = 0; }
   i.meleeT = bt.id; i.meleeAng = best.ang; i.meleeSpot = [best.x, best.y];
+  if (ring.noRoute) return [best.x, best.y];
   // la strada per il posto: dritta se e' libera, se no lungo un percorso
   // locale che aggira chi sta gia' combattendo (route)
   return route(w, i, best.x, best.y) || [best.x, best.y];

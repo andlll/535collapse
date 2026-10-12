@@ -5189,3 +5189,42 @@ finestra; non dopo un caricamento. Il dialogo 3_0 compare accanto a loro.
 Movimento (movement.mjs) identico al commit prima; mischia, monastero,
 raccolta, soak e salvataggi senza errori.
 
+### 9.32 Arieti che si sovrappongono attaccando lo stesso edificio
+
+Segnalazione dell'autore (12 ottobre 2026): nel livello 3 gli arieti nemici
+arrivati al monastero si sovrappongono quando iniziano ad attaccare;
+probabilmente succede ovunque.
+
+**Perche'** [C, ally_ariete / enemy_ariete Step]: ogni ariete ha per meta
+l'origine dell'edificio, cioe' un punto dentro di lui. Il campo "largo"
+delle macchine d'assedio (§8.14) porta allora alla cella raggiungibile piu'
+vicina a quel punto, la stessa per tutti, e sul flow field ci si muove
+senza collisioni: al monastero tre arieti finivano nello stesso identico
+punto (4897, 642). Altrove arrivavano in colonna, uno sull'altro, e al
+primo contatto con l'edificio cominciavano a colpire li', sovrapposti.
+
+**Ora** (melee.js `ramSpot`, siege.js):
+- ogni ariete punta a un posto suo attorno all'edificio, con i posti della
+  mischia (§7.7): un settore di 60 gradi per ariete, a contatto o 24 px piu'
+  in fuori, libero e raggiungibile per un ariete (il campo "largo" dalla sua
+  posizione). Arieti alleati e nemici, col bersaglio imposto
+  (`ramTarget`, §9.17) o scelto da soli;
+- un ariete sovrapposto a un altro non comincia a colpire (chi sta gia'
+  colpendo continua) e il suo posto non e' "dove e'" anche se e' a contatto:
+  prosegue fino al suo.
+
+**Prova** (`game/test/browser/rams.mjs`, nuova, nella CI; tre arieti
+contro lo stesso edificio, 2500 passi; passi con due arieti sovrapposti che
+colpiscono entrambi / coppie sovrapposte alla fine):
+
+| | prima | ora |
+|---|---|---|
+| arieti nemici contro una casa (match) | 2311 / 1 | 0 / 0 |
+| arieti alleati contro una caserma (match) | 0 / 0 | 0 / 0 |
+| arieti delle ondate contro il monastero (lvl03) | 1570 / 3 (tutti nello stesso punto) | 0 / 0 |
+
+In viaggio, sul flow field, gli arieti possono ancora passare uno sull'altro
+(come le altre unita'); si separano prima di colpire. Monastero (arieti
+contro mura e caserma), mischia, raccolta, fuoco, soak e salvataggi senza
+errori.
+

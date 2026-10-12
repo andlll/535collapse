@@ -14,6 +14,7 @@ import { fireFlare } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinationBack } from "./pathing.js";
+import { ramSpot } from "./melee.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -168,7 +169,7 @@ export function allyRam() {
       if (!i.target_eu) {
         const b = w.nearest(i.x, i.y, "enemy_build");
         const dist = b ? w.distanceToInstance(i, b) : Infinity;
-        if (dist < 10 * k) {
+        if (dist < 10 * k && (i.warwork === 2 || !ramOverlap(w, i))) { // §9.32
           if (i.warwork === 2) { i.targetx = b.x; i.targety = b.y; i.direction = pointDirection(i.x, i.y, i.targetx, i.targety); }
           if (i.warwork !== 2 && i.warwork !== 4) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
           return;
@@ -177,11 +178,12 @@ export function allyRam() {
         if (i.warwork === 1 && dist >= i.comp * k) { i.action = 0; i.warwork = 0; i.speed = 0; }
         if (b && dist < i.comp * k && (i.warwork === 0 || i.warwork === 1)) {
           if (i.action !== 1) i.alarm.set(0, 15);
-          i.action = 1; i.warwork = 1; i.dirox = b.x; i.diroy = b.y;
+          i.action = 1; i.warwork = 1;
+          [i.dirox, i.diroy] = ramSpot(w, i, b); // §9.32 (era il centro dell'edificio)
         }
       } else {
         const t = i.target_eu;
-        if (w.distanceToInstance(i, t) < 10 * k) {
+        if (w.distanceToInstance(i, t) < 10 * k && (i.warwork === 2 || !ramOverlap(w, i))) { // §9.32
           if (i.warwork === 2) { i.targetx = t.x; i.targety = t.y; i.target_eu = null; i.direction = pointDirection(i.x, i.y, i.targetx, i.targety); }
           if (i.warwork !== 2 && i.warwork !== 4) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
           return;
@@ -189,7 +191,8 @@ export function allyRam() {
         if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; i.target_eu = null; }
         if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
           if (i.action !== 1) i.alarm.set(0, 15);
-          i.action = 1; i.warwork = 1; i.dirox = i.target_eu.x; i.diroy = i.target_eu.y;
+          i.action = 1; i.warwork = 1;
+          [i.dirox, i.diroy] = w.is(i.target_eu, "enemy_build") ? ramSpot(w, i, i.target_eu) : [i.target_eu.x, i.target_eu.y]; // §9.32
         }
       }
       C.buttons(i, w);
@@ -643,6 +646,12 @@ function enemyPanel(icon) {
 // invece dell'edificio alleato piu' vicino (le altre mura, le torri).
 const forcedTarget = (i) => (i.ramTarget && i.ramTarget.alive ? i.ramTarget : null);
 
+// [§9.32] Un ariete non comincia a colpire finche' e' sovrapposto a un altro
+// ariete (col flow field, senza collisioni, arrivavano insieme e al primo
+// contatto con l'edificio colpivano li', uno sopra l'altro): prosegue verso
+// il suo posto (ramSpot). Chi sta gia' colpendo continua.
+const ramOverlap = (w, i) => !!w.instancePlace(i, i.x, i.y, i.object);
+
 // enemy_ariete [C]: va verso l'edificio alleato piu' vicino entro 700 px
 // (dimezzati di notte) e lo colpisce come l'ariete alleato. Arma l'alarm 9
 // dell'edificio (che non rimette hit a 0): la barra della vita di un
@@ -708,7 +717,7 @@ export function enemyRam(base) {
       // (§8.14) a una porta chiusa per i nemici non arriva a 10 px
       const d = w.distanceToInstance(i, b);
       const stuck = d < 48 && ((i.action === 1 && i.x === i.xprevious && i.y === i.yprevious) || i.warwork === 2);
-      if (d < 10 * k || stuck) {
+      if ((d < 10 * k || stuck) && (i.warwork === 2 || !ramOverlap(w, i))) { // §9.32
         if (stuck) i.direction = pointDirection(i.x, i.y, b.x, b.y);
         if (i.warwork === 2) { i.targetx = b.x; i.targety = b.y; i.direction = pointDirection(i.x, i.y, i.targetx, i.targety); }
         if (i.warwork !== 2) { i.action = 2; i.warwork = 2; i.alarm.set(2, 13); }
@@ -718,7 +727,8 @@ export function enemyRam(base) {
       if (tgt) {
         if (i.warwork === 0 || i.warwork === 1) {
           if (i.action !== 1) i.alarm.set(0, 15);
-          i.action = 1; i.warwork = 1; i.dirox = tgt.x; i.diroy = tgt.y;
+          i.action = 1; i.warwork = 1;
+          [i.dirox, i.diroy] = ramSpot(w, i, tgt); // §9.32
         }
         return;
       }
@@ -726,7 +736,8 @@ export function enemyRam(base) {
         const t = w.nearest(i.x, i.y, "ally_build");
         if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k && (i.warwork === 0 || i.warwork === 1)) {
           if (i.action !== 1) i.alarm.set(0, 15);
-          i.action = 1; i.warwork = 1; i.dirox = t.x; i.diroy = t.y;
+          i.action = 1; i.warwork = 1;
+          [i.dirox, i.diroy] = ramSpot(w, i, t); // §9.32
         }
       };
       if (w.exists("fog01")) {
