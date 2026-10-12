@@ -743,8 +743,13 @@ export class World {
     const [pL, pR] = input.mousePressed, [rL, rR] = input.mouseReleased;
     const live = this.instances.filter((i) => i.alive);
     const over = new Map();
+    // [§9.29] un comportamento puo' dire lui dove e' il puntatore
+    // (pointOver: il complesso del monastero, complex.js)
     const isOver = (i) => {
-      if (!over.has(i)) over.set(i, input.inside && this.pointIn(i, mx, my));
+      if (!over.has(i)) {
+        const b = this.behaviours[i.object];
+        over.set(i, input.inside && (b && b.pointOver ? b.pointOver(i, this, mx, my) : this.pointIn(i, mx, my)));
+      }
       return over.get(i);
     };
     const local = (flag, ev) => {

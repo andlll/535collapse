@@ -29,6 +29,8 @@ const SIEGE_RECALC = 15;       // passi fra due ricalcoli del campo di una macch
 const DX = [1, -1, 0, 0, 1, -1, 1, -1];
 const DY = [0, 0, -1, 1, -1, -1, 1, 1];
 const DIR = DX.map((dx, i) => pointDirection(0, 0, dx, DY[i]));
+// le famiglie degli ostacoli fissi della griglia dei costi [C, manager Create]
+const HOLDERS = ["ally_build", "enemy_build", "natural_parent"];
 
 export class Pathing {
   constructor(world, roomW, roomH) {
@@ -105,16 +107,37 @@ export class Pathing {
     this.cost.fill(0);
     this.solid.fill(0);
     this.solidVer++;
-    for (const fam of ["ally_build", "enemy_build", "natural_parent"]) {
+    for (const fam of HOLDERS) {
       for (const inst of this.w.all(fam)) this.markInstance(inst, 1000);
     }
   }
 
   // collision_rectangle sulla cella, maschera precisa, solo quell'istanza [C]
+  // [§9.29, segnalazione dell'autore] Liberando le celle di un'istanza (un
+  // edificio distrutto, la porta che lascia libero il varco) l'originale le
+  // liberava tutte, anche quelle che toccano ancora un ostacolo vicino: nel
+  // livello 3, abbattuta la porta della cinta, si aprivano le celle delle
+  // mura ai suoi lati, e gli arieti (che sul flow field si muovono senza
+  // collisioni) passavano attraverso il muro, anche con una caserma
+  // costruita al posto della porta. Ora restano chiuse le celle che tocca
+  // ancora un altro ostacolo fisso solido (le famiglie di initCost).
   markInstance(inst, value) {
     const s = value >= 1000 ? 1 : 0;
-    for (const k of this._cellsOf(inst)) { this.cost[k] = value; this.solid[k] = s; }
+    for (const k of this._cellsOf(inst)) {
+      if (!s && this.cost[k] >= 1000 && this._heldByOther(k, inst)) continue;
+      this.cost[k] = value; this.solid[k] = s;
+    }
     this.solidVer++;
+  }
+
+  _heldByOther(k, inst) {
+    const w = this.w, gx = k % this.gw, gy = (k - gx) / this.gw;
+    const x0 = gx * GRID, y0 = gy * GRID, x1 = x0 + GRID, y1 = y0 + GRID;
+    for (const o of w._nearList([x0, y0, x1, y1])) {
+      if (o === inst || !o.alive || !o.solid || !HOLDERS.some((f) => w.is(o, f))) continue;
+      if (w.collisionRectangle(x0, y0, x1, y1, null, true, null, o)) return true;
+    }
+    return false;
   }
 
   // [§8.14] Le celle in cui non puo' stare il centro di una
@@ -184,6 +207,34 @@ export class Pathing {
       if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
       if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
       if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+    }
+    return f;
+  }
+
+  // [§9.29] Il campo verso un ostacolo fatto di piu' pezzi (complex.js, il
+  // monastero del livello 3): la ricerca parte, a valore 0, da tutte le
+  // celle libere che toccano una delle sue celle (`cells`). Solo gli
+  // ostacoli fissi, come goalField con fixed.
+  goalFieldAround(cells) {
+    const { gw } = this, N = gw * this.gh, cost = this._solidCost();
+    const f = new Int32Array(N).fill(-1);
+    const q = this.queue || (this.queue = new Int32Array(N));
+    let head = 0, tail = 0;
+    const seed = (n) => { if (f[n] === -1 && cost[n] < 1000) { f[n] = 0; q[tail++] = n; } };
+    for (const k of cells) {
+      const x = k % gw;
+      if (x + 1 < gw) seed(k + 1);
+      if (x > 0) seed(k - 1);
+      if (k >= gw) seed(k - gw);
+      if (k < N - gw) seed(k + gw);
+    }
+    while (head < tail) {
+      const k = q[head++], v = f[k] + 1, x = k % gw;
+      let n;
+      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000) { f[n] = v; q[tail++] = n; }
     }
     return f;
   }

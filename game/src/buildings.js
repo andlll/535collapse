@@ -17,6 +17,7 @@ import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCrea
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
 import { spawnSlices, destroySlices } from "./scenario.js";
+import { linkParts, complexPointOver } from "./complex.js";
 
 const WHITE = 0xffffff, BLACK = 0, GREEN = 0x008000, RED = 0x0000ff;
 
@@ -465,6 +466,9 @@ export function built(fam, p) {
 // perso quando la vita scende sotto la meta' (levels.js, lvl03).
 // Disegnato a fette (scenario.js), come monastero_corpo di cui prende il
 // posto. Il tasto Canc non lo demolisce.
+// [§9.29] Col muro del cortile e la casetta e' un unico edificio (parts,
+// complex.js): si ripara e si incendia da uno qualunque dei pezzi, e il
+// puntatore lo prende anche sopra i tetti e il cortile.
 // ramHit/fireHit: il danno di un colpo d'ariete nemico e di una freccia
 // incendiaria (sugli altri edifici 50 e 5); burn: passi per -1 in fiamme.
 // [Numeri di partenza, da tarare: con 50 a colpo due arieti entrati nel
@@ -482,8 +486,10 @@ export function monastery(p) {
       i.alarm.set(0, M.every); i.alarm.set(1, M.smoke); i.alarm.set(2, M.burn);
       spawnSlices(i, w, w.objects[i.object].slices);
       i.persistentDraw = false;
+      linkParts(w, i); // §9.29
     },
     destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); destroySlices(i, w); },
+    pointOver: complexPointOver, // §9.29 (world.js, eventi del mouse)
     alarm0(i, w) {
       i.alarm.set(0, M.every);
       for (const u of w.all("ally_unit")) {
@@ -520,19 +526,25 @@ export function monastery(p) {
 // §1.3], e i riparatori (entro 150 px da (0, y)) non si fermano: si fermano
 // solo a edificio integro, che e' l'effetto voluto.
 export const NOONE = -4;
+// [§9.29] Chi ripara un complesso (repT, complex.js) si ferma a edificio
+// integro anche se ripara un pezzo a piu' di 150 px dall'origine.
 export function repairEnd(i, w) {
   const xpos = i.life >= i.slife ? i.x : 0, ypos = i.y;
   for (const o of w.all("ally_omino")) {
-    if (o.action === 7 && pointDistance(o.repx, o.repy, xpos, ypos) < 150) {
+    if (o.action === 7 && (pointDistance(o.repx, o.repy, xpos, ypos) < 150 || (o.repT === i && i.life >= i.slife))) {
       o.action = 0; o.repairwork = 0; w.g.idle += 1; o.repx = NOONE; o.repy = NOONE;
     }
   }
 }
 
+// [§9.29] repT: l'edificio da riparare, se e' un complesso (complex.js;
+// civilians.js lo usa dopo il proprio GlobalRightReleased, nello stesso
+// passo: repOrder).
 export function sendRepair(i, w) {
   for (const o of w.all("ally_omino")) {
     if (o.selected !== 1) continue;
     o.repairwork = 1;
+    o.repT = i.parts ? i : null; o.repOrder = w._stepNo;
     o.repx = w.mouse.x; o.repy = w.mouse.y;
     o.dirox = o.repx; o.diroy = o.repy;
     if (o.action === 0) w.g.idle -= 1;

@@ -4980,3 +4980,79 @@ movement.mjs (match, 3 semi), combattimento: spin 9/18/7 -> 7/17/6, rev
 392/293/212 -> 395/268/212 (solo alleati), 202/421/156 (anche i nemici:
 i combattimenti cambiano, alleati rimasti 12/15/10 -> 10/13/10); soak e
 salvataggi senza errori.
+
+### 9.29 Livello 3: il monastero come un unico edificio, arieti attraverso le mura
+
+Segnalazioni dell'autore (12 ottobre 2026): nel livello 3 i lavoratori non
+riescono a riparare il monastero; gli arieti a volte "scavalcano" le mura
+(porta abbattuta, una caserma costruita al suo posto per murare l'ingresso:
+gli arieti passavano attraverso il muro subito a sinistra della porta). Per
+il monastero due strade proposte dall'autore: un unico oggetto, cosi' che
+frecce incendiarie e riparazione vadano a buon fine, oppure soldati e
+lavoratori che passano dalla porta del cortile. Scelta la prima.
+
+**Arieti attraverso le mura** [C, pathing.js `markInstance`]: un edificio
+distrutto (o la porta che lascia libero il varco) liberava tutte le celle
+della griglia che la sua maschera toccava, anche quelle che toccavano
+ancora un ostacolo accanto. La porta della cinta (maschera larga 471 px)
+copre le estremita' delle mura ai lati: abbattuta, si aprivano 12 celle
+delle mura (3 a sinistra, 3 a destra, su due righe). Gli arieti sul flow
+field si muovono senza collisioni, e da li' passavano dentro il muro; con
+una caserma al posto della porta il buco di sinistra (96 px) restava aperto.
+Ora le celle che tocca ancora un altro ostacolo fisso solido (le famiglie di
+`initCost`) restano chiuse. Vale per tutti i livelli (alberi tagliati
+accanto ad altri alberi, edifici accanto alle mura, le neutrali del livello
+3 che diventano del giocatore).
+In piu' (levels.js): sfondata la porta, l'ariete punta al monastero
+(`ramTarget`, §9.17) solo se da dove e' si arriva dentro la cinta (campo
+"largo" dei nemici verso `LV3.inner`); se il varco e' murato colpisce, come
+prima della porta, l'edificio alleato piu' vicino (la caserma). Prima
+restava fermo davanti al varco col monastero come unico bersaglio.
+
+**Il complesso del monastero** (complex.js, nuovo): il corpo ha accanto il
+muro del cortile e la casetta (ostacoli neutri), e il muro chiude il cortile
+davanti al corpo. I civili mandati a riparare andavano verso il punto
+cliccato (spesso nel cortile chiuso) e poi verso il centro del corpo: dalla
+cinta si fermavano contro il muro del cortile; riparava solo chi arrivava
+da dietro o dal fianco sinistro. I nemici volevano un posto attorno al corpo
+(nel cortile) e tiravano solo a 70 px dal corpo. E la maschera e' solo la
+base: un clic sul tetto o su un'ala non era un clic sul monastero (i civili
+andavano li' a piedi, senza riparare). Ora il muro del cortile e la casetta
+sono pezzi del monastero (`parts`, legati nel Create):
+- **riparazione**: il campo dei civili verso il complesso parte da tutte le
+  celle libere che toccano un pezzo (`goalFieldAround`, solo ostacoli
+  fissi); in fondo si va verso il punto piu' vicino del complesso, lontano
+  da chi sta gia' riparando, e si ripara a 5 px da un pezzo qualunque; a
+  vita piena si fermano (repairEnd: la regola "fine riparazione" ferma solo
+  chi ha cliccato entro 150 px dall'origine dell'edificio, e sul monastero,
+  largo 850 px, chi cliccava piu' in la' restava a riparare spendendo
+  legno [letto nel codice]).
+- **fuoco**: i nemici vanno verso il punto piu' vicino del complesso e
+  tirano da 70 px da un pezzo qualunque; una freccia che colpisce il muro o
+  la casetta colpisce il monastero.
+- **puntatore** (world.js, `pointOver` del comportamento): sul monastero
+  sopra la base di ogni pezzo e sopra tutto cio' che lo sprite disegna al
+  di sopra (tetti, cortile).
+Sprite e maschere dell'autore non cambiano. L'altra strada (la porta del
+cortile percorribile) non basta da sola: le unita' hanno una maschera di
+48x46 px e il varco disegnato e' di circa 45 px in diagonale, con le celle
+da 32 px della griglia.
+
+**Prova** (`game/test/browser/monastery.mjs`, nuova, nella CI; prima / ora):
+
+| | prima | ora |
+|---|---|---|
+| riparazione, 3 civili dalla cinta (clic su tetto, ala, cortile, muro) | +178 / 0 / 0 / 0 | +326 in tutti e 4, 3 al lavoro |
+| riparazione da ovest, da dietro, dal villaggio | +208 (2 su 3) / +330 / 0 | +324 / +332 / +541, 3 su 3 |
+| a vita piena | 2970 su 3000, fermi | 3000, fermi, legno non speso |
+| 3 guerrieri nemici fra la cinta e il cortile | fuoco dopo 1332 passi, -4 | fuoco dopo 70 passi, -69 in 1500 |
+| celle delle mura aperte dopo la porta | 12 su 250 | 0 |
+| caserma al posto della porta, 3 arieti | fermi davanti, mai colpita | la colpiscono, nessuno entra |
+| caserma spostata di +-60 px | dentro le mura 528 / 313 passi, monastero colpito | dentro le mura 0 |
+| varco libero | arrivano al monastero, dentro le mura 484 passi | arrivano al monastero, dentro le mura 0 |
+| salvato e ricaricato | (nessun pezzo) | pezzi legati |
+
+Movimento (movement.mjs, 3 semi) e miniera (mining.mjs) identici al commit
+prima; workers.mjs: stesse risorse (oro 480 invece di 470); consegne, civili
+inattivi, mischia, soak e salvataggi senza errori.
+

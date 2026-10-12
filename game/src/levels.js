@@ -593,10 +593,23 @@ export function enemyManagerLv3(p) {
         }
         // [§9.17, richiesta dell'autore] sfondata la porta, gli arieti delle
         // ondate vanno al monastero e colpiscono solo quello (siege.js
-        // ramTarget), invece di continuare con le mura e le torri vicine
+        // ramTarget), invece di continuare con le mura e le torri vicine.
+        // [§9.29] Solo se da dove sono si arriva dentro la cinta (campo
+        // "largo" dei nemici verso LV3.inner): se il giocatore ha chiuso il
+        // varco (una caserma al posto della porta) l'ariete colpisce, come
+        // prima, l'edificio alleato piu' vicino; prima restava fermo davanti
+        // al varco chiuso col monastero come unico bersaglio.
         const porta = w.nearest(LV3.gate[0], LV3.gate[1], "porta_ori");
         if (!porta || pointDistance(porta.x, porta.y, LV3.gate[0], LV3.gate[1]) > 100) {
-          for (const e of w.all("enemy_ariete")) if (e.l3 === "mon") e.ramTarget = m;
+          if (!i.ramIn || i.ramIn.ver !== p.solidVer) {
+            i.ramIn = { ver: p.solidVer, f: p.goalField(LV3.inner[0], LV3.inner[1], true, true) };
+          }
+          for (const e of w.all("enemy_ariete")) {
+            if (e.l3 !== "mon") continue;
+            const gx = Math.floor(e.x / GRID), gy = Math.floor(e.y / GRID);
+            const inside = p.fieldAt(i.ramIn.f, gx, gy) !== -1 || !!p.escapeCell(i.ramIn.f, gx, gy, 2);
+            e.ramTarget = inside ? m : null;
+          }
         }
         for (const e of w.all("enemy_unit")) {
           if (!e.l3 || e.action !== 0 || e.role === 31 || e.ramTarget) continue;

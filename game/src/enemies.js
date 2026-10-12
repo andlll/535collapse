@@ -16,6 +16,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { mpPotentialStep, moveFlowField, destinationBack } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
+import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { phaseOf, swingOn, swingVictim } from "./units.js";
 
@@ -215,14 +216,21 @@ function enemyAttack(i, w, T) {
 // Step "voglio dare fuoco alle case" e "mandare a fuoco" [C]: un nemico
 // fermo entro 400 px (meno di notte) da un edificio di legno, senza civili
 // entro 400 px, ci va e a 200 px gli lancia frecce incendiarie (Alarm_4).
+// [§9.29] Il monastero del livello 3 e' un complesso (complex.js): ci si
+// avvicina al punto piu' vicino di uno qualunque dei suoi pezzi (prima a un
+// posto attorno al corpo, spesso nel cortile chiuso, e ci si fermava
+// contro il muro del cortile) e si tira da 70 px da uno qualunque.
 function enemyFireHouses(i, w) {
+  const cx = complexOf(i.targetid);
   // [Richiesta dell'autore, come §7.7] verso un posto libero attorno
   // all'edificio (melee.js), non tutti verso il suo centro
   if (i.firework === 1 && i.warwork !== 2 && i.targetid && i.targetid.alive && i.action === 1) {
-    [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
+    if (cx) { [i.dirox, i.diroy] = complexPoint(w, i.x, i.y, cx); i.meleeGo = [i.dirox, i.diroy]; }
+    else [i.dirox, i.diroy] = meleeSpot(w, i, i.targetid, null, FIRE);
   }
   if (i.firework === 1 && i.warwork !== 2 && i.targetid
-      && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70)) {
+      && (pointDistance(i.x, i.y, i.targetid.x, i.targetid.y) < 200 || w.distanceToInstance(i, i.targetid) < 70
+          || (cx && complexNear(w, i, cx, 70)))) {
     i.firework = 0;
     i.direction = pointDirection(i.x, i.y, i.targetid.x, i.targetid.y);
     i.step = 0;
@@ -231,7 +239,9 @@ function enemyFireHouses(i, w) {
   }
   if (i.action !== 0 || i.firework !== 0 || !w.exists("ally_wooden")) return;
   const house = w.nearest(i.x, i.y, "ally_wooden");
-  if (!(w.distanceToInstance(i, house) < 400 * (1 - 0.5 * w.g.night))) return;
+  const hc = complexOf(house); // §9.29: la distanza dal pezzo piu' vicino
+  const hd = hc ? Math.min(w.distanceToInstance(i, house), complexPoint(w, i.x, i.y, hc)[2]) : w.distanceToInstance(i, house);
+  if (!(hd < 400 * (1 - 0.5 * w.g.night))) return;
   const start = () => {
     i.firework = 1; i.warwork = 0; i.action = 1; i.alarm.set(0, 15);
     i.targetid = w.nearest(i.x, i.y, "ally_wooden");

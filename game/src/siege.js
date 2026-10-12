@@ -538,6 +538,11 @@ export function fireBullet() {
   }
   // [§9.11] il monastero del livello 3: brucia, col suo danno (fireHit)
   collisions.monastero = (i, w, other) => { other.onfire = 1; other.life -= other.fireHit; fireFlare(w, i.x, i.y); w.destroy(i); };
+  // [§9.29] il muro del cortile e la casetta sono pezzi del monastero
+  // (complex.js): una freccia che li colpisce colpisce lui
+  for (const name of ["monastero_muro", "monastero_casetta"]) {
+    collisions[name] = (i, w, other) => { if (other.complex && other.complex.alive) collisions.monastero(i, w, other.complex); };
+  }
   for (const name of ["o_box1", "o_box2"]) {
     collisions[name] = (i, w, other) => {
       if (other.life > other.slife / 2) other.onfire = 1;
