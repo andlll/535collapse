@@ -5731,22 +5731,21 @@ alleato vicino (`repairEnd` di buildings.js vale solo per gli alleati).
 
 **Ricostruzione.** Un edificio nemico distrutto (o un campo nemico
 bruciato) finisce nella lista `global.en.lost` (oggetto, x, y: entra nei
-salvataggi). Un cantiere alla volta: il primo della lista in ordine (centro;
-magazzino e mulino; campi; caserma; stalla; torre; chiesa; case; castello),
+salvataggi). [Decisione dell'autore] Il centro no: e' l'unico edificio che
+non si ricostruisce mai, perso e' perso. Un cantiere alla volta: il primo
+della lista in ordine (magazzino e mulino; campi; caserma; stalla; torre;
+chiesa; case; castello),
 quando si puo' pagare e il posto e' libero (nessun solido, unita' o
 edificio sotto la maschera; le rovine si tolgono), nello stesso punto; nel
 frattempo il suo costo resta da parte (lavoratori e soldati non lo
 spendono). Il cantiere (`enemy_cantiere`, nuovi.json, `kit: false`) ha
 sprite, fasi, maschera, vita e costo del cantiere alleato corrispondente
 (buildings.js FAM, gli oggetti *_fond); fino a 3 lavoratori lo costruiscono
-come i civili un ally_fondamenta (stessa vita per colpo; il centro +2,
-`rate`). Finito, al suo posto l'edificio nemico, che si vede come il
-cantiere. Il centro nemico non ha un cantiere nell'originale: [provvisorio]
-lo sprite del centro in trasparenza, che si fa pieno man mano, e 300 legno
-e 100 pietra. Il cantiere brucia (frecce incendiarie -10; clic destro con
-fanti selezionati; fiamme che crescono coi danni, effects.js `rel`); se
-brucia del tutto torna nella lista. Il nemico non fa mai edifici nuovi
-(nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
+come i civili un ally_fondamenta (stessa vita per colpo). Finito, al suo
+posto l'edificio nemico, che si vede come il cantiere. Il cantiere brucia
+(frecce incendiarie -10; clic destro con fanti selezionati; fiamme che
+crescono coi danni, effects.js `rel`); se brucia del tutto torna nella
+lista. Il nemico non fa mai edifici nuovi (nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
 le posizioni automatiche solo nelle future schermaglie).
 
 I numeri sono in `ECO.default` (army, troops, attackAt, repairers,
@@ -5758,4 +5757,4 @@ del match una base nemica con scorte abbondanti fa tutti e quattro i tipi
 di soldati senza superare il tetto e parte all'attacco, senza toccare le
 scorte del giocatore; la caserma danneggiata di 120 torna intera (119 legno
 spesi); la stalla distrutta rinasce nello stesso punto da un cantiere (170
-legno) in ~970 passi, il centro in ~1200; nessun edificio nuovo.
+legno) in ~970 passi; il centro distrutto non torna; nessun edificio nuovo.

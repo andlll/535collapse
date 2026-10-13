@@ -24,7 +24,7 @@
 // riparano gli edifici danneggiati (legno o pietra, come gli alleati) quando
 // non ci sono alleati vicini. [Decisione dell'autore, campagna] Il nemico
 // non fa edifici nuovi: ricostruisce solo quelli che ha perso, nello stesso
-// punto (enemy_cantiere), uno alla volta, il centro per primo.
+// punto (enemy_cantiere), uno alla volta; il centro no: perso e' perso.
 
 import { omino, orderWork } from "./civilians.js";
 import { campo, FAM } from "./buildings.js";
@@ -182,11 +182,9 @@ function targetFor(w, i, kind) {
 
 // Gli edifici che il nemico ricostruisce: in ordine (prio), con il cantiere
 // e il costo dell'edificio alleato corrispondente (buildings.js FAM, gli
-// oggetti *_fond). Il centro alleato non si costruisce: niente cantiere
-// nell'originale; il suo e' lo sprite del centro che si fa pieno man mano
-// (ghost), il costo e' [provvisorio] 300 legno e 100 pietra.
+// oggetti *_fond). [Decisione dell'autore] Il centro non si ricostruisce
+// mai: perso e' perso.
 const REBUILD = {
-  enemy_centro: { prio: 0, cost: { wood: 300, stone: 100 }, slife: 400, rate: 2 },
   enemy_magazzino: { prio: 1, fam: "magazzino" },
   enemy_mulino: { prio: 1, fam: "barn" },
   enemy_campo: { prio: 2, fam: "campo", slife: 100, rate: 5 },
@@ -208,9 +206,9 @@ export function lostBuilding(w, i) {
 }
 
 function plan(w, o) {
-  const R = REBUILD[o], F = R.fam && FAM[R.fam], fo = R.fam && w.objects[R.fam + "_fond"], ob = w.objects[o];
-  const P = { o, cost: R.cost || F.cost, slife: R.slife || F.slife, rate: R.rate || 0, phases: (F && F.phases) || [],
-              sprite: fo ? fo.sprite : ob.sprite, mask: fo ? fo.mask : ob.mask, ghost: !fo, solid: ob.solid };
+  const R = REBUILD[o], F = FAM[R.fam], fo = w.objects[R.fam + "_fond"], ob = w.objects[o];
+  const P = { o, cost: F.cost, slife: R.slife || F.slife, rate: R.rate || 0, phases: F.phases || [],
+              sprite: fo.sprite, mask: fo.mask, solid: ob.solid };
   if (o === "enemy_house") { const t = irandomRange(1, 6); P.sprite = "c" + t + "f"; P.mask = "c" + t + "m"; }
   return P;
 }
@@ -246,7 +244,6 @@ export function enemyCantiere(p) {
       i.depth = -i.y;
       i.visible = false;
       i.alarm.set(1, 70);
-      if (i.ghost) i.image_alpha = 0.3;
     },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
     alarm2(i) { i.hit = 0; },
@@ -264,7 +261,6 @@ export function enemyCantiere(p) {
       (i.phases || []).forEach(([t, spr], k) => {
         if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; w.swapSprite(i, spr); }
       });
-      if (i.ghost) i.image_alpha = 0.3 + 0.6 * i.life / i.slife;
       if (i.life >= i.slife) {
         const { x, y, target, sprite_index: spr, visible } = i;
         w.destroy(i);
@@ -350,7 +346,7 @@ export function enemyEco(p) {
           lost.shift();
           for (const r of ruins) w.destroy(r);
           w.create("enemy_cantiere", L.x, L.y, { init: (f) => {
-            Object.assign(f, { target: P.o, slife: P.slife, rate: P.rate, phases: P.phases, ghost: P.ghost, solid: P.solid });
+            Object.assign(f, { target: P.o, slife: P.slife, rate: P.rate, phases: P.phases, solid: P.solid });
             f.sprite_index = P.sprite; f.mask_index = P.mask;
           } });
         } else keep = P.cost; // si mette da parte per lui

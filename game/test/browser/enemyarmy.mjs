@@ -8,8 +8,9 @@
 //   giocatore  = le scorte del giocatore non cambiano
 //   riparazione = la caserma danneggiata torna intera, pagata col legno
 //   ricostruzione = la stalla distrutta rinasce nello stesso punto, da un
-//                cantiere nemico, pagata col legno; poi il centro (lo sprite
-//                in trasparenza al posto del cantiere); nessun edificio nuovo
+//                cantiere nemico, pagata col legno; nessun edificio nuovo
+//   centro     = il centro distrutto non si ricostruisce (decisione
+//                dell'autore: perso e' perso)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -99,21 +100,19 @@ const res = await page.evaluate(() => {
   out.ricostruita = rebuilt;
   out.stessoPunto = !!n && n.x === sx && n.y === sy;
   out.legnoRic = spentW;
-  // il centro: senza cantiere nell'originale, il suo sprite che si fa pieno
+  // il centro non si ricostruisce: perso e' perso
   G.g.en.stone = 500;
-  const c0 = w.all("enemy_centro").next().value, cx = c0.x, cy = c0.y;
+  const c0 = w.all("enemy_centro").next().value;
   c0.life = 0;
-  let ghost = false, cc = -1;
-  for (let s = 0; s < 9000 && cc < 0; s++) {
+  let cc = 0;
+  for (let s = 0; s < 3000; s++) {
     G.advance(1);
-    const f = w.all("enemy_cantiere").next().value;
-    if (f && f.ghost && f.sprite_index === "cc_b" && f.image_alpha < 1) ghost = true;
-    const c = w.all("enemy_centro").next().value;
-    if (c && c.x === cx && c.y === cy) cc = s;
+    if (w.exists("enemy_centro") || w.exists("enemy_cantiere")) cc++;
   }
-  out.centro = ghost ? cc : -1;
+  out.centroRifatto = cc;
   G.advance(600);
-  out.nessunNuovo = [...w.all("enemy_build")].map((b) => b.object).sort().join(",") === builds0 && !w.exists("enemy_cantiere");
+  out.nessunNuovo = [...w.all("enemy_build")].map((b) => b.object).sort().join(",")
+    === builds0.split(",").filter((o) => o !== "enemy_centro").join(",") && !w.exists("enemy_cantiere");
   return out;
 });
 console.log(JSON.stringify(res));
@@ -121,7 +120,7 @@ const ok = res.soldati.includes("enemy_cavaliere") && res.soldati.includes("enem
   && res.spent > 0 && res.attacco > 0 && res.giocatore
   && res.riparazione >= 0 && res.legnoRip >= 100
   && res.cantiere !== null && res.ricostruita >= 0 && res.stessoPunto && res.legnoRic >= 170
-  && res.centro >= 0 && res.nessunNuovo && errs.length === 0;
+  && res.centroRifatto === 0 && res.nessunNuovo && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");
 await browser.close();
