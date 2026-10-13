@@ -7,9 +7,9 @@ export function newGlobals(room) {
   const g = {
     // risorse [Deviazione decisa dall'autore: manager Create aveva valori di
     // test 10000/5000/5000/0 e popcap 990; quelli giusti sono 100/50/50/0 e
-    // popcap 0]
+    // popcap 0. Richiesta dell'autore: il livello 2 parte con popcap 30]
     food: 100, wood: 50, gold: 50, stone: 0,
-    pop: 0, popcap: 0,
+    pop: 0, popcap: room === "lvl02" ? 30 : 0,
     frame: 0,
     idle: 0,        // civili inattivi
     sele: 0,        // 1 con Ctrl, -1 con Alt (manager KeyPress_Control/Alt)

@@ -5346,3 +5346,74 @@ dell'anteprima). Categoria "grass" nelle opzioni grafiche (densita').
 Prova (Chromium): le quattro macchie nel match con unita' dentro
 (immerse come nell'erba); `npm test`, saves.mjs, ui.mjs, 12 --check
 (match, lvl01, lvl02 identiche).
+
+### 9.38 Campagna, inattivi, ordine di attacco, fiamme
+
+Segnalazioni e richieste dell'autore (13 ottobre 2026).
+
+**Livello 2: popcap 30 all'inizio** (state.js, `newGlobals`): prima 0 come
+in tutte le room. Attenzione: la popolazione iniziale del livello 2 vale
+gia' 32 (l'esercito di partenza), quindi con 30 non si produce ancora
+nulla finche' non si costruisce una casa (+10).
+
+**Livello 1 tutto di notte** (manager.js): l'originale armava l'alba
+(alarm 1) a 100000 passi, ma l'alarm 0 (6000 passi), trovando gia' la
+notte, la riarmava a 2000: l'alba arrivava dopo ~8000 passi (2 min 13 s).
+Ora nel livello 1 l'alarm 1 non fa nulla; l'alarm 0 resta (il suggerimento
+della notte compare ancora). `endlessNight` rimette la notte anche
+caricando un salvataggio di prima, magari ad alba cominciata (snapshot.js).
+
+**Il riquadro degli inattivi si accende sotto il puntatore** come gli altri
+pulsanti. Lo faceva gia' il Draw GUI di idle_clicker [C], ma viene prima di
+quello del manager, che ci ridisegnava sopra il riquadro normale (vetro a
+0,69) e lo copriva: l'hover c'era (`hover` = 1) ma non si vedeva. Ora il
+manager disegna il riquadro a 0,99 quando idle_clicker ha `hover`.
+
+**Ordine di attacco: i soldati in mischia restavano fermi** (units.js).
+Tre cause, riprodotte con un gruppo misto mandato col clic destro su un
+nemico (livelli 1 e 2 e zona aperta del match):
+1. *Precedenza fra alleati sovrapposti* [C]: lontano dalla meta (flow
+   field) aspetta chi ha l'`ordo` piu' alto, vicino (nearRank, solo il
+   guerriero) chi lo ha piu' basso (il commento dell'autore dice "se l'altro
+   ha rank piu' alto e si sta muovendo tu fermati" in entrambi i casi). Due
+   guerrieri sovrapposti, uno lontano e uno vicino alla meta, si aspettavano
+   a vicenda: fermi per secondi (in media 40 dei primi 120 passi), mentre gli
+   arcieri, che non aspettano, partivano. Capovolgere la regola lontana
+   spostava solo l'attesa sui cavalieri (che in formazione devono passare
+   davanti, §8.11). Ora (`yieldTo`/`noYield`) non si aspetta chi sta gia'
+   aspettando noi, e con un ordine di attacco (warwork 1) non si aspetta
+   nessuno: il flow field e' senza collisioni e vicino al nemico i posti li
+   assegna `meleeSpot`. Gli spostamenti di gruppo non cambiano
+   (movement.mjs: stessi numeri di prima).
+2. *Bersaglio circondato*: col bersaglio scelto col clic destro il posto in
+   mischia si cercava solo attorno a lui; con tutti i settori presi (altri
+   alleati, nemici accanto) si spingeva verso il suo centro, fermi dietro
+   chi combatteva. Ora un posto attorno a un nemico vicino a lui, che
+   diventa il bersaglio (anche in difesa, dove senza bersaglio chi e' oltre
+   i 200 px si sarebbe fermato).
+3. *Bersaglio irraggiungibile* (`targetStuck`): chi per 90 passi non si
+   avvicina al bersaglio scelto (altri nemici o alleati in mezzo) ci
+   rinuncia e attacca come senza ordine, il nemico piu' vicino.
+Resta: un bersaglio dietro le mura (il flow field porta alla cella
+raggiungibile piu' vicina, li' l'unita' oscilla fra il campo e la meta).
+
+**Le fiamme della stalla** (effects.js, `FIRE`): la stalla prendeva fuoco
+(`onfire`, prova burn.mjs), ma la vita delle fiamme si misura dai danni,
+`((A - vita)/2, (B - vita)/2)` con A e B per famiglia di grandezza [C]: a vita
+piena la casa le ha di 15-20 passi e la caserma di 15-25, ma la stalla (380,
+anche nemica) di 0-10, il mulino (150) di 0-5 e il magazzino (140) di 5-10:
+in fiamme sembravano non bruciare. Ora A e B partono dalla loro vita come
+per casa e caserma (stalla 410/430, mulino 180/190, magazzino 170/180). Gli
+altri edifici di legno (casa, caserma, centro, campo, case e caserme
+nemiche) erano gia' cosi'; quelli di pietra non bruciano.
+
+**Prove** (nuove, nella CI): `game/test/browser/attackorder.mjs` (gruppi
+distanziati, stretti e in formazione, nemici vicini e lontani, di notte e in
+difesa: tutti i soldati in mischia arrivano a colpire e aspettano in media
+al piu' 20 passi; sul codice di prima 17 errori, ora nessuno) e
+`game/test/browser/burn.mjs` (vita delle fiamme a vita piena per ogni
+edificio di legno, e frecce incendiarie da quattro direzioni). Su scenari
+dei livelli 1 e 2 coi nemici veri: attesa media nei primi 120 passi da 40 a
+2 passi per i guerrieri, primo colpo da 131 a 72 passi. `npm test`, soak,
+saves, melee, movement, rally, fireorder, rams, monastery, ui, idle,
+workers, deposit.

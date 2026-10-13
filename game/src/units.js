@@ -730,8 +730,8 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
     if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
-        if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
-        else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
+        if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1 || noYield(w, i, otro)) moveFlowField(w, p, i); // §8.11: assedio
+        else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); yieldTo(w, i, otro); }
       } else {
         moveFlowField(w, p, i);
       }
@@ -739,8 +739,8 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
       if (nearRank) {
         // §8.11: verso la casella della formazione si passa sopra gli alleati
         const otro = !onFormationSlot(i) && w.instancePlace(i, i.x, i.y, "ally_unit");
-        if (otro && otro.ordo !== undefined && !(otro.ordo < i.ordo || otro.action !== 1)) {
-          i.step = 0; i.autospeed = 0; i.alarm.set(0, i.alarm.get(0) + 1);
+        if (otro && otro.ordo !== undefined && !(otro.ordo < i.ordo || otro.action !== 1) && !noYield(w, i, otro)) {
+          i.step = 0; i.autospeed = 0; i.alarm.set(0, i.alarm.get(0) + 1); yieldTo(w, i, otro);
         } else i.autospeed = speed * iso(i.direction);
       }
       if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) {
@@ -752,7 +752,19 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
       // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
       // verso il suo centro (melee.js)
       if (i.warwork === 1 && i.target_eu) {
-        const [sx, sy] = meleeSpot(w, i, i.target_eu);
+        let [sx, sy] = meleeSpot(w, i, i.target_eu);
+        // [Segnalazione dell'autore, §9.38] nessun posto libero attorno al
+        // bersaglio scelto col clic destro (circondato da alleati e nemici):
+        // si spingeva verso il suo centro, fermi dietro chi combatteva gia'.
+        // Ora un posto attorno a un nemico vicino a lui, e quel nemico
+        // diventa il bersaglio (anche in difesa, dove senza bersaglio chi e'
+        // oltre i 200 px si sarebbe fermato)
+        if (!i.meleeSpot) {
+          [sx, sy] = meleeSpot(w, i, i.target_eu, "enemy_unit");
+          if (i.meleeSpot && i.meleeT !== i.target_eu.id) {
+            for (const o of w.all("enemy_unit")) if (o.id === i.meleeT) { i.target_eu = o; break; }
+          }
+        }
         mpPotentialStep(w, i, sx, sy, i.autospeed);
       }
       if (i.warwork === 1 && !i.target_eu) {
@@ -764,6 +776,20 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
       }
     }
   }
+}
+
+// [Segnalazione dell'autore, §9.38] La precedenza fra alleati sovrapposti.
+// Lontano (flow field) aspetta chi ha l'ordo piu' alto, vicino (nearRank, il
+// guerriero) chi lo ha piu' basso [C]: due guerrieri sovrapposti, uno
+// lontano e uno vicino alla meta, si aspettavano a vicenda, fermi anche per
+// secondi, mentre gli arcieri (che non aspettano) partivano. Ora non si
+// aspetta chi sta aspettando noi (yieldTo, del passo prima o di questo); e
+// con un ordine di attacco (warwork 1) non si aspetta nessuno: il flow
+// field e' senza collisioni, e vicino al nemico i posti attorno a lui li
+// assegna meleeSpot.
+function yieldTo(w, i, o) { i.yieldId = o.id; i.yieldAt = w._stepNo; }
+function noYield(w, i, o) {
+  return i.warwork === 1 || (o.yieldId === i.id && o.yieldAt >= w._stepNo - 1);
 }
 
 // [§9.28, richiesta dell'autore] Colpo portato a termine: nell'originale
@@ -852,6 +878,7 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     }
     if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null; }
+    if (i.target_eu && i.action === 1 && i.warwork === 1 && targetStuck(i, w, te)) i.target_eu = null; // §9.38
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
       i.dirox = i.target_eu.x;
       i.diroy = i.target_eu.y;
@@ -862,6 +889,20 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
   }
   if (i.action === 2 && w.exists("enemy_unit")) i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
   return null;
+}
+
+// [Segnalazione dell'autore, §9.38] Il bersaglio scelto col clic destro
+// che non si riesce a raggiungere: chi lo inseguiva e per TARGET_STUCK passi
+// non gli si avvicina (bloccato da altri nemici o da alleati fra lui e il
+// bersaglio) ci rinuncia e attacca come senza ordine, il nemico piu'
+// vicino: prima restava fermo, magari a pochi passi da un nemico.
+const TARGET_STUCK = 90;
+function targetStuck(i, w, te) {
+  const d = w.distanceToInstance(i, te);
+  if (i.teId !== te.id || i.teBest === undefined || d < i.teBest - 2) { i.teId = te.id; i.teBest = d; i.teN = 0; return false; }
+  if (++i.teN < TARGET_STUCK) return false;
+  i.teBest = undefined;
+  return true;
 }
 
 // Alarm_2: colpo in mischia col "versore" [C, STUDIO.md §1.6]: tre fasi da

@@ -231,9 +231,17 @@ export function waterLife(w, cam) {
 // back/front: [dx1, dx2, dy1, dy2, particelle per passo (x visible)]
 const SMALL = { back: [-35, 35, -50, -45, 6], front: [-35, 35, 40, 45, 3], life: [150, 160] };
 const BIG = { back: [-75, 75, -90, -85, 8], front: [-55, 55, 70, 75, 4], life: [380, 400] };
+// [Segnalazione dell'autore, §9.38] La vita delle fiamme si misura dai danni
+// a partire da A e B, uguali per famiglia di grandezza [C]; ma a vita piena
+// la casa (120) ha fiamme di 15-20 passi e la caserma (350) di 15-25,
+// mentre il magazzino (140) le aveva di 5-10, il mulino (150) di 0-5 e la
+// stalla (380, anche nemica) di 0-10: in fiamme sembravano non bruciare.
+// Qui A e B partono dalla loro vita come per la casa e la caserma.
 export const FIRE = {
-  casa: SMALL, barn: SMALL, magazzino: SMALL, enemy_house: SMALL,
-  caserma: BIG, stalla: BIG, enemy_caserma: BIG, enemy_stalla: BIG,
+  casa: SMALL, enemy_house: SMALL,
+  magazzino: { ...SMALL, life: [170, 180] }, barn: { ...SMALL, life: [180, 190] },
+  caserma: BIG, enemy_caserma: BIG,
+  stalla: { ...BIG, life: [410, 430] }, enemy_stalla: { ...BIG, life: [410, 430] },
   centro: { back: [-65, 65, -100, -95, 8], front: [-65, 65, 70, 75, 4], life: [430, 460] },
   // o_box: la regione dietro ha le y invertite (y-30, y-35) [C]
   o_box1: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },

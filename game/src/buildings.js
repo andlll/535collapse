@@ -1051,15 +1051,7 @@ export function idleClicker() {
     },
     mouseEnter(i, w) { if (w.room !== "menu") i.hover = 1; },
     mouseLeave(i) { i.hover = 0; },
-    drawGUI(i, w, dr) {
-      if (i.hover !== 1) return;
-      const W = w.cam.cssW;
-      dr.setAlpha(0.99);
-      dr.roundrectColourExt(W - 90, 100, W - 20, 200, 60, 60, WHITE, WHITE, false);
-      dr.setAlpha(1);
-      dr.spriteExt("ico_idle", 0, W - 55, 135, 0.7, 0.7, 0, WHITE, 1);
-      dr.setHalign("center");
-      dr.text(W - 55, 170, w.g.idle);
-    },
+    // Draw_GUI [C]: il riquadro acceso sotto il puntatore lo disegna il
+    // manager (manager.js, drawGUI), che qui lo copriva
   };
 }

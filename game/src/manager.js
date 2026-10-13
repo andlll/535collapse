@@ -24,11 +24,23 @@ export class Manager {
     this.al.set(3, 100);                           // aquila
     this.world = null;                             // app.js (pioggia e aquila)
     this.rain = null;
-    if (room === "lvl01") { g.night = 1; this.al.set(1, 100000); }
+    // [Richiesta dell'autore] il livello 1 e' tutto di notte: l'originale
+    // armava l'alba a 100000 passi, e l'alarm 0 (6000), trovando gia' la
+    // notte, la anticipava a 8000. Qui l'alarm 0 resta (il suggerimento
+    // della notte), l'alba no (alarm 1).
+    if (room === "lvl01") g.night = 1;
     if (room === "lvl02") { g.night = 1; this.al.set(1, 1); }
     // startflagger (9), bordi solidi (10): con i loro sistemi
     this.minimHover = this.minimViewHover = this.minimPlusHover = this.minimMinusHover = 0;
     this.minimViewHoverBis = 0;
+  }
+
+  // Il livello 1 senza alba anche da un salvataggio fatto prima che lo
+  // fosse, magari ad alba cominciata (snapshot.js)
+  endlessNight() {
+    if (this.room !== "lvl01") return;
+    this.g.night = 1;
+    this.al.set(1, -1);
   }
 
   // Eventi di tastiera del manager [C, KeyPress_*/KeyRelease_*/Keyboard_*].
@@ -163,7 +175,8 @@ export class Manager {
           }
         }
         break;
-      case 1: // passaggio notte-giorno
+      case 1: // passaggio notte-giorno (non nel livello 1, sempre di notte)
+        if (this.room === "lvl01") break;
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
         else this.al.set(0, 4000);
         break;
@@ -270,6 +283,13 @@ export class Manager {
     if (this.room !== "menu" && world.number("victory_manager") === 0 && world.number("gameover_manager") === 0) {
       d.setAlpha(0.69);
       d.roundrectColourExt(20, 20, 230, 150, 60, 60, c.white, c.white, false);  // risorse
+      // [Richiesta dell'autore] il riquadro degli inattivi si accende sotto il
+      // puntatore come gli altri pulsanti. Lo faceva il Draw GUI di
+      // idle_clicker [C], che pero' viene prima di questo: il riquadro qui
+      // sotto lo copriva e non si vedeva.
+      let idleHover = false;
+      for (const ic of world.all("idle_clicker")) if (ic.hover === 1) idleHover = true;
+      d.setAlpha(idleHover ? 0.99 : 0.69);
       d.roundrectColourExt(W - 90, 100, W - 20, 200, 60, 60, c.white, c.white, false); // inattivi
       d.setFont("GUI_1");
       d.setColour(c.black);

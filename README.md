@@ -93,6 +93,8 @@ node game/test/browser/monastery.mjs                    # livello 3: riparare e 
 node game/test/browser/rally.mjs                        # unita' appena prodotte verso la bandiera di raccolta
 node game/test/browser/fireorder.mjs                    # gruppo misto che incendia un edificio (alleati e nemici)
 node game/test/browser/rams.mjs                         # piu' arieti contro lo stesso edificio, senza sovrapporsi
+node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
+node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```
