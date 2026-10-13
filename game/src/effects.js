@@ -242,7 +242,10 @@ export const FIRE = {
   magazzino: { ...SMALL, life: [170, 180] }, barn: { ...SMALL, life: [180, 190] },
   caserma: BIG, enemy_caserma: BIG,
   stalla: { ...BIG, life: [410, 430] }, enemy_stalla: { ...BIG, life: [410, 430] },
+  // [§9.43] gli edifici nemici nuovi, come i loro corrispondenti alleati
+  enemy_magazzino: { ...SMALL, life: [170, 180] }, enemy_mulino: { ...SMALL, life: [180, 190] },
   centro: { back: [-65, 65, -100, -95, 8], front: [-65, 65, 70, 75, 4], life: [430, 460] },
+  enemy_centro: { back: [-65, 65, -100, -95, 8], front: [-65, 65, 70, 75, 4], life: [430, 460] },
   // o_box: la regione dietro ha le y invertite (y-30, y-35) [C]
   o_box1: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   o_box2: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },

@@ -393,6 +393,9 @@ def main():
     sprites = json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
     objects = json.load(open(os.path.join(DATA_DIR, "objects.json"), encoding="utf-8"))
     used = used_as_texture(sprites, objects)
+    # [§9.43] anche gli sprite del progetto che usano gli oggetti nuovi
+    # (nuovi.json: gli edifici nemici con gli sprite *_b mai usati)
+    used |= {o["sprite"] for o in nuovi.load()["objects"].values() if o.get("sprite")} & {s["name"] for s in sprites}
     os.makedirs(os.path.join(OUT, "atlas"), exist_ok=True)
     for old in glob.glob(os.path.join(OUT, "atlas", "*")):
         os.remove(old)

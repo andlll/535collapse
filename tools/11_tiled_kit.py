@@ -211,7 +211,7 @@ def catalogue():
         out = list(e.get("choices") or ([e["sprite"]] if e["sprite"] else []))
         # chiazza01: tipo=irandom_range(1,2), se 2 chiazza2 [C]: lo sprite
         # dell'oggetto e' l'altra variante
-        if "irandom" in create_code(name) and data[name]["sprite"] and data[name]["sprite"] not in out:
+        if name in data and "irandom" in create_code(name) and data[name]["sprite"] and data[name]["sprite"] not in out:
             out.insert(0, data[name]["sprite"])
         return out
 

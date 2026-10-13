@@ -5586,3 +5586,41 @@ che ha caricato (`nuovi/sprites/icons8-bridge-64.png`).
   Durata e legno non cambiano: 4399 colpi, 3 min 58 s con quattro civili,
   1000 legno (bridge.mjs, misurato di nuovo). `panel` scrive la vita senza
   decimali.
+
+### 9.43 Gli edifici nemici mai usati dell'originale
+
+Domanda e richiesta dell'autore (13 ottobre 2026). Il progetto GameMaker ha
+le versioni nemiche (`*_b`, tetti azzurri e cupole) di quasi tutti gli
+edifici. Usate: `c1b`..`c6b` (enemy_house ne sceglie una a caso), `cas_b`,
+`stal_b`, `torre_b`. Mai usate da un oggetto: `cc_b` (centro), `chiesa_b`,
+`castello_b`, `magazzino_b`, `barn_b` (mulino, 3 fotogrammi: le pale che
+girano; quello alleato in partita usa `mul1`, 9 fotogrammi). Nessuno
+sprite di lavoratori nemici: le cartelle `b_*` sono solo dei militari
+(guerriero, picchiere, arciere, cavaliere, ariete, catapulta, firegroup).
+
+Ora sono oggetti (nuovi.json, con lo sprite e la maschera dell'originale:
+quelle degli edifici alleati, che combaciano con centro, chiesa e castello;
+su magazzino e mulino coprono la base, la casetta del mulino resta fuori):
+
+| oggetto | sprite | vita | rovina | legno | cosa fa |
+|---|---|---|---|---|---|
+| enemy_centro | cc_b | 400 | ccruin | si' | una freccia ogni 35 passi su un alleato entro 600 px, come il centro alleato |
+| enemy_chiesa | chiesa_b | 300 | chiesaruin | no | ogni 180 passi +3 vita ai nemici feriti entro 800 px, come la chiesa alleata |
+| enemy_castello | castello_b | 900 | castelloruin | no | due frecce ogni 50 passi, come la torre nemica |
+| enemy_magazzino | magazzino_b | 140 | magruin | si' | niente |
+| enemy_mulino | barn_b | 150 | barnruin | si' | niente; le pale girano (image_speed 0,1) |
+
+Come gli altri edifici nemici (enemybuild.js, `KIND`): nascosti finche'
+un alleato non li vede, poi visibili; barra e scheda con la loro icona
+(ico_centro, ico_chiesa...); quelli di legno bruciano con le frecce
+incendiarie (siege.js FIRE_HIT, effects.js FIRE: fiamme come i loro
+corrispondenti alleati) e il clic destro con fanti selezionati li manda a
+dar loro fuoco; chiesa e castello no (di pietra: solo arieti e catapulte).
+Contano fra gli enemy_build (minimappa, vittoria del livello 2, obiettivi
+"distruggi gli edifici nemici"). Nel kit di Tiled in fondo al tileset
+"nemici" (tiledkit.py APPENDED). Gli sprite *_b entrano nell'atlas
+(05_atlas: anche gli sprite del progetto usati da nuovi.json; +2 MB).
+
+Prova (`game/test/browser/enemybuildings.mjs`, nella CI): per ognuno
+visibilita', frecce, cura, fuoco (e fiamme visibili) solo dove serve, pale
+del mulino, rovina.

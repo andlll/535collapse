@@ -18,7 +18,7 @@ import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
-import { enemyBuilding, oBox, church, crossEffect, roleAssign } from "./enemybuild.js";
+import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, levelStep } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
@@ -192,7 +192,7 @@ async function main() {
   world.register("sfx_sangue", bloodSplat());
   world.register("fire_bullet", fireBullet());
   world.register("nubeqq", smoke());
-  for (const n of ["enemy_house", "enemy_stalla", "enemy_caserma"]) world.register(n, enemyBuilding(n, path));
+  for (const n of ENEMY_BUILDINGS) world.register(n, enemyBuilding(n, path)); // §9.43: anche i nuovi
   for (const n of ["o_box1", "o_box2"]) world.register(n, oBox(n, path));
   world.register("sfx_croce", crossEffect());
   world.register("aggr_assign", roleAssign(30));

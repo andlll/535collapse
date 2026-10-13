@@ -351,6 +351,74 @@
       },
       "kit": false,
       "nota": "la balaustra davanti al ponte riparato (§9.40), a fette: chi passa sul ponte le sta dietro"
+    },
+    "enemy_centro": {
+      "sprite": "cc_b",
+      "mask": "cc_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il centro citta' nemico: tira frecce agli alleati vicini come il centro alleato, brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_chiesa": {
+      "sprite": "chiesa_b",
+      "mask": "chiesa_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il monastero nemico: cura i nemici vicini come la chiesa alleata; di pietra (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_castello": {
+      "sprite": "castello_b",
+      "mask": "castello_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il castello nemico: tira frecce come la torre nemica; di pietra (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_magazzino": {
+      "sprite": "magazzino_b",
+      "mask": "magazzino_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il magazzino nemico: passivo, brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_mulino": {
+      "sprite": "barn_b",
+      "mask": "barn_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il mulino nemico: passivo, le pale girano (3 fotogrammi), brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
     }
   },
   "derivati": {

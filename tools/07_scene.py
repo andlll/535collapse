@@ -102,7 +102,7 @@ def main():
     for name, o in nuovi.load()["objects"].items():
         if name in info:
             raise SystemExit("nuovi/nuovi.json: %s c'e' gia' fra gli oggetti del progetto" % name)
-        sp = nsp[o["sprite"]] if o["sprite"] else None
+        sp = nsp.get(o["sprite"]) if o["sprite"] else None  # [§9.43] o uno sprite del progetto
         entry = {"sprite": o["sprite"], "visible": True, "parents": o.get("parents", []),
                  "mask": o.get("mask"), "solid": bool(o.get("solid")), "draw": True, "depth": o.get("depth", {"y": 0})}
         if sp and sp["fette"]:
