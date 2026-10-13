@@ -16,7 +16,7 @@ import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIf
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
-import { bridgeEnds } from "./bridge.js";
+import { bridgeEnds, woodDue } from "./bridge.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -1094,8 +1094,8 @@ function buildStep(i, w, p) {
 // di mura (799) +5. Il 100 non serve: e' il cantiere del campo, che non e'
 // un ally_fondamenta e cresce con la semina (azione 8).
 // [Richiesta dell'autore, §9.39] caserma (349) e stalla (379) +2.
-// [§9.40] il ponte del livello 4 (599): +1
-const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5, 599: 1 };
+// [§9.40, §9.41] il ponte del livello 4 (4400): +1
+const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5, 4400: 1 };
 
 // Alarm_2, azioni 4, 6, 7, 8 [C]: a differenza della raccolta, il cantiere
 // cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve
@@ -1127,8 +1127,17 @@ function otherWorkTick(i, w) {
   if (i.action === 6) {
     const f = w.nearest(i.buildx, i.buildy, "ally_fondamenta");
     if (f && f.fondazione === 1) {
-      f.life += BUILD_RATE[f.slife] || 0;
-      if (f.life > f.slife) f.life = f.slife;
+      const n = BUILD_RATE[f.slife] || 0;
+      // [§9.41] il ponte del livello 4 costa legno a ogni colpo; senza, il
+      // colpo non vale e il legno lampeggia
+      const due = f.object === "ponte" ? woodDue(f, n) : 0;
+      if (due > g.wood) {
+        if (w.number("wood_blink") === 0) w.create("wood_blink", 0, 0);
+      } else {
+        g.wood -= due;
+        f.life += n;
+        if (f.life > f.slife) f.life = f.slife;
+      }
     }
   } else if (i.action === 7) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne

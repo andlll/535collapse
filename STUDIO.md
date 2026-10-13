@@ -5508,7 +5508,7 @@ lo ha dipinto (con scala e rotazione del fiume). E' un ally_fondamenta (solo
 quello: non lo attaccano gli assedi, non e' fra gli edifici della minimappa)
 con la maschera `Ponte_varco` (il piano del ponte fra le due ringhiere,
 rientrato di 4 px, allungato di 24 px sulle rive), che chiude il varco del
-fiume e la griglia dei percorsi. Vita 1..599, +1 a colpo di martello (13
+fiume e la griglia dei percorsi. Vita 1..599 (poi 4400 e legno: §9.41), +1 a colpo di martello (13
 passi): ~130 s con un civile, 34 s con quattro (misurato). Gli stadi
 Ponte_2..4 a un quarto, meta' e tre quarti (in dissolvenza, swapSprite).
 Finito: `ponte_fatto` (Ponte_5, non solido, depth -y-30: chi ci cammina
@@ -5546,3 +5546,25 @@ quattro civili mandati col clic destro lavorano tutti; stadi
 Ponte_1..Ponte_4; finito in 2027 passi; i tre guerrieri passano sulla riva
 nord in 280 passi. Le macchine d'assedio non passano (il loro campo "largo",
 §8.14, non attraversa il varco di ~100 px): da decidere con l'autore.
+
+### 9.41 Il ponte del livello 4: costo, durata, barra
+
+Decisioni dell'autore (13 ottobre 2026), dopo §9.40:
+- la riparazione e' uno dei due obiettivi del livello (ricostruire il ponte
+  resistendo agli attacchi di una piccola base a nord): deve durare minuti
+  con 3-4 civili e costare tanto legno. Vita 4400 (era 599), +1 a colpo:
+  3 min 58 s con quattro civili (misurato, 14 297 passi), ~16 minuti con
+  uno. Legno: 1000 in tutto (bridge.js `BRIDGE.wood`), pagati colpo per
+  colpo (`woodDue`: la quota del totale arrotondata man mano, la somma e'
+  esatta); senza legno il colpo non vale e l'icona del legno lampeggia; i
+  civili restano al lavoro e riprendono quando il legno arriva. Numeri da
+  tarare giocando;
+- la barra della vita del cantiere sempre visibile finche' non e' finito,
+  sopra il ponte; selezionandolo, la scheda con vita e icona del legno (piu'
+  larga di quella degli edifici: quattro cifre);
+- i nemici non lo danneggiano (non e' un ally_build: assedi e frecce
+  incendiarie non lo prendono di mira) e, finito, lo usano anche loro;
+- per ora niente macchine d'assedio sul ponte (gia' cosi': non ci passano).
+
+Prova (bridge.mjs): senza legno per 600 passi il ponte resta a 1; col
+legno finito fra 3 e 5 minuti di gioco con quattro civili, spendendo 1000.

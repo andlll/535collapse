@@ -4,9 +4,11 @@
 //              arriva (il varco e' chiuso, il fiume e' solido)
 //   lavoro   = i quattro civili, mandati col clic destro vero sul ponte,
 //              lavorano tutti (action 6) entro 600 passi
+//   senzaLegno = senza legno per 600 passi il ponte non avanza (§9.41)
 //   stadi    = gli sprite del ponte nell'ordine Ponte_1..Ponte_4
-//   finito   = il ponte riparato entro 6000 passi: ponte_fatto, la
-//              balaustra e le sue fette
+//   finito   = col legno, il ponte riparato in 3-5 minuti di gioco con
+//              quattro civili, spendendo il legno di BRIDGE (1000):
+//              ponte_fatto, la balaustra e le sue fette
 //   attraversa = i tre guerrieri arrivano sulla riva nord passando dal ponte
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -47,19 +49,25 @@ const res = await page.evaluate(() => {
   select([ws[0]]); click(NX, NY);
   for (let s = 0; s < 900; s++) G.advance(1);
   out.chiuso = !north(ws[0]);
-  // lavoro e stadi
+  // lavoro, senza legno
+  G.g.wood = 0;
   select(om); click(b.x + 270, b.y + 165);
+  let working = 0;
+  for (let k = 0; k < 600; k++) { G.advance(1); working = Math.max(working, om.filter((o) => o.action === 6).length); }
+  out.senzaLegno = b.life === 1;
+  // col legno: stadi e fine
+  G.g.wood = 5000;
   const stages = [b.sprite_index];
-  let working = 0, s = 0;
-  for (; s < 6000 && w.number("ponte") > 0; s++) {
+  let s = 0;
+  for (; s < 30000 && w.number("ponte") > 0; s++) {
     G.advance(1);
     const bb = [...w.all("ponte")][0];
     if (bb && bb.sprite_index !== stages[stages.length - 1]) stages.push(bb.sprite_index);
-    if (s < 600) working = Math.max(working, om.filter((o) => o.action === 6).length);
   }
   out.lavoro = working;
   out.stadi = stages.join(",");
   out.finitoA = w.number("ponte") === 0 ? s : -1;
+  out.legno = 5000 - G.g.wood;
   out.finito = w.number("ponte_fatto") === 1 && w.number("ponte_balaustra") === 1 && w.number("__fetta") > 42;
   // attraversa
   select(ws); click(NX, NY);
@@ -69,8 +77,9 @@ const res = await page.evaluate(() => {
   return out;
 });
 console.log(JSON.stringify(res));
-const ok = !res.err && res.chiuso && res.lavoro === 4 && res.stadi === "Ponte_1,Ponte_2,Ponte_3,Ponte_4"
-  && res.finitoA > 0 && res.finito && res.attraversa > 0 && errs.length === 0;
+const ok = !res.err && res.chiuso && res.lavoro === 4 && res.senzaLegno && res.stadi === "Ponte_1,Ponte_2,Ponte_3,Ponte_4"
+  && res.finitoA >= 3 * 3600 && res.finitoA <= 5 * 3600 && res.legno === 1000 && res.finito && res.attraversa > 0
+  && errs.length === 0;
 if (errs.length) console.log(errs);
 console.log(ok ? "ok" : "NON VA");
 await browser.close();

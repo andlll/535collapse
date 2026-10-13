@@ -18,12 +18,16 @@
 // balaustra (Ponte_5B, a fette: chi passa sul ponte le sta dietro).
 
 import { spawnSlices, destroySlices } from "./scenario.js";
-import { fondLifeBar } from "./buildings.js";
 
 const RIVER_ORIGIN = [1886, 1452];       // il centro di Fiume_Completo, la sua origine
 export const BRIDGE = {
   at: [1630 - RIVER_ORIGIN[0], 1168 - RIVER_ORIGIN[1]], // l'angolo di Ponte_1 dall'origine del fiume
-  slife: 599,                            // civilians.js BUILD_RATE: +1 a colpo (~130 s per un civile)
+  // [Richiesta dell'autore] la riparazione e' uno degli obiettivi del
+  // livello: minuti con 3-4 civili, e tanto legno. +1 a colpo (13 passi,
+  // civilians.js BUILD_RATE): ~4 minuti con quattro civili, ~16 con uno
+  slife: 4400,
+  wood: 1000,                            // legno in tutto, pagato colpo per colpo (woodDue)
+  bar: [270, 10],                        // la barra della vita, in coordinate dello sprite
   stages: [[0.25, "Ponte_2"], [0.5, "Ponte_3"], [0.75, "Ponte_4"]],
   // dove si mettono i civili per ripararlo, dalle due rive: lungo i bordi
   // d'imbocco del varco (Ponte_varco), 14 px fuori, in coordinate dello
@@ -82,8 +86,37 @@ export function ponte(p) {
     rightReleased(i, w) {
       for (const o of w.all("ally_omino")) if (o.selected === 1) o.buildwork = 1;
     },
-    drawEnd: fondLifeBar,
+    // [Richiesta dell'autore] la barra della vita sempre, finche' non e'
+    // finito: il giocatore segue l'avanzamento come per un edificio
+    drawEnd(i, w, dr) {
+      const [x, y] = toRoom(i, BRIDGE.bar[0], BRIDGE.bar[1]);
+      dr.lifeBar(x - 25, y, i.life / i.slife, 0x008000);
+    },
+    // la scheda degli edifici (buildings.js, panel), piu' larga: la vita ha
+    // quattro cifre; l'icona del legno, che la riparazione consuma
+    drawGUI(i, w, dr) {
+      if (i.selected !== 1) return;
+      dr.setAlpha(0.69);
+      dr.roundrectColourExt(260, 20, 450, 150, 60, 60, 0xffffff, 0xffffff, false);
+      dr.setFont("GUI_1");
+      dr.setColour(0);
+      dr.setAlpha(0.75);
+      dr.setValign("middle");
+      dr.setHalign("center");
+      dr.text(355, 120, i.life + " / " + i.slife);
+      dr.setAlpha(1);
+      dr.sprite("ico_wood", 0, 355, 70);
+    },
   };
+}
+
+// Il legno che costa il prossimo colpo di martello (da life a life + n):
+// il totale BRIDGE.wood diviso sulla vita, arrotondato per eccesso man mano
+// (civilians.js lo paga o, senza legno, il colpo non vale)
+export function woodDue(i, n) {
+  const paid = Math.ceil((i.life - 1) / (i.slife - 1) * BRIDGE.wood);
+  const next = Math.ceil(Math.min(i.slife - 1, i.life - 1 + n) / (i.slife - 1) * BRIDGE.wood);
+  return next - paid;
 }
 
 // Le due estremita' del ponte, nella room, la piu' vicina a (x, y) prima:
