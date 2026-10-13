@@ -254,6 +254,9 @@ export const FIRE = {
   // loro vita cresce coi danni ma scalata (k), se no a meta' vita
   // salirebbero per centinaia di passi
   monastero: { back: [-320, 320, -200, -170, 16], front: [-300, 300, 40, 70, 8], life: [3600, 3650], k: 0.05 },
+  // [§9.45] il cantiere nemico (economy.js): vita piena diversa per ogni
+  // edificio, fiamme di 15-20 passi a vita piena (rel) che crescono coi danni
+  enemy_cantiere: { ...SMALL, life: [30, 40], rel: true },
 };
 
 const fireType = () => partType({
@@ -289,8 +292,8 @@ export function fireStep(i, w, kind) {
     if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    const k = F.k || 1;
-    i.fire_part.life = [(F.life[0] - i.life) / 2 * k, (F.life[1] - i.life) / 2 * k];
+    const k = F.k || 1, b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena
+    i.fire_part.life = [(b + F.life[0] - i.life) / 2 * k, (b + F.life[1] - i.life) / 2 * k];
   }
 }
 

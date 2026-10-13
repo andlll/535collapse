@@ -1146,7 +1146,7 @@ function otherWorkTick(i, w) {
   if (i.action === 6) {
     const f = w.nearest(i.buildx, i.buildy, S.fond);
     if (f && f.fondazione === 1) {
-      const n = BUILD_RATE[f.slife] || 0;
+      const n = f.rate || BUILD_RATE[f.slife] || 0; // §9.45: i cantieri nemici hanno il loro (rate)
       // [§9.41] il ponte del livello 4 costa legno a ogni colpo; senza, il
       // colpo non vale e il legno lampeggia
       const due = f.object === "ponte" ? woodDue(f, n) : 0;
@@ -1478,7 +1478,8 @@ export function recountIdle(w) {
 // [§9.44] Un lavoro dato dalla regia (economy.js) a un civile, come il clic
 // destro del giocatore su una risorsa (rightClick): kind "wood", "gold",
 // "stone" verso la risorsa t, "food" al campo libero piu' vicino della
-// fazione (fieldsStep, foodwork 6), "move" verso t senza lavoro (la fuga).
+// fazione (fieldsStep, foodwork 6), "move" verso t senza lavoro (la fuga),
+// "build" al cantiere t, "repair" all'edificio t (§9.45).
 export function orderWork(w, p, i, kind, t) {
   for (const k of ["woodwork", "goldwork", "stonework", "foodwork", "buildwork", "repairwork", "fieldwork"]) i[k] = 0;
   i.creation = 0;
@@ -1489,6 +1490,10 @@ export function orderWork(w, p, i, kind, t) {
   p.free(i);
   if (kind === "food") { i.foodwork = 6; return; }
   if (kind === "move") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
+  // [§9.45] costruire il cantiere t, riparare l'edificio t
+  if (kind === "build") { i.buildwork = 1; i.buildx = t.x; i.buildy = t.y; }
+  if (kind === "repair") { i.repairwork = 1; i.repx = t.x; i.repy = t.y; i.repT = null; }
+  if (kind === "build" || kind === "repair") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
   const [work, kx, ky] = { wood: ["woodwork", "woodx", "woody"], gold: ["goldwork", "goldx", "goldy"],
                            stone: ["stonework", "stonex", "stoney"] }[kind];
   i[work] = 1;

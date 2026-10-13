@@ -5694,3 +5694,68 @@ lavoratori nemici; dopo 9000 passi il nemico ha raccolto tutte e quattro
 le risorse, i lavoratori sono 6, le scorte del giocatore non sono
 cambiate; poi un guerriero alleato attacca un lavoratore, che scappa verso
 il centro e muore.
+
+### 9.45 L'economia nemica, passo 2: soldati pagati, riparazioni, ricostruzione
+
+Richiesta dell'autore (13 ottobre 2026): il passo 2 (caserme e stalle che
+producono pagando) e, per la campagna e il livello 4: "il nemico ricostruisce
+solo gli edifici che ha perso, possibilmente nello stesso punto, non ne fa
+di nuovi. Ovviamente possono anche riparare". Tutto nella regia
+(economy.js, enemy_eco), solo dove c'e' l'economia (§9.44).
+
+**Soldati.** Con almeno i lavoratori voluti (o senza centro) ogni caserma
+nemica fa a turno guerriero, picchiere e arciere (`ECO.troops`), ogni
+stalla cavalieri, uno alla volta in 1200 passi come caserma e stalla
+alleate, pagandoli prima con le scorte nemiche ai costi delle unita'
+alleate (production.js `PRODUCERS`: guerriero 75 cibo e 35 oro, picchiere
+55 cibo e 45 legno, arciere 40 legno e 55 oro, cavaliere 50 cibo e 70 oro);
+non oltre `ECO.army` soldati (12: tutti i nemici che non sono lavoratori,
+anche quelli messi nella mappa). Nascono col ruolo 30 (in attesa) accanto
+all'edificio (freeSpawnEnemy). La produzione a tempo dell'originale (alarm
+3 della caserma, ruoli di aggr_assign) non c'e' dove c'e' la regia.
+
+**Attacco** [provvisorio, il passo 4 lo fa per livello]: quando i soldati
+della regia in attesa e fermi sono almeno `ECO.attackAt` (8) partono, col
+flow field dei nemici, verso l'edificio alleato piu' vicino alla base
+nemica (o l'unita' alleata); arrivati (ruolo 32) e fermi, verso il
+bersaglio alleato piu' vicino, come in scr_attacca.
+
+**Riparazioni.** Gli edifici nemici ora hanno `legno`/`pietra` come quelli
+alleati (di legno: centro, caserma, stalla, case, magazzino, mulino; di
+pietra: chiesa, castello, torre). Un edificio nemico danneggiato, senza
+alleati entro 400 px e con il materiale nelle scorte, chiama fino a 2
+lavoratori (fermi, se no i raccoglitori piu' vicini): riparano come i civili
+alleati (azione 7: 1 legno o 1 pietra per punto di vita, il legno spegne il
+fuoco). La regia li ferma a edificio intero, senza materiale o con un
+alleato vicino (`repairEnd` di buildings.js vale solo per gli alleati).
+
+**Ricostruzione.** Un edificio nemico distrutto (o un campo nemico
+bruciato) finisce nella lista `global.en.lost` (oggetto, x, y: entra nei
+salvataggi). Un cantiere alla volta: il primo della lista in ordine (centro;
+magazzino e mulino; campi; caserma; stalla; torre; chiesa; case; castello),
+quando si puo' pagare e il posto e' libero (nessun solido, unita' o
+edificio sotto la maschera; le rovine si tolgono), nello stesso punto; nel
+frattempo il suo costo resta da parte (lavoratori e soldati non lo
+spendono). Il cantiere (`enemy_cantiere`, nuovi.json, `kit: false`) ha
+sprite, fasi, maschera, vita e costo del cantiere alleato corrispondente
+(buildings.js FAM, gli oggetti *_fond); fino a 3 lavoratori lo costruiscono
+come i civili un ally_fondamenta (stessa vita per colpo; il centro +2,
+`rate`). Finito, al suo posto l'edificio nemico, che si vede come il
+cantiere. Il centro nemico non ha un cantiere nell'originale: [provvisorio]
+lo sprite del centro in trasparenza, che si fa pieno man mano, e 300 legno
+e 100 pietra. Il cantiere brucia (frecce incendiarie -10; clic destro con
+fanti selezionati; fiamme che crescono coi danni, effects.js `rel`); se
+brucia del tutto torna nella lista. Il nemico non fa mai edifici nuovi
+(nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
+le posizioni automatiche solo nelle future schermaglie).
+
+I numeri sono in `ECO.default` (army, troops, attackAt, repairers,
+builders, rebuild, safe) e si cambiano per livello in `ECO[room]`
+(`ECO.lvl04`, vuoto finche' non c'e' la mappa).
+
+Prova (`game/test/browser/enemyarmy.mjs`, nella CI): nella zona piu' aperta
+del match una base nemica con scorte abbondanti fa tutti e quattro i tipi
+di soldati senza superare il tetto e parte all'attacco, senza toccare le
+scorte del giocatore; la caserma danneggiata di 120 torna intera (119 legno
+spesi); la stalla distrutta rinasce nello stesso punto da un cantiere (170
+legno) in ~970 passi, il centro in ~1200; nessun edificio nuovo.

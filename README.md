@@ -98,6 +98,7 @@ node game/test/browser/burn.mjs                         # edifici di legno: fiam
 node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano
 node game/test/browser/enemybuildings.mjs               # edifici nemici nuovi: frecce, cura, fuoco, rovine
 node game/test/browser/economy.mjs                     # economia nemica: raccolta, depositi, lavoratori, fuga
+node game/test/browser/enemyarmy.mjs                   # economia nemica: soldati pagati, attacco, riparazioni, ricostruzione
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

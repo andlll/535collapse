@@ -13,6 +13,7 @@ import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, 
 import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
+import { lostBuilding } from "./economy.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000;
@@ -549,7 +550,7 @@ export function centroArrows(base) {
 export function enemyTower(p) {
   return {
     create(i, w) {
-      Object.assign(i, { life: 330, slife: 330, arm: 0, hit: 0, onfire: 0, selected: 0, hover: 0 });
+      Object.assign(i, { life: 330, slife: 330, arm: 0, hit: 0, onfire: 0, selected: 0, hover: 0, legno: 0, pietra: 1 }); // §9.45
       i.depth = -i.y;
       i.alarm.set(0, 30);
       i.alarm.set(1, 70);
@@ -571,6 +572,7 @@ export function enemyTower(p) {
           || w.room === "menu" || g.fogville === 0) i.visible = true;
       if (i.life <= 0) {
         baseCounters(i, g, ["x650", "y5800", "y1500"]);
+        lostBuilding(w, i); // §9.45
         w.create("torreruin", i.x, i.y);
         w.destroy(i);
         return;

@@ -457,6 +457,22 @@
       "depth": 0,
       "kit": false,
       "nota": "la regia economica del nemico (§9.44, economy.js)"
+    },
+    "enemy_cantiere": {
+      "sprite": "cas_f1",
+      "mask": "cas_mask",
+      "parents": [
+        "enemy_fondamenta",
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "il cantiere di un edificio nemico perso, da ricostruire (§9.45, economy.js); sprite, maschera e vita dal cantiere alleato corrispondente"
     }
   },
   "derivati": {

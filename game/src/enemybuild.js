@@ -11,6 +11,7 @@ import { fireOrder } from "./siege.js";
 import { fireStep, fireStop } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
 import { towerTarget, towerArrow } from "./archery.js";
+import { lostBuilding } from "./economy.js";
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
@@ -96,6 +97,8 @@ export function enemyBuilding(kind, p) {
     ...enemyBarAndPanel(K.icon, K.wooden),
     create(i, w) {
       Object.assign(i, { life: K.life, slife: K.life, hit: 0, onfire: 0, firestarted: 0, selected: 0, hover: 0, arm: 1 });
+      // [§9.45] come si ripara (civilians.js, azione 7): legno o pietra
+      i.legno = K.wooden ? 1 : 0; i.pietra = K.wooden ? 0 : 1;
       i.depth = -i.y;
       i.alarm.set(0, K.smoke);
       i.alarm.set(1, 70);
@@ -140,7 +143,8 @@ export function enemyBuilding(kind, p) {
     // un difensore e l'altro: alla scadenza non crea nulla, e il prossimo
     // difensore lo crea scr_controller_crea_difensori (levels.js).
     ...(K.produces ? {
-      alarm3(i, w) { if (i.role !== 10) creazioneAttaccantiGenerico(i, w); },
+      // [§9.45] con l'economia nemica (enemy_eco) produce la regia, pagando
+      alarm3(i, w) { if (i.role !== 10 && !w.exists("enemy_eco")) creazioneAttaccantiGenerico(i, w); },
     } : {}),
     destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {
@@ -163,6 +167,7 @@ export function enemyBuilding(kind, p) {
       }
       if (i.life <= 0) {
         baseCounters(i, w.g, K.bases);
+        lostBuilding(w, i); // §9.45
         w.create(K.ruin, i.x, i.y);
         w.destroy(i);
       }
