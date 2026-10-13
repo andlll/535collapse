@@ -1,7 +1,7 @@
 {
   "formato": "535-nuovi",
   "versione": 1,
-  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'.",
+  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'. [§9.40] maschera 'alpha', poligono (sprite di sola maschera), buchi, acqua, pezzi, gruppo, differenza: vedi tools/nuovi.py.",
   "sprites": {
     "monastero_corpo": {
       "origin": "maschera",
@@ -16,6 +16,129 @@
     },
     "monastero_piazza": {
       "origin": "centro"
+    },
+    "Fiume_Completo": {
+      "origin": "centro",
+      "maschera": "alpha",
+      "buchi": [
+        {
+          "sprite": "Ponte_varco",
+          "a": [
+            1630,
+            1168
+          ]
+        }
+      ],
+      "acqua": true,
+      "pezzi": 256,
+      "gruppo": "terreno"
+    },
+    "Ponte_varco": {
+      "origin": [
+        0,
+        0
+      ],
+      "misura": [
+        529,
+        393
+      ],
+      "poligono": [
+        [
+          145,
+          32
+        ],
+        [
+          497,
+          240
+        ],
+        [
+          397,
+          299
+        ],
+        [
+          44,
+          89
+        ]
+      ]
+    },
+    "Ponte_1": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_2": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_3": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_4": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_5": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_5B": {
+      "origin": [
+        0,
+        0
+      ],
+      "maschera": "alpha",
+      "fette": 32,
+      "gruppo": "terreno"
     }
   },
   "objects": {
@@ -184,6 +307,50 @@
       "solid": false,
       "depth": -1,
       "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
+    },
+    "fiume_grande": {
+      "sprite": "Fiume_Completo",
+      "parents": [
+        "natural_parent"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 1452
+      },
+      "nota": "il fiume del livello 4 (§9.40), disegnato a riquadri; nasce col suo ponte rotto (ponte), nel punto in cui il fiume lo ha gia' dipinto"
+    },
+    "ponte": {
+      "sprite": "Ponte_1",
+      "mask": "Ponte_varco",
+      "parents": [
+        "ally_fondamenta"
+      ],
+      "solid": true,
+      "depth": {
+        "y": -30
+      },
+      "kit": false,
+      "nota": "il ponte rotto del fiume_grande (§9.40): un cantiere, i civili lo riparano (Ponte_1..Ponte_4); finito diventa ponte_fatto"
+    },
+    "ponte_fatto": {
+      "sprite": "Ponte_5",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": -30
+      },
+      "kit": false,
+      "nota": "il ponte riparato (§9.40): percorribile; davanti la balaustra (ponte_balaustra)"
+    },
+    "ponte_balaustra": {
+      "sprite": "Ponte_5B",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "la balaustra davanti al ponte riparato (§9.40), a fette: chi passa sul ponte le sta dietro"
     }
   },
   "derivati": {

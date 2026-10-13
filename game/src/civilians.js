@@ -16,6 +16,7 @@ import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIf
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
+import { bridgeEnds } from "./bridge.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -201,6 +202,18 @@ function rightClick(i, w) {
   if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; } else i.foodwork = 0;
   if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; } else i.stonework = 0;
   if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+  // [§9.40] il ponte del livello 4 si raggiunge solo dalle due rive: verso
+  // l'estremita' piu' vicina da cui ci si arriva (il punto cliccato e' in
+  // mezzo al fiume)
+  const pb = i.buildwork === 1 && w.instancePosition(i.dirox, i.diroy, "ponte");
+  if (pb) {
+    for (const e of bridgeEnds(pb, i.x, i.y)) {
+      if (!fieldTo(w, w.path, i, e.x, e.y, false)) continue;
+      i.dirox = i.buildx = e.x; i.diroy = i.buildy = e.y;
+      e.take();
+      break;
+    }
+  }
   // [§8.19] verso una risorsa: il campo verso la risorsa cliccata (il campo
   // del capo, scr_movement_general, va verso una cella trovata come in
   // scr_move: vedi fieldTo)
@@ -280,6 +293,18 @@ function rallyOmino(p) {
     if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; }
     if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; }
     if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+  // [§9.40] il ponte del livello 4 si raggiunge solo dalle due rive: verso
+  // l'estremita' piu' vicina da cui ci si arriva (il punto cliccato e' in
+  // mezzo al fiume)
+  const pb = i.buildwork === 1 && w.instancePosition(i.dirox, i.diroy, "ponte");
+  if (pb) {
+    for (const e of bridgeEnds(pb, i.x, i.y)) {
+      if (!fieldTo(w, w.path, i, e.x, e.y, false)) continue;
+      i.dirox = i.buildx = e.x; i.diroy = i.buildy = e.y;
+      e.take();
+      break;
+    }
+  }
     // [§9.30, segnalazione dell'autore] senza un lavoro sotto la bandiera, un
     // posto libero, raggiungibile e non promesso a un altro vicino alla
     // bandiera, e la strada col pathfinding passando sopra gli altri civili
@@ -971,9 +996,12 @@ function buildStep(i, w, p) {
   const fondNear = () => w.nearest(i.buildx, i.buildy, "ally_fondamenta");
   const clearLoads = () => { i.wood = 0; i.food = 0; i.gold = 0; i.stone = 0; i.step = 0; i.alarm.set(2, 13); };
   // costruzione: l'else e' agganciato a "ci sono cantieri" [C]
+  // [§9.40] il ponte del livello 4 si ripara da piu' lontano (buildReach):
+  // all'imbocco c'e' posto per due, gli altri restavano in coda per sempre
+  const reach = (f) => (f && f.buildReach) || 10;
   if (i.buildwork === 1) {
     if (w.number("ally_fondamenta") > 0) {
-      if (w.distanceToInstance(i, fondNear()) < 10) {
+      if (w.distanceToInstance(i, fondNear()) < reach(fondNear())) {
         i.buildwork = 0;
         p.occupy(i);
         i.action = 6;
@@ -1017,10 +1045,20 @@ function buildStep(i, w, p) {
   // al prossimo cantiere, o fermi se non ce ne sono
   if (i.action === 6) {
     if (w.number("ally_fondamenta") > 0) {
-      if (w.distanceToInstance(i, fondNear()) > 40) {
+      // [§9.40] non verso il ponte del livello 4 (noAuto): e' sempre li', e
+      // ci sarebbero andati da ogni cantiere finito della mappa
+      let next = null, nd = Infinity;
+      for (const f of w.all("ally_fondamenta")) {
+        const d = pointDistance(i.x, i.y, f.x, f.y);
+        if (!f.noAuto && d < nd) { next = f; nd = d; }
+      }
+      const away = w.distanceToInstance(i, fondNear()) > Math.max(40, reach(fondNear()) + 10);
+      if (away && !next) {
+        i.action = 0; i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+      } else if (away) {
         i.action = 1;
         p.free(i);
-        const f = w.nearest(i.x, i.y, "ally_fondamenta");
+        const f = next;
         i.dirox = f.x; i.diroy = f.y;
         i.buildx = i.dirox; i.buildy = i.diroy;
         i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
@@ -1056,7 +1094,8 @@ function buildStep(i, w, p) {
 // di mura (799) +5. Il 100 non serve: e' il cantiere del campo, che non e'
 // un ally_fondamenta e cresce con la semina (azione 8).
 // [Richiesta dell'autore, §9.39] caserma (349) e stalla (379) +2.
-const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5 };
+// [§9.40] il ponte del livello 4 (599): +1
+const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5, 599: 1 };
 
 // Alarm_2, azioni 4, 6, 7, 8 [C]: a differenza della raccolta, il cantiere
 // cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve

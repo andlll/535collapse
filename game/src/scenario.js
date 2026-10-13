@@ -19,7 +19,8 @@ export function spawnSlices(i, w, slices) {
   if (!slices) return;
   i.fette = slices.map(([sprite, front]) => w.create("__fetta", i.x, i.y, {
     sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle,
-    init: (f) => { f.sprite_index = sprite; f.depth = -(i.y + front * i.image_yscale); },
+    // [§9.40] front null: un pezzo (il fiume del livello 4), alla depth dell'istanza
+    init: (f) => { f.sprite_index = sprite; f.depth = front === null ? i.depth : -(i.y + front * i.image_yscale); },
   }));
 }
 

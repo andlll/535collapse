@@ -5471,3 +5471,78 @@ marcia mandato contro un nemico a 300 e a 800 px (sul codice di prima: a
 nemici fermi e immortali: l'ultimo ad arrivare puo' aspettare un posto, la
 prova chiede che arrivi alla mischia (120 px). ui.mjs fotografa anche il
 sottomenu "Carica partita".
+
+### 9.40 Livello 4: il fiume grande e il ponte da riparare
+
+Sprite dell'autore (13 ottobre 2026, `nuovi/sprites/`): `Fiume_Completo`
+(3773x2904, il fiume del livello 4 col ponte rotto gia' dipinto),
+`Ponte_1`..`Ponte_5` (529x393, gli stadi della riparazione, ciascuno con un
+pezzo di fiume e le rive trasparenti) e `Ponte_5B` (la balaustra anteriore
+del ponte finito, separata).
+
+**Dove sta il ponte**: `Ponte_1` coincide pixel per pixel con il riquadro
+(1630, 1168) del fiume (cercato confrontando i pixel). Gli stadi 2..5
+differiscono dal fiume in 37-69 mila pixel su ~150 mila.
+
+**tools/nuovi.py**, opzioni nuove degli sprite (nuovi.json):
+`maschera: "alpha"` (maschera precisa dai pixel non trasparenti),
+`poligono` + `misura` (sprite di sola maschera: `Ponte_varco`), `buchi`
+(una maschera tolta da un'altra: il varco del ponte tolto dal fiume),
+`acqua` (celle d'acqua per riflessi, schiuma e pioggia, come i fiume*:
+06_masks), `pezzi` (riquadri da N px, uno sprite `<sprite>#<n>` per
+riquadro non vuoto, tutti alla depth dell'istanza), `gruppo` (gruppo
+d'atlas) e `differenza` (i pixel uguali a quelli di un altro sprite in un
+punto diventano trasparenti: gli stadi del ponte disegnano solo cio' che
+cambia, sotto si vede il fiume con i suoi effetti; `Ponte_1` e' vuoto).
+
+**Il fiume** (`fiume_grande`, bridge.js): non sta in una pagina d'atlas da
+2048: 42 riquadri da 256 px nel gruppo terreno (+4,6 MB di memoria GPU,
+nessuna pagina grande in piu'), "fette" senza bordo anteriore (scenario.js,
+front null) alla depth -y della sua cima, come i fiume_* dell'originale.
+Origine al centro (1886, 1452): nel kit sta nel tileset "nuovi", allineato
+al centro, senza bordo trasparente doppio. Maschera per pixel dall'alpha,
+col varco del ponte; 15 661 celle d'acqua da 8 px.
+
+**Il ponte** (`ponte`): nasce dal Create del fiume nel punto in cui il fiume
+lo ha dipinto (con scala e rotazione del fiume). E' un ally_fondamenta (solo
+quello: non lo attaccano gli assedi, non e' fra gli edifici della minimappa)
+con la maschera `Ponte_varco` (il piano del ponte fra le due ringhiere,
+rientrato di 4 px, allungato di 24 px sulle rive), che chiude il varco del
+fiume e la griglia dei percorsi. Vita 1..599, +1 a colpo di martello (13
+passi): ~130 s con un civile, 34 s con quattro (misurato). Gli stadi
+Ponte_2..4 a un quarto, meta' e tre quarti (in dissolvenza, swapSprite).
+Finito: `ponte_fatto` (Ponte_5, non solido, depth -y-30: chi ci cammina
+sopra si disegna dopo), la griglia libera le celle del varco (quelle che
+tocca ancora l'acqua restano chiuse, pathing.js markInstance) e
+`ponte_balaustra` (Ponte_5B a fette da 32 px, ognuna con la depth del suo
+bordo anteriore: chi passa sul ponte le sta dietro).
+
+**I civili** (civilians.js): col clic destro sul ponte (dentro il varco)
+vanno all'imbocco piu' vicino da cui ci si arriva (fieldTo), ognuno in un
+punto diverso del bordo (bridge.js, `bridgeEnds`); lavorano fino a 60 px
+dal varco (`buildReach`: all'imbocco sud, stretto fra il fiume e la riva,
+c'e' posto per due, gli altri restavano in coda per sempre). Finito un
+altro cantiere, non vanno da soli al ponte (`noAuto`: l'originale manda chi
+finisce al cantiere piu' vicino, e il ponte c'e' sempre).
+
+**La mappa** (`mappe/lvl04.tmx`, 3450x4100): il fiume da bordo a bordo
+(l'estremita' sinistra, tagliata in diagonale, 200 px oltre il bordo; la
+destra, verticale, sul bordo), quattro civili e tre guerrieri sulla riva sud
+vicino al ponte per provarlo, il manager e la vista iniziale. Room `lvl04`
+(app.js, `?room=lvl04`), senza regia ne' campagna per ora; salvataggi.
+
+**Kit di Tiled**: le tile aggiunte dopo la prima versione vanno in fondo al
+loro tileset (tiledkit.py `APPENDED`, `tile_rank`). Con l'ordine alfabetico
+le macchie fiorite (§9.37) erano finite in mezzo a "natura", prima di
+graa11..graa15, e il fiume sarebbe finito prima del monastero in "nuovi":
+gli id delle tile dopo di loro cambiavano, e una mappa gia' disegnata li
+avrebbe letti come altri oggetti (lvl02 e lvl03 non usano graa: i loro
+scenari non cambiano). Ora "natura" e' com'era prima dei fiori, coi fiori in
+fondo; "nuovi" e' monastero, poi fiume_grande.
+
+**Prova** (`game/test/browser/bridge.mjs`, nuova, nella CI; soak e saves
+anche su lvl04): col ponte rotto un guerriero non arriva sulla riva nord; i
+quattro civili mandati col clic destro lavorano tutti; stadi
+Ponte_1..Ponte_4; finito in 2027 passi; i tre guerrieri passano sulla riva
+nord in 280 passi. Le macchine d'assedio non passano (il loro campo "largo",
+§8.14, non attraversa il varco di ~100 px): da decidere con l'autore.

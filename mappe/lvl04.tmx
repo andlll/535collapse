@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="69" height="82" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="8" nextobjectid="11">
+ <tileset firstgid="1" source="../tileset/terreno.tsx" />
+ <tileset firstgid="13" source="../tileset/montagne_fiumi.tsx" />
+ <tileset firstgid="33" source="../tileset/natura.tsx" />
+ <tileset firstgid="63" source="../tileset/risorse.tsx" />
+ <tileset firstgid="77" source="../tileset/edifici.tsx" />
+ <tileset firstgid="112" source="../tileset/unita.tsx" />
+ <tileset firstgid="119" source="../tileset/nemici.tsx" />
+ <tileset firstgid="136" source="../tileset/citta.tsx" />
+ <tileset firstgid="170" source="../tileset/regia.tsx" />
+ <tileset firstgid="228" source="../tileset/nuovi.tsx" />
+ <imagelayer id="1" name="sfondo" locked="1" repeatx="1" repeaty="1">
+  <image source="../img/sfondi/green1.png" width="281" height="250" />
+ </imagelayer>
+ <objectgroup id="2" name="suolo" draworder="index" />
+ <objectgroup id="3" name="erba e spighe" draworder="index" />
+ <objectgroup id="4" name="terreno" draworder="topdown">
+  <object id="2" gid="232" x="1686" y="2052" width="3530" height="1924" />
+ </objectgroup>
+ <objectgroup id="5" name="oggetti" draworder="topdown">
+  <object id="3" gid="116" x="1950" y="2150" width="88" height="180" />
+  <object id="4" gid="116" x="2000" y="2200" width="88" height="180" />
+  <object id="5" gid="116" x="2050" y="2250" width="88" height="180" />
+  <object id="6" gid="116" x="2100" y="2150" width="88" height="180" />
+  <object id="7" gid="118" x="1900" y="2250" width="66" height="148" />
+  <object id="8" gid="118" x="1950" y="2300" width="66" height="148" />
+  <object id="9" gid="118" x="2000" y="2350" width="66" height="148" />
+ </objectgroup>
+ <objectgroup id="6" name="boschi" draworder="index" color="#2e7d32" opacity="0.6" />
+ <objectgroup id="7" name="regia" draworder="index" color="#ffb000">
+  <object id="1" gid="170" x="100" y="100" width="84" height="118" />
+  <object id="10" name="vista iniziale" type="vista" x="400" y="1200" width="3000" height="2000" />
+ </objectgroup>
+</map>

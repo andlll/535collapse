@@ -104,9 +104,13 @@ def main():
             raise SystemExit("nuovi/nuovi.json: %s c'e' gia' fra gli oggetti del progetto" % name)
         sp = nsp[o["sprite"]] if o["sprite"] else None
         entry = {"sprite": o["sprite"], "visible": True, "parents": o.get("parents", []),
-                 "mask": None, "solid": bool(o.get("solid")), "draw": True, "depth": o.get("depth", {"y": 0})}
+                 "mask": o.get("mask"), "solid": bool(o.get("solid")), "draw": True, "depth": o.get("depth", {"y": 0})}
         if sp and sp["fette"]:
             entry["slices"] = [[o["sprite"] + nuovi.SLICE_SEP + str(k), f] for k, (_, _, f) in enumerate(sp["fette"])]
+        # [§9.40] i pezzi (il fiume del livello 4): fette alla depth
+        # dell'istanza (front null, scenario.js spawnSlices)
+        if sp and sp["pezzi"]:
+            entry["slices"] = [[o["sprite"] + nuovi.SLICE_SEP + str(k), None] for k in range(len(sp["pezzi"]))]
         info[name] = entry
     info["__fetta"] = {"sprite": None, "visible": True, "parents": [], "mask": None, "solid": False,
                        "draw": True, "depth": 0}

@@ -16,11 +16,28 @@ Per ogni sprite:
             maschera nella sua colonna (front, in px dall'origine), cosi'
             chi sta dietro il muro resta dietro e chi sta davanti passa
             davanti, lungo tutto il muro.
+  [§9.40, il fiume e il ponte del livello 4]
+  maschera  "alpha": maschera precisa dai pixel non trasparenti dello sprite
+            (invece di <sprite>_mask.png)
+  poligono  [[x, y], ...]: sprite di sola maschera (niente immagine, niente
+            atlas), un poligono pieno in una tela "misura" [w, h]
+  buchi     [{"sprite": s, "a": [x, y]}]: la maschera dello sprite s, messa
+            in (x, y), si toglie da questa (il varco del ponte nel fiume)
+  acqua     true: le celle d'acqua per riflessi, schiuma e pioggia
+            (tools/06_masks.py, come i fiume* del progetto)
+  pezzi     lato dei riquadri in cui lo sprite si disegna (uno sprite
+            <sprite>#<n> per riquadro non vuoto), tutti alla depth
+            dell'istanza: per sprite piu' grandi di una pagina d'atlas
+  gruppo    gruppo d'atlas (tools/05_atlas.py), di norma "edifici"
+  differenza {"sprite": s, "a": [x, y]}: i pixel uguali a quelli dello
+            sprite s (questo messo in x, y dentro s) diventano trasparenti:
+            gli stadi del ponte disegnano solo cio' che cambia, e l'acqua
+            (coi suoi effetti) resta quella del fiume
 """
 import json
 import os
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw
 
 from _paths import REPO_DIR
 
@@ -47,13 +64,57 @@ def mask(name):
     return Image.open(p).convert("RGBA").getchannel("A").point(lambda v: 255 if v > 0 else 0)
 
 
+def _difference(im, d):
+    """[§9.40] I pixel di im uguali (a meno di 6 in somma) a quelli dello
+    sprite d["sprite"] nel riquadro che im occupa in (d["a"]) diventano
+    trasparenti."""
+    ref = image(d["sprite"]).crop((d["a"][0], d["a"][1], d["a"][0] + im.width, d["a"][1] + im.height))
+    diff = ImageChops.difference(im, ref)
+    r, g, b, a = diff.split()
+    total = ImageChops.add(ImageChops.add(r, g), ImageChops.add(b, a))
+    keep = total.point(lambda v: 255 if v > 6 else 0)
+    out = im.copy()
+    out.putalpha(ImageChops.multiply(im.getchannel("A"), keep))
+    return out
+
+
+def _polygon(size, pts):
+    m = Image.new("L", tuple(size), 0)
+    ImageDraw.Draw(m).polygon([tuple(p) for p in pts], fill=255)
+    return m
+
+
+def _mask_of(name, d, im, cache):
+    if name in cache:
+        return cache[name]
+    if d.get("poligono"):
+        m = _polygon(d["misura"], d["poligono"])
+    elif d.get("maschera") == "alpha":
+        m = im.getchannel("A").point(lambda v: 255 if v > 0 else 0)
+    else:
+        m = mask(name)
+    for h in d.get("buchi", []):
+        all_ = load()["sprites"]
+        hm = _mask_of(h["sprite"], all_[h["sprite"]], None, cache)
+        hole = Image.new("L", m.size, 0)
+        hole.paste(hm, tuple(h["a"]))
+        m = ImageChops.subtract(m, hole)
+    cache[name] = m
+    return m
+
+
 def sprites():
-    """{nome: {"image", "mask" (o None), "origin", "fette": [(x0, x1, front)]}}"""
-    out = {}
+    """{nome: {"image" (o None), "mask" (o None), "origin", "fette":
+    [(x0, x1, front)], "pezzi": [(x0, y0, x1, y1)], "gruppo", "acqua"}}"""
+    out, cache = {}, {}
     for name, d in load()["sprites"].items():
-        im, m = image(name), mask(name)
-        if m is not None and m.size != im.size:
+        im = None if d.get("poligono") else image(name)
+        if im is not None and d.get("differenza"):
+            im = _difference(im, d["differenza"])
+        m = _mask_of(name, d, im, cache)
+        if im is not None and m is not None and m.size != im.size:
             raise SystemExit("%s: la maschera e' %dx%d, lo sprite %dx%d" % (name, *m.size, *im.size))
+        size = im.size if im is not None else tuple(d["misura"])
         o = d.get("origin", "centro")
         if o == "maschera":
             if m is None:
@@ -67,12 +128,12 @@ def sprites():
                         sy += y
             o = [round(sx / n), round(sy / n)]
         elif o == "centro":
-            o = [im.width // 2, im.height // 2]
+            o = [size[0] // 2, size[1] // 2]
         slices = []
         if d.get("fette"):
             if m is None:
                 raise SystemExit("%s: fette senza maschera" % name)
-            S, W = d["fette"], im.width
+            S, W = d["fette"], size[0]
             fronts = []
             for x0 in range(0, W, S):
                 col = m.crop((x0, 0, min(W, x0 + S), m.height)).getbbox()
@@ -83,7 +144,23 @@ def sprites():
                     near = [f for f in fronts[k + 1:] + fronts[:k][::-1] if f is not None]
                     fronts[k] = near[0] if near else m.height - 1
             slices = [(x0, min(W, x0 + S), fronts[k] - o[1]) for k, x0 in enumerate(range(0, W, S))]
-        out[name] = {"image": im, "mask": m, "origin": o, "fette": slices}
+        tiles = []
+        if d.get("pezzi"):
+            T, a = d["pezzi"], im.getchannel("A")
+            for y0 in range(0, im.height, T):
+                for x0 in range(0, im.width, T):
+                    box = (x0, y0, min(im.width, x0 + T), min(im.height, y0 + T))
+                    if a.crop(box).getbbox():
+                        tiles.append(box)
+        out[name] = {"image": im, "mask": m, "origin": o, "fette": slices, "pezzi": tiles,
+                     "gruppo": d.get("gruppo", "edifici"), "acqua": bool(d.get("acqua"))}
+    return out
+
+
+def tile_image(im, box):
+    """Il riquadro box dello sprite, nella tela intera (stessa origine)."""
+    out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    out.paste(im.crop(box), box[:2])
     return out
 
 

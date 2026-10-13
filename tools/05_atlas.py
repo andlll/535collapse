@@ -423,15 +423,31 @@ def main():
             items[g].append((s["name"], i, crop))
     # [§9.10] sprite nuovi dell'autore (nuovi/) e le loro fette, nel gruppo
     # edifici (caricato in ogni livello)
+    # [§9.40] nel gruppo "gruppo" se c'e'; gli sprite a pezzi (il fiume del
+    # livello 4, piu' grande di una pagina) solo coi pezzi: lo sprite intero
+    # resta nel manifest senza immagine (origine, misura: le maschere e il
+    # fiume lo usano), come gli sprite vuoti (Ponte_1, tutto uguale al fiume)
     extra = []
     for name, d in nuovi.sprites().items():
-        extra.append((name, "edifici", d["image"], tuple(d["origin"])))
+        im, g = d["image"], d["gruppo"]
+        if im is None:  # solo maschera (Ponte_varco)
+            continue
+        if d["pezzi"] or not im.getchannel("A").getbbox():
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height,
+                                         "origin": list(d["origin"]), "scale": 1.0, "frames": [None]}
+        else:
+            extra.append((name, g, im, tuple(d["origin"])))
         for k, (x0, x1, _) in enumerate(d["fette"]):
-            extra.append((name + nuovi.SLICE_SEP + str(k), "edifici", nuovi.slice_image(d["image"], x0, x1),
-                          tuple(d["origin"])))
+            extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.slice_image(im, x0, x1), tuple(d["origin"])))
+        for k, box in enumerate(d["pezzi"]):
+            extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.tile_image(im, box), tuple(d["origin"])))
     extra += nuovi.derived()  # [§9.13] segnalini e simili ricavati dagli sprite nuovi
     for name, g, im, (ox, oy) in derived_sprites() + extra:
         bb = im.getchannel("A").getbbox()
+        if bb is None:  # [§9.40] una fetta vuota (la balaustra del ponte e' piu' corta dello sprite)
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
+                                         "scale": 1.0, "frames": [None]}
+            continue
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
                                      "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
         items[g].append((name, 0, im.crop(bb)))

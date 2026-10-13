@@ -47,7 +47,7 @@ python3 -m http.server 8000 --directory game
 ```
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03` per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40) per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
@@ -95,6 +95,7 @@ node game/test/browser/fireorder.mjs                    # gruppo misto che incen
 node game/test/browser/rams.mjs                         # piu' arieti contro lo stesso edificio, senza sovrapporsi
 node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
 node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
+node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

@@ -76,7 +76,7 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;

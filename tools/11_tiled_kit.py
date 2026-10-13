@@ -244,6 +244,10 @@ def catalogue():
         mo = (sprites[sp]["origin_x"], sprites[sp]["origin_y"]) if sp else None
         im, o = labelled(marker, mo, name)
         out.append(("regia", name, sp or "", im, o))
+    # [§9.40] le tile aggiunte dopo in fondo al loro tileset (tk.APPENDED):
+    # ordinamento stabile, il resto resta in ordine alfabetico
+    order = list(nuovi.load()["objects"])
+    out.sort(key=lambda t: tk.tile_rank(t[0], t[1], order))
     return out, info
 
 
@@ -577,11 +581,19 @@ mancante) e disegna un'immagine della mappa intera con i boschi riempiti.
 
 ## Sprite nuovi
 
-I tuoi sprite (il monastero) sono nel tileset `nuovi`. Per aggiungerne
-altri non toccare i tileset del kit: mandami l'immagine (e la maschera di
-collisione `_mask.png`, stessa misura) e dimmi come si comportano; li metto
-io in `nuovi/` e rigenero il kit. Il tileset `nuovi` cresce in fondo, le
-mappe gia' fatte restano valide.
+I tuoi sprite (il monastero, il fiume del livello 4) sono nel tileset
+`nuovi`. Per aggiungerne altri non toccare i tileset del kit: mandami
+l'immagine (e la maschera di collisione `_mask.png`, stessa misura) e dimmi
+come si comportano; li metto io in `nuovi/` e rigenero il kit. Le tile
+nuove vanno sempre in fondo al loro tileset (anche le macchie fiorite, in
+fondo a `natura`): le mappe gia' fatte restano valide.
+
+`fiume_grande` (il fiume del livello 4) nasce in partita col suo ponte
+rotto, gia' dipinto nello sprite: i civili lo riparano col clic destro e,
+finito, ci si passa sopra. Le due estremita' del fiume sono tagliate per
+toccare i bordi della mappa (quella a destra verticale): mettile oltre il
+bordo, se no le unita' passano attorno al fiume. Meglio non ruotarlo ne'
+scalarlo. `mappe/lvl04.tmx` e' la mappa del livello 4, gia' impostata cosi'.
 
 ## Tileset
 

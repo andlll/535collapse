@@ -44,14 +44,17 @@ import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
+import { fiumeGrande, ponte } from "./bridge.js";
 import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03"]; // lvl03: scenario da Tiled (§9.10)
+// lvl03, lvl04: scenari da Tiled (§9.10, §9.40)
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
-                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"] };
+                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
+                lvl04: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -161,6 +164,8 @@ async function main() {
   for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
   world.register("__neutrale", neutral());       // §9.11 (scenario.js)
   world.register("monastero", monastery(path));  // §9.11 (buildings.js)
+  world.register("fiume_grande", fiumeGrande());  // §9.40 (bridge.js)
+  world.register("ponte", ponte(path));
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
