@@ -79,14 +79,20 @@ export function roomLabel(room) {
   const n = { lvl01: 1, lvl02: 2, lvl03: 3 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
+// L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
+// anche nel menu di pausa (pause.js, §9.39)
+export function slotLabel(room) {
+  const info = slotInfo(room);
+  if (!info) return null;
+  let date = "";
+  try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
+  return roomLabel(room) + "  -  " + date;
+}
 function loadRows(W, H) {
   const rows = [];
   for (const room of SAVE_ROOMS) {
-    const info = slotInfo(room);
-    if (!info) continue;
-    let date = "";
-    try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
-    rows.push({ label: roomLabel(room) + "  -  " + date, action: "slot", room });
+    const label = slotLabel(room);
+    if (label) rows.push({ label, action: "slot", room });
   }
   if (!rows.length) rows.push({ label: tr("No saved games"), action: null });
   rows.push({ label: tr("Load from file"), action: "file" });

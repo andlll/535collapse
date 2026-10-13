@@ -16,10 +16,14 @@
 // [Fase 4] sottomenu "Salva e carica" (save.js): salvataggio rapido nello
 // slot della room, caricamento, file da scaricare o da aprire, salvataggio
 // automatico ogni 5 minuti (attivo di norma, come in NIMBUS).
+// [Richiesta dell'autore, §9.39] "Carica partita" apre l'elenco degli slot
+// di tutte le room, come nel menu principale (menu.js, slotLabel), invece
+// di caricare solo quello della room in corso.
 
 import { c } from "./colours.js";
 import { tr, LANGUAGES, getLanguage } from "./i18n.js";
-import { slotInfo } from "./save.js";
+import { SAVE_ROOMS } from "./save.js";
+import { slotLabel } from "./menu.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 
 // Pointer Lock (input.js): non c'e' su alcuni browser e negli iframe che
@@ -36,14 +40,14 @@ const TITLE_SCALE = 0.8, TEXT_SCALE = 0.88;
 
 export class PauseMenu {
   // actions: { language(code), restart(), menu(), graphics(changes),
-  //            saveGame(), loadGame(), saveFile(), loadFile(), fullscreen() }
+  //            saveGame(), loadSlot(room), saveFile(), loadFile(), fullscreen() }
   constructor({ g, settings, actions, room }) {
     this.g = g;
     this.settings = settings;
     this.actions = actions;
     this.room = room;
     this.paused = false;
-    this.submenu = null;   // null | "graphics" | "saves"
+    this.submenu = null;   // null | "graphics" | "saves" | "load"
     this.rects = [];       // pulsanti dell'ultimo disegno: {x, y, w, h, action, value}
     this.dirty = true;     // lo sfondo sfumato va rifatto
     this.hoverButton = 0;
@@ -73,7 +77,7 @@ export class PauseMenu {
   // In pausa: Esc torna indietro, un clic preme un pulsante.
   input(input) {
     if (input.pressed.has(27)) {
-      if (this.submenu) this.submenu = null; else this.close();
+      if (this.submenu) this.submenu = this.submenu === "load" ? "saves" : null; else this.close();
       return;
     }
     if (!input.mouseReleased[0]) return;
@@ -88,11 +92,12 @@ export class PauseMenu {
       case "graphics": this.submenu = "graphics"; break;
       case "saves": this.submenu = "saves"; break;
       case "saveGame": this.actions.saveGame(); this.dirty = true; break;
-      case "loadGame": this.actions.loadGame(); break;
+      case "loadGame": this.submenu = "load"; break;
+      case "loadSlot": this.actions.loadSlot(b.value); break;
       case "saveFile": this.actions.saveFile(); break;
       case "loadFile": this.actions.loadFile(); break;
       case "fullscreen": this.actions.fullscreen(); this.dirty = true; break;
-      case "back": this.submenu = null; break;
+      case "back": this.submenu = this.submenu === "load" ? "saves" : null; break;
       // [C, mouser Mouse_GlobalLeftReleased] gli interruttori dell'originale
       case "hints": g.hint = g.hint === 1 ? 0 : 1; this.dirty = true; break;
       case "objectives": g.obj = g.obj === 1 ? 0 : 1; this.dirty = true; break;
@@ -128,12 +133,12 @@ export class PauseMenu {
   }
 
   // disabled: pulsante spento (piu' trasparente, non cliccabile)
-  _button(d, x, y, w, h, label, action, input, disabled = false) {
+  _button(d, x, y, w, h, label, action, input, disabled = false, value = undefined) {
     const hover = !disabled && input.inside && input.x >= x && input.x <= x + w && input.y >= y && input.y <= y + h;
     d.setAlpha(disabled ? 0.45 : hover ? 1 : BUTTON_ALPHA);
     d.roundrectColourExt(x, y, x + w, y + h, h, h, hover ? 0xf2f2f2 : c.white, hover ? 0xf2f2f2 : c.white, false);
     this._label(d, x + w / 2, y + h / 2, label, "GUI_1", disabled ? 0.35 : 0.85);
-    if (!disabled) this.rects.push({ x, y, w, h, action });
+    if (!disabled) this.rects.push({ x, y, w, h, action, value });
   }
 
   // [Richiesta dell'autore] Testo direttamente sullo sfondo sfocato (senza
@@ -206,11 +211,22 @@ export class PauseMenu {
       title = tr("SAVE AND LOAD");
       before = [
         [tr("Save game"), "saveGame"],
-        [tr("Load game"), "loadGame", !slotInfo(this.room)],
+        [tr("Load game"), "loadGame"],
         [tr("Save to file"), "saveFile"],
         [tr("Load from file"), "loadFile"],
         [tr("Autosave: {state}", { state: onOff(s.autosave) }), "autosave"],
       ];
+      segs = null;
+      after = [[tr("Back"), "back"]];
+    } else if (this.submenu === "load") {
+      title = tr("Load game").toLocaleUpperCase(getLanguage());
+      before = [];
+      for (const room of SAVE_ROOMS) {
+        const label = slotLabel(room);
+        if (label) before.push([label, "loadSlot", false, room]);
+      }
+      if (!before.length) before.push([tr("No saved games"), null, true]);
+      before.push([tr("Load from file"), "loadFile"]);
       segs = null;
       after = [[tr("Back"), "back"]];
     } else {
@@ -244,7 +260,7 @@ export class PauseMenu {
     this._glowLabel(d, px + panelW / 2, py + 40, title, "gui_sblocco");
     const btnW = panelW - 60, bx = px + 30;
     let by = py + 84;
-    for (const [label, action, off] of before) { this._button(d, bx, by, btnW, BTN_H, label, action, input, off); by += BTN_H + BTN_GAP; }
+    for (const [label, action, off, value] of before) { this._button(d, bx, by, btnW, BTN_H, label, action, input, off, value); by += BTN_H + BTN_GAP; }
     if (segs) {
       this._glowLabel(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
       by += CAPTION_H;

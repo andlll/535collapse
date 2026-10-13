@@ -379,10 +379,16 @@ export function enemyMelee(name, p) {
     },
     // Mouse_RightReleased [C]: guerrieri, cavalieri e picchieri selezionati
     // lo prendono come bersaglio (il loro GlobalRightReleased viene dopo)
+    // [Segnalazione dell'autore, §9.39] anche chi sta camminando (warwork 4):
+    // l'originale lo escludeva, il GlobalRightReleased gli dava comunque
+    // warwork 1 e, senza bersaglio, l'attacco cercava il nemico piu' vicino
+    // e oltre comp (700 px, meno in verticale) si fermava subito: un gruppo
+    // in marcia mandato contro un nemico lontano restava fermo, partivano
+    // solo gli arcieri. Chi sta colpendo (warwork 2) continua come prima.
     rightReleased(i, w) {
       for (const n of ["ally_warrior", "ally_cavaliere", "ally_picchiere"]) {
         for (const u of w.all(n)) {
-          if (u.selected === 1 && (u.warwork === 0 || u.warwork === 1)) {
+          if (u.selected === 1 && (u.warwork === 0 || u.warwork === 1 || u.warwork === 4)) {
             u.target_eu = i; u.warwork = 1; u.dirox = i.x; u.diroy = i.y;
           }
         }

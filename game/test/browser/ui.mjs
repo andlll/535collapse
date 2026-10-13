@@ -245,6 +245,7 @@ const INGAME = () => {
   P.open(); P.dirty = true; UI.shot("pausa");
   P.submenu = "graphics"; P.dirty = true; UI.shot("pausa: opzioni grafiche");
   P.submenu = "saves"; P.dirty = true; UI.shot("pausa: salva e carica");
+  P.submenu = "load"; P.dirty = true; UI.shot("pausa: carica partita");
   P.close();
 };
 

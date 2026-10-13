@@ -389,7 +389,9 @@ async function main() {
       menu: () => world.gotoRoom("menu"),        // room_goto(menu)
       graphics: applyGraphics,
       saveGame: () => saveGame(false),
-      loadGame: () => { location.search = "?room=" + roomName + campaignParam() + "&load=slot"; },
+      // [§9.39] lo slot di una room qualsiasi; nella stessa room la partita
+      // resta della campagna, se lo era
+      loadSlot: (name) => { location.search = "?room=" + name + (name === roomName ? campaignParam() : "") + "&load=slot"; },
       saveFile: () => {
         try { saveFile(capture()); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
       },

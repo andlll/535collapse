@@ -8,7 +8,9 @@
 // STEPS passi, quanti sono rimasti fermi (spostamento netto < 40 px) e i
 // passi d'attesa (in cammino senza muoversi) nei primi 120. Esce con 1 se
 // un soldato in mischia non arriva a colpire o aspetta in media piu' di 20
-// passi (§9.38: i guerrieri sovrapposti si aspettavano a vicenda).
+// passi (§9.38: i guerrieri sovrapposti si aspettavano a vicenda). Anche
+// l'ordine dato a un gruppo ancora in marcia (walking, §9.39: i soldati in
+// mischia restavano fermi, partivano solo gli arcieri).
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
 //   node game/test/browser/attackorder.mjs [room]
@@ -38,14 +40,14 @@ const res = await page.evaluate(() => {
     if (!best || bad < best.bad) best = { gx, gy, bad };
   }
   const CX = best.gx * 32 + 16, CY = best.gy * 32 + 16;
-  const STEPS = 400;
+  const STEPS = 500;
   const rightClick = (tx, ty) => {
     const input = w.input;
     cam.x = tx - cam.w / 2; cam.y = ty - cam.h / 2;
     input.x = (tx - cam.x) * cam.cssW / cam.w; input.y = (ty - cam.y) * cam.cssH / cam.h;
     input.inside = true; input._mr[1] = true;
   };
-  const trial = ({ dx, dy, comp = 700, night = 0, fog = 1, gap = 60, premove = false }) => {
+  const trial = ({ dx, dy, comp = 700, night = 0, fog = 1, gap = 60, premove = false, walking = false, reach = 0 }) => {
     clear();
     G.g.night = night; G.g.fogville = fog;
     const kinds = ["ally_warrior", "ally_warrior", "ally_picchiere", "ally_picchiere", "ally_cavaliere", "ally_arciere", "ally_arciere"];
@@ -59,6 +61,12 @@ const res = await page.evaluate(() => {
       // prima uno spostamento di gruppo (formazione), poi l'attacco
       rightClick(CX - 150, CY);
       for (let s = 0; s < 240; s++) { G.advance(1); es.forEach((e, n) => { w.setPos(e, CX + dx + n * 40, CY + dy + (n % 2) * 40); e.action = 0; e.warwork = 0; }); }
+      for (const u of us) if (u.selected !== 1) { u.selected = 1; G.g.sel++; G.g.milsel++; }
+    }
+    if (walking) {
+      // [§9.39] l'ordine di attacco a gruppo ancora in cammino (warwork 4)
+      rightClick(CX - 120, CY - 300);
+      for (let s = 0; s < 30; s++) { G.advance(1); es.forEach((e, n) => { w.setPos(e, CX + dx + n * 40, CY + dy + (n % 2) * 40); e.action = 0; e.warwork = 0; }); }
       for (const u of us) if (u.selected !== 1) { u.selected = 1; G.g.sel++; G.g.milsel++; }
     }
     const t = es[1];
@@ -76,7 +84,7 @@ const res = await page.evaluate(() => {
     const out = {};
     us.forEach((u, n) => {
       const o = out[u.object] || (out[u.object] = { n: 0, hit: 0, still: 0, wait: 0, dist: [] });
-      o.n++; if (hit[n]) o.hit++;
+      o.n++; if (hit[n] || (reach && w.distanceToInstance(u, w.nearest(u.x, u.y, "enemy_unit")) <= reach)) o.hit++;
       o.wait += wait[n] / us.filter((v) => v.object === u.object).length;
       const m = Math.hypot(u.x - start[n][0], u.y - start[n][1]);
       if (m < 40) o.still++;
@@ -95,6 +103,11 @@ const res = await page.evaluate(() => {
     packedFar: trial({ dx: 500, dy: 100, gap: 16 }),
     formation: trial({ dx: 250, dy: 50, premove: true }),
     formationFar: trial({ dx: 450, dy: -150, premove: true }),
+    // lontano: 7 contro 3 nemici fermi e immortali, l'ultimo ad arrivare
+    // puo' restare ad aspettare un posto (reach: basta arrivare alla mischia)
+    veryFar: trial({ dx: 900, dy: 200, reach: 120 }),
+    walkingNear: trial({ dx: 300, dy: 0, walking: true }),
+    walkingFar: trial({ dx: 800, dy: 100, walking: true, reach: 120 }),
   };
 });
 for (const [k, r] of Object.entries(res)) console.log(k.padEnd(13), Object.entries(r).map(([o, v]) => `${o.slice(5)} ${v.hit}/${v.n} fermi ${v.still} attesa ${Math.round(v.wait)}`).join("  "));

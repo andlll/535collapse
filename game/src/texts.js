@@ -179,6 +179,10 @@ export const TEXTS = {
     it: "clicca ovunque per continuare", es: "haz clic en cualquier sitio para continuar",
     pt: "clique em qualquer lugar para continuar", de: "klicke irgendwo, um fortzufahren",
     fr: "clique n'importe où pour continuer" },
+  "You have no units left and cannot train new ones.": {
+    it: "Non hai più unità e non puoi addestrarne di nuove.", es: "No te quedan unidades y no puedes entrenar nuevas.",
+    pt: "Você não tem mais unidades e não pode treinar novas.", de: "Du hast keine Einheiten mehr und kannst keine neuen ausbilden.",
+    fr: "Tu n'as plus d'unités et tu ne peux pas en former de nouvelles." },
   "Your town hall was destroyed.": {
     it: "Il tuo municipio è stato distrutto.", es: "Tu ayuntamiento ha sido destruido.",
     pt: "Sua prefeitura foi destruída.", de: "Dein Rathaus wurde zerstört.", fr: "Ton hôtel de ville a été détruit." },

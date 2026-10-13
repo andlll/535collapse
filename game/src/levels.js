@@ -15,6 +15,7 @@ import { freeSpawnEnemy } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
 import { panTo, panStep } from "./camera.js";
+import { noMovesCheck } from "./endgame.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -282,6 +283,7 @@ export function levelStep(w) {
   if (g.fogville === 0) for (const e of w.all("enemy")) e.visible = true;
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);
+  noMovesCheck(w); // §9.39
 }
 
 // ----------------------------------------------------- livello 2
@@ -305,6 +307,12 @@ const AREAS = [
   [2200, 950, 2950, 1600, 2500, 1300, 170],
 ];
 // liberazioni [C, Step]: civili creati, dialogo, premi
+// [Richiesta dell'autore, §9.39] vinta la battaglia iniziale (liberati1):
+// popolazione massima 30 (prima 0) e un premio, se no il livello era troppo
+// difficile
+const LV2_FIRST = { popcap: 30, prizes: [["cibo_prizedrawer", 1645, 7060, "food", 200],
+                                          ["legno_prizedrawer", 1745, 7060, "wood", 200],
+                                          ["oro_prizedrawer", 1695, 7020, "gold", 100]] };
 const FREED = [
   { omini: [[2600, 7650]], dialog: ["dialogo_2_6", 2600, 7650] },
   { omini: [[2950, 3950], [3050, 3950], [3150, 3950]], dialog: ["dialogo_2_7", 2950, 3950] },
@@ -354,6 +362,8 @@ export function enemyManagerLv2(p) {
         w.create("ally_omino", 1645, 7109);
         w.create("ally_omino", 1745, 7109);
         createIfPorted(w, "dialogo_2_1", 1645, 7109);
+        g.popcap += LV2_FIRST.popcap;
+        for (const [o, x, y, r, n] of LV2_FIRST.prizes) { w.create(o, x, y); g[r] += n; }
         i.liberati1 = 1;
       }
       // `var lNexists` vive solo dentro il suo if: per le aree gia' liberate

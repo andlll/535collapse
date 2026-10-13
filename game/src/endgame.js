@@ -4,6 +4,7 @@
 import { c } from "./colours.js";
 import { saveUnlock } from "./progress.js";
 import { tr } from "./i18n.js";
+import { PRODUCERS } from "./production.js";
 
 // victory_manager [C]: lo schermo sbianca (alpha +0,08 a passo fino a 0,9),
 // poi "VICTORY", il punteggio in match o il codice del livello successivo
@@ -67,7 +68,8 @@ export function victoryManager() {
   };
 }
 
-// gameover_manager [C]: creato quando il centro e' distrutto; lo schermo
+// gameover_manager [C]: creato quando il centro e' distrutto (e senza
+// mosse, noMovesCheck); lo schermo
 // annerisce (+0,02 a passo) con tempo resistito, basi distrutte e
 // punteggio, e dopo 760 passi si torna al menu.
 // [§9.35, richiesta dell'autore] niente punteggio; il tempo resistito solo
@@ -89,7 +91,8 @@ export function gameoverManager() {
       if (i.fogalpha < 1) return;
       d.setColour(c.white);
       d.setHalign("center");
-      const lines = [w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed.")];
+      const lines = [g.nomovesLost ? tr("You have no units left and cannot train new ones.")
+        : w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed.")];
       if (w.room === "match" || w.room === "lvl03") {
         lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       }
@@ -97,6 +100,42 @@ export function gameoverManager() {
       lines.forEach((t, k) => d.text(vw / 2, vh / 2 - 200 + k * 100, t));
     },
   };
+}
+
+// [Richiesta dell'autore, §9.39] Sconfitta senza mosse: nessuna unita'
+// (soldati o civili), nessuna produzione che possa finire e nessun edificio
+// che possa cominciarne una (risorse e popolazione) per NO_MOVES passi di
+// fila. Gli arcieri di presidio non contano: dalla torre e dal castello non
+// escono. Non nella difesa del livello 3, dove il monastero puo' resistere
+// da solo fino alla fine (l'obiettivo e' quello).
+const NO_MOVES = 180;
+export function noMovesCheck(w) {
+  const g = w.g;
+  if (w.room === "menu" || g.gameover || g.victory || w.exists("victory_manager") || w.exists("gameover_manager")) return;
+  if (w.room === "lvl03" && g.l3 && g.l3.phase === 2) return;
+  if (canAct(w)) { g.nomoves = 0; return; }
+  g.nomoves = (g.nomoves || 0) + 1;
+  if (g.nomoves < NO_MOVES) return;
+  g.gameover = 1;
+  g.nomovesLost = 1;
+  w.create("gameover_manager", 0, 0);
+}
+
+function canAct(w) {
+  const g = w.g;
+  if (w.exists("ally_unit")) return true;
+  const afford = (cost) => Object.entries(cost).every(([r, v]) => g[r] >= v);
+  // il centro: civili, 50 cibo l'uno (buildings.js, centro)
+  const civRoom = g.pop < g.popcap;
+  for (const c of w.all("centro")) if (civRoom && (c.progression > 0 || g.food >= 50)) return true;
+  for (const [name, P] of Object.entries(PRODUCERS)) {
+    if (g.pop + P.popMargin >= g.popcap) continue;
+    for (const b of w.all(name)) {
+      if (b.progression > 0) return true;
+      if (Object.values(P.units).some((u) => u.clicker && afford(u.cost))) return true;
+    }
+  }
+  return false;
 }
 
 // [§9.27] Il bordo destro dei pulsanti in alto a sinistra (colonne da 450 a

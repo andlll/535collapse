@@ -5354,7 +5354,8 @@ Segnalazioni e richieste dell'autore (13 ottobre 2026).
 **Livello 2: popcap 30 all'inizio** (state.js, `newGlobals`): prima 0 come
 in tutte le room. Attenzione: la popolazione iniziale del livello 2 vale
 gia' 32 (l'esercito di partenza), quindi con 30 non si produce ancora
-nulla finche' non si costruisce una casa (+10).
+nulla finche' non si costruisce una casa (+10). *Sostituito in §9.39: il
+popcap 30 arriva vinta la battaglia iniziale.*
 
 **Livello 1 tutto di notte** (manager.js): l'originale armava l'alba
 (alarm 1) a 100000 passi, ma l'alarm 0 (6000 passi), trovando gia' la
@@ -5417,3 +5418,56 @@ dei livelli 1 e 2 coi nemici veri: attesa media nei primi 120 passi da 40 a
 2 passi per i guerrieri, primo colpo da 131 a 72 passi. `npm test`, soak,
 saves, melee, movement, rally, fireorder, rams, monastery, ui, idle,
 workers, deposit.
+
+### 9.39 Cantieri, sconfitta senza mosse, livello 2, carica partita, soldati in marcia
+
+Richieste e segnalazioni dell'autore (13 ottobre 2026).
+
+**Cantieri di caserma e stalla** (civilians.js, `BUILD_RATE`): ogni colpo di
+martello (Alarm_2, ogni 13 passi) aggiunge 2 di vita invece di 1, come casa,
+magazzino e mulino: la caserma si finisce in ~2270 passi con un civile
+(erano ~4540), la stalla in ~2470.
+
+**Sconfitta senza mosse** (endgame.js, `noMovesCheck`, da `levelStep`): si
+perde se per 180 passi (3 s) di fila non c'e' nessuna unita' alleata
+(soldati o civili), nessuna produzione in corso che possa finire e nessun
+edificio che possa cominciarne una: il centro con 50 cibo, caserma, stalla
+e castello con le risorse di almeno un'unita'; in tutti i casi con posto
+nella popolazione. Gli arcieri di presidio non contano (da torre e castello
+non escono). Non nella difesa del livello 3 (`g.l3.phase` 2): l'obiettivo e'
+che il monastero resista, e puo' farlo da solo. La schermata di sconfitta
+dice "Non hai piu' unita' e non puoi addestrarne di nuove" (`nomovesLost`).
+Provato: match senza unita' e senza risorse, livelli 1, 2 e 3 senza unita'
+-> sconfitta dopo 179 passi; match con 100 cibo e il centro, e difesa del
+livello 3 -> no.
+
+**Livello 2** (levels.js, `LV2_FIRST`): il popcap parte da 0 (come prima di
+§9.38) e diventa 30 vinta la battaglia iniziale (`liberati1`: nessun nemico
+nel rettangolo della partenza, gli stessi passi in cui arrivano i due civili
+e il dialogo 2_1), con un premio: 200 cibo, 200 legno, 100 oro (le icone
+che salgono, *_prizedrawer).
+
+**Carica partita nel menu di pausa** (pause.js, sottomenu `load`): prima
+caricava solo lo slot della room in corso; ora, come il menu principale,
+l'elenco degli slot di tutte le room col livello e la data (menu.js,
+`slotLabel`, usata da entrambi), "Carica da file" e "Indietro" (che torna a
+"Salva e carica"). Nella stessa room resta il parametro della campagna.
+
+**Soldati fermi sulle lunghe distanze** (enemies.js, `rightReleased`;
+segnalazione: solo da lontano, nessuno sovrapposto). Riprodotto: un gruppo
+ancora in marcia dopo un ordine di spostamento (warwork 4) mandato col clic
+destro contro un nemico a 800 px: guerrieri, picchieri e cavalieri restavano
+fermi, partivano solo gli arcieri. Il nemico cliccato diventa il bersaglio
+(target_eu) solo per chi ha warwork 0 o 1 [C]; il GlobalRightReleased da' a
+tutti warwork 1, e chi non aveva il bersaglio cercava il nemico piu' vicino
+e, oltre `comp` (700 px, 448 in verticale), si fermava subito.
+Gli arcieri hanno il loro ordine di attacco (atkorder, §6.4). Ora il
+bersaglio lo prende anche chi cammina; chi sta colpendo (warwork 2)
+continua come prima.
+
+**Prova** (attackorder.mjs, tre casi in piu'): nemico a 900 px; gruppo in
+marcia mandato contro un nemico a 300 e a 800 px (sul codice di prima: a
+800 px tutti i soldati in mischia fermi). Da lontano 7 alleati contro 3
+nemici fermi e immortali: l'ultimo ad arrivare puo' aspettare un posto, la
+prova chiede che arrivi alla mischia (120 px). ui.mjs fotografa anche il
+sottomenu "Carica partita".
