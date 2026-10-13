@@ -351,7 +351,7 @@ export function panel(dr, i, ico) {
   dr.setAlpha(0.75);
   dr.setValign("middle");
   dr.setHalign("center");
-  dr.text(325, 120, i.life + " / " + i.slife);
+  dr.text(325, 120, Math.floor(i.life) + " / " + i.slife); // [§9.42] il ponte cresce a frazioni
   dr.setAlpha(1);
   dr.sprite(ico, 0, 325, 70);
 }
@@ -844,7 +844,7 @@ export function centro(p) {
       dr.setAlpha(0.75);
       dr.setValign("middle");
       dr.setHalign("center");
-      dr.text(325, 120, i.life + " / " + i.slife);
+      dr.text(325, 120, Math.floor(i.life) + " / " + i.slife); // [§9.42] il ponte cresce a frazioni
       dr.setAlpha(1);
       dr.spriteExt("ico_omino", 0, 450, 50, 0.7, 0.7, 0, WHITE, 1);
       dr.spriteExt("ico_indietro", 0, 520, 50, 0.7, 0.7, 0, WHITE, 1);

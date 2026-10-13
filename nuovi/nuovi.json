@@ -359,6 +359,13 @@
       "lato": 120,
       "gruppo": "campagna",
       "nota": "segnalino del livello 3 sulla mappa della campagna (§9.13)"
+    },
+    "ico_ponte": {
+      "da": "icons8-bridge-64",
+      "lato": 58,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "icona del ponte del livello 4 nella scheda del cantiere (§9.42): nera al 70% e larga 58 px come le icone degli edifici"
     }
   }
 }

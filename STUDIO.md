@@ -5568,3 +5568,21 @@ Decisioni dell'autore (13 ottobre 2026), dopo §9.40:
 
 Prova (bridge.mjs): senza legno per 600 passi il ponte resta a 1; col
 legno finito fra 3 e 5 minuti di gioco con quattro civili, spendendo 1000.
+
+### 9.42 La scheda del ponte e la sua icona
+
+Richiesta dell'autore (13 ottobre 2026): la scheda del ponte in
+riparazione identica a quella degli altri cantieri, con l'icona del ponte
+che ha caricato (`nuovi/sprites/icons8-bridge-64.png`).
+
+- Icona: `ico_ponte`, sprite derivato (nuovi.json "derivati", gruppo gui):
+  larga 58 px e nera all'alpha 0,7 (opzione nuova `alpha` dei derivati),
+  come le icone degli edifici dell'originale (nere, alpha massimo 179/255,
+  disegno largo 56-61 px).
+- Scheda: la stessa degli edifici e dei cantieri (buildings.js `panel`,
+  130x130 px). In §9.41 la vita del ponte arrivava a 4400 e "1700 / 4400"
+  non ci stava (avevo allargato la scheda): ora la vita va da 1 a 999, tre
+  cifre come gli altri, con 998/4399 a colpo (civilians.js `BUILD_RATE`).
+  Durata e legno non cambiano: 4399 colpi, 3 min 58 s con quattro civili,
+  1000 legno (bridge.mjs, misurato di nuovo). `panel` scrive la vita senza
+  decimali.

@@ -1094,8 +1094,11 @@ function buildStep(i, w, p) {
 // di mura (799) +5. Il 100 non serve: e' il cantiere del campo, che non e'
 // un ally_fondamenta e cresce con la semina (azione 8).
 // [Richiesta dell'autore, §9.39] caserma (349) e stalla (379) +2.
-// [§9.40, §9.41] il ponte del livello 4 (4400): +1
-const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5, 4400: 1 };
+// [§9.40-§9.42] il ponte del livello 4 (999): 998/4399, frazioni di vita
+// (4399 = bridge.js BRIDGE.hits; scritto qui: i moduli si importano a
+// vicenda e questa tabella si calcola al caricamento)
+const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5,
+                     999: 998 / 4399 };
 
 // Alarm_2, azioni 4, 6, 7, 8 [C]: a differenza della raccolta, il cantiere
 // cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve
