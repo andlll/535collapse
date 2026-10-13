@@ -48,6 +48,7 @@ function creazioneDifensoriArciere(i, w, defX, defY, defId) {
 // scr_area_difesa [C]: i nemici nel rettangolo difendono il punto
 function areaDifesa(w, x1, y1, x2, y2, defX, defY, defId) {
   for (const e of w.all("enemy_unit")) {
+    if (e.object === "enemy_omino") continue; // §9.44: i lavoratori non difendono
     if (e.x > x1 && e.x < x2 && e.y > y1 && e.y < y2) {
       e.role = 10; e.def_point_x = defX; e.def_point_y = defY; e.def_point_id = defId;
     }
@@ -59,6 +60,7 @@ function areaDifesa(w, x1, y1, x2, y2, defX, defY, defId) {
 // ne sono allontanati piu' di raggio/1,5.
 function difendi(w, defX, defY, defId, raggio) {
   for (const e of w.all("enemy_unit")) {
+    if (e.object === "enemy_omino") continue; // §9.44
     if (e.def_point_id !== defId || !(e.warwork === 0 || e.warwork === 4)) continue;
     const inv = w.nearest(defX, defY, "ally_unit");
     if (inv && pointDistance(defX, defY, inv.x, inv.y) < raggio) {
@@ -137,6 +139,7 @@ function attacca(m, w, p, nsend, interval, target) {
 function aggressione(i, w) {
   if (w.exists("ally_omino")) {
     for (const e of w.all("enemy_unit")) {
+      if (e.object === "enemy_omino") continue; // §9.44: i lavoratori non attaccano
       if (e.defender === 0 && e.action !== 1 && e.action !== 2 && e.action !== 6 && e.firework === 0) {
         const o = w.nearest(e.x, e.y, "ally_omino");
         e.alarm.set(0, 15); e.action = 1; e.warwork = 1; e.dirox = o.x; e.diroy = o.y;
@@ -283,6 +286,8 @@ export function levelStep(w) {
   if (g.fogville === 0) for (const e of w.all("enemy")) e.visible = true;
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);
+  // [§9.44] l'economia del nemico, dove c'e' un centro nemico
+  if (!w.exists("enemy_eco") && w.exists("enemy_centro")) w.create("enemy_eco", 0, 0);
   noMovesCheck(w); // §9.39
 }
 

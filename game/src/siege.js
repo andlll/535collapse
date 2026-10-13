@@ -534,7 +534,7 @@ export function bloodSplat() {
 // meta' vita.
 const FIRE_HIT = { casa: 5, barn: 5, caserma: 5, magazzino: 5, stalla: 5, centro: 3, campo: 20,
                    enemy_house: 5, enemy_caserma: 5, enemy_stalla: 5,
-                   enemy_centro: 3, enemy_magazzino: 5, enemy_mulino: 5 }; // §9.43
+                   enemy_centro: 3, enemy_magazzino: 5, enemy_mulino: 5, enemy_campo: 20 }; // §9.43, §9.44
 export function fireBullet() {
   const collisions = {};
   for (const [name, dmg] of Object.entries(FIRE_HIT)) {

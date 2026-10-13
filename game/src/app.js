@@ -45,6 +45,7 @@ import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
+import { enemyOmino, enemyCampo, enemyEco } from "./economy.js";
 import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
@@ -165,6 +166,9 @@ async function main() {
   world.register("__neutrale", neutral());       // §9.11 (scenario.js)
   world.register("monastero", monastery(path));  // §9.11 (buildings.js)
   world.register("fiume_grande", fiumeGrande());  // §9.40 (bridge.js)
+  world.register("enemy_omino", enemyOmino(path)); // §9.44 (economy.js)
+  world.register("enemy_campo", enemyCampo(path));
+  world.register("enemy_eco", enemyEco(path));
   world.register("ponte", ponte(path));
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("ally_cavaliere", cavaliere(path));

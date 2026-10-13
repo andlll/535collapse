@@ -11,6 +11,9 @@ export function newGlobals(room) {
     // iniziale: levels.js, LV2_FIRST]
     food: 100, wood: 50, gold: 50, stone: 0,
     pop: 0, popcap: 0,
+    // [§9.44] le scorte, la popolazione e i contatori del nemico che ha un
+    // centro (economy.js); idle si tiene ma non si usa
+    en: { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, idle: 0 },
     frame: 0,
     idle: 0,        // civili inattivi
     sele: 0,        // 1 con Ctrl, -1 con Alt (manager KeyPress_Control/Alt)

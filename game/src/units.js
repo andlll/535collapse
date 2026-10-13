@@ -371,12 +371,12 @@ function behaviourButtons(i, w) {
 // Danni di Alarm_2 per vita massima del bersaglio (STUDIO.md §1.4).
 const INFANTRY = {
   ally_warrior: { rank: 3, life: 75, corpse: "warrior_corpse", icon: "ico_guerriero", alarm8: 3000,
-                  damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4 },
+                  damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4, 50: 5 }, // §9.44: 50, il lavoratore nemico
                   // il guerriero e' la versione piu' recente
                   clickFirst: false, exactStop: false, nearRank: true, move100: true,
                   faceTarget: true, rally100: true, occupyAtCreate: false, globalLeft: false },
   ally_picchiere: { rank: 2, life: 60, corpse: "picchiere_corpse", icon: "ico_picchiere", alarm8: 1200,
-                    damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8 },
+                    damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8, 50: 5 },
                     clickFirst: true, exactStop: true, nearRank: false, move100: false,
                     faceTarget: false, rally100: false, occupyAtCreate: true, globalLeft: true },
 };
@@ -646,7 +646,7 @@ export function behaviourClicker(kind) {
 
 // Danno in mischia del cavaliere [C, ally_cavaliere Alarm_2]: per vita
 // massima del bersaglio (STUDIO.md §1.4).
-const CAV_DAMAGE = { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3 };
+const CAV_DAMAGE = { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3, 50: 8 }; // §9.44: 50, il lavoratore nemico
 
 // ------------------------------------------------------- pezzi in comune
 

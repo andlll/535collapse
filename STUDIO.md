@@ -5624,3 +5624,73 @@ Contano fra gli enemy_build (minimappa, vittoria del livello 2, obiettivi
 Prova (`game/test/browser/enemybuildings.mjs`, nella CI): per ognuno
 visibilita', frecce, cura, fuoco (e fiamme visibili) solo dove serve, pale
 del mulino, rovina.
+
+### 9.44 L'economia nemica, primo passo: i lavoratori nemici lavorano
+
+Decisione dell'autore (13 ottobre 2026): i lavoratori nemici devono
+lavorare davvero, come in un RTS. Scelte: (1) l'economia c'e' solo nei
+livelli con un centro nemico (enemy_centro); i livelli 1-3 restano con le
+ondate a tempo; (2) nella campagna i cantieri nemici li mette l'autore in
+Tiled (segnaposto "cantiere nemico", passo 3); la scelta automatica dei
+posti solo in future schermaglie 1 contro 1 simmetriche; colpiti, i
+lavoratori scappano verso il centro; (3) il centro fa lavoratori pagando
+cibo fino a un tetto, caserma e stalla soldati pagando risorse, una regia
+semplice per livello; si va per passi: 1 raccolta e depositi con scorte
+nemiche, 2 produzione che paga, 3 riparazione, ricostruzione e cantieri,
+4 regia per livello. (4) Il kit di Tiled non si tocca finche' l'autore non
+lo dice: i nuovi oggetti hanno `kit: false`.
+
+Questo e' il passo 1.
+
+**Le fazioni dei civili.** civilians.js ora ha `SIDES` (ally, enemy): i
+nomi di omino, unita', depositi (magazza, barn), fondamenta, edifici e
+campo di ogni fazione; `sideOf(i)` e `poolOf(w, i)` (le scorte: `global`
+per il giocatore, `global.en` per il nemico). Il movimento, i depositi, il
+lavoro, la costruzione e i campi del civile usano questi nomi; le parti del
+giocatore (selezione, interfaccia, lampeggio del legno) solo con
+`S.player`. Il campo di flusso verso un bersaglio (`fieldTo`) passa la
+fazione a `goalField` (per i nemici anche le porte del giocatore sono
+ostacolo, come per i soldati nemici, §3.8). `orderWork(w, p, i, kind, t)` da' un ordine a un civile da
+codice (legno, oro, pietra, cibo, o "move"): lo usa la regia nemica.
+
+**Le scorte nemiche.** `global.en = {food, wood, gold, stone, pop, idle}`
+(state.js; creato anche alla nascita di un lavoratore o della regia, per i
+salvataggi vecchi). I depositi: enemy_centro e' enemy_magazza ed
+enemy_barn, enemy_magazzino enemy_magazza, enemy_mulino enemy_barn.
+
+**Oggetti nuovi** (economy.js, nuovi.json, tutti `kit: false`):
+
+- `enemy_omino`: il civile alleato con la fazione nemica; parenti
+  enemy_unit ed enemy (i soldati alleati lo attaccano, le frecce lo
+  colpiscono: vita 50, danni 5 da guerriero e picchiere, 8 dal cavaliere, 5
+  dalle frecce). Visibile come le unita' nemiche (nebbia); col puntatore
+  sopra mostra la barra, il clic destro con fanti o cavalieri selezionati
+  lo fa bersaglio. Colpito, lascia il lavoro e scappa (col carico) verso il
+  centro nemico, o l'edificio nemico piu' vicino; per 600 passi la regia
+  non lo rimanda al lavoro. [Provvisorio] Sprite del civile alleato tinto
+  d'azzurro, finche' l'autore non carica i suoi.
+- `enemy_campo`: il campo con la fazione nemica (enemy_wooden, brucia; il
+  clic destro con fanti selezionati gli da' fuoco).
+- `enemy_eco`: la regia. La crea la regia dei livelli (levels.js) se c'e'
+  un enemy_centro e lei non c'e'. Alla prima nascita da' le scorte
+  iniziali; ogni 20 passi manda ogni lavoratore fermo (non in fuga) alla
+  risorsa che manca di piu' rispetto alla ripartizione voluta, la piu'
+  vicina fra quelle entro 1600 px dal deposito nemico piu' vicino (cibo:
+  un campo nemico libero); se il centro non sta gia' producendo e i
+  lavoratori sono meno del voluto, ne paga uno in cibo e lo fa nascere dopo
+  1000 passi.
+
+I numeri, per livello (`ECO[room]`) o di norma (`ECO.default`): 6
+lavoratori; scorte iniziali 200 cibo, 100 legno, 50 oro; ripartizione
+legno 3, oro 2, cibo 2, pietra 1; 50 cibo e 1000 passi per lavoratore.
+
+I lavoratori nemici non contano per la difesa dei livelli (levels.js:
+areaDifesa, difendi, aggressione li saltano) e non sono nelle tabelle dei
+soldati nemici.
+
+Prova (`game/test/browser/economy.mjs`, nella CI): nella zona piu' aperta
+del match un centro, un mulino, due campi, alberi, oro e pietra, tre
+lavoratori nemici; dopo 9000 passi il nemico ha raccolto tutte e quattro
+le risorse, i lavoratori sono 6, le scorte del giocatore non sono
+cambiate; poi un guerriero alleato attacca un lavoratore, che scappa verso
+il centro e muore.

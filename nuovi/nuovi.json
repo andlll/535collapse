@@ -358,7 +358,9 @@
       "parents": [
         "enemy_wooden",
         "enemy_build",
-        "enemy"
+        "enemy",
+        "enemy_magazza",
+        "enemy_barn"
       ],
       "solid": true,
       "depth": {
@@ -398,7 +400,8 @@
       "parents": [
         "enemy_wooden",
         "enemy_build",
-        "enemy"
+        "enemy",
+        "enemy_magazza"
       ],
       "solid": true,
       "depth": {
@@ -412,13 +415,48 @@
       "parents": [
         "enemy_wooden",
         "enemy_build",
-        "enemy"
+        "enemy",
+        "enemy_barn"
       ],
       "solid": true,
       "depth": {
         "y": 0
       },
       "nota": "il mulino nemico: passivo, le pale girano (3 fotogrammi), brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_omino": {
+      "sprite": "ow11",
+      "parents": [
+        "enemy_unit",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "il lavoratore nemico (§9.44): il civile alleato con la fazione nemica, comandato dalla regia economica; provvisoriamente con gli sprite del civile alleato tinti d'azzurro"
+    },
+    "enemy_campo": {
+      "sprite": "campo1",
+      "mask": "campo1",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": false,
+      "depth": -1,
+      "kit": false,
+      "nota": "il campo coltivato nemico (§9.44), dei lavoratori nemici"
+    },
+    "enemy_eco": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia economica del nemico (§9.44, economy.js)"
     }
   },
   "derivati": {

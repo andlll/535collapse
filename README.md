@@ -97,6 +97,7 @@ node game/test/browser/attackorder.mjs                  # gruppo misto mandato a
 node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
 node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano
 node game/test/browser/enemybuildings.mjs               # edifici nemici nuovi: frecce, cura, fuoco, rovine
+node game/test/browser/economy.mjs                     # economia nemica: raccolta, depositi, lavoratori, fuga
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

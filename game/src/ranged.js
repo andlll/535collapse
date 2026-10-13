@@ -24,7 +24,7 @@ const BLACK = 0, GREEN = 0x008000;
 // per tipo di nemico; contro il cavaliere la freccia sparisce al passo dopo
 // invece che subito.
 const ALLY_HIT = { enemy_warrior: 6, enemy_picchiere: 6, enemy_arciere: 6, enemy_cavaliere: 4,
-                   enemy_ariete: 3, enemy_catapulta: 3 };
+                   enemy_ariete: 3, enemy_catapulta: 3, enemy_omino: 5 }; // §9.44: come la freccia nemica sul civile
 
 export function allyArrow(tower) {
   const collisions = {};
