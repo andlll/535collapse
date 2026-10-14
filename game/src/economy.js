@@ -25,6 +25,8 @@
 // non ci sono alleati vicini. [Decisione dell'autore, campagna] Il nemico
 // non fa edifici nuovi: ricostruisce solo quelli che ha perso, nello stesso
 // punto (enemy_cantiere), uno alla volta; il centro no: perso e' perso.
+// [§9.46] Unica eccezione: un magazzino o un mulino nuovo dove si lavora
+// senza un deposito abbastanza vicino.
 
 import { omino, orderWork } from "./civilians.js";
 import { campo, FAM } from "./buildings.js";
@@ -48,6 +50,7 @@ export const ECO = {
     repairers: 2,                                // lavoratori per edificio da riparare
     builders: 3,                                 // lavoratori al cantiere
     rebuild: true,                               // ricostruisce gli edifici persi
+    newDeposits: 4,                              // §9.46: magazzini e mulini nuovi, al massimo, in una partita
     safe: 400,                                   // niente riparazioni con un alleato entro tanti px
   },
   // [Decisione dell'autore] livello 4: solo ricostruzione degli edifici
@@ -57,6 +60,8 @@ export const ECO = {
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare
+const SEARCH = 3000;     // §9.46: senza risorse entro RANGE, le piu' vicine entro tanti px
+const FAR = 900;         // §9.46: risorsa (o campo) piu' lontana di cosi' dal deposito: un deposito nuovo
 const EVERY = 20;        // ogni quanti passi la regia guarda
 const FLEE = 600;        // passi di fuga, senza nuovi lavori
 const TINT = 0xffc8a0;   // azzurro (BGR), sullo sprite del civile alleato
@@ -160,22 +165,22 @@ function jobOf(o) {
 const RES = { wood: "albero", gold: "miniera_oro", stone: "stone_parent" };
 
 // La risorsa di tipo kind piu' vicina al lavoratore, entro RANGE da un
+// deposito nemico ([§9.46] se non ce ne sono, o non c'e' un deposito, e si
+// possono fare depositi nuovi: la piu' vicina al lavoratore entro SEARCH)
 // deposito nemico (per il cibo: un campo nemico libero), o null
-function targetFor(w, i, kind) {
+function targetFor(w, i, kind, wide) {
   if (kind === "food") {
     for (const c of w.all("enemy_campo")) if (c.foodwork === 0) return c;
     return null;
   }
   const dep = w.nearest(i.x, i.y, "enemy_magazza");
-  if (!dep) return null;
-  let best = null, bd = Infinity;
+  let best = null, bd = Infinity, far = null, fd = Infinity;
   for (const r of w.all(RES[kind])) {
-    const d = Math.hypot(r.x - dep.x, r.y - dep.y);
-    if (d > RANGE) continue;
     const di = Math.hypot(r.x - i.x, r.y - i.y);
-    if (di < bd) { bd = di; best = r; }
+    if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { if (di < bd) { bd = di; best = r; } }
+    else if (wide && di < SEARCH && di < fd) { fd = di; far = r; }
   }
-  return best;
+  return best || far;
 }
 
 // ------------------------------------------------- ricostruzione (§9.45)
@@ -227,6 +232,66 @@ function site(w, L, P) {
     return o.solid || w.is(o, "ally_unit") || w.is(o, "enemy_unit") || w.is(o, "enemy_build") ? o : null;
   });
   return block ? null : ruins;
+}
+
+// Paga e apre il cantiere di P in spot (togliendo le rovine sotto)
+function placeCantiere(w, P, spot, en) {
+  pay(en, P.cost);
+  for (const r of spot.ruins) w.destroy(r);
+  w.create("enemy_cantiere", spot.x, spot.y, { init: (f) => {
+    Object.assign(f, { target: P.o, slife: P.slife, rate: P.rate, phases: P.phases, solid: P.solid });
+    f.sprite_index = P.sprite; f.mask_index = P.mask;
+  } });
+}
+
+// [§9.46, richiesta dell'autore] I depositi nuovi: l'unica eccezione al
+// "niente edifici nuovi". Un magazzino se un raccoglitore lavora a una
+// risorsa senza deposito (centro o magazzino) entro FAR; un mulino se un
+// campo nemico non ha un granaio (centro o mulino) entro FAR. Non se lo
+// stesso deposito e' gia' fra quelli persi (lo rifa' la ricostruzione).
+function depositNeed(w, workers, lost) {
+  const lostHas = (o) => lost.some((L) => L.o === o);
+  const far = (x, y, dep) => { const d = w.nearest(x, y, dep); return !d || Math.hypot(d.x - x, d.y - y) > FAR; };
+  if (!lostHas("enemy_magazzino")) {
+    for (const o of workers) {
+      const j = jobOf(o);
+      if (!j || j === "food") continue;
+      const [x, y] = j === "wood" ? [o.woodx, o.woody] : j === "gold" ? [o.goldx, o.goldy] : [o.stonex, o.stoney];
+      if (far(x, y, "enemy_magazza")) return { o: "enemy_magazzino", x, y, from: o };
+    }
+  }
+  if (!lostHas("enemy_mulino")) {
+    for (const c of w.all("enemy_campo")) if (far(c.x, c.y, "enemy_barn")) return { o: "enemy_mulino", x: c.x, y: c.y, from: c };
+  }
+  return null;
+}
+
+// Il posto del deposito nuovo: su anelli da 200 a 600 px attorno alla
+// risorsa (o al campo), prima i punti dalla parte della base (l'edificio
+// nemico piu' vicino) o di chi ci lavora; libero (site) e raggiungibile da
+// un lavoratore. Al piu' 4 prove di raggiungibilita' per volta.
+function findSpot(w, p, P, need, workers) {
+  const ref = w.nearest(need.x, need.y, "enemy_build") || need.from;
+  const o = need.from.object === "enemy_omino" ? need.from : w.nearest(need.x, need.y, "enemy_omino");
+  let tries = 4;
+  for (let r = 200; r <= 600; r += 50) {
+    const pts = [];
+    for (let k = 0; k < 16; k++) {
+      const x = Math.round(need.x + r * Math.cos(k * Math.PI / 8)), y = Math.round(need.y + r * Math.sin(k * Math.PI / 8));
+      if (x > 100 && y > 100 && x < w.roomW - 100 && y < w.roomH - 100) pts.push({ x, y });
+    }
+    pts.sort((a, b) => Math.hypot(a.x - ref.x, a.y - ref.y) - Math.hypot(b.x - ref.x, b.y - ref.y));
+    for (const pt of pts) {
+      const ruins = site(w, pt, P);
+      if (!ruins) continue;
+      if (tries-- <= 0) return null;
+      const f = p.goalField(pt.x, pt.y, true);
+      const gx = Math.floor(o.x / 32), gy = Math.floor(o.y / 32);
+      if (p.fieldAt(f, gx, gy) === -1 && !p.escapeCell(f, gx, gy, 2)) continue;
+      return { ...pt, ruins };
+    }
+  }
+  return null;
 }
 
 // enemy_cantiere: il cantiere nemico. Lo crea la regia (enemy_eco) con
@@ -333,23 +398,29 @@ export function enemyEco(p) {
           o.action = 0; o.repairwork = 0; o.repB = null; o.step = 0; o.speed = 0; en.idle += 1;
         }
       }
-      // ricostruzione: il primo edificio perso (in ordine), se si puo' pagare
-      // e il posto e' libero; un cantiere alla volta
+      // [§9.46] un deposito nuovo (magazzino o mulino) se non ce n'e' uno
+      // abbastanza vicino a dove si lavora; poi la ricostruzione: il primo
+      // edificio perso (in ordine), se si puo' pagare e il posto e' libero.
+      // Un cantiere alla volta.
       const lost = E.rebuild ? (en.lost || []) : [];
       lost.sort((a, b) => REBUILD[a.o].prio - REBUILD[b.o].prio);
       let keep = {};
-      if (lost.length && !w.exists("enemy_fondamenta") && workers.length) {
-        const L = lost[0], P = plan(w, L.o);
-        const ruins = canPay(en, P.cost) ? site(w, L, P) : null;
-        if (ruins) {
-          pay(en, P.cost);
-          lost.shift();
-          for (const r of ruins) w.destroy(r);
-          w.create("enemy_cantiere", L.x, L.y, { init: (f) => {
-            Object.assign(f, { target: P.o, slife: P.slife, rate: P.rate, phases: P.phases, solid: P.solid });
-            f.sprite_index = P.sprite; f.mask_index = P.mask;
-          } });
-        } else keep = P.cost; // si mette da parte per lui
+      if (!w.exists("enemy_fondamenta") && workers.length) {
+        const need = E.newDeposits > (en.newDeposits || 0) ? depositNeed(w, workers, lost) : null;
+        const P = need && plan(w, need.o);
+        const spot = P && canPay(en, P.cost) ? findSpot(w, p, P, need, workers) : null;
+        if (spot) {
+          placeCantiere(w, P, spot, en);
+          en.newDeposits = (en.newDeposits || 0) + 1;
+        } else if (need) keep = P.cost;
+        else if (lost.length) {
+          const L = lost[0], P2 = plan(w, L.o);
+          const ruins = canPay(en, P2.cost) ? site(w, L, P2) : null;
+          if (ruins) {
+            lost.shift();
+            placeCantiere(w, P2, { x: L.x, y: L.y, ruins }, en);
+          } else keep = P2.cost; // si mette da parte per lui
+        }
       }
       // al cantiere
       for (const f of w.all("enemy_fondamenta")) {
@@ -382,7 +453,7 @@ export function enemyEco(p) {
         const kinds = Object.keys(E.mix).sort((a, b) =>
           (count[a] - E.mix[a] / total * workers.length) - (count[b] - E.mix[b] / total * workers.length));
         for (const kind of kinds) {
-          const t = targetFor(w, o, kind);
+          const t = targetFor(w, o, kind, E.newDeposits > (en.newDeposits || 0));
           if (!t) continue;
           orderWork(w, p, o, kind, t);
           count[kind]++;

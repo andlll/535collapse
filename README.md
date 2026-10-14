@@ -99,6 +99,7 @@ node game/test/browser/bridge.mjs                       # livello 4: i civili ri
 node game/test/browser/enemybuildings.mjs               # edifici nemici nuovi: frecce, cura, fuoco, rovine
 node game/test/browser/economy.mjs                     # economia nemica: raccolta, depositi, lavoratori, fuga
 node game/test/browser/enemyarmy.mjs                   # economia nemica: soldati pagati, attacco, riparazioni, ricostruzione
+node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

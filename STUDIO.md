@@ -5745,7 +5745,8 @@ come i civili un ally_fondamenta (stessa vita per colpo). Finito, al suo
 posto l'edificio nemico, che si vede come il cantiere. Il cantiere brucia
 (frecce incendiarie -10; clic destro con fanti selezionati; fiamme che
 crescono coi danni, effects.js `rel`); se brucia del tutto torna nella
-lista. Il nemico non fa mai edifici nuovi (nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
+lista. Il nemico non fa mai edifici nuovi, tranne magazzini e mulini
+(§9.46) (nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
 le posizioni automatiche solo nelle future schermaglie).
 
 I numeri sono in `ECO.default` (army, troops, attackAt, repairers,
@@ -5758,3 +5759,46 @@ di soldati senza superare il tetto e parte all'attacco, senza toccare le
 scorte del giocatore; la caserma danneggiata di 120 torna intera (119 legno
 spesi); la stalla distrutta rinasce nello stesso punto da un cantiere (170
 legno) in ~970 passi; il centro distrutto non torna; nessun edificio nuovo.
+
+### 9.46 L'economia nemica: magazzini e mulini nuovi dove servono
+
+Richiesta dell'autore (14 ottobre 2026): perso il centro, il nemico non fa
+piu' lavoratori, ma le risorse le porta ancora al mulino (il cibo) e al
+magazzino (il resto), come gia' faceva (§9.44: i depositi sono enemy_barn e
+enemy_magazza, non solo il centro). In piu': "se non ha dove portare le
+risorse o se e' troppo lontano puo' costruire nuovi magazzini e granai".
+E' l'unica eccezione al "niente edifici nuovi" (§9.45).
+
+**Dove si lavora.** Prima i lavoratori andavano solo alle risorse entro
+1600 px dal deposito (enemy_magazza) piu' vicino, e senza deposito
+restavano fermi. Ora, se non ce ne sono (o non c'e' un deposito), vanno
+alla risorsa piu' vicina entro 3000 px (`SEARCH`), finche' si possono fare
+depositi nuovi.
+
+**Quando.** Ogni 20 passi, se non c'e' gia' un cantiere nemico (uno alla
+volta, prima della ricostruzione degli edifici persi):
+- un magazzino, se un raccoglitore di legno, oro o pietra lavora a una
+  risorsa senza un centro o un magazzino nemico entro 900 px (`FAR`);
+- un mulino, se un campo nemico non ha un centro o un mulino nemico entro
+  900 px;
+- non se un magazzino (o un mulino) e' gia' nella lista dei persi: lo
+  rifa' la ricostruzione, nello stesso punto;
+- al piu' `ECO.newDeposits` (4) depositi nuovi in una partita
+  (`global.en.newDeposits`).
+Si paga come il giocatore (magazzino 70 legno, mulino 60); finche' non si
+puo', il costo resta da parte come per la ricostruzione.
+
+**Dove.** Su anelli da 200 a 600 px attorno alla risorsa (o al campo),
+16 punti per anello, prima quelli dalla parte dell'edificio nemico piu'
+vicino; il primo libero (come per la ricostruzione: nessun solido, unita' o
+edificio sotto la maschera) e raggiungibile dal lavoratore (campo dei
+percorsi dei nemici; al piu' 4 prove per volta). Poi cantiere e lavoratori
+come per la ricostruzione (enemy_cantiere).
+
+Prova (`game/test/browser/enemydepots.mjs`, nella CI): senza centro e
+senza magazzino, con un mulino, un campo accanto e uno a 1000 px, alberi a
+1100 px: i lavoratori vanno agli alberi, il nemico vi costruisce accanto un
+magazzino e il legno arriva nelle scorte; il campo lontano ha un mulino
+nuovo accanto; nessun altro edificio. Anche `enemyarmy.mjs` ora lo
+vede: distrutto il centro (l'unico deposito di legno, oro e pietra della
+prova) il nemico si fa uno o due magazzini, dalle parti delle risorse.

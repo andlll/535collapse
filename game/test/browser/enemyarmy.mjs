@@ -10,7 +10,8 @@
 //   ricostruzione = la stalla distrutta rinasce nello stesso punto, da un
 //                cantiere nemico, pagata col legno; nessun edificio nuovo
 //   centro     = il centro distrutto non si ricostruisce (decisione
-//                dell'autore: perso e' perso)
+//                dell'autore: perso e' perso); come soli edifici nuovi,
+//                magazzini (§9.46: era l'unico deposito di legno, oro, pietra)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -107,11 +108,16 @@ const res = await page.evaluate(() => {
   let cc = 0;
   for (let s = 0; s < 3000; s++) {
     G.advance(1);
-    if (w.exists("enemy_centro") || w.exists("enemy_cantiere")) cc++;
+    if (w.exists("enemy_centro") || [...w.all("enemy_cantiere")].some((f) => f.target === "enemy_centro")) cc++;
   }
   out.centroRifatto = cc;
   G.advance(600);
-  out.nessunNuovo = [...w.all("enemy_build")].map((b) => b.object).sort().join(",")
+  // [§9.46] senza il centro non c'e' piu' un magazzino: se ne fanno di
+  // nuovi (uno o due: le risorse erano attorno al centro, da parti opposte),
+  // gli unici edifici nuovi
+  const now = [...w.all("enemy_build")].map((b) => b.object);
+  out.magazziniNuovi = now.filter((o) => o === "enemy_magazzino").length;
+  out.nessunNuovo = now.filter((o) => o !== "enemy_magazzino").sort().join(",")
     === builds0.split(",").filter((o) => o !== "enemy_centro").join(",") && !w.exists("enemy_cantiere");
   return out;
 });
@@ -120,7 +126,7 @@ const ok = res.soldati.includes("enemy_cavaliere") && res.soldati.includes("enem
   && res.spent > 0 && res.attacco > 0 && res.giocatore
   && res.riparazione >= 0 && res.legnoRip >= 100
   && res.cantiere !== null && res.ricostruita >= 0 && res.stessoPunto && res.legnoRic >= 170
-  && res.centroRifatto === 0 && res.nessunNuovo && errs.length === 0;
+  && res.centroRifatto === 0 && res.magazziniNuovi >= 1 && res.nessunNuovo && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");
 await browser.close();
