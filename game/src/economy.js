@@ -296,7 +296,8 @@ function findSpot(w, p, P, need, workers) {
 
 // enemy_cantiere: il cantiere nemico. Lo crea la regia (enemy_eco) con
 // l'edificio da rifare (target), sprite, maschera, vita e fasi del
-// cantiere alleato corrispondente; i lavoratori nemici lo costruiscono come
+// cantiere alleato corrispondente (decisione dell'autore: gli sprite dei
+// cantieri nemici sono quelli alleati); i lavoratori nemici lo costruiscono come
 // i civili un ally_fondamenta (civilians.js, azione 6; rate: vita a colpo).
 // Finito, al suo posto l'edificio. I fanti del giocatore gli danno fuoco
 // (clic destro) come agli edifici di legno; bruciato, il nemico lo rifara'.

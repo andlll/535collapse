@@ -5740,6 +5740,8 @@ edificio sotto la maschera; le rovine si tolgono), nello stesso punto; nel
 frattempo il suo costo resta da parte (lavoratori e soldati non lo
 spendono). Il cantiere (`enemy_cantiere`, nuovi.json, `kit: false`) ha
 sprite, fasi, maschera, vita e costo del cantiere alleato corrispondente
+([decisione dell'autore, 19 ottobre 2026] anche lo sprite: i cantieri
+nemici sono quelli alleati, non ce ne saranno di propri)
 (buildings.js FAM, gli oggetti *_fond); fino a 3 lavoratori lo costruiscono
 come i civili un ally_fondamenta (stessa vita per colpo). Finito, al suo
 posto l'edificio nemico, che si vede come il cantiere. Il cantiere brucia
