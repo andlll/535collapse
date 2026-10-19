@@ -104,11 +104,15 @@ def _mask_of(name, d, im, cache):
 
 
 def sprites():
-    """{nome: {"image" (o None), "mask" (o None), "origin", "fette":
+    """{nome: {"image" (o None; il primo fotogramma), "frames", "mask" (o None), "origin", "fette":
     [(x0, x1, front)], "pezzi": [(x0, y0, x1, y1)], "gruppo", "acqua"}}"""
     out, cache = {}, {}
     for name, d in load()["sprites"].items():
-        im = None if d.get("poligono") else image(name)
+        # [§9.48] sprite a piu' fotogrammi: un PNG per fotogramma (stessa misura)
+        frames = [image(f) for f in d["fotogrammi"]] if d.get("fotogrammi") else None
+        if frames and any(f.size != frames[0].size for f in frames):
+            raise SystemExit("%s: i fotogrammi non hanno la stessa misura" % name)
+        im = frames[0] if frames else None if d.get("poligono") else image(name)
         if im is not None and d.get("differenza"):
             im = _difference(im, d["differenza"])
         m = _mask_of(name, d, im, cache)
@@ -152,7 +156,7 @@ def sprites():
                     box = (x0, y0, min(im.width, x0 + T), min(im.height, y0 + T))
                     if a.crop(box).getbbox():
                         tiles.append(box)
-        out[name] = {"image": im, "mask": m, "origin": o, "fette": slices, "pezzi": tiles,
+        out[name] = {"image": im, "frames": frames or [im], "mask": m, "origin": o, "fette": slices, "pezzi": tiles,
                      "gruppo": d.get("gruppo", "edifici"), "acqua": bool(d.get("acqua"))}
     return out
 

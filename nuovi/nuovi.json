@@ -144,6 +144,24 @@
       "origin": "centro",
       "gruppo": "ambiente",
       "nota": "il titolo del menu, al posto del logo535 (§9.47): generato da tools/13_logo.py"
+    },
+    "mub": {
+      "fotogrammi": [
+        "mub1",
+        "mub2",
+        "mub3",
+        "mub4",
+        "mub5",
+        "mub6",
+        "mub7",
+        "mub8",
+        "mub9"
+      ],
+      "origin": [
+        88,
+        261
+      ],
+      "nota": "il mulino nemico dell'autore (§9.48): 9 fotogrammi, pale a 4 ruotate di 10 gradi l'una; fotogrammi riallineati di 1-2 px sulla parte ferma e tela allargata di 2 px per lato; origine dove barn_b ha la sua (la torre sovrapposta), cosi' vale la stessa maschera barn_mask"
     }
   },
   "objects": {
@@ -415,7 +433,7 @@
       "nota": "il magazzino nemico: passivo, brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
     },
     "enemy_mulino": {
-      "sprite": "barn_b",
+      "sprite": "mub",
       "mask": "barn_mask",
       "parents": [
         "enemy_wooden",
@@ -427,7 +445,7 @@
       "depth": {
         "y": 0
       },
-      "nota": "il mulino nemico: passivo, le pale girano (3 fotogrammi), brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+      "nota": "il mulino nemico: passivo, le pale girano (9 fotogrammi dell'autore, mub, §9.48), brucia (§9.43; maschera dell'originale)"
     },
     "enemy_omino": {
       "sprite": "ow11",

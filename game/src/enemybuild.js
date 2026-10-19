@@ -77,7 +77,7 @@ const KIND = {
   enemy_castello: { life: 900, ruin: "castelloruin", icon: "ico_castello", smoke: 30, bases: [],
                     arrows: [50, [[20, -150], [20, -170]]] },
   enemy_magazzino: { life: 140, ruin: "magruin", icon: "ico_magazzino", smoke: 30, bases: [], wooden: true },
-  enemy_mulino: { life: 150, ruin: "barnruin", icon: "ico_barn", smoke: 12, bases: [], wooden: true, speed: 0.1 },
+  enemy_mulino: { life: 150, ruin: "barnruin", icon: "ico_barn", smoke: 12, bases: [], wooden: true, speed: 0.3 }, // §9.48: come il mulino alleato
 };
 export const ENEMY_BUILDINGS = Object.keys(KIND);
 

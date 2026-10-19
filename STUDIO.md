@@ -5847,3 +5847,29 @@ verso il basso, misurata riga per riga sul logo535 sull'altezza delle
 maiuscole. Lo genera `tools/13_logo.py` (PNG versionato). Le icone della
 PWA (tools/09_icons.py) e i nomi del gioco altrove (titolo della pagina,
 manifest, zip) restano "535" finche' l'autore non decide.
+
+### 9.48 Il mulino nemico dell'autore
+
+L'autore ha disegnato il mulino nemico (nuovi/sprites/mub1..mub9.png): 9
+fotogrammi con le 4 pale ruotate di 10 gradi l'uno dall'altro, come il
+mulino alleato (mul1: 9 fotogrammi per un quarto di giro). Al posto di
+barn_b (3 fotogrammi dell'originale).
+
+**Allineamento.** Richiesta dell'autore: verificare il centro di ogni
+immagine (dopo la post-produzione). Confrontata la parte ferma (torre e
+casetta, righe 205-294) di ogni fotogramma col primo, spostamenti da -6 a
++6 px: i fotogrammi 2-9 erano fuori di 1-2 px (2 e 3: 1 in alto; 4 e 9: 2 a
+destra; 5, 6, 7: 1 a destra e 1 in alto; 8: 1 a destra); spostati, la
+parte ferma coincide col primo (differenza media 0-1,4 su 765, prima 20-69).
+I PNG sono stati corretti cosi' (tela allargata di 2 px per lato, 236x298:
+nessun pixel tagliato). Il palo delle pale resta nelle stesse colonne in
+tutti i fotogrammi (entro 1 px).
+
+**Nel gioco.** Gli sprite di nuovi.json ora possono avere piu' fotogrammi
+(`fotogrammi`: i PNG, stessa misura; tools/nuovi.py, 05_atlas.py). Lo
+sprite `mub` ha l'origine dove barn_b ha la sua (88, 261: la torre di mub1
+sovrapposta a quella di barn_b), cosi' enemy_mulino tiene la maschera
+barn_mask; le pale girano a 0,3 fotogrammi per passo come il mulino
+alleato (enemybuild.js KIND). Il kit di Tiled non e' stato rigenerato
+(l'autore ci sta lavorando): alla prossima rigenerazione la tile del
+mulino nemico avra' il disegno nuovo.

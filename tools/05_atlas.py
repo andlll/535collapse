@@ -392,6 +392,14 @@ def main():
         if d["pezzi"] or not im.getchannel("A").getbbox():
             manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height,
                                          "origin": list(d["origin"]), "scale": 1.0, "frames": [None]}
+        elif len(d["frames"]) > 1:  # [§9.48] a piu' fotogrammi (il mulino nemico)
+            fr = []
+            for k, f in enumerate(d["frames"]):
+                bb = f.getchannel("A").getbbox()
+                fr.append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
+                items[g].append((name, k, f.crop(bb)))
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height,
+                                         "origin": list(d["origin"]), "scale": 1.0, "frames": fr}
         else:
             extra.append((name, g, im, tuple(d["origin"])))
         for k, (x0, x1, _) in enumerate(d["fette"]):
