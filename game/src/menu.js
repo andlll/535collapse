@@ -171,7 +171,7 @@ export function enemyManagerMenu() {
         // toccato (lvlshown), cosi' la storia si legge scendendo col puntatore
         i.lvlhover = 0;
         for (let k = 1; k <= 10; k++) {
-          if (inRect(mx, my, 30, 35 + 40 * k, 290, 85 + 40 * k) && shownLevel(g, k)) i.lvlhover = k;
+          if (inRect(mx, my, 30, 35 + 40 * k, i.listR || 290, 85 + 40 * k) && shownLevel(g, k)) i.lvlhover = k;
         }
         if (i.lvlhover > 0) i.lvlshown = i.lvlhover;
         i.combHover = null;
@@ -212,7 +212,7 @@ export function enemyManagerMenu() {
         i.sblocco = 0;
       }
       const room = ROOMS[i.lvlhover];
-      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
+      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
       if (i.c_unlhover === 1) { i.sblocco = 1; i.c_unlhover = 0; return; }
       if (i.sblocco === 1) {
         if (i.combHover) {
@@ -268,7 +268,8 @@ function drawTitle(i, d, W, H) {
   d.setAlpha(1);
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre basse: sale a meta' dello spazio sopra i pulsanti
-  d.sprite("logo535", 0, W / 2, Math.min(350, b.top / 2));
+  // [§9.47, richiesta dell'autore] il titolo "Dust Veil" al posto del "535"
+  d.sprite("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2));
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu
@@ -340,8 +341,14 @@ function drawCampaign(i, g, d, W, H) {
     d.setColour(c.black);
     d.setFont("overdue");
   }
+  // [§9.47] l'elenco si allarga per il nome piu' lungo (con Cinzel il
+  // tedesco usciva di 1 px): bordo destro i.listR, prima fisso a 290
+  d.setFont("overdue");
+  let longest = 0;
+  LEVELS.forEach((name, k) => { if (shownLevel(g, k + 1)) longest = Math.max(longest, d.stringWidth(k + 1 + ". " + tr(name))); });
+  i.listR = Math.max(290, 40 + longest + 20);
   d.setAlpha(0.69);
-  d.roundrectColourExt(20, 20, 300, 90 + 40 * shownCount(g), 60, 60, c.white, c.white, false);
+  d.roundrectColourExt(20, 20, i.listR + 10, 90 + 40 * shownCount(g), 60, 60, c.white, c.white, false);
   d.setAlpha(i.c_indhover ? 0.99 : 0.69);
   d.circleColour(W - 50, 50, 30, c.white, c.white, false);
   d.setAlpha(i.c_unlhover ? 0.99 : 0.69);
@@ -349,7 +356,7 @@ function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.99);
   // la storia del livello sotto il puntatore
   d.setFont("overdue");
-  if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
+  if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, i.listR, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
   if (i.lvlshown > 0) {
     i.testo_c = STORY[i.lvlshown] ? tr(STORY[i.lvlshown]) : tr("Coming soon");
     // [C, §3.20 n.73] l'altezza si misura con righe da 40 px, il testo si

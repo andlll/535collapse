@@ -139,6 +139,11 @@
       "maschera": "alpha",
       "fette": 32,
       "gruppo": "terreno"
+    },
+    "logo_dustveil": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "il titolo del menu, al posto del logo535 (§9.47): generato da tools/13_logo.py"
     }
   },
   "objects": {

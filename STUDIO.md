@@ -5802,3 +5802,48 @@ magazzino e il legno arriva nelle scorte; il campo lontano ha un mulino
 nuovo accanto; nessun altro edificio. Anche `enemyarmy.mjs` ora lo
 vede: distrutto il centro (l'unico deposito di legno, oro e pietra della
 prova) il nemico si fa uno o due magazzini, dalle parti delle risorse.
+
+### 9.47 Font Cinzel e titolo "Dust Veil"
+
+Decisione dell'autore (14-19 ottobre 2026). Il gotico (Seagram tfb, §2.3,
+§2.5) e' anacronistico per il 535: la scrittura gotica nasce nel XII
+secolo; nel VI secolo si scriveva in capitale romana (iscrizioni) e in
+onciale (libri). Confrontati nel gioco Seagram, Uncial Antiqua (onciale:
+bello nei titoli, illeggibile nel testo piccolo: t come c, n come u),
+Cinzel (capitale romana) e un misto; per il titolo anche Grenze Gotisch,
+Cinzel Decorative e Marcellus SC. Scelti: **Cinzel** per il testo
+dell'interfaccia e **Cinzel Decorative Bold** per i titoli.
+
+**Font.** I TTF sono in `nuovi/font/` con le licenze (SIL OFL 1.1: si
+possono usare e ridistribuire col gioco; "Cinzel" e' un nome riservato,
+quindi i file non si modificano). `tools/05_atlas.py` (`FONT_TTF`,
+`ttf_glyphs`) li rasterizza nel formato dei glifi di GameMaker, al posto
+dei fogli Seagram: i tre font del gioco mantengono nome e altezza di riga
+(il codice non cambia):
+
+| font del gioco | uso | TTF | peso | px |
+|---|---|---|---|---|
+| GUI_1 | titoli delle schede, numeri, pulsanti | Cinzel | 700 | 19 |
+| overdue | descrizioni, messaggi | Cinzel | 500 | 18 |
+| gui_sblocco | titoli (Pausa, vittoria, sblocchi) | Cinzel Decorative Bold | - | 36 |
+
+Le dimensioni: a parita' di frase ~12% piu' larghi del Seagram (Cinzel e'
+piu' basso). Le maiuscole hanno il centro dove l'aveva il Seagram (testi
+centrati nei pulsanti come prima). Lettere accentate e segni delle
+traduzioni sono quelli veri del font (prima composti dalla lettera e da un
+segno, §6.1): draw.js riduce ora solo gli spazi speciali (ß, œ, virgolette,
+trattini lunghi, puntini si scrivono come sono). Anche i messaggi HTML
+(domtext.js) usano i glifi nuovi. Cinzel non ha minuscole vere: le
+minuscole sono maiuscolette.
+
+L'elenco dei livelli della campagna ora si allarga per il nome piu' lungo
+(menu.js `i.listR`): in tedesco "Schieb die Sonne beiseite" usciva di 1 px
+(game/test/browser/ui.mjs).
+
+**Titolo.** Il "535" sfumato del menu (sprite logo535 dell'originale) e'
+diventato "Dust Veil" in Cinzel Decorative Bold (`logo_dustveil`, gruppo
+ambiente come il logo535, nuovi.json): stesso grigio e stessa sfumatura
+verso il basso, misurata riga per riga sul logo535 sull'altezza delle
+maiuscole. Lo genera `tools/13_logo.py` (PNG versionato). Le icone della
+PWA (tools/09_icons.py) e i nomi del gioco altrove (titolo della pagina,
+manifest, zip) restano "535" finche' l'autore non decide.
