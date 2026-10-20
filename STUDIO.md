@@ -6248,3 +6248,18 @@ come deposito 76 invece di 73, con l'oro 0 inversioni invece di 39.
 inversioni o meno di 30 consegne non va) fallisce col codice di prima
 (65 e 120 inversioni) e passa con questo; e' nella CI. Passano anche
 mining, workers, idle, deposit, economy, lvl04 e soak.
+
+### 9.61 Fiori e papaveri ondeggiano meno
+
+Richiesta dell'autore: l'ondeggiare di fiori e papaveri, rispetto all'erba,
+da' un po' fastidio per l'altezza e le cime colorate. L'oscillazione delle
+particelle e' una rotazione attorno al piede dello stelo (wiggle
+dell'orientamento, ±4 gradi ogni 16-32 passi, come l'erba): i papaveri,
+alti ~79 px contro i ~39 dell'erba, spostavano la cima rossa del doppio, i
+gialli (~57 px) di una volta e mezza. Ora (effects.js, `FLOWER_SWAY`) i
+papaveri ondeggiano di ±1,5 gradi e i gialli di ±2, un po' meno della
+proporzione con l'erba, e piu' lenti: un periodo di 24-48 passi
+(`wigglePeriod`, proprieta' nuova dei tipi di particella in particles.js;
+senza, 16-32 come prima). L'inclinazione fissa di ciascun fiore (±15 gradi)
+e l'erba non cambiano. Provati salvataggi e soak di lvl03 e lvl04 (le
+macchie fiorite).
