@@ -6299,3 +6299,40 @@ mischia, macchine d'assedio e civili, non soldati fermi. attackorder.mjs da'
 lo stesso risultato di prima; passano melee, rally, fireorder, idle,
 monastery, lvl04, enemydefense, saves, soak. `settle.mjs` fallisce col
 codice di prima (9 e 33 coppie) e passa con questo; e' nella CI.
+
+### 9.63 Gli arcieri escono da torre e fortezza
+
+Richiesta dell'autore: poter far uscire gli arcieri di presidio, con delle
+icone nella torre simili a quelle della caserma che, premute, li fanno
+uscire; nella fortezza nella seconda riga.
+
+Nell'originale un arciere entrato (azione 15, presidio) veniva distrutto e
+l'edificio contava `npresidio`: non usciva piu'. Ora (ranged.js,
+`garrisoned`):
+- con l'edificio selezionato, un pulsante per arciere di presidio: l'icona
+  dell'arciere (0,6) nel cerchio bianco da 30 px, come i pulsanti di
+  produzione, a x 450, 520, 590, 660; nella torre in prima riga (y 50),
+  nella fortezza in seconda (y 120), sotto ariete, catapulta e annulla.
+  Nella fortezza barra di produzione e coda passano alla terza riga
+  (production.js, `queueY` 190; le altre caserme restano a 120);
+- col puntatore sopra: cerchio piu' pieno (0,99), global.sele=1 (come
+  buttonSele), e la scheda in basso "Archer / Click to send this archer
+  out of the tower." (o "of the fortress."), tradotta nelle sei lingue
+  (texts.js); il clic non deseleziona l'edificio;
+- il clic fa uscire un arciere: npresidio -1, l'arciere nasce accanto
+  all'edificio (il suo Create cerca un posto libero, findFreeSpawn), con la
+  vita che aveva entrando (`garrisonLives`, l'ultimo entrato esce per
+  primo), la popolazione torna su di 2; le frecce dell'edificio seguono
+  npresidio; le bandiere degli arcieri che non ci sono piu' spariscono
+  (flagged/flagged1..4 tornano 0, cosi' rientrando ricompaiono).
+
+Prova nuova `game/test/browser/garrison.mjs` (nella CI): torre con 2
+arcieri e fortezza con 4 (con un ariete in produzione), entrati col clic
+destro vero, usciti coi pulsanti: conti, vite, popolazione, bandiere,
+selezione e produzione. Passano anche ui.mjs (sei lingue), saves e soak.
+
+**Trovato provando, non corretto.** Sotto i 500 px l'ordine di presidio
+porta l'arciere dritto verso l'edificio (mpPotentialStep, ranged.js
+`move`), senza il ripiego sul campo di flusso degli ordini di spostamento
+(§6.2 D, seesGoal): con un edificio in mezzo (una torre dietro una
+caserma) l'arciere resta fermo a camminare sul posto. C'era gia' prima.
