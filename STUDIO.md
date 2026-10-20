@@ -6205,3 +6205,46 @@ boschi nuovi (§9.46).
 
 Prove: lvl04.mjs, economy.mjs, saves.mjs e soak.mjs (lvl04) senza errori;
 gli scenari rigenerati da tutte le mappe coincidono con quelli versionati.
+
+### 9.60 Civili che si ingarbugliano tornando al deposito
+
+Segnalazione dell'autore: i lavoratori alleati "si incasinano" quando
+tornano al magazzino a scaricare, soprattutto se arrivano da in alto a
+sinistra.
+
+**Misura** (prova nuova `game/test/browser/depot.mjs`, sotto): magazzino in
+campo aperto nel match, 6 civili che tagliano un boschetto in una sola
+direzione, 6000 passi. Inversioni di marcia col carico vicino al magazzino:
+da nord-ovest 114, da nord 194, dalle altre direzioni 0; da nord-ovest il
+viaggio piu' lento (209 passi col carico per consegna, 163-187 dalle altre).
+
+**Causa.** La meta del viaggio e' il centro dell'edificio e il campo di
+flusso porta alle celle libere piu' vicine a lui; nel magazzino il centro
+sta vicino al lato alto, quindi da nord e da nord-ovest arrivavano tutti
+allo stesso spigolo posteriore, in una fila sola percorsa nei due sensi
+(chi arriva carico, chi riparte vuoto). Da vicino la precedenza fra civili
+(ominoMove) li faceva aspettare o scansare (separate) a vicenda: avanti e
+indietro attorno allo spigolo.
+
+**Correzione** (civilians.js, ominoMove). Entro 150 px da un deposito
+(DEP_NEAR, magazzino o granaio della fazione) chi raccoglie (legno, oro,
+pietra, cibo; col carico o appena scaricato) passa sopra gli altri civili,
+come gia' attorno a miniere e pietre (§9.21): da lontano col campo (che non
+ha collisioni), da vicino col passo con le collisioni verso il deposito ma
+senza contare i compagni (mpPotentialStep, overAllies). Se il campo lo ha
+portato dentro un ostacolo vero (un albero accanto al mulino, nella prova
+economy.mjs) ne esce col campo come prima: col passo con le collisioni
+girava su se stesso.
+
+Provate e scartate: un posto sul bordo del deposito per ciascuno (come la
+consegna su ordine, §8.19: giravano attorno all'edificio, inversioni da 5 a
+10 volte di piu' in tutte le direzioni); i 100 px del tratto finale misurati
+dal bordo invece che dal centro (peggio anche quello).
+
+Dopo: 0 inversioni da tutte le direzioni, piu' consegne (da nord-ovest 66
+invece di 58, 173 passi col carico per consegna invece di 209); col centro
+come deposito 76 invece di 73, con l'oro 0 inversioni invece di 39.
+`depot.mjs` (nord-ovest, nord, sud-est, 4000 passi; con piu' di 20
+inversioni o meno di 30 consegne non va) fallisce col codice di prima
+(65 e 120 inversioni) e passa con questo; e' nella CI. Passano anche
+mining, workers, idle, deposit, economy, lvl04 e soak.

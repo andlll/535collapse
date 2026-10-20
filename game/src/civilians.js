@@ -461,6 +461,7 @@ function ominoStep(i, w, p, stop) {
 // che la cella si liberasse.
 const WORK = { sep: 30, extras: [0, 8] };
 const WAIT_MAX = 60; // passi di attesa di fila per la precedenza (1 s), ominoMove
+const DEP_NEAR = 150; // §9.60: px da un deposito entro cui chi raccoglie passa sopra i compagni
 function toWorkSpot(w, i, res) {
   const s = res && meleeSpot(w, i, res, null, WORK);
   if (s) mpPotentialStep(w, i, s[0], s[1], i.autospeed);
@@ -687,7 +688,21 @@ function ominoMove(i, w, p) {
     // [§9.21] vicino alla miniera o alla pietra si va al proprio posto anche
     // sovrapposti ad altri civili (toResSpot passa sopra di loro)
     const atRes = !!res && !far && (i.goldwork === 1 || i.stonework === 1);
+    // [§9.60, segnalazione dell'autore] vicino a un deposito chi raccoglie
+    // (col carico, o appena scaricato) passa sopra gli altri civili, come
+    // attorno a miniere e pietre (§9.21): da nord-ovest arrivavano tutti
+    // allo stesso spigolo del magazzino, in una fila sola a doppio senso, e
+    // chi andava e chi tornava si fermavano o si scansavano a vicenda
+    const atDep = !atRes && !i.depositTo && (i.woodwork || i.goldwork || i.stonework || i.foodwork)
+      && (w.distanceToObject(i, S.magazza) < DEP_NEAR || w.distanceToObject(i, S.barn) < DEP_NEAR);
     if (atRes) toResSpot(w, i, res); // §9.21
+    // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
+    // vero (albero, edificio) in cui il campo l'ha portato
+    else if (atDep && (far || !w.placeFreeExcept(i, i.x, i.y, S.unit))) moveFlowField(w, p, i);
+    else if (atDep && (i.woodwork === 2 || i.goldwork === 2 || i.stonework === 2 || i.foodwork === 2)) {
+      const d = i.foodwork === 2 ? n(S.barn, i.dirox, i.diroy) : n(S.magazza, i.dirox, i.diroy);
+      if (d) mpPotentialStep(w, i, d.x, d.y, i.autospeed, false, true);
+    }
     else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
       const otro = w.instancePlace(i, i.x, i.y, S.unit);
       if (otro) {
