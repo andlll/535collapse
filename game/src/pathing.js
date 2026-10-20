@@ -822,6 +822,28 @@ export function walkLine(p, x0, y0, x1, y1) {
 // vanno. Chi arrivava in fondo al campo senza "vedere" la sua casella
 // andava avanti e indietro di una cella a ogni passo, voltandosi (gli
 // incroci fra due gruppi: decine di unita' ammucchiate e tremolanti).
+// [§9.64, segnalazione dell'autore] La linea dall'unita' al bordo
+// dell'edificio `t` (il punto del suo riquadro piu' vicino, fermandosi 40 px
+// prima: le celle dell'edificio stesso sono ostacolo) non passa per
+// ostacoli fissi. Serve agli ordini verso un edificio (presidio, cantiere,
+// riparazione) che da vicino andavano dritti: con un edificio o un bosco in
+// mezzo l'unita' camminava sul posto. Senza vista, il campo di flusso. A
+// meno di SEES_NEAR px dal bordo vale sempre la vista (dritti, come prima):
+// li' l'unita' puo' stare in una cella toccata da un altro edificio, e la
+// linea, chiusa dalla prima cella, la faceva andare avanti e indietro fra
+// campo e passo dritto.
+const SEES_NEAR = 80;
+export function seesTarget(w, p, inst, t) {
+  if (!t) return true;
+  const b = w.bbox(t);
+  if (!b) return p.clearSolid(inst.x, inst.y, t.x, t.y);
+  const nx = Math.max(b[0], Math.min(inst.x, b[2])), ny = Math.max(b[1], Math.min(inst.y, b[3]));
+  const d = Math.hypot(nx - inst.x, ny - inst.y);
+  if (d <= SEES_NEAR) return true;
+  const k = (d - 40) / d;
+  return p.clearSolid(inst.x, inst.y, inst.x + (nx - inst.x) * k, inst.y + (ny - inst.y) * k);
+}
+
 export function seesGoal(p, inst) {
   const f = inst.flow_field;
   if (!(f instanceof Int32Array)) return true;

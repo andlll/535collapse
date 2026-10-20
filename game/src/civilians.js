@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
@@ -460,6 +460,12 @@ function ominoStep(i, w, p, stop) {
 // uno sopra l'altro) e il secondo spingeva contro il primo, o aspettava
 // che la cella si liberasse.
 const WORK = { sep: 30, extras: [0, 8] };
+const EDGE = { sep: 30, extras: [0] }; // §9.64: solo a contatto (cantiere, riparazione)
+function toEdgeSpot(w, i, t) {
+  if (!t) return;
+  const s = meleeSpot(w, i, t, null, EDGE);
+  mpPotentialStep(w, i, s ? s[0] : t.x, s ? s[1] : t.y, i.autospeed);
+}
 const WAIT_MAX = 60; // passi di attesa di fila per la precedenza (1 s), ominoMove
 const DEP_NEAR = 150; // §9.60: px da un deposito entro cui chi raccoglie passa sopra i compagni
 function toWorkSpot(w, i, res) {
@@ -695,6 +701,12 @@ function ominoMove(i, w, p) {
     // chi andava e chi tornava si fermavano o si scansavano a vicenda
     const atDep = !atRes && !i.depositTo && (i.woodwork || i.goldwork || i.stonework || i.foodwork)
       && (w.distanceToObject(i, S.magazza) < DEP_NEAR || w.distanceToObject(i, S.barn) < DEP_NEAR);
+    // [§9.64] verso il cantiere o l'edificio da riparare: col campo anche da
+    // vicino se in linea retta c'e' un ostacolo (prima: dritto, e con un
+    // edificio o un bosco in mezzo il civile camminava sul posto)
+    const bldT = i.buildwork === 1 ? n(S.fond, i.buildx, i.buildy)
+      : i.repairwork === 1 && !complexOf(i.repT) ? n(S.build, i.repx, i.repy) : null;
+    const blocked = !!bldT && !seesTarget(w, p, i, bldT);
     if (atRes) toResSpot(w, i, res); // §9.21
     // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
     // vero (albero, edificio) in cui il campo l'ha portato
@@ -703,7 +715,7 @@ function ominoMove(i, w, p) {
       const d = i.foodwork === 2 ? n(S.barn, i.dirox, i.diroy) : n(S.magazza, i.dirox, i.diroy);
       if (d) mpPotentialStep(w, i, d.x, d.y, i.autospeed, false, true);
     }
-    else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
+    else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i)) || blocked) {
       const otro = w.instancePlace(i, i.x, i.y, S.unit);
       if (otro) {
         // [§8.19] vicino alla risorsa o al deposito ci si stacca, tutti e
@@ -743,8 +755,13 @@ function ominoMove(i, w, p) {
       }
       // [§8.19] al proprio posto attorno alla risorsa (prima: mp_potential_step
       // verso il centro della miniera o della pietra piu' vicina)
-      if (i.buildwork === 1) mp(n(S.fond, i.buildx, i.buildy));
-      if (i.repairwork === 1) mp(n(S.build, i.repx, i.repy));
+      // [§9.64] al cantiere e all'edificio da riparare: un posto libero sul
+      // bordo (a 4 px, meleeSpot), diverso da quello dei compagni, non il
+      // centro: due civili verso lo stesso punto, il secondo restava a 45 px
+      // a fare avanti e indietro (si comincia a 5 px, buildStep). Il ponte
+      // del livello 4 (buildReach) come prima
+      if (i.buildwork === 1) { const f = n(S.fond, i.buildx, i.buildy); if (f && !f.buildReach) toEdgeSpot(w, i, f); else mp(f); }
+      if (i.repairwork === 1) toEdgeSpot(w, i, n(S.build, i.repx, i.repy));
       if (i.fieldwork === 1) {
         const f = n("campo_fond", i.buildx, i.buildy);
         mp(f);
@@ -1063,9 +1080,12 @@ function buildStep(i, w, p) {
       f.occupato = 1;
     }
   }
-  // riparazione ([§9.29] di un complesso: da un pezzo qualunque)
+  // riparazione ([§9.29] di un complesso: da un pezzo qualunque).
+  // [§9.64] Si comincia a 10 px dall'edificio, come al cantiere (era 5): col
+  // posto sul bordo (toEdgeSpot, a 4 px) l'ultimo passo, chiuso
+  // dall'edificio, poteva lasciare il civile a 6 px, fermo a camminare
   const rc = complexOf(i.repT);
-  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, S.build)) < 5)) {
+  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, S.build)) < 10)) {
     i.repairwork = 0;
     p.occupy(i);
     i.action = 7;
@@ -1177,6 +1197,16 @@ function otherWorkTick(i, w) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
     // anche il fuoco (e le fiamme)
     const b = complexOf(i.repT) || w.nearest(i.repx, i.repy, S.build); // §9.29
+    // [§9.64, segnalazione dell'autore] senza il materiale (pietra per gli
+    // edifici di pietra, legno per quelli di legno) il civile si ferma,
+    // inattivo, e la risorsa che manca lampeggia: prima continuava a
+    // martellare senza che la vita salisse
+    if (b && (b.pietra === 1 || b.legno === 1) && !(b.pietra === 1 && g.stone > 0) && !(b.legno === 1 && g.wood > 0)) {
+      if (S.player) w.create(b.pietra === 1 ? "stone_blink" : "wood_blink", 0, 0);
+      i.action = 0; i.repairwork = 0; i.repT = null; i.step = 0; i.speed = 0;
+      g.idle += 1;
+      return;
+    }
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
       if (b.life > b.slife) b.life = b.slife;

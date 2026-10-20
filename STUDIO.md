@@ -6331,8 +6331,62 @@ arcieri e fortezza con 4 (con un ariete in produzione), entrati col clic
 destro vero, usciti coi pulsanti: conti, vite, popolazione, bandiere,
 selezione e produzione. Passano anche ui.mjs (sei lingue), saves e soak.
 
-**Trovato provando, non corretto.** Sotto i 500 px l'ordine di presidio
-porta l'arciere dritto verso l'edificio (mpPotentialStep, ranged.js
-`move`), senza il ripiego sul campo di flusso degli ordini di spostamento
-(§6.2 D, seesGoal): con un edificio in mezzo (una torre dietro una
-caserma) l'arciere resta fermo a camminare sul posto. C'era gia' prima.
+**Trovato provando.** Sotto i 500 px l'ordine di presidio portava
+l'arciere dritto verso l'edificio (mpPotentialStep, ranged.js `move`),
+senza il ripiego sul campo di flusso degli ordini di spostamento (§6.2 D,
+seesGoal): con un edificio in mezzo (una torre dietro una caserma)
+l'arciere restava fermo a camminare sul posto. C'era gia' prima; corretto
+nel §9.64.
+
+### 9.64 Ordini verso un edificio con un ostacolo in mezzo; riparare senza materiale
+
+Richieste dell'autore: correggere il presidio bloccato (§9.63, "trovato
+provando"), "credo ci sia un problema del genere anche per i lavoratori
+mandati a costruire"; e "se i lavoratori non hanno le risorse per riparare
+si fermano e si mettono in idle, mentre ora continuano a martellare anche
+se la vita dell'edificio non sale".
+
+**Misura** (prova nuova `game/test/browser/blocked.mjs`, deterministica, nel
+match in campo aperto: una caserma fra le unita' e la meta, a ~360 px,
+clic destro vero), col codice di prima:
+- presidio (2 arcieri, una torre dietro la caserma): non entrano mai;
+- costruzione (2 civili, il cantiere di una casa dietro la caserma): uno
+  resta dietro la caserma, il cantiere finisce in 954 passi;
+- riparazione (2 civili, un magazzino a 40/140 dietro la caserma): uno
+  resta dietro la caserma a camminare sul posto, 1500-1585 passi;
+- senza legno (un civile, un magazzino danneggiato accanto, legno 0):
+  martella per 883 passi su 900, la vita resta 60.
+
+**Cause.** Da vicino (arcieri sotto i 500 px dalla meta, civili sotto i 300)
+gli ordini verso un edificio andavano dritti (mpPotentialStep) senza
+guardare se in mezzo c'era un ostacolo. E al cantiere e alla riparazione
+due civili puntavano allo stesso punto (il centro dell'edificio): il
+secondo, arrivato da sotto, restava a 45 px a fare avanti e indietro
+(si comincia a riparare a 5 px).
+
+**Correzioni.**
+- `seesTarget` (pathing.js): la linea dall'unita' al punto piu' vicino del
+  riquadro dell'edificio (40 px prima: le celle dell'edificio sono
+  ostacolo) e' libera da ostacoli fissi; a meno di 80 px vale sempre. Senza
+  vista l'unita' va col campo di flusso, che aggira: l'arciere col presidio
+  (ranged.js `move`), il civile verso il cantiere o l'edificio da riparare
+  (civilians.js `ominoMove`; non i complessi, §9.29, che hanno gia' il loro).
+- Al cantiere e all'edificio da riparare il civile va a un posto libero sul
+  bordo (`toEdgeSpot`: meleeSpot a contatto, a 4 px, settori di 30 gradi),
+  diverso da quello dei compagni, invece che al centro; il ponte del
+  livello 4 (buildReach) come prima. La riparazione comincia a 10 px dal
+  bordo, come il cantiere (era 5: l'ultimo passo verso il posto, chiuso
+  dall'edificio, poteva lasciare il civile a 6 px).
+- Riparazione senza materiale (civilians.js, azione 7): se l'edificio e' di
+  pietra e la pietra e' 0, o di legno e il legno e' 0, il civile si ferma
+  inattivo (azione 0, repairwork 0) al primo colpo e la risorsa che manca
+  lampeggia (per il giocatore). Vale anche per i lavoratori nemici (la
+  regia, §9.45, gia' non li mandava senza materiale).
+
+Dopo (semi 1-5): presidio in 164 passi, cantiere in 639 con tutti e due,
+riparazione in 898-937 con tutti e due, senza legno fermo dopo 13 passi.
+`blocked.mjs` (limiti: 600, 800, 1200 passi) fallisce col codice di prima
+e passa con questo; e' nella CI. Passano anche depot, workers, mining,
+idle, economy, lvl04, bridge, monastery, enemybuildings, enemydepots,
+enemyarmy (riparazione e ricostruzione nemiche), garrison, settle,
+deposit, saves, soak, ui.
