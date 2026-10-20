@@ -305,11 +305,12 @@ function drawLoad(i, d, W, H) {
 const L3_MARK = [403, -81];
 const L3_LABEL = [403, -155]; // §9.51: sopra il campanile del segnalino nuovo
 const L3_ARROW = [399, 2, 1.2, 1.1, -60];
-// [§9.51] il livello 4: il ponte sul fiume grande a nord del monastero, con
+// [§9.51, indicazione dell'autore] il livello 4: il ponte a ovest del
+// monastero, sul fiume piccolo (il fiume grande a nord e' l'Adriatico), con
 // la freccia dal 3
-const L4_MARK = [250, -225];
-const L4_LABEL = [250, -290];
-const L4_ARROW = [318, -150, 1.0, 1.0, -40];
+const L4_MARK = [186, -108];
+const L4_LABEL = [186, -180];
+const L4_ARROW = [291, -94, 0.9, 1.0, -10];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
