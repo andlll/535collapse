@@ -22,7 +22,8 @@ difesa e ondate); sprite nemici tutti dell'autore; font Cinzel e titolo
 numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
 servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 "Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
-zip); i livelli 5-10; le voci qui sotto.
+zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove).
 
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
@@ -6035,3 +6036,10 @@ ponte; il ponte riparato sblocca fase, dialogo e ondate da sud; distrutta
 la base nord, niente piu' ondate; distrutto il centro, vittoria. Provato a
 parte che, a ponte riparato, un'ondata della base sud attraversa il ponte
 (partita a ~72 s con scorte abbondanti, a nord del fiume ~10 s dopo).
+
+### 9.53 Livelli sbloccati per le prove
+
+Richiesta dell'autore (20 ottobre 2026): per provare i primi quattro
+livelli, tutti sbloccati. `progress.js` `UNLOCK_ALL = 4`: lo sblocco letto
+dal browser e' almeno 4 (i livelli 1-4 nell'elenco della campagna, senza
+codici). [Provvisorio] Da rimettere a 1 prima dell'uscita.
