@@ -1098,3 +1098,66 @@ export function recountSelection(w) {
   g.milsel = mil;
   Object.assign(g, extra);
 }
+
+// [§9.62, richiesta dell'autore] Soldati fermi uno sopra l'altro: a volte
+// finivano i movimenti sovrapposti (piu' gruppi o piu' ordini verso punti
+// vicini; le caselle della formazione sono diverse solo dentro un gruppo),
+// e alla partenza dopo si incastravano. Ogni SETTLE_EVERY passi, fra i
+// soldati alleati fermi e liberi (niente combattimento, fuoco, presidio,
+// raccolta dopo la produzione; non le macchine d'assedio), di due che si
+// toccano si sposta quello col rango (ordo) piu' basso: al posto libero piu'
+// vicino (anelli da SETTLE_STEP px fino a SETTLE_MAX, prima dalla parte
+// opposta all'altro), raggiungibile dritto senza passare per edifici o
+// alberi. Ci va come verso una casella della formazione (sopra gli
+// alleati); per SETTLE_WAIT passi non si sposta di nuovo.
+const SETTLE_EVERY = 10, SETTLE_STEP = 16, SETTLE_MAX = 160, SETTLE_WAIT = 120;
+const SIEGE = new Set(["ally_ariete", "ally_catapulta"]);
+const atRest = (u) => u.alive && u.visible !== false && !SIEGE.has(u.object) && u.action === 0 && !u.warwork
+  && !u.firework && !u.presidiowork && !u.creation;
+
+function settleSpot(w, u, o) {
+  const p = w.path;
+  const away = pointDirection(o.x, o.y, u.x, u.y);
+  for (let r = SETTLE_STEP; r <= SETTLE_MAX; r += SETTLE_STEP) {
+    for (let k = 0; k < 16; k++) {
+      // dalla direzione opposta all'altro, alternando a destra e a sinistra
+      const a = away + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 22.5;
+      const x = Math.round(u.x + lengthdirX(r, a)), y = Math.round(u.y + lengthdirY(r, a));
+      if (!p.inside(Math.floor(x / GRID), Math.floor(y / GRID)) || p.costAt(Math.floor(x / GRID), Math.floor(y / GRID)) >= 1000) continue;
+      if (!w.placeFree(u, x, y)) continue;
+      let clear = true;
+      for (let s = 8; s < r && clear; s += 8) {
+        if (!w.placeFreeExcept(u, u.x + lengthdirX(s, a), u.y + lengthdirY(s, a), "ally_unit")) clear = false;
+      }
+      if (clear) return [x, y];
+    }
+  }
+  return null;
+}
+
+export function settleOverlaps(w, p) {
+  if (w._stepNo % SETTLE_EVERY !== 0) return;
+  const rest = [...w.all("ally_militare")].filter(atRest);
+  const moved = new Set();
+  for (const u of rest) {
+    if (moved.has(u) || (u.settleUntil || 0) > w._stepNo) continue;
+    for (const o of rest) {
+      if (o === u || moved.has(o) || !w.overlap(u, u.x, u.y, o)) continue;
+      const lower = (o.ordo ?? 0) < (u.ordo ?? 0) || ((o.ordo ?? 0) === (u.ordo ?? 0) && o.id < u.id) ? o : u;
+      const other = lower === u ? o : u;
+      if ((lower.settleUntil || 0) > w._stepNo) continue;
+      const s = settleSpot(w, lower, other);
+      lower.settleUntil = w._stepNo + SETTLE_WAIT;
+      if (!s) continue;
+      p.free(lower);
+      lower.dirox = s[0]; lower.diroy = s[1];
+      lower.formX = s[0]; lower.formY = s[1]; // onFormationSlot: sopra gli alleati
+      lower.goal_x = Math.floor(s[0] / GRID) * GRID; lower.goal_y = Math.floor(s[1] / GRID) * GRID;
+      generateFields(p, lower, s[0], s[1]);
+      lower.action = 1; lower.warwork = 0;
+      lower.alarm.set(0, 5);
+      moved.add(lower);
+      break;
+    }
+  }
+}

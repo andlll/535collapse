@@ -6263,3 +6263,39 @@ proporzione con l'erba, e piu' lenti: un periodo di 24-48 passi
 senza, 16-32 come prima). L'inclinazione fissa di ciascun fiore (±15 gradi)
 e l'erba non cambiano. Provati salvataggi e soak di lvl03 e lvl04 (le
 macchie fiorite).
+
+### 9.62 Soldati fermi uno sopra l'altro
+
+Segnalazione e richiesta dell'autore: a volte i soldati finiscono i
+movimenti sovrapposti e poi, ripartendo, si incastrano; quando si fermano,
+se si puo', quello di rango minore si sposti.
+
+**Misura** (prova nuova `game/test/browser/settle.mjs`): 17 soldati misti nel
+match, ordini col clic destro vero. Dopo gli ordini al gruppo intero
+restavano 0-2 coppie di soldati fermi sovrapposti; con piu' ordini verso
+punti vicini molte di piu': uno per uno nello stesso punto 4, due gruppi
+verso lo stesso punto 9, quattro gruppi verso punti vicini 33. Le caselle
+della formazione (§8.11) sono diverse solo dentro un gruppo; fra gruppi o
+ordini diversi nessuno le confronta.
+
+**Correzione** (units.js, `settleOverlaps`, chiamata da app.js a ogni passo
+dopo il mondo). Ogni 10 passi, fra i soldati alleati fermi e liberi
+(azione 0, niente combattimento, fuoco, presidio, raccolta dopo la
+produzione; non le macchine d'assedio ne' i civili), di due che si toccano
+(maschere, `overlap`) si sposta quello con l'ordo (rango per ordine di
+creazione) piu' basso, a parita' quello creato prima: al posto libero piu'
+vicino su anelli di 16 px fino a 160, a 16 direzioni partendo da quella
+opposta all'altro soldato; il posto deve essere libero da tutti i solidi
+(unita' comprese) e raggiungibile dritto senza passare per edifici, alberi
+o celle chiuse. Ci va come verso una casella della formazione (formX/formY:
+sopra gli alleati, §8.11), col suo campo; per 120 passi non si sposta di
+nuovo (niente catene di spostamenti).
+
+Dopo: 0 coppie sovrapposte in tutti gli ordini (semi 1, 2, 3 nel match, e
+nel livello 2). La prova del movimento (movement.mjs) migliora: rotazioni
+sul posto 10 -> 5, inversioni 257 -> 165, sfarfallii 248 -> 166; il suo
+overlapEnd (a fine combattimento, coi nemici ancora vivi) conta unita' in
+mischia, macchine d'assedio e civili, non soldati fermi. attackorder.mjs da'
+lo stesso risultato di prima; passano melee, rally, fireorder, idle,
+monastery, lvl04, enemydefense, saves, soak. `settle.mjs` fallisce col
+codice di prima (9 e 33 coppie) e passa con questo; e' nella CI.

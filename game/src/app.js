@@ -15,7 +15,7 @@ import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
-import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation } from "./units.js";
+import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
@@ -456,6 +456,7 @@ async function main() {
     world.input = input;
     world.step(input, mx, my);
     recountIdle(world); // §6.1 n.80
+    settleOverlaps(world, path); // §9.62
     recountSelection(world); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);
