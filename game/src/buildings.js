@@ -991,11 +991,17 @@ export function centroCancel() {
 
 // *_blink [C]: un cerchio rosso sopra l'icona della risorsa che manca,
 // sfuma in 25 passi.
+// [§9.54] Uno solo per risorsa: se sta gia' lampeggiando il nuovo sparisce
+// e quello in corso continua col suo ritmo (piu' edifici fermi per la
+// popolazione ne creavano uno a testa, sovrapposti e sfasati).
 const BLINK_POS = { wood_blink: [50, 80], stone_blink: [140, 40], pop_blink: [140, 80],
                     food_blink: [50, 40], gold_blink: [50, 120] };
 export function blink(name) {
   return {
-    create(i) { i.fad = 1; i.alarm.set(0, 25); },
+    create(i, w) {
+      if (w.number(name) > 1) { w.destroy(i); return; }
+      i.fad = 1; i.alarm.set(0, 25);
+    },
     alarm0(i, w) { w.destroy(i); },
     step(i) { i.fad -= 1 / 25; },
     drawGUIEnd(i, w, dr) {

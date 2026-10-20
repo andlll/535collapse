@@ -6054,3 +6054,14 @@ ingrandito un oggetto di una di queste tile (tk.DECOR) che differisce di
 1-2 px; solo per loro (nella room match traccia02 ha davvero scala 1,0012).
 Verificato rifacendo da zero i passi della CI con Python 3.11 e il Pillow
 corrente.
+
+### 9.54 Un solo lampeggio per risorsa
+
+Richiesta dell'autore (20 ottobre 2026): ogni edificio alleato fermo per la
+popolazione piena crea un `pop_blink` a ogni tentativo (production.js,
+centro: ogni 30 passi); con due o piu' edifici i cerchi rossi si
+sovrapponevano sfasati, raddoppiando il lampeggio. Ora `blink()`
+(buildings.js) nel Create si distrugge se ce n'e' gia' uno della stessa
+risorsa: quello in corso continua col suo ritmo e il successivo parte solo
+dopo che si e' spento. Vale per tutti i `*_blink` (anche i clic ripetuti
+senza risorse non accumulano piu' cerchi). Test: `game/test/blink.test.mjs`.
