@@ -16,17 +16,36 @@ import { PRODUCERS } from "./production.js";
 // [Correzione decisa dall'autore, §3.19 n.66] l'originale centrava i testi
 // su view_wview/2, la misura della view nella room: con lo zoom a 1,5
 // finivano fuori centro. Qui il centro dello schermo.
+// [§9.56, richiesta dell'autore] Invece dello sbiancamento: la scena si
+// sfoca a poco a poco fino alla sfocatura del menu di pausa (app.js,
+// victoryBlur, con victoryProgress), sotto un velo bianco leggero come i
+// pulsanti; poi i testi compaiono in dissolvenza. Si disegna sopra a tutta
+// l'interfaccia (overlay, chiamato da app.js dopo la sfocatura), non nel
+// Draw GUI. VICTORY: passi a 60 al secondo; si provano altri valori con
+// ?vblur=, ?vwhite=, ?vin=, ?vtext=, ?vtextin= (app.js, e ?victory=1 per
+// vincere subito).
+export const VICTORY = {
+  blur: 1,       // frazione della sfocatura della pausa raggiunta alla fine
+  white: 0.45,   // velo bianco finale (i pulsanti di vetro: 0,69 x 0,65)
+  blurIn: 60,    // passi per arrivare alla sfocatura e al velo pieni
+  textAt: 40,    // passo in cui cominciano a comparire i testi
+  textIn: 40,    // passi della dissolvenza dei testi
+};
+const ease = (x) => { const k = Math.max(0, Math.min(1, x)); return 1 - (1 - k) * (1 - k) * (1 - k); };
+// 0..1: quanto la scena e' sfocata e velata (app.js)
+export function victoryProgress(i) { return ease(i.t / VICTORY.blurIn); }
+
 export function victoryManager() {
   return {
     create(i, w) {
       i.sprite_index = null;
-      i.fogalpha = 0;
+      i.t = 0;
       i.clicloc = 0;
       i.alarm.set(0, 150);
       w.g.campagna = 1;
     },
-    alarm0(i) { i.clicloc = 1; },
-    step(i) { if (i.fogalpha < 0.9) i.fogalpha += 0.08; },
+    alarm0(i) { i.clicloc = 1; i.clicT = i.t; },
+    step(i) { i.t += 1; },
     globalLeftPressed(i, w) {
       if (i.clicloc !== 1) return;
       w.destroy(i);
@@ -38,12 +57,14 @@ export function victoryManager() {
         w.gotoRoom("menu");
       }
     },
-    drawGUI(i, w, d) {
+    overlay(i, w, d) {
       const vw = w.cam.cssW, vh = w.cam.cssH;
       d.setColour(c.white);
-      d.setAlpha(i.fogalpha);
+      d.setAlpha(VICTORY.white * victoryProgress(i));
       d.rectangle(0, 0, vw, vh, false);
-      if (i.fogalpha < 0.7) return;
+      const a = ease((i.t - VICTORY.textAt) / VICTORY.textIn);
+      if (a <= 0) { d.setAlpha(1); return; }
+      d.setAlpha(a);
       d.setColour(c.black);
       d.setHalign("center");
       d.setFont("gui_sblocco");
@@ -64,7 +85,11 @@ export function victoryManager() {
       // [§9.27] col font dei testi: dopo il codice restava quello grande
       // delle cifre (gui_sblocco) e nei livelli la scritta era enorme
       d.setFont("overdue");
-      if (i.clicloc === 1) d.text(vw / 2, vh / 2 + 100, tr("click anywhere to continue"));
+      if (i.clicloc === 1) {
+        d.setAlpha(a * ease((i.t - i.clicT) / VICTORY.textIn));
+        d.text(vw / 2, vh / 2 + 100, tr("click anywhere to continue"));
+      }
+      d.setAlpha(1);
     },
   };
 }

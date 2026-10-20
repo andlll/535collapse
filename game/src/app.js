@@ -6,7 +6,7 @@
 // altri oggetti sono disegnati con il loro sprite e non fanno ancora nulla.
 // F3 apre la diagnostica.
 
-import { Renderer, bgrToRGB } from "./gl.js";
+import { Renderer, bgrToRGB, packColor } from "./gl.js";
 import { Assets } from "./assets.js";
 import { Camera } from "./camera.js";
 import { Input } from "./input.js";
@@ -33,7 +33,7 @@ import { GroundCache } from "./ground.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
-import { victoryManager, gameoverManager, objectiveButton } from "./endgame.js";
+import { victoryManager, gameoverManager, objectiveButton, VICTORY, victoryProgress } from "./endgame.js";
 import { loadUnlock } from "./progress.js";
 import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
@@ -324,6 +324,14 @@ async function main() {
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
   }
+  // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
+  // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
+  // (endgame.js)
+  for (const [k, q] of [["blur", "vblur"], ["white", "vwhite"], ["blurIn", "vin"], ["textAt", "vtext"], ["textIn", "vtextin"]]) {
+    const v = parseFloat(params.get(q));
+    if (Number.isFinite(v)) VICTORY[k] = v;
+  }
+  let victoryAt = params.get("victory") === "1" && roomName !== "menu" ? 60 : 0;
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
@@ -444,6 +452,7 @@ async function main() {
     const [mx, my] = cam.toRoom(input.x, input.y);
     manager.mouse(input, mx, my);
     manager.step(input, cam, room.width, room.height);
+    if (victoryAt > 0 && --victoryAt === 0 && !world.exists("victory_manager")) { g.victory = 1; world.create("victory_manager", 0, 0); }
     world.input = input;
     world.step(input, mx, my);
     recountIdle(world); // §6.1 n.80
@@ -521,6 +530,15 @@ async function main() {
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();
+    // [§9.56] la vittoria: tutto quello che c'e' sotto, sfocato, poi il velo
+    // e i testi (endgame.js)
+    for (const v of world.all("victory_manager")) {
+      draw.setGlass(null);
+      victoryBlur(victoryProgress(v));
+      draw.reset();
+      world.fire(v, "overlay", draw);
+      draw.reset();
+    }
     pause.drawButton(draw, cam.cssW);
     draw.setGlass(null);
   };
@@ -547,6 +565,31 @@ async function main() {
     r.blur(q, tmp, out, GLASS_SIGMA);
     r.setProjection(...proj);
     return out;
+  };
+
+  // [§9.56] Sfocatura della vittoria: la superficie corrente (la scena con
+  // l'interfaccia) copiata a meta' risoluzione e sfocata come lo sfondo
+  // della pausa, con sigma che cresce con `k` (0..1) fino a VICTORY.blur
+  // volte PAUSE_SIGMA; ridisegnata sopra, con alpha che sale presto (a meta'
+  // risoluzione anche un sigma piccolo ammorbidisce: niente scatto).
+  let vicT = null;
+  const victoryBlur = (k) => {
+    const sigma = PAUSE_SIGMA * Math.max(1, canvasScale) * VICTORY.blur * k;
+    if (sigma < 0.05) return;
+    const cur = r.targets && r.targets.length ? r.targets[r.targets.length - 1].t : null;
+    const W = cur ? cur.width : canvas.width, H = cur ? cur.height : canvas.height;
+    const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
+    if (!(vicT && vicT.gen === r.generation && vicT.hw === hw && vicT.hh === hh)) {
+      if (vicT && vicT.gen === r.generation) for (const t of vicT.t) r.deleteTarget(t);
+      vicT = { gen: r.generation, hw, hh, t: [r.createTarget(hw, hh), r.createTarget(hw, hh), r.createTarget(hw, hh)] };
+    }
+    const [half, tmp, out] = vicT.t;
+    const proj = r.proj;
+    r.grab(half);
+    r.blur(half, tmp, out, sigma);
+    r.setProjection(...proj);
+    r.setBlend("normal");
+    r.quad(out, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, out.height, out.width, 0, packColor(0xffffff, Math.min(1, k * 6)));
   };
 
   // Sfondo del menu di pausa, come in NIMBUS: la scena ferma sfumata e

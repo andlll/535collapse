@@ -6079,3 +6079,23 @@ libere) toglie i germogli. I civili che lo costruivano si comportano come
 a cantiere finito (civilians.js, buildStep): vanno al cantiere piu' vicino
 o si fermano. Il ponte del livello 4 (bridge.js) resta com'e'. Test:
 `game/test/fond.test.mjs`.
+
+### 9.56 La schermata di vittoria: sfocatura invece dello sbiancamento
+
+Richiesta dell'autore (20 ottobre 2026): lo schermo che sbiancava fino a
+0,9 non lo soddisfaceva. Ora la scena, interfaccia compresa, si sfoca a
+poco a poco fino alla sfocatura del menu di pausa (PAUSE_SIGMA, a meta'
+risoluzione), sotto un velo bianco leggero come i pulsanti di vetro
+(0,45 = 0,69 x GLASS_TINT); poi i testi compaiono in dissolvenza, e "click
+anywhere to continue" a sua volta quando diventa cliccabile (150 passi,
+come prima). Il velo e i testi li disegna `victory_manager` in un evento
+`overlay` che app.js chiama dopo la sfocatura (victoryBlur), sopra tutta
+l'interfaccia; il pulsante di pausa resta nitido sopra. Curva: uscita
+cubica.
+
+Valori in `VICTORY` (endgame.js), da tarare con l'autore: blur 1 (frazione
+della sfocatura della pausa), white 0,45, blurIn 60 passi (1 s), textAt 40,
+textIn 40. Per le prove, dall'indirizzo: `?victory=1` vince un secondo dopo
+il caricamento; `vblur`, `vwhite`, `vin`, `vtext`, `vtextin` cambiano i
+valori (p.es. `?room=lvl02&victory=1&vwhite=0.3&vin=120`). Verificato con
+fotogrammi in match e lvl02 (velo 0,25 / 0,45 / 0,65) e con ui.mjs.
