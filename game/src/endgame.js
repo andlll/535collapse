@@ -4,6 +4,7 @@
 import { c } from "./colours.js";
 import { saveUnlock } from "./progress.js";
 import { tr } from "./i18n.js";
+import { PRODUCERS } from "./production.js";
 
 // victory_manager [C]: lo schermo sbianca (alpha +0,08 a passo fino a 0,9),
 // poi "VICTORY", il punteggio in match o il codice del livello successivo
@@ -30,7 +31,7 @@ export function victoryManager() {
       if (i.clicloc !== 1) return;
       w.destroy(i);
       const g = w.g;
-      const next = { lvl01: 2, lvl02: 3, lvl03: 4 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -53,7 +54,8 @@ export function victoryManager() {
         // [§9.35, richiesta dell'autore] niente punteggio
       }
       if (w.room === "lvl03") d.text(vw / 2, vh / 2 - 100, tr("The monastery has held out: the invaders' advance is broken"));
-      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6" }[w.room];
+      if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
+      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -67,7 +69,8 @@ export function victoryManager() {
   };
 }
 
-// gameover_manager [C]: creato quando il centro e' distrutto; lo schermo
+// gameover_manager [C]: creato quando il centro e' distrutto (e senza
+// mosse, noMovesCheck); lo schermo
 // annerisce (+0,02 a passo) con tempo resistito, basi distrutte e
 // punteggio, e dopo 760 passi si torna al menu.
 // [§9.35, richiesta dell'autore] niente punteggio; il tempo resistito solo
@@ -89,7 +92,8 @@ export function gameoverManager() {
       if (i.fogalpha < 1) return;
       d.setColour(c.white);
       d.setHalign("center");
-      const lines = [w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed.")];
+      const lines = [g.nomovesLost ? tr("You have no units left and cannot train new ones.")
+        : w.room === "lvl03" ? tr("The monastery has fallen.") : tr("Your town hall was destroyed.")];
       if (w.room === "match" || w.room === "lvl03") {
         lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       }
@@ -97,6 +101,42 @@ export function gameoverManager() {
       lines.forEach((t, k) => d.text(vw / 2, vh / 2 - 200 + k * 100, t));
     },
   };
+}
+
+// [Richiesta dell'autore, §9.39] Sconfitta senza mosse: nessuna unita'
+// (soldati o civili), nessuna produzione che possa finire e nessun edificio
+// che possa cominciarne una (risorse e popolazione) per NO_MOVES passi di
+// fila. Gli arcieri di presidio non contano: dalla torre e dal castello non
+// escono. Non nella difesa del livello 3, dove il monastero puo' resistere
+// da solo fino alla fine (l'obiettivo e' quello).
+const NO_MOVES = 180;
+export function noMovesCheck(w) {
+  const g = w.g;
+  if (w.room === "menu" || g.gameover || g.victory || w.exists("victory_manager") || w.exists("gameover_manager")) return;
+  if (w.room === "lvl03" && g.l3 && g.l3.phase === 2) return;
+  if (canAct(w)) { g.nomoves = 0; return; }
+  g.nomoves = (g.nomoves || 0) + 1;
+  if (g.nomoves < NO_MOVES) return;
+  g.gameover = 1;
+  g.nomovesLost = 1;
+  w.create("gameover_manager", 0, 0);
+}
+
+function canAct(w) {
+  const g = w.g;
+  if (w.exists("ally_unit")) return true;
+  const afford = (cost) => Object.entries(cost).every(([r, v]) => g[r] >= v);
+  // il centro: civili, 50 cibo l'uno (buildings.js, centro)
+  const civRoom = g.pop < g.popcap;
+  for (const c of w.all("centro")) if (civRoom && (c.progression > 0 || g.food >= 50)) return true;
+  for (const [name, P] of Object.entries(PRODUCERS)) {
+    if (g.pop + P.popMargin >= g.popcap) continue;
+    for (const b of w.all(name)) {
+      if (b.progression > 0) return true;
+      if (Object.values(P.units).some((u) => u.clicker && afford(u.cost))) return true;
+    }
+  }
+  return false;
 }
 
 // [§9.27] Il bordo destro dei pulsanti in alto a sinistra (colonne da 450 a
@@ -165,6 +205,15 @@ export function objectiveButton() {
             lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
           }
         }
+      }
+      // [§9.52] livello 4: il ponte (con l'avanzamento), la base nord
+      // (facoltativo), e a ponte riparato il centro nemico
+      if (w.room === "lvl04") {
+        const L = g.l4 || { phase: 0, bridge: 0, north: 0 };
+        lines.push([58, tr("Repair the bridge ({p}%)", { p: L.bridge }), L.phase === 1 ? 43 : 0]);
+        sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
+        lines.push([88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0]);
+        if (L.phase === 1) lines.push([118, tr("Destroy the enemy town hall across the river")]);
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.

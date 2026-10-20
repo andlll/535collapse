@@ -74,6 +74,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.al = s.manager.al;
   manager.fogalpha = s.manager.fogalpha;
   manager.rain = s.manager.rain;
+  manager.endlessNight();
   path.cost.set(s.path.cost);
   path.enemyBlock.set(s.path.enemyBlock);
   path.restoreSolid(s.path.solid); // i salvataggi di prima non l'hanno

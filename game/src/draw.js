@@ -30,11 +30,10 @@ export function gmString(v) {
   return String(v);
 }
 
-// I font hanno l'ASCII piu' le lettere accentate composte da
-// tools/05_atlas.py (IT, ES, PT, DE, FR); il resto delle traduzioni si
-// riduce a lettere ASCII qui.
-const SUBST = { "ß": "ss", "œ": "oe", "Œ": "Oe", "æ": "ae", "Æ": "Ae", "’": "'", "‘": "'", "“": "\"", "”": "\"",
-                "«": "\"", "»": "\"", "–": "-", "—": "-", "…": "...", "\u00a0": " ", "\u202f": " " };
+// [§9.47] I font (Cinzel, tools/05_atlas.py FONT_CHARS) hanno l'ASCII, le
+// lettere accentate e i segni delle traduzioni; qui restano solo gli spazi
+// speciali.
+const SUBST = { "\u00a0": " ", "\u202f": " " };
 const SUBST_RE = new RegExp("[" + Object.keys(SUBST).join("") + "]", "g");
 export const plain = (s) => s.replace(SUBST_RE, (ch) => SUBST[ch]);
 

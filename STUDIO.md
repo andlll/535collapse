@@ -14,6 +14,17 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
+**Stato al 20 ottobre 2026** (branch `claude/festive-volta-f68pca`, §9.38-§9.50):
+economia nemica completa nei livelli con un centro nemico (raccolta,
+lavoratori, soldati pagati, riparazioni, ricostruzione, depositi nuovi,
+difesa e ondate); sprite nemici tutti dell'autore; font Cinzel e titolo
+"Dust Veil". Restano, per l'autore: la mappa del livello 4 (poi regia e
+numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
+servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
+"Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
+zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove).
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -5346,3 +5357,700 @@ dell'anteprima). Categoria "grass" nelle opzioni grafiche (densita').
 Prova (Chromium): le quattro macchie nel match con unita' dentro
 (immerse come nell'erba); `npm test`, saves.mjs, ui.mjs, 12 --check
 (match, lvl01, lvl02 identiche).
+
+### 9.38 Campagna, inattivi, ordine di attacco, fiamme
+
+Segnalazioni e richieste dell'autore (13 ottobre 2026).
+
+**Livello 2: popcap 30 all'inizio** (state.js, `newGlobals`): prima 0 come
+in tutte le room. Attenzione: la popolazione iniziale del livello 2 vale
+gia' 32 (l'esercito di partenza), quindi con 30 non si produce ancora
+nulla finche' non si costruisce una casa (+10). *Sostituito in §9.39: il
+popcap 30 arriva vinta la battaglia iniziale.*
+
+**Livello 1 tutto di notte** (manager.js): l'originale armava l'alba
+(alarm 1) a 100000 passi, ma l'alarm 0 (6000 passi), trovando gia' la
+notte, la riarmava a 2000: l'alba arrivava dopo ~8000 passi (2 min 13 s).
+Ora nel livello 1 l'alarm 1 non fa nulla; l'alarm 0 resta (il suggerimento
+della notte compare ancora). `endlessNight` rimette la notte anche
+caricando un salvataggio di prima, magari ad alba cominciata (snapshot.js).
+
+**Il riquadro degli inattivi si accende sotto il puntatore** come gli altri
+pulsanti. Lo faceva gia' il Draw GUI di idle_clicker [C], ma viene prima di
+quello del manager, che ci ridisegnava sopra il riquadro normale (vetro a
+0,69) e lo copriva: l'hover c'era (`hover` = 1) ma non si vedeva. Ora il
+manager disegna il riquadro a 0,99 quando idle_clicker ha `hover`.
+
+**Ordine di attacco: i soldati in mischia restavano fermi** (units.js).
+Tre cause, riprodotte con un gruppo misto mandato col clic destro su un
+nemico (livelli 1 e 2 e zona aperta del match):
+1. *Precedenza fra alleati sovrapposti* [C]: lontano dalla meta (flow
+   field) aspetta chi ha l'`ordo` piu' alto, vicino (nearRank, solo il
+   guerriero) chi lo ha piu' basso (il commento dell'autore dice "se l'altro
+   ha rank piu' alto e si sta muovendo tu fermati" in entrambi i casi). Due
+   guerrieri sovrapposti, uno lontano e uno vicino alla meta, si aspettavano
+   a vicenda: fermi per secondi (in media 40 dei primi 120 passi), mentre gli
+   arcieri, che non aspettano, partivano. Capovolgere la regola lontana
+   spostava solo l'attesa sui cavalieri (che in formazione devono passare
+   davanti, §8.11). Ora (`yieldTo`/`noYield`) non si aspetta chi sta gia'
+   aspettando noi, e con un ordine di attacco (warwork 1) non si aspetta
+   nessuno: il flow field e' senza collisioni e vicino al nemico i posti li
+   assegna `meleeSpot`. Gli spostamenti di gruppo non cambiano
+   (movement.mjs: stessi numeri di prima).
+2. *Bersaglio circondato*: col bersaglio scelto col clic destro il posto in
+   mischia si cercava solo attorno a lui; con tutti i settori presi (altri
+   alleati, nemici accanto) si spingeva verso il suo centro, fermi dietro
+   chi combatteva. Ora un posto attorno a un nemico vicino a lui, che
+   diventa il bersaglio (anche in difesa, dove senza bersaglio chi e' oltre
+   i 200 px si sarebbe fermato).
+3. *Bersaglio irraggiungibile* (`targetStuck`): chi per 90 passi non si
+   avvicina al bersaglio scelto (altri nemici o alleati in mezzo) ci
+   rinuncia e attacca come senza ordine, il nemico piu' vicino.
+Resta: un bersaglio dietro le mura (il flow field porta alla cella
+raggiungibile piu' vicina, li' l'unita' oscilla fra il campo e la meta).
+
+**Le fiamme della stalla** (effects.js, `FIRE`): la stalla prendeva fuoco
+(`onfire`, prova burn.mjs), ma la vita delle fiamme si misura dai danni,
+`((A - vita)/2, (B - vita)/2)` con A e B per famiglia di grandezza [C]: a vita
+piena la casa le ha di 15-20 passi e la caserma di 15-25, ma la stalla (380,
+anche nemica) di 0-10, il mulino (150) di 0-5 e il magazzino (140) di 5-10:
+in fiamme sembravano non bruciare. Ora A e B partono dalla loro vita come
+per casa e caserma (stalla 410/430, mulino 180/190, magazzino 170/180). Gli
+altri edifici di legno (casa, caserma, centro, campo, case e caserme
+nemiche) erano gia' cosi'; quelli di pietra non bruciano.
+
+**Prove** (nuove, nella CI): `game/test/browser/attackorder.mjs` (gruppi
+distanziati, stretti e in formazione, nemici vicini e lontani, di notte e in
+difesa: tutti i soldati in mischia arrivano a colpire e aspettano in media
+al piu' 20 passi; sul codice di prima 17 errori, ora nessuno) e
+`game/test/browser/burn.mjs` (vita delle fiamme a vita piena per ogni
+edificio di legno, e frecce incendiarie da quattro direzioni). Su scenari
+dei livelli 1 e 2 coi nemici veri: attesa media nei primi 120 passi da 40 a
+2 passi per i guerrieri, primo colpo da 131 a 72 passi. `npm test`, soak,
+saves, melee, movement, rally, fireorder, rams, monastery, ui, idle,
+workers, deposit.
+
+### 9.39 Cantieri, sconfitta senza mosse, livello 2, carica partita, soldati in marcia
+
+Richieste e segnalazioni dell'autore (13 ottobre 2026).
+
+**Cantieri di caserma e stalla** (civilians.js, `BUILD_RATE`): ogni colpo di
+martello (Alarm_2, ogni 13 passi) aggiunge 2 di vita invece di 1, come casa,
+magazzino e mulino: la caserma si finisce in ~2270 passi con un civile
+(erano ~4540), la stalla in ~2470.
+
+**Sconfitta senza mosse** (endgame.js, `noMovesCheck`, da `levelStep`): si
+perde se per 180 passi (3 s) di fila non c'e' nessuna unita' alleata
+(soldati o civili), nessuna produzione in corso che possa finire e nessun
+edificio che possa cominciarne una: il centro con 50 cibo, caserma, stalla
+e castello con le risorse di almeno un'unita'; in tutti i casi con posto
+nella popolazione. Gli arcieri di presidio non contano (da torre e castello
+non escono). Non nella difesa del livello 3 (`g.l3.phase` 2): l'obiettivo e'
+che il monastero resista, e puo' farlo da solo. La schermata di sconfitta
+dice "Non hai piu' unita' e non puoi addestrarne di nuove" (`nomovesLost`).
+Provato: match senza unita' e senza risorse, livelli 1, 2 e 3 senza unita'
+-> sconfitta dopo 179 passi; match con 100 cibo e il centro, e difesa del
+livello 3 -> no.
+
+**Livello 2** (levels.js, `LV2_FIRST`): il popcap parte da 0 (come prima di
+§9.38) e diventa 30 vinta la battaglia iniziale (`liberati1`: nessun nemico
+nel rettangolo della partenza, gli stessi passi in cui arrivano i due civili
+e il dialogo 2_1), con un premio: 200 cibo, 200 legno, 100 oro (le icone
+che salgono, *_prizedrawer).
+
+**Carica partita nel menu di pausa** (pause.js, sottomenu `load`): prima
+caricava solo lo slot della room in corso; ora, come il menu principale,
+l'elenco degli slot di tutte le room col livello e la data (menu.js,
+`slotLabel`, usata da entrambi), "Carica da file" e "Indietro" (che torna a
+"Salva e carica"). Nella stessa room resta il parametro della campagna.
+
+**Soldati fermi sulle lunghe distanze** (enemies.js, `rightReleased`;
+segnalazione: solo da lontano, nessuno sovrapposto). Riprodotto: un gruppo
+ancora in marcia dopo un ordine di spostamento (warwork 4) mandato col clic
+destro contro un nemico a 800 px: guerrieri, picchieri e cavalieri restavano
+fermi, partivano solo gli arcieri. Il nemico cliccato diventa il bersaglio
+(target_eu) solo per chi ha warwork 0 o 1 [C]; il GlobalRightReleased da' a
+tutti warwork 1, e chi non aveva il bersaglio cercava il nemico piu' vicino
+e, oltre `comp` (700 px, 448 in verticale), si fermava subito.
+Gli arcieri hanno il loro ordine di attacco (atkorder, §6.4). Ora il
+bersaglio lo prende anche chi cammina; chi sta colpendo (warwork 2)
+continua come prima.
+
+**Prova** (attackorder.mjs, tre casi in piu'): nemico a 900 px; gruppo in
+marcia mandato contro un nemico a 300 e a 800 px (sul codice di prima: a
+800 px tutti i soldati in mischia fermi). Da lontano 7 alleati contro 3
+nemici fermi e immortali: l'ultimo ad arrivare puo' aspettare un posto, la
+prova chiede che arrivi alla mischia (120 px). ui.mjs fotografa anche il
+sottomenu "Carica partita".
+
+### 9.40 Livello 4: il fiume grande e il ponte da riparare
+
+Sprite dell'autore (13 ottobre 2026, `nuovi/sprites/`): `Fiume_Completo`
+(3773x2904, il fiume del livello 4 col ponte rotto gia' dipinto),
+`Ponte_1`..`Ponte_5` (529x393, gli stadi della riparazione, ciascuno con un
+pezzo di fiume e le rive trasparenti) e `Ponte_5B` (la balaustra anteriore
+del ponte finito, separata).
+
+**Dove sta il ponte**: `Ponte_1` coincide pixel per pixel con il riquadro
+(1630, 1168) del fiume (cercato confrontando i pixel). Gli stadi 2..5
+differiscono dal fiume in 37-69 mila pixel su ~150 mila.
+
+**tools/nuovi.py**, opzioni nuove degli sprite (nuovi.json):
+`maschera: "alpha"` (maschera precisa dai pixel non trasparenti),
+`poligono` + `misura` (sprite di sola maschera: `Ponte_varco`), `buchi`
+(una maschera tolta da un'altra: il varco del ponte tolto dal fiume),
+`acqua` (celle d'acqua per riflessi, schiuma e pioggia, come i fiume*:
+06_masks), `pezzi` (riquadri da N px, uno sprite `<sprite>#<n>` per
+riquadro non vuoto, tutti alla depth dell'istanza), `gruppo` (gruppo
+d'atlas) e `differenza` (i pixel uguali a quelli di un altro sprite in un
+punto diventano trasparenti: gli stadi del ponte disegnano solo cio' che
+cambia, sotto si vede il fiume con i suoi effetti; `Ponte_1` e' vuoto).
+
+**Il fiume** (`fiume_grande`, bridge.js): non sta in una pagina d'atlas da
+2048: 42 riquadri da 256 px nel gruppo terreno (+4,6 MB di memoria GPU,
+nessuna pagina grande in piu'), "fette" senza bordo anteriore (scenario.js,
+front null) alla depth -y della sua cima, come i fiume_* dell'originale.
+Origine al centro (1886, 1452): nel kit sta nel tileset "nuovi", allineato
+al centro, senza bordo trasparente doppio. Maschera per pixel dall'alpha,
+col varco del ponte; 15 661 celle d'acqua da 8 px.
+
+**Il ponte** (`ponte`): nasce dal Create del fiume nel punto in cui il fiume
+lo ha dipinto (con scala e rotazione del fiume). E' un ally_fondamenta (solo
+quello: non lo attaccano gli assedi, non e' fra gli edifici della minimappa)
+con la maschera `Ponte_varco` (il piano del ponte fra le due ringhiere,
+rientrato di 4 px, allungato di 24 px sulle rive), che chiude il varco del
+fiume e la griglia dei percorsi. Vita 1..599 (poi 4400 e legno: §9.41), +1 a colpo di martello (13
+passi): ~130 s con un civile, 34 s con quattro (misurato). Gli stadi
+Ponte_2..4 a un quarto, meta' e tre quarti (in dissolvenza, swapSprite).
+Finito: `ponte_fatto` (Ponte_5, non solido, depth -y-30: chi ci cammina
+sopra si disegna dopo), la griglia libera le celle del varco (quelle che
+tocca ancora l'acqua restano chiuse, pathing.js markInstance) e
+`ponte_balaustra` (Ponte_5B a fette da 32 px, ognuna con la depth del suo
+bordo anteriore: chi passa sul ponte le sta dietro).
+
+**I civili** (civilians.js): col clic destro sul ponte (dentro il varco)
+vanno all'imbocco piu' vicino da cui ci si arriva (fieldTo), ognuno in un
+punto diverso del bordo (bridge.js, `bridgeEnds`); lavorano fino a 60 px
+dal varco (`buildReach`: all'imbocco sud, stretto fra il fiume e la riva,
+c'e' posto per due, gli altri restavano in coda per sempre). Finito un
+altro cantiere, non vanno da soli al ponte (`noAuto`: l'originale manda chi
+finisce al cantiere piu' vicino, e il ponte c'e' sempre).
+
+**La mappa** (`mappe/lvl04.tmx`, 3450x4100): il fiume da bordo a bordo
+(l'estremita' sinistra, tagliata in diagonale, 200 px oltre il bordo; la
+destra, verticale, sul bordo), quattro civili e tre guerrieri sulla riva sud
+vicino al ponte per provarlo, il manager e la vista iniziale. Room `lvl04`
+(app.js, `?room=lvl04`), senza regia ne' campagna per ora; salvataggi.
+
+**Kit di Tiled**: le tile aggiunte dopo la prima versione vanno in fondo al
+loro tileset (tiledkit.py `APPENDED`, `tile_rank`). Con l'ordine alfabetico
+le macchie fiorite (§9.37) erano finite in mezzo a "natura", prima di
+graa11..graa15, e il fiume sarebbe finito prima del monastero in "nuovi":
+gli id delle tile dopo di loro cambiavano, e una mappa gia' disegnata li
+avrebbe letti come altri oggetti (lvl02 e lvl03 non usano graa: i loro
+scenari non cambiano). Ora "natura" e' com'era prima dei fiori, coi fiori in
+fondo; "nuovi" e' monastero, poi fiume_grande.
+
+**Prova** (`game/test/browser/bridge.mjs`, nuova, nella CI; soak e saves
+anche su lvl04): col ponte rotto un guerriero non arriva sulla riva nord; i
+quattro civili mandati col clic destro lavorano tutti; stadi
+Ponte_1..Ponte_4; finito in 2027 passi; i tre guerrieri passano sulla riva
+nord in 280 passi. Le macchine d'assedio non passano (il loro campo "largo",
+§8.14, non attraversa il varco di ~100 px): da decidere con l'autore.
+
+### 9.41 Il ponte del livello 4: costo, durata, barra
+
+Decisioni dell'autore (13 ottobre 2026), dopo §9.40:
+- la riparazione e' uno dei due obiettivi del livello (ricostruire il ponte
+  resistendo agli attacchi di una piccola base a nord): deve durare minuti
+  con 3-4 civili e costare tanto legno. Vita 4400 (era 599), +1 a colpo:
+  3 min 58 s con quattro civili (misurato, 14 297 passi), ~16 minuti con
+  uno. Legno: 1000 in tutto (bridge.js `BRIDGE.wood`), pagati colpo per
+  colpo (`woodDue`: la quota del totale arrotondata man mano, la somma e'
+  esatta); senza legno il colpo non vale e l'icona del legno lampeggia; i
+  civili restano al lavoro e riprendono quando il legno arriva. Numeri da
+  tarare giocando;
+- la barra della vita del cantiere sempre visibile finche' non e' finito,
+  sopra il ponte; selezionandolo, la scheda con vita e icona del legno (piu'
+  larga di quella degli edifici: quattro cifre);
+- i nemici non lo danneggiano (non e' un ally_build: assedi e frecce
+  incendiarie non lo prendono di mira) e, finito, lo usano anche loro;
+- per ora niente macchine d'assedio sul ponte (gia' cosi': non ci passano).
+
+Prova (bridge.mjs): senza legno per 600 passi il ponte resta a 1; col
+legno finito fra 3 e 5 minuti di gioco con quattro civili, spendendo 1000.
+
+### 9.42 La scheda del ponte e la sua icona
+
+Richiesta dell'autore (13 ottobre 2026): la scheda del ponte in
+riparazione identica a quella degli altri cantieri, con l'icona del ponte
+che ha caricato (`nuovi/sprites/icons8-bridge-64.png`).
+
+- Icona: `ico_ponte`, sprite derivato (nuovi.json "derivati", gruppo gui):
+  larga 58 px e nera all'alpha 0,7 (opzione nuova `alpha` dei derivati),
+  come le icone degli edifici dell'originale (nere, alpha massimo 179/255,
+  disegno largo 56-61 px).
+- Scheda: la stessa degli edifici e dei cantieri (buildings.js `panel`,
+  130x130 px). In §9.41 la vita del ponte arrivava a 4400 e "1700 / 4400"
+  non ci stava (avevo allargato la scheda): ora la vita va da 1 a 999, tre
+  cifre come gli altri, con 998/4399 a colpo (civilians.js `BUILD_RATE`).
+  Durata e legno non cambiano: 4399 colpi, 3 min 58 s con quattro civili,
+  1000 legno (bridge.mjs, misurato di nuovo). `panel` scrive la vita senza
+  decimali.
+
+### 9.43 Gli edifici nemici mai usati dell'originale
+
+Domanda e richiesta dell'autore (13 ottobre 2026). Il progetto GameMaker ha
+le versioni nemiche (`*_b`, tetti azzurri e cupole) di quasi tutti gli
+edifici. Usate: `c1b`..`c6b` (enemy_house ne sceglie una a caso), `cas_b`,
+`stal_b`, `torre_b`. Mai usate da un oggetto: `cc_b` (centro), `chiesa_b`,
+`castello_b`, `magazzino_b`, `barn_b` (mulino, 3 fotogrammi: le pale che
+girano; quello alleato in partita usa `mul1`, 9 fotogrammi). Nessuno
+sprite di lavoratori nemici: le cartelle `b_*` sono solo dei militari
+(guerriero, picchiere, arciere, cavaliere, ariete, catapulta, firegroup).
+
+Ora sono oggetti (nuovi.json, con lo sprite e la maschera dell'originale:
+quelle degli edifici alleati, che combaciano con centro, chiesa e castello;
+su magazzino e mulino coprono la base, la casetta del mulino resta fuori):
+
+| oggetto | sprite | vita | rovina | legno | cosa fa |
+|---|---|---|---|---|---|
+| enemy_centro | cc_b | 400 | ccruin | si' | una freccia ogni 35 passi su un alleato entro 600 px, come il centro alleato |
+| enemy_chiesa | chiesa_b | 300 | chiesaruin | no | ogni 180 passi +3 vita ai nemici feriti entro 800 px, come la chiesa alleata |
+| enemy_castello | castello_b | 900 | castelloruin | no | due frecce ogni 50 passi, come la torre nemica |
+| enemy_magazzino | magazzino_b | 140 | magruin | si' | niente |
+| enemy_mulino | barn_b | 150 | barnruin | si' | niente; le pale girano (image_speed 0,1) |
+
+Come gli altri edifici nemici (enemybuild.js, `KIND`): nascosti finche'
+un alleato non li vede, poi visibili; barra e scheda con la loro icona
+(ico_centro, ico_chiesa...); quelli di legno bruciano con le frecce
+incendiarie (siege.js FIRE_HIT, effects.js FIRE: fiamme come i loro
+corrispondenti alleati) e il clic destro con fanti selezionati li manda a
+dar loro fuoco; chiesa e castello no (di pietra: solo arieti e catapulte).
+Contano fra gli enemy_build (minimappa, vittoria del livello 2, obiettivi
+"distruggi gli edifici nemici"). Nel kit di Tiled in fondo al tileset
+"nemici" (tiledkit.py APPENDED). Gli sprite *_b entrano nell'atlas
+(05_atlas: anche gli sprite del progetto usati da nuovi.json; +2 MB).
+
+Prova (`game/test/browser/enemybuildings.mjs`, nella CI): per ognuno
+visibilita', frecce, cura, fuoco (e fiamme visibili) solo dove serve, pale
+del mulino, rovina.
+
+### 9.44 L'economia nemica, primo passo: i lavoratori nemici lavorano
+
+Decisione dell'autore (13 ottobre 2026): i lavoratori nemici devono
+lavorare davvero, come in un RTS. Scelte: (1) l'economia c'e' solo nei
+livelli con un centro nemico (enemy_centro); i livelli 1-3 restano con le
+ondate a tempo; (2) nella campagna i cantieri nemici li mette l'autore in
+Tiled (segnaposto "cantiere nemico", passo 3); la scelta automatica dei
+posti solo in future schermaglie 1 contro 1 simmetriche; colpiti, i
+lavoratori scappano verso il centro; (3) il centro fa lavoratori pagando
+cibo fino a un tetto, caserma e stalla soldati pagando risorse, una regia
+semplice per livello; si va per passi: 1 raccolta e depositi con scorte
+nemiche, 2 produzione che paga, 3 riparazione, ricostruzione e cantieri,
+4 regia per livello. (4) Il kit di Tiled non si tocca finche' l'autore non
+lo dice: i nuovi oggetti hanno `kit: false`.
+
+Questo e' il passo 1.
+
+**Le fazioni dei civili.** civilians.js ora ha `SIDES` (ally, enemy): i
+nomi di omino, unita', depositi (magazza, barn), fondamenta, edifici e
+campo di ogni fazione; `sideOf(i)` e `poolOf(w, i)` (le scorte: `global`
+per il giocatore, `global.en` per il nemico). Il movimento, i depositi, il
+lavoro, la costruzione e i campi del civile usano questi nomi; le parti del
+giocatore (selezione, interfaccia, lampeggio del legno) solo con
+`S.player`. Il campo di flusso verso un bersaglio (`fieldTo`) passa la
+fazione a `goalField` (per i nemici anche le porte del giocatore sono
+ostacolo, come per i soldati nemici, §3.8). `orderWork(w, p, i, kind, t)` da' un ordine a un civile da
+codice (legno, oro, pietra, cibo, o "move"): lo usa la regia nemica.
+
+**Le scorte nemiche.** `global.en = {food, wood, gold, stone, pop, idle}`
+(state.js; creato anche alla nascita di un lavoratore o della regia, per i
+salvataggi vecchi). I depositi: enemy_centro e' enemy_magazza ed
+enemy_barn, enemy_magazzino enemy_magazza, enemy_mulino enemy_barn.
+
+**Oggetti nuovi** (economy.js, nuovi.json, tutti `kit: false`):
+
+- `enemy_omino`: il civile alleato con la fazione nemica; parenti
+  enemy_unit ed enemy (i soldati alleati lo attaccano, le frecce lo
+  colpiscono: vita 50, danni 5 da guerriero e picchiere, 8 dal cavaliere, 5
+  dalle frecce). Visibile come le unita' nemiche (nebbia); col puntatore
+  sopra mostra la barra, il clic destro con fanti o cavalieri selezionati
+  lo fa bersaglio. Colpito, lascia il lavoro e scappa (col carico) verso il
+  centro nemico, o l'edificio nemico piu' vicino; per 600 passi la regia
+  non lo rimanda al lavoro. [Provvisorio] Sprite del civile alleato tinto
+  d'azzurro, finche' l'autore non carica i suoi.
+- `enemy_campo`: il campo con la fazione nemica (enemy_wooden, brucia; il
+  clic destro con fanti selezionati gli da' fuoco).
+- `enemy_eco`: la regia. La crea la regia dei livelli (levels.js) se c'e'
+  un enemy_centro e lei non c'e'. Alla prima nascita da' le scorte
+  iniziali; ogni 20 passi manda ogni lavoratore fermo (non in fuga) alla
+  risorsa che manca di piu' rispetto alla ripartizione voluta, la piu'
+  vicina fra quelle entro 1600 px dal deposito nemico piu' vicino (cibo:
+  un campo nemico libero); se il centro non sta gia' producendo e i
+  lavoratori sono meno del voluto, ne paga uno in cibo e lo fa nascere dopo
+  1000 passi.
+
+I numeri, per livello (`ECO[room]`) o di norma (`ECO.default`): 6
+lavoratori; scorte iniziali 200 cibo, 100 legno, 50 oro; ripartizione
+legno 3, oro 2, cibo 2, pietra 1; 50 cibo e 1000 passi per lavoratore.
+
+I lavoratori nemici non contano per la difesa dei livelli (levels.js:
+areaDifesa, difendi, aggressione li saltano) e non sono nelle tabelle dei
+soldati nemici.
+
+Prova (`game/test/browser/economy.mjs`, nella CI): nella zona piu' aperta
+del match un centro, un mulino, due campi, alberi, oro e pietra, tre
+lavoratori nemici; dopo 9000 passi il nemico ha raccolto tutte e quattro
+le risorse, i lavoratori sono 6, le scorte del giocatore non sono
+cambiate; poi un guerriero alleato attacca un lavoratore, che scappa verso
+il centro e muore.
+
+### 9.45 L'economia nemica, passo 2: soldati pagati, riparazioni, ricostruzione
+
+Richiesta dell'autore (13 ottobre 2026): il passo 2 (caserme e stalle che
+producono pagando) e, per la campagna e il livello 4: "il nemico ricostruisce
+solo gli edifici che ha perso, possibilmente nello stesso punto, non ne fa
+di nuovi. Ovviamente possono anche riparare". Tutto nella regia
+(economy.js, enemy_eco), solo dove c'e' l'economia (§9.44).
+
+**Soldati.** Con almeno i lavoratori voluti (o senza centro) ogni caserma
+nemica fa a turno guerriero, picchiere e arciere (`ECO.troops`), ogni
+stalla cavalieri, uno alla volta in 1200 passi come caserma e stalla
+alleate, pagandoli prima con le scorte nemiche ai costi delle unita'
+alleate (production.js `PRODUCERS`: guerriero 75 cibo e 35 oro, picchiere
+55 cibo e 45 legno, arciere 40 legno e 55 oro, cavaliere 50 cibo e 70 oro);
+non oltre `ECO.army` soldati (12: tutti i nemici che non sono lavoratori,
+anche quelli messi nella mappa). Nascono col ruolo 30 (in attesa) accanto
+all'edificio (freeSpawnEnemy). La produzione a tempo dell'originale (alarm
+3 della caserma, ruoli di aggr_assign) non c'e' dove c'e' la regia.
+
+**Attacco** [provvisorio, il passo 4 lo fa per livello]: quando i soldati
+della regia in attesa e fermi sono almeno `ECO.attackAt` (8) partono, col
+flow field dei nemici, verso l'edificio alleato piu' vicino alla base
+nemica (o l'unita' alleata); arrivati (ruolo 32) e fermi, verso il
+bersaglio alleato piu' vicino, come in scr_attacca.
+
+**Riparazioni.** Gli edifici nemici ora hanno `legno`/`pietra` come quelli
+alleati (di legno: centro, caserma, stalla, case, magazzino, mulino; di
+pietra: chiesa, castello, torre). Un edificio nemico danneggiato, senza
+alleati entro 400 px e con il materiale nelle scorte, chiama fino a 2
+lavoratori (fermi, se no i raccoglitori piu' vicini): riparano come i civili
+alleati (azione 7: 1 legno o 1 pietra per punto di vita, il legno spegne il
+fuoco). La regia li ferma a edificio intero, senza materiale o con un
+alleato vicino (`repairEnd` di buildings.js vale solo per gli alleati).
+
+**Ricostruzione.** Un edificio nemico distrutto (o un campo nemico
+bruciato) finisce nella lista `global.en.lost` (oggetto, x, y: entra nei
+salvataggi). [Decisione dell'autore] Il centro no: e' l'unico edificio che
+non si ricostruisce mai, perso e' perso. Un cantiere alla volta: il primo
+della lista in ordine (magazzino e mulino; campi; caserma; stalla; torre;
+chiesa; case; castello),
+quando si puo' pagare e il posto e' libero (nessun solido, unita' o
+edificio sotto la maschera; le rovine si tolgono), nello stesso punto; nel
+frattempo il suo costo resta da parte (lavoratori e soldati non lo
+spendono). Il cantiere (`enemy_cantiere`, nuovi.json, `kit: false`) ha
+sprite, fasi, maschera, vita e costo del cantiere alleato corrispondente
+([decisione dell'autore, 19 ottobre 2026] anche lo sprite: i cantieri
+nemici sono quelli alleati, non ce ne saranno di propri)
+(buildings.js FAM, gli oggetti *_fond); fino a 3 lavoratori lo costruiscono
+come i civili un ally_fondamenta (stessa vita per colpo). Finito, al suo
+posto l'edificio nemico, che si vede come il cantiere. Il cantiere brucia
+(frecce incendiarie -10; clic destro con fanti selezionati; fiamme che
+crescono coi danni, effects.js `rel`); se brucia del tutto torna nella
+lista. Il nemico non fa mai edifici nuovi, tranne magazzini e mulini
+(§9.46) (nella campagna i "cantieri nemici" di Tiled, passo 3, restano da fare;
+le posizioni automatiche solo nelle future schermaglie).
+
+I numeri sono in `ECO.default` (army, troops, attackAt, repairers,
+builders, rebuild, safe) e si cambiano per livello in `ECO[room]`
+(`ECO.lvl04`, vuoto finche' non c'e' la mappa).
+
+Prova (`game/test/browser/enemyarmy.mjs`, nella CI): nella zona piu' aperta
+del match una base nemica con scorte abbondanti fa tutti e quattro i tipi
+di soldati senza superare il tetto e parte all'attacco, senza toccare le
+scorte del giocatore; la caserma danneggiata di 120 torna intera (119 legno
+spesi); la stalla distrutta rinasce nello stesso punto da un cantiere (170
+legno) in ~970 passi; il centro distrutto non torna; nessun edificio nuovo.
+
+### 9.46 L'economia nemica: magazzini e mulini nuovi dove servono
+
+Richiesta dell'autore (14 ottobre 2026): perso il centro, il nemico non fa
+piu' lavoratori, ma le risorse le porta ancora al mulino (il cibo) e al
+magazzino (il resto), come gia' faceva (§9.44: i depositi sono enemy_barn e
+enemy_magazza, non solo il centro). In piu': "se non ha dove portare le
+risorse o se e' troppo lontano puo' costruire nuovi magazzini e granai".
+E' l'unica eccezione al "niente edifici nuovi" (§9.45).
+
+**Dove si lavora.** Prima i lavoratori andavano solo alle risorse entro
+1600 px dal deposito (enemy_magazza) piu' vicino, e senza deposito
+restavano fermi. Ora, se non ce ne sono (o non c'e' un deposito), vanno
+alla risorsa piu' vicina entro 3000 px (`SEARCH`), finche' si possono fare
+depositi nuovi.
+
+**Quando.** Ogni 20 passi, se non c'e' gia' un cantiere nemico (uno alla
+volta, prima della ricostruzione degli edifici persi):
+- un magazzino, se un raccoglitore di legno, oro o pietra lavora a una
+  risorsa senza un centro o un magazzino nemico entro 900 px (`FAR`);
+- un mulino, se un campo nemico non ha un centro o un mulino nemico entro
+  900 px;
+- non se un magazzino (o un mulino) e' gia' nella lista dei persi: lo
+  rifa' la ricostruzione, nello stesso punto;
+- al piu' `ECO.newDeposits` (4) depositi nuovi in una partita
+  (`global.en.newDeposits`).
+Si paga come il giocatore (magazzino 70 legno, mulino 60); finche' non si
+puo', il costo resta da parte come per la ricostruzione.
+
+**Dove.** Su anelli da 200 a 600 px attorno alla risorsa (o al campo),
+16 punti per anello, prima quelli dalla parte dell'edificio nemico piu'
+vicino; il primo libero (come per la ricostruzione: nessun solido, unita' o
+edificio sotto la maschera) e raggiungibile dal lavoratore (campo dei
+percorsi dei nemici; al piu' 4 prove per volta). Poi cantiere e lavoratori
+come per la ricostruzione (enemy_cantiere).
+
+Prova (`game/test/browser/enemydepots.mjs`, nella CI): senza centro e
+senza magazzino, con un mulino, un campo accanto e uno a 1000 px, alberi a
+1100 px: i lavoratori vanno agli alberi, il nemico vi costruisce accanto un
+magazzino e il legno arriva nelle scorte; il campo lontano ha un mulino
+nuovo accanto; nessun altro edificio. Anche `enemyarmy.mjs` ora lo
+vede: distrutto il centro (l'unico deposito di legno, oro e pietra della
+prova) il nemico si fa uno o due magazzini, dalle parti delle risorse.
+
+### 9.47 Font Cinzel e titolo "Dust Veil"
+
+Decisione dell'autore (14-19 ottobre 2026). Il gotico (Seagram tfb, §2.3,
+§2.5) e' anacronistico per il 535: la scrittura gotica nasce nel XII
+secolo; nel VI secolo si scriveva in capitale romana (iscrizioni) e in
+onciale (libri). Confrontati nel gioco Seagram, Uncial Antiqua (onciale:
+bello nei titoli, illeggibile nel testo piccolo: t come c, n come u),
+Cinzel (capitale romana) e un misto; per il titolo anche Grenze Gotisch,
+Cinzel Decorative e Marcellus SC. Scelti: **Cinzel** per il testo
+dell'interfaccia e **Cinzel Decorative Bold** per i titoli.
+
+**Font.** I TTF sono in `nuovi/font/` con le licenze (SIL OFL 1.1: si
+possono usare e ridistribuire col gioco; "Cinzel" e' un nome riservato,
+quindi i file non si modificano). `tools/05_atlas.py` (`FONT_TTF`,
+`ttf_glyphs`) li rasterizza nel formato dei glifi di GameMaker, al posto
+dei fogli Seagram: i tre font del gioco mantengono nome e altezza di riga
+(il codice non cambia):
+
+| font del gioco | uso | TTF | peso | px |
+|---|---|---|---|---|
+| GUI_1 | titoli delle schede, numeri, pulsanti | Cinzel | 700 | 19 |
+| overdue | descrizioni, messaggi | Cinzel | 500 | 18 |
+| gui_sblocco | titoli (Pausa, vittoria, sblocchi) | Cinzel Decorative Bold | - | 36 |
+
+Le dimensioni: a parita' di frase ~12% piu' larghi del Seagram (Cinzel e'
+piu' basso). Le maiuscole hanno il centro dove l'aveva il Seagram (testi
+centrati nei pulsanti come prima). Lettere accentate e segni delle
+traduzioni sono quelli veri del font (prima composti dalla lettera e da un
+segno, §6.1): draw.js riduce ora solo gli spazi speciali (ß, œ, virgolette,
+trattini lunghi, puntini si scrivono come sono). Anche i messaggi HTML
+(domtext.js) usano i glifi nuovi. Cinzel non ha minuscole vere: le
+minuscole sono maiuscolette.
+
+L'elenco dei livelli della campagna ora si allarga per il nome piu' lungo
+(menu.js `i.listR`): in tedesco "Schieb die Sonne beiseite" usciva di 1 px
+(game/test/browser/ui.mjs).
+
+**Titolo.** Il "535" sfumato del menu (sprite logo535 dell'originale) e'
+diventato "Dust Veil" in Cinzel Decorative Bold (`logo_dustveil`, gruppo
+ambiente come il logo535, nuovi.json): stesso grigio e stessa sfumatura
+verso il basso, misurata riga per riga sul logo535 sull'altezza delle
+maiuscole. Lo genera `tools/13_logo.py` (PNG versionato). Le icone della
+PWA (tools/09_icons.py) e i nomi del gioco altrove (titolo della pagina,
+manifest, zip) restano "535" finche' l'autore non decide.
+
+### 9.48 Il mulino nemico dell'autore
+
+L'autore ha disegnato il mulino nemico (nuovi/sprites/mub1..mub9.png): 9
+fotogrammi con le 4 pale ruotate di 10 gradi l'uno dall'altro, come il
+mulino alleato (mul1: 9 fotogrammi per un quarto di giro). Al posto di
+barn_b (3 fotogrammi dell'originale).
+
+**Allineamento.** Richiesta dell'autore: verificare il centro di ogni
+immagine (dopo la post-produzione). Confrontata la parte ferma (torre e
+casetta, righe 205-294) di ogni fotogramma col primo, spostamenti da -6 a
++6 px: i fotogrammi 2-9 erano fuori di 1-2 px (2 e 3: 1 in alto; 4 e 9: 2 a
+destra; 5, 6, 7: 1 a destra e 1 in alto; 8: 1 a destra); spostati, la
+parte ferma coincide col primo (differenza media 0-1,4 su 765, prima 20-69).
+I PNG sono stati corretti cosi' (tela allargata di 2 px per lato, 236x298:
+nessun pixel tagliato). Il palo delle pale resta nelle stesse colonne in
+tutti i fotogrammi (entro 1 px).
+
+**Nel gioco.** Gli sprite di nuovi.json ora possono avere piu' fotogrammi
+(`fotogrammi`: i PNG, stessa misura; tools/nuovi.py, 05_atlas.py). Lo
+sprite `mub` ha l'origine dove barn_b ha la sua (88, 261: la torre di mub1
+sovrapposta a quella di barn_b), cosi' enemy_mulino tiene la maschera
+barn_mask; le pale girano a 0,3 fotogrammi per passo come il mulino
+alleato (enemybuild.js KIND). Il kit di Tiled non e' stato rigenerato
+(l'autore ci sta lavorando): alla prossima rigenerazione la tile del
+mulino nemico avra' il disegno nuovo.
+
+### 9.49 Il lavoratore nemico dell'autore
+
+L'autore ha disegnato il lavoratore nemico: 144 PNG (nuovi/sprites/
+omino_blu/), le stesse 6 animazioni del lavoratore alleato (ow cammina, owo
+lavora, os raccoglie, ob costruisce, car porta, oc muore) x 8 direzioni x 3
+fotogrammi, coi nomi alleati preceduti da b_ (b_ow11...). Caricati come zip
+(nuovi/omino blu.zip), scompattati e tolto lo zip.
+
+**Verifica.** Ci sono tutte e 144, ma in tele tutte uguali (83x107) e con
+la figura in punti diversi (non centrata per sagoma ne' per piedi), mentre
+gli sprite alleati hanno una tela e un'origine per animazione. Stessa scala
+(rettangoli dell'inchiostro uguali entro pochi px). `tools/14_allinea.py`
+cerca per ogni immagine lo spostamento che sovrappone meglio la sua sagoma
+(alpha > 100) a quella dello sprite alleato (allineate in basso al centro,
+poi +-8 px, massimo dell'intersezione sull'unione) e ne ricava l'origine:
+il nemico sta dove sta l'alleato, fotogramma per fotogramma.
+Sovrapposizione da 0,77 (b_owo63: il colpo di piccone, disegnato un po'
+diverso) a 0,95; nessuna sotto 0,7. Le origini sono in nuovi.json
+(`omino_blu`, `serie` con `origini`; tools/nuovi.py li legge come uno
+sprite per PNG, gruppo d'atlas nemici).
+
+**Nel gioco.** enemy_omino ha le animazioni del civile alleato (che
+scelgono ow11...) e disegna il corrispondente b_ (economy.js, draw); la
+maschera di collisione resta quella dell'alleato. Tolta la tinta azzurra
+provvisoria. Il kit di Tiled non cambia (enemy_omino non e' nel kit).
+
+### 9.50 L'economia nemica, passo 4 (prima parte): difesa e ondate
+
+Richiesta dell'autore (20 ottobre 2026): passo 3 e "quello che rimane".
+Del passo 3 restano i segnaposto "cantiere nemico" di Tiled (in sospeso:
+toccano il kit, che l'autore sta usando, e la decisione "niente edifici
+nuovi" del livello 4, §9.45-§9.46). Qui la parte del passo 4 (regia per
+livello) che non dipende dalle mappe: le regole, coi numeri per livello in
+`ECO[room]` (economy.js) da tarare quando ci sono le mappe.
+
+**Difesa.** Se un'unita' alleata e' entro `defendR` (600 px) da un edificio
+nemico, tutti i soldati della regia in attesa (ruolo 30) accorrono, non solo
+quelli che la vedono da soli (400 px, enemies.js): col flow field dei
+nemici e il ruolo 31 come le ondate (diritti restavano dietro gli edifici:
+lo ha mostrato la prova), arrivati tornano in attesa; andato via l'intruso
+restano dove sono. Durante la difesa non partono ondate. I lavoratori
+scappano verso il centro come prima (§9.44).
+
+**Ondate.** Un attacco parte quando i soldati in attesa sono almeno
+`attackAt + ondate gia' partite x attackGrow` (fino al tetto `army`), non
+prima di `firstAttack` passi dalla nascita della regia e a non meno di
+`attackEvery` passi dall'ondata prima (`global.en.wave`, `nextAttack`,
+`since`: entrano nei salvataggi). Di norma come prima (8, nessuna crescita,
+nessuna attesa).
+
+Per le prove `window.__game.eco` e' la tabella ECO (si cambiano i numeri
+di una room).
+
+Prova (`game/test/browser/enemydefense.mjs`, nella CI): 6 soldati in
+attesa dalla parte opposta della base rispetto a un guerriero alleato a
+450 px dal centro accorrono tutti e lo raggiungono (con defendR 0 nessuno
+si muove); con attackAt 3, attackGrow 2, firstAttack 600, attackEvery 900:
+3 soldati non partono prima di 600 passi, poi si'; la seconda ondata non
+parte con 4, parte con 5 dopo ~1000 passi.
+
+### 9.51 I segnalini dei livelli 3 e 4 sulla mappa della campagna
+
+L'autore ha disegnato i segnalini dei livelli 3 (il monastero,
+nuovi/sprites/cap3.1.png, 273x163) e 4 (il ponte sul fiume, cap4.png,
+267x218). Sulla mappa della campagna sono sprite derivati (nuovi.json
+"derivati", gruppo campagna) rimpiccioliti alla scala degli altri
+segnalini (la citta' del livello 1 e' larga 171 px): `cap_l3` largo 160
+(al posto di `cap_monastero`, ricavato dallo sprite del monastero, §9.13),
+`cap_l4` largo 150.
+
+Il livello 4 entra nell'elenco della campagna (menu.js `ROOMS`; si
+sblocca vincendo il 3, come gli altri) e sulla mappa: il ponte a ovest
+del monastero, dove l'ha indicato l'autore (`L4_MARK`; prima l'avevo messo
+sul fiume grande a nord, che e' l'Adriatico), il numero sopra e la freccia
+dal monastero (`fr_corta` ruotata, come le altre). Il "3." sale di 15 px
+(sopra il campanile del segnalino nuovo). La storia del livello 4 non c'e'
+ancora: sotto la mappa compare "Prossimamente" (STORY, menu.js; da
+tradurre nelle sei lingue quando l'autore la scrive). Il livello e' quello
+del ponte (§9.40), in attesa della mappa dell'autore.
+
+### 9.52 Il livello 4: mappa dell'autore e regia
+
+L'autore ha caricato mappe/lvl04.tmx (e lvl03.tmx con qualche aggiunta:
+pali, fiori, una macchia e un sentiero). Importate (scenari/); la prova del
+ponte non dipende piu' dalle unita' della mappa (le mette lei sulla riva
+sud). Il kit si rigenera di nuovo (11_tiled_kit: un oggetto del progetto
+con uno sprite nuovo, il mulino nemico mub, §9.48).
+
+[Avviso] Nel livello 3 un'aquila (aquila_01) e' fuori dalla mappa
+(4560, 6224 in una mappa 6000x6000): l'import la segnala, non e' un errore.
+
+**La mappa.** Il giocatore a nord-ovest (centro, 3 case, 4 civili, 3
+guerrieri, due campi da seminare, una miniera d'oro); il fiume da ovest a
+est col ponte rotto in mezzo; a nord-est, sulla stessa riva del giocatore,
+una piccola base nemica (caserma, stalla, 3 cavalieri); a sud del fiume la
+base nemica grande (2 caserme, una stalla, 4 case) e un'altra miniera.
+
+**Decisioni dell'autore (20 ottobre 2026).**
+- Obiettivi: riparare il ponte resistendo agli attacchi della base nord;
+  distruggere la base nord e' facoltativo (ferma le ondate); a ponte
+  riparato si svela il vero obiettivo, distruggere il centro nemico oltre
+  il fiume (vittoria). Da quel momento attacca anche la base sud.
+- La base sud ha un centro e l'economia (§9.44-§9.50): "aggiungo centro e
+  lavoratori a sud".
+- Ondate della base nord crescenti, ma non troppo (dopo il ponte arrivano
+  anche da sud).
+- Giorno, risorse medie.
+
+**Il centro nemico** non e' nella mappa: il kit di Tiled dell'autore e'
+precedente agli edifici nemici nuovi (§9.43; non glielo si e' mandato,
+come chiesto), e nel suo file il numero di tile di enemy_centro e' quello
+di un oggetto della citta'. Lo mette la regia all'inizio (`LV4.centro`,
+2925, 3700: un posto libero fra le case e la miniera del sud, cercato nel
+gioco); i 4 lavoratori di partenza li fa nascere la regia economica
+(`ECO.startWorkers`). [Da fare quando l'autore aggiorna il kit] I tileset
+cresciuti (nemici ha 5 tile in piu': da 17 a 22) spostano i numeri delle tile dei
+tileset che vengono dopo: le mappe salvate col kit vecchio vanno
+controllate (i firstgid).
+
+**Regia** (levels.js `enemyManagerLv4`, `LV4`; numeri da tarare giocando):
+- partenza: 300 cibo, 300 legno, 150 oro; il dialogo 4_0 (il ponte, il
+  legno, le incursioni da nord-est);
+- gli edifici nemici a piu' di 1500 px dal centro (la base nord) sono
+  `noEco`: la regia economica non li usa (niente produzione pagata,
+  riparazioni, ricostruzioni, difesa: economy.js);
+- base nord: un'ondata a 2 minuti, poi ogni 2 minuti e mezzo, di 2, 2, 3,
+  3, 4, 4, 5 soldati (fanti dalla caserma, cavalieri dalla stalla, a
+  turno), verso l'edificio alleato piu' vicino col flow field; arrivati,
+  verso l'alleato piu' vicino. Distrutte caserma e stalla: obiettivo
+  facoltativo barrato, dialogo 4_2, niente piu' ondate;
+- base sud (ECO.lvl04): 4 lavoratori, fino a 6; scorte 200 cibo, 200 legno,
+  100 oro; esercito fino a 10; ondate da 4 soldati, +1 a ogni ondata, ogni
+  2 minuti e mezzo, solo a ponte riparato (`global.en.hold`);
+- ponte riparato (ponte_fatto): fase 1, dialogo 4_1, obiettivo "distruggi
+  il centro nemico"; vittoria quando non c'e' piu' un centro nemico
+  (codice del livello 5: 1 2 7 9 4, sblocca il 5).
+- Obiettivi (endgame.js): "Ripara il ponte (n%)" (barrato a ponte fatto),
+  "Facoltativo: distruggi l'accampamento nemico a nord-est", poi
+  "Distruggi il centro nemico oltre il fiume". Testi in sei lingue
+  (texts.js); anche la storia del livello sulla mappa della campagna,
+  scritta per il porting e da rivedere con l'autore.
+
+Prova (`game/test/browser/lvl04.mjs`, nella CI): partenza (risorse, centro,
+economia con 4 lavoratori, base nord fuori dall'economia, obiettivi,
+dialogo); la prima ondata da nord a 2 minuti; la base sud ferma prima del
+ponte; il ponte riparato sblocca fase, dialogo e ondate da sud; distrutta
+la base nord, niente piu' ondate; distrutto il centro, vittoria. Provato a
+parte che, a ponte riparato, un'ondata della base sud attraversa il ponte
+(partita a ~72 s con scorte abbondanti, a nord del fiume ~10 s dopo).
+
+### 9.53 Livelli sbloccati per le prove
+
+Richiesta dell'autore (20 ottobre 2026): per provare i primi quattro
+livelli, tutti sbloccati. `progress.js` `UNLOCK_ALL = 4`: lo sblocco letto
+dal browser e' almeno 4 (i livelli 1-4 nell'elenco della campagna, senza
+codici). [Provvisorio] Da rimettere a 1 prima dell'uscita.
+
+**Correzione per la CI (§9.52).** La CI rigenera kit e scenari e controlla
+che gli scenari versionati vengano dalle mappe: falliva per un papavero per
+livello (fiori_papaveri, scala 0,9935). Le macchie di fiori del kit sono
+disegnate da 11_tiled_kit (decor_image) col Pillow di chi lo genera e
+ritagliate sull'inchiostro: col Pillow della CI la tile e' alta 310 px, con
+quello del kit dell'autore 308. `12_tiled_import` ora tratta come non
+ingrandito un oggetto di una di queste tile (tk.DECOR) che differisce di
+1-2 px; solo per loro (nella room match traccia02 ha davvero scala 1,0012).
+Verificato rifacendo da zero i passi della CI con Python 3.11 e il Pillow
+corrente.

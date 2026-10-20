@@ -231,10 +231,21 @@ export function waterLife(w, cam) {
 // back/front: [dx1, dx2, dy1, dy2, particelle per passo (x visible)]
 const SMALL = { back: [-35, 35, -50, -45, 6], front: [-35, 35, 40, 45, 3], life: [150, 160] };
 const BIG = { back: [-75, 75, -90, -85, 8], front: [-55, 55, 70, 75, 4], life: [380, 400] };
+// [Segnalazione dell'autore, §9.38] La vita delle fiamme si misura dai danni
+// a partire da A e B, uguali per famiglia di grandezza [C]; ma a vita piena
+// la casa (120) ha fiamme di 15-20 passi e la caserma (350) di 15-25,
+// mentre il magazzino (140) le aveva di 5-10, il mulino (150) di 0-5 e la
+// stalla (380, anche nemica) di 0-10: in fiamme sembravano non bruciare.
+// Qui A e B partono dalla loro vita come per la casa e la caserma.
 export const FIRE = {
-  casa: SMALL, barn: SMALL, magazzino: SMALL, enemy_house: SMALL,
-  caserma: BIG, stalla: BIG, enemy_caserma: BIG, enemy_stalla: BIG,
+  casa: SMALL, enemy_house: SMALL,
+  magazzino: { ...SMALL, life: [170, 180] }, barn: { ...SMALL, life: [180, 190] },
+  caserma: BIG, enemy_caserma: BIG,
+  stalla: { ...BIG, life: [410, 430] }, enemy_stalla: { ...BIG, life: [410, 430] },
+  // [§9.43] gli edifici nemici nuovi, come i loro corrispondenti alleati
+  enemy_magazzino: { ...SMALL, life: [170, 180] }, enemy_mulino: { ...SMALL, life: [180, 190] },
   centro: { back: [-65, 65, -100, -95, 8], front: [-65, 65, 70, 75, 4], life: [430, 460] },
+  enemy_centro: { back: [-65, 65, -100, -95, 8], front: [-65, 65, 70, 75, 4], life: [430, 460] },
   // o_box: la regione dietro ha le y invertite (y-30, y-35) [C]
   o_box1: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
   o_box2: { back: [-35, 35, -30, -35, 6], front: [-35, 35, 40, 45, 3], life: [40, 50] },
@@ -243,6 +254,9 @@ export const FIRE = {
   // loro vita cresce coi danni ma scalata (k), se no a meta' vita
   // salirebbero per centinaia di passi
   monastero: { back: [-320, 320, -200, -170, 16], front: [-300, 300, 40, 70, 8], life: [3600, 3650], k: 0.05 },
+  // [§9.45] il cantiere nemico (economy.js): vita piena diversa per ogni
+  // edificio, fiamme di 15-20 passi a vita piena (rel) che crescono coi danni
+  enemy_cantiere: { ...SMALL, life: [30, 40], rel: true },
 };
 
 const fireType = () => partType({
@@ -278,8 +292,8 @@ export function fireStep(i, w, kind) {
     if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    const k = F.k || 1;
-    i.fire_part.life = [(F.life[0] - i.life) / 2 * k, (F.life[1] - i.life) / 2 * k];
+    const k = F.k || 1, b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena
+    i.fire_part.life = [(b + F.life[0] - i.life) / 2 * k, (b + F.life[1] - i.life) / 2 * k];
   }
 }
 

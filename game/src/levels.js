@@ -15,6 +15,7 @@ import { freeSpawnEnemy } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
 import { panTo, panStep } from "./camera.js";
+import { noMovesCheck } from "./endgame.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -47,6 +48,7 @@ function creazioneDifensoriArciere(i, w, defX, defY, defId) {
 // scr_area_difesa [C]: i nemici nel rettangolo difendono il punto
 function areaDifesa(w, x1, y1, x2, y2, defX, defY, defId) {
   for (const e of w.all("enemy_unit")) {
+    if (e.object === "enemy_omino") continue; // §9.44: i lavoratori non difendono
     if (e.x > x1 && e.x < x2 && e.y > y1 && e.y < y2) {
       e.role = 10; e.def_point_x = defX; e.def_point_y = defY; e.def_point_id = defId;
     }
@@ -58,6 +60,7 @@ function areaDifesa(w, x1, y1, x2, y2, defX, defY, defId) {
 // ne sono allontanati piu' di raggio/1,5.
 function difendi(w, defX, defY, defId, raggio) {
   for (const e of w.all("enemy_unit")) {
+    if (e.object === "enemy_omino") continue; // §9.44
     if (e.def_point_id !== defId || !(e.warwork === 0 || e.warwork === 4)) continue;
     const inv = w.nearest(defX, defY, "ally_unit");
     if (inv && pointDistance(defX, defY, inv.x, inv.y) < raggio) {
@@ -136,6 +139,7 @@ function attacca(m, w, p, nsend, interval, target) {
 function aggressione(i, w) {
   if (w.exists("ally_omino")) {
     for (const e of w.all("enemy_unit")) {
+      if (e.object === "enemy_omino") continue; // §9.44: i lavoratori non attaccano
       if (e.defender === 0 && e.action !== 1 && e.action !== 2 && e.action !== 6 && e.firework === 0) {
         const o = w.nearest(e.x, e.y, "ally_omino");
         e.alarm.set(0, 15); e.action = 1; e.warwork = 1; e.dirox = o.x; e.diroy = o.y;
@@ -282,6 +286,9 @@ export function levelStep(w) {
   if (g.fogville === 0) for (const e of w.all("enemy")) e.visible = true;
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);
+  // [§9.44] l'economia del nemico, dove c'e' un centro nemico
+  if (!w.exists("enemy_eco") && w.exists("enemy_centro")) w.create("enemy_eco", 0, 0);
+  noMovesCheck(w); // §9.39
 }
 
 // ----------------------------------------------------- livello 2
@@ -305,6 +312,12 @@ const AREAS = [
   [2200, 950, 2950, 1600, 2500, 1300, 170],
 ];
 // liberazioni [C, Step]: civili creati, dialogo, premi
+// [Richiesta dell'autore, §9.39] vinta la battaglia iniziale (liberati1):
+// popolazione massima 30 (prima 0) e un premio, se no il livello era troppo
+// difficile
+const LV2_FIRST = { popcap: 30, prizes: [["cibo_prizedrawer", 1645, 7060, "food", 200],
+                                          ["legno_prizedrawer", 1745, 7060, "wood", 200],
+                                          ["oro_prizedrawer", 1695, 7020, "gold", 100]] };
 const FREED = [
   { omini: [[2600, 7650]], dialog: ["dialogo_2_6", 2600, 7650] },
   { omini: [[2950, 3950], [3050, 3950], [3150, 3950]], dialog: ["dialogo_2_7", 2950, 3950] },
@@ -354,6 +367,8 @@ export function enemyManagerLv2(p) {
         w.create("ally_omino", 1645, 7109);
         w.create("ally_omino", 1745, 7109);
         createIfPorted(w, "dialogo_2_1", 1645, 7109);
+        g.popcap += LV2_FIRST.popcap;
+        for (const [o, x, y, r, n] of LV2_FIRST.prizes) { w.create(o, x, y); g[r] += n; }
         i.liberati1 = 1;
       }
       // `var lNexists` vive solo dentro il suo if: per le aree gia' liberate
@@ -642,6 +657,127 @@ export function enemyManagerLv3(p) {
           // lontani col flow field (si fermano a 400 px, enemies.js), poi dritti
           if (d > 450) { e.role = 31; e.flow_field = i.ffIn.ff; } else e.role = 32;
         }
+      }
+    },
+  };
+}
+
+// ----------------------------------------------------- livello 4
+
+// [§9.52, decisioni dell'autore] Il fiume e il ponte (§9.40). Il giocatore
+// parte a nord-ovest, di giorno, con risorse medie. Prima: riparare il
+// ponte (1000 legno, §9.41) mentre la piccola base nemica a nord-est manda
+// ondate crescenti ma non troppo; distruggerla (caserma e stalla) e' un
+// obiettivo facoltativo e ferma le ondate. A ponte riparato si svela
+// l'obiettivo: distruggere il centro nemico oltre il fiume (vittoria). La
+// base sud ha l'economia (economy.js, ECO.lvl04): il centro lo mette questa
+// regia (nella mappa dell'autore non c'e': il suo kit di Tiled non lo ha
+// ancora), coi lavoratori di partenza; i suoi attacchi partono solo a
+// ponte riparato (global.en.hold). Gli edifici nemici lontani dal centro
+// (la base nord) non sono della regia economica (noEco): niente produzione
+// pagata, riparazioni o ricostruzioni.
+// Numeri di partenza, da tarare giocando.
+export const LV4 = {
+  start: { food: 300, wood: 300, gold: 150, stone: 0 },
+  centro: [2925, 3700],          // il centro nemico (posto libero nella base sud)
+  ecoR: 1500,                    // edifici entro tanti px dal centro: della regia economica
+  northFirst: 2 * MIN,           // la prima ondata dalla base nord
+  northEvery: 2.5 * MIN,         // poi ogni 2 minuti e mezzo
+  northN: [2, 2, 3, 3, 4, 4, 5], // soldati per ondata (poi sempre l'ultimo)
+};
+
+export function enemyManagerLv4(p) {
+  const north = (w) => [...w.all("enemy_caserma"), ...w.all("enemy_stalla")].filter((b) => b.noEco === 1);
+  return {
+    create(i, w) {
+      const g = w.g;
+      i.sprite_index = null;
+      Object.assign(i, { t: 0, wave: 0, phase: 0 });
+      Object.assign(g, LV4.start);
+      const c = w.create("enemy_centro", LV4.centro[0], LV4.centro[1]);
+      p.markInstance(c, 1000);
+      for (const b of w.all("enemy_build")) {
+        if (Math.hypot(b.x - c.x, b.y - c.y) > LV4.ecoR) b.noEco = 1;
+      }
+      // i nemici gia' sulla mappa difendono dove sono
+      for (const e of w.all("enemy_unit")) e.defender = 1;
+      if (!g.en) g.en = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, idle: 0 };
+      g.en.hold = 1;
+      g.l4 = { phase: 0, bridge: 0, north: 0 };
+      i.alarm.set(1, 60);
+    },
+    // il primo dialogo, sui soldati
+    alarm1(i, w) {
+      const s = w.nearest(w.cam.x + w.cam.w / 2, w.cam.y + w.cam.h / 2, "ally_militare");
+      if (s) w.create("dialogo_4_0", s.x, s.y);
+    },
+    step(i, w) {
+      const g = w.g, L = g.l4;
+      if (!L || g.victory === 1 || g.gameover === 1) return;
+      // all'inizio la vista sui soldati del giocatore, come nel livello 3
+      // (la view della mappa di Tiled cade fuori dalla mappa)
+      if (!i.startView && w._stepNo < 10) { // (non dopo un caricamento)
+        i.startView = 1;
+        let n = 0, sx = 0, sy = 0;
+        for (const u of w.all("ally_militare")) { n++; sx += u.x; sy += u.y; }
+        if (n) {
+          const c = w.cam;
+          c.x = Math.max(0, Math.min(sx / n - c.w / 2, c.roomW - c.w));
+          c.y = Math.max(0, Math.min(sy / n - c.h / 2, c.roomH - c.h));
+        }
+      }
+      i.t++;
+      // il ponte: avanzamento per gli obiettivi, poi la fase 1
+      const b = w.all("ponte").next().value;
+      if (b) L.bridge = Math.floor(100 * b.life / b.slife);
+      if (L.phase === 0 && w.exists("ponte_fatto")) {
+        L.phase = 1; L.bridge = 100;
+        g.en.hold = 0;
+        const s = w.nearest(LV4.centro[0], LV4.centro[1], "ally_unit");
+        if (s) w.create("dialogo_4_1", s.x, s.y);
+      }
+      // la base nord: ondate finche' ha caserma o stalla
+      const nb = north(w);
+      if (!nb.length && !L.north) {
+        L.north = 1;
+        const s = w.nearest(w.cam.x + w.cam.w / 2, w.cam.y + w.cam.h / 2, "ally_unit");
+        if (s) w.create("dialogo_4_2", s.x, s.y);
+      }
+      if (nb.length && i.t >= LV4.northFirst + i.wave * LV4.northEvery) {
+        const n = LV4.northN[Math.min(i.wave, LV4.northN.length - 1)];
+        i.wave++;
+        const home = nb[0], town = w.nearest(home.x, home.y, "ally_build") || w.nearest(home.x, home.y, "ally_unit");
+        if (town) {
+          const ff = p.flowField(p.goalField(town.x, town.y, true));
+          // a turno dalla caserma (fanti) e dalla stalla (cavalieri)
+          const list = [];
+          for (let k = 0; k < n; k++) {
+            const src = nb[k % nb.length];
+            list.push([src, src.object === "enemy_stalla" ? "enemy_cavaliere" : FANTI[(i.wave + k) % 3]]);
+          }
+          for (const [src, obj] of list) {
+            const e = w.create(obj, src.x, src.y + 120);
+            freeSpawnEnemy(e, w);
+            e.l4 = 1; e.defender = 0;
+            e.role = 31; e.action = 1; e.flow_field = ff; e.dirox = town.x; e.diroy = town.y;
+            e.alarm.set(0, irandomRange(12, 15));
+          }
+        }
+      }
+      // arrivati e fermi: verso il bersaglio alleato piu' vicino
+      if (i.t % 60 === 0) {
+        for (const e of w.all("enemy_unit")) {
+          if (e.l4 !== 1 || e.action !== 0 || e.role === 31) continue;
+          const t = w.nearest(e.x, e.y, "ally_unit") || w.nearest(e.x, e.y, "ally_build");
+          if (!t) continue;
+          e.action = 1; e.warwork = 1; e.dirox = t.x; e.diroy = t.y; e.alarm.set(0, 15);
+        }
+      }
+      // vittoria: il centro nemico distrutto (si vede solo a ponte riparato,
+      // ma vale anche prima)
+      if (!w.exists("enemy_centro")) {
+        g.victory = 1;
+        w.create("victory_manager", 0, 0);
       }
     },
   };

@@ -16,9 +16,23 @@ import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIf
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
+import { bridgeEnds, woodDue } from "./bridge.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
+
+// [§9.44] La fazione del civile: l'alleato (ally_omino, del giocatore) o il
+// lavoratore nemico (enemy_omino, della regia: economy.js). Stessa logica,
+// altri depositi, cantieri, unita' e scorte (global.* per il giocatore,
+// global.en per il nemico).
+export const SIDES = {
+  ally: { om: "ally_omino", unit: "ally_unit", magazza: "ally_magazza", barn: "ally_barn", fond: "ally_fondamenta",
+          build: "ally_build", campo: "campo", enemy: false, player: true },
+  enemy: { om: "enemy_omino", unit: "enemy_unit", magazza: "enemy_magazza", barn: "enemy_barn", fond: "enemy_fondamenta",
+           build: "enemy_build", campo: "enemy_campo", enemy: true, player: false },
+};
+export const sideOf = (i) => (i.object === "enemy_omino" ? SIDES.enemy : SIDES.ally);
+export const poolOf = (w, i) => (i.object === "enemy_omino" ? w.g.en : w.g);
 const CLICKERS = ["casa_clicker", "magazzino_clicker", "barn_clicker", "campo_clicker", "chiesa_clicker",
                   "torre_clicker", "caserma_clicker", "stalla_clicker", "castello_clicker", "mura_clicker"];
 
@@ -57,12 +71,12 @@ function goTo(p, i, tx, ty, freeCell = false) {
 function fieldTo(w, p, i, tx, ty, fallback = true) {
   const gx = Math.floor(tx / GRID), gy = Math.floor(ty / GRID), key = gy * p.gw + gx;
   const old = i.goal_field;
-  const c = w._fieldTo;
+  const c = w._fieldTo, en = sideOf(i).enemy; // §9.44: il campo della fazione (porte)
   let f;
-  if (c && c.step === w._stepNo && c.key === key && c.ver === p.solidVer) f = c.f;
+  if (c && c.step === w._stepNo && c.key === key && c.ver === p.solidVer && c.en === en) f = c.f;
   else {
-    f = p.goalField(tx, ty);
-    w._fieldTo = { step: w._stepNo, key, ver: p.solidVer, f };
+    f = p.goalField(tx, ty, en);
+    w._fieldTo = { step: w._stepNo, key, ver: p.solidVer, f, en };
   }
   const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
   if (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) {
@@ -81,7 +95,7 @@ function fieldTo(w, p, i, tx, ty, fallback = true) {
 // magazzino (ally_magazza: centro o magazzino), cibo al granaio (ally_barn:
 // mulino o centro).
 const carried = (i) => i.wood + i.gold + i.stone + i.food;
-const depositKind = (i) => (i.food > 0 ? "ally_barn" : "ally_magazza");
+const depositKind = (i) => (i.food > 0 ? sideOf(i).barn : sideOf(i).magazza);
 
 // --------------------------------------------------------------- civile
 
@@ -91,7 +105,7 @@ export function omino(p) {
     if (occupy) p.occupy(i);
     i.step = 0;
     i.speed = 0;
-    w.g.idle += 1;
+    poolOf(w, i).idle += 1;
   };
 
   return {
@@ -107,10 +121,11 @@ export function omino(p) {
         fieldwork: 0, direction: 0, flaggox: 0, flaggoy: 0,
       });
       i.scampalife = i.life;
-      g.idle += 1;
+      const P = poolOf(w, i); // §9.44
+      P.idle += 1;
       i.idling = 1;
-      i.idleorder = g.idle;
-      g.pop += 1;
+      i.idleorder = P.idle;
+      P.pop += 1;
       g.order++;
       i.ordo = g.order * 6; // var rank=6
       p.findFreeSpawn(i);
@@ -127,12 +142,12 @@ export function omino(p) {
     // Alarm_3 [C]: se alla nascita il posto e' occupato, ne nasce un altro 50
     // px piu' in la' con lo stesso lavoro e questo sparisce.
     alarm3(i, w) {
-      const g = w.g;
+      const g = poolOf(w, i); // §9.44
       if (i.action === 0) { g.idle += 1; i.idleorder = g.idle; }
       const keep = { act: i.action, gol: i.goldwork, sto: i.stonework, woo: i.woodwork, foo: i.foodwork,
                      dix: i.dirox, diy: i.diroy };
       if (!w.placeFree(i, i.x, i.y)) {
-        const n = w.create(OM, i.x + 50, i.y - 20);
+        const n = w.create(i.object, i.x + 50, i.y - 20);
         Object.assign(n, { action: 1, goldwork: keep.gol, stonework: keep.sto, woodwork: keep.woo,
                            foodwork: keep.foo, dirox: keep.dix, diroy: keep.diy, goldx: keep.dix, goldy: keep.diy,
                            woodx: keep.dix, woody: keep.diy, stonex: keep.dix, stoney: keep.diy,
@@ -201,6 +216,18 @@ function rightClick(i, w) {
   if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; } else i.foodwork = 0;
   if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; } else i.stonework = 0;
   if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+  // [§9.40] il ponte del livello 4 si raggiunge solo dalle due rive: verso
+  // l'estremita' piu' vicina da cui ci si arriva (il punto cliccato e' in
+  // mezzo al fiume)
+  const pb = i.buildwork === 1 && w.instancePosition(i.dirox, i.diroy, "ponte");
+  if (pb) {
+    for (const e of bridgeEnds(pb, i.x, i.y)) {
+      if (!fieldTo(w, w.path, i, e.x, e.y, false)) continue;
+      i.dirox = i.buildx = e.x; i.diroy = i.buildy = e.y;
+      e.take();
+      break;
+    }
+  }
   // [§8.19] verso una risorsa: il campo verso la risorsa cliccata (il campo
   // del capo, scr_movement_general, va verso una cella trovata come in
   // scr_move: vedi fieldTo)
@@ -280,6 +307,18 @@ function rallyOmino(p) {
     if (i.foodwork === 1) { i.dirox = i.campox; i.diroy = i.campoy; i.foodx = i.campox; i.foody = i.campoy; }
     if (i.stonework === 1) { i.stonex = i.dirox; i.stoney = i.diroy; }
     if (i.buildwork === 1 || i.fieldwork === 1) { i.buildx = i.dirox; i.buildy = i.diroy; } else i.buildwork = 0;
+  // [§9.40] il ponte del livello 4 si raggiunge solo dalle due rive: verso
+  // l'estremita' piu' vicina da cui ci si arriva (il punto cliccato e' in
+  // mezzo al fiume)
+  const pb = i.buildwork === 1 && w.instancePosition(i.dirox, i.diroy, "ponte");
+  if (pb) {
+    for (const e of bridgeEnds(pb, i.x, i.y)) {
+      if (!fieldTo(w, w.path, i, e.x, e.y, false)) continue;
+      i.dirox = i.buildx = e.x; i.diroy = i.buildy = e.y;
+      e.take();
+      break;
+    }
+  }
     // [§9.30, segnalazione dell'autore] senza un lavoro sotto la bandiera, un
     // posto libero, raggiungibile e non promesso a un altro vicino alla
     // bandiera, e la strada col pathfinding passando sopra gli altri civili
@@ -300,12 +339,13 @@ function rallyOmino(p) {
 // --------------------------------------------------------------- Step
 
 function ominoStep(i, w, p, stop) {
-  const g = w.g, input = w.input;
+  const g = w.g, input = w.input, S = sideOf(i), P = poolOf(w, i); // §9.44
   const nearest = (n, x = i.x, y = i.y) => w.nearest(x, y, n);
   const num = (n) => w.number(n);
 
-  // azione 1: tasto sinistro (i civili non contano in milsel)
-  if (i.hover === 1 && input.mouseReleased[0]) {
+  // azione 1: tasto sinistro (i civili non contano in milsel; §9.44: solo i
+  // civili del giocatore)
+  if (S.player && i.hover === 1 && input.mouseReleased[0]) {
     if (i.dc === 1) for (const o of w.all(OM)) if (inView(w, o)) { o.selected = 1; g.sel += 1; }
     if (g.sele > -1 && i.selected === 0) {
       i.selected = 1;
@@ -322,10 +362,10 @@ function ominoStep(i, w, p, stop) {
   if (i.life <= 0) {
     p.free(i);
     if (i.selected === 1) g.sel -= 1;
-    if (i.action === 0) g.idle -= 1;
+    if (i.action === 0) P.idle -= 1;
     const corpse = w.create("omino_corpse", i.x, i.y);
     w.destroy(i);
-    g.pop -= 1;
+    P.pop -= 1;
     corpse.direction = diro;
     return;
   }
@@ -341,7 +381,7 @@ function ominoStep(i, w, p, stop) {
   i.phase = phaseOf(i.direction);
   // azione 6: quando fermarsi (arrivo ESATTO sul punto, x=dirox && y=diroy)
   if (i.action === 1 && i.woodwork === 0 && i.x === i.dirox && i.y === i.diroy) {
-    i.action = 0; i.creation = 0; p.occupy(i); i.speed = 0; g.idle += 1;
+    i.action = 0; i.creation = 0; p.occupy(i); i.speed = 0; P.idle += 1;
   }
   if (i.action === 1 && i.woodwork === 1 && i.x === i.dirox && i.y === i.diroy
       && pointDistance(i.woodx, i.woody, i.dirox, i.diroy) > 20 && num("albero") > 0) {
@@ -353,7 +393,7 @@ function ominoStep(i, w, p, stop) {
   // azione 7: sprite
   ANIM[OM](i, w);
   // azione 8: rettangolo di selezione
-  if (g.multi === 1 && g.sele === 0) {
+  if (S.player && g.multi === 1 && g.sele === 0) {
     const mx = w.mouse.x, my = w.mouse.y;
     const inside = (i.x > g.startx && i.x < mx && i.y > g.starty && i.y < my)
       || (i.x < g.startx && i.x > mx && i.y > g.starty && i.y < my)
@@ -389,20 +429,20 @@ function ominoStep(i, w, p, stop) {
     }
   }
   // azione 12: ordine dei civili inattivi (per il tasto Spazio)
-  if (i.action === 0 && i.idling === 0) { i.idling = 1; i.idleorder = g.idle; }
+  if (i.action === 0 && i.idling === 0) { i.idling = 1; i.idleorder = P.idle; }
   if (i.action !== 0 && i.idling === 1) {
     i.idling = 0;
     const orderr = i.idleorder;
     i.idleorder = 0;
-    for (const o of w.all(OM)) if (o.idleorder > orderr) o.idleorder -= 1;
+    for (const o of w.all(S.om)) if (o.idleorder > orderr) o.idleorder -= 1;
   }
   // azione 13
   if (num("torre_placer") > 0) g.sele = 1;
   // azione 14: movimento
   ominoMove(i, w, p);
   // azione 15: seminare un campo alla volta
-  if (i.fieldwork === 1 && w.instancePlace(i, i.buildx, i.buildy, OM)) {
-    i.action = 0; i.fieldwork = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); g.idle++; i.speed = 0;
+  if (i.fieldwork === 1 && w.instancePlace(i, i.buildx, i.buildy, S.om)) {
+    i.action = 0; i.fieldwork = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); P.idle++; i.speed = 0;
   }
   // azione 16: lavoro
   if (workStep(i, w, p, stop) === "exit") return;
@@ -483,7 +523,7 @@ function resSpot(w, i, res) {
   const nearest = (list) => {
     let best = null, bd = Infinity;
     for (const s of list) {
-      if (taken(s) || !w.placeFreeExcept(i, s.x, s.y, "ally_unit")) continue;
+      if (taken(s) || !w.placeFreeExcept(i, s.x, s.y, sideOf(i).unit)) continue;
       const d = pointDistance(i.x, i.y, s.x, s.y);
       if (d < bd) { bd = d; best = s; }
     }
@@ -513,7 +553,7 @@ function toResSpot(w, i, res) {
   // dentro la risorsa o un altro ostacolo (col campo, senza collisioni, si
   // tagliano gli spigoli): fuori, lontano dal suo centro
   const o = w.instancePlace(i, i.x, i.y, null, true);
-  if (o && !w.is(o, "ally_unit")) {
+  if (o && !w.is(o, sideOf(i).unit)) {
     const b = w.bbox(o), cx = b ? (b[0] + b[2]) / 2 : o.x, cy = b ? (b[1] + b[3]) / 2 : o.y;
     i.direction = pointDirection(cx, cy, i.x, i.y);
     w.setPos(i, i.x + lengthdirX(i.autospeed, i.direction), i.y + lengthdirY(i.autospeed, i.direction));
@@ -599,7 +639,7 @@ function separate(w, i) {
   if (!bb) return false;
   let vx = 0, vy = 0, n = 0;
   for (const o of w._nearList(bb)) {
-    if (o === i || !o.alive || !o.solid || !w.is(o, "ally_unit") || !w.overlap(i, i.x, i.y, o)) continue;
+    if (o === i || !o.alive || !o.solid || !w.is(o, sideOf(i).unit) || !w.overlap(i, i.x, i.y, o)) continue;
     let dx = i.x - o.x, dy = i.y - o.y;
     const d = Math.hypot(dx, dy);
     if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = Math.cos(a); dy = Math.sin(a); } // uno sull'altro
@@ -610,7 +650,7 @@ function separate(w, i) {
   const base = pointDirection(0, 0, vx, vy), step = Math.max(1, i.autospeed);
   for (const off of [0, 45, -45, 90, -90]) {
     const a = (base + off + 360) % 360, nx = i.x + lengthdirX(step, a), ny = i.y + lengthdirY(step, a);
-    if (w.placeFreeExcept(i, nx, ny, "ally_unit")) {
+    if (w.placeFreeExcept(i, nx, ny, sideOf(i).unit)) {
       i.direction = a;
       w.setPos(i, nx, ny);
       return true;
@@ -630,6 +670,7 @@ function workTarget(w, i) {
 // azione 14 [C]: flow field se lontano (300, o 100 se sta andando a una
 // risorsa) o sovrapposto; da vicino mp_potential_step verso la cosa giusta.
 function ominoMove(i, w, p) {
+  const S = sideOf(i); // §9.44
   i.queueWait = false; // §9.21: toResSpot lo rimette a ogni passo
   const n = (name, x = i.x, y = i.y) => w.nearest(x, y, name);
   const mp = (t) => { if (t) mpPotentialStep(w, i, t.x, t.y, i.autospeed); };
@@ -648,7 +689,7 @@ function ominoMove(i, w, p) {
     const atRes = !!res && !far && (i.goldwork === 1 || i.stonework === 1);
     if (atRes) toResSpot(w, i, res); // §9.21
     else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i))) {
-      const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
+      const otro = w.instancePlace(i, i.x, i.y, S.unit);
       if (otro) {
         // [§8.19] vicino alla risorsa o al deposito ci si stacca, tutti e
         // due, da chi cammina o lavora (separate); sopra chi e' fermo si
@@ -687,15 +728,15 @@ function ominoMove(i, w, p) {
       }
       // [§8.19] al proprio posto attorno alla risorsa (prima: mp_potential_step
       // verso il centro della miniera o della pietra piu' vicina)
-      if (i.buildwork === 1) mp(n("ally_fondamenta", i.buildx, i.buildy));
-      if (i.repairwork === 1) mp(n("ally_build", i.repx, i.repy));
+      if (i.buildwork === 1) mp(n(S.fond, i.buildx, i.buildy));
+      if (i.repairwork === 1) mp(n(S.build, i.repx, i.repy));
       if (i.fieldwork === 1) {
         const f = n("campo_fond", i.buildx, i.buildy);
         mp(f);
         if (f) { i.dirox = f.x; i.diroy = f.y; }
       }
-      if (i.foodwork === 2) mp(n("ally_barn", i.dirox, i.diroy));
-      if (i.goldwork === 2 || i.stonework === 2) mp(n("ally_magazza", i.dirox, i.diroy));
+      if (i.foodwork === 2) mp(n(S.barn, i.dirox, i.diroy));
+      if (i.goldwork === 2 || i.stonework === 2) mp(n(S.magazza, i.dirox, i.diroy));
     }
   }
   // Ricalcolo se la destinazione e' occupata.
@@ -713,24 +754,24 @@ function ominoMove(i, w, p) {
 // azione 10 [C]: legno, oro e pietra: a 10 si va al deposito
 // (ally_magazza: centro o magazzino) e poi si torna alla risorsa.
 function depositStep(i, w, p, stop) {
-  const g = w.g;
+  const g = poolOf(w, i), S = sideOf(i); // §9.44: le scorte e i depositi della fazione
   const n = (name) => w.nearest(i.x, i.y, name);
   const num = (name) => w.number(name);
   const toMagazza = () => {
-    const m = n("ally_magazza");
+    const m = n(S.magazza);
     i.action = 1; p.free(i); i.dirox = m.x; i.diroy = m.y;
     i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
   };
   // legno
   if (i.action === 2 && i.wood >= 10) {
-    if (num("ally_magazza") > 0) {
+    if (num(S.magazza) > 0) {
       toMagazza();
       fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
       i.alarm.set(0, 13);
       i.woodwork = 2;
     } else { i.action = 0; i.woodwork = 0; i.step = 0; i.speed = 0; g.idle += 1; }
   }
-  if (w.distanceToObject(i, "ally_magazza") < 10) {
+  if (w.distanceToObject(i, S.magazza) < 10) {
     g.wood += i.wood;
     i.wood = 0;
     if (i.woodwork === 2) {
@@ -745,18 +786,18 @@ function depositStep(i, w, p, stop) {
   }
   // oro
   if (i.action === 3 && i.gold >= 10) {
-    if (num("ally_magazza") > 0) {
+    if (num(S.magazza) > 0) {
       toMagazza();
       if (i.goldwork !== 2) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19 (era scr_move)
       i.alarm.set(0, 13);
       i.goldwork = 2;
     } else { stop(i, w); i.woodwork = 0; }
   }
-  if (w.distanceToObject(i, "ally_magazza") < 10) {
+  if (w.distanceToObject(i, S.magazza) < 10) {
     g.gold += i.gold;
     i.gold = 0;
     const mine = n("miniera_oro");
-    const visoro = !!(mine && mine.visible);
+    const visoro = !!(mine && (mine.visible || !S.player)); // §9.44: il nemico non ha la nebbia
     if (i.goldwork === 2) {
       if (num("miniera_oro") > 0 && visoro) {
         i.action = 1; p.free(i); i.dirox = mine.x; i.diroy = mine.y;
@@ -769,18 +810,18 @@ function depositStep(i, w, p, stop) {
   // pietra [Difetto §3.4 n.15, riprodotto] senza depositi l'originale
   // azzera goldwork invece di stonework
   if (i.action === 5 && i.stone >= 10) {
-    if (num("ally_magazza") > 0) {
+    if (num(S.magazza) > 0) {
       toMagazza();
       if (i.stonework !== 2) fieldTo(w, p, i, i.dirox, i.diroy); // §8.19
       i.alarm.set(0, 13);
       i.stonework = 2;
     } else { stop(i, w); i.goldwork = 0; }
   }
-  if (w.distanceToObject(i, "ally_magazza") < 10) {
+  if (w.distanceToObject(i, S.magazza) < 10) {
     g.stone += i.stone;
     i.stone = 0;
     const st = n("stone_parent");
-    const vispietr = !!(st && st.visible);
+    const vispietr = !!(st && (st.visible || !S.player));
     if (i.stonework === 2) {
       if (num("stone_parent") > 0 && vispietr) {
         i.action = 1; p.free(i); i.dirox = st.x; i.diroy = st.y;
@@ -801,7 +842,7 @@ function depositStep(i, w, p, stop) {
 // azione 16 [C]: arrivati alla risorsa (bbox a meno di 20 px, 15 per la
 // pietra, e cella libera) si comincia a lavorare.
 function workStep(i, w, p, stop) {
-  const g = w.g;
+  const g = poolOf(w, i), S = sideOf(i); // §9.44
   const n = (name, x = i.x, y = i.y) => w.nearest(x, y, name);
   const num = (name) => w.number(name);
   // [§8.19] non piu' "cella libera" (costo < 1000): con i posti attorno
@@ -814,7 +855,7 @@ function workStep(i, w, p, stop) {
   // passa: prima bastava un compagno di passaggio per non cominciare)
   const cellFree = () => {
     const bb = w.bbox(i);
-    return !bb || !w._eachNear(bb, (o) => (o !== i && o.alive && w.is(o, OM) && o.action !== 0 && o.action !== 1
+    return !bb || !w._eachNear(bb, (o) => (o !== i && o.alive && w.is(o, S.om) && o.action !== 0 && o.action !== 1
       && w.overlap(i, i.x, i.y, o) ? o : null));
   };
   const begin = (action, tx, ty) => {
@@ -868,7 +909,7 @@ function workStep(i, w, p, stop) {
   // (inattivo), come chi riempie il carico senza depositi. Prima si
   // continuava verso il punto in cui era, senza arrivare mai (idle.mjs,
   // scenario 6)
-  for (const [work, dep] of [["woodwork", "ally_magazza"], ["goldwork", "ally_magazza"], ["stonework", "ally_magazza"], ["foodwork", "ally_barn"]]) {
+  for (const [work, dep] of [["woodwork", S.magazza], ["goldwork", S.magazza], ["stonework", S.magazza], ["foodwork", S.barn]]) {
     if (i[work] !== 2 || i.action !== 1) continue;
     if (num(dep) === 0) { stop(i, w); i[work] = 0; continue; }
     // (la meta e' il deposito o, per il cibo, una cella accanto: 120 px)
@@ -967,13 +1008,16 @@ function workTick(i, w) {
 // azione 16, parte "costruzione", "coltivazione di campo", "riparazione",
 // "fine costruzione", "fine coltivazione" [C].
 function buildStep(i, w, p) {
-  const g = w.g;
-  const fondNear = () => w.nearest(i.buildx, i.buildy, "ally_fondamenta");
+  const g = poolOf(w, i), S = sideOf(i); // §9.44
+  const fondNear = () => w.nearest(i.buildx, i.buildy, S.fond);
   const clearLoads = () => { i.wood = 0; i.food = 0; i.gold = 0; i.stone = 0; i.step = 0; i.alarm.set(2, 13); };
   // costruzione: l'else e' agganciato a "ci sono cantieri" [C]
+  // [§9.40] il ponte del livello 4 si ripara da piu' lontano (buildReach):
+  // all'imbocco c'e' posto per due, gli altri restavano in coda per sempre
+  const reach = (f) => (f && f.buildReach) || 10;
   if (i.buildwork === 1) {
-    if (w.number("ally_fondamenta") > 0) {
-      if (w.distanceToInstance(i, fondNear()) < 10) {
+    if (w.number(S.fond) > 0) {
+      if (w.distanceToInstance(i, fondNear()) < reach(fondNear())) {
         i.buildwork = 0;
         p.occupy(i);
         i.action = 6;
@@ -1006,7 +1050,7 @@ function buildStep(i, w, p) {
   }
   // riparazione ([§9.29] di un complesso: da un pezzo qualunque)
   const rc = complexOf(i.repT);
-  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, "ally_build")) < 5)) {
+  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, S.build)) < 5)) {
     i.repairwork = 0;
     p.occupy(i);
     i.action = 7;
@@ -1016,11 +1060,21 @@ function buildStep(i, w, p) {
   // fine costruzione: il cantiere e' finito (non c'e' piu' a 40 px):
   // al prossimo cantiere, o fermi se non ce ne sono
   if (i.action === 6) {
-    if (w.number("ally_fondamenta") > 0) {
-      if (w.distanceToInstance(i, fondNear()) > 40) {
+    if (w.number(S.fond) > 0) {
+      // [§9.40] non verso il ponte del livello 4 (noAuto): e' sempre li', e
+      // ci sarebbero andati da ogni cantiere finito della mappa
+      let next = null, nd = Infinity;
+      for (const f of w.all(S.fond)) {
+        const d = pointDistance(i.x, i.y, f.x, f.y);
+        if (!f.noAuto && d < nd) { next = f; nd = d; }
+      }
+      const away = w.distanceToInstance(i, fondNear()) > Math.max(40, reach(fondNear()) + 10);
+      if (away && !next) {
+        i.action = 0; i.buildwork = 0; i.step = 0; i.speed = 0; g.idle += 1;
+      } else if (away) {
         i.action = 1;
         p.free(i);
-        const f = w.nearest(i.x, i.y, "ally_fondamenta");
+        const f = next;
         i.dirox = f.x; i.diroy = f.y;
         i.buildx = i.dirox; i.buildy = i.diroy;
         i.target_angle = pointDirection(i.x, i.y, i.dirox, i.diroy);
@@ -1055,13 +1109,18 @@ function buildStep(i, w, p) {
 // slife [C]: le costruzioni grandi +1, casa/magazzino/mulino +2, i tratti
 // di mura (799) +5. Il 100 non serve: e' il cantiere del campo, che non e'
 // un ally_fondamenta e cresce con la semina (azione 8).
-const BUILD_RATE = { 329: 1, 899: 1, 349: 1, 299: 1, 379: 1, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5 };
+// [Richiesta dell'autore, §9.39] caserma (349) e stalla (379) +2.
+// [§9.40-§9.42] il ponte del livello 4 (999): 998/4399, frazioni di vita
+// (4399 = bridge.js BRIDGE.hits; scritto qui: i moduli si importano a
+// vicenda e questa tabella si calcola al caricamento)
+const BUILD_RATE = { 329: 1, 899: 1, 349: 2, 299: 1, 379: 2, 139: 2, 119: 2, 149: 2, 799: 5, 100: 5,
+                     999: 998 / 4399 };
 
 // Alarm_2, azioni 4, 6, 7, 8 [C]: a differenza della raccolta, il cantiere
 // cresce a ogni scatto (non solo al terzo); il ciclo dei tre step serve
 // solo all'animazione.
 function otherWorkTick(i, w) {
-  const g = w.g;
+  const g = poolOf(w, i), S = sideOf(i); // §9.44
   // raccolta del cibo [C]: +1 ogni tre scatti; il campo resta occupato
   // (alarm 1 a 40 passi), o si libera al passo dopo se il contadino ha 10.
   if (i.action === 4) {
@@ -1071,7 +1130,7 @@ function otherWorkTick(i, w) {
     i.step = 0;
     i.alarm.set(2, 13);
     i.food += 1;
-    const c = w.nearest(i.x, i.y, "campo");
+    const c = w.nearest(i.x, i.y, S.campo);
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
     return;
   }
@@ -1085,15 +1144,24 @@ function otherWorkTick(i, w) {
     return;
   }
   if (i.action === 6) {
-    const f = w.nearest(i.buildx, i.buildy, "ally_fondamenta");
+    const f = w.nearest(i.buildx, i.buildy, S.fond);
     if (f && f.fondazione === 1) {
-      f.life += BUILD_RATE[f.slife] || 0;
-      if (f.life > f.slife) f.life = f.slife;
+      const n = f.rate || BUILD_RATE[f.slife] || 0; // §9.45: i cantieri nemici hanno il loro (rate)
+      // [§9.41] il ponte del livello 4 costa legno a ogni colpo; senza, il
+      // colpo non vale e il legno lampeggia
+      const due = f.object === "ponte" ? woodDue(f, n) : 0;
+      if (due > g.wood) {
+        if (S.player && w.number("wood_blink") === 0) w.create("wood_blink", 0, 0);
+      } else {
+        g.wood -= due;
+        f.life += n;
+        if (f.life > f.slife) f.life = f.slife;
+      }
     }
   } else if (i.action === 7) {
     // riparazione: 1 pietra o 1 legno per punto di vita; il legno spegne
     // anche il fuoco (e le fiamme)
-    const b = complexOf(i.repT) || w.nearest(i.repx, i.repy, "ally_build"); // §9.29
+    const b = complexOf(i.repT) || w.nearest(i.repx, i.repy, S.build); // §9.29
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
       if (b.life > b.slife) b.life = b.slife;
@@ -1121,13 +1189,13 @@ function distanceToPoint(w, i, px, py) {
 // azione 3, "Campi di grano" [C]. foodwork: 0 niente, 1 verso il mio campo,
 // 2 verso il granaio col cibo, 6 cercare il campo libero piu' vicino.
 function fieldsStep(i, w, p) {
-  const g = w.g;
+  const g = poolOf(w, i), S = sideOf(i); // §9.44
   // `var top` sta dentro l'if: fuori vale 0 [I, variabili non assegnate = 0]
   let top = 0;
   if (i.foodwork === 1 || i.foodwork === 6) {
     let miocampox = 0, miocampoy = 0;
     top = 99999;
-    for (const c of w.all("campo")) {
+    for (const c of w.all(S.campo)) {
       if (c.foodwork !== 0) continue;
       const dis = w.distanceToInstance(c, i);
       if (dis < top) { miocampox = c.x; miocampoy = c.y; top = dis; }
@@ -1157,10 +1225,10 @@ function fieldsStep(i, w, p) {
   // a 10 di cibo al granaio (ally_barn: mulino o centro); l'else e'
   // agganciato a "c'e' un granaio" [C]
   if (i.action === 4 && i.food >= 10) {
-    if (w.number("ally_barn") > 0) {
+    if (w.number(S.barn) > 0) {
       i.action = 1;
       p.free(i);
-      const b = w.nearest(i.x, i.y, "ally_barn");
+      const b = w.nearest(i.x, i.y, S.barn);
       i.dirox = b.x; i.diroy = b.y;
       if (i.foodwork !== 2) goTo(p, i, i.dirox, i.diroy);
       i.alarm.set(0, 13);
@@ -1170,7 +1238,7 @@ function fieldsStep(i, w, p) {
     }
   }
   // vicino al granaio: scarica e torna a cercare un campo libero
-  if ((i.foodwork === 2 || i.food > 0) && i.action !== 4 && w.distanceToObject(i, "ally_barn") < 10) {
+  if ((i.foodwork === 2 || i.food > 0) && i.action !== 4 && w.distanceToObject(i, S.barn) < 10) {
     g.food += i.food;
     i.food = 0;
     i.alarm.set(0, 13);
@@ -1405,4 +1473,31 @@ export function recountIdle(w) {
   idle.forEach((o, k) => { o.idling = 1; o.idleorder = k + 1; });
   g.idle = idle.length;
   for (const ic of w.all("idle_clicker")) if (ic.orderu > g.idle || ic.orderu < 1) ic.orderu = 1;
+}
+
+// [§9.44] Un lavoro dato dalla regia (economy.js) a un civile, come il clic
+// destro del giocatore su una risorsa (rightClick): kind "wood", "gold",
+// "stone" verso la risorsa t, "food" al campo libero piu' vicino della
+// fazione (fieldsStep, foodwork 6), "move" verso t senza lavoro (la fuga),
+// "build" al cantiere t, "repair" all'edificio t (§9.45).
+export function orderWork(w, p, i, kind, t) {
+  for (const k of ["woodwork", "goldwork", "stonework", "foodwork", "buildwork", "repairwork", "fieldwork"]) i[k] = 0;
+  i.creation = 0;
+  i.depositTo = null;
+  if (i.action === 0) poolOf(w, i).idle -= 1;
+  i.action = 1;
+  i.alarm.set(0, 13);
+  p.free(i);
+  if (kind === "food") { i.foodwork = 6; return; }
+  if (kind === "move") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
+  // [§9.45] costruire il cantiere t, riparare l'edificio t
+  if (kind === "build") { i.buildwork = 1; i.buildx = t.x; i.buildy = t.y; }
+  if (kind === "repair") { i.repairwork = 1; i.repx = t.x; i.repy = t.y; i.repT = null; }
+  if (kind === "build" || kind === "repair") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
+  const [work, kx, ky] = { wood: ["woodwork", "woodx", "woody"], gold: ["goldwork", "goldx", "goldy"],
+                           stone: ["stonework", "stonex", "stoney"] }[kind];
+  i[work] = 1;
+  i[kx] = t.x; i[ky] = t.y;
+  i.dirox = t.x; i.diroy = t.y;
+  fieldTo(w, p, i, t.x, t.y);
 }

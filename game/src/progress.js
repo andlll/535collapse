@@ -7,12 +7,17 @@
 const KEY = "535.progress";
 const VERSION = 1;
 
+// [Provvisorio, richiesta dell'autore, §9.53] per le prove dei primi
+// livelli tutti sbloccati: almeno fino a UNLOCK_ALL. Da rimettere a 1 prima
+// dell'uscita (STUDIO.md, "Cose da fare").
+export const UNLOCK_ALL = 4;
+
 export function loadUnlock() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (data && data.v === VERSION && Number.isInteger(data.unlock) && data.unlock >= 1) return data.unlock;
+    if (data && data.v === VERSION && Number.isInteger(data.unlock) && data.unlock >= 1) return Math.max(data.unlock, UNLOCK_ALL);
   } catch (e) { /* storage non disponibile o dati rovinati */ }
-  return 1;
+  return Math.max(1, UNLOCK_ALL);
 }
 
 export function saveUnlock(unlock) {

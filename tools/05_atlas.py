@@ -17,9 +17,10 @@ Gruppi (dalle cartelle di sprite dell'autore, data/sprites.json "folder"):
   nemici    unita' barbare (cartelle b_*)                   tier gioco
   citta     citta' romana (lvl01/lvl02)                     tier citta
 
-Nel gruppo gui anche i tre font bitmap rasterizzati da GameMaker (Seagram
-tfb, STUDIO.md §2.5: foglio intero come pseudo-sprite "__font_<nome>", piu'
-la tabella dei glifi in atlas.json "fonts"), "__white", un quadratino
+Nel gruppo gui anche i tre font del gioco (§9.47: Cinzel e Cinzel
+Decorative, rasterizzati qui dai TTF di nuovi/font/; foglio intero come
+pseudo-sprite "__font_<nome>", piu' la tabella dei glifi in atlas.json
+"fonts"), "__white", un quadratino
 bianco per rettangoli, cerchi e linee, e le forme delle particelle
 ("__pt_flare", "__pt_line", "__pt_pixel"): niente texture in piu' da legare.
 
@@ -163,120 +164,73 @@ def extrude(img, pad):
     return out
 
 
-# Lettere accentate delle lingue della traduzione (IT, ES, PT, DE, FR):
-# i font Seagram tfb rasterizzati da GameMaker hanno solo l'ASCII 32-127
-# (STUDIO.md §2.5). Si compongono qui dalla lettera di base e da un segno
-# preso dallo stesso font, cosi' restano gotiche: grave = "`", acuto = "`"
-# specchiato, circonflesso = "^", tilde = "~" ridotta, dieresi = due "."
-# (il punto ridotto), cedille = "," sotto la lettera; "i" senza puntino per
-# i, I accentate; "¿" e "¡" sono "?" e "!" capovolti. Il segno sta sopra
-# l'inchiostro della lettera (sopra l'altezza della x per le minuscole);
-# se esce dalla riga in alto il glifo ha uno scostamento verticale negativo
-# (settimo valore, letto da game/src/draw.js). Il resto (ß, œ, virgolette,
-# trattini lunghi...) lo sostituisce il motore con lettere ASCII.
-ACCENTS = {}
-for _kind, _pairs in {
-    "grave": "aà eè iì oò uù AÀ EÈ IÌ OÒ UÙ",
-    "acute": "aá eé ií oó uú AÁ EÉ IÍ OÓ UÚ",
-    "circ": "aâ eê iî oô uû AÂ EÊ IÎ OÔ UÛ",
-    "tilde": "aã oõ nñ AÃ OÕ NÑ",
-    "diaer": "aä eë iï oö uü yÿ AÄ EË IÏ OÖ UÜ",
-    "cedil": "cç CÇ",
-    "flip": "?¿ !¡",
-}.items():
-    for _p in _pairs.split():
-        ACCENTS[_p[1]] = (_p[0], _kind)
+# [§9.47, decisione dell'autore] I font dell'interfaccia non sono piu' i
+# Seagram tfb di GameMaker (gotici: anacronistici per il 535) ma Cinzel
+# (capitale romana) e, per i titoli, Cinzel Decorative Bold: TTF liberi
+# (OFL) in nuovi/font/, rasterizzati qui nello stesso formato dei glifi di
+# GameMaker, con le lettere accentate e i segni delle traduzioni veri (prima
+# composti dalla lettera e da un segno del font: solo ASCII in GameMaker).
+# Restano i nomi dei tre font del gioco e la loro altezza di riga; px e' la
+# dimensione (a parita' di frase, ~12% piu' larga del Seagram: le schede si
+# allargano da sole, draw.js panelExtra), peso quello dell'asse wght.
+FONT_DIR = os.path.join(REPO_DIR, "nuovi", "font")
+FONT_TTF = {
+    "GUI_1": ("Cinzel[wght].ttf", 700, 19),
+    "overdue": ("Cinzel[wght].ttf", 500, 18),
+    "gui_sblocco": ("CinzelDecorative-Bold.ttf", None, 36),
+}
+FONT_CHARS = ([chr(c) for c in range(32, 127)]
+              + list("àèìòùÀÈÌÒÙáéíóúÁÉÍÓÚâêîôûÂÊÎÔÛãõñÃÕÑäëïöüÿÄËÏÖÜçÇ¿¡ßœŒæÆ’‘“”«»–—…"))
 
 
-def accented_glyphs(sheet, glyphs):
-    """Restituisce (foglio allargato, {codice: [x, y, w, h, shift, offset, yoff]})."""
-    by = {g["character"]: g for g in glyphs}
+def ttf_font(path, weight, px):
+    from PIL import ImageFont
+    f = ImageFont.truetype(os.path.join(FONT_DIR, path), px)
+    if weight:
+        f.set_variation_by_axes([weight])
+    return f
 
-    def cell(ch):
-        g = by[ord(ch)]
-        return sheet.crop((g["x"], g["y"], g["x"] + g["w"], g["y"] + g["h"])), g
 
-    def ink(im):
-        return im.getchannel("A").point(lambda v: 255 if v > 40 else 0).getbbox()
-
-    xh = ink(cell("x")[0])[1]  # cima della x: altezza delle minuscole
-    marks = {}
-    grave = cell("`")[0]
-    grave = grave.crop(ink(grave))
-    marks["grave"] = grave
-    marks["acute"] = grave.transpose(Image.FLIP_LEFT_RIGHT)
-    circ = cell("^")[0]
-    marks["circ"] = circ.crop(ink(circ))
-    dot = cell(".")[0]
-    dot = dot.crop(ink(dot))
-    tilde = cell("~")[0]
-    tilde = tilde.crop(ink(tilde))
-    comma = cell(",")[0]
-    comma = comma.crop(ink(comma))
-
-    out_imgs = []
-    for ch, (base, kind) in ACCENTS.items():
-        im, g = cell(base)
-        im = im.copy()
-        if base in "iI" and kind != "flip":
-            # senza puntino: via l'inchiostro sopra l'altezza della x (i)
-            if base == "i":
-                px = im.load()
-                for yy in range(min(xh - 1, im.height)):
-                    for xx in range(im.width):
-                        px[xx, yy] = (0, 0, 0, 0)
-        bb = ink(im) or (0, 0, im.width, im.height)
-        cx = (bb[0] + bb[2]) / 2
-        if kind == "flip":
-            body = im.crop(bb).rotate(180)
-            im = Image.new("RGBA", im.size, (0, 0, 0, 0))
-            im.paste(body, (bb[0], bb[1]))
-            out_imgs.append((ch, im, g, 0))
+def ttf_glyphs(fnt, gm_sheet):
+    """(foglio, {codice: [x, y, w, h, shift, offset, yoff]}) del font del
+    gioco fnt col suo TTF (FONT_TTF). Le maiuscole hanno il centro dove lo
+    avevano nel Seagram (la "H" del foglio di GameMaker): i testi restano
+    centrati nei pulsanti e nelle schede come prima. Gli accenti delle
+    maiuscole che escono dalla riga in alto: scostamento verticale negativo
+    (yoff, letto da game/src/draw.js)."""
+    from PIL import ImageDraw
+    path, weight, px = FONT_TTF[fnt["name"]]
+    f = ttf_font(path, weight, px)
+    gH = next(g for g in fnt["glyphs"] if g["character"] == ord("H"))
+    hb = gm_sheet.crop((gH["x"], gH["y"], gH["x"] + gH["w"], gH["y"] + gH["h"])).getchannel("A").getbbox()
+    cap = -f.getbbox("H", anchor="ls")[1]
+    base = round((hb[1] + hb[3]) / 2 + cap / 2)
+    top = max(0, max(-(base + f.getbbox(ch, anchor="ls")[1]) for ch in FONT_CHARS if ch != " "))
+    base += top
+    cellh = base + f.getmetrics()[1] + 2
+    cells, width, x, y = [], 1024, 0, 0
+    for ch in FONT_CHARS:
+        bb = f.getbbox(ch, anchor="ls")
+        adv = round(f.getlength(ch))
+        if ch == " " or bb[2] <= bb[0]:
+            cells.append((ch, None, 0, 0, adv, 0))
             continue
-        if kind == "cedil":
-            m = comma.resize((max(1, comma.width * 3 // 4), max(1, comma.height * 3 // 4)), Image.LANCZOS)
-            up = 0
-            pad_b = max(0, bb[3] - 1 + m.height - im.height)
-            canvas = Image.new("RGBA", (im.width, im.height + pad_b), (0, 0, 0, 0))
-            canvas.paste(im, (0, 0))
-            canvas.alpha_composite(m, (int(round(cx - m.width / 2)), bb[3] - 1))
-            out_imgs.append((ch, canvas, g, 0))
+        w = bb[2] - bb[0] + 2
+        im = Image.new("RGBA", (w, cellh), (255, 255, 255, 0))
+        ImageDraw.Draw(im).text((1 - bb[0], base), ch, font=f, fill=(255, 255, 255, 255), anchor="ls")
+        if x + w + 2 > width:
+            x, y = 0, y + cellh + 2
+        cells.append((ch, im, x, y, adv, bb[0] - 1))
+        x += w + 2
+    sheet = Image.new("RGBA", (width, y + cellh + 2), (255, 255, 255, 0))
+    glyphs = {}
+    for ch, im, gx, gy, adv, off in cells:
+        if im is None:
+            glyphs[str(ord(ch))] = [0, 0, 0, 0, adv, 0, 0]
             continue
-        if kind == "diaer":
-            d = dot.resize((max(1, dot.width * 3 // 4), max(1, dot.height * 3 // 4)), Image.LANCZOS)
-            gap = max(1, d.width // 2 + 1)
-            m = Image.new("RGBA", (2 * d.width + gap, d.height), (0, 0, 0, 0))
-            m.paste(d, (0, 0))
-            m.paste(d, (d.width + gap, 0))
-        elif kind == "tilde":
-            tw = max(3, int((bb[2] - bb[0]) * 0.8))
-            m = tilde.resize((tw, max(2, round(tilde.height * tw / tilde.width))), Image.LANCZOS)
-        else:
-            m = marks[kind]
-        top_ink = bb[1] if base.isupper() else min(bb[1], xh)
-        my = top_ink - 1 - m.height
-        up = max(0, -my)
-        canvas = Image.new("RGBA", (im.width, im.height + up), (0, 0, 0, 0))
-        canvas.paste(im, (0, up))
-        canvas.alpha_composite(m, (max(0, min(im.width - m.width, int(round(cx - m.width / 2)))), my + up))
-        out_imgs.append((ch, canvas, g, -up))
-
-    # in una striscia sotto il foglio originale
-    pad = 2
-    row_h = max(im.height for _, im, _, _ in out_imgs) + pad
-    per_row = max(1, sheet.width // (max(im.width for _, im, _, _ in out_imgs) + pad))
-    rows = (len(out_imgs) + per_row - 1) // per_row
-    big = Image.new("RGBA", (sheet.width, sheet.height + rows * row_h + pad), (0, 0, 0, 0))
-    big.paste(sheet, (0, 0))
-    extra = {}
-    x, y = 0, sheet.height + pad
-    for k, (ch, im, g, yoff) in enumerate(out_imgs):
-        if x + im.width > sheet.width:
-            x, y = 0, y + row_h
-        big.paste(im, (x, y))
-        extra[str(ord(ch))] = [x, y, im.width, im.height, g["shift"], g["offset"], yoff]
-        x += im.width + pad
-    return big, extra
+        sheet.paste(im, (gx, gy))
+        glyphs[str(ord(ch))] = [gx, gy, im.width, im.height, adv, off, -top]
+    return sheet, glyphs
 
 
 def particle_shapes():
@@ -393,6 +347,9 @@ def main():
     sprites = json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
     objects = json.load(open(os.path.join(DATA_DIR, "objects.json"), encoding="utf-8"))
     used = used_as_texture(sprites, objects)
+    # [§9.43] anche gli sprite del progetto che usano gli oggetti nuovi
+    # (nuovi.json: gli edifici nemici con gli sprite *_b mai usati)
+    used |= {o["sprite"] for o in nuovi.load()["objects"].values() if o.get("sprite")} & {s["name"] for s in sprites}
     os.makedirs(os.path.join(OUT, "atlas"), exist_ok=True)
     for old in glob.glob(os.path.join(OUT, "atlas", "*")):
         os.remove(old)
@@ -423,15 +380,39 @@ def main():
             items[g].append((s["name"], i, crop))
     # [§9.10] sprite nuovi dell'autore (nuovi/) e le loro fette, nel gruppo
     # edifici (caricato in ogni livello)
+    # [§9.40] nel gruppo "gruppo" se c'e'; gli sprite a pezzi (il fiume del
+    # livello 4, piu' grande di una pagina) solo coi pezzi: lo sprite intero
+    # resta nel manifest senza immagine (origine, misura: le maschere e il
+    # fiume lo usano), come gli sprite vuoti (Ponte_1, tutto uguale al fiume)
     extra = []
     for name, d in nuovi.sprites().items():
-        extra.append((name, "edifici", d["image"], tuple(d["origin"])))
+        im, g = d["image"], d["gruppo"]
+        if im is None:  # solo maschera (Ponte_varco)
+            continue
+        if d["pezzi"] or not im.getchannel("A").getbbox():
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height,
+                                         "origin": list(d["origin"]), "scale": 1.0, "frames": [None]}
+        elif len(d["frames"]) > 1:  # [§9.48] a piu' fotogrammi (il mulino nemico)
+            fr = []
+            for k, f in enumerate(d["frames"]):
+                bb = f.getchannel("A").getbbox()
+                fr.append({"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]})
+                items[g].append((name, k, f.crop(bb)))
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height,
+                                         "origin": list(d["origin"]), "scale": 1.0, "frames": fr}
+        else:
+            extra.append((name, g, im, tuple(d["origin"])))
         for k, (x0, x1, _) in enumerate(d["fette"]):
-            extra.append((name + nuovi.SLICE_SEP + str(k), "edifici", nuovi.slice_image(d["image"], x0, x1),
-                          tuple(d["origin"])))
+            extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.slice_image(im, x0, x1), tuple(d["origin"])))
+        for k, box in enumerate(d["pezzi"]):
+            extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.tile_image(im, box), tuple(d["origin"])))
     extra += nuovi.derived()  # [§9.13] segnalini e simili ricavati dagli sprite nuovi
     for name, g, im, (ox, oy) in derived_sprites() + extra:
         bb = im.getchannel("A").getbbox()
+        if bb is None:  # [§9.40] una fetta vuota (la balaustra del ponte e' piu' corta dello sprite)
+            manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
+                                         "scale": 1.0, "frames": [None]}
+            continue
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
                                      "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
         items[g].append((name, 0, im.crop(bb)))
@@ -440,18 +421,17 @@ def main():
     # glifi restano quelle del foglio di GameMaker)
     manifest["fonts"] = {}
     for fnt in json.load(open(os.path.join(DATA_DIR, "fonts.json"), encoding="utf-8")):
-        sheet = Image.open(os.path.join(GMX_DIR, "fonts", fnt["image"])).convert("RGBA")
-        sheet, extra = accented_glyphs(sheet, fnt["glyphs"])
+        gm = Image.open(os.path.join(GMX_DIR, "fonts", fnt["image"])).convert("RGBA")
+        sheet, glyphs = ttf_glyphs(fnt, gm)  # §9.47
         name = "__font_" + fnt["name"]
         manifest["sprites"][name] = {"group": "gui", "width": sheet.width, "height": sheet.height,
                                      "origin": [0, 0], "scale": 1.0,
                                      "frames": [{"trim": [0, 0, sheet.width, sheet.height]}]}
         items["gui"].append((name, 0, sheet))
         manifest["fonts"][fnt["name"]] = {
-            "sprite": name, "family": fnt["family"], "size": fnt["size"],
+            "sprite": name, "family": FONT_TTF[fnt["name"]][0], "size": FONT_TTF[fnt["name"]][2],
             "height": max(g["h"] for g in fnt["glyphs"]),
-            "glyphs": {**{str(g["character"]): [g["x"], g["y"], g["w"], g["h"], g["shift"], g["offset"]]
-                          for g in fnt["glyphs"]}, **extra}}
+            "glyphs": glyphs}
     manifest["sprites"]["__white"] = {"group": "gui", "width": 8, "height": 8, "origin": [0, 0],
                                       "scale": 1.0, "frames": [{"trim": [0, 0, 8, 8]}]}
     items["gui"].append(("__white", 0, Image.new("RGBA", (8, 8), (255, 255, 255, 255))))

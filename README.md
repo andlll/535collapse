@@ -46,8 +46,15 @@ cd game && npm install && npm run build   # bundle -> game/dist/
 python3 -m http.server 8000 --directory game
 ```
 
+I font dell'interfaccia sono Cinzel e Cinzel Decorative (OFL, `nuovi/font/`,
+§9.47), rasterizzati da `05_atlas.py`. Il titolo del menu "Dust Veil"
+(`nuovi/sprites/logo_dustveil.png`) si rifa' con `python3 tools/13_logo.py`
+solo se cambiano testo, font o misura. Le origini degli sprite del
+lavoratore nemico (`nuovi/sprites/omino_blu/`, §9.49) si ricalcolano con
+`python3 tools/14_allinea.py` se cambiano le immagini.
+
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03` per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40) per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
@@ -93,6 +100,15 @@ node game/test/browser/monastery.mjs                    # livello 3: riparare e 
 node game/test/browser/rally.mjs                        # unita' appena prodotte verso la bandiera di raccolta
 node game/test/browser/fireorder.mjs                    # gruppo misto che incendia un edificio (alleati e nemici)
 node game/test/browser/rams.mjs                         # piu' arieti contro lo stesso edificio, senza sovrapporsi
+node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
+node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
+node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano
+node game/test/browser/enemybuildings.mjs               # edifici nemici nuovi: frecce, cura, fuoco, rovine
+node game/test/browser/economy.mjs                     # economia nemica: raccolta, depositi, lavoratori, fuga
+node game/test/browser/enemyarmy.mjs                   # economia nemica: soldati pagati, attacco, riparazioni, ricostruzione
+node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
+node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
+node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

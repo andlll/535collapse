@@ -1,7 +1,7 @@
 {
   "formato": "535-nuovi",
   "versione": 1,
-  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'.",
+  "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'. [§9.40] maschera 'alpha', poligono (sprite di sola maschera), buchi, acqua, pezzi, gruppo, differenza: vedi tools/nuovi.py.",
   "sprites": {
     "monastero_corpo": {
       "origin": "maschera",
@@ -16,6 +16,736 @@
     },
     "monastero_piazza": {
       "origin": "centro"
+    },
+    "Fiume_Completo": {
+      "origin": "centro",
+      "maschera": "alpha",
+      "buchi": [
+        {
+          "sprite": "Ponte_varco",
+          "a": [
+            1630,
+            1168
+          ]
+        }
+      ],
+      "acqua": true,
+      "pezzi": 256,
+      "gruppo": "terreno"
+    },
+    "Ponte_varco": {
+      "origin": [
+        0,
+        0
+      ],
+      "misura": [
+        529,
+        393
+      ],
+      "poligono": [
+        [
+          145,
+          32
+        ],
+        [
+          497,
+          240
+        ],
+        [
+          397,
+          299
+        ],
+        [
+          44,
+          89
+        ]
+      ]
+    },
+    "Ponte_1": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_2": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_3": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_4": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_5": {
+      "origin": [
+        0,
+        0
+      ],
+      "differenza": {
+        "sprite": "Fiume_Completo",
+        "a": [
+          1630,
+          1168
+        ]
+      },
+      "gruppo": "terreno"
+    },
+    "Ponte_5B": {
+      "origin": [
+        0,
+        0
+      ],
+      "maschera": "alpha",
+      "fette": 32,
+      "gruppo": "terreno"
+    },
+    "logo_dustveil": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "il titolo del menu, al posto del logo535 (§9.47): generato da tools/13_logo.py"
+    },
+    "mub": {
+      "fotogrammi": [
+        "mub1",
+        "mub2",
+        "mub3",
+        "mub4",
+        "mub5",
+        "mub6",
+        "mub7",
+        "mub8",
+        "mub9"
+      ],
+      "origin": [
+        88,
+        261
+      ],
+      "nota": "il mulino nemico dell'autore (§9.48): 9 fotogrammi, pale a 4 ruotate di 10 gradi l'una; fotogrammi riallineati di 1-2 px sulla parte ferma e tela allargata di 2 px per lato; origine dove barn_b ha la sua (la torre sovrapposta), cosi' vale la stessa maschera barn_mask"
+    },
+    "omino_blu": {
+      "serie": "omino_blu",
+      "togli": "b_",
+      "gruppo": "nemici",
+      "nota": "il lavoratore nemico dell'autore (§9.49): 6 animazioni x 8 direzioni x 3 fotogrammi, come il lavoratore alleato; origini da tools/14_allinea.py",
+      "origini": {
+        "b_car11": [
+          39,
+          83
+        ],
+        "b_car12": [
+          38,
+          83
+        ],
+        "b_car13": [
+          38,
+          84
+        ],
+        "b_car21": [
+          40,
+          86
+        ],
+        "b_car22": [
+          40,
+          86
+        ],
+        "b_car23": [
+          40,
+          86
+        ],
+        "b_car31": [
+          32,
+          88
+        ],
+        "b_car32": [
+          36,
+          88
+        ],
+        "b_car33": [
+          24,
+          88
+        ],
+        "b_car41": [
+          34,
+          84
+        ],
+        "b_car42": [
+          41,
+          83
+        ],
+        "b_car43": [
+          40,
+          82
+        ],
+        "b_car51": [
+          40,
+          83
+        ],
+        "b_car52": [
+          40,
+          82
+        ],
+        "b_car53": [
+          41,
+          82
+        ],
+        "b_car61": [
+          42,
+          80
+        ],
+        "b_car62": [
+          43,
+          80
+        ],
+        "b_car63": [
+          43,
+          79
+        ],
+        "b_car71": [
+          42,
+          76
+        ],
+        "b_car72": [
+          42,
+          76
+        ],
+        "b_car73": [
+          42,
+          77
+        ],
+        "b_car81": [
+          42,
+          76
+        ],
+        "b_car82": [
+          42,
+          77
+        ],
+        "b_car83": [
+          42,
+          77
+        ],
+        "b_ob11": [
+          41,
+          71
+        ],
+        "b_ob12": [
+          42,
+          70
+        ],
+        "b_ob13": [
+          41,
+          69
+        ],
+        "b_ob21": [
+          41,
+          61
+        ],
+        "b_ob22": [
+          41,
+          62
+        ],
+        "b_ob23": [
+          42,
+          61
+        ],
+        "b_ob31": [
+          43,
+          60
+        ],
+        "b_ob32": [
+          42,
+          61
+        ],
+        "b_ob33": [
+          40,
+          59
+        ],
+        "b_ob41": [
+          39,
+          61
+        ],
+        "b_ob42": [
+          39,
+          61
+        ],
+        "b_ob43": [
+          37,
+          61
+        ],
+        "b_ob51": [
+          40,
+          61
+        ],
+        "b_ob52": [
+          38,
+          62
+        ],
+        "b_ob53": [
+          39,
+          61
+        ],
+        "b_ob61": [
+          44,
+          59
+        ],
+        "b_ob62": [
+          44,
+          60
+        ],
+        "b_ob63": [
+          44,
+          60
+        ],
+        "b_ob71": [
+          40,
+          58
+        ],
+        "b_ob72": [
+          41,
+          60
+        ],
+        "b_ob73": [
+          40,
+          61
+        ],
+        "b_ob81": [
+          45,
+          60
+        ],
+        "b_ob82": [
+          45,
+          59
+        ],
+        "b_ob83": [
+          45,
+          58
+        ],
+        "b_oc11": [
+          22,
+          80
+        ],
+        "b_oc12": [
+          22,
+          81
+        ],
+        "b_oc13": [
+          17,
+          81
+        ],
+        "b_oc21": [
+          37,
+          80
+        ],
+        "b_oc22": [
+          35,
+          79
+        ],
+        "b_oc23": [
+          31,
+          79
+        ],
+        "b_oc31": [
+          38,
+          82
+        ],
+        "b_oc32": [
+          36,
+          85
+        ],
+        "b_oc33": [
+          38,
+          89
+        ],
+        "b_oc41": [
+          50,
+          86
+        ],
+        "b_oc42": [
+          47,
+          82
+        ],
+        "b_oc43": [
+          73,
+          82
+        ],
+        "b_oc51": [
+          49,
+          82
+        ],
+        "b_oc52": [
+          48,
+          78
+        ],
+        "b_oc53": [
+          64,
+          55
+        ],
+        "b_oc61": [
+          39,
+          68
+        ],
+        "b_oc62": [
+          40,
+          69
+        ],
+        "b_oc63": [
+          38,
+          55
+        ],
+        "b_oc71": [
+          16,
+          81
+        ],
+        "b_oc72": [
+          14,
+          79
+        ],
+        "b_oc73": [
+          12,
+          64
+        ],
+        "b_oc81": [
+          11,
+          84
+        ],
+        "b_oc82": [
+          14,
+          87
+        ],
+        "b_oc83": [
+          1,
+          80
+        ],
+        "b_os11": [
+          40,
+          83
+        ],
+        "b_os12": [
+          40,
+          82
+        ],
+        "b_os13": [
+          40,
+          82
+        ],
+        "b_os21": [
+          44,
+          80
+        ],
+        "b_os22": [
+          43,
+          80
+        ],
+        "b_os23": [
+          43,
+          80
+        ],
+        "b_os31": [
+          40,
+          84
+        ],
+        "b_os32": [
+          40,
+          84
+        ],
+        "b_os33": [
+          40,
+          83
+        ],
+        "b_os41": [
+          35,
+          82
+        ],
+        "b_os42": [
+          35,
+          82
+        ],
+        "b_os43": [
+          33,
+          83
+        ],
+        "b_os51": [
+          37,
+          86
+        ],
+        "b_os52": [
+          38,
+          85
+        ],
+        "b_os53": [
+          38,
+          87
+        ],
+        "b_os61": [
+          39,
+          86
+        ],
+        "b_os62": [
+          38,
+          86
+        ],
+        "b_os63": [
+          40,
+          86
+        ],
+        "b_os71": [
+          40,
+          86
+        ],
+        "b_os72": [
+          40,
+          85
+        ],
+        "b_os73": [
+          40,
+          85
+        ],
+        "b_os81": [
+          41,
+          85
+        ],
+        "b_os82": [
+          40,
+          86
+        ],
+        "b_os83": [
+          38,
+          86
+        ],
+        "b_ow11": [
+          34,
+          82
+        ],
+        "b_ow12": [
+          34,
+          83
+        ],
+        "b_ow13": [
+          34,
+          81
+        ],
+        "b_ow21": [
+          40,
+          86
+        ],
+        "b_ow22": [
+          38,
+          86
+        ],
+        "b_ow23": [
+          37,
+          85
+        ],
+        "b_ow31": [
+          38,
+          85
+        ],
+        "b_ow32": [
+          38,
+          85
+        ],
+        "b_ow33": [
+          38,
+          86
+        ],
+        "b_ow41": [
+          38,
+          86
+        ],
+        "b_ow42": [
+          38,
+          85
+        ],
+        "b_ow43": [
+          38,
+          85
+        ],
+        "b_ow51": [
+          39,
+          85
+        ],
+        "b_ow52": [
+          39,
+          85
+        ],
+        "b_ow53": [
+          39,
+          86
+        ],
+        "b_ow61": [
+          37,
+          85
+        ],
+        "b_ow62": [
+          37,
+          85
+        ],
+        "b_ow63": [
+          38,
+          84
+        ],
+        "b_ow71": [
+          38,
+          83
+        ],
+        "b_ow72": [
+          37,
+          83
+        ],
+        "b_ow73": [
+          37,
+          83
+        ],
+        "b_ow81": [
+          39,
+          86
+        ],
+        "b_ow82": [
+          39,
+          89
+        ],
+        "b_ow83": [
+          39,
+          88
+        ],
+        "b_owo11": [
+          38,
+          87
+        ],
+        "b_owo12": [
+          38,
+          86
+        ],
+        "b_owo13": [
+          37,
+          85
+        ],
+        "b_owo21": [
+          37,
+          84
+        ],
+        "b_owo22": [
+          37,
+          83
+        ],
+        "b_owo23": [
+          37,
+          84
+        ],
+        "b_owo31": [
+          27,
+          78
+        ],
+        "b_owo32": [
+          24,
+          82
+        ],
+        "b_owo33": [
+          27,
+          82
+        ],
+        "b_owo41": [
+          26,
+          86
+        ],
+        "b_owo42": [
+          20,
+          85
+        ],
+        "b_owo43": [
+          27,
+          95
+        ],
+        "b_owo51": [
+          33,
+          90
+        ],
+        "b_owo52": [
+          30,
+          88
+        ],
+        "b_owo53": [
+          24,
+          98
+        ],
+        "b_owo61": [
+          40,
+          100
+        ],
+        "b_owo62": [
+          39,
+          100
+        ],
+        "b_owo63": [
+          39,
+          97
+        ],
+        "b_owo71": [
+          45,
+          91
+        ],
+        "b_owo72": [
+          43,
+          90
+        ],
+        "b_owo73": [
+          42,
+          91
+        ],
+        "b_owo81": [
+          45,
+          91
+        ],
+        "b_owo82": [
+          50,
+          91
+        ],
+        "b_owo83": [
+          52,
+          91
+        ]
+      }
     }
   },
   "objects": {
@@ -139,6 +869,41 @@
       "depth": -9999,
       "kit": false
     },
+    "enemy_manager_lv4": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 4 (§9.52, levels.js)"
+    },
+    "dialogo_4_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_4_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_4_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
     "hint_lavoratori": {
       "sprite": null,
       "parents": [
@@ -184,14 +949,193 @@
       "solid": false,
       "depth": -1,
       "nota": "macchia fiorita di particelle (§9.37): la crea il gioco (effects.js, DECOR); nel kit di Tiled un'anteprima"
+    },
+    "fiume_grande": {
+      "sprite": "Fiume_Completo",
+      "parents": [
+        "natural_parent"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 1452
+      },
+      "nota": "il fiume del livello 4 (§9.40), disegnato a riquadri; nasce col suo ponte rotto (ponte), nel punto in cui il fiume lo ha gia' dipinto"
+    },
+    "ponte": {
+      "sprite": "Ponte_1",
+      "mask": "Ponte_varco",
+      "parents": [
+        "ally_fondamenta"
+      ],
+      "solid": true,
+      "depth": {
+        "y": -30
+      },
+      "kit": false,
+      "nota": "il ponte rotto del fiume_grande (§9.40): un cantiere, i civili lo riparano (Ponte_1..Ponte_4); finito diventa ponte_fatto"
+    },
+    "ponte_fatto": {
+      "sprite": "Ponte_5",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": -30
+      },
+      "kit": false,
+      "nota": "il ponte riparato (§9.40): percorribile; davanti la balaustra (ponte_balaustra)"
+    },
+    "ponte_balaustra": {
+      "sprite": "Ponte_5B",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "la balaustra davanti al ponte riparato (§9.40), a fette: chi passa sul ponte le sta dietro"
+    },
+    "enemy_centro": {
+      "sprite": "cc_b",
+      "mask": "cc_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy",
+        "enemy_magazza",
+        "enemy_barn"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il centro citta' nemico: tira frecce agli alleati vicini come il centro alleato, brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_chiesa": {
+      "sprite": "chiesa_b",
+      "mask": "chiesa_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il monastero nemico: cura i nemici vicini come la chiesa alleata; di pietra (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_castello": {
+      "sprite": "castello_b",
+      "mask": "castello_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il castello nemico: tira frecce come la torre nemica; di pietra (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_magazzino": {
+      "sprite": "magazzino_b",
+      "mask": "magazzino_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy",
+        "enemy_magazza"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il magazzino nemico: passivo, brucia (§9.43; sprite e maschera dell'originale, mai usati da un oggetto)"
+    },
+    "enemy_mulino": {
+      "sprite": "mub",
+      "mask": "barn_mask",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy",
+        "enemy_barn"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "il mulino nemico: passivo, le pale girano (9 fotogrammi dell'autore, mub, §9.48), brucia (§9.43; maschera dell'originale)"
+    },
+    "enemy_omino": {
+      "sprite": "ow11",
+      "parents": [
+        "enemy_unit",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "il lavoratore nemico (§9.44): il civile alleato con la fazione nemica, comandato dalla regia economica; provvisoriamente con gli sprite del civile alleato tinti d'azzurro"
+    },
+    "enemy_campo": {
+      "sprite": "campo1",
+      "mask": "campo1",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": false,
+      "depth": -1,
+      "kit": false,
+      "nota": "il campo coltivato nemico (§9.44), dei lavoratori nemici"
+    },
+    "enemy_eco": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia economica del nemico (§9.44, economy.js)"
+    },
+    "enemy_cantiere": {
+      "sprite": "cas_f1",
+      "mask": "cas_mask",
+      "parents": [
+        "enemy_fondamenta",
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "il cantiere di un edificio nemico perso, da ricostruire (§9.45, economy.js); sprite, maschera e vita dal cantiere alleato corrispondente"
     }
   },
   "derivati": {
-    "cap_monastero": {
-      "da": "monastero_corpo",
-      "lato": 120,
+    "ico_ponte": {
+      "da": "icons8-bridge-64",
+      "lato": 58,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "icona del ponte del livello 4 nella scheda del cantiere (§9.42): nera al 70% e larga 58 px come le icone degli edifici"
+    },
+    "cap_l3": {
+      "da": "cap3.1",
+      "lato": 160,
       "gruppo": "campagna",
-      "nota": "segnalino del livello 3 sulla mappa della campagna (§9.13)"
+      "nota": "segnalino del livello 3 (il monastero) sulla mappa della campagna, disegnato dall'autore (§9.51; prima ricavato dallo sprite del monastero, §9.13)"
+    },
+    "cap_l4": {
+      "da": "cap4",
+      "lato": 150,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 4 (il ponte) sulla mappa della campagna, disegnato dall'autore (§9.51)"
     }
   }
 }

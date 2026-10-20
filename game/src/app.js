@@ -18,8 +18,8 @@ import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
-import { enemyBuilding, oBox, church, crossEffect, roleAssign } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, levelStep } from "./levels.js";
+import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, levelStep } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
@@ -44,14 +44,18 @@ import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
+import { fiumeGrande, ponte } from "./bridge.js";
+import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03"]; // lvl03: scenario da Tiled (§9.10)
+// lvl03, lvl04: scenari da Tiled (§9.10, §9.40)
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
-                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"] };
+                lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
+                lvl04: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -161,7 +165,14 @@ async function main() {
   for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
   world.register("__neutrale", neutral());       // §9.11 (scenario.js)
   world.register("monastero", monastery(path));  // §9.11 (buildings.js)
+  world.register("fiume_grande", fiumeGrande());  // §9.40 (bridge.js)
+  world.register("enemy_omino", enemyOmino(path)); // §9.44 (economy.js)
+  world.register("enemy_campo", enemyCampo(path));
+  world.register("enemy_eco", enemyEco(path));
+  world.register("enemy_cantiere", enemyCantiere(path));
+  world.register("ponte", ponte(path));
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
+  world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -187,7 +198,7 @@ async function main() {
   world.register("sfx_sangue", bloodSplat());
   world.register("fire_bullet", fireBullet());
   world.register("nubeqq", smoke());
-  for (const n of ["enemy_house", "enemy_stalla", "enemy_caserma"]) world.register(n, enemyBuilding(n, path));
+  for (const n of ENEMY_BUILDINGS) world.register(n, enemyBuilding(n, path)); // §9.43: anche i nuovi
   for (const n of ["o_box1", "o_box2"]) world.register(n, oBox(n, path));
   world.register("sfx_croce", crossEffect());
   world.register("aggr_assign", roleAssign(30));
@@ -311,6 +322,7 @@ async function main() {
     if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
+    if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
   }
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   world.hooks.step = () => { buildButtons(world); levelStep(world); };
@@ -389,7 +401,9 @@ async function main() {
       menu: () => world.gotoRoom("menu"),        // room_goto(menu)
       graphics: applyGraphics,
       saveGame: () => saveGame(false),
-      loadGame: () => { location.search = "?room=" + roomName + campaignParam() + "&load=slot"; },
+      // [§9.39] lo slot di una room qualsiasi; nella stessa room la partita
+      // resta della campagna, se lo era
+      loadSlot: (name) => { location.search = "?room=" + name + (name === roomName ? campaignParam() : "") + "&load=slot"; },
       saveFile: () => {
         try { saveFile(capture()); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
       },
@@ -669,7 +683,7 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ready: true,
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }

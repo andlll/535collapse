@@ -223,6 +223,18 @@ def load_map(path, kit=None):
                 W, H = tile["size"]
                 w = float(o.get("width", W))
                 h = float(o.get("height", H))
+                # [§9.52] le macchie di fiori del kit (11_tiled_kit decor_image)
+                # sono disegnate col Pillow di chi genera il kit, e ritagliate
+                # sull'inchiostro: con un'altra versione la tile puo' venire di
+                # 1-2 px diversa da quella con cui l'autore ha disegnato la mappa
+                # (308 contro 310 di altezza nella CI). Lo stesso oggetto non
+                # ingrandito: misura della tile. Solo per loro: altrove una
+                # scala vicina a 1 e' vera (traccia02 della room match, 1,0012)
+                if tile["object"] in tk.DECOR:
+                    if abs(w - W) <= 2:
+                        w = W
+                    if abs(h - H) <= 2:
+                        h = H
                 x, y, sx, sy, ang = tk.from_tiled(tile, float(o.get("x", 0)), float(o.get("y", 0)), w, h,
                                                   float(o.get("rotation", 0)), fh, fv)
                 inst = {"object": tile["object"], "x": round(x), "y": round(y),

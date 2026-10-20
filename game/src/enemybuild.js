@@ -1,4 +1,6 @@
-// Edifici nemici (enemy_house, enemy_caserma, enemy_stalla), le casse del
+// Edifici nemici (enemy_house, enemy_caserma, enemy_stalla e, §9.43,
+// enemy_centro, enemy_chiesa, enemy_castello, enemy_magazzino,
+// enemy_mulino), le casse del
 // livello 1 (o_box1, o_box2), la cura della chiesa (sfx_croce) e gli
 // oggetti che assegnano un ruolo agli edifici nemici (aggr_assign,
 // def_assign). Trascrizione di src/objects/<oggetto>/; nomi originali.
@@ -8,6 +10,8 @@ import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
 import { fireStep, fireStop } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
+import { towerTarget, towerArrow } from "./archery.js";
+import { lostBuilding } from "./economy.js";
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
@@ -22,7 +26,7 @@ function revealBuilding(i, w) {
       || near("torre", 500) || w.room === "menu" || g.fogville === 0) i.visible = true;
 }
 
-function enemyBarAndPanel(icon) {
+function enemyBarAndPanel(icon, wooden = true) {
   return {
     drawEnd(i, w, d) {
       const bar = () => {
@@ -46,18 +50,36 @@ function enemyBarAndPanel(icon) {
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (i.visible === true && w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
-    // click destro con fanti selezionati: dar fuoco [C]
-    rightReleased: fireOrder,
+    // click destro con fanti selezionati: dar fuoco [C] (§9.43: non la
+    // chiesa e il castello nemici, di pietra)
+    ...(wooden ? { rightReleased: fireOrder } : {}),
   };
 }
 
 // Dati [C, Create e Step]: vita, rovina, contatori delle basi del tutorial
 // di match (global.base1b/2b/3b, per posizione), periodo del fumo.
+// [§9.43] Gli edifici nemici nuovi, con gli sprite *_b dell'originale mai
+// usati da un oggetto (nuovi.json): vita, rovina e icona degli edifici
+// alleati corrispondenti; come loro bruciano (wooden: centro, magazzino,
+// mulino) o no (chiesa, castello, di pietra). arrows: [ogni quanti passi,
+// [dx, dy] di ogni freccia] su un alleato entro 600 px (il centro come il
+// centro alleato, il castello come la torre nemica); heal: la cura della
+// chiesa alleata, per i nemici; speed: image_speed (il mulino, 3 fotogrammi).
 const KIND = {
-  enemy_house: { life: 120, ruin: "casaruin", icon: "ico_casa", smoke: 40, bases: ["y5800", "y1500"] },
-  enemy_caserma: { life: 350, ruin: "casruin", icon: "ico_caserma", smoke: 30, bases: ["x650", "y1500"], produces: true },
-  enemy_stalla: { life: 380, ruin: "stalruin", icon: "ico_stalla", smoke: 30, bases: ["y5800", "y1500"], smokeIfVisible: true },
+  enemy_house: { life: 120, ruin: "casaruin", icon: "ico_casa", smoke: 40, bases: ["y5800", "y1500"], wooden: true },
+  enemy_caserma: { life: 350, ruin: "casruin", icon: "ico_caserma", smoke: 30, bases: ["x650", "y1500"], produces: true,
+                   wooden: true },
+  enemy_stalla: { life: 380, ruin: "stalruin", icon: "ico_stalla", smoke: 30, bases: ["y5800", "y1500"], smokeIfVisible: true,
+                  wooden: true },
+  enemy_centro: { life: 400, ruin: "ccruin", icon: "ico_centro", smoke: 30, bases: [], wooden: true,
+                  arrows: [35, [[50, -140]]] },
+  enemy_chiesa: { life: 300, ruin: "chiesaruin", icon: "ico_chiesa", smoke: 30, bases: [], heal: true },
+  enemy_castello: { life: 900, ruin: "castelloruin", icon: "ico_castello", smoke: 30, bases: [],
+                    arrows: [50, [[20, -150], [20, -170]]] },
+  enemy_magazzino: { life: 140, ruin: "magruin", icon: "ico_magazzino", smoke: 30, bases: [], wooden: true },
+  enemy_mulino: { life: 150, ruin: "barnruin", icon: "ico_barn", smoke: 12, bases: [], wooden: true, speed: 0.3 }, // §9.48: come il mulino alleato
 };
+export const ENEMY_BUILDINGS = Object.keys(KIND);
 
 // Le basi del tutorial di match [C, Step degli edifici nemici]: x<650 base
 // 2, y>5800 base 1, 1500<y<2800 base 3.
@@ -72,13 +94,17 @@ export function baseCounters(i, g, which) {
 export function enemyBuilding(kind, p) {
   const K = KIND[kind];
   return {
-    ...enemyBarAndPanel(K.icon),
+    ...enemyBarAndPanel(K.icon, K.wooden),
     create(i, w) {
-      Object.assign(i, { life: K.life, slife: K.life, hit: 0, onfire: 0, firestarted: 0, selected: 0, hover: 0 });
+      Object.assign(i, { life: K.life, slife: K.life, hit: 0, onfire: 0, firestarted: 0, selected: 0, hover: 0, arm: 1 });
+      // [§9.45] come si ripara (civilians.js, azione 7): legno o pietra
+      i.legno = K.wooden ? 1 : 0; i.pietra = K.wooden ? 0 : 1;
       i.depth = -i.y;
       i.alarm.set(0, K.smoke);
       i.alarm.set(1, 70);
       i.visible = false;
+      if (K.speed) i.image_speed = K.speed;
+      if (K.heal) i.alarm.set(4, 180);
       if (K.produces) Object.assign(i, { flagx: i.x, flagy: i.y, role: 0, prod: 1 });
       // enemy_house [C]: uno dei 6 stili a caso (3 = lo sprite dell'oggetto)
       if (kind === "enemy_house") {
@@ -96,23 +122,52 @@ export function enemyBuilding(kind, p) {
     },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
     alarm2(i) { i.hit = 0; },
+    // [§9.43] la chiesa nemica: ogni 180 passi +3 vita alle unita' nemiche
+    // ferite entro 800 px (distanza ridotta in verticale), come la chiesa
+    // alleata (church) per gli alleati; le frecce (arrows) riarmate
+    alarm4(i, w) {
+      if (!K.heal) return;
+      i.alarm.set(4, 180);
+      for (const u of w.all("enemy_unit")) {
+        const diri = pointDirection(u.x, u.y, i.x, i.y);
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(degtorad(diri)))) < 800 && u.life < u.slife) {
+          w.create("sfx_croce", u.x, u.y);
+          u.life += 3;
+          if (u.life > u.slife) u.life = u.slife;
+        }
+      }
+    },
+    alarm5(i) { i.arm = 1; },
     // enemy_caserma Alarm_3 [C]: nuovi attaccanti. [Correzione §3.13 n.52]
     // per la caserma difensiva (ruolo 10) l'alarm 3 e' solo l'attesa fra
     // un difensore e l'altro: alla scadenza non crea nulla, e il prossimo
     // difensore lo crea scr_controller_crea_difensori (levels.js).
     ...(K.produces ? {
-      alarm3(i, w) { if (i.role !== 10) creazioneAttaccantiGenerico(i, w); },
+      // [§9.45] con l'economia nemica (enemy_eco) produce la regia, pagando
+      alarm3(i, w) { if (i.role !== 10 && !w.exists("enemy_eco")) creazioneAttaccantiGenerico(i, w); },
     } : {}),
     destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {
       revealBuilding(i, w);
-      fireStep(i, w, kind);
-      // "hint mandare a fuoco" [C]: il puntatore entro 80 px, con soldati
-      // selezionati
-      hintOnce(w, "hint_fire", "firehint", i.x, i.y,
-               pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.milsel > 0);
+      if (K.wooden) {
+        fireStep(i, w, kind);
+        // "hint mandare a fuoco" [C]: il puntatore entro 80 px, con soldati
+        // selezionati
+        hintOnce(w, "hint_fire", "firehint", i.x, i.y,
+                 pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.milsel > 0);
+      }
+      // [§9.43] frecce sull'alleato piu' vicino entro 600 px con la linea libera
+      if (K.arrows && i.arm === 1) {
+        const a = towerTarget(w, i, "ally_unit", 600);
+        if (a) {
+          i.arm = 0;
+          i.alarm.set(5, K.arrows[0]);
+          for (const [dx, dy] of K.arrows[1]) towerArrow(w, "b_arciere_bullet_t", i.x + (a.x > i.x ? dx : -dx), i.y + dy, i, a);
+        }
+      }
       if (i.life <= 0) {
         baseCounters(i, w.g, K.bases);
+        lostBuilding(w, i); // §9.45
         w.create(K.ruin, i.x, i.y);
         w.destroy(i);
       }

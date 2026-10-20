@@ -66,6 +66,28 @@ TILESETS = [
     ("nuovi", "Nuovi: il monastero e gli altri sprite dell'autore", "center"),
 ]
 ALIGN = {"center": (0.5, 0.5), "topleft": (0.0, 0.0)}
+# [§9.40] Tile aggiunte dopo la prima versione del kit, per tileset, in
+# ordine di arrivo: vanno in fondo al tileset (le altre restano in ordine
+# alfabetico), cosi' gli id delle tile gia' esistenti non cambiano e le mappe
+# gia' disegnate le ritrovano. Le macchie fiorite (§9.37) erano finite in
+# mezzo a "natura", prima di graa11..graa15; i sprite nuovi dopo il
+# monastero vanno in fondo a "nuovi" (oggetti di nuovi/nuovi.json non qui:
+# in fondo, nell'ordine del file).
+APPENDED = {"natura": ["fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba", "fiori_prato"],
+            "nemici": ["enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino"],
+            "nuovi": ["monastero_casetta", "monastero_corpo", "monastero_muro", "monastero_piazza"]}
+
+
+def tile_rank(tileset, obj, nuovi_order=()):
+    """Chiave d'ordine delle tile di un tileset (vedi APPENDED); a parita'
+    l'ordine alfabetico del catalogo."""
+    if tileset == "nuovi":
+        legacy = APPENDED["nuovi"]
+        if obj in legacy:
+            return (0, legacy.index(obj))
+        return (1, list(nuovi_order).index(obj) if obj in nuovi_order else 0)
+    lst = APPENDED.get(tileset, [])
+    return (1, lst.index(obj)) if obj in lst else (0, 0)
 
 ALLY_UNITS = ["ally_warrior", "ally_picchiere", "ally_arciere", "ally_cavaliere", "ally_omino",
               "ally_catapulta", "ally_ariete"]
@@ -74,7 +96,9 @@ ALLY_BUILDINGS = ["centro", "casa", "magazzino", "barn", "caserma", "stalla", "c
                   "o_statua1_real", "palo_1", "flag_r", "flag_r2", "flag_b"]
 ENEMY = ["enemy_house", "enemy_caserma", "enemy_stalla", "enemy_torre", "o_box1", "o_box2",
          "enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_cavaliere", "enemy_ariete",
-         "enemy_catapulta"]
+         "enemy_catapulta",
+         # [§9.43] gli edifici nemici nuovi (nuovi.json, sprite *_b dell'originale)
+         "enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino"]
 NATURE = ["albero", "albero_fake", "graa11", "graa12", "graa13", "graa14", "graa15",
           "burst_erba1", "burst_grano1", "chiazzaparticellare", "aquila_01",
           "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba", "fiori_prato"]
@@ -92,6 +116,8 @@ DECOR = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticel
 
 def category(name, info, nuovi_objects=()):
     """Tileset dell'oggetto, o None se non si piazza nelle room."""
+    if name in ENEMY:  # [§9.43] anche gli edifici nemici di nuovi.json
+        return "nemici"
     if name in nuovi_objects:
         return "nuovi"
     if name in ALLY_UNITS:

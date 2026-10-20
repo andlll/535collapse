@@ -36,12 +36,14 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04" };
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
   // [§9.24] scritto per il porting: il livello 3 e' nuovo (§9.11)
   3: "The soldiers are alone, far from home. The invaders are seeking one last stronghold to conquer: if that falls too, there will be no one left to stop them.",
+  // [§9.52] scritto per il porting, da rivedere con l'autore
+  4: "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
@@ -76,17 +78,23 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
+}
+// L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
+// anche nel menu di pausa (pause.js, §9.39)
+export function slotLabel(room) {
+  const info = slotInfo(room);
+  if (!info) return null;
+  let date = "";
+  try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
+  return roomLabel(room) + "  -  " + date;
 }
 function loadRows(W, H) {
   const rows = [];
   for (const room of SAVE_ROOMS) {
-    const info = slotInfo(room);
-    if (!info) continue;
-    let date = "";
-    try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
-    rows.push({ label: roomLabel(room) + "  -  " + date, action: "slot", room });
+    const label = slotLabel(room);
+    if (label) rows.push({ label, action: "slot", room });
   }
   if (!rows.length) rows.push({ label: tr("No saved games"), action: null });
   rows.push({ label: tr("Load from file"), action: "file" });
@@ -165,7 +173,7 @@ export function enemyManagerMenu() {
         // toccato (lvlshown), cosi' la storia si legge scendendo col puntatore
         i.lvlhover = 0;
         for (let k = 1; k <= 10; k++) {
-          if (inRect(mx, my, 30, 35 + 40 * k, 290, 85 + 40 * k) && shownLevel(g, k)) i.lvlhover = k;
+          if (inRect(mx, my, 30, 35 + 40 * k, i.listR || 290, 85 + 40 * k) && shownLevel(g, k)) i.lvlhover = k;
         }
         if (i.lvlhover > 0) i.lvlshown = i.lvlhover;
         i.combHover = null;
@@ -206,7 +214,7 @@ export function enemyManagerMenu() {
         i.sblocco = 0;
       }
       const room = ROOMS[i.lvlhover];
-      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
+      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
       if (i.c_unlhover === 1) { i.sblocco = 1; i.c_unlhover = 0; return; }
       if (i.sblocco === 1) {
         if (i.combHover) {
@@ -262,7 +270,8 @@ function drawTitle(i, d, W, H) {
   d.setAlpha(1);
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre basse: sale a meta' dello spazio sopra i pulsanti
-  d.sprite("logo535", 0, W / 2, Math.min(350, b.top / 2));
+  // [§9.47, richiesta dell'autore] il titolo "Dust Veil" al posto del "535"
+  d.sprite("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2));
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu
@@ -296,8 +305,14 @@ function drawLoad(i, d, W, H) {
 // libera la mappa ai livelli che verranno; la freccia del collegamento 1-2
 // appena allungata, dal lato sinistro dei soldati verso il monastero
 const L3_MARK = [403, -81];
-const L3_LABEL = [403, -140];
+const L3_LABEL = [403, -155]; // §9.51: sopra il campanile del segnalino nuovo
 const L3_ARROW = [399, 2, 1.2, 1.1, -60];
+// [§9.51, indicazione dell'autore] il livello 4: il ponte a ovest del
+// monastero, sul fiume piccolo (il fiume grande a nord e' l'Adriatico), con
+// la freccia dal 3
+const L4_MARK = [186, -108];
+const L4_LABEL = [186, -180];
+const L4_ARROW = [291, -94, 0.9, 1.0, -10];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -324,18 +339,30 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("fr_corta", 0, MX + 563, H / 2 + 53);
       d.text(MX + 463, H / 2 + 88, "2.");
     }
-    // [§9.13, richiesta dell'autore] il livello 3: il monastero (segnalino
-    // ricavato dallo sprite del corpo, tools/nuovi.py) e la freccia dal 2
+    // [§9.13, richiesta dell'autore] il livello 3: il monastero e la
+    // freccia dal 2 ([§9.51] il segnalino disegnato dall'autore, cap_l3)
     if (i.lvlshown > 2) {
-      d.sprite("cap_monastero", 0, MX + L3_MARK[0], H / 2 + L3_MARK[1]);
+      d.sprite("cap_l3", 0, MX + L3_MARK[0], H / 2 + L3_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
       d.text(MX + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
+    }
+    // [§9.51] il livello 4: il ponte (cap_l4) e la freccia dal 3
+    if (i.lvlshown > 3) {
+      d.sprite("cap_l4", 0, MX + L4_MARK[0], H / 2 + L4_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L4_ARROW[0], H / 2 + L4_ARROW[1], L4_ARROW[2], L4_ARROW[3], L4_ARROW[4], c.white, 1);
+      d.text(MX + L4_LABEL[0], H / 2 + L4_LABEL[1], "4.");
     }
     d.setColour(c.black);
     d.setFont("overdue");
   }
+  // [§9.47] l'elenco si allarga per il nome piu' lungo (con Cinzel il
+  // tedesco usciva di 1 px): bordo destro i.listR, prima fisso a 290
+  d.setFont("overdue");
+  let longest = 0;
+  LEVELS.forEach((name, k) => { if (shownLevel(g, k + 1)) longest = Math.max(longest, d.stringWidth(k + 1 + ". " + tr(name))); });
+  i.listR = Math.max(290, 40 + longest + 20);
   d.setAlpha(0.69);
-  d.roundrectColourExt(20, 20, 300, 90 + 40 * shownCount(g), 60, 60, c.white, c.white, false);
+  d.roundrectColourExt(20, 20, i.listR + 10, 90 + 40 * shownCount(g), 60, 60, c.white, c.white, false);
   d.setAlpha(i.c_indhover ? 0.99 : 0.69);
   d.circleColour(W - 50, 50, 30, c.white, c.white, false);
   d.setAlpha(i.c_unlhover ? 0.99 : 0.69);
@@ -343,7 +370,7 @@ function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.99);
   // la storia del livello sotto il puntatore
   d.setFont("overdue");
-  if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, 290, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
+  if (i.lvlhover > 0) d.roundrectColourExt(30, 35 + 40 * i.lvlhover, i.listR, 85 + 40 * i.lvlhover, 50, 50, c.white, c.white, false);
   if (i.lvlshown > 0) {
     i.testo_c = STORY[i.lvlshown] ? tr(STORY[i.lvlshown]) : tr("Coming soon");
     // [C, §3.20 n.73] l'altezza si misura con righe da 40 px, il testo si
