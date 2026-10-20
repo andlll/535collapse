@@ -1,5 +1,6 @@
 // Prova nel browser del fiume e del ponte del livello 4 (§9.40), nella
-// mappa mappe/lvl04.tmx (quattro civili e tre guerrieri sulla riva sud):
+// mappa mappe/lvl04.tmx, con quattro civili e tre guerrieri messi dalla prova
+// sulla riva sud (§9.52):
 //   chiuso   = col ponte rotto un guerriero mandato sulla riva nord non ci
 //              arriva (il varco e' chiuso, il fiume e' solido)
 //   lavoro   = i quattro civili, mandati col clic destro vero sul ponte,
@@ -43,7 +44,21 @@ const res = await page.evaluate(() => {
   // la riva nord, oltre il ponte (dall'angolo in alto a sinistra di Ponte_1)
   const NX = b.x - 180, NY = b.y - 320;
   const north = (u) => u.y < b.y + 40 && u.x < b.x + 250;
-  const ws = [...w.all("ally_warrior")], om = [...w.all("ally_omino")];
+  // [§9.52] indipendente dalla mappa (quella dell'autore ha la base del
+  // giocatore sulla riva nord e i nemici): via unita' e regia nemica, e
+  // quattro civili e tre guerrieri nuovi sulla riva sud, nelle celle libere
+  // piu' vicine all'imbocco sud del ponte (raggiungibili da li')
+  for (const e of [...w.all("enemy_unit"), ...w.all("ally_unit")]) w.destroy(e);
+  for (const n of ["enemy_manager", "enemy_eco"]) for (const e of [...w.all(n)]) w.destroy(e);
+  const p = w.path, f = p.goalField(b.x + 270, b.y + 165, false), cells = [];
+  for (let gy = 0; gy < p.gh; gy++) for (let gx = 0; gx < p.gw; gx++) {
+    const v = p.fieldAt(f, gx, gy);
+    if (v >= 3 && v <= 14 && gx % 2 === 0 && gy % 2 === 0) cells.push([v, gx * 32 + 16, gy * 32 + 16]);
+  }
+  cells.sort((a, c) => a[0] - c[0]);
+  const om = [0, 1, 2, 3].map((k) => w.create("ally_omino", cells[k][1], cells[k][2]));
+  const ws = [4, 5, 6].map((k) => w.create("ally_warrior", cells[k][1], cells[k][2]));
+  G.advance(2);
   for (const u of [...ws, ...om]) u.life = u.slife;
   // chiuso
   select([ws[0]]); click(NX, NY);

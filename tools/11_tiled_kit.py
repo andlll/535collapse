@@ -233,6 +233,8 @@ def catalogue():
         for sp in variants(name):
             if sp in derived:
                 im, o = derived[sp]
+            elif sp in new_sprites:  # [§9.48] un oggetto del progetto con uno sprite nuovo (il mulino nemico, mub)
+                im, o = new_sprites[sp]["image"], tuple(new_sprites[sp]["origin"])
             else:
                 im, o = sprite_frame(sp), (sprites[sp]["origin_x"], sprites[sp]["origin_y"])
             out.append((cat, name, sp, im, o))
