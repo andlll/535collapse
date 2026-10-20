@@ -36,7 +36,7 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04" };
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -303,8 +303,13 @@ function drawLoad(i, d, W, H) {
 // libera la mappa ai livelli che verranno; la freccia del collegamento 1-2
 // appena allungata, dal lato sinistro dei soldati verso il monastero
 const L3_MARK = [403, -81];
-const L3_LABEL = [403, -140];
+const L3_LABEL = [403, -155]; // §9.51: sopra il campanile del segnalino nuovo
 const L3_ARROW = [399, 2, 1.2, 1.1, -60];
+// [§9.51] il livello 4: il ponte sul fiume grande a nord del monastero, con
+// la freccia dal 3
+const L4_MARK = [250, -225];
+const L4_LABEL = [250, -290];
+const L4_ARROW = [318, -150, 1.0, 1.0, -40];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -331,12 +336,18 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("fr_corta", 0, MX + 563, H / 2 + 53);
       d.text(MX + 463, H / 2 + 88, "2.");
     }
-    // [§9.13, richiesta dell'autore] il livello 3: il monastero (segnalino
-    // ricavato dallo sprite del corpo, tools/nuovi.py) e la freccia dal 2
+    // [§9.13, richiesta dell'autore] il livello 3: il monastero e la
+    // freccia dal 2 ([§9.51] il segnalino disegnato dall'autore, cap_l3)
     if (i.lvlshown > 2) {
-      d.sprite("cap_monastero", 0, MX + L3_MARK[0], H / 2 + L3_MARK[1]);
+      d.sprite("cap_l3", 0, MX + L3_MARK[0], H / 2 + L3_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L3_ARROW[0], H / 2 + L3_ARROW[1], L3_ARROW[2], L3_ARROW[3], L3_ARROW[4], c.white, 1);
       d.text(MX + L3_LABEL[0], H / 2 + L3_LABEL[1], "3.");
+    }
+    // [§9.51] il livello 4: il ponte (cap_l4) e la freccia dal 3
+    if (i.lvlshown > 3) {
+      d.sprite("cap_l4", 0, MX + L4_MARK[0], H / 2 + L4_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L4_ARROW[0], H / 2 + L4_ARROW[1], L4_ARROW[2], L4_ARROW[3], L4_ARROW[4], c.white, 1);
+      d.text(MX + L4_LABEL[0], H / 2 + L4_LABEL[1], "4.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

@@ -5945,3 +5945,22 @@ attesa dalla parte opposta della base rispetto a un guerriero alleato a
 si muove); con attackAt 3, attackGrow 2, firstAttack 600, attackEvery 900:
 3 soldati non partono prima di 600 passi, poi si'; la seconda ondata non
 parte con 4, parte con 5 dopo ~1000 passi.
+
+### 9.51 I segnalini dei livelli 3 e 4 sulla mappa della campagna
+
+L'autore ha disegnato i segnalini dei livelli 3 (il monastero,
+nuovi/sprites/cap3.1.png, 273x163) e 4 (il ponte sul fiume, cap4.png,
+267x218). Sulla mappa della campagna sono sprite derivati (nuovi.json
+"derivati", gruppo campagna) rimpiccioliti alla scala degli altri
+segnalini (la citta' del livello 1 e' larga 171 px): `cap_l3` largo 160
+(al posto di `cap_monastero`, ricavato dallo sprite del monastero, §9.13),
+`cap_l4` largo 150.
+
+Il livello 4 entra nell'elenco della campagna (menu.js `ROOMS`; si
+sblocca vincendo il 3, come gli altri) e sulla mappa: il ponte sul fiume
+grande a nord del monastero (`L4_MARK`), il numero sopra e la freccia dal
+monastero (`fr_corta` ruotata, come le altre). Il "3." sale di 15 px
+(sopra il campanile del segnalino nuovo). La storia del livello 4 non c'e'
+ancora: sotto la mappa compare "Prossimamente" (STORY, menu.js; da
+tradurre nelle sei lingue quando l'autore la scrive). Il livello e' quello
+del ponte (§9.40), in attesa della mappa dell'autore.

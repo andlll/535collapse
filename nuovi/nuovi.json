@@ -1083,18 +1083,24 @@
     }
   },
   "derivati": {
-    "cap_monastero": {
-      "da": "monastero_corpo",
-      "lato": 120,
-      "gruppo": "campagna",
-      "nota": "segnalino del livello 3 sulla mappa della campagna (§9.13)"
-    },
     "ico_ponte": {
       "da": "icons8-bridge-64",
       "lato": 58,
       "gruppo": "gui",
       "alpha": 0.7,
       "nota": "icona del ponte del livello 4 nella scheda del cantiere (§9.42): nera al 70% e larga 58 px come le icone degli edifici"
+    },
+    "cap_l3": {
+      "da": "cap3.1",
+      "lato": 160,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 3 (il monastero) sulla mappa della campagna, disegnato dall'autore (§9.51; prima ricavato dallo sprite del monastero, §9.13)"
+    },
+    "cap_l4": {
+      "da": "cap4",
+      "lato": 150,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 4 (il ponte) sulla mappa della campagna, disegnato dall'autore (§9.51)"
     }
   }
 }
