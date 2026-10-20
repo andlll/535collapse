@@ -6043,3 +6043,14 @@ Richiesta dell'autore (20 ottobre 2026): per provare i primi quattro
 livelli, tutti sbloccati. `progress.js` `UNLOCK_ALL = 4`: lo sblocco letto
 dal browser e' almeno 4 (i livelli 1-4 nell'elenco della campagna, senza
 codici). [Provvisorio] Da rimettere a 1 prima dell'uscita.
+
+**Correzione per la CI (§9.52).** La CI rigenera kit e scenari e controlla
+che gli scenari versionati vengano dalle mappe: falliva per un papavero per
+livello (fiori_papaveri, scala 0,9935). Le macchie di fiori del kit sono
+disegnate da 11_tiled_kit (decor_image) col Pillow di chi lo genera e
+ritagliate sull'inchiostro: col Pillow della CI la tile e' alta 310 px, con
+quello del kit dell'autore 308. `12_tiled_import` ora tratta come non
+ingrandito un oggetto di una di queste tile (tk.DECOR) che differisce di
+1-2 px; solo per loro (nella room match traccia02 ha davvero scala 1,0012).
+Verificato rifacendo da zero i passi della CI con Python 3.11 e il Pillow
+corrente.
