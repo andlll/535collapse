@@ -583,7 +583,7 @@ export class World {
   // [§8.11] libero per chi va alla sua casella della formazione (vedi sopra)
   placeFreeForSlot(inst, x, y) {
     return inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY
-      ? this.placeFreeExcept(inst, x, y, "ally_unit") : this.placeFree(inst, x, y);
+      ? this.placeFreeExcept(inst, x, y, inst.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit") : this.placeFree(inst, x, y); // §9.57
   }
 
   placeEmpty(inst, x, y) {

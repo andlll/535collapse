@@ -6099,3 +6099,68 @@ textIn 40. Per le prove, dall'indirizzo: `?victory=1` vince un secondo dopo
 il caricamento; `vblur`, `vwhite`, `vin`, `vtext`, `vtextin` cambiano i
 valori (p.es. `?room=lvl02&victory=1&vwhite=0.3&vin=120`). Verificato con
 fotogrammi in match e lvl02 (velo 0,25 / 0,45 / 0,65) e con ui.mjs.
+
+### 9.57 Livello 4: economia nemica, fattoria di partenza, ondate sulla strada
+
+Segnalazioni e richieste dell'autore (20 ottobre 2026).
+
+**Lavoratori nemici fermi col passo del cammino.** Misurato con una sonda
+(6000-9000 passi, stesso seme): erano fermi il 46% dei passi in cammino,
+uno fino a 6946 passi di fila (quasi 2 minuti); in 9000 passi il nemico
+raccoglieva cibo 0, legno 140, oro 150. Cause:
+- attorno alla base sud ci sono solo 4 alberi veri, tutti sul bordo est
+  (uno a x 3472, fuori dalla mappa larga 3450), una miniera d'oro sul bordo
+  sud, niente pietra (gli altri alberi sono `albero_fake`). La regia
+  mandava tutti i taglialegna allo stesso albero e, consegnato il legno,
+  ognuno tornava all'albero piu' vicino: uno lavorava, l'altro andava
+  avanti e indietro contro di lui. Attorno alla miniera i posti validi sono
+  pochi e un lavoratore restava a pochi px dal suo posto, occupato da un
+  compagno al lavoro;
+- `mpPotentialStep` (verso il posto prenotato, overAllies), `snapToSlot` e
+  `World.placeFreeForSlot` passavano sopra gli `ally_unit` anche per le
+  unita' nemiche: i lavoratori nemici si bloccavano fra loro (e sarebbero
+  passati sopra gli alleati). Ora la famiglia e' quella dell'unita'
+  (`sideUnit`, pathing.js).
+
+Rimedi (economy.js): `targetFor` conta CROWD (300) px in piu' per ogni
+compagno gia' su un albero o una pietra, e il lavoratore che ha consegnato
+sceglie di nuovo cosi' (non l'albero piu' vicino); `watchStuck`: chi cammina
+senza avanzare di 24 px per 120 passi (non in coda al suo posto) lascia
+lavoro e posto e si ferma, e per 1800 passi non torna alla stessa risorsa
+se ce ne sono altre. Dopo: fermi il 2,7% dei passi in cammino, al massimo
+119 passi; raccolti cibo 370, legno 280, oro 250 (e 10 soldati invece di 4).
+
+**Fattoria di partenza** (richiesta: "anche lui inizia con un mulino e tre
+campi coltivati gia' attivi"). `startFarm` (economy.js), chiamata dalla
+regia del livello col centro: un mulino e tre campi finiti nei punti di
+`LV4.farm`, nel prato a ovest del centro (il bosco piu' a ovest e' fatto di
+`albero_fake`, invisibili ma solidi); se un punto non e' libero o
+raggiungibile, il piu' vicino che lo e'. La ripartizione del lavoro nel
+livello 4 da' piu' peso al cibo (`ECO.lvl04.mix`: legno 2, oro 2, cibo 3,
+pietra 1).
+
+**Ondate dell'accampamento nord sulla strada** (richiesta: "arrivano
+seguendo la strada, non passando attraverso il bosco"). Prima il campo di
+flusso andava dritto verso la citta' alleata fra gli alberi del bosco
+grande. Ora ogni soldato dell'ondata ha le tappe `LV4.road` (la strada che
+gira a nord del bosco e scende a ovest), fino a quella piu' vicina al
+bersaglio: va col campo verso la tappa (anche da vicino: `enemyMove`, con
+`i.road`), a 150 px dalla tappa (non da `dirox`, che i nemici spostano a
+caso quando la meta e' occupata) passa alla successiva, dopo l'ultima va al
+bersaglio come prima. Chi insegue un alleato (warwork) lascia la strada;
+finito l'inseguimento (fermo, anche col ruolo 32 di "arrivato") la riprende
+dalla sua tappa: prima puntava dritto alla citta' e si incastrava nel
+bosco. I campi delle tappe si tengono fuori dall'istanza (non vanno nei
+salvataggi). Verificato disegnando i percorsi di un'ondata da 3
+sull'anteprima della mappa, anche con un guerriero alleato sulla strada.
+
+Prove: economy.mjs, lvl04.mjs, mining.mjs, workers.mjs, saves.mjs e
+soak.mjs (lvl02, lvl04) senza errori.
+
+### 9.58 Livello 2: via le frecce dei directioner
+
+Richiesta dell'autore: le freccette (`directioner`, sprite `dir_sign`) nella
+mappa del livello 2 non servono piu'. Nell'originale, toccando una caserma
+nemica, ne orientavano la bandiera e sparivano; nel porting non hanno
+comportamento: restavano solo disegnate. Tolte da `mappe/lvl02.tmx` (gli
+oggetti 464-467) e `scenari/lvl02.json` rigenerato con tools/12.

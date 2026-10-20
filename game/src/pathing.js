@@ -843,6 +843,11 @@ export function seesGoal(p, inst) {
 // e verso la casella si passa sopra gli alleati (mpPotentialStep,
 // World.placeFreeForSlot): le righe vanno per ruolo e chi deve finire
 // davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
+// [§9.57] la famiglia dei compagni di `inst` (sopra cui si passa verso la
+// casella o il posto): prima era sempre ally_unit, e i lavoratori nemici
+// si bloccavano fra loro (e passavano sopra gli alleati)
+export const sideUnit = (inst) => ((inst.parents || []).includes("enemy_unit") ? "enemy_unit" : "ally_unit");
+
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
 
 // [§9.30] Arrivo sulla casella (formazione, posto di raccolta): l'arrivo
@@ -851,7 +856,8 @@ export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox 
 // Se e' cosi' e la casella e' libera (gli alleati non contano), ci va.
 export function snapToSlot(w, inst) {
   if (inst.action !== 1 || !onFormationSlot(inst) || pointDistance(inst.x, inst.y, inst.dirox, inst.diroy) >= 10) return;
-  if (w.placeFreeExcept(inst, inst.x, inst.y, "ally_unit") || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, "ally_unit")) return;
+  const fam = sideUnit(inst);
+  if (w.placeFreeExcept(inst, inst.x, inst.y, fam) || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, fam)) return;
   w.setPos(inst, inst.dirox, inst.diroy);
 }
 
@@ -907,7 +913,7 @@ export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAll
   // posto prenotato attorno a una risorsa: sopra gli alleati si passa
   const slot = overAllies || (!checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy);
   const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y)
-    : slot ? w.placeFreeExcept(inst, x, y, "ally_unit") : w.placeFree(inst, x, y));
+    : slot ? w.placeFreeExcept(inst, x, y, sideUnit(inst)) : w.placeFree(inst, x, y)); // §9.57
   if (pointDistance(inst.x, inst.y, xg, yg) <= step) {
     if (free(xg, yg)) {
       w.setPos(inst, xg, yg);

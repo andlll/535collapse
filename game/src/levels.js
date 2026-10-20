@@ -16,6 +16,7 @@ import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
 import { panTo, panStep } from "./camera.js";
 import { noMovesCheck } from "./endgame.js";
+import { startFarm } from "./economy.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -680,11 +681,44 @@ export function enemyManagerLv3(p) {
 export const LV4 = {
   start: { food: 300, wood: 300, gold: 150, stone: 0 },
   centro: [2925, 3700],          // il centro nemico (posto libero nella base sud)
+  // [§9.57, richiesta dell'autore] la fattoria nemica di partenza, gia'
+  // attiva: un mulino e tre campi nel prato a ovest del centro, lontani
+  // dalla miniera d'oro (economy.js, startFarm)
+  farm: { mill: [2350, 3700], fields: [[2050, 3720], [2190, 3920], [2380, 3540]] },
   ecoR: 1500,                    // edifici entro tanti px dal centro: della regia economica
   northFirst: 2 * MIN,           // la prima ondata dalla base nord
   northEvery: 2.5 * MIN,         // poi ogni 2 minuti e mezzo
   northN: [2, 2, 3, 3, 4, 4, 5], // soldati per ondata (poi sempre l'ultimo)
+  // [§9.57, richiesta dell'autore] le ondate nord seguono la strada che gira
+  // a nord del bosco: tappe dall'accampamento verso la citta' alleata, col
+  // campo di flusso anche da vicino (enemies.js, enemyMove); a roadNext px
+  // la tappa dopo. Il percorso si ferma alla tappa piu' vicina al
+  // bersaglio, poi al bersaglio come prima
+  road: [[2600, 760], [2250, 560], [1900, 330], [1400, 280], [900, 330], [560, 800]],
+  roadNext: 150,
 };
+
+// [§9.57] Le tappe della strada (LV4.road) fino a quella piu' vicina al
+// bersaglio t
+function roadTo(t) {
+  let k = 0, bd = Infinity;
+  LV4.road.forEach(([x, y], j) => { const d = Math.hypot(x - t.x, y - t.y); if (d < bd) { bd = d; k = j; } });
+  return LV4.road.slice(0, k + 1);
+}
+
+// [§9.57] Il campo di flusso dei nemici verso (x, y), uno per punto (le
+// tappe della strada sono sempre le stesse), rifatto se cambiano gli
+// ostacoli. Fuori dall'istanza: non va nei salvataggi.
+const ROAD_FF = new WeakMap();
+function roadField(i, p, x, y) {
+  let c = ROAD_FF.get(i);
+  if (!c) ROAD_FF.set(i, (c = new Map()));
+  const key = x + "," + y, f = c.get(key);
+  if (f && f.ver === p.solidVer) return f.ff;
+  const ff = p.flowField(p.goalField(x, y, true));
+  c.set(key, { ver: p.solidVer, ff });
+  return ff;
+}
 
 export function enemyManagerLv4(p) {
   const north = (w) => [...w.all("enemy_caserma"), ...w.all("enemy_stalla")].filter((b) => b.noEco === 1);
@@ -696,6 +730,7 @@ export function enemyManagerLv4(p) {
       Object.assign(g, LV4.start);
       const c = w.create("enemy_centro", LV4.centro[0], LV4.centro[1]);
       p.markInstance(c, 1000);
+      startFarm(w, p, c, LV4.farm); // §9.57
       for (const b of w.all("enemy_build")) {
         if (Math.hypot(b.x - c.x, b.y - c.y) > LV4.ecoR) b.noEco = 1;
       }
@@ -748,7 +783,9 @@ export function enemyManagerLv4(p) {
         i.wave++;
         const home = nb[0], town = w.nearest(home.x, home.y, "ally_build") || w.nearest(home.x, home.y, "ally_unit");
         if (town) {
-          const ff = p.flowField(p.goalField(town.x, town.y, true));
+          const route = roadTo(town); // §9.57
+          const [rx, ry] = route[0];
+          const ff = roadField(i, p, rx, ry);
           // a turno dalla caserma (fanti) e dalla stalla (cavalieri)
           const list = [];
           for (let k = 0; k < n; k++) {
@@ -759,10 +796,31 @@ export function enemyManagerLv4(p) {
             const e = w.create(obj, src.x, src.y + 120);
             freeSpawnEnemy(e, w);
             e.l4 = 1; e.defender = 0;
-            e.role = 31; e.action = 1; e.flow_field = ff; e.dirox = town.x; e.diroy = town.y;
+            e.role = 31; e.action = 1; e.flow_field = ff; e.dirox = rx; e.diroy = ry;
+            e.road = route; e.roadK = 0; e.roadT = [town.x, town.y];
             e.alarm.set(0, irandomRange(12, 15));
           }
         }
+      }
+      // [§9.57] lungo la strada: vicino alla tappa, la tappa dopo; dopo
+      // l'ultima, il bersaglio. Chi insegue un alleato (warwork) lascia la
+      // strada; finito l'inseguimento (fermo, anche se arrivato vicino
+      // all'alleato: ruolo 32) la riprende dalla sua tappa
+      for (const e of w.all("enemy_unit")) {
+        if (!e.road || (e.role !== 31 && e.role !== 32) || e.warwork) continue;
+        // dalla tappa, non da dirox: se la meta e' occupata la si sposta a caso
+        const [tx, ty] = e.road[e.roadK];
+        if (e.action === 0) {
+          e.role = 31; e.action = 1; e.dirox = tx; e.diroy = ty; e.flow_field = roadField(i, p, tx, ty);
+          e.alarm.set(0, irandomRange(12, 15));
+          continue;
+        }
+        if (e.role !== 31 || e.action !== 1 || Math.hypot(e.x - tx, e.y - ty) > LV4.roadNext) continue;
+        e.roadK++;
+        const [nx, ny] = e.roadK < e.road.length ? e.road[e.roadK] : e.roadT;
+        if (e.roadK >= e.road.length) e.road = null;
+        e.dirox = nx; e.diroy = ny;
+        e.flow_field = roadField(i, p, nx, ny);
       }
       // arrivati e fermi: verso il bersaglio alleato piu' vicino
       if (i.t % 60 === 0) {
