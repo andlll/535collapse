@@ -7,8 +7,9 @@
 // (enemy_magazza: centro e magazzino; enemy_barn: centro e mulino), nelle
 // scorte del nemico (global.en). Non si comanda: gli ordini li da' la regia
 // (enemy_eco). Si vede come le unita' nemiche (nebbia); colpito, scappa
-// verso il centro. [Provvisorio] Lo sprite e' quello del civile alleato,
-// tinto d'azzurro, finche' l'autore non carica i suoi.
+// verso il centro. [§9.49] Gli sprite sono quelli dell'autore (b_ow11...,
+// nuovi/sprites/omino_blu): le animazioni del civile scelgono lo sprite
+// alleato (ow11...), qui si disegna il suo corrispondente b_.
 //
 // enemy_eco: la regia, creata dalla regia dei livelli (levels.js) quando
 // c'e' un centro nemico. Alla nascita da' le scorte iniziali; ogni 20 passi
@@ -64,7 +65,7 @@ const SEARCH = 3000;     // §9.46: senza risorse entro RANGE, le piu' vicine en
 const FAR = 900;         // §9.46: risorsa (o campo) piu' lontana di cosi' dal deposito: un deposito nuovo
 const EVERY = 20;        // ogni quanti passi la regia guarda
 const FLEE = 600;        // passi di fuga, senza nuovi lavori
-const TINT = 0xffc8a0;   // azzurro (BGR), sullo sprite del civile alleato
+const SKIN = "b_";       // §9.49: prefisso degli sprite del lavoratore nemico
 
 export const ecoOf = (w) => ({ ...ECO.default, ...(ECO[w.room] || {}) });
 
@@ -103,7 +104,6 @@ export function enemyOmino(p) {
     create(i, w) {
       if (!w.g.en) w.g.en = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, idle: 0 };
       base.create(i, w);
-      i.image_blend = TINT;
       i.visible = false;
       i.fleeUntil = 0;
     },
@@ -129,6 +129,13 @@ export function enemyOmino(p) {
     globalRightReleased() {},
     globalLeftPressed() {},
     keyboard27() {},
+    // §9.49: lo sprite nemico al posto di quello alleato scelto dalle
+    // animazioni (stessa maschera di collisione: quella dell'alleato)
+    draw(i, w, d) {
+      if (!i.sprite_index) return;
+      const n = w.assets.sprites[SKIN + i.sprite_index] ? SKIN + i.sprite_index : i.sprite_index;
+      d.spriteExt(n, i.image_index, i.x, i.y, i.image_xscale, i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
+    },
     drawEnd(i, w, d) {
       if (i.visible && (i.hover === 1 || i.hit === 1)) d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, 0xff0000);
     },

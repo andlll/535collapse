@@ -49,7 +49,9 @@ python3 -m http.server 8000 --directory game
 I font dell'interfaccia sono Cinzel e Cinzel Decorative (OFL, `nuovi/font/`,
 §9.47), rasterizzati da `05_atlas.py`. Il titolo del menu "Dust Veil"
 (`nuovi/sprites/logo_dustveil.png`) si rifa' con `python3 tools/13_logo.py`
-solo se cambiano testo, font o misura.
+solo se cambiano testo, font o misura. Le origini degli sprite del
+lavoratore nemico (`nuovi/sprites/omino_blu/`, §9.49) si ricalcolano con
+`python3 tools/14_allinea.py` se cambiano le immagini.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
 `?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40) per entrare direttamente in una room. Sono giocabili il menu

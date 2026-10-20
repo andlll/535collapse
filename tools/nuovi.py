@@ -29,6 +29,11 @@ Per ogni sprite:
             <sprite>#<n> per riquadro non vuoto), tutti alla depth
             dell'istanza: per sprite piu' grandi di una pagina d'atlas
   gruppo    gruppo d'atlas (tools/05_atlas.py), di norma "edifici"
+  [§9.49] serie: una cartella di nuovi/sprites/ con uno sprite per PNG (il
+            lavoratore nemico, 144 immagini): "serie" la cartella, "origini"
+            {sprite: [x, y]} (le scrive tools/14_allinea.py, dalla sagoma
+            dello sprite del progetto corrispondente: "togli" il prefisso del
+            nome, b_ow11 -> ow11), "gruppo"
   differenza {"sprite": s, "a": [x, y]}: i pixel uguali a quelli dello
             sprite s (questo messo in x, y dentro s) diventano trasparenti:
             gli stadi del ponte disegnano solo cio' che cambia, e l'acqua
@@ -108,6 +113,12 @@ def sprites():
     [(x0, x1, front)], "pezzi": [(x0, y0, x1, y1)], "gruppo", "acqua"}}"""
     out, cache = {}, {}
     for name, d in load()["sprites"].items():
+        if d.get("serie"):  # [§9.49] uno sprite per PNG della cartella
+            for sname, o in d["origini"].items():
+                im = Image.open(os.path.join(SPRITE_DIR, d["serie"], sname + ".png")).convert("RGBA")
+                out[sname] = {"image": im, "frames": [im], "mask": None, "origin": list(o), "fette": [], "pezzi": [],
+                              "gruppo": d.get("gruppo", "edifici"), "acqua": False}
+            continue
         # [§9.48] sprite a piu' fotogrammi: un PNG per fotogramma (stessa misura)
         frames = [image(f) for f in d["fotogrammi"]] if d.get("fotogrammi") else None
         if frames and any(f.size != frames[0].size for f in frames):

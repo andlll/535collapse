@@ -5875,3 +5875,29 @@ barn_mask; le pale girano a 0,3 fotogrammi per passo come il mulino
 alleato (enemybuild.js KIND). Il kit di Tiled non e' stato rigenerato
 (l'autore ci sta lavorando): alla prossima rigenerazione la tile del
 mulino nemico avra' il disegno nuovo.
+
+### 9.49 Il lavoratore nemico dell'autore
+
+L'autore ha disegnato il lavoratore nemico: 144 PNG (nuovi/sprites/
+omino_blu/), le stesse 6 animazioni del lavoratore alleato (ow cammina, owo
+lavora, os raccoglie, ob costruisce, car porta, oc muore) x 8 direzioni x 3
+fotogrammi, coi nomi alleati preceduti da b_ (b_ow11...). Caricati come zip
+(nuovi/omino blu.zip), scompattati e tolto lo zip.
+
+**Verifica.** Ci sono tutte e 144, ma in tele tutte uguali (83x107) e con
+la figura in punti diversi (non centrata per sagoma ne' per piedi), mentre
+gli sprite alleati hanno una tela e un'origine per animazione. Stessa scala
+(rettangoli dell'inchiostro uguali entro pochi px). `tools/14_allinea.py`
+cerca per ogni immagine lo spostamento che sovrappone meglio la sua sagoma
+(alpha > 100) a quella dello sprite alleato (allineate in basso al centro,
+poi +-8 px, massimo dell'intersezione sull'unione) e ne ricava l'origine:
+il nemico sta dove sta l'alleato, fotogramma per fotogramma.
+Sovrapposizione da 0,77 (b_owo63: il colpo di piccone, disegnato un po'
+diverso) a 0,95; nessuna sotto 0,7. Le origini sono in nuovi.json
+(`omino_blu`, `serie` con `origini`; tools/nuovi.py li legge come uno
+sprite per PNG, gruppo d'atlas nemici).
+
+**Nel gioco.** enemy_omino ha le animazioni del civile alleato (che
+scelgono ow11...) e disegna il corrispondente b_ (economy.js, draw); la
+maschera di collisione resta quella dell'alleato. Tolta la tinta azzurra
+provvisoria. Il kit di Tiled non cambia (enemy_omino non e' nel kit).
