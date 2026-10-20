@@ -42,6 +42,8 @@ export const STORY = {
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
   // [§9.24] scritto per il porting: il livello 3 e' nuovo (§9.11)
   3: "The soldiers are alone, far from home. The invaders are seeking one last stronghold to conquer: if that falls too, there will be no one left to stop them.",
+  // [§9.52] scritto per il porting, da rivedere con l'autore
+  4: "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],

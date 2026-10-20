@@ -5965,3 +5965,73 @@ dal monastero (`fr_corta` ruotata, come le altre). Il "3." sale di 15 px
 ancora: sotto la mappa compare "Prossimamente" (STORY, menu.js; da
 tradurre nelle sei lingue quando l'autore la scrive). Il livello e' quello
 del ponte (§9.40), in attesa della mappa dell'autore.
+
+### 9.52 Il livello 4: mappa dell'autore e regia
+
+L'autore ha caricato mappe/lvl04.tmx (e lvl03.tmx con qualche aggiunta:
+pali, fiori, una macchia e un sentiero). Importate (scenari/); la prova del
+ponte non dipende piu' dalle unita' della mappa (le mette lei sulla riva
+sud). Il kit si rigenera di nuovo (11_tiled_kit: un oggetto del progetto
+con uno sprite nuovo, il mulino nemico mub, §9.48).
+
+[Avviso] Nel livello 3 un'aquila (aquila_01) e' fuori dalla mappa
+(4560, 6224 in una mappa 6000x6000): l'import la segnala, non e' un errore.
+
+**La mappa.** Il giocatore a nord-ovest (centro, 3 case, 4 civili, 3
+guerrieri, due campi da seminare, una miniera d'oro); il fiume da ovest a
+est col ponte rotto in mezzo; a nord-est, sulla stessa riva del giocatore,
+una piccola base nemica (caserma, stalla, 3 cavalieri); a sud del fiume la
+base nemica grande (2 caserme, una stalla, 4 case) e un'altra miniera.
+
+**Decisioni dell'autore (20 ottobre 2026).**
+- Obiettivi: riparare il ponte resistendo agli attacchi della base nord;
+  distruggere la base nord e' facoltativo (ferma le ondate); a ponte
+  riparato si svela il vero obiettivo, distruggere il centro nemico oltre
+  il fiume (vittoria). Da quel momento attacca anche la base sud.
+- La base sud ha un centro e l'economia (§9.44-§9.50): "aggiungo centro e
+  lavoratori a sud".
+- Ondate della base nord crescenti, ma non troppo (dopo il ponte arrivano
+  anche da sud).
+- Giorno, risorse medie.
+
+**Il centro nemico** non e' nella mappa: il kit di Tiled dell'autore e'
+precedente agli edifici nemici nuovi (§9.43; non glielo si e' mandato,
+come chiesto), e nel suo file il numero di tile di enemy_centro e' quello
+di un oggetto della citta'. Lo mette la regia all'inizio (`LV4.centro`,
+2925, 3700: un posto libero fra le case e la miniera del sud, cercato nel
+gioco); i 4 lavoratori di partenza li fa nascere la regia economica
+(`ECO.startWorkers`). [Da fare quando l'autore aggiorna il kit] I tileset
+cresciuti (nemici ha 5 tile in piu': da 17 a 22) spostano i numeri delle tile dei
+tileset che vengono dopo: le mappe salvate col kit vecchio vanno
+controllate (i firstgid).
+
+**Regia** (levels.js `enemyManagerLv4`, `LV4`; numeri da tarare giocando):
+- partenza: 300 cibo, 300 legno, 150 oro; il dialogo 4_0 (il ponte, il
+  legno, le incursioni da nord-est);
+- gli edifici nemici a piu' di 1500 px dal centro (la base nord) sono
+  `noEco`: la regia economica non li usa (niente produzione pagata,
+  riparazioni, ricostruzioni, difesa: economy.js);
+- base nord: un'ondata a 2 minuti, poi ogni 2 minuti e mezzo, di 2, 2, 3,
+  3, 4, 4, 5 soldati (fanti dalla caserma, cavalieri dalla stalla, a
+  turno), verso l'edificio alleato piu' vicino col flow field; arrivati,
+  verso l'alleato piu' vicino. Distrutte caserma e stalla: obiettivo
+  facoltativo barrato, dialogo 4_2, niente piu' ondate;
+- base sud (ECO.lvl04): 4 lavoratori, fino a 6; scorte 200 cibo, 200 legno,
+  100 oro; esercito fino a 10; ondate da 4 soldati, +1 a ogni ondata, ogni
+  2 minuti e mezzo, solo a ponte riparato (`global.en.hold`);
+- ponte riparato (ponte_fatto): fase 1, dialogo 4_1, obiettivo "distruggi
+  il centro nemico"; vittoria quando non c'e' piu' un centro nemico
+  (codice del livello 5: 1 2 7 9 4, sblocca il 5).
+- Obiettivi (endgame.js): "Ripara il ponte (n%)" (barrato a ponte fatto),
+  "Facoltativo: distruggi l'accampamento nemico a nord-est", poi
+  "Distruggi il centro nemico oltre il fiume". Testi in sei lingue
+  (texts.js); anche la storia del livello sulla mappa della campagna,
+  scritta per il porting e da rivedere con l'autore.
+
+Prova (`game/test/browser/lvl04.mjs`, nella CI): partenza (risorse, centro,
+economia con 4 lavoratori, base nord fuori dall'economia, obiettivi,
+dialogo); la prima ondata da nord a 2 minuti; la base sud ferma prima del
+ponte; il ponte riparato sblocca fase, dialogo e ondate da sud; distrutta
+la base nord, niente piu' ondate; distrutto il centro, vittoria. Provato a
+parte che, a ponte riparato, un'ondata della base sud attraversa il ponte
+(partita a ~72 s con scorte abbondanti, a nord del fiume ~10 s dopo).

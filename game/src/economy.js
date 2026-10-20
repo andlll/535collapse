@@ -53,6 +53,7 @@ export const ECO = {
     attackGrow: 0,                               // soldati in piu' richiesti a ogni ondata (fino al tetto army)
     attackEvery: 0,                              // passi minimi fra un'ondata e l'altra
     defendR: 600,                                // un alleato entro tanti px da un edificio nemico: la base si difende
+    startWorkers: 0,                             // §9.52: lavoratori che nascono col centro, se non ce ne sono
     repairers: 2,                                // lavoratori per edificio da riparare
     builders: 3,                                 // lavoratori al cantiere
     rebuild: true,                               // ricostruisce gli edifici persi
@@ -62,7 +63,11 @@ export const ECO = {
   // [Decisione dell'autore] livello 4: solo ricostruzione degli edifici
   // persi (e riparazioni), niente edifici nuovi; il resto da tarare con la
   // mappa
-  lvl04: {},
+  // [§9.52, decisioni dell'autore] la base sud, col centro che mette la
+  // regia del livello (levels.js, LV4); gli attacchi partono solo a ponte
+  // riparato (global.en.hold), crescenti ma non troppo
+  lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 10,
+           attackAt: 4, attackGrow: 1, attackEvery: 9000 },
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare
@@ -218,7 +223,7 @@ const RUINS = ["casaruin", "magruin", "barnruin", "casruin", "stalruin", "ccruin
 // sotto): da ricostruire, se c'e' l'economia
 export function lostBuilding(w, i) {
   const en = w.g.en;
-  if (!en || !REBUILD[i.object] || !w.exists("enemy_eco")) return;
+  if (!en || !REBUILD[i.object] || i.noEco === 1 || !w.exists("enemy_eco")) return; // §9.52: non della regia
   (en.lost || (en.lost = [])).push({ o: i.object, x: i.x, y: i.y });
 }
 
@@ -394,6 +399,11 @@ export function enemyEco(p) {
         g.en.started = 1;
         g.en.since = w._stepNo; // §9.50: per firstAttack
         g.en.wave = 0;
+        // [§9.52] i lavoratori di partenza, attorno al centro
+        const c = w.all("enemy_centro").next().value, n = ecoOf(w).startWorkers;
+        if (c && n && !w.exists("enemy_omino")) {
+          for (let k = 0; k < n; k++) freeSpawnEnemy(w.create("enemy_omino", c.x - 90 + k * 60, c.y + 190), w);
+        }
       }
     },
     step(i, w) {
@@ -449,7 +459,7 @@ export function enemyEco(p) {
       }
       // alle riparazioni
       for (const b of w.all("enemy_build")) {
-        if (b.life >= b.slife || !material(b) || danger(b)) continue;
+        if (b.noEco === 1 || b.life >= b.slife || !material(b) || danger(b)) continue;
         let n = workers.filter((o) => o.repB === b).length;
         while (n < E.repairers) {
           const o = pull(w, workers, b, now);
@@ -494,6 +504,7 @@ export function enemyEco(p) {
       let army = soldiers(w).length;
       const enough = n >= E.workers || !c;
       for (const b of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
+        if (b.noEco === 1) continue; // §9.52: un'altra base (la regia del livello)
         if (b.prodUntil && now >= b.prodUntil) {
           b.prodUntil = 0;
           const u = w.create(b.prodObj, b.x, b.y);
@@ -517,6 +528,7 @@ export function enemyEco(p) {
       const army2 = soldiers(w).filter((e) => e.eco === 1);
       let intruder = null;
       for (const b of w.all("enemy_build")) {
+        if (b.noEco === 1) continue;
         const a = w.nearest(b.x, b.y, "ally_unit");
         if (a && Math.hypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
       }
@@ -539,7 +551,7 @@ export function enemyEco(p) {
       // (ruolo 32), verso il bersaglio alleato piu' vicino
       const waiting = army2.filter((e) => e.role === 30 && e.action === 0);
       const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army);
-      const ready = now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0);
+      const ready = !en.hold && now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0); // hold: §9.52
       const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need ? attackTarget(w, home) : null;
       if (t) {
         const ff = p.flowField(p.goalField(t.x, t.y, true));

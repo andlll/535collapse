@@ -869,6 +869,41 @@
       "depth": -9999,
       "kit": false
     },
+    "enemy_manager_lv4": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 4 (§9.52, levels.js)"
+    },
+    "dialogo_4_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_4_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_4_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
     "hint_lavoratori": {
       "sprite": null,
       "parents": [

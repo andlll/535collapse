@@ -31,7 +31,7 @@ export function victoryManager() {
       if (i.clicloc !== 1) return;
       w.destroy(i);
       const g = w.g;
-      const next = { lvl01: 2, lvl02: 3, lvl03: 4 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -54,7 +54,8 @@ export function victoryManager() {
         // [§9.35, richiesta dell'autore] niente punteggio
       }
       if (w.room === "lvl03") d.text(vw / 2, vh / 2 - 100, tr("The monastery has held out: the invaders' advance is broken"));
-      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6" }[w.room];
+      if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
+      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -204,6 +205,15 @@ export function objectiveButton() {
             lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
           }
         }
+      }
+      // [§9.52] livello 4: il ponte (con l'avanzamento), la base nord
+      // (facoltativo), e a ponte riparato il centro nemico
+      if (w.room === "lvl04") {
+        const L = g.l4 || { phase: 0, bridge: 0, north: 0 };
+        lines.push([58, tr("Repair the bridge ({p}%)", { p: L.bridge }), L.phase === 1 ? 43 : 0]);
+        sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
+        lines.push([88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0]);
+        if (L.phase === 1) lines.push([118, tr("Destroy the enemy town hall across the river")]);
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.

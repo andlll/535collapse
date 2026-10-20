@@ -648,6 +648,46 @@ export const TEXTS = {
   "The monastery has fallen.": {
     it: "Il monastero è caduto.", es: "El monasterio ha caído.", pt: "O mosteiro caiu.", de: "Das Kloster ist gefallen.",
     fr: "Le monastère est tombé." },
+  // ------------------------------------------------- livello 4 (§9.52)
+  "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.": {
+    it: "La strada verso la città degli invasori è tagliata da un fiume, e il suo unico ponte è in rovina. Va ricostruito sotto le incursioni di un accampamento nemico: oltre il fiume, il nemico aspetta.",
+    es: "El camino hacia la ciudad de los invasores está cortado por un río, y su único puente está en ruinas. Hay que reconstruirlo bajo las incursiones de un campamento enemigo: al otro lado del río, el enemigo espera.",
+    pt: "A estrada para a cidade dos invasores é cortada por um rio, e sua única ponte está em ruínas. É preciso reconstruí-la sob as incursões de um acampamento inimigo: do outro lado do rio, o inimigo espera.",
+    de: "Der Weg zur Stadt der Eindringlinge wird von einem Fluss abgeschnitten, und seine einzige Brücke liegt in Trümmern. Sie muss unter den Überfällen eines feindlichen Lagers wieder aufgebaut werden: Jenseits des Flusses wartet der Feind.",
+    fr: "La route vers la ville des envahisseurs est coupée par une rivière, et son seul pont est en ruine. Il faut le reconstruire sous les raids d'un camp ennemi : de l'autre côté de la rivière, l'ennemi attend." },
+  "The bridge over the river is broken. Our workers must repair it: it takes a lot of wood. Beware, the enemy camp to the north-east will send raids.": {
+    it: "Il ponte sul fiume è rotto. I nostri lavoratori devono ripararlo: ci vuole molto legno. Attenti, l'accampamento nemico a nord-est manderà delle incursioni.",
+    es: "El puente sobre el río está roto. Nuestros trabajadores deben repararlo: hace falta mucha madera. Cuidado, el campamento enemigo del noreste enviará incursiones.",
+    pt: "A ponte sobre o rio está quebrada. Nossos trabalhadores precisam consertá-la: é preciso muita madeira. Cuidado, o acampamento inimigo a nordeste vai mandar incursões.",
+    de: "Die Brücke über den Fluss ist zerstört. Unsere Arbeiter müssen sie reparieren: Das kostet viel Holz. Vorsicht, das feindliche Lager im Nordosten wird Überfälle schicken.",
+    fr: "Le pont sur la rivière est détruit. Nos ouvriers doivent le réparer : il faut beaucoup de bois. Attention, le camp ennemi au nord-est enverra des raids." },
+  "The bridge is repaired! Across the river lies the enemy town: destroy their town hall to clear the way. Now their soldiers can cross too!": {
+    it: "Il ponte è riparato! Oltre il fiume c'è la città nemica: distruggete il loro centro per aprirvi la strada. Ora anche i loro soldati possono attraversare!",
+    es: "¡El puente está reparado! Al otro lado del río está la ciudad enemiga: destruid su centro urbano para abriros paso. ¡Ahora sus soldados también pueden cruzar!",
+    pt: "A ponte está consertada! Do outro lado do rio fica a cidade inimiga: destruam o centro deles para abrir caminho. Agora os soldados deles também podem atravessar!",
+    de: "Die Brücke ist repariert! Jenseits des Flusses liegt die feindliche Stadt: Zerstört ihr Rathaus, um den Weg freizumachen. Jetzt können auch ihre Soldaten hinüber!",
+    fr: "Le pont est réparé ! De l'autre côté de la rivière se trouve la ville ennemie : détruisez leur hôtel de ville pour ouvrir la voie. Maintenant, leurs soldats aussi peuvent traverser !" },
+  "The enemy camp in the north has fallen: no more raids from there!": {
+    it: "L'accampamento nemico a nord è caduto: da lì non arriveranno più incursioni!",
+    es: "¡El campamento enemigo del norte ha caído: no habrá más incursiones desde allí!",
+    pt: "O acampamento inimigo ao norte caiu: não virão mais incursões de lá!",
+    de: "Das feindliche Lager im Norden ist gefallen: Von dort kommen keine Überfälle mehr!",
+    fr: "Le camp ennemi du nord est tombé : plus de raids de ce côté !" },
+  "Repair the bridge ({p}%)": {
+    it: "Ripara il ponte ({p}%)", es: "Repara el puente ({p}%)", pt: "Conserte a ponte ({p}%)",
+    de: "Repariere die Brücke ({p}%)", fr: "Répare le pont ({p} %)" },
+  "Optional: destroy the enemy camp in the north-east": {
+    it: "Facoltativo: distruggi l'accampamento nemico a nord-est", es: "Opcional: destruye el campamento enemigo del noreste",
+    pt: "Opcional: destrua o acampamento inimigo a nordeste", de: "Optional: Zerstöre das feindliche Lager im Nordosten",
+    fr: "Facultatif : détruis le camp ennemi au nord-est" },
+  "Destroy the enemy town hall across the river": {
+    it: "Distruggi il centro nemico oltre il fiume", es: "Destruye el centro urbano enemigo al otro lado del río",
+    pt: "Destrua o centro inimigo do outro lado do rio", de: "Zerstöre das feindliche Rathaus jenseits des Flusses",
+    fr: "Détruis l'hôtel de ville ennemi de l'autre côté de la rivière" },
+  "The bridge is ours and the enemy town has fallen": {
+    it: "Il ponte è nostro e la città nemica è caduta", es: "El puente es nuestro y la ciudad enemiga ha caído",
+    pt: "A ponte é nossa e a cidade inimiga caiu", de: "Die Brücke gehört uns und die feindliche Stadt ist gefallen",
+    fr: "Le pont est à nous et la ville ennemie est tombée" },
   // ------------------------------------------------- livello 2 (§9.14)
   "Precious workers": { it: "Lavoratori preziosi", es: "Trabajadores valiosos", pt: "Trabalhadores preciosos",
                         de: "Wertvolle Arbeiter", fr: "Ouvriers précieux" },

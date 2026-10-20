@@ -116,6 +116,7 @@ jobs:
           node game/test/browser/enemyarmy.mjs
           node game/test/browser/enemydepots.mjs
           node game/test/browser/enemydefense.mjs
+          node game/test/browser/lvl04.mjs
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
       - uses: actions/upload-artifact@v4

@@ -214,6 +214,12 @@ export const DIALOGS = {
   dialogo_3_5: { who: [...VILLAGER, "Villager"], arm: 30,
                  text: "The attacks on the village come from the enemy base to the south-west. Destroy its barracks and stables and they will stop!" },
   dialogo_3_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "Hold on! Just one more minute!" },
+  // livello 4 [§9.52]: la regia e' in levels.js (enemyManagerLv4), che li crea
+  dialogo_4_0: { who: SOLDIER2, arm: 30,
+                 text: "The bridge over the river is broken. Our workers must repair it: it takes a lot of wood. Beware, the enemy camp to the north-east will send raids." },
+  dialogo_4_1: { who: SOLDIER2, arm: 30,
+                 text: "The bridge is repaired! Across the river lies the enemy town: destroy their town hall to clear the way. Now their soldiers can cross too!" },
+  dialogo_4_2: { who: SOLDIER2, arm: 30, timeout: 600, text: "The enemy camp in the north has fallen: no more raids from there!" },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

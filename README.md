@@ -108,6 +108,7 @@ node game/test/browser/economy.mjs                     # economia nemica: raccol
 node game/test/browser/enemyarmy.mjs                   # economia nemica: soldati pagati, attacco, riparazioni, ricostruzione
 node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
 node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
+node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```
