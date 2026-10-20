@@ -69,8 +69,11 @@ export const ECO = {
   // [§9.57, richiesta dell'autore] con la fattoria di partenza (startFarm,
   // LV4.farm: un mulino e tre campi): il cibo e' la risorsa piu' sicura della base sud
   // (pochi alberi e una miniera, sul bordo della mappa)
+  // [§9.59, richiesta dell'autore] altri lavoratori, senza valanga: fino a 9
+  // (non 6), uno ogni 30 s (non 17)
   lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 10,
-           attackAt: 4, attackGrow: 1, attackEvery: 9000, mix: { wood: 2, gold: 2, food: 3, stone: 1 } },
+           attackAt: 4, attackGrow: 1, attackEvery: 9000, mix: { wood: 2, gold: 2, food: 3, stone: 1 },
+           workers: 9, workerTime: 1800 },
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare

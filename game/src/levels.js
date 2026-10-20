@@ -682,9 +682,10 @@ export const LV4 = {
   start: { food: 300, wood: 300, gold: 150, stone: 0 },
   centro: [2925, 3700],          // il centro nemico (posto libero nella base sud)
   // [§9.57, richiesta dell'autore] la fattoria nemica di partenza, gia'
-  // attiva: un mulino e tre campi nel prato a ovest del centro, lontani
-  // dalla miniera d'oro (economy.js, startFarm)
-  farm: { mill: [2350, 3700], fields: [[2050, 3720], [2190, 3920], [2380, 3540]] },
+  // attiva: un mulino a est del centro e tre campi attorno, fuori dalle
+  // strade, lontani dalla miniera d'oro e dagli alberi (economy.js,
+  // startFarm). [§9.59] Prima era a ovest, coi campi sotto gli albero_fake
+  farm: { mill: [3275, 3850], fields: [[3200, 3550], [2900, 3950], [3200, 3950]] },
   ecoR: 1500,                    // edifici entro tanti px dal centro: della regia economica
   northFirst: 2 * MIN,           // la prima ondata dalla base nord
   northEvery: 2.5 * MIN,         // poi ogni 2 minuti e mezzo

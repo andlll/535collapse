@@ -6164,3 +6164,44 @@ mappa del livello 2 non servono piu'. Nell'originale, toccando una caserma
 nemica, ne orientavano la bandiera e sparivano; nel porting non hanno
 comportamento: restavano solo disegnate. Tolte da `mappe/lvl02.tmx` (gli
 oggetti 464-467) e `scenari/lvl02.json` rigenerato con tools/12.
+
+### 9.59 Livello 4: alberi veri per la base sud, fattoria spostata, piu' lavoratori
+
+Richiesta dell'autore (20 ottobre 2026): "aggiungiamo alberi veri
+(ovviamente fuori dalle strade), verifichiamo anche che il nemico abbia la
+possibilita' di realizzare altri lavoratori (senza snowball eccessivo)".
+
+**Alberi.** 18 `albero` nuovi in `mappe/lvl04.tmx` (livello "boschi",
+oggetti 418-435), in tre boschetti: la piana d'erba alta a ovest (7, attorno
+a 1700,3250), il prato a ovest delle case (6, attorno a 2350,3550), vicino
+alla caserma di sinistra (5, attorno a 2050,2930). I posti li ha cercati uno
+script (non versionato) sull'anteprima della mappa di tools/12: tronco a
+piu' di 40 px dalle strade (`strada_*`, `traccia*`, la parte ben visibile
+dell'immagine), chioma sulle strade al piu' per il 3%, niente sovrapposti a
+edifici, alberi, miniera e centro nemico, ad almeno 230 px dalla fattoria e
+a 120 px dagli altri alberi. Vicino alla base non c'e' altro spazio libero:
+il resto e' strade, case e il bosco di `albero_fake` (che la regia non
+taglia). La mappa resta con le fine riga CRLF dell'autore.
+
+**Fattoria spostata.** Nel §9.57 i campi a ovest del centro finivano sotto
+le chiome degli `albero_fake` (nella vista in gioco erano nascosti dalla
+nebbia). Ora, con lo stesso script: mulino a 3275,3850 (a est del centro),
+campi a 3200,3550, 2900,3950 e 3200,3950, fuori dalle strade.
+
+**Lavoratori.** Con 6 lavoratori (il tetto di sempre) il nemico arrivava al
+tetto in 50 s e poi accumulava cibo e legno senza usarli. Nel livello 4 il
+tetto e' 9, uno ogni 1800 passi (30 s, non 17). Misurato su 30000 passi
+(8,3 minuti, senza la base nord):
+
+| | lavoratori | raccolti cibo/legno/oro | soldati | fermi in cammino |
+|---|---|---|---|---|
+| tetto 6 | 6 da 0,8 min | 2170 / 1030 / 490 | 8 | 0,5% |
+| tetto 9 | 9 da 3,3 min | 2130 / 2240 / 1070 | 9 | 3,1% |
+
+Niente valanga: i soldati restano sotto il tetto (army 10) e le ondate
+crescono di uno alla volta (attackGrow); le scorte in piu' restano in
+magazzino. A 5,8 minuti la regia si e' fatta da sola un magazzino vicino ai
+boschi nuovi (§9.46).
+
+Prove: lvl04.mjs, economy.mjs, saves.mjs e soak.mjs (lvl04) senza errori;
+gli scenari rigenerati da tutte le mappe coincidono con quelli versionati.
