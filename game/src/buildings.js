@@ -295,7 +295,11 @@ export function fond(fam, p) {
       armBuilders(i, w, p, "buildwork", fam === "casa" ? i.x : w.mouse.x, fam === "casa" ? i.y : w.mouse.y);
     },
     // Step [C]: fasi del cantiere, poi l'edificio finito.
+    // [§9.55, richiesta dell'autore] colpito fino a 0 (arieti, catapulte)
+    // il cantiere crolla: niente rovina ne' rimborso, celle libere.
+    // Nell'originale la vita scendeva sotto zero e il cantiere restava.
     step(i, w) {
+      if (i.life <= 0) { p.markInstance(i, 1); w.destroy(i); return; }
       d.phases.forEach(([t, spr], k) => {
         // [Richiesta dell'autore] il passaggio di fase in dissolvenza
         if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; w.swapSprite(i, spr); }
@@ -639,6 +643,7 @@ export function campoFond(p) {
     // del mouse al momento dell'alarm.
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
+      if (i.life <= 0) { w.destroy(i); return; } // §9.55, come gli altri cantieri
       if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
       campoFondStream(i, w);
     },

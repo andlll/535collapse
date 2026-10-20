@@ -6065,3 +6065,17 @@ sovrapponevano sfasati, raddoppiando il lampeggio. Ora `blink()`
 risorsa: quello in corso continua col suo ritmo e il successivo parte solo
 dopo che si e' spento. Vale per tutti i `*_blink` (anche i clic ripetuti
 senza risorse non accumulano piu' cerchi). Test: `game/test/blink.test.mjs`.
+
+### 9.55 I cantieri colpiti fino a 0 crollano
+
+Richiesta dell'autore (20 ottobre 2026): un cantiere alleato attaccato
+(arieti e catapulte nemiche colpiscono il piu' vicino `ally_build`, cantieri
+compresi) perdeva vita sotto zero e restava li', indistruttibile: i
+costruttori dovevano poi risalire da -49 o piu'. Nell'originale nessun
+cantiere controlla la vita. Ora a vita 0 o meno il cantiere sparisce, senza
+rovina ne' rimborso: `fond` (edifici) e `wallFond` (mura, anche i pulsanti
+"+") liberano le celle della griglia, `campoFond` (il campo, celle gia'
+libere) toglie i germogli. I civili che lo costruivano si comportano come
+a cantiere finito (civilians.js, buildStep): vanno al cantiere piu' vicino
+o si fermano. Il ponte del livello 4 (bridge.js) resta com'e'. Test:
+`game/test/fond.test.mjs`.
