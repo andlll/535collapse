@@ -14,6 +14,16 @@ progetto GameMaker in HTML5/WebGL2. Metodo e convenzioni da
 
 ## Cose da fare (lista aggiornata a ogni passo)
 
+**Stato al 20 ottobre 2026** (branch `claude/festive-volta-f68pca`, §9.38-§9.50):
+economia nemica completa nei livelli con un centro nemico (raccolta,
+lavoratori, soldati pagati, riparazioni, ricostruzione, depositi nuovi,
+difesa e ondate); sprite nemici tutti dell'autore; font Cinzel e titolo
+"Dust Veil". Restano, per l'autore: la mappa del livello 4 (poi regia e
+numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
+servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
+"Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
+zip); i livelli 5-10; le voci qui sotto.
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -5901,3 +5911,37 @@ sprite per PNG, gruppo d'atlas nemici).
 scelgono ow11...) e disegna il corrispondente b_ (economy.js, draw); la
 maschera di collisione resta quella dell'alleato. Tolta la tinta azzurra
 provvisoria. Il kit di Tiled non cambia (enemy_omino non e' nel kit).
+
+### 9.50 L'economia nemica, passo 4 (prima parte): difesa e ondate
+
+Richiesta dell'autore (20 ottobre 2026): passo 3 e "quello che rimane".
+Del passo 3 restano i segnaposto "cantiere nemico" di Tiled (in sospeso:
+toccano il kit, che l'autore sta usando, e la decisione "niente edifici
+nuovi" del livello 4, §9.45-§9.46). Qui la parte del passo 4 (regia per
+livello) che non dipende dalle mappe: le regole, coi numeri per livello in
+`ECO[room]` (economy.js) da tarare quando ci sono le mappe.
+
+**Difesa.** Se un'unita' alleata e' entro `defendR` (600 px) da un edificio
+nemico, tutti i soldati della regia in attesa (ruolo 30) accorrono, non solo
+quelli che la vedono da soli (400 px, enemies.js): col flow field dei
+nemici e il ruolo 31 come le ondate (diritti restavano dietro gli edifici:
+lo ha mostrato la prova), arrivati tornano in attesa; andato via l'intruso
+restano dove sono. Durante la difesa non partono ondate. I lavoratori
+scappano verso il centro come prima (§9.44).
+
+**Ondate.** Un attacco parte quando i soldati in attesa sono almeno
+`attackAt + ondate gia' partite x attackGrow` (fino al tetto `army`), non
+prima di `firstAttack` passi dalla nascita della regia e a non meno di
+`attackEvery` passi dall'ondata prima (`global.en.wave`, `nextAttack`,
+`since`: entrano nei salvataggi). Di norma come prima (8, nessuna crescita,
+nessuna attesa).
+
+Per le prove `window.__game.eco` e' la tabella ECO (si cambiano i numeri
+di una room).
+
+Prova (`game/test/browser/enemydefense.mjs`, nella CI): 6 soldati in
+attesa dalla parte opposta della base rispetto a un guerriero alleato a
+450 px dal centro accorrono tutti e lo raggiungono (con defendR 0 nessuno
+si muove); con attackAt 3, attackGrow 2, firstAttack 600, attackEvery 900:
+3 soldati non partono prima di 600 passi, poi si'; la seconda ondata non
+parte con 4, parte con 5 dopo ~1000 passi.

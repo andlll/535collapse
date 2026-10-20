@@ -48,6 +48,11 @@ export const ECO = {
     army: 12,                                    // soldati da tenere (i nemici che non sono lavoratori)
     troops: ["enemy_warrior", "enemy_picchiere", "enemy_arciere"], // la caserma, a turno (la stalla: cavalieri)
     attackAt: 8,                                 // soldati in attesa con cui si parte all'attacco (0: mai)
+    // §9.50, regia di attacco e difesa
+    firstAttack: 0,                              // passi (60 al secondo) prima che possa partire il primo attacco
+    attackGrow: 0,                               // soldati in piu' richiesti a ogni ondata (fino al tetto army)
+    attackEvery: 0,                              // passi minimi fra un'ondata e l'altra
+    defendR: 600,                                // un alleato entro tanti px da un edificio nemico: la base si difende
     repairers: 2,                                // lavoratori per edificio da riparare
     builders: 3,                                 // lavoratori al cantiere
     rebuild: true,                               // ricostruisce gli edifici persi
@@ -387,6 +392,8 @@ export function enemyEco(p) {
       if (!g.en.started) {
         Object.assign(g.en, ecoOf(w).start);
         g.en.started = 1;
+        g.en.since = w._stepNo; // §9.50: per firstAttack
+        g.en.wave = 0;
       }
     },
     step(i, w) {
@@ -503,20 +510,48 @@ export function enemyEco(p) {
         b.prodUntil = now + UNIT_TIME;
         army++;
       }
-      // all'attacco, raccolti abbastanza soldati in attesa; arrivati e
-      // fermi (ruolo 32), verso il bersaglio piu' vicino
+      // [§9.50] difesa: un alleato vicino a un edificio nemico (entro
+      // defendR) e i soldati della regia in attesa accorrono tutti, non solo
+      // quelli che lo vedono (entro 400 px, enemies.js); andato via, restano
+      // in attesa dove sono
       const army2 = soldiers(w).filter((e) => e.eco === 1);
+      let intruder = null;
+      for (const b of w.all("enemy_build")) {
+        const a = w.nearest(b.x, b.y, "ally_unit");
+        if (a && Math.hypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
+      }
+      // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
+      // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
+      let dff = null;
+      for (const e of army2) {
+        if (e.defending && e.role === 32) e.role = 30;
+        if (e.role !== 30 && !(e.defending && e.role === 31)) continue;
+        if (intruder && (e.action === 0 || e.defending)) {
+          dff = dff || p.flowField(p.goalField(intruder.x, intruder.y, true));
+          if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
+          e.action = 1; e.warwork = 1; e.dirox = intruder.x; e.diroy = intruder.y; e.defending = 1;
+          e.role = 31; e.flow_field = dff;
+        } else if (!intruder && e.defending) { e.defending = 0; if (e.role === 31) e.role = 30; }
+      }
+      // all'attacco, raccolti abbastanza soldati in attesa (attackAt, piu'
+      // attackGrow a ogni ondata, fino al tetto), non prima di firstAttack
+      // e a distanza di attackEvery dall'ondata prima; arrivati e fermi
+      // (ruolo 32), verso il bersaglio alleato piu' vicino
       const waiting = army2.filter((e) => e.role === 30 && e.action === 0);
-      const t = home && E.attackAt > 0 && waiting.length >= E.attackAt ? attackTarget(w, home) : null;
+      const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army);
+      const ready = now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0);
+      const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need ? attackTarget(w, home) : null;
       if (t) {
         const ff = p.flowField(p.goalField(t.x, t.y, true));
         for (const e of waiting) {
           e.action = 1; e.flow_field = ff; e.dirox = t.x; e.diroy = t.y; e.role = 31;
           e.alarm.set(0, irandomRange(12, 15));
         }
+        en.wave = (en.wave || 0) + 1;
+        en.nextAttack = now + E.attackEvery;
       }
       for (const e of army2) {
-        if (e.role !== 32 || e.action !== 0) continue;
+        if (e.role !== 32 || e.action !== 0 || e.defending) continue;
         const t2 = attackTarget(w, e);
         if (!t2) continue;
         e.action = 1; e.dirox = t2.x; e.diroy = t2.y;
