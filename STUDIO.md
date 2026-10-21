@@ -6390,3 +6390,21 @@ e passa con questo; e' nella CI. Passano anche depot, workers, mining,
 idle, economy, lvl04, bridge, monastery, enemybuildings, enemydepots,
 enemyarmy (riparazione e ricostruzione nemiche), garrison, settle,
 deposit, saves, soak, ui.
+
+### 9.65 Lampeggio veloce quando si smette di riparare
+
+Richiesta dell'autore sul §9.64: il lampeggio della risorsa che manca, per
+la riparazione, o niente o "uno veloce quando si ferma". Ora il civile che
+smette di riparare senza materiale crea il lampeggio con `quick`
+(buildings.js, `blink`, opts.init): sfuma in 12 passi (0,2 s) invece di 25.
+Resta uno solo per risorsa (§9.54): con tre civili che si fermano insieme,
+un solo lampeggio breve. Gli altri lampeggi (costi, popolazione, ponte)
+come prima. Test: `game/test/blink.test.mjs`; nel browser, tre civili su
+un magazzino danneggiato col legno a 0: un lampeggio, acceso 12 passi.
+
+**Notato provando, non corretto.** La "fine riparazione" dell'originale
+(buildings.js `repairEnd`, a ogni passo di ogni edificio finito) ferma i
+civili che riparano un punto entro 150 px da un edificio a vita piena:
+anche se l'edificio che riparano e' un altro, danneggiato, accanto. Con un
+magazzino danneggiato vicino alle case della base del match i civili si
+fermavano subito.

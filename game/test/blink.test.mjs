@@ -28,3 +28,11 @@ test("un secondo pop_blink mentre il primo lampeggia non si aggiunge", () => {
   w.destroy(a);
   assert.equal(w.create("pop_blink", 0, 0).alive, true);
 });
+
+test("lampeggio veloce (§9.65): dura 12 passi invece di 25", () => {
+  const w = world();
+  const q = w.create("food_blink", 0, 0, { init: (i) => { i.quick = 1; } });
+  assert.equal(q.dur, 12);
+  assert.equal(q.alarm.get(0), 12);
+  assert.equal(w.create("pop_blink", 0, 0).dur, 25);
+});

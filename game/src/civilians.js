@@ -1199,10 +1199,11 @@ function otherWorkTick(i, w) {
     const b = complexOf(i.repT) || w.nearest(i.repx, i.repy, S.build); // §9.29
     // [§9.64, segnalazione dell'autore] senza il materiale (pietra per gli
     // edifici di pietra, legno per quelli di legno) il civile si ferma,
-    // inattivo, e la risorsa che manca lampeggia: prima continuava a
-    // martellare senza che la vita salisse
+    // inattivo: prima continuava a martellare senza che la vita salisse.
+    // [§9.65, richiesta dell'autore] la risorsa che manca fa un solo
+    // lampeggio veloce (buildings.js, blink quick)
     if (b && (b.pietra === 1 || b.legno === 1) && !(b.pietra === 1 && g.stone > 0) && !(b.legno === 1 && g.wood > 0)) {
-      if (S.player) w.create(b.pietra === 1 ? "stone_blink" : "wood_blink", 0, 0);
+      if (S.player) w.create(b.pietra === 1 ? "stone_blink" : "wood_blink", 0, 0, { init: (k) => { k.quick = 1; } });
       i.action = 0; i.repairwork = 0; i.repT = null; i.step = 0; i.speed = 0;
       g.idle += 1;
       return;

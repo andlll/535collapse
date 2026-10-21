@@ -1001,14 +1001,18 @@ export function centroCancel() {
 // popolazione ne creavano uno a testa, sovrapposti e sfasati).
 const BLINK_POS = { wood_blink: [50, 80], stone_blink: [140, 40], pop_blink: [140, 80],
                     food_blink: [50, 40], gold_blink: [50, 120] };
+// [§9.65, richiesta dell'autore] quick (opts.init): un lampeggio veloce, in
+// BLINK_QUICK passi (il civile che smette di riparare senza materiale, §9.64).
+const BLINK_QUICK = 12;
 export function blink(name) {
   return {
     create(i, w) {
       if (w.number(name) > 1) { w.destroy(i); return; }
-      i.fad = 1; i.alarm.set(0, 25);
+      i.dur = i.quick ? BLINK_QUICK : 25;
+      i.fad = 1; i.alarm.set(0, i.dur);
     },
     alarm0(i, w) { w.destroy(i); },
-    step(i) { i.fad -= 1 / 25; },
+    step(i) { i.fad -= 1 / (i.dur || 25); },
     drawGUIEnd(i, w, dr) {
       dr.setAlpha(i.fad);
       dr.circleColour(BLINK_POS[name][0], BLINK_POS[name][1], 20, RED, RED, false);
