@@ -9,6 +9,9 @@
 //                 tutti e due (entro 1200 passi)
 //   senzaLegno  = un civile accanto a un magazzino danneggiato, legno 0:
 //                 si ferma inattivo (prima martellava senza effetto)
+//   accanto     = 2 civili, un magazzino danneggiato con una casa integra a
+//                 meno di 150 px dal punto cliccato (§9.66): lo riparano
+//                 fino in fondo (prima la casa integra li fermava subito)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -19,7 +22,7 @@ const base = process.env.BASE || "http://localhost:8123";
 const SEED = Number(process.argv[2] || 1);
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 let ok = true;
-for (const kind of ["presidio", "costruzione", "riparazione", "senzaLegno"]) {
+for (const kind of ["presidio", "costruzione", "riparazione", "senzaLegno", "accanto"]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
   await page.goto(`${base}/index.html?room=match&nostart=1`);
@@ -69,6 +72,26 @@ for (const kind of ["presidio", "costruzione", "riparazione", "senzaLegno"]) {
       let hammering = 0;
       for (let s = 0; s < 900; s++) { G.advance(1); if (o.action === 7) hammering++; }
       return { ok: o.action === 0 && o.repairwork === 0 && m.life === 60 && hammering < 60, action: o.action, hammering, life: m.life };
+    }
+    if (kind === "accanto") {
+      const m = mk("magazzino", CX, CY);
+      // una casa integra accanto, senza toccarlo, a meno di 150 px dal centro
+      // del suo riquadro (il punto cliccato)
+      const bb = w.bbox(m), cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+      let casa = null;
+      for (const [dx, dy] of [[140, 0], [-140, 0], [0, -140], [130, -60], [-130, -60], [120, 60], [-120, 60]]) {
+        const h = w.create("casa", cx + dx, cy + dy);
+        if (!w.instancePlace(h, h.x, h.y, "ally_build") && Math.hypot(h.x - cx, h.y - cy) < 150) { p.markInstance(h, 1000); casa = h; break; }
+        w.destroy(h);
+      }
+      G.advance(2);
+      m.life = 60;
+      const os = [0, 1].map((k) => w.create("ally_omino", CX - 40 + k * 60, CY + 140));
+      G.advance(3);
+      select(os); rightClickOn(m);
+      let done = -1;
+      for (let s = 0; s < 2000 && done < 0; s++) { G.advance(1); if (m.life >= m.slife) done = s; }
+      return { ok: !!casa && casa.life >= casa.slife && done >= 0, casa: !!casa, passi: done, vita: m.life };
     }
     mk("caserma", CX, CY);
     const north = [CX, CY - 190], south = [CX - 30, CY + 170];

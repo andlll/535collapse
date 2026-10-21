@@ -537,16 +537,23 @@ export function monastery(p) {
 // solo `var xpos=x`; `var ypos=y` vale sempre. A edificio danneggiato xpos
 // resta non assegnata, cioe' 0 [I, variabili non inizializzate = 0,
 // §1.3], e i riparatori (entro 150 px da (0, y)) non si fermano: si fermano
-// solo a edificio integro, che e' l'effetto voluto.
+// solo a edificio integro, che e' l'effetto voluto. (Fino al §9.66: entro
+// 150 px dall'edificio integro.)
 export const NOONE = -4;
 // [§9.29] Chi ripara un complesso (repT, complex.js) si ferma a edificio
 // integro anche se ripara un pezzo a piu' di 150 px dall'origine.
+// [§9.66, decisione dell'autore] Si fermano solo i civili che riparano
+// QUESTO edificio: il complesso (repT) o l'edificio piu' vicino al punto
+// cliccato (repx, repy), lo stesso a cui il colpo aggiunge vita
+// (civilians.js, azione 7). Prima bastava che il punto cliccato fosse entro
+// 150 px da un edificio integro qualunque: riparando un edificio
+// danneggiato accanto a una casa integra i civili si fermavano subito.
 export function repairEnd(i, w) {
-  const xpos = i.life >= i.slife ? i.x : 0, ypos = i.y;
+  if (i.life < i.slife) return;
   for (const o of w.all("ally_omino")) {
-    if (o.action === 7 && (pointDistance(o.repx, o.repy, xpos, ypos) < 150 || (o.repT === i && i.life >= i.slife))) {
-      o.action = 0; o.repairwork = 0; w.g.idle += 1; o.repx = NOONE; o.repy = NOONE;
-    }
+    if (o.action !== 7) continue;
+    const t = o.repT || w.nearest(o.repx, o.repy, "ally_build");
+    if (t === i) { o.action = 0; o.repairwork = 0; w.g.idle += 1; o.repx = NOONE; o.repy = NOONE; }
   }
 }
 

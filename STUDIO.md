@@ -6402,9 +6402,31 @@ un solo lampeggio breve. Gli altri lampeggi (costi, popolazione, ponte)
 come prima. Test: `game/test/blink.test.mjs`; nel browser, tre civili su
 un magazzino danneggiato col legno a 0: un lampeggio, acceso 12 passi.
 
-**Notato provando, non corretto.** La "fine riparazione" dell'originale
+**Notato provando** (corretto nel §9.66). La "fine riparazione" dell'originale
 (buildings.js `repairEnd`, a ogni passo di ogni edificio finito) ferma i
 civili che riparano un punto entro 150 px da un edificio a vita piena:
 anche se l'edificio che riparano e' un altro, danneggiato, accanto. Con un
 magazzino danneggiato vicino alle case della base del match i civili si
 fermavano subito.
+
+### 9.66 La fine della riparazione guarda solo l'edificio riparato
+
+Decisione dell'autore sul §9.65 ("all'epoca non avevo trovato
+un'alternativa valida"). La "fine riparazione" dell'originale (Step di ogni
+edificio, buildings.js `repairEnd`) fermava i civili al lavoro (azione 7)
+il cui punto cliccato fosse entro 150 px da un edificio integro qualunque.
+Riparando un edificio danneggiato con accanto una casa integra (o un tratto
+di mura con accanto tratti integri) i civili si fermavano al primo passo.
+
+Ora a edificio integro si fermano solo i civili che riparano lui: il
+complesso (repT, §9.29) o l'edificio piu' vicino al punto cliccato (repx,
+repy), cioe' quello a cui il colpo aggiunge vita (civilians.js, azione 7).
+Edifici danneggiati: nessun controllo (come prima, di fatto). La casa
+integra col clic destro (che manda comunque a riparare) si ferma al primo
+passo, come prima.
+
+Prova: caso nuovo `accanto` in `game/test/browser/blocked.mjs` (un
+magazzino a 60/140 con una casa integra a meno di 150 px dal punto
+cliccato, 2 civili): col codice di prima la vita resta 60, con questo torna
+a 140 in 551 passi. Passano monastery (riparazione del complesso),
+enemyarmy, bridge, economy, idle, workers, saves, soak.
