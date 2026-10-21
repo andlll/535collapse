@@ -6514,3 +6514,36 @@ partivano verso altre miniere mai viste, a 770-2140 px (le 240 unita' in
 piu' venivano da li'); ora si fermano accanto a quella finita. E' la
 richiesta. Passano workers, depot, idle, economy, enemydepots, enemyarmy,
 lvl04, blocked, sites, deposit, saves, soak.
+
+### 9.69 Il "timer fermati" non ferma chi cammina ancora
+
+Segnalazione dell'autore: molte unita', nelle lunghe distanze, si fermano
+a meta' strada circa; forse un timer che dopo n passi interrompe il
+movimento per evitare unita' bloccate.
+
+Era cosi': l'Alarm_8 dell'originale ("timer fermati"), armato a ogni ordine
+di spostamento, allo scadere ferma l'unita' dov'e' (dirox, diroy = x, y).
+Durate [C]: 1200 passi (20 s) per i clic destri di cavaliere, picchiere,
+arciere e civile; 3000 per il guerriero e per l'andata alla bandiera di
+raccolta. A 3-5 px a passo sono 3600-6000 px in linea retta, meno lungo i
+percorsi; le mappe arrivano a 7000x7000 e 3200x8000.
+
+**Misura** (prova nuova `game/test/browser/longmove.mjs`, nel match, da un
+punto libero a nord-ovest a uno lontano 6336 px di percorso, un'unita' per
+tipo col clic destro vero): picchiere, cavaliere, arciere e civile si
+fermavano al passo 1199, a 150-2500 px dalla meta; il guerriero (3000)
+arrivava.
+
+**Ora** (pathing.js): `armStopTimer` arma il timer come prima e ricorda la
+distanza dalla meta; allo scadere (`stopTimer`, l'Alarm_8 di tutte le unita'
+alleate e dei civili) se l'unita' e' in cammino e si e' avvicinata di
+almeno 150 px dall'ultimo controllo, il timer riparte per 600 passi (10 s);
+se no si ferma come prima. Chi raccoglie, costruisce o ripara lo annulla
+gia' (civilians.js, come prima).
+
+Dopo: arrivano tutti (cavaliere in 1215 passi, guerriero, picchiere e
+arciere ~1518, civile 2029); un guerriero incastrato (rimesso al suo posto a
+ogni passo) si ferma ancora al passo 2999. movement.mjs e attackorder.mjs
+danno gli stessi numeri di prima; passano settle, rally, melee, idle,
+workers, garrison, blocked, sites, resources, depot, fireorder,
+enemydefense, lvl04, saves (5 room), soak. `longmove.mjs` e' nella CI.

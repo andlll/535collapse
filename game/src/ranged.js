@@ -8,7 +8,7 @@ import { hintOnce } from "./hints.js";
 import { tr } from "./i18n.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -342,12 +342,12 @@ export function allyArcher(p) {
     },
     // Alarm_3 (nato in un posto occupato): nessuno lo arma per l'arciere
     alarm5(i) { i.hit = 0; },
-    alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
+    alarm8: stopTimer, // §9.69
     alarm10(i, w) {
       if (i.flaggox === null || i.flaggox === undefined) return;
       i.dirox = i.flaggox; i.diroy = i.flaggoy;
       i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4
-      i.alarm.set(8, 3000);
+      armStopTimer(i, 3000); // §9.69
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
       i.warwork = 4;
@@ -414,7 +414,7 @@ export function allyArcher(p) {
       if (i.selected !== 1) return;
       if (holdStill(i, w)) return; // §9.31 (siege.js)
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
-      i.alarm.set(8, 1200);
+      armStopTimer(i, 1200); // §9.69
       i.dirox = w.mouse.x; i.diroy = w.mouse.y;
       i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4: nuovo ordine, niente guinzaglio
       i.creation = 0;

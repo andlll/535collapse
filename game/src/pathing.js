@@ -844,6 +844,30 @@ export function seesTarget(w, p, inst, t) {
   return p.clearSolid(inst.x, inst.y, inst.x + (nx - inst.x) * k, inst.y + (ny - inst.y) * k);
 }
 
+// [§9.69, segnalazione dell'autore] Il "timer fermati" (Alarm_8 [C]): un
+// ordine di spostamento lo arma (1200 passi, 3000 per guerriero e
+// raccolta); allo scadere l'unita' si ferma dov'e' (dirox, diroy = x, y), per
+// non restare bloccata per sempre. Nei viaggi lunghi (le mappe arrivano a
+// 8000 px) fermava a meta' strada chi camminava ancora. Ora allo scadere,
+// se dall'ultimo controllo l'unita' si e' avvicinata alla meta di almeno
+// STOP_PROGRESS px, il timer riparte per STOP_AGAIN passi; se no si ferma.
+const STOP_PROGRESS = 150, STOP_AGAIN = 600;
+export function armStopTimer(inst, steps) {
+  inst.alarm.set(8, steps);
+  inst.a8d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+}
+export function stopTimer(inst) {
+  const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+  if (inst.action === 1 && inst.a8d !== undefined && inst.a8d !== null && d < inst.a8d - STOP_PROGRESS) {
+    inst.a8d = d;
+    inst.alarm.set(8, STOP_AGAIN);
+    return;
+  }
+  inst.a8d = null;
+  inst.dirox = inst.x;
+  inst.diroy = inst.y;
+}
+
 export function seesGoal(p, inst) {
   const f = inst.flow_field;
   if (!(f instanceof Int32Array)) return true;

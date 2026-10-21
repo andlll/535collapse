@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill } from "./siege.js";
@@ -252,7 +252,7 @@ export function cavaliere(p) {
     alarm2(i, w) { meleeStrike(i, w, CAV_DAMAGE, false); },
     alarm3(i) { p.occupy(i); },                  // Alarm_3: "occupa tentativo"
     alarm5(i) { i.hit = 0; },
-    alarm8(i) { i.dirox = i.x; i.diroy = i.y; }, // Alarm_8: "timer fermati"
+    alarm8: stopTimer, // Alarm_8: "timer fermati" (§9.69: se avanza, continua)
     alarm10(i, w) { rallyMove(i, w, p, false); },
 
     // Step_Begin: con un piazzamento di torre in corso si somma alla selezione
@@ -341,7 +341,7 @@ export function cavaliere(p) {
       i.dirox = w.mouse.x;
       i.diroy = w.mouse.y;
       i.creation = 0;
-      i.alarm.set(8, 1200);
+      armStopTimer(i, 1200); // §9.69
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
       i.warwork = 4;
@@ -434,7 +434,7 @@ export function infantry(name, p) {
     alarm2(i, w) { meleeStrike(i, w, T.damage, false, T.faceTarget); },
     alarm4: infantryFire,
     alarm5(i) { i.hit = 0; },
-    alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
+    alarm8: stopTimer, // §9.69
     alarm10(i, w) { rallyMove(i, w, p, T.rally100); },
 
     step(i, w) {
@@ -539,7 +539,7 @@ export function infantry(name, p) {
       i.dirox = w.mouse.x;
       i.diroy = w.mouse.y;
       i.creation = 0;
-      i.alarm.set(8, T.alarm8);
+      armStopTimer(i, T.alarm8); // §9.69
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
       i.warwork = 4;
@@ -947,7 +947,7 @@ function rallyMove(i, w, p, offset100) {
   if (i.flaggox === null || i.flaggox === undefined) return;
   i.dirox = i.flaggox;
   i.diroy = i.flaggoy;
-  i.alarm.set(8, 3000);
+  armStopTimer(i, 3000); // §9.69
   if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
   i.action = 1;
   i.warwork = 4;

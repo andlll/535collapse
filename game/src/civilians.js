@@ -12,7 +12,7 @@ import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
@@ -184,7 +184,7 @@ export function omino(p) {
       }
     },
     alarm5(i) { i.hit = 0; },
-    alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
+    alarm8: stopTimer, // §9.69
     alarm10: rallyOmino(p),
     stepBegin(i, w) { if (w.number("torre_placer") > 0) w.g.sele = 1; i.pass = 1; },
     step(i, w) { ominoStep(i, w, p, stop); },
@@ -234,7 +234,7 @@ function rightClick(i, w) {
   if (i.action === 0) g.idle -= 1;
   if (i.action !== 0 && i.alarm.get(0) < 1) i.alarm.set(0, 13);
   if (i.action === 0) i.alarm.set(0, 13);
-  i.alarm.set(8, 1200);
+  armStopTimer(i, 1200); // §9.69
   i.action = 1;
   if (i.woodwork === 1) { i.woodx = i.dirox; i.woody = i.diroy; } else i.woodwork = 0;
   if (i.goldwork === 1) { i.goldx = i.dirox; i.goldy = i.diroy; } else i.goldwork = 0;
@@ -330,7 +330,7 @@ function rallyOmino(p) {
     if (i.action === 0) g.idle -= 1;
     if (i.action !== 0 && i.alarm.get(0) < 1) i.alarm.set(0, 13);
     if (i.action === 0) i.alarm.set(0, 13);
-    i.alarm.set(8, 1200);
+    armStopTimer(i, 1200); // §9.69
     i.action = 1;
     if (i.woodwork === 1) { i.woodx = i.dirox; i.woody = i.diroy; }
     if (i.goldwork === 1) { i.goldx = i.dirox; i.goldy = i.diroy; }
