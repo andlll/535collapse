@@ -6430,3 +6430,37 @@ magazzino a 60/140 con una casa integra a meno di 150 px dal punto
 cliccato, 2 civili): col codice di prima la vita resta 60, con questo torna
 a 140 in 551 passi. Passano monastery (riparazione del complesso),
 enemyarmy, bridge, economy, idle, workers, saves, soak.
+
+### 9.67 Cantieri vicini fra loro: verifica, e la semina del campo ordinato
+
+Richiesta dell'autore: verificare che non ci siano casi come quello del
+§9.66 (un edificio vicino che decide per quello su cui si lavora) per gli
+edifici in costruzione.
+
+**Il codice.** Inizio del lavoro, colpo e fine del cantiere (civilians.js,
+buildStep e otherWorkTick) usano il cantiere piu' vicino al punto
+dell'ordine (buildx, buildy), cioe' quello ordinato: un cantiere accanto
+non li confonde. Al cantiere finito il civile passa al cantiere piu' vicino
+a lui (come prima). La fine della riparazione non tocca chi costruisce
+(solo l'azione 7). Due punti invece guardavano altro:
+- l'arrivo alla semina (fieldwork) prendeva il cantiere di campo piu'
+  vicino al CIVILE, non quello ordinato: con due campi in costruzione, chi
+  andava al secondo passando sul centro del primo si fermava a seminare il
+  primo. Ora il piu' vicino a buildx, quello verso cui cammina (ominoMove);
+- un cantiere finito accanto a un edificio in riparazione: il nuovo
+  edificio, nato a vita piena, con la regola di prima del §9.66 fermava chi
+  riparava un punto entro 150 px. Gia' corretto dal §9.66.
+
+**Prova** nuova `game/test/browser/sites.mjs` (nella CI), clic destro vero:
+- dueCase: due cantieri di casa a 150 px, 2 civili sul primo: lo finiscono
+  (462 passi) senza mai colpire da oltre 40 px, poi passano da soli al
+  secondo (912). Andava anche prima;
+- riparaVicino: 2 civili riparano un magazzino, accanto (la casa nascera'
+  entro 150 px dal punto cliccato) altri 2 finiscono un cantiere: senza il
+  §9.66 i riparatori si fermavano a vita 88 su 140; ora continuano;
+- dueCampi: due cantieri di campo affiancati, 2 civili mandati al secondo
+  passando sul primo: prima seminavano il primo (finito) e il secondo
+  restava a 1; ora seminano il secondo (423 passi) e il primo resta com'e'.
+
+Passano anche workers, economy, enemydepots, enemyarmy, lvl04, bridge,
+blocked, idle, depot, saves, soak.

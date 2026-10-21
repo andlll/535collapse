@@ -97,7 +97,7 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
 
-      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, ostacoli, zip in un iframe)
+      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, ostacoli, cantieri vicini, zip in un iframe)
         run: |
           python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
@@ -121,6 +121,7 @@ jobs:
           node game/test/browser/settle.mjs
           node game/test/browser/garrison.mjs
           node game/test/browser/blocked.mjs
+          node game/test/browser/sites.mjs
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
       - uses: actions/upload-artifact@v4

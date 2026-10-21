@@ -1064,8 +1064,12 @@ function buildStep(i, w, p) {
   // [Deviazione] senza cantieri l'originale legge instance_nearest(...).x
   // di noone ed esce con un errore (succede se il campo viene finito mentre
   // un secondo seminatore e' ancora in cammino) [I]; qui il civile si ferma.
+  // [§9.67] il cantiere di campo ordinato (il piu' vicino al punto
+  // dell'ordine, buildx: quello verso cui il civile cammina, ominoMove), non
+  // il piu' vicino al civile: con due campi in costruzione, chi andava al
+  // secondo passando sul centro del primo si fermava a seminare il primo
   if (i.fieldwork === 1) {
-    const f = w.nearest(i.x, i.y, "campo_fond");
+    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
     if (!f) {
       i.fieldwork = 0; i.action = 0; p.occupy(i); i.step = 0; i.speed = 0; g.idle += 1;
     } else if (pointDistance(i.x, i.y, f.x, f.y) < 10) {
