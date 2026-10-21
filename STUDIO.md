@@ -6464,3 +6464,53 @@ a lui (come prima). La fine della riparazione non tocca chi costruisce
 
 Passano anche workers, economy, enemydepots, enemyarmy, lvl04, bridge,
 blocked, idle, depot, saves, soak.
+
+### 9.68 Risorse: solo quelle scoperte, e quella scelta dal giocatore
+
+Richieste dell'autore: quando una risorsa si esaurisce i civili vanno alla
+piu' vicina solo se il giocatore l'ha scoperta ("partono da soli verso
+l'ignoto e semplifica troppo la vita"); e mandati col clic su una risorsa
+vanno su quella, non sulla piu' vicina.
+
+**Prima.** Scoperta = `visible` della risorsa (reveal: un alleato a 600 px
+per gli alberi, 400 per miniere e pietre; poi resta). Andavano alla
+risorsa piu' vicina senza guardarla: albero, miniera o pietra finiti mentre
+ci si lavora (azioni 2, 3, 5), miniera o pietra finite mentre ci si va,
+ritorno dal deposito col legno e con la pietra (con l'oro il controllo
+c'era, sulla piu' vicina al civile). E la risorsa scelta non restava:
+l'ordine ricordava il punto cliccato (woodx...), a 250 px dalla meta il
+civile passava all'albero piu' vicino a se' (§8.19), e dal deposito tornava
+all'albero (o alla pietra, alla miniera) piu' vicino al deposito.
+
+**Ora** (civilians.js):
+- `nearestKnown`: la risorsa piu' vicina fra quelle scoperte (per il
+  nemico tutte: non ha la nebbia, e la sua regia sceglie da se', §9.57);
+  `resAt`: la risorsa con l'origine nel punto se c'e' ancora, se no la
+  scoperta piu' vicina a quel punto. Nessuna: il civile si ferma inattivo;
+- clic destro (rightClick) e bandiera di raccolta (rallyOmino) su una
+  risorsa: woodx/goldx/stonex sulla sua origine;
+- verso l'albero: il proprio (prima il piu' vicino al civile); se da li'
+  non ci si arriva (chiuso nel bosco), lo scoperto piu' vicino al civile a
+  cui si arriva, come prima; arrivato al punto ma non all'albero, verso il
+  proprio;
+- finita la risorsa (lavorandoci o andandoci): la scoperta piu' vicina a
+  lei, non al civile;
+- dal deposito: alla propria risorsa (resAt), non alla piu' vicina al
+  deposito.
+
+**Prova** nuova `game/test/browser/resources.mjs` (nella CI), clic destro
+vero, le altre risorse della mappa tolte dove serve (quelle accanto agli
+edifici del giocatore sono scoperte, e giustamente ci si andrebbe):
+- scelto: 6 alberi in gruppo, clic sul piu' lontano dal civile: prima
+  tagliava il #1 e dal deposito tornava al #0; ora il #5, e ci torna;
+- oroIgnoto: la miniera finisce, l'altra e' mai vista: prima ci andava, ora
+  il civile si ferma; oroScoperto: l'altra e' vista: ci va;
+- alberoIgnoto: l'albero finisce, gli altri mai visti: prima ci andava, ora
+  si ferma.
+
+**mining.mjs** raccoglie meno (2460 invece di 2741, 492 al minuto invece
+di 548): la miniera si esaurisce verso la fine, e prima 17 civili su 20
+partivano verso altre miniere mai viste, a 770-2140 px (le 240 unita' in
+piu' venivano da li'); ora si fermano accanto a quella finita. E' la
+richiesta. Passano workers, depot, idle, economy, enemydepots, enemyarmy,
+lvl04, blocked, sites, deposit, saves, soak.
