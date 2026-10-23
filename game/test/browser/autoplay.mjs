@@ -269,10 +269,18 @@ await page.evaluate(([STRAT, SEED]) => {
           if (cats.length && city.length) { const t = city.sort((a, b) => a.x - b.x)[0]; order(cats, t.x - 500, t.y); }
         }
       }
-      // rinforzi: chi e' rimasto alla base raggiunge l'assalto
+      // rinforzi: chi e' rimasto alla base raggiunge l'assalto, a gruppi
+      // di almeno 8 (uno alla volta morirebbero uno alla volta)
       if (now() % 1800 < 30) {
         const back = [...army(), ...siege("ariete"), ...siege("catapulta")].filter((u) => u.x < 3500 && u.action === 0);
-        if (back.length) order(back, st.gateDown ? 5600 : STAGE[0], STAGE[1]);
+        if (back.length >= 8) order(back, st.gateDown ? 5600 : STAGE[0], STAGE[1]);
+      }
+      // assalto fallito: meno di 4 soldati oltre le mura dopo 40 s; chi
+      // resta torna alla base e si ricomincia (macchine ed esercito)
+      if (now() - st.assaultAt > 2400 && army().filter((u) => u.x > 4400).length < 4) {
+        st.assault = false; st.fails = (st.fails || 0) + 1;
+        say(`assalto fallito (${st.fails}), si torna alla base`);
+        order([...army(), ...siege("ariete"), ...siege("catapulta")], RALLY[0], RALLY[1]);
       }
     }
   };
