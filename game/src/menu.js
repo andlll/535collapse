@@ -242,6 +242,9 @@ export function enemyManagerMenu() {
   };
 }
 
+// [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
+// AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
+const VERSION = "0.2602";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -267,7 +270,7 @@ function drawTitle(i, d, W, H) {
     : "Non mi interessa se sta roba non ingrana quando soffro d'insonnia e non dormo da una settimana");
   d.setHalign("left");
   // [Richiesta dell'autore] la versione del porting (l'originale: 0.250125)
-  d.text(20, H - 50, "0.2601");
+  d.text(20, H - 50, VERSION);
   d.setAlpha(1);
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre basse: sale a meta' dello spazio sopra i pulsanti

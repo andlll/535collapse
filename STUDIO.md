@@ -6716,3 +6716,11 @@ partite salvate e progressi (le chiavi `535.*` del localStorage, il
 controllo dei salvataggi), la cache del service worker e lo zip dei
 portali (`build/535-collapse-web.zip`). Restano anche le icone (tools/09,
 fatte dal logo535: mostrano "535").
+
+### 9.73 La versione sale a ogni nuova PR
+
+Richiesta dell'autore (23 ottobre 2026): a ogni nuova PR la versione in
+basso a sinistra della schermata principale sale di 0.0001: `0.AANN`, con
+`AA` l'anno e `NN` un progressivo (ora 0.2601 -> **0.2602**). Il numero e'
+la costante `VERSION` di menu.js (prima scritto direttamente nel Draw); la
+regola e' in `CLAUDE.md`, che le sessioni di Claude leggono da sole.
