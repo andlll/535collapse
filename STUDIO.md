@@ -6770,7 +6770,7 @@ della CI anche su lvl05 (3000 passi senza errori, ripristino identico).
 - I 15 nemici in mezzo all'esercito del giocatore: battaglia d'apertura o
   dovevano essere alleati?
 - Gli 8 campi da costruire nell'angolo nord-est sono del giocatore.
-- Prestazioni: ~1,7 ms a passo nel soak contro ~0,7 degli altri livelli
-  (headless). Un quarto sono le particelle (942 sistemi, 42 600 particelle:
+- Prestazioni: ~2,5 ms a passo (misurato a blocchi di 1000 passi,
+  headless) contro ~1 del livello 4. Un quarto sono le particelle (942 sistemi, 42 600 particelle:
   la schiuma delle rive dei tre fiumi e l'erba, contro ~10 000 del livello
   4); per ora nessuna correzione.
