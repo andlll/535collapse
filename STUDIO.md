@@ -6977,3 +6977,19 @@ convertite, e sono quelli dell'originale.
   dove i civili camminavano sul posto (§9.77). Alberi veri: 368.
 
 Passano lvl05, enemywalls e il controllo degli scenari (tools 12 --check).
+
+**Partite del bot dopo la correzione** (autoplay.mjs con i contadini sui 4
+campi, il riequilibrio dei mestieri, fino a 14 civili, i rinforzi a gruppi
+di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
+- ordinato: fortezza a 4:18, assalto a 7:37 (23 soldati, 2 arieti, 2
+  catapulte), porta ovest abbattuta a 8:27, in citta' i soldati muoiono
+  contro il presidio e le torri: 2 edifici su 28; poi le ondate (8, le
+  ultime con le macchine) distruggono le case. Sconfitta a 26:41;
+- aggressivo (assalto appena ci sono le macchine): 32 assalti, quasi tutti
+  con 1-3 soldati; 3 edifici. Tempo scaduto;
+- lento (2 torri prima): fortezza solo a 13:31 (le torri si mangiano la
+  pietra), nessun assalto (manca l'oro per 4 arieti e 3 catapulte); la
+  citta' cresce da 28 a 32 edifici. Tempo scaduto.
+Il legno non manca piu' (fino a 2400). Il bot non fa micro (non punta le
+torri con le catapulte, non ritira i feriti): dice che il livello non si
+vince "a forza", non quanto e' difficile per un giocatore.
