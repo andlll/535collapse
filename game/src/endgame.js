@@ -50,7 +50,7 @@ export function victoryManager() {
       if (i.clicloc !== 1) return;
       w.destroy(i);
       const g = w.g;
-      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -76,7 +76,8 @@ export function victoryManager() {
       }
       if (w.room === "lvl03") d.text(vw / 2, vh / 2 - 100, tr("The monastery has held out: the invaders' advance is broken"));
       if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
-      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4" }[w.room];
+      if (w.room === "lvl05") d.text(vw / 2, vh / 2 - 100, tr("The invaders' city has fallen: the land is ours")); // §9.76
+      const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4", lvl05: "8 0 6 5 3" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -177,6 +178,10 @@ function widestDigit(d) {
 
 // objective_button [C]: il riquadro degli obiettivi in alto a destra (O lo
 // nasconde). Creato dal manager in match, da dialogo_1_2 e dialogo_2_5.
+// [§9.76] gli obiettivi del livello 5, per fase (levels.js, enemyManagerLv5)
+const LV5_GOALS = ["Drive back the enemy attack", "Chase the enemy back to their city", "Fall back and find stone",
+                   "Build a fortress", "Destroy the enemy city ({n} buildings left)"];
+
 export function objectiveButton() {
   return {
     create(i) { i.sprite_index = null; },
@@ -239,6 +244,14 @@ export function objectiveButton() {
         sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
         lines.push([88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0]);
         if (L.phase === 1) lines.push([118, tr("Destroy the enemy town hall across the river")]);
+      }
+      // [§9.76] livello 5: l'obiettivo di prima (barrato) e quello di ora
+      if (w.room === "lvl05") {
+        const L = g.l5 || { phase: 0, left: 0 };
+        const goal = (k) => k === 4 ? tr("Destroy the enemy city ({n} buildings left)", { n: L.left }) : tr(LV5_GOALS[k]);
+        if (L.phase > 0) lines.push([58, goal(L.phase - 1), 43]);
+        lines.push([L.phase > 0 ? 88 : 58, goal(L.phase)]);
+        if (L.phase === 4) sizing.push(tr("Destroy the enemy city ({n} buildings left)", { n: 88 }));
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.

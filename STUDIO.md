@@ -6832,3 +6832,98 @@ alleato, sei guerrieri mandati col clic destro dentro la citta' si fermano
 fuori (nessuno passa), un ariete abbatte la porta (1131 passi) e poi i
 guerrieri entrano. Provato a parte che un guerriero e un cavaliere nemici
 mandati col flow field da dentro a fuori passano dalla porta, che si apre.
+
+### 9.76 Livello 5: regia e ambientazione
+
+Regia e ambientazione dell'autore (23 ottobre 2026): lo scenario si apre con
+una battaglia vicino alla base alleata; vedendosela brutta, dopo poco i
+nemici si ritirano verso la loro citta'. I soldati li inseguono, ma davanti
+alle mura capiscono che senza armi d'assedio le difese li trafiggeranno, e
+tornano indietro; sulla via del ritorno trovano l'acropoli di un culto
+antico (le rovine al centro della mappa) e decidono a malincuore di
+distruggerla per ricavarne pietra e costruire fortificazioni. L'obiettivo
+diventa la fortezza (obbligatoria, e basta). Intanto il nemico manda
+ondate; la prima dopo la fortezza, vista la sua mole, torna in citta' ad
+avvertire: le ondate dopo hanno anche macchine d'assedio (prima no).
+L'obiettivo diventa distruggere la base nemica. Nemico: economia
+bilanciata, al piu' 10 lavoratori (alcuni gia' attorno al centro), un
+esercito medio in citta' a difesa delle mura e ondate periodiche; una
+grande riserva di pietra; gli edifici si riparano e si ricostruiscono
+sempre, tranne quelli di pietra (che il giocatore lo scopra da solo). Le
+due torri nemiche fuori dalle mura restano, di vedetta: non tirano. Le
+colonne e le altre rovine non di pietra restano decorazioni. Numeri
+proposti e accettati per ora: giorno, 200 cibo, 200 legno, 100 oro, 0
+pietra; prima ondata a 4 minuti, poi ogni 3, da 4 soldati e uno in piu'
+ogni volta.
+
+**Regia** (levels.js `enemyManagerLv5`, `LV5`; numeri da tarare giocando):
+- *fase 0, la battaglia*: i 15 nemici a ovest della citta'. Quando ne
+  restano al piu' due terzi (o dopo 45 s) i superstiti si ritirano in
+  citta' (dialogo 5_1, fase 1). Misurato: senza ritirata la battaglia dura
+  ~10 s (a 4 s ne restano 9, a 8 s uno); la ritirata parte a ~3 s, con 8
+  superstiti da inseguire;
+- *la ritirata* (enemies.js `retreatTo`, mischia e arcieri): verso un posto
+  ciascuno dentro la porta ovest (LV5.home), col flow field dei nemici (che
+  passa dalle loro porte, §9.75), senza combattere ne' inseguire; arrivati,
+  restano a difendere (quelli della regia economica tornano in attesa delle
+  ondate). La regia economica non li comanda mentre si ritirano;
+- *fase 1 -> 2, le mura*: un alleato a 600 px dalle mura o da una porta
+  nemica: dialogo 5_2 (senza armi d'assedio e' inutile, ripiegate);
+- *fase 2 -> 3, l'acropoli*: almeno 10 s dopo, un alleato a 700 px dal centro
+  delle rovine (3700, 2300): dialogo 5_3. L'acropoli e' sulla strada
+  dell'inseguimento: senza l'attesa il dialogo arrivava insieme a quello
+  delle mura. La pietra la scavano i civili, come sempre: al centro ~3200
+  (rovine del castello 500, quattro rovine di torre 400, della chiesa 75,
+  la pietra grande 850 e tre piccole 1350); la fortezza ne costa 850;
+- *fase 4, la fortezza* (a qualunque fase, appena c'e' un castello finito):
+  dialogo 5_4, obiettivo "Distruggi la citta' nemica (edifici rimasti: n)";
+- *l'avvertimento*: la prima ondata partita dopo la fortezza, a 900 px da
+  lei, torna in citta' (dialogo 5_5); da allora a ogni ondata 1, 1, 2, 2,
+  3... (al piu' 3) macchine d'assedio, un ariete e una catapulta a turno,
+  pagate con la pietra del nemico (ariete 250, catapulta 300). Nascono fuori
+  dalla porta ovest (LV5.siegeAt): col loro percorso "largo" (§8.14) non
+  passerebbero dalle porte; vanno verso l'edificio alleato piu' vicino, poi
+  attaccano da sole (siege.js);
+- *vittoria*: nessun edificio della citta' (centro, case, caserme, stalle,
+  chiesa, castelli, magazzini, mulino, torri, cantieri; non mura, porte e
+  campi). Codice del livello 6: 8 0 6 5 3, sblocca il 6.
+- Obiettivi (endgame.js): quello di prima, barrato, e quello di ora:
+  "Respingi l'attacco nemico", "Insegui i nemici fino alla loro citta'",
+  "Ripiega e trova della pietra", "Costruisci una fortezza", "Distruggi la
+  citta' nemica (edifici rimasti: n)". Dialoghi, obiettivi, storia sulla
+  mappa della campagna e testo della vittoria scritti per il porting dalla
+  regia dell'autore, in sei lingue (texts.js), da rivedere con lui.
+- *Torri di vedetta* (lvl05Setup): le torri nemiche a ovest di x 5100 non
+  tirano (ranged.js `watch`) e non sono della regia economica (un alleato
+  vicino non chiama la difesa della citta').
+
+**Regia economica** (economy.js, ECO.lvl05): 4 lavoratori attorno al centro
+(fino a 10), scorte 300 cibo, 300 legno, 200 oro e 3000 pietra, nessuno a
+cavar pietra (mix stone 0). Opzioni nuove: `armyEco` (il tetto dell'esercito
+conta solo i soldati della regia: i 38 della mappa, presidio e battaglia,
+bloccavano la produzione e quindi le ondate) e `stoneWork: false` (niente
+riparazioni ne' ricostruzioni degli edifici di pietra: torri, castelli,
+chiesa, mura, porte). Il presidio della citta' e' quello della mappa (23
+soldati, fermi a difendere); le ondate sono dei soldati della regia (fino a
+12).
+
+**Il segnalino della campagna**: cap5 dell'autore (210 x 193) a 120 px di
+larghezza (`cap_l5`), sotto il livello 4 in fondo alla catena montuosa al
+centro della mappa, con la freccia dal 4; la storia del livello sotto.
+
+**Il giorno**: tutti i livelli hanno il ciclo giorno-notte dell'originale
+(la notte a ~100 s); il livello 5 parte di giorno, come il 4.
+
+Prova (`game/test/browser/lvl05.mjs`, nella CI): partenza (risorse, 4
+lavoratori e 3000 pietra del nemico, 2 torri di vedetta, primo dialogo,
+fase 0); un soldato per 10 s accanto a una torre di vedetta, nessuna
+freccia; la ritirata da sola con dialogo, e i superstiti entrano in citta';
+mura e acropoli (fasi e dialoghi; di solito ci si arriva da soli
+inseguendo); una casa danneggiata si ripara, un castello no, distrutti si
+ricostruisce solo la casa; una fortezza: fase 4 e dialogo; la prima ondata
+dopo torna indietro a ~880 px dalla fortezza, col dialogo; l'ondata dopo ha
+un ariete (250 pietra); distrutta la citta' (le mura restano), vittoria.
+Senza nessun ordine del giocatore (20 000 passi): ritirata a 3 s, mura a 18
+s (i soldati inseguono da soli), acropoli a 28 s, 10 lavoratori nemici a
+~100 s, prima ondata a 4 minuti (a 5 minuti ha ucciso 6 soldati del
+giocatore lasciati senza ordini).

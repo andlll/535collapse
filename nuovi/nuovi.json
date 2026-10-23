@@ -904,6 +904,68 @@
       "depth": -9999,
       "kit": false
     },
+    "enemy_manager_lv5": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 5 (§9.76, levels.js)"
+    },
+    "dialogo_5_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_3": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_4": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
     "hint_lavoratori": {
       "sprite": null,
       "parents": [
@@ -1187,6 +1249,12 @@
       "lato": 150,
       "gruppo": "campagna",
       "nota": "segnalino del livello 4 (il ponte) sulla mappa della campagna, disegnato dall'autore (§9.51)"
+    },
+    "cap_l5": {
+      "da": "cap5",
+      "lato": 120,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 5 (il castello nemico) sulla mappa della campagna, disegnato dall'autore (§9.76)"
     }
   }
 }

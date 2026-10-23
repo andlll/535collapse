@@ -128,6 +128,34 @@ function enemyMove(i, w, p) {
   }
 }
 
+// [§9.76, regia del livello 5] La ritirata: verso un punto (i.retreat), col
+// flow field dei nemici (passa dalle loro porte), senza combattere ne'
+// inseguire, anche se colpiti; arrivati a RETREAT_ARRIVE px restano li'
+// (difendono come gli altri nemici fermi; quelli della regia economica
+// tornano in attesa delle ondate). Il campo si passa (ff) per
+// calcolarne uno solo per tutto il gruppo.
+const RETREAT_ARRIVE = 120;
+export function retreatTo(w, p, i, x, y, ff = null) {
+  i.retreat = [x, y];
+  i.flow_field = ff || p.flowField(p.goalField(x, y, true));
+  if (i.action !== 1) i.alarm.set(0, irandomRange(10, 14));
+  Object.assign(i, { role: 31, action: 1, warwork: 0, firework: 0, targetid: null, swing: 0, dirox: x, diroy: y,
+                     road: null, repos: 0, defending: 0 });
+}
+function retreatStep(i, w, p) {
+  if (!i.retreat) return false;
+  const [x, y] = i.retreat;
+  if (Math.hypot(i.x - x, i.y - y) < RETREAT_ARRIVE) {
+    // i soldati della regia economica tornano in attesa (ruolo 30)
+    Object.assign(i, { retreat: null, action: 0, role: i.eco === 1 ? 30 : 0, speed: 0, defender: 1 });
+    return false;
+  }
+  if (i.action !== 1) i.alarm.set(0, irandomRange(10, 14));
+  i.action = 1; i.warwork = 0; i.dirox = x; i.diroy = y;
+  moveFlowField(w, p, i);
+  return true;
+}
+
 // Alarm_2, "botte" [C]
 // [§9.28, richiesta dell'autore] Come per gli alleati (units.js, swingOn):
 // l'originale, se l'alleato piu' vicino era oltre i 10 px, interrompeva il
@@ -364,6 +392,7 @@ export function enemyMelee(name, p) {
       i.autospeed = 4 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      if (retreatStep(i, w, p)) { ANIM[name](i, w); return; } // §9.76
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
       enemyMove(i, w, p);
       ANIM[name](i, w);
@@ -578,6 +607,7 @@ export function enemyArcher(p) {
       i.autospeed = 4 * iso(i.direction);
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
+      if (retreatStep(i, w, p)) { ANIM[name](i, w); return; } // §9.76
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
       enemyMove(i, w, p);
       ANIM[name](i, w);

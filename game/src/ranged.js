@@ -662,7 +662,8 @@ export function enemyTower(p) {
         return;
       }
       // [§6.5] l'alleato piu' vicino entro 600 px con la linea libera
-      const a = i.arm === 1 ? towerTarget(w, i, "ally_unit", 600) : null;
+      // [§9.76] una torre di vedetta (watch, regia del livello 5) non tira
+      const a = i.arm === 1 && !i.watch ? towerTarget(w, i, "ally_unit", 600) : null;
       if (i.arm === 1 && a) {
         i.arm = 0;
         i.alarm.set(0, 50);
