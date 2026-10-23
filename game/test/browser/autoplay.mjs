@@ -132,6 +132,35 @@ await page.evaluate(([STRAT, SEED]) => {
     for (const u of w.all("enemy_unit")) cur.set(u.id, ["enemy", u.object.replace(/^enemy_/, "")]);
     for (const [id, [side, o]] of seen) if (!cur.has(id)) B.dead[side][o] = (B.dead[side][o] || 0) + 1;
     seen = cur;
+    // le ondate (dove vanno) e gli edifici persi (chi c'era attorno, dov'era
+    // l'esercito)
+    const wave = g.en ? g.en.wave || 0 : 0;
+    if (wave > lastWave) {
+      const ws = [...w.all("enemy_unit")].filter((e) => e.role === 31 && !e.defending);
+      const kinds = {};
+      for (const e of ws) { const k = e.object.replace(/^enemy_/, ""); kinds[k] = (kinds[k] || 0) + 1; }
+      const t = ws[0] && w.nearest(ws[0].dirox, ws[0].diroy, "ally_build");
+      say(`ondata ${wave}: ${JSON.stringify(kinds)} verso ${t ? t.object + " " + Math.round(t.x) + "," + Math.round(t.y) : "?"}; esercito: ${where(army())}`);
+      lastWave = wave;
+    }
+    const bs = new Map();
+    for (const b of w.all("ally_build")) if (!/_fond|cantiere/.test(b.object)) bs.set(b.id, b);
+    for (const [id, b] of builds) {
+      if (bs.has(id)) continue;
+      const foes = [...w.all("enemy_unit")].filter((e) => Math.hypot(e.x - b.x, e.y - b.y) < 500);
+      const kinds = {};
+      for (const e of foes) { const k = e.object.replace(/^enemy_/, ""); kinds[k] = (kinds[k] || 0) + 1; }
+      const a = army().sort((u, v) => Math.hypot(u.x - b.x, u.y - b.y) - Math.hypot(v.x - b.x, v.y - b.y))[0];
+      say(`perso ${b.object} a ${Math.round(b.x)},${Math.round(b.y)}: nemici entro 500 ${JSON.stringify(kinds)}; soldato piu' vicino a ${a ? Math.round(Math.hypot(a.x - b.x, a.y - b.y)) : "-"} px; esercito: ${where(army())}`);
+    }
+    builds = new Map([...bs].map(([id, b]) => [id, { object: b.object, x: b.x, y: b.y }]));
+  };
+  let lastWave = 0, builds = new Map();
+  // dov'e' un gruppo: il centro e quanti sono a 400 px da li'
+  const where = (list) => {
+    if (!list.length) return "nessuno";
+    const cx = list.reduce((s, u) => s + u.x, 0) / list.length, cy = list.reduce((s, u) => s + u.y, 0) / list.length;
+    return `${list.length} attorno a ${Math.round(cx)},${Math.round(cy)} (${list.filter((u) => Math.hypot(u.x - cx, u.y - cy) < 400).length} a 400 px)`;
   };
   // ----------------------------------------------------------- un turno
   B.act = () => {
