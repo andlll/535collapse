@@ -165,16 +165,30 @@ await page.evaluate(([STRAT, SEED]) => {
         if (t) { select([o]); rclickOn(t); select([]); }
       }
       if (kind === "food") {
-        const f = near(660, 1972, "campo_fond") || near(660, 1972, "campo");
-        if (f) { select([o]); rclickOn(f); select([]); }
+        // un campo per contadino: prima quelli seminati, poi da seminare
+        const taken = new Set(C.filter((c) => c !== o && st.jobs.get(c.id) === "food").map((c) => c.botField));
+        const byDist = (list) => list.filter((f) => !taken.has(f.id) && Math.hypot(f.x - 660, f.y - 1972) < 1500)
+          .sort((a, b) => Math.hypot(a.x - 660, a.y - 1972) - Math.hypot(b.x - 660, b.y - 1972))[0];
+        const f = byDist([...w.all("campo")]) || byDist([...w.all("campo_fond")]);
+        if (f) { o.botField = f.id; select([o]); rclickOn(f); select([]); }
       }
     };
+    // i mestieri: prima della fortezza soprattutto pietra, poi legno e oro
+    // per le macchine; il cibo (i 4 campi) per civili e soldati
     const plan = () => {
-      const n = C.length;
-      const stone = st.fort ? 1 : Math.max(2, n - 4);
-      return { food: 1, wood: st.fort ? 3 : 2, gold: st.fort ? Math.max(1, n - 5) : 1, stone };
+      const n = C.length, food = Math.min(4, Math.max(2, Math.floor(n / 3)));
+      if (!st.fort) return { food, wood: 2, gold: 1, stone: Math.max(2, n - food - 3) };
+      return { food, wood: Math.max(2, Math.ceil((n - food - 1) / 2)), gold: Math.max(1, Math.floor((n - food - 1) / 2)), stone: 1 };
     };
     const P = plan();
+    // riequilibrio (morti, fortezza finita): un civile da un mestiere in
+    // eccesso a uno scoperto
+    const short = ["food", "stone", "wood", "gold"].find((k) => want(k) < P[k]);
+    if (short) {
+      const extra = ["gold", "wood", "stone", "food"].find((k) => k !== short && want(k) > P[k]);
+      const o = extra && C.find((c) => st.jobs.get(c.id) === extra && !(c.wood || c.gold || c.stone || c.food));
+      if (o) st.jobs.delete(o.id);
+    }
     for (const o of C) {
       if (st.jobs.has(o.id) && !idle(o)) continue;
       if (st.jobs.has(o.id) && idle(o)) { assign(o, st.jobs.get(o.id)); continue; }
@@ -182,18 +196,18 @@ await page.evaluate(([STRAT, SEED]) => {
       assign(o, kind);
     }
     // altri civili, e case quando la popolazione e' al limite
-    if (C.length < 10 && g.food >= 100) trainWorkers(1);
+    if (C.length < 14 && g.food >= 50) trainWorkers(1);
     if (g.popcap - g.pop < 6 && g.wood >= 120 && !w.exists("casa_fond")) {
       const b = civs().filter((o) => st.jobs.get(o.id) === "wood").slice(0, 2);
       if (build("casa", 900 + Math.random() * 300, 2500 + Math.random() * 200, b)) say("casa");
     }
     // il magazzino vicino all'acropoli
+    if (!st.store) { const m = near(STORE[0], STORE[1], "magazzino", 600); if (m) { st.store = m; say("magazzino finito"); for (const o of civs()) if (st.jobs.get(o.id) === "stone") st.jobs.delete(o.id); } }
     if (!st.store && !w.exists("magazzino_fond") && g.wood >= 70) {
-      const b = civs().slice(0, 2);
+      const b = civs().filter((o) => st.jobs.get(o.id) !== "food").slice(0, 2);
       const f = build("magazzino", STORE[0], STORE[1], b);
       if (f) { say("magazzino in costruzione"); st.storeFond = f; }
     }
-    if (!st.store) { const m = near(STORE[0], STORE[1], "magazzino", 600); if (m) { st.store = m; say("magazzino finito"); for (const o of civs()) if (st.jobs.get(o.id) === "stone") st.jobs.delete(o.id); } }
     // la fortezza
     if (!st.fort && !w.exists("castello_fond") && g.stone >= 850) {
       const b = civs().filter((o) => st.jobs.get(o.id) === "stone");
