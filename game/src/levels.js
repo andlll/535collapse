@@ -841,3 +841,26 @@ export function enemyManagerLv4(p) {
     },
   };
 }
+
+// ----------------------------------------------------- livello 5
+
+// [§9.75, decisione dell'autore] Nella mappa del livello 5 le mura, le
+// porte e i campi da costruire della citta' nemica (la meta' est) sono
+// quelli del giocatore: il kit di Tiled dell'autore non aveva le versioni
+// nemiche. All'avvio diventano mura e porte nemiche e campi coltivati
+// nemici (della regia economica), nello stesso punto. Nel kit nuovo ci sono
+// (tileset nemici, in fondo): una mappa che le usa non ha bisogno di
+// questo.
+const LV5_EAST = 4500;
+const LV5_ENEMY = { mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori",
+                    porta_vert: "enemy_porta_vert", campo_fond: "enemy_campo" };
+export function lvl05Setup(w) {
+  for (const [from, to] of Object.entries(LV5_ENEMY)) {
+    for (const i of [...w.all(from)]) {
+      if (i.x < LV5_EAST) continue;
+      const { x, y } = i;
+      w.destroy(i);
+      w.create(to, x, y);
+    }
+  }
+}

@@ -32,7 +32,7 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
     seedEmitter: world.seedEmitter || null,
     g,
     manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain },
-    path: { cost: path.cost, enemyBlock: path.enemyBlock, solid: path.solid },
+    path: { cost: path.cost, enemyBlock: path.enemyBlock, enemyPass: path.enemyPass, solid: path.solid },
     fog: { explored: fog.explored },
     particles: { systems: P.systems, seq: P.seq },
     cam: { x: cam.x, y: cam.y, scaleview: cam.scaleview },
@@ -77,6 +77,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.endlessNight();
   path.cost.set(s.path.cost);
   path.enemyBlock.set(s.path.enemyBlock);
+  if (s.path.enemyPass) path.enemyPass.set(s.path.enemyPass); else path.enemyPass.fill(0); // §9.75; i salvataggi di prima non l'hanno
   path.restoreSolid(s.path.solid); // i salvataggi di prima non l'hanno
   fog.explored.set(s.fog.explored);
   const P = world.particles;

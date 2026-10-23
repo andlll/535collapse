@@ -6762,15 +6762,73 @@ siege", nome dell'originale), salvataggi (save.js), sblocco per le prove
 fino al 5 (progress.js `UNLOCK_ALL`, §9.53: provvisorio). Soak e salvataggi
 della CI anche su lvl05 (3000 passi senza errori, ripristino identico).
 
-**Da decidere con l'autore.**
+**Da decidere con l'autore** (risposte dell'autore, 23 ottobre 2026).
 - Le mura e le porte attorno alla citta' nemica sono mura_ori, mura_vert e
-  porta_vert: le mura del giocatore (bandierine rosse, diradano la nebbia,
-  le porte si aprono per il giocatore e sono chiuse per i nemici, i nemici
-  le attaccano). Mura nemiche non esistono ancora.
+  porta_vert: le mura del giocatore. -> Sono del nemico: §9.75.
 - I 15 nemici in mezzo all'esercito del giocatore: battaglia d'apertura o
-  dovevano essere alleati?
-- Gli 8 campi da costruire nell'angolo nord-est sono del giocatore.
-- Prestazioni: ~2,5 ms a passo (misurato a blocchi di 1000 passi,
+  dovevano essere alleati? -> Battaglia d'apertura, voluta.
+- Gli 8 campi da costruire nell'angolo nord-est sono del giocatore. -> Sono
+  del nemico: §9.75.
+- Il segnalino del livello sulla mappa della campagna: un piccolo castello
+  blu, che l'autore carichera'.
+- Prestazioni (per ora si tiene cosi'): ~2,5 ms a passo (misurato a blocchi di 1000 passi,
   headless) contro ~1 del livello 4. Un quarto sono le particelle (942 sistemi, 42 600 particelle:
   la schiuma delle rive dei tre fiumi e l'erba, contro ~10 000 del livello
   4); per ora nessuna correzione.
+
+### 9.75 Mura e porte nemiche; il livello 5 le usa
+
+Richiesta dell'autore (23 ottobre 2026, dopo §9.74): le mura, le porte e i
+campi della citta' nemica del livello 5 sono del nemico; gli oggetti e gli
+sprite nemici non c'erano. "Per gli sprite riusciamo a fare una versione
+nemica tintando di blu le bandierine?"
+
+**Sprite** (05_atlas, `derived_sprites`, `tint_flags`): m_ori, m_vert e le
+porte aperte e chiuse (m_ori_p, m_ori_pa, m_vert_p, m_vert_pa) con suffisso
+`_b`. La bandiera nemica del progetto (bflag) e' quella del giocatore
+(rflag) con la tinta ruotata: media 15 -> 206 gradi, saturazione e
+luminosita' uguali (misurate: 0,74 e 0,55 in tutte e due). Qui i pixel
+rosso-arancio (tinta fino a 40 gradi o da 345, saturazione almeno 0,3: la
+pietra e' poco satura) ruotati di 191 gradi; ~600 pixel per sprite, solo le
+bandierine (controllato ingrandito).
+
+**Oggetti** (nuovi.json, walls.js `enemyWall`, `enemyGate`):
+`enemy_mura_ori`, `enemy_mura_vert`, `enemy_porta_ori`, `enemy_porta_vert`,
+con le maschere, le vite (800; porte 600 e 800) e le aperture delle mura del
+giocatore. Edifici nemici di pietra (enemy_build): nascosti finche' un
+alleato non li vede, poi visibili (come gli altri, enemybuild.js
+`revealBuilding`), barra e scheda (ico_mura, ico_gate), li colpiscono solo
+arieti e catapulte (l'ariete li prende anche da solo, come gli altri
+edifici nemici), a vita 0 spariscono senza rovina come le mura del
+giocatore; la regia economica non li ricostruisce, i lavoratori nemici li
+riparano (pietra).
+- *La porta* si apre quando il nemico piu' vicino e' a meno di 20 px
+  (guardato ogni 10 passi), mai per il giocatore.
+- *Percorsi* (pathing.js): il contrario delle porte del giocatore (§3.8).
+  La porta chiusa e' ostacolo per tutti (cost e solid), ma il varco (le sue
+  celle meno quelle dei pilastri) e' percorribile per i nemici: griglia
+  `enemyPass` (passEnemy, unpassEnemy), letta da goalField e da regions
+  (§9.71) dei nemici; entra nei salvataggi (quelli di prima non l'hanno:
+  vuota). `free()` non riapre piu' una cella di un ostacolo fisso: un nemico
+  fermo nel varco della sua porta, ripartendo, l'avrebbe aperta al
+  giocatore.
+- *Kit di Tiled*: le quattro e il campo coltivato nemico (enemy_campo, gia'
+  della regia economica, §9.44) in fondo al tileset "nemici" (27 tile; le
+  mappe fatte prima restano uguali, gli scenari identici).
+
+**Livello 5** (levels.js `lvl05Setup`, all'avvio di una partita nuova): nella
+meta' est della mappa (x >= 4500) i tratti e le porte del giocatore
+diventano nemici, i campi da costruire (campo_fond) campi coltivati nemici
+(gli 8 attorno al mulino nemico nell'angolo nord-est); i 4 campi del
+giocatore restano. La citta' nemica, chiusa da mura e montagne, si
+raggiunge solo abbattendo una porta o un tratto.
+
+Prova (`game/test/browser/enemywalls.mjs`, nella CI, alla porta ovest della
+citta', tolti i nemici): conversione (nella meta' est nessun muro, porta o
+campo del giocatore; 4 + 7 tratti, 2 porte, 8 campi nemici; 4 campi del
+giocatore), mura nascoste all'inizio, percorso chiuso per il giocatore e
+aperto per i nemici, la porta si apre con un nemico a contatto e non con un
+alleato, sei guerrieri mandati col clic destro dentro la citta' si fermano
+fuori (nessuno passa), un ariete abbatte la porta (1131 passi) e poi i
+guerrieri entrano. Provato a parte che un guerriero e un cavaliere nemici
+mandati col flow field da dentro a fuori passano dalla porta, che si apre.

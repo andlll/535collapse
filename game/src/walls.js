@@ -22,6 +22,7 @@
 import { tr } from "./i18n.js";
 import { pointDirection } from "./gm.js";
 import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondLifeBar } from "./buildings.js";
+import { revealBuilding, enemyBarAndPanel } from "./enemybuild.js";
 
 const WHITE = 0xffffff, RED = 0x0000ff;
 
@@ -245,6 +246,81 @@ export function gate(k, p) {
     },
     leftReleased(i, w) { if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
     rightReleased(i, w) { if (i.life < i.slife) sendRepair(i, w); },
+  };
+}
+
+// ------------------------------------------------------ mura nemiche
+
+// [§9.75, richiesta dell'autore] Mura e porte nemiche (enemy_mura_ori,
+// enemy_mura_vert, enemy_porta_ori, enemy_porta_vert): gli sprite delle mura
+// del giocatore con le bandierine azzurre (05_atlas, tint_flags), le stesse
+// maschere, vite e aperture. Sono edifici nemici di pietra: nascosti finche'
+// un alleato non li vede (revealBuilding), barra e scheda come gli altri
+// edifici nemici, li colpiscono solo arieti e catapulte, a vita 0
+// spariscono (come le mura del giocatore, senza rovina; la regia economica
+// non le ricostruisce, ma i lavoratori nemici le riparano: pietra). La porta
+// si apre per i nemici (il nemico piu' vicino a meno di 20 px) e nella
+// griglia dei percorsi e' il contrario di quella del giocatore: chiusa per
+// il giocatore, il varco (la porta chiusa meno i pilastri) percorribile per
+// i nemici (Pathing.passEnemy).
+const ENEMY_KIND = {
+  ori: { gateLife: 600, open: ["m_ori_pa_b", "m_ori_pa_mask"], closed: ["m_ori_p_b", "m_ori_p"] },
+  vert: { gateLife: 800, open: ["m_vert_pa_b", "m_vert_pa_mask"], closed: ["m_vert_p_b", "m_vert_p"] },
+};
+
+export function enemyWall(k, p) {
+  return {
+    ...enemyBarAndPanel("ico_mura", false),
+    create(i) {
+      p.markInstance(i, 1000);
+      i.depth = -i.y;
+      Object.assign(i, { life: 800, slife: 800, selected: 0, hover: 0, hit: 0, onfire: 0, legno: 0, pietra: 1 });
+      i.visible = false;
+    },
+    alarm2(i) { i.hit = 0; },
+    destroy(i) { p.markInstance(i, 1); },
+    step(i, w) {
+      revealBuilding(i, w);
+      if (i.life <= 0) w.destroy(i);
+    },
+  };
+}
+
+export function enemyGate(k, p) {
+  const K = ENEMY_KIND[k];
+  const setLook = (i, w, [spr, mask]) => { i.sprite_index = spr; i.mask_index = mask; w.moved(i); };
+  return {
+    ...enemyBarAndPanel("ico_gate", false),
+    create(i, w) {
+      // celle: tutta la porta chiusa ostacolo (anche per il giocatore); il
+      // varco, cioe' quelle che non toccano i pilastri, percorribile per i
+      // nemici
+      i.mask_index = K.open[1]; w.moved(i);
+      const pillars = new Set(p.cellsOf(i));
+      setLook(i, w, K.closed);
+      p.markInstance(i, 1000);
+      i.passCells = p.passEnemy(p.cellsOf(i).filter((c) => !pillars.has(c)));
+      i.depth = -i.y;
+      Object.assign(i, { life: K.gateLife, slife: K.gateLife, selected: 0, hover: 0, hit: 0, onfire: 0, open: 0,
+                         legno: 0, pietra: 1 });
+      i.visible = false;
+    },
+    alarm2(i) { i.hit = 0; },
+    destroy(i, w) {
+      setLook(i, w, K.closed);
+      p.markInstance(i, 1);
+      if (i.passCells) { p.unpassEnemy(i.passCells); i.passCells = null; }
+    },
+    step(i, w) {
+      revealBuilding(i, w);
+      if (i.life <= 0) { w.destroy(i); return; }
+      // al piu' ogni 10 passi si guarda chi c'e'
+      if ((i.lookAt || 0) > w._stepNo) return;
+      i.lookAt = w._stepNo + 10;
+      const u = w.nearest(i.x, i.y, "enemy_unit");
+      const near = !!u && w.distanceToInstance(i, u) < 20;
+      if (near !== (i.open === 1)) { i.open = near ? 1 : 0; setLook(i, w, near ? K.open : K.closed); }
+    },
   };
 }
 

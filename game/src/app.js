@@ -19,14 +19,14 @@ import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDumm
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, levelStep } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
-import { wallFond, wall, gate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
+import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
@@ -235,6 +235,8 @@ async function main() {
     world.register(`mura_${k}_fond`, wallFond(k, path));
     world.register(`mura_${k}`, wall(k, path));
     world.register(`porta_${k}`, gate(k, path));
+    world.register(`enemy_mura_${k}`, enemyWall(k, path)); // §9.75
+    world.register(`enemy_porta_${k}`, enemyGate(k, path));
   }
   for (const s of ["os", "od", "va", "vb"]) {
     world.register("mplus_" + s, mplus("mplus_" + s));
@@ -323,6 +325,7 @@ async function main() {
     if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
+    if (roomName === "lvl05") lvl05Setup(world); // §9.75
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY

@@ -74,7 +74,9 @@ ALIGN = {"center": (0.5, 0.5), "topleft": (0.0, 0.0)}
 # monastero vanno in fondo a "nuovi" (oggetti di nuovi/nuovi.json non qui:
 # in fondo, nell'ordine del file).
 APPENDED = {"natura": ["fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba", "fiori_prato"],
-            "nemici": ["enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino"],
+            "nemici": ["enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino",
+                       # [§9.75] mura, porte e campo nemici
+                       "enemy_mura_ori", "enemy_mura_vert", "enemy_porta_ori", "enemy_porta_vert", "enemy_campo"],
             "nuovi": ["monastero_casetta", "monastero_corpo", "monastero_muro", "monastero_piazza"]}
 
 
@@ -98,7 +100,9 @@ ENEMY = ["enemy_house", "enemy_caserma", "enemy_stalla", "enemy_torre", "o_box1"
          "enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_cavaliere", "enemy_ariete",
          "enemy_catapulta",
          # [§9.43] gli edifici nemici nuovi (nuovi.json, sprite *_b dell'originale)
-         "enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino"]
+         "enemy_centro", "enemy_chiesa", "enemy_castello", "enemy_magazzino", "enemy_mulino",
+         # [§9.75] mura, porte e campo coltivato nemici
+         "enemy_mura_ori", "enemy_mura_vert", "enemy_porta_ori", "enemy_porta_vert", "enemy_campo"]
 NATURE = ["albero", "albero_fake", "graa11", "graa12", "graa13", "graa14", "graa15",
           "burst_erba1", "burst_grano1", "chiazzaparticellare", "aquila_01",
           "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba", "fiori_prato"]
