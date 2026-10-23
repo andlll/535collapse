@@ -109,7 +109,9 @@ function pushThrough(w, p, i) {
 
 function enemyMove(i, w, p) {
   if (i.action !== 1) return;
-  if ((pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 && i.role === 31) || !w.placeFree(i, i.x, i.y)) {
+  // [§9.57] sulla strada del livello 4 (i.road, levels.js) sempre col campo,
+  // se non insegue un alleato
+  if (((pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || (i.road && !i.warwork)) && i.role === 31) || !w.placeFree(i, i.x, i.y)) {
     const otro = w.instancePlace(i, i.x, i.y, "enemy_unit");
     if (otro) {
       if (otro.ordo < i.ordo || otro.action !== 1) pushThrough(w, p, i);

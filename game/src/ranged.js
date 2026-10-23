@@ -5,9 +5,10 @@
 // (L'arciere nemico e' in enemies.js con gli altri nemici.)
 
 import { hintOnce } from "./hints.js";
+import { tr } from "./i18n.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -16,7 +17,7 @@ import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
-const BLACK = 0, GREEN = 0x008000;
+const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
 
 // ---------------------------------------------------------------- frecce
 
@@ -192,7 +193,11 @@ export function allyArcher(p) {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
       const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
+      // [§9.64] verso la torre o il castello da presidiare: col campo anche
+      // da vicino se in linea retta c'e' un ostacolo (prima: dritto, e con
+      // un edificio in mezzo camminava sul posto)
+      const garr = i.presidiowork === 1 && !seesTarget(w, p, i, w.nearest(i.dirox, i.diroy, "ally_build"));
+      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
           if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
@@ -288,6 +293,7 @@ export function allyArcher(p) {
     for (const [b, full] of blds) {
       if (i.presidiowork !== 1 || i.action !== 1 || !(b && w.distanceToInstance(i, b) < 10)) continue;
       if (!full) {
+        (b.garrisonLives || (b.garrisonLives = [])).push(i.life); // §9.63: esce con la vita che aveva
         w.destroy(i);
         g.pop -= 2;
         if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; g.arcsel -= 1; }
@@ -336,12 +342,12 @@ export function allyArcher(p) {
     },
     // Alarm_3 (nato in un posto occupato): nessuno lo arma per l'arciere
     alarm5(i) { i.hit = 0; },
-    alarm8(i) { i.dirox = i.x; i.diroy = i.y; },
+    alarm8: stopTimer, // §9.69
     alarm10(i, w) {
       if (i.flaggox === null || i.flaggox === undefined) return;
       i.dirox = i.flaggox; i.diroy = i.flaggoy;
       i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4
-      i.alarm.set(8, 3000);
+      armStopTimer(i, 3000); // §9.69
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;
       i.warwork = 4;
@@ -408,7 +414,7 @@ export function allyArcher(p) {
       if (i.selected !== 1) return;
       if (holdStill(i, w)) return; // §9.31 (siege.js)
       for (const u of w.all("ally_unit")) if (u.selected === 1) p.free(u);
-      i.alarm.set(8, 1200);
+      armStopTimer(i, 1200); // §9.69
       i.dirox = w.mouse.x; i.diroy = w.mouse.y;
       i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4: nuovo ordine, niente guinzaglio
       i.creation = 0;
@@ -449,10 +455,82 @@ const GARRISON = {
   },
 };
 
+// [§9.63, richiesta dell'autore] Gli arcieri di presidio escono: con
+// l'edificio selezionato, un pulsante per arciere (l'icona nel cerchio
+// bianco, come i pulsanti della caserma) nella prima riga della torre e
+// nella seconda del castello (la prima e' della produzione; barra e coda
+// della produzione del castello passano alla terza, production.js). Il
+// clic fa uscire un arciere accanto all'edificio (findFreeSpawn, nel suo
+// Create), con la vita che aveva entrando; le frecce e le bandiere seguono
+// il numero di arcieri rimasti. Coordinate in pixel CSS, come il Draw GUI.
+const EXIT_ROW = { torre: 50, castello: 120 }, EXIT_X = 450, EXIT_DX = 70, EXIT_R = 30;
+const EXIT_TIP = { torre: "Click to send this archer out of the tower.", castello: "Click to send this archer out of the fortress." };
+
+// il pulsante (indice) sotto il puntatore, o -1
+function exitHover(name, i, w) {
+  const inp = w.input;
+  if (i.selected !== 1 || !inp || !inp.inside) return -1;
+  for (let k = 0; k < i.npresidio; k++) {
+    if (Math.hypot(inp.x - (EXIT_X + EXIT_DX * k), inp.y - EXIT_ROW[name]) < EXIT_R) return k;
+  }
+  return -1;
+}
+
+function sendOut(name, i, w) {
+  if (i.npresidio <= 0) return;
+  i.npresidio -= 1;
+  const a = w.create("ally_arciere", i.x, i.y + (name === "torre" ? 60 : 140)); // il Create cerca un posto libero
+  const life = i.garrisonLives && i.garrisonLives.length ? i.garrisonLives.pop() : null;
+  if (life !== null) a.life = Math.min(a.slife, life);
+  // le bandiere degli arcieri che non ci sono piu'
+  for (const [n, obj, dx, dy] of GARRISON[name].flags) {
+    const key = name === "torre" ? "flagged" : "flagged" + n;
+    if (i.npresidio < n && i[key] === 1) {
+      const f = w.nearest(i.x + dx, i.y + dy, obj);
+      if (f) w.destroy(f);
+      i[key] = 0;
+    }
+  }
+}
+
 export function garrisoned(name, base) {
   const G = GARRISON[name];
   return {
     ...base,
+    // col puntatore su un pulsante d'uscita il clic non deseleziona
+    globalLeftPressed(i, w) {
+      if (exitHover(name, i, w) >= 0) return;
+      if (base.globalLeftPressed) base.globalLeftPressed(i, w);
+    },
+    drawGUI(i, w, d) {
+      if (base.drawGUI) base.drawGUI(i, w, d);
+      if (i.selected !== 1 || i.npresidio <= 0) return;
+      const h = exitHover(name, i, w), y = EXIT_ROW[name];
+      for (let k = 0; k < i.npresidio; k++) {
+        d.setAlpha(k === h ? 0.99 : 0.69);
+        d.circleColour(EXIT_X + EXIT_DX * k, y, EXIT_R, WHITE, WHITE, false);
+        d.setAlpha(1);
+        d.spriteExt("ico_arciere", 0, EXIT_X + EXIT_DX * k, y, 0.6, 0.6, 0, WHITE, 1);
+      }
+      if (h < 0) return;
+      // la scheda in basso, come quella dei pulsanti di produzione
+      const H = w.cam.cssH, title = tr("Archer"), desc = tr(EXIT_TIP[name]);
+      d.setFont("GUI_1");
+      const ex = d.panelExtra(370, title, desc, "");
+      d.tooltipBegin(w);
+      d.setAlpha(0.69);
+      d.roundrectColourExt(20, H - 120, 370 + ex, H - 20, 60, 60, WHITE, WHITE, false);
+      d.setAlpha(0.7);
+      d.setColour(BLACK);
+      d.setHalign("left");
+      d.setValign("middle");
+      d.text(40, H - 90, title);
+      d.setFont("overdue");
+      d.text(40, H - 52, desc);
+      d.setFont("GUI_1");
+      d.tooltipEnd(w);
+      d.setAlpha(1);
+    },
     create(i, w) {
       base.create(i, w);
       i.arm = 1;
@@ -469,6 +547,11 @@ export function garrisoned(name, base) {
       hintOnce(w, "hint_presidio", "presidiohint", i.x, i.y);
     },
     step(i, w) {
+      // §9.63: i pulsanti d'uscita (come buttonSele dei pulsanti di
+      // produzione: global.sele=1 col puntatore sopra, 0 solo se l'aveva messo lui)
+      const h = exitHover(name, i, w);
+      if (h >= 0) { w.g.sele = 1; i.exitSele = true; } else if (i.exitSele) { w.g.sele = 0; i.exitSele = false; }
+      if (h >= 0 && w.input.mouseReleased[0]) { sendOut(name, i, w); w.mouseClear(0); }
       // [§6.5] il nemico piu' vicino entro 600 px con la linea libera
       const e = i.arm === 1 && i.npresidio > 0 ? towerTarget(w, i, "enemy_unit", 600) : null;
       if (i.arm === 1 && e) {

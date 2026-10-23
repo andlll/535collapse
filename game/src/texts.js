@@ -94,6 +94,15 @@ export const TEXTS = {
     pt: "Corpo a corpo, bom contra a cavalaria.", de: "Nahkämpfer, gut gegen Reiterei.",
     fr: "Corps à corps, bon contre la cavalerie." },
   "Archer": { it: "Arciere", es: "Arquero", pt: "Arqueiro", de: "Bogenschütze", fr: "Archer" },
+  // §9.63: i pulsanti per far uscire gli arcieri da torre e fortezza
+  "Click to send this archer out of the tower.": {
+    it: "Clicca per far uscire l'arciere dalla torre.", es: "Haz clic para sacar al arquero de la torre.",
+    pt: "Clique para tirar o arqueiro da torre.", de: "Klicke, um den Bogenschützen aus dem Turm zu holen.",
+    fr: "Clique pour faire sortir l'archer de la tour." },
+  "Click to send this archer out of the fortress.": {
+    it: "Clicca per far uscire l'arciere dalla fortezza.", es: "Haz clic para sacar al arquero de la fortaleza.",
+    pt: "Clique para tirar o arqueiro da fortaleza.", de: "Klicke, um den Bogenschützen aus der Festung zu holen.",
+    fr: "Clique pour faire sortir l'archer de la forteresse." },
   "Ranged unit good against all units.": {
     it: "Tiratore, buono contro tutti.", es: "Tirador, bueno contra todos.", pt: "Atirador, bom contra todos.",
     de: "Fernkämpfer, gut gegen alle Einheiten.", fr: "Tireur, bon contre tous." },

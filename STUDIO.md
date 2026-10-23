@@ -6054,3 +6054,496 @@ ingrandito un oggetto di una di queste tile (tk.DECOR) che differisce di
 1-2 px; solo per loro (nella room match traccia02 ha davvero scala 1,0012).
 Verificato rifacendo da zero i passi della CI con Python 3.11 e il Pillow
 corrente.
+
+### 9.54 Un solo lampeggio per risorsa
+
+Richiesta dell'autore (20 ottobre 2026): ogni edificio alleato fermo per la
+popolazione piena crea un `pop_blink` a ogni tentativo (production.js,
+centro: ogni 30 passi); con due o piu' edifici i cerchi rossi si
+sovrapponevano sfasati, raddoppiando il lampeggio. Ora `blink()`
+(buildings.js) nel Create si distrugge se ce n'e' gia' uno della stessa
+risorsa: quello in corso continua col suo ritmo e il successivo parte solo
+dopo che si e' spento. Vale per tutti i `*_blink` (anche i clic ripetuti
+senza risorse non accumulano piu' cerchi). Test: `game/test/blink.test.mjs`.
+
+### 9.55 I cantieri colpiti fino a 0 crollano
+
+Richiesta dell'autore (20 ottobre 2026): un cantiere alleato attaccato
+(arieti e catapulte nemiche colpiscono il piu' vicino `ally_build`, cantieri
+compresi) perdeva vita sotto zero e restava li', indistruttibile: i
+costruttori dovevano poi risalire da -49 o piu'. Nell'originale nessun
+cantiere controlla la vita. Ora a vita 0 o meno il cantiere sparisce, senza
+rovina ne' rimborso: `fond` (edifici) e `wallFond` (mura, anche i pulsanti
+"+") liberano le celle della griglia, `campoFond` (il campo, celle gia'
+libere) toglie i germogli. I civili che lo costruivano si comportano come
+a cantiere finito (civilians.js, buildStep): vanno al cantiere piu' vicino
+o si fermano. Il ponte del livello 4 (bridge.js) resta com'e'. Test:
+`game/test/fond.test.mjs`.
+
+### 9.56 La schermata di vittoria: sfocatura invece dello sbiancamento
+
+Richiesta dell'autore (20 ottobre 2026): lo schermo che sbiancava fino a
+0,9 non lo soddisfaceva. Ora la scena, interfaccia compresa, si sfoca a
+poco a poco fino alla sfocatura del menu di pausa (PAUSE_SIGMA, a meta'
+risoluzione), sotto un velo bianco leggero come i pulsanti di vetro
+(0,45 = 0,69 x GLASS_TINT); poi i testi compaiono in dissolvenza, e "click
+anywhere to continue" a sua volta quando diventa cliccabile (150 passi,
+come prima). Il velo e i testi li disegna `victory_manager` in un evento
+`overlay` che app.js chiama dopo la sfocatura (victoryBlur), sopra tutta
+l'interfaccia; il pulsante di pausa resta nitido sopra. Curva: uscita
+cubica.
+
+Valori in `VICTORY` (endgame.js), da tarare con l'autore: blur 1 (frazione
+della sfocatura della pausa), white 0,45, blurIn 60 passi (1 s), textAt 40,
+textIn 40. Per le prove, dall'indirizzo: `?victory=1` vince un secondo dopo
+il caricamento; `vblur`, `vwhite`, `vin`, `vtext`, `vtextin` cambiano i
+valori (p.es. `?room=lvl02&victory=1&vwhite=0.3&vin=120`). Verificato con
+fotogrammi in match e lvl02 (velo 0,25 / 0,45 / 0,65) e con ui.mjs.
+
+### 9.57 Livello 4: economia nemica, fattoria di partenza, ondate sulla strada
+
+Segnalazioni e richieste dell'autore (20 ottobre 2026).
+
+**Lavoratori nemici fermi col passo del cammino.** Misurato con una sonda
+(6000-9000 passi, stesso seme): erano fermi il 46% dei passi in cammino,
+uno fino a 6946 passi di fila (quasi 2 minuti); in 9000 passi il nemico
+raccoglieva cibo 0, legno 140, oro 150. Cause:
+- attorno alla base sud ci sono solo 4 alberi veri, tutti sul bordo est
+  (uno a x 3472, fuori dalla mappa larga 3450), una miniera d'oro sul bordo
+  sud, niente pietra (gli altri alberi sono `albero_fake`). La regia
+  mandava tutti i taglialegna allo stesso albero e, consegnato il legno,
+  ognuno tornava all'albero piu' vicino: uno lavorava, l'altro andava
+  avanti e indietro contro di lui. Attorno alla miniera i posti validi sono
+  pochi e un lavoratore restava a pochi px dal suo posto, occupato da un
+  compagno al lavoro;
+- `mpPotentialStep` (verso il posto prenotato, overAllies), `snapToSlot` e
+  `World.placeFreeForSlot` passavano sopra gli `ally_unit` anche per le
+  unita' nemiche: i lavoratori nemici si bloccavano fra loro (e sarebbero
+  passati sopra gli alleati). Ora la famiglia e' quella dell'unita'
+  (`sideUnit`, pathing.js).
+
+Rimedi (economy.js): `targetFor` conta CROWD (300) px in piu' per ogni
+compagno gia' su un albero o una pietra, e il lavoratore che ha consegnato
+sceglie di nuovo cosi' (non l'albero piu' vicino); `watchStuck`: chi cammina
+senza avanzare di 24 px per 120 passi (non in coda al suo posto) lascia
+lavoro e posto e si ferma, e per 1800 passi non torna alla stessa risorsa
+se ce ne sono altre. Dopo: fermi il 2,7% dei passi in cammino, al massimo
+119 passi; raccolti cibo 370, legno 280, oro 250 (e 10 soldati invece di 4).
+
+**Fattoria di partenza** (richiesta: "anche lui inizia con un mulino e tre
+campi coltivati gia' attivi"). `startFarm` (economy.js), chiamata dalla
+regia del livello col centro: un mulino e tre campi finiti nei punti di
+`LV4.farm`, nel prato a ovest del centro (il bosco piu' a ovest e' fatto di
+`albero_fake`, invisibili ma solidi); se un punto non e' libero o
+raggiungibile, il piu' vicino che lo e'. La ripartizione del lavoro nel
+livello 4 da' piu' peso al cibo (`ECO.lvl04.mix`: legno 2, oro 2, cibo 3,
+pietra 1).
+
+**Ondate dell'accampamento nord sulla strada** (richiesta: "arrivano
+seguendo la strada, non passando attraverso il bosco"). Prima il campo di
+flusso andava dritto verso la citta' alleata fra gli alberi del bosco
+grande. Ora ogni soldato dell'ondata ha le tappe `LV4.road` (la strada che
+gira a nord del bosco e scende a ovest), fino a quella piu' vicina al
+bersaglio: va col campo verso la tappa (anche da vicino: `enemyMove`, con
+`i.road`), a 150 px dalla tappa (non da `dirox`, che i nemici spostano a
+caso quando la meta e' occupata) passa alla successiva, dopo l'ultima va al
+bersaglio come prima. Chi insegue un alleato (warwork) lascia la strada;
+finito l'inseguimento (fermo, anche col ruolo 32 di "arrivato") la riprende
+dalla sua tappa: prima puntava dritto alla citta' e si incastrava nel
+bosco. I campi delle tappe si tengono fuori dall'istanza (non vanno nei
+salvataggi). Verificato disegnando i percorsi di un'ondata da 3
+sull'anteprima della mappa, anche con un guerriero alleato sulla strada.
+
+Prove: economy.mjs, lvl04.mjs, mining.mjs, workers.mjs, saves.mjs e
+soak.mjs (lvl02, lvl04) senza errori.
+
+### 9.58 Livello 2: via le frecce dei directioner
+
+Richiesta dell'autore: le freccette (`directioner`, sprite `dir_sign`) nella
+mappa del livello 2 non servono piu'. Nell'originale, toccando una caserma
+nemica, ne orientavano la bandiera e sparivano; nel porting non hanno
+comportamento: restavano solo disegnate. Tolte da `mappe/lvl02.tmx` (gli
+oggetti 464-467) e `scenari/lvl02.json` rigenerato con tools/12.
+
+### 9.59 Livello 4: alberi veri per la base sud, fattoria spostata, piu' lavoratori
+
+Richiesta dell'autore (20 ottobre 2026): "aggiungiamo alberi veri
+(ovviamente fuori dalle strade), verifichiamo anche che il nemico abbia la
+possibilita' di realizzare altri lavoratori (senza snowball eccessivo)".
+
+**Alberi.** 18 `albero` nuovi in `mappe/lvl04.tmx` (livello "boschi",
+oggetti 418-435), in tre boschetti: la piana d'erba alta a ovest (7, attorno
+a 1700,3250), il prato a ovest delle case (6, attorno a 2350,3550), vicino
+alla caserma di sinistra (5, attorno a 2050,2930). I posti li ha cercati uno
+script (non versionato) sull'anteprima della mappa di tools/12: tronco a
+piu' di 40 px dalle strade (`strada_*`, `traccia*`, la parte ben visibile
+dell'immagine), chioma sulle strade al piu' per il 3%, niente sovrapposti a
+edifici, alberi, miniera e centro nemico, ad almeno 230 px dalla fattoria e
+a 120 px dagli altri alberi. Vicino alla base non c'e' altro spazio libero:
+il resto e' strade, case e il bosco di `albero_fake` (che la regia non
+taglia). La mappa resta con le fine riga CRLF dell'autore.
+
+**Fattoria spostata.** Nel §9.57 i campi a ovest del centro finivano sotto
+le chiome degli `albero_fake` (nella vista in gioco erano nascosti dalla
+nebbia). Ora, con lo stesso script: mulino a 3275,3850 (a est del centro),
+campi a 3200,3550, 2900,3950 e 3200,3950, fuori dalle strade.
+
+**Lavoratori.** Con 6 lavoratori (il tetto di sempre) il nemico arrivava al
+tetto in 50 s e poi accumulava cibo e legno senza usarli. Nel livello 4 il
+tetto e' 9, uno ogni 1800 passi (30 s, non 17). Misurato su 30000 passi
+(8,3 minuti, senza la base nord):
+
+| | lavoratori | raccolti cibo/legno/oro | soldati | fermi in cammino |
+|---|---|---|---|---|
+| tetto 6 | 6 da 0,8 min | 2170 / 1030 / 490 | 8 | 0,5% |
+| tetto 9 | 9 da 3,3 min | 2130 / 2240 / 1070 | 9 | 3,1% |
+
+Niente valanga: i soldati restano sotto il tetto (army 10) e le ondate
+crescono di uno alla volta (attackGrow); le scorte in piu' restano in
+magazzino. A 5,8 minuti la regia si e' fatta da sola un magazzino vicino ai
+boschi nuovi (§9.46).
+
+Prove: lvl04.mjs, economy.mjs, saves.mjs e soak.mjs (lvl04) senza errori;
+gli scenari rigenerati da tutte le mappe coincidono con quelli versionati.
+
+### 9.60 Civili che si ingarbugliano tornando al deposito
+
+Segnalazione dell'autore: i lavoratori alleati "si incasinano" quando
+tornano al magazzino a scaricare, soprattutto se arrivano da in alto a
+sinistra.
+
+**Misura** (prova nuova `game/test/browser/depot.mjs`, sotto): magazzino in
+campo aperto nel match, 6 civili che tagliano un boschetto in una sola
+direzione, 6000 passi. Inversioni di marcia col carico vicino al magazzino:
+da nord-ovest 114, da nord 194, dalle altre direzioni 0; da nord-ovest il
+viaggio piu' lento (209 passi col carico per consegna, 163-187 dalle altre).
+
+**Causa.** La meta del viaggio e' il centro dell'edificio e il campo di
+flusso porta alle celle libere piu' vicine a lui; nel magazzino il centro
+sta vicino al lato alto, quindi da nord e da nord-ovest arrivavano tutti
+allo stesso spigolo posteriore, in una fila sola percorsa nei due sensi
+(chi arriva carico, chi riparte vuoto). Da vicino la precedenza fra civili
+(ominoMove) li faceva aspettare o scansare (separate) a vicenda: avanti e
+indietro attorno allo spigolo.
+
+**Correzione** (civilians.js, ominoMove). Entro 150 px da un deposito
+(DEP_NEAR, magazzino o granaio della fazione) chi raccoglie (legno, oro,
+pietra, cibo; col carico o appena scaricato) passa sopra gli altri civili,
+come gia' attorno a miniere e pietre (§9.21): da lontano col campo (che non
+ha collisioni), da vicino col passo con le collisioni verso il deposito ma
+senza contare i compagni (mpPotentialStep, overAllies). Se il campo lo ha
+portato dentro un ostacolo vero (un albero accanto al mulino, nella prova
+economy.mjs) ne esce col campo come prima: col passo con le collisioni
+girava su se stesso.
+
+Provate e scartate: un posto sul bordo del deposito per ciascuno (come la
+consegna su ordine, §8.19: giravano attorno all'edificio, inversioni da 5 a
+10 volte di piu' in tutte le direzioni); i 100 px del tratto finale misurati
+dal bordo invece che dal centro (peggio anche quello).
+
+Dopo: 0 inversioni da tutte le direzioni, piu' consegne (da nord-ovest 66
+invece di 58, 173 passi col carico per consegna invece di 209); col centro
+come deposito 76 invece di 73, con l'oro 0 inversioni invece di 39.
+`depot.mjs` (nord-ovest, nord, sud-est, 4000 passi; con piu' di 20
+inversioni o meno di 30 consegne non va) fallisce col codice di prima
+(65 e 120 inversioni) e passa con questo; e' nella CI. Passano anche
+mining, workers, idle, deposit, economy, lvl04 e soak.
+
+### 9.61 Fiori e papaveri ondeggiano meno
+
+Richiesta dell'autore: l'ondeggiare di fiori e papaveri, rispetto all'erba,
+da' un po' fastidio per l'altezza e le cime colorate. L'oscillazione delle
+particelle e' una rotazione attorno al piede dello stelo (wiggle
+dell'orientamento, ±4 gradi ogni 16-32 passi, come l'erba): i papaveri,
+alti ~79 px contro i ~39 dell'erba, spostavano la cima rossa del doppio, i
+gialli (~57 px) di una volta e mezza. Ora (effects.js, `FLOWER_SWAY`) i
+papaveri ondeggiano di ±1,5 gradi e i gialli di ±2, un po' meno della
+proporzione con l'erba, e piu' lenti: un periodo di 24-48 passi
+(`wigglePeriod`, proprieta' nuova dei tipi di particella in particles.js;
+senza, 16-32 come prima). L'inclinazione fissa di ciascun fiore (±15 gradi)
+e l'erba non cambiano. Provati salvataggi e soak di lvl03 e lvl04 (le
+macchie fiorite).
+
+### 9.62 Soldati fermi uno sopra l'altro
+
+Segnalazione e richiesta dell'autore: a volte i soldati finiscono i
+movimenti sovrapposti e poi, ripartendo, si incastrano; quando si fermano,
+se si puo', quello di rango minore si sposti.
+
+**Misura** (prova nuova `game/test/browser/settle.mjs`): 17 soldati misti nel
+match, ordini col clic destro vero. Dopo gli ordini al gruppo intero
+restavano 0-2 coppie di soldati fermi sovrapposti; con piu' ordini verso
+punti vicini molte di piu': uno per uno nello stesso punto 4, due gruppi
+verso lo stesso punto 9, quattro gruppi verso punti vicini 33. Le caselle
+della formazione (§8.11) sono diverse solo dentro un gruppo; fra gruppi o
+ordini diversi nessuno le confronta.
+
+**Correzione** (units.js, `settleOverlaps`, chiamata da app.js a ogni passo
+dopo il mondo). Ogni 10 passi, fra i soldati alleati fermi e liberi
+(azione 0, niente combattimento, fuoco, presidio, raccolta dopo la
+produzione; non le macchine d'assedio ne' i civili), di due che si toccano
+(maschere, `overlap`) si sposta quello con l'ordo (rango per ordine di
+creazione) piu' basso, a parita' quello creato prima: al posto libero piu'
+vicino su anelli di 16 px fino a 160, a 16 direzioni partendo da quella
+opposta all'altro soldato; il posto deve essere libero da tutti i solidi
+(unita' comprese) e raggiungibile dritto senza passare per edifici, alberi
+o celle chiuse. Ci va come verso una casella della formazione (formX/formY:
+sopra gli alleati, §8.11), col suo campo; per 120 passi non si sposta di
+nuovo (niente catene di spostamenti).
+
+Dopo: 0 coppie sovrapposte in tutti gli ordini (semi 1, 2, 3 nel match, e
+nel livello 2). La prova del movimento (movement.mjs) migliora: rotazioni
+sul posto 10 -> 5, inversioni 257 -> 165, sfarfallii 248 -> 166; il suo
+overlapEnd (a fine combattimento, coi nemici ancora vivi) conta unita' in
+mischia, macchine d'assedio e civili, non soldati fermi. attackorder.mjs da'
+lo stesso risultato di prima; passano melee, rally, fireorder, idle,
+monastery, lvl04, enemydefense, saves, soak. `settle.mjs` fallisce col
+codice di prima (9 e 33 coppie) e passa con questo; e' nella CI.
+
+### 9.63 Gli arcieri escono da torre e fortezza
+
+Richiesta dell'autore: poter far uscire gli arcieri di presidio, con delle
+icone nella torre simili a quelle della caserma che, premute, li fanno
+uscire; nella fortezza nella seconda riga.
+
+Nell'originale un arciere entrato (azione 15, presidio) veniva distrutto e
+l'edificio contava `npresidio`: non usciva piu'. Ora (ranged.js,
+`garrisoned`):
+- con l'edificio selezionato, un pulsante per arciere di presidio: l'icona
+  dell'arciere (0,6) nel cerchio bianco da 30 px, come i pulsanti di
+  produzione, a x 450, 520, 590, 660; nella torre in prima riga (y 50),
+  nella fortezza in seconda (y 120), sotto ariete, catapulta e annulla.
+  Nella fortezza barra di produzione e coda passano alla terza riga
+  (production.js, `queueY` 190; le altre caserme restano a 120);
+- col puntatore sopra: cerchio piu' pieno (0,99), global.sele=1 (come
+  buttonSele), e la scheda in basso "Archer / Click to send this archer
+  out of the tower." (o "of the fortress."), tradotta nelle sei lingue
+  (texts.js); il clic non deseleziona l'edificio;
+- il clic fa uscire un arciere: npresidio -1, l'arciere nasce accanto
+  all'edificio (il suo Create cerca un posto libero, findFreeSpawn), con la
+  vita che aveva entrando (`garrisonLives`, l'ultimo entrato esce per
+  primo), la popolazione torna su di 2; le frecce dell'edificio seguono
+  npresidio; le bandiere degli arcieri che non ci sono piu' spariscono
+  (flagged/flagged1..4 tornano 0, cosi' rientrando ricompaiono).
+
+Prova nuova `game/test/browser/garrison.mjs` (nella CI): torre con 2
+arcieri e fortezza con 4 (con un ariete in produzione), entrati col clic
+destro vero, usciti coi pulsanti: conti, vite, popolazione, bandiere,
+selezione e produzione. Passano anche ui.mjs (sei lingue), saves e soak.
+
+**Trovato provando.** Sotto i 500 px l'ordine di presidio portava
+l'arciere dritto verso l'edificio (mpPotentialStep, ranged.js `move`),
+senza il ripiego sul campo di flusso degli ordini di spostamento (§6.2 D,
+seesGoal): con un edificio in mezzo (una torre dietro una caserma)
+l'arciere restava fermo a camminare sul posto. C'era gia' prima; corretto
+nel §9.64.
+
+### 9.64 Ordini verso un edificio con un ostacolo in mezzo; riparare senza materiale
+
+Richieste dell'autore: correggere il presidio bloccato (§9.63, "trovato
+provando"), "credo ci sia un problema del genere anche per i lavoratori
+mandati a costruire"; e "se i lavoratori non hanno le risorse per riparare
+si fermano e si mettono in idle, mentre ora continuano a martellare anche
+se la vita dell'edificio non sale".
+
+**Misura** (prova nuova `game/test/browser/blocked.mjs`, deterministica, nel
+match in campo aperto: una caserma fra le unita' e la meta, a ~360 px,
+clic destro vero), col codice di prima:
+- presidio (2 arcieri, una torre dietro la caserma): non entrano mai;
+- costruzione (2 civili, il cantiere di una casa dietro la caserma): uno
+  resta dietro la caserma, il cantiere finisce in 954 passi;
+- riparazione (2 civili, un magazzino a 40/140 dietro la caserma): uno
+  resta dietro la caserma a camminare sul posto, 1500-1585 passi;
+- senza legno (un civile, un magazzino danneggiato accanto, legno 0):
+  martella per 883 passi su 900, la vita resta 60.
+
+**Cause.** Da vicino (arcieri sotto i 500 px dalla meta, civili sotto i 300)
+gli ordini verso un edificio andavano dritti (mpPotentialStep) senza
+guardare se in mezzo c'era un ostacolo. E al cantiere e alla riparazione
+due civili puntavano allo stesso punto (il centro dell'edificio): il
+secondo, arrivato da sotto, restava a 45 px a fare avanti e indietro
+(si comincia a riparare a 5 px).
+
+**Correzioni.**
+- `seesTarget` (pathing.js): la linea dall'unita' al punto piu' vicino del
+  riquadro dell'edificio (40 px prima: le celle dell'edificio sono
+  ostacolo) e' libera da ostacoli fissi; a meno di 80 px vale sempre. Senza
+  vista l'unita' va col campo di flusso, che aggira: l'arciere col presidio
+  (ranged.js `move`), il civile verso il cantiere o l'edificio da riparare
+  (civilians.js `ominoMove`; non i complessi, §9.29, che hanno gia' il loro).
+- Al cantiere e all'edificio da riparare il civile va a un posto libero sul
+  bordo (`toEdgeSpot`: meleeSpot a contatto, a 4 px, settori di 30 gradi),
+  diverso da quello dei compagni, invece che al centro; il ponte del
+  livello 4 (buildReach) come prima. La riparazione comincia a 10 px dal
+  bordo, come il cantiere (era 5: l'ultimo passo verso il posto, chiuso
+  dall'edificio, poteva lasciare il civile a 6 px).
+- Riparazione senza materiale (civilians.js, azione 7): se l'edificio e' di
+  pietra e la pietra e' 0, o di legno e il legno e' 0, il civile si ferma
+  inattivo (azione 0, repairwork 0) al primo colpo e la risorsa che manca
+  lampeggia (per il giocatore). Vale anche per i lavoratori nemici (la
+  regia, §9.45, gia' non li mandava senza materiale).
+
+Dopo (semi 1-5): presidio in 164 passi, cantiere in 639 con tutti e due,
+riparazione in 898-937 con tutti e due, senza legno fermo dopo 13 passi.
+`blocked.mjs` (limiti: 600, 800, 1200 passi) fallisce col codice di prima
+e passa con questo; e' nella CI. Passano anche depot, workers, mining,
+idle, economy, lvl04, bridge, monastery, enemybuildings, enemydepots,
+enemyarmy (riparazione e ricostruzione nemiche), garrison, settle,
+deposit, saves, soak, ui.
+
+### 9.65 Lampeggio veloce quando si smette di riparare
+
+Richiesta dell'autore sul §9.64: il lampeggio della risorsa che manca, per
+la riparazione, o niente o "uno veloce quando si ferma". Ora il civile che
+smette di riparare senza materiale crea il lampeggio con `quick`
+(buildings.js, `blink`, opts.init): sfuma in 12 passi (0,2 s) invece di 25.
+Resta uno solo per risorsa (§9.54): con tre civili che si fermano insieme,
+un solo lampeggio breve. Gli altri lampeggi (costi, popolazione, ponte)
+come prima. Test: `game/test/blink.test.mjs`; nel browser, tre civili su
+un magazzino danneggiato col legno a 0: un lampeggio, acceso 12 passi.
+
+**Notato provando** (corretto nel §9.66). La "fine riparazione" dell'originale
+(buildings.js `repairEnd`, a ogni passo di ogni edificio finito) ferma i
+civili che riparano un punto entro 150 px da un edificio a vita piena:
+anche se l'edificio che riparano e' un altro, danneggiato, accanto. Con un
+magazzino danneggiato vicino alle case della base del match i civili si
+fermavano subito.
+
+### 9.66 La fine della riparazione guarda solo l'edificio riparato
+
+Decisione dell'autore sul §9.65 ("all'epoca non avevo trovato
+un'alternativa valida"). La "fine riparazione" dell'originale (Step di ogni
+edificio, buildings.js `repairEnd`) fermava i civili al lavoro (azione 7)
+il cui punto cliccato fosse entro 150 px da un edificio integro qualunque.
+Riparando un edificio danneggiato con accanto una casa integra (o un tratto
+di mura con accanto tratti integri) i civili si fermavano al primo passo.
+
+Ora a edificio integro si fermano solo i civili che riparano lui: il
+complesso (repT, §9.29) o l'edificio piu' vicino al punto cliccato (repx,
+repy), cioe' quello a cui il colpo aggiunge vita (civilians.js, azione 7).
+Edifici danneggiati: nessun controllo (come prima, di fatto). La casa
+integra col clic destro (che manda comunque a riparare) si ferma al primo
+passo, come prima.
+
+Prova: caso nuovo `accanto` in `game/test/browser/blocked.mjs` (un
+magazzino a 60/140 con una casa integra a meno di 150 px dal punto
+cliccato, 2 civili): col codice di prima la vita resta 60, con questo torna
+a 140 in 551 passi. Passano monastery (riparazione del complesso),
+enemyarmy, bridge, economy, idle, workers, saves, soak.
+
+### 9.67 Cantieri vicini fra loro: verifica, e la semina del campo ordinato
+
+Richiesta dell'autore: verificare che non ci siano casi come quello del
+§9.66 (un edificio vicino che decide per quello su cui si lavora) per gli
+edifici in costruzione.
+
+**Il codice.** Inizio del lavoro, colpo e fine del cantiere (civilians.js,
+buildStep e otherWorkTick) usano il cantiere piu' vicino al punto
+dell'ordine (buildx, buildy), cioe' quello ordinato: un cantiere accanto
+non li confonde. Al cantiere finito il civile passa al cantiere piu' vicino
+a lui (come prima). La fine della riparazione non tocca chi costruisce
+(solo l'azione 7). Due punti invece guardavano altro:
+- l'arrivo alla semina (fieldwork) prendeva il cantiere di campo piu'
+  vicino al CIVILE, non quello ordinato: con due campi in costruzione, chi
+  andava al secondo passando sul centro del primo si fermava a seminare il
+  primo. Ora il piu' vicino a buildx, quello verso cui cammina (ominoMove);
+- un cantiere finito accanto a un edificio in riparazione: il nuovo
+  edificio, nato a vita piena, con la regola di prima del §9.66 fermava chi
+  riparava un punto entro 150 px. Gia' corretto dal §9.66.
+
+**Prova** nuova `game/test/browser/sites.mjs` (nella CI), clic destro vero:
+- dueCase: due cantieri di casa a 150 px, 2 civili sul primo: lo finiscono
+  (462 passi) senza mai colpire da oltre 40 px, poi passano da soli al
+  secondo (912). Andava anche prima;
+- riparaVicino: 2 civili riparano un magazzino, accanto (la casa nascera'
+  entro 150 px dal punto cliccato) altri 2 finiscono un cantiere: senza il
+  §9.66 i riparatori si fermavano a vita 88 su 140; ora continuano;
+- dueCampi: due cantieri di campo affiancati, 2 civili mandati al secondo
+  passando sul primo: prima seminavano il primo (finito) e il secondo
+  restava a 1; ora seminano il secondo (423 passi) e il primo resta com'e'.
+
+Passano anche workers, economy, enemydepots, enemyarmy, lvl04, bridge,
+blocked, idle, depot, saves, soak.
+
+### 9.68 Risorse: solo quelle scoperte, e quella scelta dal giocatore
+
+Richieste dell'autore: quando una risorsa si esaurisce i civili vanno alla
+piu' vicina solo se il giocatore l'ha scoperta ("partono da soli verso
+l'ignoto e semplifica troppo la vita"); e mandati col clic su una risorsa
+vanno su quella, non sulla piu' vicina.
+
+**Prima.** Scoperta = `visible` della risorsa (reveal: un alleato a 600 px
+per gli alberi, 400 per miniere e pietre; poi resta). Andavano alla
+risorsa piu' vicina senza guardarla: albero, miniera o pietra finiti mentre
+ci si lavora (azioni 2, 3, 5), miniera o pietra finite mentre ci si va,
+ritorno dal deposito col legno e con la pietra (con l'oro il controllo
+c'era, sulla piu' vicina al civile). E la risorsa scelta non restava:
+l'ordine ricordava il punto cliccato (woodx...), a 250 px dalla meta il
+civile passava all'albero piu' vicino a se' (§8.19), e dal deposito tornava
+all'albero (o alla pietra, alla miniera) piu' vicino al deposito.
+
+**Ora** (civilians.js):
+- `nearestKnown`: la risorsa piu' vicina fra quelle scoperte (per il
+  nemico tutte: non ha la nebbia, e la sua regia sceglie da se', §9.57);
+  `resAt`: la risorsa con l'origine nel punto se c'e' ancora, se no la
+  scoperta piu' vicina a quel punto. Nessuna: il civile si ferma inattivo;
+- clic destro (rightClick) e bandiera di raccolta (rallyOmino) su una
+  risorsa: woodx/goldx/stonex sulla sua origine;
+- verso l'albero: il proprio (prima il piu' vicino al civile); se da li'
+  non ci si arriva (chiuso nel bosco), lo scoperto piu' vicino al civile a
+  cui si arriva, come prima; arrivato al punto ma non all'albero, verso il
+  proprio;
+- finita la risorsa (lavorandoci o andandoci): la scoperta piu' vicina a
+  lei, non al civile;
+- dal deposito: alla propria risorsa (resAt), non alla piu' vicina al
+  deposito.
+
+**Prova** nuova `game/test/browser/resources.mjs` (nella CI), clic destro
+vero, le altre risorse della mappa tolte dove serve (quelle accanto agli
+edifici del giocatore sono scoperte, e giustamente ci si andrebbe):
+- scelto: 6 alberi in gruppo, clic sul piu' lontano dal civile: prima
+  tagliava il #1 e dal deposito tornava al #0; ora il #5, e ci torna;
+- oroIgnoto: la miniera finisce, l'altra e' mai vista: prima ci andava, ora
+  il civile si ferma; oroScoperto: l'altra e' vista: ci va;
+- alberoIgnoto: l'albero finisce, gli altri mai visti: prima ci andava, ora
+  si ferma.
+
+**mining.mjs** raccoglie meno (2460 invece di 2741, 492 al minuto invece
+di 548): la miniera si esaurisce verso la fine, e prima 17 civili su 20
+partivano verso altre miniere mai viste, a 770-2140 px (le 240 unita' in
+piu' venivano da li'); ora si fermano accanto a quella finita. E' la
+richiesta. Passano workers, depot, idle, economy, enemydepots, enemyarmy,
+lvl04, blocked, sites, deposit, saves, soak.
+
+### 9.69 Il "timer fermati" non ferma chi cammina ancora
+
+Segnalazione dell'autore: molte unita', nelle lunghe distanze, si fermano
+a meta' strada circa; forse un timer che dopo n passi interrompe il
+movimento per evitare unita' bloccate.
+
+Era cosi': l'Alarm_8 dell'originale ("timer fermati"), armato a ogni ordine
+di spostamento, allo scadere ferma l'unita' dov'e' (dirox, diroy = x, y).
+Durate [C]: 1200 passi (20 s) per i clic destri di cavaliere, picchiere,
+arciere e civile; 3000 per il guerriero e per l'andata alla bandiera di
+raccolta. A 3-5 px a passo sono 3600-6000 px in linea retta, meno lungo i
+percorsi; le mappe arrivano a 7000x7000 e 3200x8000.
+
+**Misura** (prova nuova `game/test/browser/longmove.mjs`, nel match, da un
+punto libero a nord-ovest a uno lontano 6336 px di percorso, un'unita' per
+tipo col clic destro vero): picchiere, cavaliere, arciere e civile si
+fermavano al passo 1199, a 150-2500 px dalla meta; il guerriero (3000)
+arrivava.
+
+**Ora** (pathing.js): `armStopTimer` arma il timer come prima e ricorda la
+distanza dalla meta; allo scadere (`stopTimer`, l'Alarm_8 di tutte le unita'
+alleate e dei civili) se l'unita' e' in cammino e si e' avvicinata di
+almeno 150 px dall'ultimo controllo, il timer riparte per 600 passi (10 s);
+se no si ferma come prima. Chi raccoglie, costruisce o ripara lo annulla
+gia' (civilians.js, come prima).
+
+Dopo: arrivano tutti (cavaliere in 1215 passi, guerriero, picchiere e
+arciere ~1518, civile 2029); un guerriero incastrato (rimesso al suo posto a
+ogni passo) si ferma ancora al passo 2999. movement.mjs e attackorder.mjs
+danno gli stessi numeri di prima; passano settle, rally, melee, idle,
+workers, garrison, blocked, sites, resources, depot, fireorder,
+enemydefense, lvl04, saves (5 room), soak. `longmove.mjs` e' nella CI.

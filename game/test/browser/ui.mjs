@@ -269,7 +269,7 @@ const ENDINGS = (room) => {
   const { G, w } = UI, g = G.g;
   UI.clearUI();
   g.hours = 1; g.minutes = 23; g.seconds = 45; g.basidistrutte = 3;
-  const v = w.create("victory_manager", 0, 0); v.fogalpha = 1; v.clicloc = 1;
+  const v = w.create("victory_manager", 0, 0); v.t = 999; v.clicloc = 1; v.clicT = 0; // §9.56: a fine dissolvenza
   UI.shot("vittoria " + room, true); w.destroy(v);
   const o = w.create("gameover_manager", 0, 0); o.fogalpha = 1;
   UI.shot("sconfitta " + room, true); w.destroy(o);

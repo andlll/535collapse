@@ -66,8 +66,14 @@ export const ECO = {
   // [§9.52, decisioni dell'autore] la base sud, col centro che mette la
   // regia del livello (levels.js, LV4); gli attacchi partono solo a ponte
   // riparato (global.en.hold), crescenti ma non troppo
+  // [§9.57, richiesta dell'autore] con la fattoria di partenza (startFarm,
+  // LV4.farm: un mulino e tre campi): il cibo e' la risorsa piu' sicura della base sud
+  // (pochi alberi e una miniera, sul bordo della mappa)
+  // [§9.59, richiesta dell'autore] altri lavoratori, senza valanga: fino a 9
+  // (non 6), uno ogni 30 s (non 17)
   lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 10,
-           attackAt: 4, attackGrow: 1, attackEvery: 9000 },
+           attackAt: 4, attackGrow: 1, attackEvery: 9000, mix: { wood: 2, gold: 2, food: 3, stone: 1 },
+           workers: 9, workerTime: 1800 },
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare
@@ -76,6 +82,10 @@ const FAR = 900;         // §9.46: risorsa (o campo) piu' lontana di cosi' dal 
 const EVERY = 20;        // ogni quanti passi la regia guarda
 const FLEE = 600;        // passi di fuga, senza nuovi lavori
 const SKIN = "b_";       // §9.49: prefisso degli sprite del lavoratore nemico
+const STUCK_T = 120;     // §9.57: passi in cammino senza avanzare di STUCK_D px: bloccato
+const STUCK_D = 24;
+const AVOID = 1800;      // §9.57: passi in cui il bloccato non torna alla stessa risorsa
+const CROWD = 300;       // §9.57: px in piu' per ogni compagno gia' sulla stessa risorsa (legno, pietra)
 
 export const ecoOf = (w) => ({ ...ECO.default, ...(ECO[w.room] || {}) });
 
@@ -107,6 +117,34 @@ function flee(i, w, p) {
   orderWork(w, p, i, "move", c);
 }
 
+// [§9.57, segnalazione dell'autore] Nel livello 4 i lavoratori nemici
+// restavano a lungo col passo del cammino senza muoversi: le poche risorse
+// vicine alla base sud stanno sul bordo della mappa (posti attorno alla
+// miniera e agli alberi fuori mano o gia' occupati) e ci andavano tutti
+// insieme, avanti e indietro contro un compagno al lavoro. Chi cammina
+// (azione 1, non in coda al proprio posto) senza avanzare di STUCK_D px per
+// STUCK_T passi lascia il lavoro e il posto prenotato e si ferma: la regia
+// gli da' un altro lavoro, non alla stessa risorsa per AVOID passi.
+function watchStuck(i, w, p) {
+  const now = w._stepNo;
+  if (i.action !== 1 || i.queueWait || i.fleeUntil > now) { i.prog = null; return; }
+  const h = i.prog;
+  if (!h || Math.hypot(i.x - h.x, i.y - h.y) >= STUCK_D) { i.prog = { x: i.x, y: i.y, t: now }; return; }
+  if (now - h.t < STUCK_T) return;
+  i.prog = null;
+  const kind = jobOf(i);
+  const res = kind && kind !== "food" ? w.nearest(...workAt(i, kind), RES[kind]) : null;
+  if (res) i.avoid = { id: res.id, until: now + AVOID };
+  if (i.spotRef && i.spotRef.owner === i) i.spotRef.owner = null;
+  i.spotRes = null; i.spotRef = null; i.spotQ = false;
+  for (const k of ["woodwork", "goldwork", "stonework", "foodwork", "buildwork", "repairwork", "fieldwork"]) i[k] = 0;
+  i.depositTo = null;
+  i.action = 0; i.step = 0; i.speed = 0;
+  p.occupy(i);
+  w.g.en.idle += 1;
+}
+const workAt = (o, kind) => (kind === "wood" ? [o.woodx, o.woody] : kind === "gold" ? [o.goldx, o.goldy] : [o.stonex, o.stoney]);
+
 export function enemyOmino(p) {
   const base = omino(p);
   return {
@@ -120,7 +158,18 @@ export function enemyOmino(p) {
     step(i, w) {
       visibility(i, w);
       if (i.hit === 1 && !(i.fleeUntil > w._stepNo)) flee(i, w, p);
+      const back = i.woodwork === 2 || i.stonework === 2;
       base.step(i, w);
+      if (!i.alive) return;
+      // [§9.57] consegnato, il civile torna all'albero (o alla pietra) piu'
+      // vicino (civilians.js, depositStep): il nemico sceglie come la regia,
+      // senza accalcarsi
+      if (back && (i.woodwork === 1 || i.stonework === 1)) {
+        const kind = i.woodwork === 1 ? "wood" : "stone", [x, y] = workAt(i, kind);
+        const t = targetFor(w, i, kind, false, [...w.all("enemy_omino")]);
+        if (t && (t.x !== x || t.y !== y)) orderWork(w, p, i, kind, t);
+      }
+      watchStuck(i, w, p);
     },
     // come le unita' nemiche: col puntatore sopra il cerchio rosso; il clic
     // destro con fanti e cavalieri selezionati lo fa bersaglio (enemies.js,
@@ -184,20 +233,36 @@ const RES = { wood: "albero", gold: "miniera_oro", stone: "stone_parent" };
 // La risorsa di tipo kind piu' vicina al lavoratore, entro RANGE da un
 // deposito nemico ([§9.46] se non ce ne sono, o non c'e' un deposito, e si
 // possono fare depositi nuovi: la piu' vicina al lavoratore entro SEARCH)
-// deposito nemico (per il cibo: un campo nemico libero), o null
-function targetFor(w, i, kind, wide) {
+// deposito nemico (per il cibo: un campo nemico libero), o null.
+// [§9.57] Un albero o una pietra contano CROWD px in piu' per ogni compagno
+// che ci lavora gia' (si spargono invece di accalcarsi sullo stesso); la
+// risorsa da cui il lavoratore si e' appena bloccato (avoid) solo se non
+// ce ne sono altre.
+function targetFor(w, i, kind, wide, workers = []) {
   if (kind === "food") {
     for (const c of w.all("enemy_campo")) if (c.foodwork === 0) return c;
     return null;
   }
   const dep = w.nearest(i.x, i.y, "enemy_magazza");
-  let best = null, bd = Infinity, far = null, fd = Infinity;
+  const av = i.avoid && i.avoid.until > w._stepNo ? i.avoid.id : null;
+  const crowd = (r) => {
+    if (kind === "gold") return 0; // la miniera ha i suoi posti (civilians.js, resSpot)
+    let n = 0;
+    for (const o of workers) {
+      if (o === i || jobOf(o) !== kind) continue;
+      const [x, y] = workAt(o, kind);
+      if (Math.abs(x - r.x) < 1 && Math.abs(y - r.y) < 1) n++;
+    }
+    return n * CROWD;
+  };
+  let best = null, bd = Infinity, far = null, fd = Infinity, avoided = null;
   for (const r of w.all(RES[kind])) {
+    if (r.id === av) { avoided = r; continue; }
     const di = Math.hypot(r.x - i.x, r.y - i.y);
-    if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { if (di < bd) { bd = di; best = r; } }
+    if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { const c = di + crowd(r); if (c < bd) { bd = c; best = r; } }
     else if (wide && di < SEARCH && di < fd) { fd = di; far = r; }
   }
-  return best || far;
+  return best || far || avoided;
 }
 
 // ------------------------------------------------- ricostruzione (§9.45)
@@ -362,6 +427,43 @@ export function enemyCantiere(p) {
   };
 }
 
+// [§9.57, richiesta dell'autore] La fattoria di partenza, gia' finita: un
+// mulino e dei campi nei punti di `farm` ({ mill: [x, y], fields: [[x, y],
+// ...] }, levels.js). Se un punto non va, il piu' vicino che va su anelli
+// attorno (fino a 300 px): libero (site), dentro la mappa con un margine,
+// col bordo inferiore raggiungibile dal centro `c`.
+export function startFarm(w, p, c, farm) {
+  const reach = p.goalField(c.x, c.y + 200, true);
+  const ok = (o, x, y) => {
+    const ob = w.objects[o], M = 120;
+    if (x < M || y < M || x > w.roomW - M || y > w.roomH - M) return false;
+    if (!site(w, { x, y }, { mask: ob.mask, sprite: ob.sprite })) return false;
+    const bb = w.bbox({ x, y, mask_index: ob.mask, sprite_index: ob.sprite, image_xscale: 1, image_yscale: 1, image_angle: 0, image_index: 0 });
+    if (!bb) return false;
+    const gy = Math.floor(bb[3] / 32) + 1;
+    for (let gx = Math.floor(bb[0] / 32) - 1; gx <= Math.floor(bb[2] / 32) + 1; gx++) if (p.fieldAt(reach, gx, gy) !== -1) return true;
+    return false;
+  };
+  const near = (o, [x0, y0]) => {
+    if (ok(o, x0, y0)) return { x: x0, y: y0 };
+    for (let r = 40; r <= 300; r += 40) {
+      for (let k = 0; k < 16; k++) {
+        const x = Math.round(x0 + r * Math.cos(k * Math.PI / 8)), y = Math.round(y0 + r * 0.6 * Math.sin(k * Math.PI / 8));
+        if (ok(o, x, y)) return { x, y };
+      }
+    }
+    return null;
+  };
+  for (const [o, pts] of [["enemy_mulino", [farm.mill]], ["enemy_campo", farm.fields]]) {
+    for (const pt of pts) {
+      const at = near(o, pt);
+      if (!at) continue;
+      const b = w.create(o, at.x, at.y);
+      if (w.objects[o].solid) p.markInstance(b, 1000);
+    }
+  }
+}
+
 // --------------------------------------------------------------- regia
 
 // Un lavoratore da mandare a un lavoro vicino a t: fermo, se no il
@@ -478,7 +580,7 @@ export function enemyEco(p) {
         const kinds = Object.keys(E.mix).sort((a, b) =>
           (count[a] - E.mix[a] / total * workers.length) - (count[b] - E.mix[b] / total * workers.length));
         for (const kind of kinds) {
-          const t = targetFor(w, o, kind, E.newDeposits > (en.newDeposits || 0));
+          const t = targetFor(w, o, kind, E.newDeposits > (en.newDeposits || 0), workers);
           if (!t) continue;
           orderWork(w, p, o, kind, t);
           count[kind]++;

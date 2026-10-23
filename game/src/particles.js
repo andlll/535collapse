@@ -185,7 +185,8 @@ export class Particles {
     q.dir = rand(t.direction[0], t.direction[1]);
     q.ang = rand(t.orientation[0], t.orientation[1]);
     q.ph = Math.random();             // fase del wiggle
-    q.per = 16 + 16 * Math.random();  // periodo del wiggle in passi [I]
+    // periodo del wiggle in passi [I]; [§9.61] wigglePeriod: [min, max] del tipo
+    q.per = t.wigglePeriod ? rand(t.wigglePeriod[0], t.wigglePeriod[1]) : 16 + 16 * Math.random();
     const c = t.colour;
     q.col = c && c.mix ? mergeColour(c.mix[0], c.mix[1], Math.random())
       : c && c.rgb ? (Math.round(rand(c.rgb[0], c.rgb[1])) | (Math.round(rand(c.rgb[2], c.rgb[3])) << 8)

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="69" height="82" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="8" nextobjectid="418">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="69" height="82" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="8" nextobjectid="436">
  <tileset firstgid="1" source="../tileset/terreno.tsx"/>
  <tileset firstgid="13" source="../tileset/montagne_fiumi.tsx"/>
  <tileset firstgid="33" source="../tileset/natura.tsx"/>
@@ -431,6 +431,24 @@
   <object id="415" gid="36" x="1752" y="20" width="180" height="274"/>
   <object id="416" gid="12" x="1254.55" y="1375.76" width="662" height="856"/>
   <object id="417" gid="12" x="338" y="1815" width="662" height="856"/>
+  <object id="418" gid="39" x="1696" y="3250" width="188" height="282"/>
+  <object id="419" gid="39" x="1705" y="3128" width="188" height="282"/>
+  <object id="420" gid="36" x="1571" y="3245" width="180" height="274"/>
+  <object id="421" gid="35" x="1820" y="3256" width="170" height="288"/>
+  <object id="422" gid="39" x="1701" y="3377" width="188" height="282"/>
+  <object id="423" gid="36" x="1571" y="3126" width="180" height="274"/>
+  <object id="424" gid="40" x="1819" y="3130" width="186" height="288"/>
+  <object id="425" gid="40" x="2344" y="3555" width="186" height="288"/>
+  <object id="426" gid="35" x="2347" y="3429" width="170" height="288"/>
+  <object id="427" gid="38" x="2223" y="3556" width="214" height="248"/>
+  <object id="428" gid="39" x="2480" y="3547" width="188" height="282"/>
+  <object id="429" gid="38" x="2419" y="3673" width="214" height="248"/>
+  <object id="430" gid="35" x="2474" y="3421" width="170" height="288"/>
+  <object id="431" gid="33" x="2002" y="2877" width="172" height="298"/>
+  <object id="432" gid="33" x="2124" y="2875" width="172" height="298"/>
+  <object id="433" gid="33" x="1905" y="2952" width="172" height="298"/>
+  <object id="434" gid="38" x="2024" y="2994" width="214" height="248"/>
+  <object id="435" gid="34" x="2148" y="3003" width="216" height="244"/>
  </objectgroup>
  <objectgroup color="#ffb000" draworder="index" id="7" name="regia">
   <object id="1" gid="170" x="100" y="100" width="84" height="118"/>

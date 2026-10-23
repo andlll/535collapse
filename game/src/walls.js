@@ -72,6 +72,8 @@ export function wallFond(k, p) {
     },
     alarm0(i, w) { armBuilders(i, w, p, "buildwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
+      // §9.55: colpito fino a 0 crolla, come gli altri cantieri
+      if (i.life <= 0) { p.markInstance(i, 1); w.destroy(i); destroyAll(w, ...plusNames); return; }
       if (i.selected === 1 && w.number(plusNames[0]) === 0) plusButtons(w, i, k);
       // [Richiesta dell'autore] fasi e tratto finito in dissolvenza
       if (i.life >= i.slife) { const m = w.create(K.wall, i.x, i.y); w.swapSprite(m, m.sprite_index, i.sprite_index); w.destroy(i); return; }

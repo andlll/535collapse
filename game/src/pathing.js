@@ -822,6 +822,52 @@ export function walkLine(p, x0, y0, x1, y1) {
 // vanno. Chi arrivava in fondo al campo senza "vedere" la sua casella
 // andava avanti e indietro di una cella a ogni passo, voltandosi (gli
 // incroci fra due gruppi: decine di unita' ammucchiate e tremolanti).
+// [§9.64, segnalazione dell'autore] La linea dall'unita' al bordo
+// dell'edificio `t` (il punto del suo riquadro piu' vicino, fermandosi 40 px
+// prima: le celle dell'edificio stesso sono ostacolo) non passa per
+// ostacoli fissi. Serve agli ordini verso un edificio (presidio, cantiere,
+// riparazione) che da vicino andavano dritti: con un edificio o un bosco in
+// mezzo l'unita' camminava sul posto. Senza vista, il campo di flusso. A
+// meno di SEES_NEAR px dal bordo vale sempre la vista (dritti, come prima):
+// li' l'unita' puo' stare in una cella toccata da un altro edificio, e la
+// linea, chiusa dalla prima cella, la faceva andare avanti e indietro fra
+// campo e passo dritto.
+const SEES_NEAR = 80;
+export function seesTarget(w, p, inst, t) {
+  if (!t) return true;
+  const b = w.bbox(t);
+  if (!b) return p.clearSolid(inst.x, inst.y, t.x, t.y);
+  const nx = Math.max(b[0], Math.min(inst.x, b[2])), ny = Math.max(b[1], Math.min(inst.y, b[3]));
+  const d = Math.hypot(nx - inst.x, ny - inst.y);
+  if (d <= SEES_NEAR) return true;
+  const k = (d - 40) / d;
+  return p.clearSolid(inst.x, inst.y, inst.x + (nx - inst.x) * k, inst.y + (ny - inst.y) * k);
+}
+
+// [§9.69, segnalazione dell'autore] Il "timer fermati" (Alarm_8 [C]): un
+// ordine di spostamento lo arma (1200 passi, 3000 per guerriero e
+// raccolta); allo scadere l'unita' si ferma dov'e' (dirox, diroy = x, y), per
+// non restare bloccata per sempre. Nei viaggi lunghi (le mappe arrivano a
+// 8000 px) fermava a meta' strada chi camminava ancora. Ora allo scadere,
+// se dall'ultimo controllo l'unita' si e' avvicinata alla meta di almeno
+// STOP_PROGRESS px, il timer riparte per STOP_AGAIN passi; se no si ferma.
+const STOP_PROGRESS = 150, STOP_AGAIN = 600;
+export function armStopTimer(inst, steps) {
+  inst.alarm.set(8, steps);
+  inst.a8d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+}
+export function stopTimer(inst) {
+  const d = pointDistance(inst.x, inst.y, inst.dirox, inst.diroy);
+  if (inst.action === 1 && inst.a8d !== undefined && inst.a8d !== null && d < inst.a8d - STOP_PROGRESS) {
+    inst.a8d = d;
+    inst.alarm.set(8, STOP_AGAIN);
+    return;
+  }
+  inst.a8d = null;
+  inst.dirox = inst.x;
+  inst.diroy = inst.y;
+}
+
 export function seesGoal(p, inst) {
   const f = inst.flow_field;
   if (!(f instanceof Int32Array)) return true;
@@ -843,6 +889,11 @@ export function seesGoal(p, inst) {
 // e verso la casella si passa sopra gli alleati (mpPotentialStep,
 // World.placeFreeForSlot): le righe vanno per ruolo e chi deve finire
 // davanti spesso parte dietro, e si fermava contro chi era gia' arrivato.
+// [§9.57] la famiglia dei compagni di `inst` (sopra cui si passa verso la
+// casella o il posto): prima era sempre ally_unit, e i lavoratori nemici
+// si bloccavano fra loro (e passavano sopra gli alleati)
+export const sideUnit = (inst) => ((inst.parents || []).includes("enemy_unit") ? "enemy_unit" : "ally_unit");
+
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
 
 // [§9.30] Arrivo sulla casella (formazione, posto di raccolta): l'arrivo
@@ -851,7 +902,8 @@ export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox 
 // Se e' cosi' e la casella e' libera (gli alleati non contano), ci va.
 export function snapToSlot(w, inst) {
   if (inst.action !== 1 || !onFormationSlot(inst) || pointDistance(inst.x, inst.y, inst.dirox, inst.diroy) >= 10) return;
-  if (w.placeFreeExcept(inst, inst.x, inst.y, "ally_unit") || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, "ally_unit")) return;
+  const fam = sideUnit(inst);
+  if (w.placeFreeExcept(inst, inst.x, inst.y, fam) || !w.placeFreeExcept(inst, inst.dirox, inst.diroy, fam)) return;
   w.setPos(inst, inst.dirox, inst.diroy);
 }
 
@@ -907,7 +959,7 @@ export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAll
   // posto prenotato attorno a una risorsa: sopra gli alleati si passa
   const slot = overAllies || (!checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy);
   const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y)
-    : slot ? w.placeFreeExcept(inst, x, y, "ally_unit") : w.placeFree(inst, x, y));
+    : slot ? w.placeFreeExcept(inst, x, y, sideUnit(inst)) : w.placeFree(inst, x, y)); // §9.57
   if (pointDistance(inst.x, inst.y, xg, yg) <= step) {
     if (free(xg, yg)) {
       w.setPos(inst, xg, yg);

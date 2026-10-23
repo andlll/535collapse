@@ -404,7 +404,14 @@ const DECOR = {
 // a meta' risoluzione con l'origine al piede dello stelo, tools/05_atlas.py)
 // ondeggiano come l'erba; una tinta appena piu' scura su alcuni varia il
 // tono. L'erba, dove c'e', e' quella di burst_erba1 alla stessa densita'.
+// [§9.61, richiesta dell'autore] Ondeggiano meno dell'erba: l'oscillazione e'
+// una rotazione attorno al piede dello stelo, e con i 4 gradi dell'erba la
+// cima colorata, alta il doppio (papaveri ~79 px, gialli ~57, erba ~39),
+// si spostava il doppio. Ampiezza (gradi) per sprite, un po' sotto la
+// proporzione, e un ritmo piu' lento (24-48 passi invece di 16-32).
+const FLOWER_SWAY = { papavero1: 1.5, papavero2: 1.5, fiore_giallo1: 2, fiore_giallo2: 2 };
 const fiore = (sprite) => partType({ sprite, size: [0.45, 0.7, 0, 0], ...SWAY, alpha: [1],
+                                     orientation: [-15, 15, 0, FLOWER_SWAY[sprite], false], wigglePeriod: [24, 48],
                                      colour: { mix: [makeColourRgb(255, 255, 255), makeColourRgb(220, 220, 210)] } });
 const PAPAVERO = [fiore("papavero1"), fiore("papavero2")], GIALLO = [fiore("fiore_giallo1"), fiore("fiore_giallo2")];
 const ERBA_PICCOLA = DECOR.burst_erba1.map(([t, n]) => [t, Math.round(n / 6)]); // 1/6 dell'area

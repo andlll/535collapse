@@ -58,6 +58,9 @@ export const PRODUCERS = {
   // quanto pagato.
   castello: {
     ico: "ico_castello", cancel: "castello_indietro_clicker", cancelKey: 69, cancelX: 590, icoScale: 0.7,
+    // [§9.63] barra di produzione e coda in terza riga: la seconda e' dei
+    // pulsanti degli arcieri di presidio (ranged.js, garrisoned)
+    queueY: 190,
     alarm: 1, period: 30, start: 30, next: 30, popMargin: 2, popWait: 30, slots: true, spawn: "castle",
     units: {
       // [Correzione decisa dall'autore §1.6 n.1] col tasto Q l'ariete
@@ -204,10 +207,11 @@ export function producer(name, base, p) {
         for (const u of types) d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, 1);
         d.spriteExt("ico_indietro", 0, P.cancelX, 50, 0.7, 0.7, 0, WHITE, 1);
       }
+      const QY = P.queueY || 120; // §9.63: la riga di barra e coda
       if (i.progression > 0) {
         d.setAlpha(0.69);
-        d.roundrectColourExt(420, 90, 550, 150, 60, 60, WHITE, WHITE, false);
-        d.roundrectColourExt(420, 90, 480 + (70 / 100) * i.progression, 150, 60, 60, GREEN, GREEN, false);
+        d.roundrectColourExt(420, QY - 30, 550, QY + 30, 60, 60, WHITE, WHITE, false);
+        d.roundrectColourExt(420, QY - 30, 480 + (70 / 100) * i.progression, QY + 30, 60, 60, GREEN, GREEN, false);
         // [Correzione decisa dall'autore, §6.1 n.79] la percentuale in nero:
         // nell'originale prendeva il colore rimasto dal disegno precedente
         d.setFont("GUI_1");
@@ -215,7 +219,7 @@ export function producer(name, base, p) {
         d.setValign("middle");
         d.setAlpha(0.7);
         d.setHalign("center");
-        d.text(520, 120, i.progression + "%");
+        d.text(520, QY, i.progression + "%");
         d.setAlpha(0.69);
       }
       d.setAlpha(0.69);
@@ -228,7 +232,7 @@ export function producer(name, base, p) {
       d.text(325, 120, i.life + " / " + i.slife);
       d.setAlpha(1);
       if (P.slots) {
-        if (i.progression > 0 && P.units[i.coda0]) d.spriteExt(P.units[i.coda0].ico, 0, 450, 120, sc, sc, 0, WHITE, 1);
+        if (i.progression > 0 && P.units[i.coda0]) d.spriteExt(P.units[i.coda0].ico, 0, 450, QY, sc, sc, 0, WHITE, 1);
       } else {
         // stalla [C]: icone come il centro, quella in produzione a 0,4
         d.spriteExt(types[0].ico, 0, 450, 50, sc, sc, 0, WHITE, 1);
@@ -240,10 +244,10 @@ export function producer(name, base, p) {
       for (let k = 1; k <= 6; k++) {
         if (i.coda < k) continue;
         d.setAlpha(0.69);
-        d.circleColour(590 + 70 * (k - 1), 120, 30, WHITE, WHITE, false);
+        d.circleColour(590 + 70 * (k - 1), QY, 30, WHITE, WHITE, false);
         d.setAlpha(1);
         const u = P.slots ? P.units[i[SLOTS[k]]] : types[0];
-        if (u) d.spriteExt(u.ico, 0, 590 + 70 * (k - 1), 120, sc, sc, 0, WHITE, 1);
+        if (u) d.spriteExt(u.ico, 0, 590 + 70 * (k - 1), QY, sc, sc, 0, WHITE, 1);
       }
     },
   };

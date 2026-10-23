@@ -295,7 +295,11 @@ export function fond(fam, p) {
       armBuilders(i, w, p, "buildwork", fam === "casa" ? i.x : w.mouse.x, fam === "casa" ? i.y : w.mouse.y);
     },
     // Step [C]: fasi del cantiere, poi l'edificio finito.
+    // [§9.55, richiesta dell'autore] colpito fino a 0 (arieti, catapulte)
+    // il cantiere crolla: niente rovina ne' rimborso, celle libere.
+    // Nell'originale la vita scendeva sotto zero e il cantiere restava.
     step(i, w) {
+      if (i.life <= 0) { p.markInstance(i, 1); w.destroy(i); return; }
       d.phases.forEach(([t, spr], k) => {
         // [Richiesta dell'autore] il passaggio di fase in dissolvenza
         if (i.fase === k && i.life > i.slife * t) { i.fase = k + 1; w.swapSprite(i, spr); }
@@ -533,16 +537,23 @@ export function monastery(p) {
 // solo `var xpos=x`; `var ypos=y` vale sempre. A edificio danneggiato xpos
 // resta non assegnata, cioe' 0 [I, variabili non inizializzate = 0,
 // §1.3], e i riparatori (entro 150 px da (0, y)) non si fermano: si fermano
-// solo a edificio integro, che e' l'effetto voluto.
+// solo a edificio integro, che e' l'effetto voluto. (Fino al §9.66: entro
+// 150 px dall'edificio integro.)
 export const NOONE = -4;
 // [§9.29] Chi ripara un complesso (repT, complex.js) si ferma a edificio
 // integro anche se ripara un pezzo a piu' di 150 px dall'origine.
+// [§9.66, decisione dell'autore] Si fermano solo i civili che riparano
+// QUESTO edificio: il complesso (repT) o l'edificio piu' vicino al punto
+// cliccato (repx, repy), lo stesso a cui il colpo aggiunge vita
+// (civilians.js, azione 7). Prima bastava che il punto cliccato fosse entro
+// 150 px da un edificio integro qualunque: riparando un edificio
+// danneggiato accanto a una casa integra i civili si fermavano subito.
 export function repairEnd(i, w) {
-  const xpos = i.life >= i.slife ? i.x : 0, ypos = i.y;
+  if (i.life < i.slife) return;
   for (const o of w.all("ally_omino")) {
-    if (o.action === 7 && (pointDistance(o.repx, o.repy, xpos, ypos) < 150 || (o.repT === i && i.life >= i.slife))) {
-      o.action = 0; o.repairwork = 0; w.g.idle += 1; o.repx = NOONE; o.repy = NOONE;
-    }
+    if (o.action !== 7) continue;
+    const t = o.repT || w.nearest(o.repx, o.repy, "ally_build");
+    if (t === i) { o.action = 0; o.repairwork = 0; w.g.idle += 1; o.repx = NOONE; o.repy = NOONE; }
   }
 }
 
@@ -639,6 +650,7 @@ export function campoFond(p) {
     // del mouse al momento dell'alarm.
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
     step(i, w) {
+      if (i.life <= 0) { w.destroy(i); return; } // §9.55, come gli altri cantieri
       if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
       campoFondStream(i, w);
     },
@@ -991,13 +1003,23 @@ export function centroCancel() {
 
 // *_blink [C]: un cerchio rosso sopra l'icona della risorsa che manca,
 // sfuma in 25 passi.
+// [§9.54] Uno solo per risorsa: se sta gia' lampeggiando il nuovo sparisce
+// e quello in corso continua col suo ritmo (piu' edifici fermi per la
+// popolazione ne creavano uno a testa, sovrapposti e sfasati).
 const BLINK_POS = { wood_blink: [50, 80], stone_blink: [140, 40], pop_blink: [140, 80],
                     food_blink: [50, 40], gold_blink: [50, 120] };
+// [§9.65, richiesta dell'autore] quick (opts.init): un lampeggio veloce, in
+// BLINK_QUICK passi (il civile che smette di riparare senza materiale, §9.64).
+const BLINK_QUICK = 12;
 export function blink(name) {
   return {
-    create(i) { i.fad = 1; i.alarm.set(0, 25); },
+    create(i, w) {
+      if (w.number(name) > 1) { w.destroy(i); return; }
+      i.dur = i.quick ? BLINK_QUICK : 25;
+      i.fad = 1; i.alarm.set(0, i.dur);
+    },
     alarm0(i, w) { w.destroy(i); },
-    step(i) { i.fad -= 1 / 25; },
+    step(i) { i.fad -= 1 / (i.dur || 25); },
     drawGUIEnd(i, w, dr) {
       dr.setAlpha(i.fad);
       dr.circleColour(BLINK_POS[name][0], BLINK_POS[name][1], 20, RED, RED, false);

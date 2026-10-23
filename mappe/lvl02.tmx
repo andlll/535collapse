@@ -495,10 +495,6 @@
   <object id="461" gid="168" x="522" y="223" width="112" height="118" />
   <object id="462" gid="168" x="90" y="657" width="112" height="118" />
   <object id="463" gid="169" x="1472" y="2220" width="102" height="118" />
-  <object id="464" gid="170" x="365" y="361" width="102" height="118" rotation="-310" />
-  <object id="465" gid="170" x="602" y="216" width="102" height="118" rotation="-280" />
-  <object id="466" gid="170" x="176" y="656" width="102" height="118" />
-  <object id="467" gid="170" x="1382" y="2229" width="102" height="118" rotation="-200" />
   <object id="476" name="vista iniziale" type="vista" x="200" y="6500" width="3000" height="2000" />
  </objectgroup>
 </map>
