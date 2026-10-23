@@ -874,8 +874,8 @@ export const LV5 = {
   retreatAfter: 45 * 60,             // ...o dopo tanti passi
   home: [5750, 2450],                // dove si ritirano: dentro la porta ovest
   wallsR: 600,                       // un alleato a tanti px dalle mura nemiche: il dialogo delle mura
-  acropolis: [3700, 2300],           // il centro delle rovine
-  acropolisR: 700,
+  acropolis: [3450, 2250],           // il centro delle rovine (e delle pietre che le circondano)
+  acropolisR: 800,
   acropolisAfter: 600,               // passi dopo il dialogo delle mura (l'acropoli e' sulla strada dell'inseguimento)
   sightR: 900,                       // l'ondata vede la fortezza a tanti px
   siegeAt: [4980, 2450],             // dove nascono le macchine d'assedio: fuori dalla porta ovest

@@ -6927,3 +6927,25 @@ Senza nessun ordine del giocatore (20 000 passi): ritirata a 3 s, mura a 18
 s (i soldati inseguono da soli), acropoli a 28 s, 10 lavoratori nemici a
 ~100 s, prima ondata a 4 minuti (a 5 minuti ha ucciso 6 soldati del
 giocatore lasciati senza ordini).
+
+### 9.77 Livello 5: un giocatore automatico
+
+Richiesta: provare la partita facendo le scelte del giocatore. Strumento
+`game/test/browser/autoplay.mjs` (fuori dalla CI: una partita dura minuti):
+gioca con gli stessi comandi del giocatore (clic destro vero, tasti di
+costruzione e produzione, clic sinistro per piazzare) con tre strategie
+(ordinato, aggressivo, lento) e scrive fasi, risorse, perdite e ondate.
+
+Ritocco: il centro dell'acropoli passa a (3450, 2250) con raggio 800 (era
+3700, 2300 e 700): le pietre da cavare stanno a ovest delle rovine e il
+dialogo arrivava solo passandoci accanto da est.
+
+Prima partita, strategia ordinata (40 minuti, seme 1): fortezza cominciata
+a 3:40 e finita a 4:37, ondata d'avviso a 7:43. Il legno resta fra 10 e 220
+per tutta la partita: vicino alla base gli alberi veri entro 2500 px dal
+centro sono 11 (uno entro 1500), i boschi attorno sono `albero_fake`
+(decorativi, 47 entro 1500 px); quello a (1816, 1188) e' chiuso dalle
+montagne e i civili ci camminano sul posto. Niente arieti, 2 catapulte; le
+ondate (dalla quarta minuto, ogni 3, poi con le macchine d'assedio) logorano
+l'esercito: 27, 22, 16, 12, 7 e 0 soldati a 20:39; sconfitta. La citta'
+nemica resta intatta (28 edifici).
