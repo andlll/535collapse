@@ -6994,3 +6994,18 @@ di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
 Il legno non manca piu' (fino a 2400). Il bot non fa micro (non punta le
 torri con le catapulte, non ritira i feriti): dice che il livello non si
 vince "a forza", non quanto e' difficile per un giocatore.
+
+**Le ondate e l'assalto** (domanda dell'autore: le ondate passano dall'unica
+porta, come distruggono la base durante un assalto?). Non lo fanno: la
+regia nemica non lancia ondate finche' un alleato e' vicino a un suo
+edificio (§9.50, `intruder`), e nei registri il numero delle ondate resta
+fermo per tutto l'assalto. Il bot ora registra ogni ondata (composizione,
+bersaglio, dov'e' l'esercito) e ogni edificio perso (nemici entro 500 px,
+soldato piu' vicino). Partita ordinata di prova: le ondate vanno sempre al
+magazzino accanto all'acropoli (l'edificio alleato piu' vicino alla
+citta'); le case perse dopo l'assalto fallito le brucia un guerriero
+nemico alla volta, a 650-1100 px dall'esercito, che restava fermo alla
+caserma (i soldati nuovi non venivano mandati alla difesa: difetto del
+bot, corretto: ogni 30 s i soldati fermi lontani tornano al punto di
+difesa). Il §9.78 sopra ("le ondate distruggono le case mentre l'esercito
+e' all'assalto") era sbagliato.

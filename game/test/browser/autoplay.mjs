@@ -256,6 +256,12 @@ await page.evaluate(([STRAT, SEED]) => {
       order(army(), RALLY[0], RALLY[1]);
       say("soldati richiamati vicino alla base");
     }
+    // i soldati nuovi (fermi alla caserma) e chi torna da un assalto: alla
+    // difesa, ogni 30 s
+    if (st.home && !st.assault && now() % 1800 < 30) {
+      const far = army().filter((u) => u.action === 0 && Math.hypot(u.x - RALLY[0], u.y - RALLY[1]) > 500);
+      if (far.length) order(far, RALLY[0], RALLY[1]);
+    }
     const cas = w.all("caserma").next().value;
     if (cas && L.phase >= 2 && army().length < S.attackArmy + 6 && g.food >= 150 && g.gold >= 70) produce(cas, "warrior", 2);
     // le macchine d'assedio
