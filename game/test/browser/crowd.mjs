@@ -5,6 +5,9 @@
 //              passo 1400 (poi restano fermi li')
 //   circondato 18 alleati, clic destro vero su un nemico chiuso in un anello
 //              di alberi (irraggiungibile)
+//   riva       lo stesso con 14 guerrieri, picchieri e cavalieri (gli arcieri
+//              lo uccidono da lontano) e il nemico invulnerabile: vanno fin
+//              dove si puo' e si fermano li'
 //   nemici     18 nemici misti contro 6 fanti alleati invulnerabili in
 //              difesa: si contano i nemici
 //   mischia    18 contro 18, clic destro vero sui nemici
@@ -19,9 +22,11 @@
 //           di 150 px di strada ma meno di 40 px di spostamento netto, senza
 //           combattere ne' tirare (avanti e indietro, in tondo, sul posto)
 //   rev     inversioni di marcia
+//   farthest (riva) la distanza dal nemico del soldato piu' lontano, alla
+//           fine (parte a ~700 px; l'anello ha raggi 110 x 80)
 // Prima del §9.71 (seme 3): attacco long 91, fuoco endOv 4, circondato
-// jitter 34 e rev 2734, nemici jitter 73, mischia long 28, punto moving 9,
-// endOv 40 e rev 9524. Esce con codice 1 se un caso supera le soglie (LIMITS).
+// jitter 34 e rev 2734, riva moving 14, endOv 78 e rev 15792, nemici
+// jitter 73, mischia long 28, punto moving 9, endOv 40 e rev 9524. Esce con codice 1 se un caso supera le soglie (LIMITS).
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
 //   node game/test/browser/crowd.mjs [room] [seme] [casi, separati da virgole]
@@ -35,6 +40,7 @@ const LIMITS = {
   attacco: { long: 10 },
   fuoco: { endOv: 0 },
   circondato: { jitter: 2, rev: 100 },
+  riva: { jitter: 2, rev: 100, moving: 0, endOv: 3, farthest: 330 },
   nemici: { jitter: 25 },
   mischia: { long: 10 },
   punto: { moving: 0, endOv: 3, jitter: 5, rev: 500 },
@@ -111,6 +117,13 @@ for (const C of CASES) {
       allies = group("ally_", CX - 450, CY);
       G.advance(5); select(allies); rightClick(e.x, e.y);
       steps = 2000;
+    } else if (C === "riva") {
+      ring(CX + 250, CY);
+      const e = mk("enemy_warrior", CX + 250, CY); e.defender = 1; e.life = e.slife = 1e9; enemies = [e];
+      G.advance(2);
+      allies = group("ally_", CX - 450, CY, [["cavaliere", 4], ["warrior", 6], ["picchiere", 4]]);
+      G.advance(5); select(allies); rightClick(e.x, e.y);
+      steps = 1500;
     } else if (C === "nemici") {
       allies = group("ally_", CX - 50, CY, [["warrior", 3], ["picchiere", 3]]);
       for (const a of allies) { a.life = 100000; a.comp = 50; }
@@ -168,7 +181,8 @@ for (const C of CASES) {
     }
     const L = soldiers();
     return { ov, long: long.size, endOv: overlaps(L).length, moving: L.filter((u) => u.action === 1).length, jitter, rev,
-             alive: L.length, enemiesLeft: enemies.filter((e) => e.alive).length };
+             alive: L.length, enemiesLeft: enemies.filter((e) => e.alive).length,
+             farthest: C === "riva" ? Math.round(Math.max(...L.map((u) => Math.hypot(u.x - enemies[0].x, u.y - enemies[0].y)))) : 0 };
   }, [C, Number(seedArg)]);
   const lim = LIMITS[C];
   const over = Object.keys(lim).filter((k) => res[k] > lim[k]);

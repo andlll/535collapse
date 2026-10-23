@@ -206,21 +206,43 @@ export class Pathing {
   // chiusa (un'unita' a ridosso di un edificio, un bersaglio sul bordo di un
   // bosco) vale come le sue vicine.
   reachable(x0, y0, x1, y1, enemy = false) {
-    const lab = this.regions(enemy), { gw } = this;
-    const around = (x, y) => {
-      const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID), out = [];
-      for (let r = 0; r <= 1 && !out.length; r++) {
-        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-          if (!this.inside(gx + dx, gy + dy)) continue;
-          const v = lab[(gy + dy) * gw + gx + dx];
-          if (v && !out.includes(v)) out.push(v);
-        }
-      }
-      return out;
-    };
-    const a = around(x0, y0);
+    const lab = this.regions(enemy);
+    const a = this._zonesAround(lab, x0, y0);
     if (!a.length) return true; // dentro un ostacolo: non si sa, come prima
-    return around(x1, y1).some((v) => a.includes(v));
+    return this._zonesAround(lab, x1, y1).some((v) => a.includes(v));
+  }
+
+  // le zone della cella di (x, y) o, se e' chiusa, delle sue vicine
+  _zonesAround(lab, x, y) {
+    const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID), out = [];
+    for (let r = 0; r <= 1 && !out.length; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (!this.inside(gx + dx, gy + dy)) continue;
+        const v = lab[(gy + dy) * this.gw + gx + dx];
+        if (v && !out.includes(v)) out.push(v);
+      }
+    }
+    return out;
+  }
+
+  // [§9.71] La cella piu' vicina a (x1, y1) fra quelle che da (x0, y0) si
+  // raggiungono: libera (nessuna unita' ferma), non in `used`; anelli fino a
+  // `maxR` celle. Indice della cella o -1.
+  nearestReachableCell(x0, y0, x1, y1, enemy = false, used = null, maxR = 40) {
+    const lab = this.regions(enemy), { gw, cost } = this;
+    const mine = this._zonesAround(lab, x0, y0);
+    if (!mine.length) return -1;
+    const gx = Math.floor(x1 / GRID), gy = Math.floor(y1 / GRID);
+    for (let r = 0; r <= maxR; r++) {
+      let best = -1, bd = Infinity;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !this.inside(gx + dx, gy + dy)) continue;
+        const k = (gy + dy) * gw + gx + dx, d = dx * dx + dy * dy;
+        if (d < bd && mine.includes(lab[k]) && cost[k] < 1000 && !(used && used.has(k))) { bd = d; best = k; }
+      }
+      if (best >= 0) return best;
+    }
+    return -1;
   }
 
   // scr_free / scr_occupy [C]
@@ -1059,6 +1081,28 @@ export function waitHere(w, p, i, steps = WAIT_RETRY) {
   i.action = 0; i.warwork = 0; i.speed = 0; i.step = 0;
   i.dirox = i.x; i.diroy = i.y;
   p.occupy(i);
+}
+// [§9.71, richiesta dell'autore] Il bersaglio scelto col clic destro non si
+// raggiunge: si va alla cella raggiungibile piu' vicina a lui e li' ci si
+// ferma (un ordine di movimento, warwork 0: un nemico raggiungibile
+// intanto lo si attacca). Ognuno la sua: le celle prese in questo passo, con
+// le loro vicine, non le prende un altro (cosi' non si ammassano tutti nello
+// stesso punto della riva). Falso se non ce n'e' entro 40 celle.
+export function goNear(w, p, i, t) {
+  if (w._nearStep !== w._stepNo) { w._nearStep = w._stepNo; w._nearUsed = new Set(); }
+  const used = w._nearUsed;
+  const k = p.nearestReachableCell(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"), used);
+  if (k < 0) return false;
+  const gx = k % p.gw, gy = (k - gx) / p.gw;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (p.inside(gx + dx, gy + dy)) used.add(k + dy * p.gw + dx);
+  p.free(i);
+  i.dirox = gx * GRID + GRID / 2; i.diroy = gy * GRID + GRID / 2;
+  i.formX = i.dirox; i.formY = i.diroy; // onFormationSlot: sopra gli alleati
+  i.goal_x = gx * GRID; i.goal_y = gy * GRID;
+  generateFields(p, i, i.dirox, i.diroy);
+  if (i.action !== 1) i.alarm.set(0, 5);
+  i.action = 1; i.warwork = 0; i.creation = 0;
+  return true;
 }
 export const canReach = (w, i, t) => w.path.reachable(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"));
 // il piu' vicino della famiglia `fam` entro `range` px che si raggiunge

@@ -15,7 +15,7 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, WAIT_RETRY } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill } from "./siege.js";
@@ -946,10 +946,15 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null; }
     if (i.target_eu && i.action === 1 && i.warwork === 1 && targetStuck(i, w, te)) i.target_eu = null; // §9.38
     // [§9.71] bersaglio che non si raggiunge: ci si rinuncia (come
-    // targetStuck), fermi se non c'e' altro da attaccare; fermo ad aspettare
+    // targetStuck) e si va il piu' vicino possibile a lui (goNear); fermo ad aspettare
     // un posto libero attorno a lui (flowMovement): non riparte prima
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
-      if (!canReach(w, i, i.target_eu)) { i.target_eu = null; if (i.warwork === 1) waitHere(w, p, i); return null; }
+      if (!canReach(w, i, i.target_eu)) {
+        const t = i.target_eu;
+        i.target_eu = null;
+        if (i.warwork === 1 && !goNear(w, p, i, t)) waitHere(w, p, i);
+        return null;
+      }
       if (i.action === 0 && waiting(w, i)) return null;
     }
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {

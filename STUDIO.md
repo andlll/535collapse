@@ -6662,3 +6662,19 @@ sovrapposte mentre tirano).
 
 `crowd.mjs` e' nella CI (seme 3; fallisce col codice di prima in tutti i
 casi).
+
+**Il bersaglio irraggiungibile scelto col clic destro** (richiesta
+dell'autore, dopo la prima versione): non ci si ferma subito dove si e', si
+va fin dove si puo'. Il bersaglio diventa un ordine di movimento (warwork
+0) verso la cella raggiungibile piu' vicina a lui (pathing.js `goNear`,
+`nearestReachableCell`, anelli fino a 40 celle), una per soldato: le celle
+prese nello stesso passo, con le loro vicine, non le prende un altro. Li'
+ci si ferma; un nemico raggiungibile intanto lo si attacca. Caso nuovo di
+crowd.mjs, `riva` (14 guerrieri, picchieri e cavalieri, il nemico chiuso
+dagli alberi e invulnerabile; seme 3): col codice originale arrivavano a
+159 px da lui ma 14 restavano in cammino, 78 coppie sovrapposte, 15.792
+inversioni; con la prima versione fermi alla partenza, a 905 px; ora il
+piu' lontano a 208 px (l'anello ha raggi 110 x 80), fermi, nessuna coppia
+sovrapposta, nessun tremolio. Chi insegue da solo (senza il clic destro)
+un nemico irraggiungibile resta invece fermo dov'e': se no ogni nemico
+oltre un fiume (entro 700 px) trascinerebbe i soldati fino alla riva.
