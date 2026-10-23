@@ -15,8 +15,8 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay } from "./pathing.js";
-import { meleeSpot, FIRE } from "./melee.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, WAIT_RETRY } from "./pathing.js";
+import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill } from "./siege.js";
 
@@ -494,7 +494,7 @@ export function infantry(name, p) {
         if (w._stepNo - c.at >= FIRE_CHECK) {
           const stuck = pointDistance(i.x, i.y, c.x, c.y) < 24 && d > c.d - 4;
           Object.assign(c, { at: w._stepNo, x: i.x, y: i.y, d, n: stuck ? c.n + 1 : 0 });
-          if (c.n >= 2) { i.firework = 0; i.targetid = null; i.action = 0; i.speed = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); }
+          if (c.n >= 2) { i.firework = 0; i.targetid = null; i.action = 0; i.warwork = 0; i.speed = 0; i.dirox = i.x; i.diroy = i.y; p.occupy(i); } // §9.71: warwork
         }
       } else i.fireChk = null;
       // [Richiesta dell'autore] non addosso a un alleato, se puo' ancora
@@ -727,7 +727,14 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
   }
   if (i.action === 1) {
     const moveOrder = i.firework === 0 && (i.warwork === 0 || i.warwork === 4);
-    if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i))) {
+    if (moveOrder && moveStalled(w, p, i)) return; // §9.71
+    // [§9.71] in mischia vicino al bersaglio, sovrapposto solo ad alleati:
+    // non col flow field (senza collisioni i due restavano uno sull'altro
+    // fino al bersaglio e combattevano sovrapposti) ma dritto verso un posto
+    // suo attorno al bersaglio, sopra gli alleati (stepOver)
+    const over = i.warwork === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFreeForSlot(i, i.x, i.y)
+      && w.placeFreeExcept(i, i.x, i.y, "ally_unit");
+    if (!over && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1 || noYield(w, i, otro)) moveFlowField(w, p, i); // §8.11: assedio
@@ -751,8 +758,9 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
       if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
       // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
       // verso il suo centro (melee.js)
+      const ring = over ? MELEE_UNSTACK : null;
       if (i.warwork === 1 && i.target_eu) {
-        let [sx, sy] = meleeSpot(w, i, i.target_eu);
+        let [sx, sy] = meleeSpot(w, i, i.target_eu, null, ring);
         // [Segnalazione dell'autore, §9.38] nessun posto libero attorno al
         // bersaglio scelto col clic destro (circondato da alleati e nemici):
         // si spingeva verso il suo centro, fermi dietro chi combatteva gia'.
@@ -760,22 +768,60 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
         // diventa il bersaglio (anche in difesa, dove senza bersaglio chi e'
         // oltre i 200 px si sarebbe fermato)
         if (!i.meleeSpot) {
-          [sx, sy] = meleeSpot(w, i, i.target_eu, "enemy_unit");
+          [sx, sy] = meleeSpot(w, i, i.target_eu, "enemy_unit", ring);
           if (i.meleeSpot && i.meleeT !== i.target_eu.id) {
             for (const o of w.all("enemy_unit")) if (o.id === i.meleeT) { i.target_eu = o; break; }
           }
         }
-        mpPotentialStep(w, i, sx, sy, i.autospeed);
+        meleeStep(w, p, i, sx, sy, over);
       }
       if (i.warwork === 1 && !i.target_eu) {
         const n = w.nearest(i.x, i.y, "enemy_unit");
         if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) {
-          const [sx, sy] = meleeSpot(w, i, n, "enemy_unit");
-          mpPotentialStep(w, i, sx, sy, i.autospeed);
-        }
+          const [sx, sy] = meleeSpot(w, i, n, "enemy_unit", ring);
+          meleeStep(w, p, i, sx, sy, over);
+        } else if (over) moveFlowField(w, p, i);
       }
     }
   }
+}
+
+// [§9.71] Un passo in mischia verso (sx, sy), il posto attorno al bersaglio
+// (meleeSpot) o una tappa per arrivarci. Sovrapposto a un alleato (over):
+// sopra gli alleati ma non attraverso edifici, alberi o nemici (stepOver).
+// Nessun posto libero attorno al bersaglio (meleeSpot restituisce il suo
+// centro): invece di spingere contro chi combatte gia', e tremare, fermo;
+// dopo NO_SLOT passi cosi' si smette e si riprova ogni WAIT_RETRY passi
+// (autoAttack).
+const NO_SLOT = 30;
+function meleeStep(w, p, i, sx, sy, over) {
+  if (!i.meleeSpot) {
+    i.noSlotN = (i.noSlotN || 0) + 1;
+    i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); // fermo, senza il passo
+    if (i.noSlotN >= NO_SLOT) { i.noSlotN = 0; waitHere(w, p, i); }
+    return;
+  }
+  i.noSlotN = 0;
+  if (over) { stepOver(w, i, sx, sy); return; }
+  mpPotentialStep(w, i, sx, sy, i.autospeed);
+}
+// Come mp_potential_step, ma passando sopra gli alleati: dritto o, se
+// c'e' un ostacolo (un nemico, un edificio), girando di 30 gradi alla volta
+// fino a 90, prima dalla parte scelta l'ultima volta (overSide): girando a
+// caso andava avanti e indietro. Fermo se non si puo'.
+function stepOver(w, i, tx, ty) {
+  const dir = pointDirection(i.x, i.y, tx, ty), d = Math.min(i.autospeed, pointDistance(i.x, i.y, tx, ty));
+  if (d < 0.5) return false;
+  const side = i.overSide || 1;
+  for (const a of [0, 30 * side, -30 * side, 60 * side, -60 * side, 90 * side, -90 * side]) {
+    const nx = i.x + lengthdirX(d, dir + a), ny = i.y + lengthdirY(d, dir + a);
+    if (!w.placeFreeExcept(i, nx, ny, "ally_unit")) continue;
+    if (a) i.overSide = Math.sign(a);
+    i.direction = ((dir + a) % 360 + 360) % 360;
+    w.setPos(i, nx, ny);
+    return true;
+  }
+  return false;
 }
 
 // [Segnalazione dell'autore, §9.38] La precedenza fra alleati sovrapposti.
@@ -839,6 +885,7 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     const ta = w.nearest(i.x, i.y, "enemy_unit");
     const valid = ta.visible === true;
     const dist = w.distanceToInstance(i, ta);
+    if (dist < 10 * k && unstack(w, i, ta)) return null; // §9.71
     if (dist < 10 * k) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) { i.targetx = ta.x; i.targety = ta.y; p.occupy(i); }
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
@@ -851,6 +898,17 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (i.warwork === 1 && dist >= i.comp * k) { i.action = 0; i.warwork = 0; i.step = 0; p.occupy(i); i.speed = 0; return "exit"; }
     if (dist < i.comp * k && valid && (i.warwork === 0 || i.warwork === 1)) {
+      // [§9.71] il piu' vicino non si raggiunge (chiuso da edifici, alberi,
+      // acqua): un altro che si raggiunge diventa il bersaglio; se non ce
+      // n'e', fermo dov'e', e si riprova ogni WAIT_RETRY passi
+      if (waiting(w, i) && (i.action === 0 || i.warwork !== 1)) return null;
+      if (!canReach(w, i, ta)) {
+        const alt = nearestReachable(w, i, "enemy_unit", i.comp * k, (o) => o.visible === true);
+        if (alt) i.target_eu = alt;
+        else if (i.warwork === 1) waitHere(w, p, i);
+        else i.waitUntil = w._stepNo + WAIT_RETRY;
+        return null;
+      }
       const n = w.nearest(i.x, i.y, "enemy_unit");
       i.dirox = n.x;
       i.diroy = n.y;
@@ -864,6 +922,7 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     }
   } else {
     const te = i.target_eu;
+    if (w.distanceToInstance(i, te) < 10 && unstack(w, i, te)) return null; // §9.71
     if (w.distanceToInstance(i, te) < 10) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) {
         i.targetx = te.x; i.targety = te.y;
@@ -879,6 +938,13 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     if (swingOn(i)) return "exit"; // §9.28
     if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.speed = 0; p.occupy(i); i.target_eu = null; }
     if (i.target_eu && i.action === 1 && i.warwork === 1 && targetStuck(i, w, te)) i.target_eu = null; // §9.38
+    // [§9.71] bersaglio che non si raggiunge: ci si rinuncia (come
+    // targetStuck), fermi se non c'e' altro da attaccare; fermo ad aspettare
+    // un posto libero attorno a lui (flowMovement): non riparte prima
+    if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
+      if (!canReach(w, i, i.target_eu)) { i.target_eu = null; if (i.warwork === 1) waitHere(w, p, i); return null; }
+      if (i.action === 0 && waiting(w, i)) return null;
+    }
     if (i.target_eu && (i.warwork === 0 || i.warwork === 1)) {
       i.dirox = i.target_eu.x;
       i.diroy = i.target_eu.y;
@@ -889,6 +955,29 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
   }
   if (i.action === 2 && w.exists("enemy_unit")) i.direction = pointDirection(i.x, i.y, i.targetx, i.targety);
   return null;
+}
+
+// [§9.71, segnalazione dell'autore] A contatto col nemico ma sovrapposto a
+// un alleato che sta gia' combattendo li': non si comincia a colpire (ne'
+// si continua, fra un colpo e l'altro, se dei due si ha l'ordo piu'
+// basso), si va a un posto libero attorno al nemico (flowMovement, over).
+// Prima i due combattevano uno sopra l'altro. Dopo UNSTACK_MAX passi
+// cosi' (nessun posto da raggiungere) si colpisce comunque.
+const UNSTACK_MAX = 30;
+const SIEGE_UNITS = new Set(["ally_ariete", "ally_catapulta"]);
+function unstack(w, i, t) {
+  if (i.warwork === 4) return false; // un ordine di movimento: non colpisce comunque
+  if (i.action === 2 && i.step !== 0) return false; // colpo in corso: lo finisce
+  const o = w.instancePlace(i, i.x, i.y, "ally_militare");
+  const give = o && !SIEGE_UNITS.has(o.object) && o.action === 2
+    && (i.action !== 2 || (i.ordo ?? 0) < (o.ordo ?? 0) || ((i.ordo ?? 0) === (o.ordo ?? 0) && i.id < o.id));
+  if (!give) { i.unstackN = 0; return false; }
+  i.unstackN = (i.unstackN || 0) + 1;
+  if (i.unstackN > UNSTACK_MAX) return false; // fino a quando non si separano
+  i.action = 1; i.warwork = 1; i.target_eu = t; i.swing = 0; i.speed = 0;
+  i.dirox = t.x; i.diroy = t.y;
+  w.path.free(i);
+  return true;
 }
 
 // [Segnalazione dell'autore, §9.38] Il bersaglio scelto col clic destro

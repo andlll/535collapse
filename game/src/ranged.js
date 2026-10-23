@@ -8,7 +8,7 @@ import { hintOnce } from "./hints.js";
 import { tr } from "./i18n.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot } from "./pathing.js";
+import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, moveStalled } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { atkSignal } from "./enemies.js";
@@ -193,6 +193,7 @@ export function allyArcher(p) {
     if (i.target_eu && !i.target_eu.alive) i.target_eu = null;
     if (i.action === 1) {
       const moveOrder = (i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0; // §6.2 D
+      if (moveOrder && moveStalled(w, p, i)) return; // §9.71
       // [§9.64] verso la torre o il castello da presidiare: col campo anche
       // da vicino se in linea retta c'e' un ostacolo (prima: dritto, e con
       // un edificio in mezzo camminava sul posto)

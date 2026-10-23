@@ -6566,3 +6566,74 @@ cadavere del civile alleato non cambia.
 Prova: `economy.mjs` (nella CI) guarda i fotogrammi dei cadaveri dopo la
 morte del lavoratore: il nemico b_oc81-83, un civile alleato ucciso nella
 stessa partita oc41-43. Prima della correzione il nemico dava oc81-83.
+
+### 9.71 Soldati che si ammassano; chi non puo' arrivare si ferma
+
+Segnalazione e richiesta dell'autore: i soldati tendono ancora a
+sovrapporsi e incasinarsi, forse dopo aver attaccato o dato fuoco, quando
+sono sovrapposti e devono fare altro che andare a un punto indicato dal
+giocatore; evitare il piu' possibile le sovrapposizioni; chi non puo'
+raggiungere un punto si fermi invece di impazzire, e riprovi ogni tanto.
+
+**Misura** (prova nuova `game/test/browser/crowd.mjs`, sei casi nella zona
+aperta del match, ordini col clic destro vero; i numeri dei semi 3 / 7 / 11).
+Prima:
+- *mischia*: chi arriva sovrapposto a un alleato (col flow field si passa
+  uno sull'altro, e sovrapposti si va col flow field) comincia a colpire
+  li': 18 alleati contro 8 nemici, 91 / 43 / 36 coppie sovrapposte per
+  almeno 3 s, quasi tutte mentre colpiscono;
+- *dopo il fuoco*: i fanti restavano con `warwork` 4 (l'ordine di
+  movimento del clic destro, che il GlobalRightReleased da' dopo
+  fireOrder): settleOverlaps (§9.62) li saltava e restavano uno sull'altro
+  (4 / 3 / 2 coppie alla fine), e con warwork 4 non reagivano a un nemico a
+  contatto;
+- *bersaglio irraggiungibile* (un nemico chiuso in un anello di alberi): il
+  flow field porta tutti alla cella raggiungibile piu' vicina, li'
+  ammassati si separano a vicenda senza collisioni e tremano sul posto per
+  sempre (2734 / 1111 / 1716 inversioni di marcia);
+- *punto irraggiungibile* (clic dentro l'anello): le caselle della
+  formazione sono fuori dall'anello, ma tutti seguono il campo del capo, che
+  porta a una sola cella accanto all'anello: ammassati li', 9 su 18 ancora
+  in cammino dopo 25 s, ~10.000 inversioni;
+- *nemici*: senza un posto libero attorno al bersaglio spingono verso il
+  suo centro; dietro gli altri `mp_potential_step` li fa girare in tondo
+  (73 / 63 / 39 finestre di 2 s di tremolio).
+
+**Ora.**
+- *Raggiungibile* (pathing.js `regions`, `reachable`): le zone collegate
+  della griglia dei soli ostacoli fissi (per i nemici anche le porte),
+  calcolate una volta per versione degli ostacoli; due punti si raggiungono
+  se stanno nella stessa zona. Costa una ricerca sulla griglia quando un
+  edificio nasce o crolla, poi niente.
+- *Fermo e riprova* (`waitHere`, `waiting`, WAIT_RETRY = 60 passi):
+  alleati (units.js, autoAttack) e nemici in mischia (enemies.js,
+  enemyAttack) non inseguono un nemico che non si raggiunge: un altro
+  raggiungibile entro il raggio diventa il bersaglio, se no restano fermi e
+  riguardano dopo 1 s. Lo stesso per il bersaglio scelto col clic destro
+  (ci si rinuncia, come con targetStuck §9.38). Senza un posto libero
+  attorno al bersaglio (meleeSpot) non si spinge piu' verso il suo centro:
+  fermi, e dopo 30 passi cosi' la pausa. I nemici, se in mezzo secondo non
+  si avvicinano al bersaglio (`chaseStuck`), si fermano e riprovano, con
+  pause doppie se si bloccano di nuovo, fino a 4 s (agli alleati bastano il
+  cambio di settore e targetStuck: con la stessa regola combattevano
+  peggio).
+- *Ordini di movimento* (`moveStalled`, alleati, arcieri compresi): chi in
+  45 passi non si sposta di 20 px ne' si avvicina alla meta, se la meta non
+  si raggiunge si ferma li' (l'ordine e' finito); se si raggiunge si ferma
+  1 s e riparte col proprio campo verso la propria casella (pause doppie se
+  si blocca di nuovo). Prima restava solo il "timer fermati" (§9.69, 20 s).
+- *Mischia sovrapposti* (units.js): vicino al bersaglio e sovrapposto solo
+  ad alleati, chi insegue non va col flow field ma verso un posto suo
+  attorno al bersaglio (meleeSpot con `noStay`, come gli arieti §9.32),
+  sopra gli alleati ma non attraverso nemici, edifici o alberi (`stepOver`:
+  dritto o girando di 30 gradi fino a 90, sempre dalla stessa parte); a
+  contatto con il nemico ma sovrapposto a un alleato che sta gia'
+  colpendo, non comincia a colpire (ne' continua, fra un colpo e l'altro,
+  se ha l'ordo piu' basso) e va al suo posto (`unstack`); dopo mezzo secondo
+  senza riuscirci colpisce comunque.
+- *Fine del fuoco* (siege.js infantryFire, e la rinuncia di §9.31):
+  `warwork` torna 0.
+
+Provato e tolto: chi tira frecce incendiarie sovrapposto a un compagno che
+tira va a un altro posto attorno all'edificio (12 fanti contro una casa):
+passi sovrapposti 967 -> 762, ma inversioni di marcia raddoppiate.

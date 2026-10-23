@@ -14,7 +14,7 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField, destinationBack, makeWay } from "./pathing.js";
+import { mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
@@ -169,6 +169,7 @@ function enemyStrike(i, w, T) {
 }
 
 // Step, "attacco" [C]
+const NO_SLOT = 30; // §9.71: passi senza un posto libero attorno al bersaglio prima di fermarsi
 function enemyAttack(i, w, T) {
   if (!w.exists("ally_unit")) return null;
   const k = iso(i.direction), night = w.g.night;
@@ -190,14 +191,38 @@ function enemyAttack(i, w, T) {
   if (swingOn(i)) return "exit"; // §9.28: colpo impegnato, girato verso il bersaglio
   // (nessun alleato e warwork 2: non puo' succedere qui, c'e' almeno un ally_unit)
   const chase = (range) => {
-    const n = nearest();
-    if (!(w.distanceToInstance(i, n) < range * (1 - 0.5 * night) * k)) return false;
+    let n = nearest();
+    const lim = range * (1 - 0.5 * night) * k;
+    if (!(w.distanceToInstance(i, n) < lim)) return false;
+    // [§9.71, richiesta dell'autore] fermo ad aspettare: riprova dopo
+    // WAIT_RETRY passi. Il piu' vicino non si raggiunge (oltre un fiume,
+    // dietro le mura): un altro che si raggiunge, o fermo
+    if (waiting(w, i) && (i.action === 0 || i.warwork !== 1)) return true;
+    if (!canReach(w, i, n)) {
+      n = nearestReachable(w, i, "ally_unit", lim);
+      if (!n) {
+        if (i.warwork === 1) waitHere(w, w.path, i);
+        else i.waitUntil = w._stepNo + WAIT_RETRY;
+        return true;
+      }
+    }
     // precedenza di GML: warwork=0 || (warwork=1 && alarm[2]<1)
     if (i.warwork === 0 || (i.warwork === 1 && i.alarm.get(2) < 1)) {
       if (i.action !== 1) i.alarm.set(0, T.chaseAlarm);
       i.action = 1; i.warwork = 1;
       // [§7.7] un posto libero attorno al bersaglio (melee.js)
       [i.dirox, i.diroy] = meleeSpot(w, i, n, "ally_unit");
+      // [§9.71] nessun posto libero attorno (si spingeva verso il suo
+      // centro, contro chi combatte gia') o nessun progresso da un secondo
+      // (girava in tondo dietro gli altri): fermo, si riprova
+      if (!i.meleeSpot) {
+        i.noSlotN = (i.noSlotN || 0) + 1;
+        i.dirox = i.x; i.diroy = i.y;
+        if (i.noSlotN >= NO_SLOT) { i.noSlotN = 0; waitHere(w, w.path, i); }
+      } else {
+        i.noSlotN = 0;
+        if (chaseStuck(w, i, n)) waitHere(w, w.path, i, stuckWait(i));
+      }
     }
     return true;
   };
