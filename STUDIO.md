@@ -7007,5 +7007,5 @@ citta'); le case perse dopo l'assalto fallito le brucia un guerriero
 nemico alla volta, a 650-1100 px dall'esercito, che restava fermo alla
 caserma (i soldati nuovi non venivano mandati alla difesa: difetto del
 bot, corretto: ogni 30 s i soldati fermi lontani tornano al punto di
-difesa). Il §9.78 sopra ("le ondate distruggono le case mentre l'esercito
-e' all'assalto") era sbagliato.
+difesa). Nel resoconto all'autore avevo scritto che le ondate distruggono
+le case mentre l'esercito e' all'assalto: era sbagliato.
