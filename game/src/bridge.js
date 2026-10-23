@@ -53,6 +53,10 @@ export function fiumeGrande() {
     create(i, w) {
       spawnSlices(i, w, w.objects[i.object].slices);
       const [x, y] = toRoom(i, BRIDGE.at[0], BRIDGE.at[1]);
+      // [§9.74] il ponte solo se cade nella room: nel livello 5 il fiume
+      // grande entra dal bordo in alto e il suo ponte resterebbe fuori, un
+      // cantiere che nessuno raggiunge (con la barra sempre visibile)
+      if (x < 0 || y < 0 || x > w.roomW || y > w.roomH) return;
       w.create("ponte", x, y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle });
     },
     destroy(i, w) { destroySlices(i, w); },

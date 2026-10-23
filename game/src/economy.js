@@ -59,6 +59,9 @@ export const ECO = {
     rebuild: true,                               // ricostruisce gli edifici persi
     newDeposits: 4,                              // §9.46: magazzini e mulini nuovi, al massimo, in una partita
     safe: 400,                                   // niente riparazioni con un alleato entro tanti px
+    // §9.76
+    armyEco: false,                              // il tetto army conta solo i soldati della regia (non quelli della mappa)
+    stoneWork: true,                             // ripara e ricostruisce anche gli edifici di pietra
   },
   // [Decisione dell'autore] livello 4: solo ricostruzione degli edifici
   // persi (e riparazioni), niente edifici nuovi; il resto da tarare con la
@@ -74,6 +77,16 @@ export const ECO = {
   lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 10,
            attackAt: 4, attackGrow: 1, attackEvery: 9000, mix: { wood: 2, gold: 2, food: 3, stone: 1 },
            workers: 9, workerTime: 1800 },
+  // [§9.76, decisioni dell'autore] livello 5: economia bilanciata, al piu'
+  // 10 lavoratori (4 gia' attorno al centro), una grande riserva di pietra
+  // (paga le macchine d'assedio: la regia del livello, levels.js) che non
+  // si usa per riparare o ricostruire gli edifici di pietra; il presidio
+  // della citta' e' quello della mappa, le ondate le fa la regia (army
+  // conta solo i suoi soldati): la prima a 4 minuti, poi ogni 3, da 4
+  // soldati e uno in piu' ogni volta. Da tarare giocando
+  lvl05: { startWorkers: 4, workers: 10, start: { food: 300, wood: 300, gold: 200, stone: 3000 },
+           mix: { wood: 3, gold: 2, food: 3, stone: 0 }, army: 12, armyEco: true, stoneWork: false,
+           attackAt: 4, attackGrow: 1, firstAttack: 4 * 3600, attackEvery: 3 * 3600 },
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare
@@ -289,6 +302,7 @@ const RUINS = ["casaruin", "magruin", "barnruin", "casruin", "stalruin", "ccruin
 export function lostBuilding(w, i) {
   const en = w.g.en;
   if (!en || !REBUILD[i.object] || i.noEco === 1 || !w.exists("enemy_eco")) return; // §9.52: non della regia
+  if (i.pietra === 1 && !ecoOf(w).stoneWork) return; // §9.76: di pietra, perso per sempre
   (en.lost || (en.lost = [])).push({ o: i.object, x: i.x, y: i.y });
 }
 
@@ -516,7 +530,7 @@ export function enemyEco(p) {
       // riparazioni finite (o senza piu' materiale, o con alleati vicini):
       // il lavoratore si ferma e torna disponibile
       const danger = (b) => { const a = w.nearest(b.x, b.y, "ally_unit"); return !!a && Math.hypot(a.x - b.x, a.y - b.y) < E.safe; };
-      const material = (b) => (b.legno === 1 && en.wood > 0) || (b.pietra === 1 && en.stone > 0);
+      const material = (b) => (b.legno === 1 && en.wood > 0) || (b.pietra === 1 && en.stone > 0 && E.stoneWork); // §9.76
       for (const o of workers) {
         const b = o.repB;
         if (!b) continue;
@@ -603,7 +617,7 @@ export function enemyEco(p) {
       }
       // soldati da caserme e stalle, pagando, con abbastanza lavoratori (o
       // senza centro) e sotto il tetto
-      let army = soldiers(w).length;
+      let army = (E.armyEco ? soldiers(w).filter((e) => e.eco === 1) : soldiers(w)).length; // §9.76: armyEco
       const enough = n >= E.workers || !c;
       for (const b of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
         if (b.noEco === 1) continue; // §9.52: un'altra base (la regia del livello)
@@ -627,7 +641,7 @@ export function enemyEco(p) {
       // defendR) e i soldati della regia in attesa accorrono tutti, non solo
       // quelli che lo vedono (entro 400 px, enemies.js); andato via, restano
       // in attesa dove sono
-      const army2 = soldiers(w).filter((e) => e.eco === 1);
+      const army2 = soldiers(w).filter((e) => e.eco === 1 && !e.retreat); // §9.76: non chi si ritira (regia del livello)
       let intruder = null;
       for (const b of w.all("enemy_build")) {
         if (b.noEco === 1) continue;

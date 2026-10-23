@@ -697,6 +697,69 @@ export const TEXTS = {
     it: "Il ponte è nostro e la città nemica è caduta", es: "El puente es nuestro y la ciudad enemiga ha caído",
     pt: "A ponte é nossa e a cidade inimiga caiu", de: "Die Brücke gehört uns und die feindliche Stadt ist gefallen",
     fr: "Le pont est à nous et la ville ennemie est tombée" },
+  // ------------------------------------------------- livello 5 (§9.76)
+  "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.": {
+    it: "Gli invasori hanno colpito alle porte della nostra città, ma l'attacco si è infranto contro i nostri soldati. Inseguendo i superstiti siamo arrivati alla loro città: mura possenti, torri di guardia e nessun modo di entrare senza armi d'assedio. L'unica pietra nei dintorni è nelle rovine di un'antica acropoli.",
+    es: "Los invasores atacaron a las puertas de nuestra ciudad, pero el ataque se estrelló contra nuestros soldados. Persiguiendo a los supervivientes llegamos a su ciudad: murallas imponentes, torres de vigía y ninguna forma de entrar sin armas de asedio. La única piedra cercana está en las ruinas de una antigua acrópolis.",
+    pt: "Os invasores atacaram às portas da nossa cidade, mas o ataque se quebrou contra os nossos soldados. Perseguindo os sobreviventes chegamos à cidade deles: muralhas imponentes, torres de vigia e nenhum jeito de entrar sem armas de cerco. A única pedra por perto está nas ruínas de uma antiga acrópole.",
+    de: "Die Eindringlinge griffen direkt vor unserer Stadt an, doch der Angriff zerbrach an unseren Soldaten. Bei der Verfolgung der Überlebenden erreichten wir ihre Stadt: mächtige Mauern, Wachtürme und kein Weg hinein ohne Belagerungswaffen. Der einzige Stein in der Nähe liegt in den Ruinen einer alten Akropolis.",
+    fr: "Les envahisseurs ont frappé aux portes de notre ville, mais l'attaque s'est brisée contre nos soldats. En poursuivant les survivants, nous avons atteint leur ville : des murailles puissantes, des tours de guet, et aucun moyen d'entrer sans engins de siège. La seule pierre des environs se trouve dans les ruines d'une ancienne acropole." },
+  "The invaders are attacking right outside our town! Drive them back!": {
+    it: "Gli invasori attaccano alle porte della nostra città! Respingeteli!",
+    es: "¡Los invasores atacan a las puertas de nuestra ciudad! ¡Hacedlos retroceder!",
+    pt: "Os invasores estão atacando às portas da nossa cidade! Rechacem-nos!",
+    de: "Die Eindringlinge greifen direkt vor unserer Stadt an! Schlagt sie zurück!",
+    fr: "Les envahisseurs attaquent aux portes de notre ville ! Repoussez-les !" },
+  "They are running back to their city! After them, before they can regroup!": {
+    it: "Stanno scappando verso la loro città! Inseguiteli, prima che si riorganizzino!",
+    es: "¡Huyen hacia su ciudad! ¡A por ellos, antes de que se reagrupen!",
+    pt: "Estão fugindo para a cidade deles! Atrás deles, antes que se reagrupem!",
+    de: "Sie fliehen in ihre Stadt! Hinterher, bevor sie sich neu formieren!",
+    fr: "Ils s'enfuient vers leur ville ! Poursuivez-les avant qu'ils ne se regroupent !" },
+  "Those walls are too strong, and their towers will riddle us with arrows before we can do anything. Without siege engines it is hopeless: fall back!": {
+    it: "Quelle mura sono troppo solide, e le loro torri ci trafiggeranno di frecce prima che possiamo fare qualcosa. Senza armi d'assedio non c'è speranza: ripiegate!",
+    es: "Esas murallas son demasiado fuertes, y sus torres nos acribillarán a flechazos antes de que podamos hacer nada. Sin armas de asedio no hay esperanza: ¡retirada!",
+    pt: "Essas muralhas são fortes demais, e as torres deles vão nos crivar de flechas antes que possamos fazer algo. Sem armas de cerco não há esperança: recuem!",
+    de: "Diese Mauern sind zu stark, und ihre Türme werden uns mit Pfeilen durchbohren, bevor wir etwas tun können. Ohne Belagerungswaffen ist es aussichtslos: Rückzug!",
+    fr: "Ces murailles sont trop solides, et leurs tours nous cribleront de flèches avant que nous puissions agir. Sans engins de siège, c'est sans espoir : repliez-vous !" },
+  "The acropolis of an ancient cult... It breaks my heart, but its stone can raise a fortress. Let our workers tear the ruins down.": {
+    it: "L'acropoli di un culto antico... Mi si spezza il cuore, ma la sua pietra può innalzare una fortezza. Che i nostri lavoratori abbattano le rovine.",
+    es: "La acrópolis de un culto antiguo... Me rompe el corazón, pero su piedra puede levantar una fortaleza. Que nuestros trabajadores derriben las ruinas.",
+    pt: "A acrópole de um culto antigo... Parte-me o coração, mas a pedra dela pode erguer uma fortaleza. Que nossos trabalhadores derrubem as ruínas.",
+    de: "Die Akropolis eines alten Kults... Es bricht mir das Herz, aber ihr Stein kann eine Festung errichten. Unsere Arbeiter sollen die Ruinen abtragen.",
+    fr: "L'acropole d'un culte ancien... Cela me brise le cœur, mais sa pierre peut élever une forteresse. Que nos ouvriers abattent les ruines." },
+  "Our fortress stands! Now we can build rams and catapults. Tear their city down, to the last building.": {
+    it: "La nostra fortezza è in piedi! Ora possiamo costruire arieti e catapulte. Radete al suolo la loro città, fino all'ultimo edificio.",
+    es: "¡Nuestra fortaleza se alza! Ahora podemos construir arietes y catapultas. Arrasad su ciudad, hasta el último edificio.",
+    pt: "Nossa fortaleza está de pé! Agora podemos construir aríetes e catapultas. Arrasem a cidade deles, até o último edifício.",
+    de: "Unsere Festung steht! Jetzt können wir Rammböcke und Katapulte bauen. Reißt ihre Stadt nieder, bis zum letzten Gebäude.",
+    fr: "Notre forteresse est debout ! Nous pouvons maintenant construire des béliers et des catapultes. Rasez leur ville, jusqu'au dernier bâtiment." },
+  "Their soldiers saw the fortress and turned back... They will warn the city: next time they will bring siege engines.": {
+    it: "I loro soldati hanno visto la fortezza e sono tornati indietro... Avvertiranno la città: la prossima volta porteranno macchine d'assedio.",
+    es: "Sus soldados vieron la fortaleza y se dieron la vuelta... Avisarán a la ciudad: la próxima vez traerán máquinas de asedio.",
+    pt: "Os soldados deles viram a fortaleza e voltaram... Vão avisar a cidade: da próxima vez trarão máquinas de cerco.",
+    de: "Ihre Soldaten haben die Festung gesehen und sind umgekehrt... Sie werden die Stadt warnen: Beim nächsten Mal bringen sie Belagerungsmaschinen mit.",
+    fr: "Leurs soldats ont vu la forteresse et ont fait demi-tour... Ils vont prévenir la ville : la prochaine fois, ils viendront avec des engins de siège." },
+  "Drive back the enemy attack": {
+    it: "Respingi l'attacco nemico", es: "Rechaza el ataque enemigo", pt: "Rechace o ataque inimigo",
+    de: "Schlage den feindlichen Angriff zurück", fr: "Repousse l'attaque ennemie" },
+  "Chase the enemy back to their city": {
+    it: "Insegui i nemici fino alla loro città", es: "Persigue al enemigo hasta su ciudad", pt: "Persiga o inimigo até a cidade dele",
+    de: "Verfolge den Feind bis in seine Stadt", fr: "Poursuis l'ennemi jusqu'à sa ville" },
+  "Fall back and find stone": {
+    it: "Ripiega e trova della pietra", es: "Retírate y encuentra piedra", pt: "Recue e encontre pedra",
+    de: "Zieh dich zurück und finde Stein", fr: "Replie-toi et trouve de la pierre" },
+  "Build a fortress": {
+    it: "Costruisci una fortezza", es: "Construye una fortaleza", pt: "Construa uma fortaleza",
+    de: "Baue eine Festung", fr: "Construis une forteresse" },
+  "Destroy the enemy city ({n} buildings left)": {
+    it: "Distruggi la città nemica (edifici rimasti: {n})", es: "Destruye la ciudad enemiga (edificios restantes: {n})",
+    pt: "Destrua a cidade inimiga (edifícios restantes: {n})", de: "Zerstöre die feindliche Stadt (verbleibende Gebäude: {n})",
+    fr: "Détruis la ville ennemie (bâtiments restants : {n})" },
+  "The invaders' city has fallen: the land is ours": {
+    it: "La città degli invasori è caduta: il territorio è nostro", es: "La ciudad de los invasores ha caído: la tierra es nuestra",
+    pt: "A cidade dos invasores caiu: a terra é nossa", de: "Die Stadt der Eindringlinge ist gefallen: Das Land gehört uns",
+    fr: "La ville des envahisseurs est tombée : la terre est à nous" },
   // ------------------------------------------------- livello 2 (§9.14)
   "Precious workers": { it: "Lavoratori preziosi", es: "Trabajadores valiosos", pt: "Trabalhadores preciosos",
                         de: "Wertvolle Arbeiter", fr: "Ouvriers précieux" },

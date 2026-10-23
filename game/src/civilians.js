@@ -403,6 +403,7 @@ function ominoStep(i, w, p, stop) {
     w.destroy(i);
     P.pop -= 1;
     corpse.direction = diro;
+    if (S.enemy) corpse.skin = "b_"; // §9.70: muore con gli sprite nemici (b_oc11...)
     return;
   }
   // azione 3: campi di grano (punto 3c)

@@ -6547,3 +6547,450 @@ ogni passo) si ferma ancora al passo 2999. movement.mjs e attackorder.mjs
 danno gli stessi numeri di prima; passano settle, rally, melee, idle,
 workers, garrison, blocked, sites, resources, depot, fireorder,
 enemydefense, lvl04, saves (5 room), soak. `longmove.mjs` e' nella CI.
+
+### 9.70 Il cadavere del lavoratore nemico
+
+Segnalazione dell'autore: i lavoratori nemici, quando muoiono, hanno ancora
+gli sprite degli omini arancioni.
+
+Era cosi': enemy_omino muore come il civile alleato (civilians.js, azione 2)
+e crea `omino_corpse`, che disegna gli sprite alleati (oc11...); il
+corrispondente b_ si sceglieva solo nel Draw del lavoratore vivo
+(economy.js, §9.49), non nel cadavere.
+
+**Ora:** il cadavere del lavoratore nemico ha `skin = "b_"`, e il Step dei
+cadaveri (units.js, `corpse`) dopo l'animazione mette il prefisso allo
+sprite scelto, se c'e' (b_oc11..., disegnati dall'autore, §9.49). Il
+cadavere del civile alleato non cambia.
+
+Prova: `economy.mjs` (nella CI) guarda i fotogrammi dei cadaveri dopo la
+morte del lavoratore: il nemico b_oc81-83, un civile alleato ucciso nella
+stessa partita oc41-43. Prima della correzione il nemico dava oc81-83.
+
+### 9.71 Soldati che si ammassano; chi non puo' arrivare si ferma
+
+Segnalazione e richiesta dell'autore: i soldati tendono ancora a
+sovrapporsi e incasinarsi, forse dopo aver attaccato o dato fuoco, quando
+sono sovrapposti e devono fare altro che andare a un punto indicato dal
+giocatore; evitare il piu' possibile le sovrapposizioni; chi non puo'
+raggiungere un punto si fermi invece di impazzire, e riprovi ogni tanto.
+
+**Misura** (prova nuova `game/test/browser/crowd.mjs`, sei casi nella zona
+aperta del match, ordini col clic destro vero; i numeri dei semi 3 / 7 / 11).
+Prima:
+- *mischia*: chi arriva sovrapposto a un alleato (col flow field si passa
+  uno sull'altro, e sovrapposti si va col flow field) comincia a colpire
+  li': 18 alleati contro 8 nemici, 91 / 43 / 36 coppie sovrapposte per
+  almeno 3 s, quasi tutte mentre colpiscono;
+- *dopo il fuoco*: i fanti restavano con `warwork` 4 (l'ordine di
+  movimento del clic destro, che il GlobalRightReleased da' dopo
+  fireOrder): settleOverlaps (§9.62) li saltava e restavano uno sull'altro
+  (4 / 3 / 2 coppie alla fine), e con warwork 4 non reagivano a un nemico a
+  contatto;
+- *bersaglio irraggiungibile* (un nemico chiuso in un anello di alberi): il
+  flow field porta tutti alla cella raggiungibile piu' vicina, li'
+  ammassati si separano a vicenda senza collisioni e tremano sul posto per
+  sempre (2734 / 1111 / 1716 inversioni di marcia);
+- *punto irraggiungibile* (clic dentro l'anello): le caselle della
+  formazione sono fuori dall'anello, ma tutti seguono il campo del capo, che
+  porta a una sola cella accanto all'anello: ammassati li', 9 su 18 ancora
+  in cammino dopo 25 s, ~10.000 inversioni;
+- *nemici*: senza un posto libero attorno al bersaglio spingono verso il
+  suo centro; dietro gli altri `mp_potential_step` li fa girare in tondo
+  (73 / 63 / 39 finestre di 2 s di tremolio).
+
+**Ora.**
+- *Raggiungibile* (pathing.js `regions`, `reachable`): le zone collegate
+  della griglia dei soli ostacoli fissi (per i nemici anche le porte),
+  calcolate una volta per versione degli ostacoli; due punti si raggiungono
+  se stanno nella stessa zona. Costa una ricerca sulla griglia quando un
+  edificio nasce o crolla, poi niente.
+- *Fermo e riprova* (`waitHere`, `waiting`, WAIT_RETRY = 60 passi):
+  alleati (units.js, autoAttack) e nemici in mischia (enemies.js,
+  enemyAttack) non inseguono un nemico che non si raggiunge: un altro
+  raggiungibile entro il raggio diventa il bersaglio, se no restano fermi e
+  riguardano dopo 1 s. Lo stesso per il bersaglio scelto col clic destro
+  (ci si rinuncia, come con targetStuck §9.38). Senza un posto libero
+  attorno al bersaglio (meleeSpot) entro 150 px da lui non si spinge piu'
+  verso il suo centro: fermi, e dopo 30 passi cosi' la pausa (da piu'
+  lontano ci si avvicina come prima: fermi li', di notte il cavaliere di
+  attackorder.mjs aspettava 28 passi). I nemici, se in mezzo secondo non
+  si avvicinano al bersaglio (`chaseStuck`), si fermano e riprovano, con
+  pause doppie se si bloccano di nuovo, fino a 4 s (agli alleati bastano il
+  cambio di settore e targetStuck: con la stessa regola combattevano
+  peggio).
+- *Ordini di movimento* (`moveStalled`, alleati, arcieri compresi): chi in
+  45 passi non si sposta di 20 px ne' si avvicina alla meta, se la meta non
+  si raggiunge si ferma li' (l'ordine e' finito); se si raggiunge si ferma
+  1 s e riparte col proprio campo verso la propria casella (pause doppie se
+  si blocca di nuovo). Prima restava solo il "timer fermati" (§9.69, 20 s).
+- *Mischia sovrapposti* (units.js): vicino al bersaglio e sovrapposto solo
+  ad alleati, chi insegue non va col flow field ma verso un posto suo
+  attorno al bersaglio (meleeSpot con `noStay`, come gli arieti §9.32),
+  sopra gli alleati ma non attraverso nemici, edifici o alberi (`stepOver`:
+  dritto o girando di 30 gradi fino a 90, sempre dalla stessa parte); a
+  contatto con il nemico ma sovrapposto a un alleato che sta gia'
+  colpendo, non comincia a colpire (ne' continua, fra un colpo e l'altro,
+  se ha l'ordo piu' basso) e va al suo posto (`unstack`); dopo mezzo secondo
+  senza riuscirci colpisce comunque (con 1,5 s i 18 alleati contro 8 nemici
+  ci mettevano fino a 4 s di piu').
+- *Fine del fuoco* (siege.js infantryFire, e la rinuncia di §9.31):
+  `warwork` torna 0.
+
+Provato e tolto: chi tira frecce incendiarie sovrapposto a un compagno che
+tira va a un altro posto attorno all'edificio (12 fanti contro una casa):
+passi sovrapposti 967 -> 762, ma inversioni di marcia raddoppiate.
+
+**Dopo** (crowd.mjs, semi 3 / 7 / 11, prima -> ora):
+
+| caso | misura | prima | ora |
+|---|---|---|---|
+| attacco | coppie sovrapposte >= 3 s | 91 / 43 / 36 | 4 / 1 / 5 |
+| attacco | passo in cui muore l'ultimo nemico | 432 / 492 / 463 | 535 / 534 / 523 |
+| fuoco | coppie sovrapposte alla fine | 4 / 3 / 2 | 0 / 0 / 0 |
+| circondato | finestre di tremolio / inversioni | 34 / 4 / 30, 2734 / 1111 / 1716 | 0 / 0 / 0, 3 / 0 / 0 |
+| nemici | finestre di tremolio | 73 / 63 / 39 | 10 / 17 / 14 |
+| mischia | coppie sovrapposte >= 3 s | 28 / 11 / 29 | 5 / 8 / 6 |
+| mischia | alleati vivi alla fine | 7 / 1 / 0 | 13 / 4 / 7 |
+| punto | in cammino dopo 25 s / inversioni | 9 / 9 / 9, ~10.000 | 0 / 0 / 0, ~133 |
+
+L'attacco 18 contro 8 finisce 1-2 s dopo: a contatto colpisce chi ha un
+posto suo, non due nello stesso punto. Restano i soldati in viaggio sul
+flow field, che possono passare uno sull'altro come prima (§8.11), e chi
+tira frecce incendiarie in 12 attorno a una casa (fuoco: 2-4 coppie
+sovrapposte mentre tirano).
+
+`crowd.mjs` e' nella CI (seme 3; fallisce col codice di prima in tutti i
+casi).
+
+**Il bersaglio irraggiungibile scelto col clic destro** (richiesta
+dell'autore, dopo la prima versione): non ci si ferma subito dove si e', si
+va fin dove si puo'. Il bersaglio diventa un ordine di movimento (warwork
+0) verso la cella raggiungibile piu' vicina a lui (pathing.js `goNear`,
+`nearestReachableCell`, anelli fino a 40 celle), una per soldato: le celle
+prese nello stesso passo, con le loro vicine, non le prende un altro. Li'
+ci si ferma; un nemico raggiungibile intanto lo si attacca. Caso nuovo di
+crowd.mjs, `riva` (14 guerrieri, picchieri e cavalieri, il nemico chiuso
+dagli alberi e invulnerabile; seme 3): col codice originale arrivavano a
+159 px da lui ma 14 restavano in cammino, 78 coppie sovrapposte, 15.792
+inversioni; con la prima versione fermi alla partenza, a 905 px; ora il
+piu' lontano a 208 px (l'anello ha raggi 110 x 80), fermi, nessuna coppia
+sovrapposta, nessun tremolio. Chi insegue da solo (senza il clic destro)
+un nemico irraggiungibile resta invece fermo dov'e': se no ogni nemico
+oltre un fiume (entro 700 px) trascinerebbe i soldati fino alla riva.
+
+### 9.72 Il nome ufficiale "Dust Veil: Collapse" e il suo logo
+
+Decisione dell'autore (23 ottobre 2026): il gioco si chiama ufficialmente
+**Dust Veil: Collapse**. Richiesta: un logo su almeno due righe, col font
+attuale, nella schermata principale, con la sfumatura in basso.
+
+**Il logo** (`tools/13_logo.py` -> `nuovi/sprites/logo_dustveil.png`, lo
+stesso sprite del §9.47). Due righe: "Dust Veil" in Cinzel Decorative Bold e
+"COLLAPSE" in Cinzel Bold spaziato (18 px fra le lettere), fra due filetti
+con una losanga in punta; il grigio del logo535 (51, 51, 51).
+- *La sfumatura in basso*: una sola su tutto il blocco, dalla cima delle
+  maiuscole di "Dust Veil" alla linea di base di "COLLAPSE", con la forma
+  di quella del logo535 (§9.47), ma che finisce al 30% invece che a 0. Con
+  la sfumatura intera, e anche con quella del logo535 riga per riga,
+  "COLLAPSE" quasi spariva (provate tutte e due sullo sfondo del menu).
+- *Un alone chiaro* (235, 235, 230) sfocato dietro le lettere, al piu' al
+  60%: il grigio scuro si confondeva con la nebbia del menu. L'alone non e'
+  sfumato.
+- Disegnato a 1,4 volte (1173 x 382 px): il menu lo rimpicciolisce e sugli
+  schermi grandi non si sgrana.
+- Scartata (ma ancora nello script, `--tre-righe`): "Dust" / "Veil" /
+  "COLLAPSE" su tre righe. E' alto 565 px: a 720 px di altezza dello
+  schermo andrebbe al 35% e "COLLAPSE" diventerebbe piccolissimo.
+
+**Nel menu** (menu.js, drawTitle): al centro dello spazio sopra i
+pulsanti come prima, rimpicciolito se serve per stare in quello spazio con
+40 px sopra e sotto, e al piu' largo meta' dello schermo. A 1920 x 1080
+viene all'82% (largo 960 px), a 1366 x 768 al 58% (683 px), a 1280 x 720 al
+52% (614 px), a 2560 x 1440 al 100% (1173 px).
+
+**Il nome** nel titolo della pagina (index.html), nella PWA (manifest:
+nome "Dust Veil: Collapse", nome breve "Dust Veil") e nel README. Restano
+"535" i nomi interni che non si vedono e che cambiandoli farebbero perdere
+partite salvate e progressi (le chiavi `535.*` del localStorage, il
+controllo dei salvataggi), la cache del service worker e lo zip dei
+portali (`build/535-collapse-web.zip`). Restano anche le icone (tools/09,
+fatte dal logo535: mostrano "535").
+
+### 9.73 La versione sale a ogni nuova PR
+
+Richiesta dell'autore (23 ottobre 2026): a ogni nuova PR la versione in
+basso a sinistra della schermata principale sale di 0.0001: `0.AANN`, con
+`AA` l'anno e `NN` un progressivo (ora 0.2601 -> **0.2602**). Il numero e'
+la costante `VERSION` di menu.js (prima scritto direttamente nel Draw); la
+regola e' in `CLAUDE.md`, che le sessioni di Claude leggono da sole.
+
+### 9.74 Livello 5: la mappa dell'autore
+
+L'autore ha caricato `mappe/lvl05.tmx` (con `mappe/immagine.png`, lo
+screenshot della mappa in Tiled per il controllo). Come per il livello 4
+(§9.40) prima la mappa giocabile, poi regia e campagna, che l'autore
+spieghera'.
+
+**Import** (12_tiled_import, scenari/lvl05.json): 9000 x 4000 px, 633
+istanze, nessun avviso; l'anteprima (`--anteprima`) corrisponde allo
+screenshot. La mappa usa insieme i tileset del kit vecchio (cartella
+261013) e di quello nuovo: va bene, perche' le tile aggiunte dopo stanno in
+fondo ai loro tileset (tiledkit `APPENDED`, §9.40) e i numeri delle tile
+del kit vecchio valgono anche nel nuovo (nemici: 17 tile nel vecchio, 22
+nel nuovo).
+
+**Cosa c'e'.** Il giocatore a ovest (centro, caserma, torre, magazzino, 6
+case, 4 campi da seminare, 5 civili, 32 soldati); a est la citta' nemica con
+l'economia (centro, chiesa, 2 castelli, 2 magazzini, mulino, 6 case, 2
+caserme, 2 stalle), chiusa da mura con 2 porte e 11 torri; in mezzo
+montagne, rovine (pietra), colonne e una statua; un fiume a nord-ovest
+(fiume_22) e il fiume grande (§9.40) che entra dal bordo in alto a
+nord-est; 8 campi da costruire attorno a una torre nell'angolo nord-est.
+Gia' accanto all'esercito del giocatore, 15 soldati nemici (6 picchieri, 4
+arcieri, 3 guerrieri, 2 cavalieri): si combatte da subito. Senza regia, per
+ora: la citta' nemica ha la regia economica di norma (§9.44, ECO.default).
+
+**Il ponte del fiume grande** (bridge.js): il fiume grande crea il suo
+ponte da riparare nel punto in cui lo ha dipinto; qui cadrebbe fuori dalla
+room (y = -380): un cantiere irraggiungibile, con la barra della vita
+sempre visibile. Ora il ponte nasce solo se cade nella room.
+
+**Registrazione**: room `lvl05` (app.js, gruppi d'atlas core e gioco: la
+mappa non usa la citta' romana), elenco della campagna (menu.js, "5. The
+siege", nome dell'originale), salvataggi (save.js), sblocco per le prove
+fino al 5 (progress.js `UNLOCK_ALL`, §9.53: provvisorio). Soak e salvataggi
+della CI anche su lvl05 (3000 passi senza errori, ripristino identico).
+
+**Da decidere con l'autore** (risposte dell'autore, 23 ottobre 2026).
+- Le mura e le porte attorno alla citta' nemica sono mura_ori, mura_vert e
+  porta_vert: le mura del giocatore. -> Sono del nemico: §9.75.
+- I 15 nemici in mezzo all'esercito del giocatore: battaglia d'apertura o
+  dovevano essere alleati? -> Battaglia d'apertura, voluta.
+- Gli 8 campi da costruire nell'angolo nord-est sono del giocatore. -> Sono
+  del nemico: §9.75.
+- Il segnalino del livello sulla mappa della campagna: un piccolo castello
+  blu, che l'autore carichera'.
+- Prestazioni (per ora si tiene cosi'): ~2,5 ms a passo (misurato a blocchi di 1000 passi,
+  headless) contro ~1 del livello 4. Un quarto sono le particelle (942 sistemi, 42 600 particelle:
+  la schiuma delle rive dei tre fiumi e l'erba, contro ~10 000 del livello
+  4); per ora nessuna correzione.
+
+### 9.75 Mura e porte nemiche; il livello 5 le usa
+
+Richiesta dell'autore (23 ottobre 2026, dopo §9.74): le mura, le porte e i
+campi della citta' nemica del livello 5 sono del nemico; gli oggetti e gli
+sprite nemici non c'erano. "Per gli sprite riusciamo a fare una versione
+nemica tintando di blu le bandierine?"
+
+**Sprite** (05_atlas, `derived_sprites`, `tint_flags`): m_ori, m_vert e le
+porte aperte e chiuse (m_ori_p, m_ori_pa, m_vert_p, m_vert_pa) con suffisso
+`_b`. La bandiera nemica del progetto (bflag) e' quella del giocatore
+(rflag) con la tinta ruotata: media 15 -> 206 gradi, saturazione e
+luminosita' uguali (misurate: 0,74 e 0,55 in tutte e due). Qui i pixel
+rosso-arancio (tinta fino a 40 gradi o da 345, saturazione almeno 0,3: la
+pietra e' poco satura) ruotati di 191 gradi; ~600 pixel per sprite, solo le
+bandierine (controllato ingrandito).
+
+**Oggetti** (nuovi.json, walls.js `enemyWall`, `enemyGate`):
+`enemy_mura_ori`, `enemy_mura_vert`, `enemy_porta_ori`, `enemy_porta_vert`,
+con le maschere, le vite (800; porte 600 e 800) e le aperture delle mura del
+giocatore. Edifici nemici di pietra (enemy_build): nascosti finche' un
+alleato non li vede, poi visibili (come gli altri, enemybuild.js
+`revealBuilding`), barra e scheda (ico_mura, ico_gate), li colpiscono solo
+arieti e catapulte (l'ariete li prende anche da solo, come gli altri
+edifici nemici), a vita 0 spariscono senza rovina come le mura del
+giocatore; la regia economica non li ricostruisce, i lavoratori nemici li
+riparano (pietra).
+- *La porta* si apre quando il nemico piu' vicino e' a meno di 20 px
+  (guardato ogni 10 passi), mai per il giocatore.
+- *Percorsi* (pathing.js): il contrario delle porte del giocatore (§3.8).
+  La porta chiusa e' ostacolo per tutti (cost e solid), ma il varco (le sue
+  celle meno quelle dei pilastri) e' percorribile per i nemici: griglia
+  `enemyPass` (passEnemy, unpassEnemy), letta da goalField e da regions
+  (§9.71) dei nemici; entra nei salvataggi (quelli di prima non l'hanno:
+  vuota). `free()` non riapre piu' una cella di un ostacolo fisso: un nemico
+  fermo nel varco della sua porta, ripartendo, l'avrebbe aperta al
+  giocatore.
+- *Kit di Tiled*: le quattro e il campo coltivato nemico (enemy_campo, gia'
+  della regia economica, §9.44) in fondo al tileset "nemici" (27 tile; le
+  mappe fatte prima restano uguali, gli scenari identici).
+
+**Livello 5** (levels.js `lvl05Setup`, all'avvio di una partita nuova): nella
+meta' est della mappa (x >= 4500) i tratti e le porte del giocatore
+diventano nemici, i campi da costruire (campo_fond) campi coltivati nemici
+(gli 8 attorno al mulino nemico nell'angolo nord-est); i 4 campi del
+giocatore restano. La citta' nemica, chiusa da mura e montagne, si
+raggiunge solo abbattendo una porta o un tratto.
+
+Prova (`game/test/browser/enemywalls.mjs`, nella CI, alla porta ovest della
+citta', tolti i nemici): conversione (nella meta' est nessun muro, porta o
+campo del giocatore; 4 + 7 tratti, 2 porte, 8 campi nemici; 4 campi del
+giocatore), mura nascoste all'inizio, percorso chiuso per il giocatore e
+aperto per i nemici, la porta si apre con un nemico a contatto e non con un
+alleato, sei guerrieri mandati col clic destro dentro la citta' si fermano
+fuori (nessuno passa), un ariete abbatte la porta (1131 passi) e poi i
+guerrieri entrano. Provato a parte che un guerriero e un cavaliere nemici
+mandati col flow field da dentro a fuori passano dalla porta, che si apre.
+
+### 9.76 Livello 5: regia e ambientazione
+
+Regia e ambientazione dell'autore (23 ottobre 2026): lo scenario si apre con
+una battaglia vicino alla base alleata; vedendosela brutta, dopo poco i
+nemici si ritirano verso la loro citta'. I soldati li inseguono, ma davanti
+alle mura capiscono che senza armi d'assedio le difese li trafiggeranno, e
+tornano indietro; sulla via del ritorno trovano l'acropoli di un culto
+antico (le rovine al centro della mappa) e decidono a malincuore di
+distruggerla per ricavarne pietra e costruire fortificazioni. L'obiettivo
+diventa la fortezza (obbligatoria, e basta). Intanto il nemico manda
+ondate; la prima dopo la fortezza, vista la sua mole, torna in citta' ad
+avvertire: le ondate dopo hanno anche macchine d'assedio (prima no).
+L'obiettivo diventa distruggere la base nemica. Nemico: economia
+bilanciata, al piu' 10 lavoratori (alcuni gia' attorno al centro), un
+esercito medio in citta' a difesa delle mura e ondate periodiche; una
+grande riserva di pietra; gli edifici si riparano e si ricostruiscono
+sempre, tranne quelli di pietra (che il giocatore lo scopra da solo). Le
+due torri nemiche fuori dalle mura restano, di vedetta: non tirano. Le
+colonne e le altre rovine non di pietra restano decorazioni. Numeri
+proposti e accettati per ora: giorno, 200 cibo, 200 legno, 100 oro, 0
+pietra; prima ondata a 4 minuti, poi ogni 3, da 4 soldati e uno in piu'
+ogni volta.
+
+**Regia** (levels.js `enemyManagerLv5`, `LV5`; numeri da tarare giocando):
+- *fase 0, la battaglia*: i 15 nemici a ovest della citta'. Quando ne
+  restano al piu' due terzi (o dopo 45 s) i superstiti si ritirano in
+  citta' (dialogo 5_1, fase 1). Misurato: senza ritirata la battaglia dura
+  ~10 s (a 4 s ne restano 9, a 8 s uno); la ritirata parte a ~3 s, con 8
+  superstiti da inseguire;
+- *la ritirata* (enemies.js `retreatTo`, mischia e arcieri): verso un posto
+  ciascuno dentro la porta ovest (LV5.home), col flow field dei nemici (che
+  passa dalle loro porte, §9.75), senza combattere ne' inseguire; arrivati,
+  restano a difendere (quelli della regia economica tornano in attesa delle
+  ondate). La regia economica non li comanda mentre si ritirano;
+- *fase 1 -> 2, le mura*: un alleato a 600 px dalle mura o da una porta
+  nemica: dialogo 5_2 (senza armi d'assedio e' inutile, ripiegate);
+- *fase 2 -> 3, l'acropoli*: almeno 10 s dopo, un alleato a 700 px dal centro
+  delle rovine (3700, 2300): dialogo 5_3. L'acropoli e' sulla strada
+  dell'inseguimento: senza l'attesa il dialogo arrivava insieme a quello
+  delle mura. La pietra la scavano i civili, come sempre: al centro ~3200
+  (rovine del castello 500, quattro rovine di torre 400, della chiesa 75,
+  la pietra grande 850 e tre piccole 1350); la fortezza ne costa 850;
+- *fase 4, la fortezza* (a qualunque fase, appena c'e' un castello finito):
+  dialogo 5_4, obiettivo "Distruggi la citta' nemica (edifici rimasti: n)";
+- *l'avvertimento*: la prima ondata partita dopo la fortezza, a 900 px da
+  lei, torna in citta' (dialogo 5_5); da allora a ogni ondata 1, 1, 2, 2,
+  3... (al piu' 3) macchine d'assedio, un ariete e una catapulta a turno,
+  pagate con la pietra del nemico (ariete 250, catapulta 300). Nascono fuori
+  dalla porta ovest (LV5.siegeAt): col loro percorso "largo" (§8.14) non
+  passerebbero dalle porte; vanno verso l'edificio alleato piu' vicino, poi
+  attaccano da sole (siege.js);
+- *vittoria*: nessun edificio della citta' (centro, case, caserme, stalle,
+  chiesa, castelli, magazzini, mulino, torri, cantieri; non mura, porte e
+  campi). Codice del livello 6: 8 0 6 5 3, sblocca il 6.
+- Obiettivi (endgame.js): quello di prima, barrato, e quello di ora:
+  "Respingi l'attacco nemico", "Insegui i nemici fino alla loro citta'",
+  "Ripiega e trova della pietra", "Costruisci una fortezza", "Distruggi la
+  citta' nemica (edifici rimasti: n)". Dialoghi, obiettivi, storia sulla
+  mappa della campagna e testo della vittoria scritti per il porting dalla
+  regia dell'autore, in sei lingue (texts.js), da rivedere con lui.
+- *Torri di vedetta* (lvl05Setup): le torri nemiche a ovest di x 5100 non
+  tirano (ranged.js `watch`) e non sono della regia economica (un alleato
+  vicino non chiama la difesa della citta').
+
+**Regia economica** (economy.js, ECO.lvl05): 4 lavoratori attorno al centro
+(fino a 10), scorte 300 cibo, 300 legno, 200 oro e 3000 pietra, nessuno a
+cavar pietra (mix stone 0). Opzioni nuove: `armyEco` (il tetto dell'esercito
+conta solo i soldati della regia: i 38 della mappa, presidio e battaglia,
+bloccavano la produzione e quindi le ondate) e `stoneWork: false` (niente
+riparazioni ne' ricostruzioni degli edifici di pietra: torri, castelli,
+chiesa, mura, porte). Il presidio della citta' e' quello della mappa (23
+soldati, fermi a difendere); le ondate sono dei soldati della regia (fino a
+12).
+
+**Il segnalino della campagna**: cap5 dell'autore (210 x 193) a 120 px di
+larghezza (`cap_l5`), sotto il livello 4 in fondo alla catena montuosa al
+centro della mappa, con la freccia dal 4; la storia del livello sotto.
+
+**Il giorno**: tutti i livelli hanno il ciclo giorno-notte dell'originale
+(la notte a ~100 s); il livello 5 parte di giorno, come il 4.
+
+Prova (`game/test/browser/lvl05.mjs`, nella CI): partenza (risorse, 4
+lavoratori e 3000 pietra del nemico, 2 torri di vedetta, primo dialogo,
+fase 0); un soldato per 10 s accanto a una torre di vedetta, nessuna
+freccia; la ritirata da sola con dialogo, e i superstiti entrano in citta';
+mura e acropoli (fasi e dialoghi; di solito ci si arriva da soli
+inseguendo); una casa danneggiata si ripara, un castello no, distrutti si
+ricostruisce solo la casa; una fortezza: fase 4 e dialogo; la prima ondata
+dopo torna indietro a ~880 px dalla fortezza, col dialogo; l'ondata dopo ha
+un ariete (250 pietra); distrutta la citta' (le mura restano), vittoria.
+Senza nessun ordine del giocatore (20 000 passi): ritirata a 3 s, mura a 18
+s (i soldati inseguono da soli), acropoli a 28 s, 10 lavoratori nemici a
+~100 s, prima ondata a 4 minuti (a 5 minuti ha ucciso 6 soldati del
+giocatore lasciati senza ordini).
+
+### 9.77 Livello 5: un giocatore automatico
+
+Richiesta: provare la partita facendo le scelte del giocatore. Strumento
+`game/test/browser/autoplay.mjs` (fuori dalla CI: una partita dura minuti):
+gioca con gli stessi comandi del giocatore (clic destro vero, tasti di
+costruzione e produzione, clic sinistro per piazzare) con tre strategie
+(ordinato, aggressivo, lento) e scrive fasi, risorse, perdite e ondate.
+
+Ritocco: il centro dell'acropoli passa a (3450, 2250) con raggio 800 (era
+3700, 2300 e 700): le pietre da cavare stanno a ovest delle rovine e il
+dialogo arrivava solo passandoci accanto da est.
+
+Prima partita, strategia ordinata (40 minuti, seme 1): fortezza cominciata
+a 3:40 e finita a 4:37, ondata d'avviso a 7:43. Il legno resta fra 10 e 220
+per tutta la partita: vicino alla base gli alberi veri entro 2500 px dal
+centro sono 11 (uno entro 1500), i boschi attorno sono `albero_fake`
+(decorativi, 47 entro 1500 px); quello a (1816, 1188) e' chiuso dalle
+montagne e i civili ci camminano sul posto. Niente arieti, 2 catapulte; le
+ondate (dal quarto minuto, ogni 3, poi con le macchine d'assedio) logorano
+l'esercito: 27, 22, 16, 12, 7 e 0 soldati a 20:39; sconfitta. La citta'
+nemica resta intatta (28 edifici).
+
+### 9.78 Livello 5: gli alberi erano finti
+
+Segnalazione dell'autore (dopo §9.77, "nel livello 5 manca il legno"): gli
+alberi dovrebbero essere tutti veri; i finti hanno la F sopra, e di solito
+sono quelli che nessuno raggiunge.
+
+**Causa**: nel tileset `natura` del kit `albero_fake` aveva, oltre ad
+alb1_F (con la F), una tile per ogni variante alb1..alb8 (tools 11: una
+tile per sprite scelto a caso nel Create), con le stesse immagini degli
+alberi veri. Nella mappa del livello 5, 298 alberi su 377 erano le tile 12,
+13 e 14 (`albero_fake` alb4, alb5, alb6): indistinguibili in Tiled, finti
+nel gioco. Nei livelli 2-4 i finti vengono dalle room di GameMaker
+convertite, e sono quelli dell'originale.
+
+**Ora**:
+- kit (tools/11_tiled_kit.py, `fake_mark`): le varianti di `albero_fake`
+  hanno la F arancione di alb1_F (stessa origine per tutti gli alb*, la F
+  e' la differenza fra alb1_F e alb1). Gli id delle tile non cambiano: le
+  mappe restano valide;
+- `mappe/lvl05.tmx`: le 298 tile finte diventano gli alberi veri con la
+  stessa immagine (12, 13, 14 -> 3, 4, 5); poi, seguendo la regola
+  dell'autore, i 9 alberi che nessuno raggiunge (chiusi da montagne, fiumi o
+  bordo della mappa, a regioni calcolate senza gli alberi, per il giocatore
+  e per il nemico) diventano finti con la F, fra cui quello a (1816, 1188)
+  dove i civili camminavano sul posto (§9.77). Alberi veri: 368.
+
+Passano lvl05, enemywalls e il controllo degli scenari (tools 12 --check).
+
+**Partite del bot dopo la correzione** (autoplay.mjs con i contadini sui 4
+campi, il riequilibrio dei mestieri, fino a 14 civili, i rinforzi a gruppi
+di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
+- ordinato: fortezza a 4:18, assalto a 7:37 (23 soldati, 2 arieti, 2
+  catapulte), porta ovest abbattuta a 8:27, in citta' i soldati muoiono
+  contro il presidio e le torri: 2 edifici su 28; poi le ondate (8, le
+  ultime con le macchine) distruggono le case. Sconfitta a 26:41;
+- aggressivo (assalto appena ci sono le macchine): 32 assalti, quasi tutti
+  con 1-3 soldati; fino a 4 edifici distrutti, poi ricostruiti (26 alla
+  fine). Tempo scaduto;
+- lento (2 torri prima): fortezza solo a 13:31 (le torri si mangiano la
+  pietra), nessun assalto (manca l'oro per 4 arieti e 3 catapulte); la
+  citta' cresce da 28 a 32 edifici. Tempo scaduto.
+Il legno non manca piu' (fino a 2400). Il bot non fa micro (non punta le
+torri con le catapulte, non ritira i feriti): dice che il livello non si
+vince "a forza", non quanto e' difficile per un giocatore.

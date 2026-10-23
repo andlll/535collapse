@@ -44,6 +44,7 @@ Scrive (non versionato, si rigenera):
 
 Uso:  python3 tools/05_atlas.py [--png]   (--png: pagine anche in PNG per controllo)
 """
+import colorsys
 import glob
 import json
 import os
@@ -288,6 +289,9 @@ def derived_sprites():
                  disegnano a righe (effects.js).
     erba_chiara  part_erba in grigio chiaro, da colorare con la
                  particella (le macchie d'erba, §8.18).
+    <mura>_b     [§9.75] mura e porte nemiche: le bandierine rosse delle
+                 mura del giocatore (m_ori, m_vert, porte aperte e chiuse)
+                 azzurre come le bandiere nemiche (tint_flags).
     """
     img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
     out = []
@@ -325,6 +329,9 @@ def derived_sprites():
     meta = next(d for d in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))
                 if d["name"] == "part_erba")
     out.append(("erba_chiara", "ambiente", e, (meta["origin_x"], meta["origin_y"])))
+    meta = {d["name"]: d for d in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))}
+    for n in WALLS_B:
+        out.append((n + "_b", "edifici", tint_flags(img(n)), (meta[n]["origin_x"], meta[n]["origin_y"])))
     # [§9.37] i fiori delle macchie fiorite (nuovi/particelle/, disegnati al
     # doppio): meta' risoluzione, origine al piede dello stelo (in basso al
     # centro), 2 px di margine
@@ -335,6 +342,30 @@ def derived_sprites():
         fi.alpha_composite(s, (pad, pad))
         out.append((name, "ambiente", fi, (fi.width // 2, pad + s.height - 1)))
     return out
+
+
+# [§9.75] gli sprite delle mura e delle porte del giocatore che hanno una
+# versione nemica (<nome>_b)
+WALLS_B = ["m_ori", "m_vert", "m_ori_p", "m_ori_pa", "m_vert_p", "m_vert_pa"]
+
+
+def tint_flags(im, shift=191, hue_max=40, sat_min=0.3):
+    """[§9.75] Le bandierine rosso-arancio (tinta fino a hue_max gradi, o da
+    345, saturazione almeno sat_min: la pietra e' poco satura) ruotate di
+    `shift` gradi, saturazione e luminosita' uguali: la bandiera nemica
+    bflag e' la rflag del giocatore cosi' (tinta media 15 -> 206)."""
+    im = im.copy()
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if not a:
+                continue
+            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            if s >= sat_min and (h * 360 <= hue_max or h * 360 >= 345):
+                r, g, b = colorsys.hsv_to_rgb((h + shift / 360) % 1, s, v)
+                px[x, y] = (round(r * 255), round(g * 255), round(b * 255), a)
+    return im
 
 
 FIORI = {"fiore_giallo1": "fiore1_part2x", "fiore_giallo2": "fiore2_part2x",

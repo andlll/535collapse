@@ -904,6 +904,68 @@
       "depth": -9999,
       "kit": false
     },
+    "enemy_manager_lv5": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 5 (§9.76, levels.js)"
+    },
+    "dialogo_5_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_3": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_4": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_5_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
     "hint_lavoratori": {
       "sprite": null,
       "parents": [
@@ -1066,6 +1128,58 @@
       },
       "nota": "il mulino nemico: passivo, le pale girano (9 fotogrammi dell'autore, mub, §9.48), brucia (§9.43; maschera dell'originale)"
     },
+    "enemy_mura_ori": {
+      "sprite": "m_ori_b",
+      "mask": "m_ori_p",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "tratto di mura nemico (§9.75): le mura del giocatore con le bandierine azzurre; di pietra, solo arieti e catapulte"
+    },
+    "enemy_mura_vert": {
+      "sprite": "m_vert_b",
+      "mask": "m_vert_p",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "tratto di mura nemico (§9.75): le mura del giocatore con le bandierine azzurre; di pietra, solo arieti e catapulte"
+    },
+    "enemy_porta_ori": {
+      "sprite": "m_ori_p_b",
+      "mask": "m_ori_pa_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "porta nemica (§9.75): si apre per i nemici; chiusa per il giocatore, nei percorsi percorribile per i nemici"
+    },
+    "enemy_porta_vert": {
+      "sprite": "m_vert_p_b",
+      "mask": "m_vert_pa_mask",
+      "parents": [
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": true,
+      "depth": {
+        "y": 0
+      },
+      "nota": "porta nemica (§9.75): si apre per i nemici; chiusa per il giocatore, nei percorsi percorribile per i nemici"
+    },
     "enemy_omino": {
       "sprite": "ow11",
       "parents": [
@@ -1089,7 +1203,6 @@
       ],
       "solid": false,
       "depth": -1,
-      "kit": false,
       "nota": "il campo coltivato nemico (§9.44), dei lavoratori nemici"
     },
     "enemy_eco": {
@@ -1136,6 +1249,12 @@
       "lato": 150,
       "gruppo": "campagna",
       "nota": "segnalino del livello 4 (il ponte) sulla mappa della campagna, disegnato dall'autore (§9.51)"
+    },
+    "cap_l5": {
+      "da": "cap5",
+      "lato": 120,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 5 (il castello nemico) sulla mappa della campagna, disegnato dall'autore (§9.76)"
     }
   }
 }

@@ -11,7 +11,7 @@
 // che resta per gli oggetti non ancora portati.
 
 import { irandomRange, pointDistance } from "./gm.js";
-import { freeSpawnEnemy } from "./enemies.js";
+import { freeSpawnEnemy, retreatTo } from "./enemies.js";
 import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
 import { panTo, panStep } from "./camera.js";
@@ -835,6 +835,187 @@ export function enemyManagerLv4(p) {
       // vittoria: il centro nemico distrutto (si vede solo a ponte riparato,
       // ma vale anche prima)
       if (!w.exists("enemy_centro")) {
+        g.victory = 1;
+        w.create("victory_manager", 0, 0);
+      }
+    },
+  };
+}
+
+// ----------------------------------------------------- livello 5
+
+// [§9.75, decisione dell'autore] Nella mappa del livello 5 le mura, le
+// porte e i campi da costruire della citta' nemica (la meta' est) sono
+// quelli del giocatore: il kit di Tiled dell'autore non aveva le versioni
+// nemiche. All'avvio diventano mura e porte nemiche e campi coltivati
+// nemici (della regia economica), nello stesso punto. Nel kit nuovo ci sono
+// (tileset nemici, in fondo): una mappa che le usa non ha bisogno di
+// questo.
+// [§9.76, regia e ambientazione dell'autore] Si apre con una battaglia vicino
+// alla base del giocatore; i nemici, vedendosela brutta, si ritirano nella
+// loro citta'. Inseguiti fino alle mura, i soldati capiscono che senza armi
+// d'assedio le difese li trafiggeranno e tornano indietro; sulla via del
+// ritorno trovano l'acropoli di un culto antico (le rovine al centro della
+// mappa) e decidono, a malincuore, di ricavarne pietra per una fortezza
+// (obbligatoria: produce arieti e catapulte). Intanto il nemico manda
+// ondate (la regia economica, ECO.lvl05). La prima ondata dopo la fortezza,
+// vista la sua mole, torna indietro ad avvertire la citta': da allora le
+// ondate portano anche macchine d'assedio, pagate con la grande riserva di
+// pietra del nemico (che non la usa per riparare o ricostruire gli edifici
+// di pietra: economy.js stoneWork). Vittoria: la citta' nemica distrutta
+// (tutti gli edifici tranne mura, porte e campi). Le due torri nemiche fuori
+// dalle mura sono di vedetta: non tirano (ranged.js, watch). Numeri da
+// tarare giocando.
+export const LV5 = {
+  start: { food: 200, wood: 200, gold: 100, stone: 0 },
+  east: 4500,                        // la citta' nemica: x >= east
+  watch: 5100,                       // torri nemiche a ovest delle mura: di vedetta
+  retreatAt: 2 / 3,                  // la battaglia d'apertura: ritirata quando ne resta al piu' questa parte...
+  retreatAfter: 45 * 60,             // ...o dopo tanti passi
+  home: [5750, 2450],                // dove si ritirano: dentro la porta ovest
+  wallsR: 600,                       // un alleato a tanti px dalle mura nemiche: il dialogo delle mura
+  acropolis: [3450, 2250],           // il centro delle rovine (e delle pietre che le circondano)
+  acropolisR: 800,
+  acropolisAfter: 600,               // passi dopo il dialogo delle mura (l'acropoli e' sulla strada dell'inseguimento)
+  sightR: 900,                       // l'ondata vede la fortezza a tanti px
+  siegeAt: [4980, 2450],             // dove nascono le macchine d'assedio: fuori dalla porta ovest
+  siegeCost: { enemy_ariete: 250, enemy_catapulta: 300 }, // in pietra
+  siegeMax: 3,                       // macchine per ondata, al piu' (1, 1, 2, 2, 3...)
+  city: ["enemy_centro", "enemy_house", "enemy_caserma", "enemy_stalla", "enemy_chiesa", "enemy_castello",
+         "enemy_magazzino", "enemy_mulino", "enemy_torre", "enemy_fondamenta"],
+  walls: ["enemy_mura_ori", "enemy_mura_vert", "enemy_porta_ori", "enemy_porta_vert"],
+};
+const LV5_ENEMY = { mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori",
+                    porta_vert: "enemy_porta_vert", campo_fond: "enemy_campo" };
+export function lvl05Setup(w) {
+  for (const [from, to] of Object.entries(LV5_ENEMY)) {
+    for (const i of [...w.all(from)]) {
+      if (i.x < LV5.east) continue;
+      const { x, y } = i;
+      w.destroy(i);
+      w.create(to, x, y);
+    }
+  }
+  // [§9.76] le torri di vedetta: non tirano e non sono della regia
+  // economica (un alleato vicino non chiama la difesa della citta')
+  for (const t of w.all("enemy_torre")) if (t.x < LV5.watch) { t.watch = 1; t.noEco = 1; }
+}
+
+// I nemici della lista si ritirano in citta' (enemies.js, retreatTo), un
+// campo di flusso per tutti, ognuno verso un posto suo
+function lv5Retreat(w, p, list) {
+  const [hx, hy] = LV5.home, ff = p.flowField(p.goalField(hx, hy, true));
+  list.filter((e) => e.object !== "enemy_omino" && !e.retreat)
+    .forEach((e, k) => retreatTo(w, p, e, hx + (k % 4) * 60 - 90, hy + Math.floor(k / 4) * 60 - 60, ff));
+}
+
+// Le macchine d'assedio di un'ondata, fuori dalla porta ovest, verso
+// l'edificio alleato piu' vicino (poi da sole, enemyRam / enemyCatapult)
+function lv5Siege(w, L) {
+  const en = w.g.en, [sx, sy] = LV5.siegeAt;
+  const n = Math.min(LV5.siegeMax, 1 + Math.floor(L.siegeN / 2));
+  const t = w.nearest(sx, sy, "ally_build");
+  for (let k = 0; k < n; k++) {
+    const obj = (L.siegeN + k) % 2 ? "enemy_catapulta" : "enemy_ariete", cost = LV5.siegeCost[obj];
+    if (!en || en.stone < cost) break;
+    en.stone -= cost;
+    const m = w.create(obj, sx, sy - 120 + k * 120);
+    freeSpawnEnemy(m, w);
+    m.l5siege = 1;
+    if (t) { m.action = 1; m.warwork = 0; m.dirox = t.x; m.diroy = t.y; m.alarm.set(0, 13); }
+  }
+  L.siegeN++;
+}
+
+export function enemyManagerLv5(p) {
+  // un dialogo vicino a (x, y), o al centro della vista
+  const say = (w, name, at = null) => {
+    const [x, y] = at || [w.cam.x + w.cam.w / 2, w.cam.y + w.cam.h / 2];
+    const s = w.nearest(x, y, "ally_militare") || w.nearest(x, y, "ally_unit");
+    if (s) w.create(name, s.x, s.y);
+  };
+  // il primo alleato entro r px da uno degli oggetti
+  const allyNear = (w, objs, r) => {
+    for (const o of objs) for (const b of w.all(o)) {
+      const a = w.nearest(b.x, b.y, "ally_unit");
+      if (a && Math.hypot(a.x - b.x, a.y - b.y) < r) return a;
+    }
+    return null;
+  };
+  return {
+    create(i, w) {
+      const g = w.g;
+      i.sprite_index = null;
+      Object.assign(g, LV5.start);
+      // la battaglia d'apertura: i nemici vicino alla base del giocatore;
+      // quelli della citta' difendono dove sono
+      const opening = [...w.all("enemy_unit")].filter((e) => e.x < LV5.east);
+      for (const e of opening) e.l5open = 1;
+      for (const e of w.all("enemy_unit")) if (e.x >= LV5.east) e.defender = 1;
+      g.l5 = { phase: 0, n0: opening.length, t: 0, wallsAt: 0, fortWave: 0, warned: 0, siege: 0, siegeN: 0, lastWave: 0,
+               left: LV5.city.reduce((n, o) => n + w.number(o), 0) };
+      i.alarm.set(1, 60);
+    },
+    alarm1(i, w) { say(w, "dialogo_5_0"); },
+    step(i, w) {
+      const g = w.g, L = g.l5, en = g.en;
+      if (!L || g.victory === 1 || g.gameover === 1) return;
+      L.t++;
+      // fase 0, la battaglia: ritirata quando i nemici sono ridotti a due
+      // terzi, o dopo retreatAfter passi
+      if (L.phase === 0) {
+        const alive = [...w.all("enemy_unit")].filter((e) => e.l5open === 1);
+        if (alive.length <= Math.floor(L.n0 * LV5.retreatAt) || L.t >= LV5.retreatAfter) {
+          L.phase = 1;
+          lv5Retreat(w, p, alive);
+          say(w, "dialogo_5_1", alive.length ? [alive[0].x, alive[0].y] : null);
+        }
+      }
+      if (L.t % 20 === 0) {
+        // fase 1, l'inseguimento: un alleato arrivato davanti alle mura
+        if (L.phase === 1) {
+          const a = allyNear(w, LV5.walls, LV5.wallsR);
+          if (a) { L.phase = 2; L.wallsAt = L.t; say(w, "dialogo_5_2", [a.x, a.y]); }
+        }
+        // fase 2, la ritirata: sulla via del ritorno, l'acropoli
+        if (L.phase === 2 && L.t - L.wallsAt >= LV5.acropolisAfter) {
+          const [ax, ay] = LV5.acropolis, a = w.nearest(ax, ay, "ally_unit");
+          if (a && Math.hypot(a.x - ax, a.y - ay) < LV5.acropolisR) { L.phase = 3; say(w, "dialogo_5_3", [a.x, a.y]); }
+        }
+      }
+      // la fortezza (a qualunque fase): l'obiettivo diventa la citta'
+      if (L.phase < 4 && w.exists("castello")) {
+        L.phase = 4;
+        L.fortWave = en ? en.wave || 0 : 0;
+        const f = w.all("castello").next().value;
+        say(w, "dialogo_5_4", [f.x, f.y]);
+      }
+      // le ondate della regia economica: chi parte e' della sua ondata;
+      // dopo l'avvertimento, con le macchine d'assedio
+      const wave = en ? en.wave || 0 : 0;
+      if (wave > L.lastWave) {
+        L.lastWave = wave;
+        for (const e of w.all("enemy_unit")) if (e.eco === 1 && e.role === 31 && !e.defending && !e.l5w) e.l5w = wave;
+        if (L.siege) lv5Siege(w, L);
+      }
+      // la prima ondata partita dopo la fortezza, vista la fortezza, torna
+      // ad avvertire la citta'
+      if (L.phase === 4 && !L.warned && L.t % 10 === 0) {
+        const f = w.all("castello").next().value;
+        if (f) {
+          for (const e of w.all("enemy_unit")) {
+            if (!e.l5w || e.l5w <= L.fortWave || e.retreat) continue;
+            if (Math.hypot(e.x - f.x, e.y - f.y) >= LV5.sightR) continue;
+            L.warned = 1; L.siege = 1;
+            lv5Retreat(w, p, [...w.all("enemy_unit")].filter((u) => u.l5w === e.l5w));
+            say(w, "dialogo_5_5", [e.x, e.y]);
+            break;
+          }
+        }
+      }
+      // vittoria: la citta' distrutta
+      L.left = LV5.city.reduce((n, o) => n + w.number(o), 0);
+      if (L.left === 0) {
         g.victory = 1;
         w.create("victory_manager", 0, 0);
       }

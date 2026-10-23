@@ -89,6 +89,11 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = fals
 // [§9.31] passIdle: chi e' fermo li' si spostera' (makeWay).
 export const FIRE = { sep: 30, extras: [12, 32, 52], passIdle: true };
 
+// [§9.71] In mischia, sovrapposti a un alleato: non si resta dove si e'
+// anche se si e' gia' a contatto col bersaglio (come gli arieti, noStay),
+// si va a un posto libero.
+export const MELEE_UNSTACK = { sep: SEP, extras: [0], noStay: true };
+
 // [§9.32, segnalazione dell'autore] Posti per gli arieti attorno
 // all'edificio da colpire. Tutti puntavano all'origine dell'edificio (dentro
 // di lui): il flow field "largo" li portava alla stessa cella raggiungibile

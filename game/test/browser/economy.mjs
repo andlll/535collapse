@@ -10,6 +10,8 @@
 // Poi un guerriero alleato attacca un lavoratore:
 //   fuga     = il lavoratore colpito scappa verso il centro
 //   morte    = il guerriero lo uccide (la vita 50 ha i suoi danni)
+//   cadavere = §9.70: muore con gli sprite nemici (b_oc...), il civile
+//              alleato con i suoi (oc...)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -82,11 +84,23 @@ const res = await page.evaluate((STEPS) => {
   }
   out.fuga = fled && minD < d0 - 50;
   out.morte = dead;
+  // §9.70: i fotogrammi del cadavere, del nemico e di un civile alleato
+  const al = w.create("ally_omino", CX - 300, CY - 600);
+  G.advance(2);
+  al.life = 0;
+  const seen = { enemy: new Set(), ally: new Set() };
+  for (let s = 0; s < 120; s++) {
+    G.advance(1);
+    for (const k of w.all("omino_corpse")) if (k.sprite_index) seen[k.skin ? "enemy" : "ally"].add(k.sprite_index);
+  }
+  out.cadavere = { enemy: [...seen.enemy], ally: [...seen.ally] };
   return out;
 }, STEPS);
 console.log(JSON.stringify(res));
 const ok = res.eco === 1 && res.got.wood > 0 && res.got.gold > 0 && res.got.stone > 0 && res.got.food > 0
-  && res.workers >= 6 && res.player && res.fuga && res.morte >= 0 && errs.length === 0;
+  && res.workers >= 6 && res.player && res.fuga && res.morte >= 0
+  && res.cadavere.enemy.length === 3 && res.cadavere.enemy.every((n) => /^b_oc\d\d$/.test(n))
+  && res.cadavere.ally.length === 3 && res.cadavere.ally.every((n) => /^oc\d\d$/.test(n)) && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");
 await browser.close();

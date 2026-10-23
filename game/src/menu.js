@@ -36,7 +36,7 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05" };
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -44,6 +44,8 @@ export const STORY = {
   3: "The soldiers are alone, far from home. The invaders are seeking one last stronghold to conquer: if that falls too, there will be no one left to stop them.",
   // [§9.52] scritto per il porting, da rivedere con l'autore
   4: "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.",
+  // [§9.76] scritto per il porting dalla regia dell'autore, da rivedere con lui
+  5: "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
@@ -78,7 +80,7 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
@@ -242,6 +244,10 @@ export function enemyManagerMenu() {
   };
 }
 
+// [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
+// AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
+const VERSION = "0.2602";
+const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
   const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
@@ -266,12 +272,18 @@ function drawTitle(i, d, W, H) {
     : "Non mi interessa se sta roba non ingrana quando soffro d'insonnia e non dormo da una settimana");
   d.setHalign("left");
   // [Richiesta dell'autore] la versione del porting (l'originale: 0.250125)
-  d.text(20, H - 50, "0.2601");
+  d.text(20, H - 50, VERSION);
   d.setAlpha(1);
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre basse: sale a meta' dello spazio sopra i pulsanti
   // [§9.47, richiesta dell'autore] il titolo "Dust Veil" al posto del "535"
-  d.sprite("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2));
+  // [§9.72] "Dust Veil: Collapse" su due righe, disegnato grande
+  // (tools/13_logo.py) e rimpicciolito: al piu' meta' della larghezza dello
+  // schermo, e dentro lo spazio sopra i pulsanti con LOGO_MARGIN px sopra e
+  // sotto (1920 x 1080: 82%, 1280 x 720: 52%)
+  const lg = d.a.sprites.logo_dustveil;
+  const s = lg ? Math.min(1, (b.top - 2 * LOGO_MARGIN) / lg.height, W / 2 / lg.width) : 1;
+  d.spriteExt("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2), s, s, 0, c.white, 1);
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu
@@ -313,6 +325,11 @@ const L3_ARROW = [399, 2, 1.2, 1.1, -60];
 const L4_MARK = [186, -108];
 const L4_LABEL = [186, -180];
 const L4_ARROW = [291, -94, 0.9, 1.0, -10];
+// [§9.76, richiesta dell'autore] il livello 5 (cap_l5, il castello blu
+// dell'autore): sotto il 4, in fondo alla catena montuosa al centro
+const L5_MARK = [95, 60];
+const L5_LABEL = [95, -22];
+const L5_ARROW = [150, -25, 0.8, 1.0, 58];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -351,6 +368,11 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap_l4", 0, MX + L4_MARK[0], H / 2 + L4_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L4_ARROW[0], H / 2 + L4_ARROW[1], L4_ARROW[2], L4_ARROW[3], L4_ARROW[4], c.white, 1);
       d.text(MX + L4_LABEL[0], H / 2 + L4_LABEL[1], "4.");
+    }
+    if (i.lvlshown > 4) {
+      d.sprite("cap_l5", 0, MX + L5_MARK[0], H / 2 + L5_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L5_ARROW[0], H / 2 + L5_ARROW[1], L5_ARROW[2], L5_ARROW[3], L5_ARROW[4], c.white, 1);
+      d.text(MX + L5_LABEL[0], H / 2 + L5_LABEL[1], "5.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

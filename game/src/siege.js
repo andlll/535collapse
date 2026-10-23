@@ -578,7 +578,12 @@ export function infantryFire(i, w) {
     const b = w.create("fire_bullet", i.x, i.y - 67);
     b.direction = pointDirection(b.x, b.y, i.targetid.x, i.targetid.y);
     b.speed = 5;
-  } else i.action = 0;
+  } else {
+    // [§9.71] edificio crollato: fermo e libero. warwork restava 4 (l'ordine
+    // di movimento del clic destro): la separazione dei soldati fermi
+    // (settleOverlaps) lo saltava, e a contatto con un nemico non reagiva
+    i.action = 0; i.warwork = 0;
+  }
 }
 
 // Click destro su un edificio nemico di legno con fanti selezionati [C,

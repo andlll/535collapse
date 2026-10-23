@@ -220,6 +220,17 @@ export const DIALOGS = {
   dialogo_4_1: { who: SOLDIER2, arm: 30,
                  text: "The bridge is repaired! Across the river lies the enemy town: destroy their town hall to clear the way. Now their soldiers can cross too!" },
   dialogo_4_2: { who: SOLDIER2, arm: 30, timeout: 600, text: "The enemy camp in the north has fallen: no more raids from there!" },
+  // livello 5 [§9.76]: la regia e' in levels.js (enemyManagerLv5), che li crea
+  dialogo_5_0: { who: SOLDIER2, arm: 30, text: "The invaders are attacking right outside our town! Drive them back!" },
+  dialogo_5_1: { who: SOLDIER2, arm: 30, text: "They are running back to their city! After them, before they can regroup!" },
+  dialogo_5_2: { who: SOLDIER2, arm: 30,
+                 text: "Those walls are too strong, and their towers will riddle us with arrows before we can do anything. Without siege engines it is hopeless: fall back!" },
+  dialogo_5_3: { who: SOLDIER2, arm: 30,
+                 text: "The acropolis of an ancient cult... It breaks my heart, but its stone can raise a fortress. Let our workers tear the ruins down." },
+  dialogo_5_4: { who: SOLDIER2, arm: 30,
+                 text: "Our fortress stands! Now we can build rams and catapults. Tear their city down, to the last building." },
+  dialogo_5_5: { who: SOLDIER2, arm: 30, timeout: 600,
+                 text: "Their soldiers saw the fortress and turned back... They will warn the city: next time they will bring siege engines." },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

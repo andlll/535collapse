@@ -42,6 +42,9 @@ export class Pathing {
     // percorribili per il giocatore (cost libero) ma ostacolo per i nemici:
     // contatore di porte per cella, letto solo dai goal field dei nemici.
     this.enemyBlock = new Uint8Array(this.gw * this.gh);
+    // [§9.75] il contrario: le porte nemiche sono ostacolo per il giocatore
+    // (cost e solid come un edificio) ma percorribili per i nemici
+    this.enemyPass = new Uint8Array(this.gw * this.gh);
     // [§8.14] gli ostacoli fissi (edifici, elementi
     // naturali, mura: quelli di markInstance), senza le celle occupate dalle
     // unita' ferme; servono al campo "largo" delle macchine d'assedio
@@ -66,6 +69,22 @@ export class Pathing {
     for (const k of cells) if (this.enemyBlock[k] > 0) this.enemyBlock[k]--;
     this.solidVer++;
   }
+
+  // [§9.75] Celle (da _cellsOf) percorribili per i nemici anche se chiuse:
+  // il varco di una porta nemica. Da passare a unpassEnemy quando la porta
+  // sparisce.
+  passEnemy(cells) {
+    for (const k of cells) this.enemyPass[k]++;
+    this.solidVer++;
+    return cells;
+  }
+
+  unpassEnemy(cells) {
+    for (const k of cells) if (this.enemyPass[k] > 0) this.enemyPass[k]--;
+    this.solidVer++;
+  }
+
+  cellsOf(inst) { return this._cellsOf(inst); }
 
   // Dopo un caricamento (snapshot.js): gli ostacoli fissi salvati o, nei
   // salvataggi di prima, quelli della griglia dei costi (con le celle delle
@@ -170,10 +189,90 @@ export class Pathing {
     return m;
   }
 
+  // [§9.71] Le zone collegate della griglia dei soli ostacoli fissi (per i
+  // nemici anche le porte del giocatore, e non quelle nemiche: §9.75), a 4
+  // vicini come goalField: due celle con la
+  // stessa etichetta si raggiungono a piedi, 0 e' una cella chiusa. Tenute
+  // finche' gli ostacoli non cambiano.
+  regions(enemy) {
+    const e = enemy ? 1 : 0;
+    this._reg = this._reg || [null, null];
+    this._regVer = this._regVer || [-1, -1];
+    if (this._regVer[e] === this.solidVer && this._reg[e]) return this._reg[e];
+    const { gw, gh, solid } = this, block = enemy ? this.enemyBlock : null, N = gw * gh;
+    const pass = enemy ? this.enemyPass : null; // §9.75
+    const shut = (k) => (solid[k] && !(pass && pass[k])) || (block && block[k]);
+    const lab = this._reg[e] || (this._reg[e] = new Int32Array(N));
+    lab.fill(0);
+    const q = this._regQ || (this._regQ = new Int32Array(N));
+    let id = 0;
+    for (let s = 0; s < N; s++) {
+      if (lab[s] || shut(s)) continue;
+      lab[s] = ++id;
+      let head = 0, tail = 0;
+      q[tail++] = s;
+      const open = (n) => { if (!lab[n] && !shut(n)) { lab[n] = id; q[tail++] = n; } };
+      while (head < tail) {
+        const k = q[head++], x = k % gw;
+        if (x + 1 < gw) open(k + 1);
+        if (x > 0) open(k - 1);
+        if (k >= gw) open(k - gw);
+        if (k < N - gw) open(k + gw);
+      }
+    }
+    this._regVer[e] = this.solidVer;
+    return lab;
+  }
+
+  // [§9.71] Da (x0, y0) si arriva a piedi accanto a (x1, y1)? Una cella
+  // chiusa (un'unita' a ridosso di un edificio, un bersaglio sul bordo di un
+  // bosco) vale come le sue vicine.
+  reachable(x0, y0, x1, y1, enemy = false) {
+    const lab = this.regions(enemy);
+    const a = this._zonesAround(lab, x0, y0);
+    if (!a.length) return true; // dentro un ostacolo: non si sa, come prima
+    return this._zonesAround(lab, x1, y1).some((v) => a.includes(v));
+  }
+
+  // le zone della cella di (x, y) o, se e' chiusa, delle sue vicine
+  _zonesAround(lab, x, y) {
+    const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID), out = [];
+    for (let r = 0; r <= 1 && !out.length; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (!this.inside(gx + dx, gy + dy)) continue;
+        const v = lab[(gy + dy) * this.gw + gx + dx];
+        if (v && !out.includes(v)) out.push(v);
+      }
+    }
+    return out;
+  }
+
+  // [§9.71] La cella piu' vicina a (x1, y1) fra quelle che da (x0, y0) si
+  // raggiungono: libera (nessuna unita' ferma), non in `used`; anelli fino a
+  // `maxR` celle. Indice della cella o -1.
+  nearestReachableCell(x0, y0, x1, y1, enemy = false, used = null, maxR = 40) {
+    const lab = this.regions(enemy), { gw, cost } = this;
+    const mine = this._zonesAround(lab, x0, y0);
+    if (!mine.length) return -1;
+    const gx = Math.floor(x1 / GRID), gy = Math.floor(y1 / GRID);
+    for (let r = 0; r <= maxR; r++) {
+      let best = -1, bd = Infinity;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !this.inside(gx + dx, gy + dy)) continue;
+        const k = (gy + dy) * gw + gx + dx, d = dx * dx + dy * dy;
+        if (d < bd && mine.includes(lab[k]) && cost[k] < 1000 && !(used && used.has(k))) { bd = d; best = k; }
+      }
+      if (best >= 0) return best;
+    }
+    return -1;
+  }
+
   // scr_free / scr_occupy [C]
   free(inst) {
     const gx = Math.floor(inst.x / GRID), gy = Math.floor(inst.y / GRID);
-    if (this.inside(gx, gy)) this.cost[gy * this.gw + gx] = 1;
+    // [§9.75] non una cella di un ostacolo fisso: un nemico fermo nel varco
+    // della sua porta, liberandola, la apriva al giocatore
+    if (this.inside(gx, gy) && !this.solid[gy * this.gw + gx]) this.cost[gy * this.gw + gx] = 1;
   }
 
   occupy(inst) {
@@ -193,6 +292,7 @@ export class Pathing {
   // passano sopra gli altri: civilians.js)
   goalField(goalX, goalY, enemy = false, wide = false, fixed = false) {
     const block = enemy ? this.enemyBlock : null;
+    const pass = enemy ? this.enemyPass : null; // §9.75: i varchi delle porte nemiche
     const wm = wide ? this.wideMask(enemy) : null;
     const { gw, gh } = this;
     const cost = fixed ? this._solidCost() : this.cost;
@@ -203,16 +303,16 @@ export class Pathing {
     const q = this.queue || (this.queue = new Int32Array(N));
     let head = 0, tail = 0;
     const g = gy * gw + gx;
-    const shut = (k) => cost[k] >= 1000 || (block && block[k]) || (wm && wm[k]);
+    const shut = (k) => (cost[k] >= 1000 && !(pass && pass[k])) || (block && block[k]) || (wm && wm[k]);
     if (shut(g) && this._seedAround(f, q, g, shut)) tail = this._seeds;
     else { f[g] = 0; q[tail++] = g; }
     while (head < tail) {
       const k = q[head++], v = f[k] + 1, x = k % gw;
       let n;
-      if (x + 1 < gw && f[n = k + 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
-      if (x > 0 && f[n = k - 1] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
-      if (k >= gw && f[n = k - gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
-      if (k < N - gw && f[n = k + gw] === -1 && cost[n] < 1000 && !(block && block[n]) && !(wm && wm[n])) { f[n] = v; q[tail++] = n; }
+      if (x + 1 < gw && f[n = k + 1] === -1 && !shut(n)) { f[n] = v; q[tail++] = n; }
+      if (x > 0 && f[n = k - 1] === -1 && !shut(n)) { f[n] = v; q[tail++] = n; }
+      if (k >= gw && f[n = k - gw] === -1 && !shut(n)) { f[n] = v; q[tail++] = n; }
+      if (k < N - gw && f[n = k + gw] === -1 && !shut(n)) { f[n] = v; q[tail++] = n; }
     }
     return f;
   }
@@ -992,4 +1092,118 @@ export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAll
   }
   inst.direction = (inst.direction + MAXROT) % 360; // ruota sul posto
   return false;
+}
+
+// [§9.71, richiesta dell'autore] Chi non puo' arrivare dove deve (il nemico
+// da attaccare chiuso da ostacoli, nessun posto libero attorno a lui) si
+// ferma dov'e', invece di spingere contro gli altri e tremare sul posto, e
+// riprova ogni WAIT_RETRY passi (waiting). Raggiungibile: nella stessa
+// zona della griglia degli ostacoli fissi (Pathing.regions).
+export const WAIT_RETRY = 60;
+export const waiting = (w, i) => (i.waitUntil || 0) > w._stepNo;
+export function waitHere(w, p, i, steps = WAIT_RETRY) {
+  i.waitUntil = w._stepNo + steps;
+  i.action = 0; i.warwork = 0; i.speed = 0; i.step = 0;
+  i.dirox = i.x; i.diroy = i.y;
+  p.occupy(i);
+}
+// [§9.71, richiesta dell'autore] Il bersaglio scelto col clic destro non si
+// raggiunge: si va alla cella raggiungibile piu' vicina a lui e li' ci si
+// ferma (un ordine di movimento, warwork 0: un nemico raggiungibile
+// intanto lo si attacca). Ognuno la sua: le celle prese in questo passo, con
+// le loro vicine, non le prende un altro (cosi' non si ammassano tutti nello
+// stesso punto della riva). Falso se non ce n'e' entro 40 celle.
+export function goNear(w, p, i, t) {
+  if (w._nearStep !== w._stepNo) { w._nearStep = w._stepNo; w._nearUsed = new Set(); }
+  const used = w._nearUsed;
+  const k = p.nearestReachableCell(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"), used);
+  if (k < 0) return false;
+  const gx = k % p.gw, gy = (k - gx) / p.gw;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (p.inside(gx + dx, gy + dy)) used.add(k + dy * p.gw + dx);
+  p.free(i);
+  i.dirox = gx * GRID + GRID / 2; i.diroy = gy * GRID + GRID / 2;
+  i.formX = i.dirox; i.formY = i.diroy; // onFormationSlot: sopra gli alleati
+  i.goal_x = gx * GRID; i.goal_y = gy * GRID;
+  generateFields(p, i, i.dirox, i.diroy);
+  if (i.action !== 1) i.alarm.set(0, 5);
+  i.action = 1; i.warwork = 0; i.creation = 0;
+  return true;
+}
+export const canReach = (w, i, t) => w.path.reachable(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"));
+// il piu' vicino della famiglia `fam` entro `range` px che si raggiunge
+export function nearestReachable(w, i, fam, range, ok = null) {
+  let best = null, bd = range;
+  for (const o of w.all(fam)) {
+    if (!o.alive || (ok && !ok(o))) continue;
+    const d = w.distanceToInstance(i, o);
+    if (d < bd && canReach(w, i, o)) { bd = d; best = o; }
+  }
+  return best;
+}
+// Inseguendo `t`, nessun progresso (CHASE_GAIN px piu' vicini) da
+// CHASE_STUCK passi: bloccato da altre unita' (girava in tondo con
+// mp_potential_step contro chi gli sta davanti). Da chiamare a ogni passo
+// dell'inseguimento; una pausa ricomincia il conto. Bloccato di nuovo
+// subito dopo la pausa: la pausa dopo e' doppia, fino a 4 volte WAIT_RETRY
+// (stuckWait); un progresso la riporta a WAIT_RETRY.
+const CHASE_STUCK = 30, CHASE_GAIN = 8;
+export function chaseStuck(w, i, t) {
+  const d = w.distanceToInstance(i, t), now = w._stepNo, c = i.chase;
+  if (!c || c.id !== t.id || now - c.last > WAIT_RETRY * 4 + 2 || d < c.best - CHASE_GAIN) {
+    if (c && c.id === t.id && d < c.best - CHASE_GAIN) i.stuckN = 0;
+    i.chase = { id: t.id, best: d, at: now, last: now };
+    return false;
+  }
+  if (now - c.last > 2) { c.at = now; c.best = d; } // dopo una pausa: un altro tentativo
+  c.last = now;
+  if (now - c.at < CHASE_STUCK) return false;
+  c.at = now;
+  i.stuckN = (i.stuckN || 0) + 1;
+  return true;
+}
+export const stuckWait = (i) => WAIT_RETRY << Math.min(Math.max((i.stuckN || 1) - 1, 0), 2);
+
+// [§9.71] Un ordine di movimento (verso dirox, diroy) che non avanza: in
+// MOVE_CHECK passi meno di MOVE_NET px di spostamento netto e nessun
+// avvicinamento alla meta (avanti e indietro sul posto, o fermo contro gli
+// altri). Se la meta non si raggiunge (un punto chiuso da alberi, l'altra
+// riva) ci si ferma li': l'ordine e' finito. Se si raggiunge, una pausa sul
+// posto e poi si riprova, col proprio campo verso la meta: il campo comune
+// della formazione porta a una sola cella, e chi aveva la casella
+// dall'altra parte di un ostacolo restava ammassato li' con gli altri.
+// Bloccato di nuovo, la pausa dopo e' doppia, fino a 4 volte WAIT_RETRY.
+// Vero se in questo passo l'unita' non deve muoversi.
+const MOVE_CHECK = 45, MOVE_NET = 20, MOVE_GAIN = 16;
+export function moveStalled(w, p, i) {
+  const now = w._stepNo, c = i.mv;
+  if ((i.mvPause || 0) > now && c) {
+    Object.assign(c, { x: i.x, y: i.y, at: now, last: now });
+    i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); // fermo, senza il passo
+    return true;
+  }
+  const d = pointDistance(i.x, i.y, i.dirox, i.diroy);
+  if (!c || c.dx !== i.dirox || c.dy !== i.diroy || now - c.last > 2) {
+    const n = c && c.dx === i.dirox && c.dy === i.diroy ? c.n : 0;
+    i.mv = { dx: i.dirox, dy: i.diroy, x: i.x, y: i.y, d, at: now, last: now, n };
+    return false;
+  }
+  c.last = now;
+  if (now - c.at < MOVE_CHECK) return false;
+  const stuck = pointDistance(i.x, i.y, c.x, c.y) < MOVE_NET && d > c.d - MOVE_GAIN;
+  Object.assign(c, { x: i.x, y: i.y, d, at: now });
+  if (!stuck) { c.n = 0; return false; }
+  if (!p.reachable(i.x, i.y, i.dirox, i.diroy, !!i.parents && i.parents.includes("enemy_unit"))) {
+    i.action = 0; i.warwork = 0; i.creation = 0; i.speed = 0; i.step = 0;
+    i.dirox = i.x; i.diroy = i.y;
+    p.occupy(i);
+    i.mv = null;
+    return true;
+  }
+  c.n++;
+  i.mvPause = now + (WAIT_RETRY << Math.min(c.n - 1, 2));
+  if (i.goal_field) {
+    generateFields(p, i, i.dirox, i.diroy);
+    i.goal_x = Math.floor(i.dirox / GRID) * GRID; i.goal_y = Math.floor(i.diroy / GRID) * GRID;
+  }
+  return true;
 }
