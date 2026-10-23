@@ -6611,8 +6611,10 @@ Prima:
   raggiungibile entro il raggio diventa il bersaglio, se no restano fermi e
   riguardano dopo 1 s. Lo stesso per il bersaglio scelto col clic destro
   (ci si rinuncia, come con targetStuck §9.38). Senza un posto libero
-  attorno al bersaglio (meleeSpot) non si spinge piu' verso il suo centro:
-  fermi, e dopo 30 passi cosi' la pausa. I nemici, se in mezzo secondo non
+  attorno al bersaglio (meleeSpot) entro 150 px da lui non si spinge piu'
+  verso il suo centro: fermi, e dopo 30 passi cosi' la pausa (da piu'
+  lontano ci si avvicina come prima: fermi li', di notte il cavaliere di
+  attackorder.mjs aspettava 28 passi). I nemici, se in mezzo secondo non
   si avvicinano al bersaglio (`chaseStuck`), si fermano e riprovano, con
   pause doppie se si bloccano di nuovo, fino a 4 s (agli alleati bastano il
   cambio di settore e targetStuck: con la stessa regola combattevano
@@ -6630,10 +6632,33 @@ Prima:
   contatto con il nemico ma sovrapposto a un alleato che sta gia'
   colpendo, non comincia a colpire (ne' continua, fra un colpo e l'altro,
   se ha l'ordo piu' basso) e va al suo posto (`unstack`); dopo mezzo secondo
-  senza riuscirci colpisce comunque.
+  senza riuscirci colpisce comunque (con 1,5 s i 18 alleati contro 8 nemici
+  ci mettevano fino a 4 s di piu').
 - *Fine del fuoco* (siege.js infantryFire, e la rinuncia di §9.31):
   `warwork` torna 0.
 
 Provato e tolto: chi tira frecce incendiarie sovrapposto a un compagno che
 tira va a un altro posto attorno all'edificio (12 fanti contro una casa):
 passi sovrapposti 967 -> 762, ma inversioni di marcia raddoppiate.
+
+**Dopo** (crowd.mjs, semi 3 / 7 / 11, prima -> ora):
+
+| caso | misura | prima | ora |
+|---|---|---|---|
+| attacco | coppie sovrapposte >= 3 s | 91 / 43 / 36 | 4 / 1 / 5 |
+| attacco | passo in cui muore l'ultimo nemico | 432 / 492 / 463 | 535 / 534 / 523 |
+| fuoco | coppie sovrapposte alla fine | 4 / 3 / 2 | 0 / 0 / 0 |
+| circondato | finestre di tremolio / inversioni | 34 / 4 / 30, 2734 / 1111 / 1716 | 0 / 0 / 0, 3 / 0 / 0 |
+| nemici | finestre di tremolio | 73 / 63 / 39 | 10 / 17 / 14 |
+| mischia | coppie sovrapposte >= 3 s | 28 / 11 / 29 | 5 / 8 / 6 |
+| mischia | alleati vivi alla fine | 7 / 1 / 0 | 13 / 4 / 7 |
+| punto | in cammino dopo 25 s / inversioni | 9 / 9 / 9, ~10.000 | 0 / 0 / 0, ~133 |
+
+L'attacco 18 contro 8 finisce 1-2 s dopo: a contatto colpisce chi ha un
+posto suo, non due nello stesso punto. Restano i soldati in viaggio sul
+flow field, che possono passare uno sull'altro come prima (§8.11), e chi
+tira frecce incendiarie in 12 attorno a una casa (fuoco: 2-4 coppie
+sovrapposte mentre tirano).
+
+`crowd.mjs` e' nella CI (seme 3; fallisce col codice di prima in tutti i
+casi).

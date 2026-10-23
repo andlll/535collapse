@@ -773,13 +773,13 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
             for (const o of w.all("enemy_unit")) if (o.id === i.meleeT) { i.target_eu = o; break; }
           }
         }
-        meleeStep(w, p, i, sx, sy, over);
+        meleeStep(w, p, i, sx, sy, over, i.target_eu);
       }
       if (i.warwork === 1 && !i.target_eu) {
         const n = w.nearest(i.x, i.y, "enemy_unit");
         if (n && (nearRank ? w.distanceToInstance(i, n) <= 400 : w.distanceToInstance(i, n) < 400)) {
           const [sx, sy] = meleeSpot(w, i, n, "enemy_unit", ring);
-          meleeStep(w, p, i, sx, sy, over);
+          meleeStep(w, p, i, sx, sy, over, n);
         } else if (over) moveFlowField(w, p, i);
       }
     }
@@ -789,12 +789,19 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
 // [§9.71] Un passo in mischia verso (sx, sy), il posto attorno al bersaglio
 // (meleeSpot) o una tappa per arrivarci. Sovrapposto a un alleato (over):
 // sopra gli alleati ma non attraverso edifici, alberi o nemici (stepOver).
-// Nessun posto libero attorno al bersaglio (meleeSpot restituisce il suo
-// centro): invece di spingere contro chi combatte gia', e tremare, fermo;
-// dopo NO_SLOT passi cosi' si smette e si riprova ogni WAIT_RETRY passi
-// (autoAttack).
-const NO_SLOT = 30;
-function meleeStep(w, p, i, sx, sy, over) {
+// Nessun posto libero attorno al bersaglio `t` (meleeSpot restituisce il
+// suo centro): da lontano ci si avvicina come prima (un posto si puo'
+// liberare); entro NO_SLOT_NEAR px, invece di spingere contro chi combatte
+// gia', e tremare, fermo; dopo NO_SLOT passi cosi' si smette e si riprova
+// ogni WAIT_RETRY passi (autoAttack).
+const NO_SLOT = 30, NO_SLOT_NEAR = 150;
+function meleeStep(w, p, i, sx, sy, over, t) {
+  if (!i.meleeSpot && w.distanceToInstance(i, t) > NO_SLOT_NEAR) {
+    i.noSlotN = 0;
+    if (over) moveFlowField(w, p, i);
+    else mpPotentialStep(w, i, sx, sy, i.autospeed);
+    return;
+  }
   if (!i.meleeSpot) {
     i.noSlotN = (i.noSlotN || 0) + 1;
     i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); // fermo, senza il passo

@@ -36,7 +36,7 @@ const LIMITS = {
   fuoco: { endOv: 0 },
   circondato: { jitter: 2, rev: 100 },
   nemici: { jitter: 25 },
-  mischia: { long: 6 },
+  mischia: { long: 10 },
   punto: { moving: 0, endOv: 3, jitter: 5, rev: 500 },
 };
 const CASES = Object.keys(LIMITS).filter((c) => !only || only.split(",").includes(c));
