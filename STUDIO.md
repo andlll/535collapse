@@ -6547,3 +6547,22 @@ ogni passo) si ferma ancora al passo 2999. movement.mjs e attackorder.mjs
 danno gli stessi numeri di prima; passano settle, rally, melee, idle,
 workers, garrison, blocked, sites, resources, depot, fireorder,
 enemydefense, lvl04, saves (5 room), soak. `longmove.mjs` e' nella CI.
+
+### 9.70 Il cadavere del lavoratore nemico
+
+Segnalazione dell'autore: i lavoratori nemici, quando muoiono, hanno ancora
+gli sprite degli omini arancioni.
+
+Era cosi': enemy_omino muore come il civile alleato (civilians.js, azione 2)
+e crea `omino_corpse`, che disegna gli sprite alleati (oc11...); il
+corrispondente b_ si sceglieva solo nel Draw del lavoratore vivo
+(economy.js, §9.49), non nel cadavere.
+
+**Ora:** il cadavere del lavoratore nemico ha `skin = "b_"`, e il Step dei
+cadaveri (units.js, `corpse`) dopo l'animazione mette il prefisso allo
+sprite scelto, se c'e' (b_oc11..., disegnati dall'autore, §9.49). Il
+cadavere del civile alleato non cambia.
+
+Prova: `economy.mjs` (nella CI) guarda i fotogrammi dei cadaveri dopo la
+morte del lavoratore: il nemico b_oc81-83, un civile alleato ucciso nella
+stessa partita oc41-43. Prima della correzione il nemico dava oc81-83.

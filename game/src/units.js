@@ -1043,6 +1043,8 @@ export function corpse(name) {
     create(i) { i.depth = -i.y; i.alarm.set(0, 20); i.step = 0; i.phase = 0; },
     step(i, w) {
       ANIM[name](i, w);          // azione 1: sprite (alla prima passata phase=0: nessuno)
+      // §9.70: il lavoratore nemico (skin "b_") ha i suoi fotogrammi di morte
+      if (i.skin && i.sprite_index && w.assets.sprites[i.skin + i.sprite_index]) i.sprite_index = i.skin + i.sprite_index;
       i.depth = -i.y;            // azione 2: direzione
       i.phase = phaseOf(i.direction);
       // azione 3 [C, "///alpha"]: nell'ultima fase (40 passi) sbiadisce.
