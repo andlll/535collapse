@@ -6946,6 +6946,6 @@ per tutta la partita: vicino alla base gli alberi veri entro 2500 px dal
 centro sono 11 (uno entro 1500), i boschi attorno sono `albero_fake`
 (decorativi, 47 entro 1500 px); quello a (1816, 1188) e' chiuso dalle
 montagne e i civili ci camminano sul posto. Niente arieti, 2 catapulte; le
-ondate (dalla quarta minuto, ogni 3, poi con le macchine d'assedio) logorano
+ondate (dal quarto minuto, ogni 3, poi con le macchine d'assedio) logorano
 l'esercito: 27, 22, 16, 12, 7 e 0 soldati a 20:39; sconfitta. La citta'
 nemica resta intatta (28 edifici).
