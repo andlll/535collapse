@@ -6986,7 +6986,8 @@ di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
   contro il presidio e le torri: 2 edifici su 28; poi le ondate (8, le
   ultime con le macchine) distruggono le case. Sconfitta a 26:41;
 - aggressivo (assalto appena ci sono le macchine): 32 assalti, quasi tutti
-  con 1-3 soldati; 3 edifici. Tempo scaduto;
+  con 1-3 soldati; fino a 4 edifici distrutti, poi ricostruiti (26 alla
+  fine). Tempo scaduto;
 - lento (2 torri prima): fortezza solo a 13:31 (le torri si mangiano la
   pietra), nessun assalto (manca l'oro per 4 arieti e 3 catapulte); la
   citta' cresce da 28 a 32 edifici. Tempo scaduto.
