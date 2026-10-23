@@ -6724,3 +6724,53 @@ basso a sinistra della schermata principale sale di 0.0001: `0.AANN`, con
 `AA` l'anno e `NN` un progressivo (ora 0.2601 -> **0.2602**). Il numero e'
 la costante `VERSION` di menu.js (prima scritto direttamente nel Draw); la
 regola e' in `CLAUDE.md`, che le sessioni di Claude leggono da sole.
+
+### 9.74 Livello 5: la mappa dell'autore
+
+L'autore ha caricato `mappe/lvl05.tmx` (con `mappe/immagine.png`, lo
+screenshot della mappa in Tiled per il controllo). Come per il livello 4
+(§9.40) prima la mappa giocabile, poi regia e campagna, che l'autore
+spieghera'.
+
+**Import** (12_tiled_import, scenari/lvl05.json): 9000 x 4000 px, 633
+istanze, nessun avviso; l'anteprima (`--anteprima`) corrisponde allo
+screenshot. La mappa usa insieme i tileset del kit vecchio (cartella
+261013) e di quello nuovo: va bene, perche' le tile aggiunte dopo stanno in
+fondo ai loro tileset (tiledkit `APPENDED`, §9.40) e i numeri delle tile
+del kit vecchio valgono anche nel nuovo (nemici: 17 tile nel vecchio, 22
+nel nuovo).
+
+**Cosa c'e'.** Il giocatore a ovest (centro, caserma, torre, magazzino, 6
+case, 4 campi da seminare, 5 civili, 32 soldati); a est la citta' nemica con
+l'economia (centro, chiesa, 2 castelli, 2 magazzini, mulino, 6 case, 2
+caserme, 2 stalle), chiusa da mura con 2 porte e 11 torri; in mezzo
+montagne, rovine (pietra), colonne e una statua; un fiume a nord-ovest
+(fiume_22) e il fiume grande (§9.40) che entra dal bordo in alto a
+nord-est; 8 campi da costruire attorno a una torre nell'angolo nord-est.
+Gia' accanto all'esercito del giocatore, 15 soldati nemici (6 picchieri, 4
+arcieri, 3 guerrieri, 2 cavalieri): si combatte da subito. Senza regia, per
+ora: la citta' nemica ha la regia economica di norma (§9.44, ECO.default).
+
+**Il ponte del fiume grande** (bridge.js): il fiume grande crea il suo
+ponte da riparare nel punto in cui lo ha dipinto; qui cadrebbe fuori dalla
+room (y = -380): un cantiere irraggiungibile, con la barra della vita
+sempre visibile. Ora il ponte nasce solo se cade nella room.
+
+**Registrazione**: room `lvl05` (app.js, gruppi d'atlas core e gioco: la
+mappa non usa la citta' romana), elenco della campagna (menu.js, "5. The
+siege", nome dell'originale), salvataggi (save.js), sblocco per le prove
+fino al 5 (progress.js `UNLOCK_ALL`, §9.53: provvisorio). Soak e salvataggi
+della CI anche su lvl05 (3000 passi senza errori, ripristino identico).
+
+**Da decidere con l'autore.**
+- Le mura e le porte attorno alla citta' nemica sono mura_ori, mura_vert e
+  porta_vert: le mura del giocatore (bandierine rosse, diradano la nebbia,
+  le porte si aprono per il giocatore e sono chiuse per i nemici, i nemici
+  le attaccano). Mura nemiche non esistono ancora.
+- I 15 nemici in mezzo all'esercito del giocatore: battaglia d'apertura o
+  dovevano essere alleati?
+- Gli 8 campi da costruire nell'angolo nord-est sono del giocatore.
+- Prestazioni: ~1,7 ms a passo nel soak contro ~0,7 degli altri livelli
+  (headless). Un quarto sono le particelle (942 sistemi, 42 600 particelle:
+  la schiuma delle rive dei tre fiumi e l'erba, contro ~10 000 del livello
+  4); per ora nessuna correzione.

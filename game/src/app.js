@@ -50,12 +50,12 @@ import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from 
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
-// lvl03, lvl04: scenari da Tiled (§9.10, §9.40)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04"];
+// lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05"];
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
