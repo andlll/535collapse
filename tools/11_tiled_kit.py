@@ -119,6 +119,23 @@ def labelled(marker, mo, text):
     return out, (mo[0] + mx, mo[1])
 
 
+def fake_mark(im):
+    """[§9.78] La F arancione di alb1_F (l'albero finto nell'editor di
+    GameMaker) anche sulle altre varianti di albero_fake: in Tiled erano
+    identiche agli alberi veri. Tutti gli alb* hanno la stessa origine."""
+    a, f = sprite_frame("alb1"), sprite_frame("alb1_F")
+    pa, pf = a.load(), f.load()
+    mark = Image.new("RGBA", f.size, (0, 0, 0, 0))
+    pm = mark.load()
+    for y in range(f.height):
+        for x in range(f.width):
+            if pa[x, y] != pf[x, y]:
+                pm[x, y] = pf[x, y]
+    out = im.copy()
+    out.alpha_composite(mark.crop((0, 0, min(im.width, f.width), min(im.height, f.height))))
+    return out
+
+
 def tint(im, rgb, alpha):
     r, g, b, a = im.split()
     r = r.point(lambda v: v * rgb[0] // 255)
@@ -237,6 +254,8 @@ def catalogue():
                 im, o = new_sprites[sp]["image"], tuple(new_sprites[sp]["origin"])
             else:
                 im, o = sprite_frame(sp), (sprites[sp]["origin_x"], sprites[sp]["origin_y"])
+            if name == "albero_fake" and sp != "alb1_F":
+                im = fake_mark(im)
             out.append((cat, name, sp, im, o))
     for name in tk.regia_objects(info):
         if name not in data:  # oggetti di regia nuovi (nuovi.json, kit: false)
@@ -512,7 +531,9 @@ montagna o di un fiume.
   dell'oggetto del gioco: e' quello che conta. Non cambiarla a mano.
 - **Varianti**: alberi, case e chiazze hanno piu' tile con la stessa classe
   (`albero` = alb1…alb8). Nel gioco lo sprite lo sceglie ancora il gioco, a
-  caso: la variante in Tiled e' solo per vedere l'effetto.
+  caso: la variante in Tiled e' solo per vedere l'effetto. Gli alberi
+  finti (`albero_fake`, solo decorazione: non si tagliano) hanno tutti la
+  F arancione, come in GameMaker; si usano dove nessuno arriva.
 - **Unita'**: si vedono in una sola posa; nel gioco si animano e si girano
   da sole. Non ribaltarle e non ingrandirle: cambiano sprite da sole.
 - Rotazione, ribaltamento e scala valgono anche per le collisioni: una

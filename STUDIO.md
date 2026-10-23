@@ -6949,3 +6949,31 @@ montagne e i civili ci camminano sul posto. Niente arieti, 2 catapulte; le
 ondate (dal quarto minuto, ogni 3, poi con le macchine d'assedio) logorano
 l'esercito: 27, 22, 16, 12, 7 e 0 soldati a 20:39; sconfitta. La citta'
 nemica resta intatta (28 edifici).
+
+### 9.78 Livello 5: gli alberi erano finti
+
+Segnalazione dell'autore (dopo §9.77, "nel livello 5 manca il legno"): gli
+alberi dovrebbero essere tutti veri; i finti hanno la F sopra, e di solito
+sono quelli che nessuno raggiunge.
+
+**Causa**: nel tileset `natura` del kit `albero_fake` aveva, oltre ad
+alb1_F (con la F), una tile per ogni variante alb1..alb8 (tools 11: una
+tile per sprite scelto a caso nel Create), con le stesse immagini degli
+alberi veri. Nella mappa del livello 5, 298 alberi su 377 erano le tile 12,
+13 e 14 (`albero_fake` alb4, alb5, alb6): indistinguibili in Tiled, finti
+nel gioco. Nei livelli 2-4 i finti vengono dalle room di GameMaker
+convertite, e sono quelli dell'originale.
+
+**Ora**:
+- kit (tools/11_tiled_kit.py, `fake_mark`): le varianti di `albero_fake`
+  hanno la F arancione di alb1_F (stessa origine per tutti gli alb*, la F
+  e' la differenza fra alb1_F e alb1). Gli id delle tile non cambiano: le
+  mappe restano valide;
+- `mappe/lvl05.tmx`: le 298 tile finte diventano gli alberi veri con la
+  stessa immagine (12, 13, 14 -> 3, 4, 5); poi, seguendo la regola
+  dell'autore, i 9 alberi che nessuno raggiunge (chiusi da montagne, fiumi o
+  bordo della mappa, a regioni calcolate senza gli alberi, per il giocatore
+  e per il nemico) diventano finti con la F, fra cui quello a (1816, 1188)
+  dove i civili camminavano sul posto (§9.77). Alberi veri: 368.
+
+Passano lvl05, enemywalls e il controllo degli scenari (tools 12 --check).
