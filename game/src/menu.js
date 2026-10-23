@@ -242,6 +242,7 @@ export function enemyManagerMenu() {
   };
 }
 
+const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
   const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
@@ -271,7 +272,13 @@ function drawTitle(i, d, W, H) {
   // [Correzione, §3.20 n.76] il logo a y=350 copriva "Play the tutorial"
   // con finestre basse: sale a meta' dello spazio sopra i pulsanti
   // [§9.47, richiesta dell'autore] il titolo "Dust Veil" al posto del "535"
-  d.sprite("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2));
+  // [§9.72] "Dust Veil: Collapse" su due righe, disegnato grande
+  // (tools/13_logo.py) e rimpicciolito: al piu' meta' della larghezza dello
+  // schermo, e dentro lo spazio sopra i pulsanti con LOGO_MARGIN px sopra e
+  // sotto (1920 x 1080: 82%, 1280 x 720: 52%)
+  const lg = d.a.sprites.logo_dustveil;
+  const s = lg ? Math.min(1, (b.top - 2 * LOGO_MARGIN) / lg.height, W / 2 / lg.width) : 1;
+  d.spriteExt("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2), s, s, 0, c.white, 1);
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu

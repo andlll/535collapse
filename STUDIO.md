@@ -6678,3 +6678,41 @@ piu' lontano a 208 px (l'anello ha raggi 110 x 80), fermi, nessuna coppia
 sovrapposta, nessun tremolio. Chi insegue da solo (senza il clic destro)
 un nemico irraggiungibile resta invece fermo dov'e': se no ogni nemico
 oltre un fiume (entro 700 px) trascinerebbe i soldati fino alla riva.
+
+### 9.72 Il nome ufficiale "Dust Veil: Collapse" e il suo logo
+
+Decisione dell'autore (23 ottobre 2026): il gioco si chiama ufficialmente
+**Dust Veil: Collapse**. Richiesta: un logo su almeno due righe, col font
+attuale, nella schermata principale, con la sfumatura in basso.
+
+**Il logo** (`tools/13_logo.py` -> `nuovi/sprites/logo_dustveil.png`, lo
+stesso sprite del §9.47). Due righe: "Dust Veil" in Cinzel Decorative Bold e
+"COLLAPSE" in Cinzel Bold spaziato (18 px fra le lettere), fra due filetti
+con una losanga in punta; il grigio del logo535 (51, 51, 51).
+- *La sfumatura in basso*: una sola su tutto il blocco, dalla cima delle
+  maiuscole di "Dust Veil" alla linea di base di "COLLAPSE", con la forma
+  di quella del logo535 (§9.47), ma che finisce al 30% invece che a 0. Con
+  la sfumatura intera, e anche con quella del logo535 riga per riga,
+  "COLLAPSE" quasi spariva (provate tutte e due sullo sfondo del menu).
+- *Un alone chiaro* (235, 235, 230) sfocato dietro le lettere, al piu' al
+  60%: il grigio scuro si confondeva con la nebbia del menu. L'alone non e'
+  sfumato.
+- Disegnato a 1,4 volte (1173 x 382 px): il menu lo rimpicciolisce e sugli
+  schermi grandi non si sgrana.
+- Scartata (ma ancora nello script, `--tre-righe`): "Dust" / "Veil" /
+  "COLLAPSE" su tre righe. E' alto 565 px: a 720 px di altezza dello
+  schermo andrebbe al 35% e "COLLAPSE" diventerebbe piccolissimo.
+
+**Nel menu** (menu.js, drawTitle): al centro dello spazio sopra i
+pulsanti come prima, rimpicciolito se serve per stare in quello spazio con
+40 px sopra e sotto, e al piu' largo meta' dello schermo. A 1920 x 1080
+viene all'82% (largo 960 px), a 1366 x 768 al 58% (683 px), a 1280 x 720 al
+52% (614 px), a 2560 x 1440 al 100% (1173 px).
+
+**Il nome** nel titolo della pagina (index.html), nella PWA (manifest:
+nome "Dust Veil: Collapse", nome breve "Dust Veil") e nel README. Restano
+"535" i nomi interni che non si vedono e che cambiandoli farebbero perdere
+partite salvate e progressi (le chiavi `535.*` del localStorage, il
+controllo dei salvataggi), la cache del service worker e lo zip dei
+portali (`build/535-collapse-web.zip`). Restano anche le icone (tools/09,
+fatte dal logo535: mostrano "535").

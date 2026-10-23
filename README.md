@@ -1,7 +1,7 @@
 # 535 — porting HTML5
 
 Porting nel browser di **535**, RTS isometrico dell'autore fatto con
-GameMaker: Studio 1.x. Prima uscita prevista: **"535 – Collapse"**, solo
+GameMaker: Studio 1.x. Prima uscita prevista: **"Dust Veil: Collapse"** (§9.72), solo
 desktop, orizzontale, per itch.io, Newgrounds, Game Jolt e poi CrazyGames.
 
 Metodo e convenzioni da [andlll/n_redux](https://github.com/andlll/n_redux)
@@ -47,8 +47,8 @@ python3 -m http.server 8000 --directory game
 ```
 
 I font dell'interfaccia sono Cinzel e Cinzel Decorative (OFL, `nuovi/font/`,
-§9.47), rasterizzati da `05_atlas.py`. Il titolo del menu "Dust Veil"
-(`nuovi/sprites/logo_dustveil.png`) si rifa' con `python3 tools/13_logo.py`
+§9.47), rasterizzati da `05_atlas.py`. Il logo del menu "Dust Veil: Collapse"
+(`nuovi/sprites/logo_dustveil.png`, §9.72) si rifa' con `python3 tools/13_logo.py`
 solo se cambiano testo, font o misura. Le origini degli sprite del
 lavoratore nemico (`nuovi/sprites/omino_blu/`, §9.49) si ricalcolano con
 `python3 tools/14_allinea.py` se cambiano le immagini.
