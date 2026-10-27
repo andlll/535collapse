@@ -7122,3 +7122,45 @@ dopo); fortezza con 4 arcieri in pace (a 28 s 4, a 40 s 2, a 60 s 1);
 fortezza finita da un cantiere (vuota, nessuna freccia); guerriero nemico
 accanto a una nuvola ferma: insegue un soldato a 180 px (prima restava
 fermo), non uno a 330.
+
+### 9.81 Suggerimenti del tutorial staccati dall'interfaccia
+
+Richiesta dell'autore: i suggerimenti del tutorial che si riferiscono ad
+altre finestre dell'interfaccia sempre a 20 px da quelle; quelli sugli
+elementi della partita (unita', edifici, risorse) restano come sono.
+
+Misure (prova nuova `game/test/browser/hintgap.mjs`, nella CI: la
+distanza di ogni suggerimento da risorse, pannello e pulsanti dell'unita'
+selezionata, inattivi, pausa, obiettivi, minimappa o suo pulsante, a
+1280 x 720, 1366 x 768 e 1920 x 1080). Prima:
+- `hint_idle` (W-410, 170) copriva il fondo del riquadro degli inattivi
+  (W-90..W-20, 100..200);
+- `hint_objective` e `hint_objective2` toccavano il riquadro degli
+  obiettivi (0 px: W-900 col riquadro da W-520, §9.27 lo segue quando si
+  allarga);
+- `hint_minimap` entrava di 10 px nella minimappa (H - testo - 98 - mappa);
+- a 1280 x 720 `hint_night` finiva sotto gli obiettivi, gli obiettivi su
+  pannello e pulsanti dell'unita' selezionata, e la colonna di sinistra
+  (`hint_vista`, alta 278 px) a 18,7 px dalla minimappa.
+
+Ora (hints.js; gia' a 20 px erano la colonna di sinistra a 20, 170 sotto le
+risorse e i pulsanti a 420, 170):
+- `hint_idle` sotto il riquadro degli inattivi, allineato al suo bordo
+  destro, e sotto quello degli obiettivi se e' piu' basso (endgame.js,
+  `w._objBottom`);
+- `hint_objective` / `objective2` a 20 px a sinistra degli obiettivi; se li'
+  finirebbero sui pulsanti di costruzione (schermi stretti), 20 px sotto;
+- `hint_minimap` 20 px sopra la minimappa (o sopra il suo pulsante, se
+  nascosta); se li' finirebbe sulle risorse (schermi bassi), accanto alla
+  minimappa, in fondo;
+- la colonna di sinistra (`hint_iniziale`, `vista`, `resource_tree`,
+  `lavori`, `resource`): se arriverebbe a meno di 20 px dalla minimappa, a
+  destra della minimappa;
+- `hint_night`, `hint_lavoratori` (420, 170): sotto gli obiettivi se ci
+  finirebbero addosso.
+Le posizioni si ricalcolano a ogni passo (minimappa nascosta o
+ridimensionata, obiettivi nascosti). Dopo: tutti a 20 px o piu' nelle tre
+misure dello schermo.
+
+La fortezza (§9.79): sentito l'autore, i quattro pulsanti degli arcieri
+restano in prima riga.

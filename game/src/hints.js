@@ -65,10 +65,50 @@ const T = {
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
-// a 380 px (la finestra) + 20 dal bordo sinistro del riquadro degli
-// obiettivi (endgame.js, w._objLeft), come l'originale (W-900) col riquadro
-// da W-520
-const objHintPos = (w) => [Math.min(w.cam.cssW - 900, (w._objLeft ?? w.cam.cssW - 520) - 380), 20];
+// [§9.81, richiesta dell'autore] I suggerimenti che parlano di una parte
+// dell'interfaccia le stanno a GAP px (in 20, 170 e in 420, 170 lo erano
+// gia': 20 px sotto risorse e pulsanti, che finiscono a 150). Finestra:
+// W380 x (testo_h + 68).
+const GAP = 20;
+const hintH = (i) => i.testo_h + 68;
+// la minimappa (in basso a sinistra, roomW/sz x roomH/sz a 20 px dal bordo,
+// coi suoi pulsanti fino a 65 + roomW/sz) o, nascosta, il suo pulsante
+// (5..35, H-35..H-5): [sinistra, alto, destra]
+const minimapBox = (w) => {
+  const H = w.cam.cssH;
+  return w.g.minim === 1 ? [20, H - 20 - w.roomH / w.g.sz, 65 + w.roomW / w.g.sz] : [5, H - 35, 35];
+};
+// la colonna di sinistra (20, 170: 20 px sotto le risorse, che finiscono a
+// 150); se la finestra arriverebbe a meno di GAP px dalla minimappa (schermi
+// bassi), a destra della minimappa
+const leftColumn = (w, i) => {
+  const [, top, right] = minimapBox(w);
+  return 170 + hintH(i) + GAP <= top ? [20, 170] : [right + GAP, 170];
+};
+// gli obiettivi (endgame.js: w._objLeft, w._objBottom), se visibili
+const objShown = (w) => w.g.obj === 1 && w._objLeft !== undefined;
+// a sinistra del riquadro degli obiettivi, a GAP px (l'originale, W-900 col
+// riquadro da W-520, lo toccava); se li' finirebbe sui pulsanti di
+// costruzione (fino a 760), sotto il riquadro
+const objHintPos = (w) => {
+  const left = Math.min(w.cam.cssW - 520, w._objLeft ?? w.cam.cssW - 520);
+  return left - GAP - W380 >= 760 + GAP || !objShown(w) ? [left - GAP - W380, 20] : [left, w._objBottom + GAP];
+};
+// sotto il riquadro degli inattivi (W-90..W-20, 100..200), allineato al suo
+// bordo destro, e sotto quello degli obiettivi se e' piu' basso:
+// l'originale (W-410, 170) copriva il fondo del riquadro degli inattivi
+const idleHintPos = (w) => [w.cam.cssW - 20 - W380, Math.max(200, objShown(w) ? w._objBottom : 0) + GAP];
+// sopra la minimappa (l'originale, H - testo_h - 98 - mappa, ci entrava di
+// 10 px); se li' finirebbe sulle risorse (schermi bassi), accanto alla
+// minimappa, in fondo
+const minimapHintPos = (w, i) => {
+  const [, top, right] = minimapBox(w);
+  const y = top - GAP - hintH(i);
+  return y >= 150 + GAP ? [20, y] : [right + GAP, w.cam.cssH - 20 - hintH(i)];
+};
+// 20 px sotto i pulsanti (420, 170), o sotto gli obiettivi se ci finirebbe
+// addosso (schermi stretti)
+const underButtons = (w) => [420, objShown(w) && 420 + W380 + GAP > w._objLeft ? Math.max(170, w._objBottom + GAP) : 170];
 // [Correzione decisa dall'autore, §3.19 n.70] l'originale ricalcolava a
 // ogni passo l'istanza piu' vicina al puntatore: avvicinandosi per
 // cliccare, la finestra saltava su un'altra unita'. Qui segue l'istanza
@@ -81,20 +121,20 @@ const vicino = (obj) => ({ kind: "vicino", obj });
 // resource (global.resourcehint=1 alla creazione)
 export const HINTS = {
   // catena del tutorial (hint_iniziale e' piazzato nelle room)
-  hint_iniziale: { anchor: fixed(20, 170), next: "hint_vista" },
-  hint_vista: { anchor: fixed(20, 170), arm: 10, next: "hint_resource_tree" },
-  hint_resource_tree: { anchor: fixed(20, 170), click: "pressed", next: "hint_lavori" },
-  hint_lavori: { anchor: fixed(20, 170), click: "pressed", next: "hint_idle" }, // §9.26
-  hint_idle: { anchor: { kind: "fixed", pos: (w) => [w.cam.cssW - 410, 170] }, click: "pressed", next: "hint_objective" },
+  hint_iniziale: { anchor: { kind: "fixed", follow: true, pos: leftColumn }, next: "hint_vista" },
+  hint_vista: { anchor: { kind: "fixed", follow: true, pos: leftColumn }, arm: 10, next: "hint_resource_tree" },
+  hint_resource_tree: { anchor: { kind: "fixed", follow: true, pos: leftColumn }, click: "pressed", next: "hint_lavori" },
+  hint_lavori: { anchor: { kind: "fixed", follow: true, pos: leftColumn }, click: "pressed", next: "hint_idle" }, // §9.26
+  hint_idle: { anchor: { kind: "fixed", follow: true, pos: idleHintPos }, click: "pressed", next: "hint_objective" }, // §9.81
   // [§9.27] accanto al riquadro degli obiettivi anche quando si allarga per
   // un testo tradotto (a 1920 px, in spagnolo, gli finiva sopra)
   hint_objective: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, next: "hint_objective2" },
   hint_objective2: { anchor: { kind: "fixed", follow: true, pos: objHintPos }, arm: 10, next: "hint_minimap" },
-  // posy = view_hport - testo_h - 98 - room_height/sz, ricalcolata a ogni passo
-  hint_minimap: { anchor: { kind: "fixed", follow: true, pos: (w, i) => [20, w.cam.cssH - i.testo_h - 98 - w.roomH / w.g.sz] },
-                  next: "hint_select" },
+  // posy = view_hport - testo_h - 98 - room_height/sz [C], ricalcolata a
+  // ogni passo; §9.81: a GAP px dalla minimappa
+  hint_minimap: { anchor: { kind: "fixed", follow: true, pos: minimapHintPos }, next: "hint_select" },
   hint_select: { anchor: mouse("ally_unit"), next: "hint_resource" },
-  hint_resource: { anchor: fixed(20, 170), click: "pressed", next: "hint_build", resource: true },
+  hint_resource: { anchor: { kind: "fixed", follow: true, pos: leftColumn }, click: "pressed", next: "hint_build", resource: true },
   hint_build: { anchor: mouse("ally_omino"), arm: 10, next: "hint_repair", resource: true },
   hint_repair: { anchor: mouse("ally_omino"), arm: 10, next: "hint_create", resource: true },
   hint_create: { anchor: mouse("centro"), arm: 10, next: "hint_create_2", resource: true },
@@ -117,8 +157,8 @@ export const HINTS = {
   // hint_multi arma `arm` ma non ha l'Alarm_0 e non lo controlla [C]
   hint_multi: { anchor: vicino("ally_militare"), next: "hint_multi_2", nextAtSelf: true },
   hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed" },
-  hint_night: { anchor: fixed(420, 170) },
-  hint_lavoratori: { anchor: fixed(420, 170) },
+  hint_night: { anchor: { kind: "fixed", follow: true, pos: underButtons } }, // §9.81
+  hint_lavoratori: { anchor: { kind: "fixed", follow: true, pos: underButtons } },
 };
 
 // --------------------------------------------------------------- dialoghi
