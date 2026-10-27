@@ -2,8 +2,8 @@
 // (2 posti) e un castello (4) in campo aperto nel match; arcieri feriti
 // (vita 30, 35, ...) mandati a presidiarli col clic destro vero; poi
 // l'edificio selezionato col clic e i pulsanti d'uscita premuti uno a uno
-// (torre: prima riga, y 50; castello: seconda, y 120, con un ariete in
-// produzione). Controlla:
+// (prima riga, y 50: nella torre da x 450, nel castello da x 660, a destra
+// di ariete, catapulta e annulla, con un ariete in produzione; §9.79). Controlla:
 //   entrati    = tutti gli arcieri nell'edificio, popolazione scesa di 2 l'uno
 //   pulsanti   = uno per arciere, sotto il puntatore il clic non deseleziona
 //   fuori      = a ogni clic un arciere in meno dentro e uno in piu' fuori,
@@ -19,12 +19,12 @@ const { chromium } = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 let ok = true;
-for (const [B, N, ROW] of [["torre", 2, 50], ["castello", 4, 120]]) {
+for (const [B, N, X, ROW] of [["torre", 2, 450, 50], ["castello", 4, 660, 50]]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
   await page.goto(`${base}/index.html?room=match&nostart=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
-  const r = await page.evaluate(([B, N, ROW]) => {
+  const r = await page.evaluate(([B, N, X, ROW]) => {
     const G = window.__game, w = G.world, cam = G.cam, p = w.path;
     G.advance(3);
     const input = w.input;
@@ -66,7 +66,7 @@ for (const [B, N, ROW] of [["torre", 2, 50], ["castello", 4, 120]]) {
     // i pulsanti, uno a uno (si preme sempre il primo: gli altri scorrono)
     const got = [];
     for (let k = 0; k < N; k++) {
-      input.x = 450; input.y = ROW; G.advance(2);
+      input.x = X; input.y = ROW; G.advance(2);
       const n = b.npresidio, pop = G.g.pop, before = new Set(w.all("ally_arciere"));
       input._mp[0] = true; G.advance(1);
       out.pulsanti = out.pulsanti && b.selected === 1;
@@ -80,7 +80,7 @@ for (const [B, N, ROW] of [["torre", 2, 50], ["castello", 4, 120]]) {
     if (B === "castello") out.produzione = b.progression > prod0;
     out.dettagli = { npresidio: b.npresidio, vite: got, pop: G.g.pop };
     return out;
-  }, [B, N, ROW]);
+  }, [B, N, X, ROW]);
   const good = Object.entries(r).every(([k, v]) => k === "dettagli" || v === true) && errs.length === 0;
   console.log(B.padEnd(9), JSON.stringify(r), good ? "ok" : "NON VA", errs.slice(0, 2).join(" "));
   ok = ok && good;

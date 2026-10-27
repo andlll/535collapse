@@ -21,7 +21,7 @@ import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
-import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult } from "./siege.js";
+import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
@@ -461,6 +461,7 @@ async function main() {
     world.step(input, mx, my);
     recountIdle(world); // §6.1 n.80
     settleOverlaps(world, path); // §9.62
+    settleSiege(world); // §9.79
     recountSelection(world); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);

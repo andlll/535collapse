@@ -18,7 +18,7 @@ import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irando
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
 import { counterArcher } from "./ranged.js";
-import { infantryFire, holdStill } from "./siege.js";
+import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -125,17 +125,20 @@ export function formation(w, p, mx, my) {
   // maschere non ruotano con la formazione: due scatole a distanza s lungo
   // la direzione (dx, dy) non si toccano se s*|dx| >= (larghezze)/2 oppure
   // s*|dy| >= (altezze)/2.
+  const MARGIN = 10;
+  // [§9.79] le macchine d'assedio col loro ingombro a vista (SIEGE_FOOT):
+  // con la maschera, a 10 px l'una dall'altra, si coprivano per meta'
   const size = new Map();
   for (const u of units) {
     const bb = w.bbox(u);
-    size.set(u, bb ? [bb[2] - bb[0], bb[3] - bb[1]] : [48, 46]);
+    const sz = bb ? [bb[2] - bb[0], bb[3] - bb[1]] : [48, 46];
+    size.set(u, SIEGE_UNITS.has(u.object) ? [Math.max(sz[0], SIEGE_FOOT[0] - MARGIN), Math.max(sz[1], SIEGE_FOOT[1] - MARGIN)] : sz);
   }
   const apart = (dx, dy, wsum, hsum) => {
     const a = Math.abs(dx) > 1e-3 ? wsum / 2 / Math.abs(dx) : Infinity;
     const b = Math.abs(dy) > 1e-3 ? hsum / 2 / Math.abs(dy) : Infinity;
     return Math.min(a, b);
   };
-  const MARGIN = 10;
   const n = units.length;
   const cols = Math.min(n, Math.ceil(Math.sqrt(n * 2)));
   // unita': per ruolo e, nel ruolo, prima chi arriva prima (distanza /
@@ -1059,11 +1062,21 @@ function rallyMove(i, w, p, offset100) {
 // Draw_End [C, identico in guerriero, picchiere e cavaliere]: barra della
 // vita, cerchio di selezione, segnaposto della destinazione, numero del
 // gruppo di controllo (non nell'arciere: unitDrawEnd(..., false)).
+// L'anello sotto l'unita' selezionata (circ_1, un'ellisse di 67 x 33 px).
+// [Richiesta dell'autore, §9.79] sotto le macchine d'assedio, alleate e
+// nemiche, 2,2 volte piu' largo: quello dei soldati spariva sotto il disegno.
+const SIEGE_RING = 2.2;
+const RING_WIDE = new Set(["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"]);
+export function unitRing(d, i) {
+  if (!RING_WIDE.has(i.object)) { d.sprite("circ_1", 0, i.x, i.y); return; }
+  d.spriteExt("circ_1", 0, i.x, i.y, SIEGE_RING, SIEGE_RING, 0, 0xffffff, 1);
+}
+
 export function unitDrawEnd(i, w, d, showGroup = true) {
   const C = { black: 0, green: 0x008000 };
   if (i.selected === 1 || i.hover === 1) {
     d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.green);
-    d.sprite("circ_1", 0, i.x, i.y);
+    unitRing(d, i);
     if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
     d.sprite("director_blue", 0, i.foodx, i.foody);
   }

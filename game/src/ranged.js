@@ -458,13 +458,13 @@ const GARRISON = {
 
 // [§9.63, richiesta dell'autore] Gli arcieri di presidio escono: con
 // l'edificio selezionato, un pulsante per arciere (l'icona nel cerchio
-// bianco, come i pulsanti della caserma) nella prima riga della torre e
-// nella seconda del castello (la prima e' della produzione; barra e coda
-// della produzione del castello passano alla terza, production.js). Il
+// bianco, come i pulsanti della caserma) nella prima riga, nel castello a
+// destra di ariete, catapulta e annulla (§9.79: prima nella seconda riga,
+// e barra e coda della produzione finivano in una terza). Il
 // clic fa uscire un arciere accanto all'edificio (findFreeSpawn, nel suo
 // Create), con la vita che aveva entrando; le frecce e le bandiere seguono
 // il numero di arcieri rimasti. Coordinate in pixel CSS, come il Draw GUI.
-const EXIT_ROW = { torre: 50, castello: 120 }, EXIT_X = 450, EXIT_DX = 70, EXIT_R = 30;
+const EXIT_ROW = 50, EXIT_X = { torre: 450, castello: 660 }, EXIT_DX = 70, EXIT_R = 30;
 const EXIT_TIP = { torre: "Click to send this archer out of the tower.", castello: "Click to send this archer out of the fortress." };
 
 // il pulsante (indice) sotto il puntatore, o -1
@@ -472,7 +472,7 @@ function exitHover(name, i, w) {
   const inp = w.input;
   if (i.selected !== 1 || !inp || !inp.inside) return -1;
   for (let k = 0; k < i.npresidio; k++) {
-    if (Math.hypot(inp.x - (EXIT_X + EXIT_DX * k), inp.y - EXIT_ROW[name]) < EXIT_R) return k;
+    if (Math.hypot(inp.x - (EXIT_X[name] + EXIT_DX * k), inp.y - EXIT_ROW) < EXIT_R) return k;
   }
   return -1;
 }
@@ -506,12 +506,12 @@ export function garrisoned(name, base) {
     drawGUI(i, w, d) {
       if (base.drawGUI) base.drawGUI(i, w, d);
       if (i.selected !== 1 || i.npresidio <= 0) return;
-      const h = exitHover(name, i, w), y = EXIT_ROW[name];
+      const h = exitHover(name, i, w), x0 = EXIT_X[name], y = EXIT_ROW;
       for (let k = 0; k < i.npresidio; k++) {
         d.setAlpha(k === h ? 0.99 : 0.69);
-        d.circleColour(EXIT_X + EXIT_DX * k, y, EXIT_R, WHITE, WHITE, false);
+        d.circleColour(x0 + EXIT_DX * k, y, EXIT_R, WHITE, WHITE, false);
         d.setAlpha(1);
-        d.spriteExt("ico_arciere", 0, EXIT_X + EXIT_DX * k, y, 0.6, 0.6, 0, WHITE, 1);
+        d.spriteExt("ico_arciere", 0, x0 + EXIT_DX * k, y, 0.6, 0.6, 0, WHITE, 1);
       }
       if (h < 0) return;
       // la scheda in basso, come quella dei pulsanti di produzione

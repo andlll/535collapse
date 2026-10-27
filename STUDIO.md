@@ -6994,3 +6994,77 @@ di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
 Il legno non manca piu' (fino a 2400). Il bot non fa micro (non punta le
 torri con le catapulte, non ritira i feriti): dice che il livello non si
 vince "a forza", non quanto e' difficile per un giocatore.
+
+### 9.79 Pulsante della fortezza, oro, presidio, catapulte
+
+Segnalazioni e richieste dell'autore.
+
+**Il pulsante di costruzione della fortezza non si illuminava** col
+puntatore sopra. Era cosi' nell'originale: il Draw_GUI di
+`castello_clicker` [C], unico fra i pulsanti di costruzione, non ridisegna
+il cerchio a 0,99, solo l'icona (che e' gia' a 1): il porting lo
+riproduceva (`noRing`). Ora il cerchio si illumina come negli altri
+(buildings.js).
+
+**Oro per miniera dimezzato**: 1250 invece di 2500 (civilians.js,
+`resource`), per tutte le miniere, del giocatore e del nemico; con 2500 una
+sola miniera bastava per la partita.
+
+**I pulsanti degli arcieri di presidio della fortezza** passano dalla
+seconda riga alla prima, a destra di ariete, catapulta e annulla (x 660,
+730, 800, 870); barra e coda della produzione tornano in seconda riga
+(production.js, niente piu' `queueY`): con una produzione in corso non si
+va piu' in una terza riga. A 1280-1440 px di larghezza il pannello degli
+obiettivi (ancorato a destra, da `W - 520`) copre il terzo e il quarto
+pulsante, come gia' copriva gli ultimi posti della coda.
+
+**L'anello blu delle unita' selezionate** e' 2,2 volte piu' largo sotto le
+macchine d'assedio, alleate e nemiche (units.js, `unitRing`): circ_1 e'
+un'ellisse di 67 x 33 px, e sotto un disegno largo ~200 px non si vedeva.
+
+**Il sasso della catapulta saliva troppo.** Nell'originale [C] la quota e'
+`time * startspeed - 0.1 * time^2` con `startspeed = 0.1 * t` (t = passi
+di volo, distanza / 5): vertice a 0,025 t^2, cioe' a 850 px (la gittata)
+~720 px d'altezza, a 300 px ~90. Ora il tiro e' a 45 gradi: sale a 5 px
+per passo (quanto avanza) e la caduta e' `5 / t` (`fall`): vertice a un
+quarto della distanza, 212 px a 850, 75 a 300. Stessa durata del volo e
+stesso punto d'arrivo; un sasso in volo in un salvataggio di prima finisce
+con la parabola vecchia.
+
+**Macchine d'assedio una sopra l'altra.** La maschera (cati11, 111 x 96) e'
+molto piu' piccola del disegno (~205 x 170): due catapulte con le maschere
+quasi a contatto si coprono per meta'. Le catapulte poi si fermano a tirare
+dove sono appena un edificio e' a tiro (sul flow field passano una
+sull'altra), due che arretrano dallo stesso edificio sceglievano lo stesso
+punto, e la formazione le metteva a 10 px di maschera. Ora (siege.js),
+con `SIEGE_FOOT` = 170 x 120 px, l'ingombro a vista (due macchine della
+stessa parte con i centri piu' vicini di cosi' in x e in y sono addosso):
+- prima di mirare (tiro automatico, alleate e nemiche, e ordine di
+  attacco), addosso a un'altra macchina ferma, la catapulta va a un posto
+  libero li' vicino (anelli da 60 a 240 px, il piu' lontano dall'altra) da
+  cui il bersaglio resta a tiro; al piu' una volta ogni 120 passi: se non
+  c'e' un posto, o arrivata e' ancora addosso, tira da li';
+- i punti di tiro (arretrare da un edificio troppo vicino, avvicinarsi per
+  un ordine) evitano le macchine ferme e le mete di quelle in cammino; se
+  non ce n'e' nessuno, come prima;
+- ogni 10 passi le macchine ferme e libere (arieti senza bersaglio
+  compresi) addosso a un'altra ferma si spostano allo stesso modo: quella
+  creata dopo, o quella libera se l'altra tira, colpisce o ricarica
+  (`settleSiege`, da app.js);
+- nella formazione (units.js) le macchine contano almeno SIEGE_FOOT.
+
+Prova nuova `game/test/browser/catapults.mjs` (nella CI): 4 catapulte in un
+quadrato con le maschere quasi a contatto (115 x 100 px) a ~600 px da un
+edificio, alleate e nemiche, e 6 catapulte alleate mandate col clic destro
+vero in un punto libero; 2400 passi. Prima: 2400 passi su 2400 con due
+catapulte addosso che tirano, 6 coppie addosso alla fine (8 nel gruppo).
+Ora 0 e 0 (e 0 nel gruppo); colpi arrivati 39 (40 prima).
+
+**Il ciclo giorno-notte** (domanda; non cambiato). Manager [C], a 60 passi
+al secondo: primo giorno 6000 passi (100 s), tramonto 200 (3,3 s, night
++0,005 a passo), notte piena 2000 (33 s), alba ~200 (3,3 s), poi giorno
+4000 (67 s): un giorno intero dura ~107 s, la notte e' la meta' del giorno
+(un terzo del ciclo). E' il rapporto di un giorno d'estate alle nostre
+latitudini (16 ore di luce e 8 di buio); in media sull'anno giorno e notte
+si equivalgono. Tramonto e alba durano il 3% del ciclo (il crepuscolo
+civile vero ~2%).

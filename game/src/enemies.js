@@ -18,7 +18,7 @@ import { mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, wait
 import { meleeSpot, FIRE } from "./melee.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
-import { phaseOf, swingOn, swingVictim } from "./units.js";
+import { phaseOf, swingOn, swingVictim, unitRing } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
@@ -458,7 +458,7 @@ export function enemyMelee(name, p) {
     drawEnd(i, w, d) {
       if (i.selected === 1 || i.hover === 1) {
         d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
-        d.sprite("circ_1", 0, i.x, i.y);
+        unitRing(d, i); // §9.79
         if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
         d.sprite("director_blue", 0, i.foodx, i.foody);
       }

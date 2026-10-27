@@ -1441,7 +1441,9 @@ export function resource(p, kind) {
     albero: { amount: ["wood", 150], work: "woodwork", hover: "alberhover", dist: 600, fog: true, dying: "albero_morente", centroDir: "woodir",
               hint: ["hint_legna", "woodhint"] },
     albero_fake: { amount: ["wood", 150], work: "woodwork", hover: null, dist: 600, fog: true, dying: null },
-    miniera_oro: { amount: ["gold", 2500], work: "goldwork", hover: "minierahover", dist: 400, fog: false, dying: "miniera_morente", centroDir: "goldir",
+    // [Richiesta dell'autore, §9.79] 1250 oro (2500 nell'originale [C]: con
+    // una sola miniera si arrivava in fondo alla partita)
+    miniera_oro: { amount: ["gold", 1250], work: "goldwork", hover: "minierahover", dist: 400, fog: false, dying: "miniera_morente", centroDir: "goldir",
                    hint: ["hint_oro", "goldhint"] },
     pietra_grande: { amount: ["stone", 850], work: "stonework", hover: "stonehover", dist: 400, fog: false, dying: "pietra_grande_morente", centroDir: "stonedir",
                      hint: ["hint_stone", "stonehint"] },

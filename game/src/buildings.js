@@ -45,8 +45,10 @@ export const FAM = {
             panel: { w: 340, title: "Stables", desc: "Creates cavalry units.",
                      costs: [["170", 40, "ico_wood", 95]], shortcut: ["Shortcut: F", 320] },
             slife: 379, phases: [[0.5, "stal_f2"]] },
-  // castello_clicker Draw_GUI non ridisegna il cerchio evidenziato [C]
-  castello: { key: 71, bx: 730, by: 120, cost: { stone: 850 }, ico: "ico_castello", ghost: "castello_spr", noRing: true,
+  // [Correzione decisa dall'autore, §9.79] castello_clicker Draw_GUI non
+  // ridisegnava il cerchio evidenziato [C]: col puntatore sopra si
+  // ridisegnava solo l'icona, e il pulsante non si illuminava
+  castello: { key: 71, bx: 730, by: 120, cost: { stone: 850 }, ico: "ico_castello", ghost: "castello_spr",
               panel: { w: 390, title: "Fortress", desc: "Creates siege units. Archers can garrison.",
                        costs: [["850", 40, "ico_stone", 95]], shortcut: ["Shortcut: G", 370] },
               slife: 899, phases: [[0.5, "castello_f2"], [0.666, "castello_f3"]] },
@@ -162,10 +164,8 @@ export function clicker(fam) {
       dr.setHalign("right");
       dr.text(P.shortcut[1] + ex, H - 120, sc);
       dr.tooltipEnd(w);
-      if (!d.noRing) {
-        dr.setAlpha(0.99);
-        dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
-      }
+      dr.setAlpha(0.99);
+      dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
       dr.spriteExt(d.ico, 0, d.bx, d.by, 0.5, 0.5, 0, WHITE, 1);
     },
