@@ -15,7 +15,10 @@
 //   quelli delle regie dei livelli) vanno a riempire i posti liberi; in pace
 //   si riempie solo un edificio vuoto, con gli arcieri della mappa;
 // - edificio sotto LOW della vita: escono tutti (non muoiono col crollo);
-// - nessuna minaccia da CALM passi: ne esce uno per volta, fino a uno.
+// - nessuna minaccia da CALM passi: ne esce uno per volta, fino alla
+//   guarnigione di partenza (`keep`: START per gli edifici della mappa, 1
+//   per quelli costruiti; §9.82: scendendo fino a uno, a inizio partita la
+//   citta' del livello 5 si svuotava le torri da sola).
 // La torre di vedetta del livello 5 (watch) non tira e non chiama nessuno.
 import { towerTarget, towerArrow } from "./archery.js";
 import { pointDistance } from "./gm.js";
@@ -29,6 +32,7 @@ const CHECK = 30, THREAT = 700, RECRUIT = 600, LOW = 0.25, CALM = 1800, WALK_MAX
 export function garrisonCreate(i) {
   const G = ENEMY_GARRISON[i.object];
   i.npresidio = i.built ? 0 : G.start;
+  i.keep = i.built ? 1 : G.start;
   i.garrisonLives = [];
   i.calmSince = 0;
 }
@@ -86,7 +90,7 @@ export function garrisonAI(i, w) {
     }
     return;
   }
-  if (!threat && i.npresidio > 1 && w._stepNo - i.calmSince > CALM) {
+  if (!threat && i.npresidio > (i.keep ?? 1) && w._stepNo - i.calmSince > CALM) {
     garrisonSendOut(i, w);
     i.calmSince = w._stepNo - CALM + 600; // il prossimo fra 10 s
   }

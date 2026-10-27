@@ -5,8 +5,8 @@
 //            soldato del giocatore a 650 px (minaccia, fuori tiro) la
 //            riempie un secondo; sotto un quarto della vita escono tutti
 //            con la vita con cui erano entrati (30 e 40)
-//   calma    fortezza nemica con 4 arcieri, nessuna minaccia: dopo 30 s ne
-//            escono, uno ogni 10 s, fino a uno
+//   calma    fortezza nemica della mappa con 4 arcieri, nessuna minaccia:
+//            dopo 30 s ne escono, uno ogni 10 s, fino ai 2 di partenza
 //   nuova    fortezza finita da un cantiere nemico (built): vuota, non tira
 //   nebbia   un guerriero nemico accanto a una nuvola (fog01) insegue un
 //            soldato fermo a 180 px (prima restava fermo), non uno a 330
@@ -91,7 +91,7 @@ for (const kind of ["torre", "calma", "nuova", "nebbia"]) {
       run(1200);
       out.a60s = c.npresidio;
       out.fuori = w.number("enemy_arciere");
-      out.ok = out.a28s === 4 && out.a40s < 4 && out.a60s === 1 && out.fuori === 3;
+      out.ok = out.a28s === 4 && out.a40s < 4 && out.a60s === 2 && out.fuori === 2;
     } else if (KIND === "nuova") {
       const c = w.create("enemy_castello", X, Y, { init: (n) => { n.built = 1; } });
       const s = w.create("ally_warrior", X + 400, Y);

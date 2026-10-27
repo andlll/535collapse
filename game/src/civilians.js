@@ -537,7 +537,7 @@ const wantsRes = (o, res) => o.spotRes === res && (o.goldwork === 1 || o.stonewo
 // maschere lungo i lati del rettangolo della risorsa allargato (a SPOT_GAP
 // px, poi una fila piu' in fuori), a distanza di una maschera piu' SPOT_SEP
 function resSpots(w, i, res) {
-  if (res.spots && res.spots.ver === 1) return res.spots;
+  if (res.spots && res.spots.ver === 2) return res.spots; // §9.82: 2, senza i posti fuori dalla room
   const rb = w.bbox(res), a = w.bbox(i);
   if (!rb || !a) return null;
   const cw = a[2] - a[0], ch = a[3] - a[1];
@@ -555,9 +555,12 @@ function resSpots(w, i, res) {
       const dy = ny > 1 ? (ye - ys) / (ny - 1) : 0;
       for (let k = 0; k < ny; k++) { const y = ny > 1 ? ys + k * dy : (ys + ye) / 2; out.push([x0, y], [x1, y]); }
     }
-    return out.map(([cx, cy]) => ({ x: Math.round(cx - ox), y: Math.round(cy - oy), owner: null }));
+    // [§9.82] non fuori dalla room: un albero sul bordo est del livello 5
+    // aveva un posto a x 9017 (la room e' larga 9000)
+    return out.map(([cx, cy]) => ({ x: Math.round(cx - ox), y: Math.round(cy - oy), owner: null }))
+      .filter((s) => s.x + ox - cw / 2 >= 0 && s.y + oy - ch / 2 >= 0 && s.x + ox + cw / 2 <= w.roomW && s.y + oy + ch / 2 <= w.roomH);
   };
-  res.spots = { ver: 1, work: ring(SPOT_GAP), queue: ring(SPOT_GAP + Math.max(cw, ch) + SPOT_SEP + 8) };
+  res.spots = { ver: 2, work: ring(SPOT_GAP), queue: ring(SPOT_GAP + Math.max(cw, ch) + SPOT_SEP + 8) };
   return res.spots;
 }
 
@@ -707,6 +710,13 @@ function separate(w, i) {
   return false;
 }
 
+// [§9.82] col carico e a meno di DEP_CLOSE px dal deposito giusto
+const DEP_CLOSE = 48;
+function depClose(w, i, S) {
+  if (i.foodwork === 2) return w.distanceToObject(i, S.barn) < DEP_CLOSE;
+  return (i.woodwork === 2 || i.goldwork === 2 || i.stonework === 2) && w.distanceToObject(i, S.magazza) < DEP_CLOSE;
+}
+
 // La risorsa verso cui va il civile (lavoro 1), o null.
 function workTarget(w, i) {
   if (i.woodwork === 1) return w.nearest(i.woodx, i.woody, "albero");
@@ -751,7 +761,14 @@ function ominoMove(i, w, p) {
     if (atRes) toResSpot(w, i, res); // §9.21
     // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
     // vero (albero, edificio) in cui il campo l'ha portato
-    else if (atDep && (far || !w.placeFreeExcept(i, i.x, i.y, S.unit))) moveFlowField(w, p, i);
+    // [§9.82] col carico a meno di DEP_CLOSE px dal bordo del deposito si va
+    // dritti (sopra gli alleati), anche se "lontano" dalla meta: la meta e'
+    // il centro dell'edificio, e da un edificio grande (il centro) restava
+    // oltre i 100 px. Col campo il civile arrivava alla cella accanto al
+    // deposito, a ~28 px (si scarica sotto i 10), e se un altro civile fermo
+    // gli stava sopra (inattivi attorno al centro, a miniera finita) se ne
+    // staccava e ci tornava, per sempre (idle.mjs "nascosti").
+    else if (atDep && (far && !depClose(w, i, S) || !w.placeFreeExcept(i, i.x, i.y, S.unit))) moveFlowField(w, p, i);
     else if (atDep && (i.woodwork === 2 || i.goldwork === 2 || i.stonework === 2 || i.foodwork === 2)) {
       const d = i.foodwork === 2 ? n(S.barn, i.dirox, i.diroy) : n(S.magazza, i.dirox, i.diroy);
       if (d) mpPotentialStep(w, i, d.x, d.y, i.autospeed, false, true);
@@ -948,7 +965,14 @@ function workStep(i, w, p, stop) {
     // non ce ne sono, fermo
     const own = resAt(w, i, "albero", i.woodx, i.woody);
     if (own) {
-      if (own.x !== i.woodx || own.y !== i.woody) { i.woodx = own.x; i.woody = own.y; }
+      if (own.x !== i.woodx || own.y !== i.woody) {
+        i.woodx = own.x; i.woody = own.y;
+        // [§9.82] il proprio albero e' finito: anche la meta passa al nuovo.
+        // Prima la meta cambiava solo entro 250 px dal nuovo albero: piu'
+        // lontano il civile restava a girare dove c'era il vecchio (idle.mjs
+        // "nascosti", con le miniere da 1250 oro di §9.79)
+        if (pointDistance(i.dirox, i.diroy, own.x, own.y) > 10) { i.dirox = own.x; i.diroy = own.y; fieldTo(w, p, i, own.x, own.y); }
+      }
       if (w.distanceToInstance(i, own) < 20 && cellFree()) {
         i.woodwork = 0;
         begin(2, i.woodx, i.woody);

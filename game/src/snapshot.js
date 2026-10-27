@@ -18,7 +18,7 @@ import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 import { ZOOM_MAX } from "./camera.js";
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
-const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "_far", "_bb", "_tStep", "_tSum", "_trk"], classes: { Alarms }, roundKeys: ["parts"] };
+const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "chaseFf", "_far", "_bb", "_tStep", "_tSum", "_trk"], classes: { Alarms }, roundKeys: ["parts"] };
 
 export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const P = world.particles;

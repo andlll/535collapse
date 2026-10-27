@@ -7164,3 +7164,103 @@ misure dello schermo.
 
 La fortezza (§9.79): sentito l'autore, i quattro pulsanti degli arcieri
 restano in prima riga.
+
+### 9.82 Livello 5: l'AI nemica sotto osservazione
+
+Richiesta dell'autore: provare e osservare l'AI nemica del livello 5 per
+vedere se fa cose strane.
+
+**Strumento**: `game/test/browser/enemymonitor.js`, il monitor dell'AI
+nemica per `autoplay.mjs` (§9.77) con `MONITOR=1` (e `TRACE=1`: i passi
+di chi va avanti e indietro). Ogni 30 passi segnala: nemici fermi in
+cammino per 10 s (con chi hanno addosso o davanti, la cella davanti, il
+valore del flow field nella loro cella e se la linea verso la meta e'
+libera), 6 inversioni di marcia in 60 s (non i lavoratori, che fra un
+albero e un deposito a 100 px vanno avanti e indietro di continuo), nemici
+su celle chiuse (non i lavoratori nei campi) o fuori dalla room, colpiti
+fermi per 5 s, fermi con un soldato del giocatore a meno di 120 px, macchine
+d'assedio ferme una sopra l'altra, entrate e uscite dai presidi (e le
+rinunce), lavoratori fermi. Tre partite di 40 minuti (ordinato, aggressivo,
+lento; seme 1). La simulazione non e' del tutto deterministica (alcuni
+calcoli dei percorsi hanno un budget di tempo reale): due partite uguali
+non vanno uguali, si confrontano gli ordini di grandezza.
+
+**Trovato e corretto.**
+- *Un lavoratore nemico usciva dalla room e andava a est per sempre* (in
+  tutte e tre le partite, dal minuto 7: x 9117, poi oltre 10 000; la room
+  e' larga 9000). Un albero sul bordo est (8964, 1542) aveva un posto di
+  lavoro fuori dalla room (civilians.js `resSpots`, x 9017); da li', per
+  tornare al deposito, fuori dalla griglia `flowAt` vale 0, "verso est".
+  Ora i posti attorno alle risorse stanno dentro la room (`ver` 2: si
+  ricalcolano), e chi e' fuori dalla griglia torna verso la griglia
+  (pathing.js `moveFlowField`).
+- *Soldati della regia economica che tremano sul posto* (oltre 100
+  inversioni al minuto, ruolo 30, verso un punto a 2600 px): finita la
+  difesa (§9.50, l'intruso se ne va) tornavano in attesa ma restavano in
+  cammino verso l'ultima posizione dell'intruso, ora senza flow field
+  (ruolo 30), contro le mura. Ora si fermano dove sono, come diceva il
+  commento (economy.js).
+- *Soldati che inseguono dietro un ostacolo*: vicino alla meta, o senza un
+  campo proprio, i nemici vanno dritti (mp_potential_step [C]); i soldati
+  delle ondate arrivati (ruolo 32) che inseguivano un soldato del giocatore
+  dietro le sue torri tremavano sul posto (fino a 112 inversioni al minuto).
+  Ora con la linea chiusa da ostacoli fissi usano un campo verso la meta
+  (enemies.js `chaseField`: dei nemici, passa dalle loro porte; tenuto
+  finche' la meta non si sposta di 3 celle, al piu' 2 s; non salvato). Se
+  dalla loro cella la meta non si raggiunge (chiusi in un anello di alberi,
+  crowd.mjs "circondato") vanno dritti come prima; e non chi va a dare
+  fuoco (firework), che gira attorno all'edificio sulla sua orbita
+  (meleeSpot): col campo, in fireorder.mjs "enemy casa front", un
+  guerriero finiva sotto un cavaliere che si scansava per lui (§9.31,
+  warwork 4) e i due restavano fermi uno sull'altro, il guerriero ad
+  aspettare la precedenza del cavaliere che non riusciva a spostarsi. Lo
+  stallo c'era gia' (non corretto: non e' successo con il codice di prima
+  in nessuna prova).
+- *Soldati appena prodotti fermi accanto alle caserme* (10 s e piu', in
+  cammino, nessuno addosso, la cella davanti libera): il campo della
+  difesa e delle ondate (economy.js) contava come ostacolo anche le celle
+  dei soldati nemici fermi; con le porte della citta' piene di difensori
+  l'interno era irraggiungibile (-1 nella loro cella, nessuna uscita entro 6
+  celle). Ora difesa, ondate e inseguimento usano il campo dei soli
+  ostacoli fissi (`goalField` con `fixed`); col flow field si passa sopra
+  le unita'.
+- *Il presidio nemico (§9.80) svuotava le torri della citta'*: con la
+  regola "30 s senza minaccia: ne esce uno fino a uno", a inizio partita
+  ogni torre e fortezza scendeva da 2 a 1. Ora si scende fino alla
+  guarnigione di partenza (`keep`: 2 per gli edifici della mappa, 1 per
+  quelli costruiti); escono solo gli arcieri entrati in piu' sotto
+  minaccia. `enemygarrison.mjs`: la fortezza con 4 torna a 2.
+- autoplay.mjs contava come morti gli arcieri entrati in un presidio.
+
+**Trovato provando: due civili persi** (anche del giocatore: il codice e'
+lo stesso), da `idle.mjs` "nascosti" (fuori dalla CI), che con le miniere
+da 1250 oro (§9.79) ne esaurisce una durante la raccolta. Su main passava.
+- *Col carico accanto al deposito*: arrivato col campo nella cella accanto
+  al centro, a ~28 px (si scarica sotto i 10), "lontano" dalla meta (il
+  centro dell'edificio, a 218 px: un edificio grande); un civile inattivo
+  fermo li' (a miniera finita) lo respingeva e lui tornava, per sempre.
+  Ora col carico a meno di 48 px dal deposito si va dritti, sopra gli
+  alleati (civilians.js `depClose`).
+- *Il taglialegna col proprio albero finito*: `resAt` sceglieva il nuovo
+  albero (lo scoperto piu' vicino) e aggiornava woodx, ma la meta restava
+  sul vecchio finche' il civile non era entro 250 px dal nuovo: a 567 px
+  girava per sempre dove c'era il vecchio. Ora passa al nuovo anche la meta.
+
+**Numeri** (conteggi del monitor, passi di 0,5 s; prima -> dopo, ordinato /
+aggressivo / lento): fuori dalla room 4345 / 3961 / 3983 -> 0 / 0 / 0;
+avanti e indietro 10 948 / 29 840 / 20 727 -> 584 / 651 / 3611 (una
+seconda partita lenta, con l'eccezione di chi va a dare fuoco: 1291);
+soldati fermi alla nascita (campo a -1) da 6 a 14 per partita -> 0.
+
+**Resta (non corretto).** Ingorghi, non errori di logica: la guarnigione
+della citta' (ruolo 0) che insegue verso ovest si accoda alla porta ovest
+dietro i compagni (x 5727); gli attaccanti nella base del giocatore si
+ammassano fra le sue case e torri e qualcuno resta 10 s fermo dietro gli
+altri o va avanti e indietro fra due bersagli (le inversioni rimaste della
+strategia lenta, che costruisce 2 torri alla base). Nessuna macchina
+d'assedio nemica ferma sopra un'altra, nessun nemico colpito che non
+reagisce (uno o due casi per partita: arieti senza bersaglio), nessun
+presidio che entra ed esce di continuo.
+
+Passano tutte le prove nel browser della CI (soak e salvataggi su tutte le
+room compresi) e `idle.mjs`.

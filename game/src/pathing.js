@@ -667,7 +667,13 @@ export function moveFlowField(w, p, inst) {
   // muoverebbe) ci si separa senza collisioni, verso la destinazione se il
   // passo non entra in una cella chiusa, se no lontano dall'altra unita'.
   let len = inst.autospeed;
-  if (a === -1 && field instanceof Int32Array) {
+  // [§9.82] fuori dalla griglia flowAt vale 0, cioe' "verso est": un
+  // lavoratore nemico uscito dal bordo est del livello 5 andava a est per
+  // sempre. Si torna verso la griglia.
+  if (!p.inside(gx, gy)) {
+    a = pointDirection(inst.x, inst.y, Math.min(Math.max(inst.x, GRID / 2), p.gw * GRID - GRID / 2),
+                       Math.min(Math.max(inst.y, GRID / 2), p.gh * GRID - GRID / 2));
+  } else if (a === -1 && field instanceof Int32Array) {
     if (p.inside(gx, gy) && field[gy * p.gw + gx] !== -1) {
       const o = w.instancePlace(inst, inst.x, inst.y, null, true);
       if (!o) { mpPotentialStep(w, inst, inst.dirox, inst.diroy, inst.autospeed); return; }

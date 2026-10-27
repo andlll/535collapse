@@ -14,7 +14,7 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
+import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
@@ -107,6 +107,30 @@ export function atkSignalObject() {
   };
 }
 
+// [§9.82] Vicino alla meta (o senza un flow field proprio) i nemici vanno
+// dritti con mp_potential_step [C]; con un ostacolo fisso in mezzo (un
+// edificio, le mura, un bosco) restavano a girare contro l'ostacolo: nel
+// livello 5 i soldati delle ondate arrivati (ruolo 32) che inseguivano un
+// soldato del giocatore dietro le torri tremavano sul posto, oltre 100
+// inversioni di marcia al minuto. Ora, con la linea chiusa, un campo verso
+// la meta (dei nemici: passa dalle loro porte), come gli alleati (§6.2 D);
+// tenuto finche' la meta non si sposta di 3 celle, al piu' 2 s.
+function chaseField(w, p, i) {
+  const gx = Math.floor(i.dirox / GRID), gy = Math.floor(i.diroy / GRID);
+  let c = i.chaseFf;
+  if (!c || Math.max(Math.abs(gx - c.gx), Math.abs(gy - c.gy)) > 3 || w._stepNo - c.at > 120 || c.ver !== p.solidVer) {
+    c = i.chaseFf = { f: p.goalField(i.dirox, i.diroy, true, false, true), gx, gy, at: w._stepNo, ver: p.solidVer }; // solo ostacoli fissi
+  }
+  // dalla sua cella la meta non si raggiunge (chiuso in un anello di
+  // alberi, crowd.mjs "circondato"): come prima, dritto
+  const ux = Math.floor(i.x / GRID), uy = Math.floor(i.y / GRID);
+  if (!p.inside(ux, uy) || c.f[uy * p.gw + ux] === -1) { mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); return; }
+  const own = i.flow_field;
+  i.flow_field = c.f;
+  moveFlowField(w, p, i);
+  i.flow_field = own;
+}
+
 // scr_movimento_nemici_ff [C]. La precedenza di GML e' (lontano && role 31)
 // || sovrapposto.
 // [Correzione decisa dall'autore, §3.10 n.37] un nemico senza flow field
@@ -131,6 +155,8 @@ function enemyMove(i, w, p) {
       if (otro.ordo < i.ordo || otro.action !== 1) pushThrough(w, p, i);
       else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
     } else pushThrough(w, p, i);
+  } else if (i.firework !== 1 && !p.clearSolid(i.x, i.y, i.dirox, i.diroy)) {
+    chaseField(w, p, i); // §9.82 (non chi va a dare fuoco: il suo posto e' sull'orbita attorno all'edificio, meleeSpot)
   } else {
     mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
     // [§7.7, segnalazione dell'autore] nell'originale il primo attaccante

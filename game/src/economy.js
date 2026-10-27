@@ -650,16 +650,28 @@ export function enemyEco(p) {
       }
       // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
       // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
+      // [§9.82] Difesa e ondate col campo dei soli ostacoli fissi (fixed):
+      // col campo di sempre le celle dei soldati nemici fermi contano come
+      // ostacolo, e con le porte della citta' piene di difensori i soldati
+      // appena nati nelle caserme restavano fuori dal campo (-1, nessuna
+      // uscita), fermi. Col flow field si passa sopra le unita'.
       let dff = null;
       for (const e of army2) {
         if (e.defending && e.role === 32) e.role = 30;
         if (e.role !== 30 && !(e.defending && e.role === 31)) continue;
         if (intruder && (e.action === 0 || e.defending)) {
-          dff = dff || p.flowField(p.goalField(intruder.x, intruder.y, true));
+          dff = dff || p.flowField(p.goalField(intruder.x, intruder.y, true, false, true));
           if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
           e.action = 1; e.warwork = 1; e.dirox = intruder.x; e.diroy = intruder.y; e.defending = 1;
           e.role = 31; e.flow_field = dff;
-        } else if (!intruder && e.defending) { e.defending = 0; if (e.role === 31) e.role = 30; }
+        } else if (!intruder && e.defending) {
+          // [§9.82] restano dove sono: prima restavano in cammino verso l'ultima
+          // posizione dell'intruso, col ruolo 30 senza flow field, e dietro le
+          // mura tremavano sul posto (oltre 100 inversioni al minuto)
+          e.defending = 0;
+          if (e.role === 31) e.role = 30;
+          if (e.action === 1 && e.warwork === 1) { e.action = 0; e.warwork = 0; e.speed = 0; e.dirox = e.x; e.diroy = e.y; }
+        }
       }
       // all'attacco, raccolti abbastanza soldati in attesa (attackAt, piu'
       // attackGrow a ogni ondata, fino al tetto), non prima di firstAttack
@@ -670,7 +682,7 @@ export function enemyEco(p) {
       const ready = !en.hold && now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0); // hold: §9.52
       const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need ? attackTarget(w, home) : null;
       if (t) {
-        const ff = p.flowField(p.goalField(t.x, t.y, true));
+        const ff = p.flowField(p.goalField(t.x, t.y, true, false, true)); // §9.82: fixed
         for (const e of waiting) {
           e.action = 1; e.flow_field = ff; e.dirox = t.x; e.diroy = t.y; e.role = 31;
           e.alarm.set(0, irandomRange(12, 15));

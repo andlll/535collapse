@@ -15,6 +15,8 @@
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
 //   node game/test/browser/autoplay.mjs [strategia] [minuti di gioco] [seme]
 //   SHOTS=cartella: uno screenshot nei momenti chiave
+//   MONITOR=1: anche il monitor dell'AI nemica (enemymonitor.js, §9.82);
+//   TRACE=1 col monitor: i passi di chi va avanti e indietro
 const mod = process.env.PLAYWRIGHT_MODULE || "playwright";
 const { chromium } = await import(mod);
 const [STRAT = "ordinato", MINUTES = "40", SEED = "1"] = process.argv.slice(2);
@@ -128,9 +130,10 @@ await page.evaluate(([STRAT, SEED]) => {
   let seen = new Map();
   B.count = () => {
     const cur = new Map();
-    for (const u of w.all("ally_unit")) cur.set(u.id, ["ally", u.object.replace(/^ally_/, "")]);
-    for (const u of w.all("enemy_unit")) cur.set(u.id, ["enemy", u.object.replace(/^enemy_/, "")]);
-    for (const [id, [side, o]] of seen) if (!cur.has(id)) B.dead[side][o] = (B.dead[side][o] || 0) + 1;
+    for (const u of w.all("ally_unit")) cur.set(u.id, ["ally", u.object.replace(/^ally_/, ""), u]);
+    for (const u of w.all("enemy_unit")) cur.set(u.id, ["enemy", u.object.replace(/^enemy_/, ""), u]);
+    // (un arciere entrato in una torre o in una fortezza, §9.63 e §9.80, non e' morto)
+    for (const [id, [side, o, u]] of seen) if (!cur.has(id) && !(u && u.presidiowork === 1)) B.dead[side][o] = (B.dead[side][o] || 0) + 1;
     seen = cur;
     // le ondate (dove vanno) e gli edifici persi (chi c'era attorno, dov'era
     // l'esercito)
@@ -316,6 +319,12 @@ await page.evaluate(([STRAT, SEED]) => {
   say(`strategia ${STRAT}`);
 }, [STRAT, SEED]);
 
+if (process.env.MONITOR) {
+  const { readFileSync } = await import("node:fs");
+  await page.addScriptTag({ content: readFileSync(new URL("./enemymonitor.js", import.meta.url), "utf8") });
+  await page.evaluate((tr) => { window.__monTrace = tr; installEnemyMonitor(); }, !!process.env.TRACE); // eslint-disable-line no-undef
+}
+
 const STEPS = Number(MINUTES) * 3600, CHUNK = 1800;
 let shotN = 0;
 const shot = async (name) => {
@@ -332,18 +341,22 @@ for (let done = 0; done < STEPS && !result; done += CHUNK) {
       B.act();
       B.step(30);
       B.count();
+      if (B.mon) B.mon();
       if (g.victory === 1 || g.gameover === 1) break;
     }
-    return { status: B.status() + "\n      perdite: noi " + JSON.stringify(B.dead.ally) + " loro " + JSON.stringify(B.dead.enemy) + (process_env_dump ? "\n" + B.civdump() : ""), log: B.log.slice(), ev: B.ev, end: g.victory === 1 ? "VITTORIA" : g.gameover === 1 ? "SCONFITTA" : null,
+    const mon = B.monNew ? B.monNew() : [];
+    return { mon, status: B.status() + "\n      perdite: noi " + JSON.stringify(B.dead.ally) + " loro " + JSON.stringify(B.dead.enemy) + (process_env_dump ? "\n" + B.civdump() : ""), log: B.log.slice(), ev: B.ev, end: g.victory === 1 ? "VITTORIA" : g.gameover === 1 ? "SCONFITTA" : null,
              cam: [G.cam.x, G.cam.y] };
   }, [CHUNK, !!process.env.DUMP]);
   for (const l of r.log.slice(printed)) console.log("   " + l);
   printed = r.log.length;
+  for (const l of r.mon) console.log("   ~ " + l);
   console.log(r.status);
   for (const k of Object.keys(r.ev)) if (!seenEv.has(k)) { seenEv.add(k); await shot(k); }
   if (r.end) result = r.end;
 }
 await shot("fine");
+if (process.env.MONITOR) console.log("monitor: " + await page.evaluate(() => window.__bot.monReport()));
 console.log(result || "TEMPO SCADUTO", errs.slice(0, 3));
 await browser.close();
 process.exit(result === "VITTORIA" ? 0 : 1);
