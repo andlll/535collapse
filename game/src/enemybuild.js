@@ -12,6 +12,7 @@ import { fireStep, fireStop } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
 import { towerTarget, towerArrow } from "./archery.js";
 import { lostBuilding } from "./economy.js";
+import { ENEMY_GARRISON, garrisonCreate, garrisonShoot, garrisonAI } from "./enemygarrison.js";
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
@@ -34,6 +35,9 @@ export function enemyBarAndPanel(icon, wooden = true) {
       };
       if (i.selected === 1 || i.hover === 1) bar();
       if (i.hit === 1 && w.room === "match") bar();
+      // §9.80: gli arcieri dentro (torre e fortezza nemiche), come la torre alleata
+      const G = ENEMY_GARRISON[i.object];
+      if (G && i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? G.start) + "/" + G.max); d.setHalign("left"); }
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;
@@ -74,8 +78,9 @@ const KIND = {
   enemy_centro: { life: 400, ruin: "ccruin", icon: "ico_centro", smoke: 30, bases: [], wooden: true,
                   arrows: [35, [[50, -140]]] },
   enemy_chiesa: { life: 300, ruin: "chiesaruin", icon: "ico_chiesa", smoke: 30, bases: [], heal: true },
+  // [§9.80] la fortezza: una freccia per arciere di presidio (enemygarrison.js)
   enemy_castello: { life: 900, ruin: "castelloruin", icon: "ico_castello", smoke: 30, bases: [],
-                    arrows: [50, [[20, -150], [20, -170]]] },
+                    arrows: [50, [[20, -150], [20, -170]]], garrison: true },
   enemy_magazzino: { life: 140, ruin: "magruin", icon: "ico_magazzino", smoke: 30, bases: [], wooden: true },
   enemy_mulino: { life: 150, ruin: "barnruin", icon: "ico_barn", smoke: 12, bases: [], wooden: true, speed: 0.3 }, // §9.48: come il mulino alleato
 };
@@ -106,6 +111,7 @@ export function enemyBuilding(kind, p) {
       if (K.speed) i.image_speed = K.speed;
       if (K.heal) i.alarm.set(4, 180);
       if (K.produces) Object.assign(i, { flagx: i.x, flagy: i.y, role: 0, prod: 1 });
+      if (K.garrison) garrisonCreate(i); // §9.80
       // enemy_house [C]: uno dei 6 stili a caso (3 = lo sprite dell'oggetto)
       if (kind === "enemy_house") {
         const ind = irandomRange(1, 6);
@@ -157,7 +163,8 @@ export function enemyBuilding(kind, p) {
                  pointDistance(i.x, i.y, w.mouse.x, w.mouse.y) < 80 && w.g.milsel > 0);
       }
       // [§9.43] frecce sull'alleato piu' vicino entro 600 px con la linea libera
-      if (K.arrows && i.arm === 1) {
+      if (K.garrison) { garrisonShoot(i, w, K.arrows[0], 5); garrisonAI(i, w); } // §9.80
+      else if (K.arrows && i.arm === 1) {
         const a = towerTarget(w, i, "ally_unit", 600);
         if (a) {
           i.arm = 0;

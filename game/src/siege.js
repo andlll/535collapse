@@ -15,6 +15,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinationBack } from "./pathing.js";
 import { ramSpot } from "./melee.js";
+import { fogSight } from "./enemies.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -829,16 +830,13 @@ export function enemyRam(base) {
       }
       const chase = () => {
         const t = w.nearest(i.x, i.y, "ally_build");
-        if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k && (i.warwork === 0 || i.warwork === 1)) {
+        if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k * fogSight(w, i) && (i.warwork === 0 || i.warwork === 1)) { // §9.80
           if (i.action !== 1) i.alarm.set(0, 15);
           i.action = 1; i.warwork = 1;
           [i.dirox, i.diroy] = ramSpot(w, i, t); // §9.32
         }
       };
-      if (w.exists("fog01")) {
-        const f = w.nearest(i.x, i.y, "fog01");
-        if (w.distanceToInstance(i, f) > 290) chase();
-      } else chase();
+      chase(); // §9.80: nella nebbia vede meno (era: fermo)
     },
     collisions: {}, // nessuna reazione alle frecce
     drawGUI: enemyPanel("ico_ariete"),
@@ -892,11 +890,9 @@ export function enemyCatapult(base) {
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       if (w.number("torre_placer") > 0) g.sele = 1;
       if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, RELOAD_STEP); i.step = 0; }
-      const range = (1 - 0.5 * g.night) * 850;
-      if (w.exists("fog01")) {
-        const f = w.nearest(i.x, i.y, "fog01");
-        if (w.distanceToInstance(i, f) > 290 && catapultAuto(i, w, "ally_build", range) === "exit") return;
-      } else if (catapultAuto(i, w, "ally_build", range) === "exit") return;
+      // §9.80: nella nebbia vede meno (era: fermo)
+      const range = (1 - 0.5 * g.night) * 850 * fogSight(w, i);
+      if (catapultAuto(i, w, "ally_build", range) === "exit") return;
       ANIM.enemy_catapulta(i, w);
     },
     collisions: {

@@ -1,6 +1,6 @@
 // Prova nel browser dell'uscita degli arcieri di presidio (§9.63): una torre
 // (2 posti) e un castello (4) in campo aperto nel match; arcieri feriti
-// (vita 30, 35, ...) mandati a presidiarli col clic destro vero; poi
+// (vita 30, 35, ..., l'ultimo a vita piena) mandati a presidiarli col clic destro vero; poi
 // l'edificio selezionato col clic e i pulsanti d'uscita premuti uno a uno
 // (prima riga, y 50: nella torre da x 450, nel castello da x 660, a destra
 // di ariete, catapulta e annulla, con un ariete in produzione; §9.79). Controlla:
@@ -8,6 +8,7 @@
 //   pulsanti   = uno per arciere, sotto il puntatore il clic non deseleziona
 //   fuori      = a ogni clic un arciere in meno dentro e uno in piu' fuori,
 //                con la vita che aveva entrando, popolazione +2
+//   vitaDopo2s = la stessa vita 2 s dopo l'uscita (§9.80)
 //   bandiere   = a edificio vuoto non ne resta nessuna sua
 //   produzione = nel castello continua
 // Esce con codice 1 se qualcosa non torna.
@@ -46,7 +47,8 @@ for (const [B, N, X, ROW] of [["torre", 2, 450, 50], ["castello", 4, 660, 50]]) 
     const archers = [];
     for (let k = 0; k < N; k++) archers.push(w.create("ally_arciere", b.x - 250 + k * 50, b.y + 250));
     G.advance(3);
-    archers.forEach((a, k) => { a.life = 30 + k * 5; });
+    // feriti (30, 35, ...), l'ultimo a vita piena (55)
+    archers.forEach((a, k) => { a.life = k === N - 1 ? a.slife : 30 + k * 5; });
     const lives = archers.map((a) => a.life).sort((x, y) => x - y);
     const pop0 = G.g.pop;
     for (const u of w.all("ally_unit")) u.selected = 0;
@@ -64,7 +66,7 @@ for (const [B, N, X, ROW] of [["torre", 2, 450, 50], ["castello", 4, 660, 50]]) 
     const prod0 = b.progression;
     out.pulsanti = b.selected === 1;
     // i pulsanti, uno a uno (si preme sempre il primo: gli altri scorrono)
-    const got = [];
+    const got = [], outs = [];
     for (let k = 0; k < N; k++) {
       input.x = X; input.y = ROW; G.advance(2);
       const n = b.npresidio, pop = G.g.pop, before = new Set(w.all("ally_arciere"));
@@ -73,9 +75,13 @@ for (const [B, N, X, ROW] of [["torre", 2, 450, 50], ["castello", 4, 660, 50]]) 
       input._mr[0] = true; G.advance(2);
       const fresh = [...w.all("ally_arciere")].filter((a) => !before.has(a));
       if (b.npresidio !== n - 1 || fresh.length !== 1 || G.g.pop !== pop + 2) { out.fuori = false; break; }
-      got.push(fresh[0].life);
+      got.push(fresh[0].life); outs.push(fresh[0]);
     }
     if (out.fuori !== false) out.fuori = got.length === N && JSON.stringify(got.sort((x, y) => x - y)) === JSON.stringify(lives);
+    // §9.80: la vita resta quella anche dopo (niente che la rimetta a 55)
+    G.advance(120);
+    const later = outs.map((a) => a.life).sort((x, y) => x - y);
+    out.vitaDopo2s = JSON.stringify(later) === JSON.stringify(lives);
     out.bandiere = w.number("flag_r") + w.number("flag_r2") === flags0;
     if (B === "castello") out.produzione = b.progression > prod0;
     out.dettagli = { npresidio: b.npresidio, vite: got, pop: G.g.pop };

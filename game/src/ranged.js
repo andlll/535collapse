@@ -15,6 +15,7 @@ import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
+import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
@@ -630,6 +631,7 @@ export function centroArrows(base) {
 
 // enemy_torre [C]: due frecce ogni 50 passi su un alleato entro 600 px;
 // visibile come le unita' nemiche ma, una volta vista, resta visibile.
+// [§9.80] Una freccia per arciere di presidio (enemygarrison.js).
 // Distrutta, scala i contatori delle basi del tutorial di match.
 export function enemyTower(p) {
   return {
@@ -640,6 +642,7 @@ export function enemyTower(p) {
       i.alarm.set(1, 70);
       i.visible = false;
       w.create("flag_b", i.x, i.y - 170);
+      garrisonCreate(i); // §9.80
     },
     alarm0(i) { i.arm = 1; },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
@@ -663,14 +666,9 @@ export function enemyTower(p) {
       }
       // [§6.5] l'alleato piu' vicino entro 600 px con la linea libera
       // [§9.76] una torre di vedetta (watch, regia del livello 5) non tira
-      const a = i.arm === 1 && !i.watch ? towerTarget(w, i, "ally_unit", 600) : null;
-      if (i.arm === 1 && a) {
-        i.arm = 0;
-        i.alarm.set(0, 50);
-        const dx = a.x > i.x ? 20 : -20;
-        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 60, i, a);
-        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 77, i, a);
-      }
+      // [§9.80] una freccia per arciere di presidio, e l'AI del presidio
+      garrisonShoot(i, w, 50, 0);
+      garrisonAI(i, w);
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (i.visible === true && w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
@@ -679,6 +677,8 @@ export function enemyTower(p) {
       if (i.selected === 1 || i.hover === 1 || (i.hit === 1 && w.room === "match")) {
         d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, blue);
       }
+      // §9.80: gli arcieri dentro, come la torre alleata
+      if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? 2) + "/" + ENEMY_GARRISON.enemy_torre.max); d.setHalign("left"); }
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;

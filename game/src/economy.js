@@ -426,7 +426,7 @@ export function enemyCantiere(p) {
       if (i.life >= i.slife) {
         const { x, y, target, sprite_index: spr, visible } = i;
         w.destroy(i);
-        const b = w.create(target, x, y);
+        const b = w.create(target, x, y, { init: (n) => { n.built = 1; } }); // §9.80: torre e fortezza nuove senza presidio
         if (b.solid) p.markInstance(b, 1000);
         w.swapSprite(b, b.sprite_index, spr);
         if (visible) b.visible = true;

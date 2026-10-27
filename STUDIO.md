@@ -7068,3 +7068,57 @@ al secondo: primo giorno 6000 passi (100 s), tramonto 200 (3,3 s, night
 latitudini (16 ore di luce e 8 di buio); in media sull'anno giorno e notte
 si equivalgono. Tramonto e alba durano il 3% del ciclo (il crepuscolo
 civile vero ~2%).
+
+### 9.80 Nemici nella nebbia; presidio nemico; vita degli arcieri che escono
+
+Richieste dell'autore.
+
+**Nebbia del tutorial** (le nuvole `fog01` di `fog_controller` nel match):
+i nemici erano quasi immobili. Nell'originale [C], vicino a una nuvola
+(entro 290 px) il guerriero non inseguiva mai (il difetto delle graffe,
+§3.10 n.39), l'arciere non inseguiva, ariete e catapulta nemici non
+facevano niente; picchiere e cavaliere inseguivano a 200 px invece di 400.
+Ora vedono solo meno (enemies.js, `fogSight`, `FOG_SIGHT` = 0,5): nella
+nebbia le distanze a cui si accorgono del giocatore si dimezzano, come di
+notte (e di notte nella nebbia si dimezzano due volte): l'inseguimento di
+tutti i soldati (400 -> 200), tiro (400 -> 200) e inseguimento (600 ->
+300) dell'arciere, l'edificio da colpire dell'ariete (700 -> 350), la
+gittata della catapulta (850 -> 425).
+
+**Presidio nemico** (enemygarrison.js), come quello del giocatore (§9.63):
+torri e fortezze nemiche tirano una freccia per arciere dentro (al massimo
+2 la torre, 4 la fortezza), l'arciere entra a contatto con l'edificio e
+sparisce, esce accanto con la vita che aveva entrando (l'ultimo entrato
+esce per primo; un soldato della regia economica torna in attesa delle
+ondate). Prima tiravano sempre 2 frecce senza nessuno dentro: torri e
+fortezze della mappa partono con 2 arcieri dentro (all'inizio tirano come
+prima, e un salvataggio di prima vale come 2), quelle che l'economia
+nemica costruisce (enemy_cantiere, `built`) partono vuote. Selezionate,
+mostrano gli arcieri dentro ("1/2", come la torre del giocatore).
+L'AI, ogni 30 passi per edificio:
+- *minaccia* (un'unita' del giocatore entro 700 px): gli arcieri nemici
+  liberi entro 600 px (fermi, o che inseguono senza tirare; della mappa,
+  difensori o in attesa delle ondate; non quelli delle regie dei livelli:
+  ritirata, strada, livelli 3, 4, 5) vanno a riempire i posti;
+- *in pace* un edificio vuoto lo occupa un arciere vicino (uno);
+- *sotto un quarto della vita* escono tutti (non muoiono nel crollo);
+- *30 s senza minaccia*: ne esce uno ogni 10 s, fino a uno dentro.
+Un arciere che in 15 s non arriva, o trova l'edificio pieno o crollato,
+lascia perdere. La torre di vedetta del livello 5 (watch) non tira ne'
+chiama nessuno. Distrutto l'edificio, chi e' dentro muore (come per il
+giocatore).
+
+**La vita degli arcieri che escono** (verifica): giusta. Entrando la vita
+va in `garrisonLives` dell'edificio, uscendo l'arciere nasce (vita 55 dal
+Create) e la riprende subito dopo. `garrison.mjs` ora prova anche un
+arciere a vita piena (55) insieme ai feriti (30, 35, 40) e che la vita
+sia la stessa 2 s dopo l'uscita: torre 30 e 55, fortezza 30, 35, 40 e 55.
+
+Prova nuova `game/test/browser/enemygarrison.mjs` (nella CI): torre
+nemica della mappa (parte con 2, tira; vuota non tira; in pace la
+rioccupa un arciere solo; con un soldato del giocatore a 680 px entra il
+secondo; a un quinto della vita escono tutti con 30 e 40, uguali 2 s
+dopo); fortezza con 4 arcieri in pace (a 28 s 4, a 40 s 2, a 60 s 1);
+fortezza finita da un cantiere (vuota, nessuna freccia); guerriero nemico
+accanto a una nuvola ferma: insegue un soldato a 180 px (prima restava
+fermo), non uno a 330.
