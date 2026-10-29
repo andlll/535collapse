@@ -7264,3 +7264,37 @@ presidio che entra ed esce di continuo.
 
 Passano tutte le prove nel browser della CI (soak e salvataggi su tutte le
 room compresi) e `idle.mjs`.
+
+### 9.83 Zoom morbido
+
+Richiesta dell'autore: lo zoom con la rotella fluido invece che a scatti.
+
+Prima ogni scatto della rotella (o X, Z) cambiava lo zoom di 0,1 in un
+fotogramma (`setScale`, arrotondato ai decimi: 8 livelli fra 1 e 1,7).
+Ora (camera.js `zoomTo`, `zoomStep`; manager.js):
+- rotella e tasti spostano la meta dello zoom, e lo zoom la raggiunge di un
+  quarto della distanza a passo (il 90% in 8 passi, ~130 ms; sotto 0,002 si
+  ferma esattamente sulla meta); piu' scatti di fila si sommano alla meta
+  (dalla meta in corso, non dallo zoom del momento) e il movimento non
+  riparte da capo;
+- il punto di room sotto il puntatore resta fermo per tutto il movimento
+  (prima solo all'arrivo, che era istantaneo); X e Z tengono fermo
+  l'angolo in alto a sinistra, come prima;
+- il touchpad (delta sotto i 50 px a evento) zooma in modo continuo, 0,1
+  ogni 100 px, senza arrotondare; prima i delta si sommavano fino a uno
+  scatto intero (input.js `wheelFine`). La rotella classica (~100 px a
+  scatto) resta a decimi;
+- limiti invariati (1 e ZOOM_MAX = 1,7); un salvataggio caricato a meta'
+  movimento ferma lo zoom (snapshot.js).
+Nessun punto del codice confronta lo zoom con valori esatti: posizione dei
+pulsanti, minimappa e suggerimenti seguono gia' qualunque valore.
+
+Prova nuova `game/test/browser/zoom.mjs` (nella CI), con eventi veri: uno
+scatto della rotella (da 1 a 1,1 in 10 passi intermedi, mai indietro, il
+punto sotto il puntatore fermo), due scatti di fila (+0,2), touchpad
+(12 x -10 px: -0,12, cioe' 1,18), limiti (1,7 e 1), X e Z (10 passi
+intermedi). Col codice di prima fallisce (0 passi intermedi, touchpad 1,2).
+Nella prova serve disegnare un fotogramma prima della rotella: con
+`nostart=1` il canvas resta nascosto (visibility: hidden, nessun evento)
+finche' non si disegna. Passano anche ui, hintgap, enemybuildings,
+salvataggi e soak.

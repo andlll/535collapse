@@ -60,7 +60,7 @@ cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
 vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi (anche
 col puntatore uscito dalla finestra; nelle opzioni grafiche si può
-bloccare il mouse nella finestra), X/Z o la rotella per lo zoom,
+bloccare il mouse nella finestra), X/Z o la rotella per lo zoom (morbido, §9.83),
 **F3** per il pannello di diagnostica (anche `?diag=1`: tempo CPU e, se
 il browser lo espone, tempo GPU per frame); `?fps=30` per il
 tetto a 30 fps. Nelle opzioni grafiche "Quality" (Alta, Media, Bassa)
@@ -103,6 +103,7 @@ node game/test/browser/rams.mjs                         # piu' arieti contro lo 
 node game/test/browser/catapults.mjs                    # catapulte che tirano o si fermano senza stare una sopra l'altra
 node game/test/browser/enemygarrison.mjs                # presidio nemico in torri e fortezze; nemici nella nebbia
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
+node game/test/browser/zoom.mjs                         # zoom morbido con rotella, touchpad e X/Z, punto sotto il puntatore fermo
 node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
 node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
 node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano

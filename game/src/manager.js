@@ -60,17 +60,26 @@ export class Manager {
     // altrimenti lo zoom (non nel menu)
     // [§6.1 n.78] fino a ZOOM_MAX; la rotella (giu' = allontana) fa lo
     // stesso attorno al puntatore
+    // [§9.83] morbido: si sposta la meta (camera.js, zoomTo), di 0,1 a
+    // scatto dalla meta in corso (piu' scatti di fila si sommano); il
+    // touchpad di 0,1 ogni 100 px, senza arrotondare
+    const tenth = (s) => Math.round(s * 10) / 10;
+    const goal = cam.zoomGoal;
     if (P(88)) {
       if (g.sele === 1) g.sz++;
-      else if (g.scaleview < ZOOM_MAX && this.room !== "menu") cam.setScale((g.scaleview += 0.1));
+      else if (goal < ZOOM_MAX && this.room !== "menu") cam.zoomTo(tenth(goal + 0.1), 0, 0);
     }
     if (P(90)) {
       if (g.sele === 1) g.sz--;
-      else if (g.scaleview > ZOOM_MIN && this.room !== "menu") cam.setScale((g.scaleview -= 0.1));
+      else if (goal > ZOOM_MIN && this.room !== "menu") cam.zoomTo(tenth(goal - 0.1), 0, 0);
     }
-    if (input.wheelStep && this.room !== "menu") {
-      cam.zoomAt(cam.scaleview + 0.1 * input.wheelStep, input.x, input.y);
+    if ((input.wheelStep || input.wheelFine) && this.room !== "menu") {
+      let t = cam.zoomGoal;
+      if (input.wheelStep) t = tenth(t + 0.1 * input.wheelStep);
+      if (input.wheelFine) t += input.wheelFine / 1000;
+      cam.zoomTo(t, input.x, input.y);
     }
+    cam.zoomStep();
     g.scaleview = cam.scaleview;
     // Trucchi [C, tenuti anche fuori dal debug: decisione dell'autore §0.10]:
     // V + Alt + F/Q/S/W/P.
