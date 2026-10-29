@@ -7377,3 +7377,47 @@ caserma (26 sbuffi, 8 frammenti), polvere di un cavaliere mandato col clic
 destro, fumo che riprende dopo salvataggio e caricamento. Passano tutte le
 prove nel browser della CI e idle.mjs; soak del livello 5 alla stessa
 velocita' di prima (12,4 s contro 13,9 s, sulla stessa macchina).
+
+### 9.85 Stadi di danno di edifici nemici di pietra, mura e porte
+
+Sprite dell'autore (nuovi/sprites/, commit "Sprites edifici danneggiati"):
+gli stadi di danno di torre, fortezza e monastero nemici (torre_b_r1/_r2,
+castello_b_r1/_r2, chiesa_b_r1/_r2) e di mura e porte del giocatore
+(m_ori, m_vert, porte orizzontali e verticali chiuse e aperte, _r1 e _r2).
+Decisioni dell'autore: le mura e porte nemiche danneggiate si ricavano da
+quelle del giocatore ricolorando le bandierine (come le mura nemiche intere,
+§9.75); i cantieri nemici restano quelli del giocatore.
+
+**Allineamento.** Le immagini sono ritagliate sul disegno ed esportate a
+un'altra scala: misure tutte diverse dagli integri (torre 192x256 contro
+196x258, fortezza 524x460 contro 511x451, muro orizzontale 566x167 contro
+537x294). tools/14_allinea.py (nuova parte, numpy, solo per questo
+strumento) cerca per ognuno scala (0,90-1,10) e spostamento che
+sovrappongono meglio contorni neri e sagoma all'integro (correlazione con la
+FFT): la scala e' 0,945-0,955 per tutti, cioe' un'esportazione al ~105%;
+si usa la mediana, 0,95, per tutti, e si rifanno gli spostamenti. Scrive
+"scala" e "a" nelle voci di nuovi.json ("su": lo sprite integro);
+tools/nuovi.py ricostruisce lo sprite sulla tela dell'integro (allargata se
+il disegno sporge: i muri verticali, 14-15 px sopra), con la sua origine.
+Sovrapposizione 0,53-0,86 (le differenze sono crepe e pezzi crollati;
+controllata a occhio su un'immagine in cui l'integro e' rosso e il
+danneggiato verde: i contorni coincidono). La pipeline legge solo i numeri:
+la CI non ha bisogno di numpy. 05_atlas ricava i danni di mura e porte
+nemiche (<mura>_b_r1, _r2) da quelli del giocatore con tint_flags.
+
+**Nel gioco** (game/src/damage.js): come gli edifici del giocatore (§3.5,
+buildings.js `damage`), sotto i 2/3 della vita lo sprite _r1, sotto 1/3
+_r2, in dissolvenza; riparati tornano indietro. Torre nemica (ranged.js),
+fortezza e monastero nemici (enemybuild.js), muri e porte del giocatore e
+nemici (walls.js). Le porte tengono il danno aprendosi e chiudendosi: il
+cambio aperta/chiusa resta istantaneo come prima, il cambio di stadio a
+porta ferma e' in dissolvenza; quelle che guardano chi c'e' solo ogni 10 o
+30 passi aggiornano il danno a ogni passo. Le maschere (mask_index) non
+cambiano: collisioni e percorsi restano quelli di prima.
+
+Prova nuova `game/test/browser/damage.mjs` (nella CI): undici edifici
+(torre, fortezza, monastero nemici; muri e porte del giocatore e nemici),
+vita al 60%, al 20% e di nuovo piena: sprite _r1, _r2 e integro, tutti
+nell'atlas, maschera invariata; le porte danneggiate aperte e chiuse
+restano _r1. Passano la pipeline (06, 07, 11, 12 --check, scenari
+invariati) e le prove nel browser della CI.

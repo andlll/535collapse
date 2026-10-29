@@ -16,6 +16,7 @@ import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
 import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
+import { showDamage } from "./damage.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
@@ -669,6 +670,7 @@ export function enemyTower(p) {
       // [§9.80] una freccia per arciere di presidio, e l'AI del presidio
       garrisonShoot(i, w, 50, 0);
       garrisonAI(i, w);
+      showDamage(i, w, "torre_b"); // §9.85
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (i.visible === true && w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },

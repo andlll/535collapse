@@ -13,6 +13,7 @@ import { creazioneAttaccantiGenerico } from "./levels.js";
 import { towerTarget, towerArrow } from "./archery.js";
 import { lostBuilding } from "./economy.js";
 import { ENEMY_GARRISON, garrisonCreate, garrisonShoot, garrisonAI } from "./enemygarrison.js";
+import { showDamage } from "./damage.js";
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
@@ -77,10 +78,10 @@ const KIND = {
                   wooden: true },
   enemy_centro: { life: 400, ruin: "ccruin", icon: "ico_centro", smoke: 30, bases: [], wooden: true,
                   arrows: [35, [[50, -140]]] },
-  enemy_chiesa: { life: 300, ruin: "chiesaruin", icon: "ico_chiesa", smoke: 30, bases: [], heal: true },
+  enemy_chiesa: { life: 300, ruin: "chiesaruin", icon: "ico_chiesa", smoke: 30, bases: [], heal: true, damage: "chiesa_b" },
   // [§9.80] la fortezza: una freccia per arciere di presidio (enemygarrison.js)
   enemy_castello: { life: 900, ruin: "castelloruin", icon: "ico_castello", smoke: 30, bases: [],
-                    arrows: [50, [[20, -150], [20, -170]]], garrison: true },
+                    arrows: [50, [[20, -150], [20, -170]]], garrison: true, damage: "castello_b" },
   enemy_magazzino: { life: 140, ruin: "magruin", icon: "ico_magazzino", smoke: 30, bases: [], wooden: true },
   enemy_mulino: { life: 150, ruin: "barnruin", icon: "ico_barn", smoke: 12, bases: [], wooden: true, speed: 0.3 }, // §9.48: come il mulino alleato
 };
@@ -177,7 +178,9 @@ export function enemyBuilding(kind, p) {
         lostBuilding(w, i); // §9.45
         w.create(K.ruin, i.x, i.y);
         w.destroy(i);
+        return;
       }
+      if (K.damage) showDamage(i, w, K.damage); // §9.85: stadi di danno (torre, fortezza e monastero nemici)
     },
   };
 }

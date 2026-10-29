@@ -746,6 +746,168 @@
           91
         ]
       }
+    },
+    "torre_b_r1": {
+      "su": "torre_b",
+      "nota": "[§9.85] la torre nemica danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di torre_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        11,
+        8
+      ]
+    },
+    "torre_b_r2": {
+      "su": "torre_b",
+      "nota": "[§9.85] la torre nemica molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di torre_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        10,
+        8
+      ]
+    },
+    "castello_b_r1": {
+      "su": "castello_b",
+      "nota": "[§9.85] la fortezza nemica danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di castello_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        0,
+        0
+      ]
+    },
+    "castello_b_r2": {
+      "su": "castello_b",
+      "nota": "[§9.85] la fortezza nemica molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di castello_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        1,
+        1
+      ]
+    },
+    "chiesa_b_r1": {
+      "su": "chiesa_b",
+      "nota": "[§9.85] il monastero nemico danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di chiesa_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        20,
+        30
+      ]
+    },
+    "chiesa_b_r2": {
+      "su": "chiesa_b",
+      "nota": "[§9.85] il monastero nemico molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di chiesa_b da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        21,
+        30
+      ]
+    },
+    "m_ori_r1": {
+      "su": "m_ori",
+      "nota": "[§9.85] il muro orizzontale danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_ori da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        1,
+        88
+      ]
+    },
+    "m_ori_r2": {
+      "su": "m_ori",
+      "nota": "[§9.85] il muro orizzontale molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_ori da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        1,
+        87
+      ]
+    },
+    "m_vert_r1": {
+      "su": "m_vert",
+      "nota": "[§9.85] il muro verticale danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_vert da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -14
+      ]
+    },
+    "m_vert_r2": {
+      "su": "m_vert",
+      "nota": "[§9.85] il muro verticale molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_vert da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -15
+      ]
+    },
+    "m_ori_p_r1": {
+      "su": "m_ori_p",
+      "nota": "[§9.85] la porta orizzontale chiusa danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_ori_p da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        0,
+        30
+      ]
+    },
+    "m_ori_p_r2": {
+      "su": "m_ori_p",
+      "nota": "[§9.85] la porta orizzontale chiusa molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_ori_p da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        -1,
+        31
+      ]
+    },
+    "m_ori_pa_r1": {
+      "su": "m_ori_pa",
+      "nota": "[§9.85] la porta orizzontale aperta danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_ori_pa da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        0,
+        29
+      ]
+    },
+    "m_ori_pa_r2": {
+      "su": "m_ori_pa",
+      "nota": "[§9.85] la porta orizzontale aperta molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_ori_pa da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        0,
+        29
+      ]
+    },
+    "m_vert_p_r1": {
+      "su": "m_vert_p",
+      "nota": "[§9.85] la porta verticale chiusa danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_vert_p da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -14
+      ]
+    },
+    "m_vert_p_r2": {
+      "su": "m_vert_p",
+      "nota": "[§9.85] la porta verticale chiusa molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_vert_p da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -13
+      ]
+    },
+    "m_vert_pa_r1": {
+      "su": "m_vert_pa",
+      "nota": "[§9.85] la porta verticale aperta danneggiato (sotto i 2/3 della vita), disegnato dall'autore; scala e posizione sulla tela di m_vert_pa da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -13
+      ]
+    },
+    "m_vert_pa_r2": {
+      "su": "m_vert_pa",
+      "nota": "[§9.85] la porta verticale aperta molto danneggiato (sotto 1/3), disegnato dall'autore; scala e posizione sulla tela di m_vert_pa da tools/14_allinea.py",
+      "scala": 0.95,
+      "a": [
+        25,
+        -13
+      ]
     }
   },
   "objects": {
