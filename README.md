@@ -104,6 +104,7 @@ node game/test/browser/catapults.mjs                    # catapulte che tirano o
 node game/test/browser/enemygarrison.mjs                # presidio nemico in torri e fortezze; nemici nella nebbia
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
 node game/test/browser/zoom.mjs                         # zoom morbido con rotella, touchpad e X/Z, punto sotto il puntatore fermo
+node game/test/browser/ambience.mjs                     # nuvole, alba e tramonto rosa, pioggia, camini, crolli, polvere
 node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
 node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie
 node game/test/browser/bridge.mjs                       # livello 4: i civili riparano il ponte, i soldati lo attraversano

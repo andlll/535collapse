@@ -140,9 +140,27 @@ export class Manager {
     this.al.tick((i) => this.alarm(i));
   }
 
+  // [§9.84] Lo stadio rosa di alba e tramonto (0-1, fog.js skyColour), dagli
+  // allarmi del giorno e della notte: sale negli ultimi TWILIGHT passi del
+  // giorno (alarm 0), e' 1 durante il passaggio (global.night fra 0 e 1),
+  // scende nei primi TWILIGHT passi dopo l'alba (alarm 0 riarmato a 4000).
+  // Solo estetico, niente da salvare: gli allarmi si salvano gia'.
+  twilight() {
+    const g = this.g, TW = 900;
+    if (this.room === "lvl01" || this.room === "menu") return 0;
+    if (g.night > 0 && g.night < 1) return 1;
+    if (g.night >= 1) return 0;
+    const a0 = this.al.get(0);
+    if (a0 <= 1) return 0;
+    if (a0 < TW) return 1 - a0 / TW;
+    const since = 4000 - a0;
+    return since >= 0 && since < TW ? 1 - since / TW : 0;
+  }
+
   step(input, cam, roomW, roomH) {
     const g = this.g;
     g.frame++;
+    if (this.world) this.world.twilight = this.twilight(); // §9.84
     // manager Step [C]: tetti alle risorse (la pietra non ha tetto) e a popcap
     if (g.food > 9999) g.food = 9999;
     if (g.wood > 9999) g.wood = 9999;

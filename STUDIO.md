@@ -7298,3 +7298,82 @@ Nella prova serve disegnare un fotogramma prima della rotella: con
 `nostart=1` il canvas resta nascosto (visibility: hidden, nessun evento)
 finche' non si disegna. Passano anche ui, hintgap, enemybuildings,
 salvataggi e soak.
+
+### 9.84 Effetti d'ambiente: nuvole, alba e tramonto, camini, crolli, polvere
+
+Richiesta dell'autore: effetti grafici poco costosi per migliorare la resa.
+Scelti dall'autore fra quelli proposti: ombre delle nuvole, alba e tramonto
+con uno stadio rosa (come NIMBUS), fumo dai camini, polvere ai crolli,
+polvere sotto cavalieri e macchine d'assedio, e da provare le finestre
+accese di notte. Scartati: lampo sul colpo, scossa della visuale. Tutto
+solo estetico (il gioco non legge niente di questo) e senza sprite nuovi
+(game/src/ambience.js, fog.js, fogdraw.js, manager.js, gl.js, world.js).
+
+**Ombre delle nuvole.** Macchie scure e morbide: lo sprite della luce dei
+fuochi (arealight, un disco nero sfumato) allargato 4-7,5 volte e
+schiacciato come il suolo (0,62), 3-5 per nuvola, una nuvola ogni
+2600 x 1900 px, portate dal vento (0,32 e 0,07 px a passo verso est e un
+po' a sud; dipendono solo dal passo: niente da salvare). Il problema degli
+oggetti alti (domanda dell'autore): un'ombra composta sopra tutto, pixel
+per pixel come nebbia e notte, darebbe alla cima di una torre l'ombra del
+terreno 250 px piu' a nord, e l'edificio sembrerebbe dipinto per terra.
+Quindi: sul suolo le macchie si disegnano subito dopo di lui, prima delle
+istanze; ogni istanza si scurisce tutta (Renderer.shade, un moltiplicatore
+dei colori dei quad) di quanto e' in ombra il punto in cui tocca terra,
+con lo stesso conto della miscela dei dischi (`shadeAt`, il profilo
+dell'alpha di arealight misurato sull'immagine). Una torre entra
+nell'ombra quando ci entra la sua base, senza deformarsi; un edificio molto
+largo si scurisce in blocco. Alpha 0,16 per macchia; spariscono nella prima
+meta' del tramonto. *Con la pioggia* (domanda dell'autore: non una
+nuvoletta che passa mentre piove) il cielo e' coperto: le macchie si
+dissolvono e tutta la scena si scurisce di un grigio freddo uniforme
+(sottrazione 0,17 / 0,15 / 0,10), in ~5 s, e tornano quando smette
+(`overcast`, solo estetico). *Costo*: il conto per istanza e' trascurabile
+(0,007 ms per 37 istanze); i dischi, 3 quad trasparenti grandi quasi
+quanto lo schermo, sono gratis su una GPU ma con SwiftShader costano ~4 ms
+a fotogramma (8,8 contro 4,9): niente nuvole col rendering software (quello
+che gia' fa comparire l'avviso) ne' con la qualita' "Bassa".
+
+**Alba e tramonto rosa.** Uno stadio intermedio sul rosa (`skyColour`): si
+sottraggono un po' di verde (0,2) e di blu (0,11), il rosso resta. Sale
+negli ultimi 900 passi (15 s) del giorno, e' pieno durante il passaggio
+(global.night fra 0 e 1, 200 passi) mentre il colore va verso quello della
+notte di sempre, e scende nei primi 900 passi dopo l'alba. Si ricava dagli
+allarmi del manager (giorno: alarm 0; dopo l'alba alarm 0 riparte da 4000),
+che si salvano gia': nessun campo nuovo. Il gioco legge solo global.night.
+Non nel livello 1 (sempre notte) ne' nel menu.
+
+**Finestre accese (da provare).** Di notte una luce piccola (arealight a
+0,65, che cresce mentre scende la notte) su due case intatte su tre,
+sempre le stesse, del giocatore e nemiche gia' viste. Da giudicare a occhio.
+
+**Fumo dai camini.** Solo le case del giocatore con un camino disegnato
+(stili 1, 2, 4, 6; il 3 e il 5 non ne hanno, quelle nemiche hanno il tetto
+piatto): uno sbuffo grigio (lo sprite del fumo degli incendi, nubespr, a
+0,18-0,26) ogni 50-70 passi dalla cima del camino (misurata sugli sprite:
+c1 -2,-113; c2 21,-106; c4 -27,-120; c6 42,-128 dall'origine), che sale e
+si allarga. Non dalle case in fiamme (hanno gia' il loro fumo).
+
+**Polvere ai crolli.** Quando compare una rovina nuova (non quelle della
+stanza o di un caricamento): 12 sbuffi color sabbia, 26 per gli edifici
+larghi piu' di 260 px, e 4-8 frammenti di mattone (sfx_mattone, quelli dei
+colpi di catapulta).
+
+**Polvere in corsa.** Sotto cavalieri e macchine d'assedio, alleati e
+nemici: uno sbuffo piccolo ogni 18 px percorsi, a terra (sotto tutte le
+istanze).
+
+Fumo e polvere sono particelle della categoria "fire" (opzione "Fiamme e
+scintille"), solo sullo schermo.
+
+Prova nuova `game/test/browser/ambience.mjs` (nella CI): crepuscolo (0 a
+950 passi dal tramonto, sale, 1 nel passaggio, 0 di notte piena, ancora
+rosa subito dopo l'alba, 0 dopo), nuvole (52 macchie nella stanza,
+nessuna di notte, ombra al centro di una macchia 0,67 e al bordo 0,75),
+pioggia (coperto al 38% dopo mezzo secondo, poi del tutto e senza macchie;
+smesso, 0 e le macchie tornano), camini (il fumo nasce entro 2 px dalla
+cima del camino negli stili 1, 2, 4, 6, nei 3 e 5 niente), crollo di una
+caserma (26 sbuffi, 8 frammenti), polvere di un cavaliere mandato col clic
+destro, fumo che riprende dopo salvataggio e caricamento. Passano tutte le
+prove nel browser della CI e idle.mjs; soak del livello 5 alla stessa
+velocita' di prima (12,4 s contro 13,9 s, sulla stessa macchina).

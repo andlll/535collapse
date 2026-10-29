@@ -67,6 +67,9 @@ export class Renderer {
     this.canvas = canvas;
     this.textures = new Set();
     this.stats = { drawCalls: 0, quads: 0 };
+    // [§9.84] moltiplicatore del colore (RGB, non l'alpha) di tutti i quad:
+    // l'ombra delle nuvole su un'istanza intera (world.draw)
+    this.shade = 1;
     this.lost = false;
   }
 
@@ -402,6 +405,10 @@ export class Renderer {
   // Un triangolo e' un quad con gli ultimi due angoli coincidenti.
   quad(t, x0, y0, x1, y1, x2, y2, x3, y3, u0, v0, u1, v1, rgba, c1 = rgba, c2 = rgba, c3 = rgba) {
     if (this.count >= MAX_QUADS) this.flush();
+    if (this.shade !== 1) {
+      const k = this.shade;
+      rgba = shadeColor(rgba, k); c1 = shadeColor(c1, k); c2 = shadeColor(c2, k); c3 = shadeColor(c3, k);
+    }
     const unit = this._unit(t);
     const iw = 1 / t.width, ih = 1 / t.height;
     const f = this.f32, u = this.u32;
@@ -647,6 +654,12 @@ Object.assign(Renderer.prototype, {
 
 // Colore GameMaker (intero BGR, 0xBBGGRR) + alpha -> RGBA premoltiplicato a
 // 8 bit nell'ordine dei byte del vertice (little endian: R nel byte basso).
+// [§9.84] colore impacchettato (premoltiplicato) con RGB moltiplicati per k
+function shadeColor(c, k) {
+  const r = Math.round((c & 255) * k), g = Math.round(((c >>> 8) & 255) * k), b = Math.round(((c >>> 16) & 255) * k);
+  return (r | (g << 8) | (b << 16) | (c & 0xff000000)) >>> 0;
+}
+
 export function packColor(bgr, alpha = 1) {
   const a = Math.max(0, Math.min(1, alpha));
   const r = Math.round((bgr & 255) * a);

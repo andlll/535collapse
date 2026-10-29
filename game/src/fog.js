@@ -202,6 +202,25 @@ export function nightColour(night) {
   return mergeColour(c.black, c.orange, Math.max(0, Math.min(1, night)));
 }
 
+// [§9.84, richiesta dell'autore, come NIMBUS] Alba e tramonto con uno
+// stadio rosa, solo estetico: `tw` (0-1, manager.twilight) sale negli ultimi
+// 15 s del giorno, resta 1 durante il passaggio e scende nei primi 15 s
+// dopo l'alba. Il colore da sottrarre (RGB 0-1) va dal rosa (poco verde e
+// un po' di blu in meno: resta il rosso) alla notte di sempre man mano che
+// global.night sale. Il gioco legge solo global.night, non questo.
+const PINK = [0.0, 0.2, 0.11];
+// cielo coperto dalla pioggia (ambience.js, overcast): un grigio freddo
+// uniforme, un po' meno blu tolto
+const OVERCAST = [0.17, 0.15, 0.1];
+export function skyColour(night, tw, overcast = 0) {
+  const n = Math.max(0, Math.min(1, night));
+  const t = Math.max(0, Math.min(1, tw)), p = t * t * (3 - 2 * t) * (1 - n);
+  const o = nightColour(n), full = [(o & 255) / 255, ((o >> 8) & 255) / 255, ((o >> 16) & 255) / 255];
+  const ov = Math.max(0, Math.min(1, overcast));
+  // le sottrazioni si compongono come (1 - a)(1 - b)
+  return [0, 1, 2].map((k) => 1 - (1 - Math.min(1, PINK[k] * p + full[k])) * (1 - OVERCAST[k] * ov));
+}
+
 // Fuochi che illuminano la notte [C, manager Draw_End, superficie `nite`]:
 // [x, y, scala] dello sprite arealight, nell'ordine dei with(...).
 const BUILDING_LIGHTS = [
@@ -218,6 +237,18 @@ export function nightLights(w) {
   for (const [n, base] of BUILDING_LIGHTS) {
     for (const i of w.all(n)) {
       if (i.alive && i.onfire === 1) out.push([i.x, i.y, base + (1 - i.life / i.slife) + flicker(i)]);
+    }
+  }
+  // [§9.84, da provare] finestre accese: una luce piccola su due case intatte
+  // su tre (sempre le stesse), che si accende nella notte che scende; le case
+  // nemiche solo se gia' viste
+  const lit = Math.max(0, Math.min(1, (w.g.night - 0.3) / 0.5));
+  if (lit > 0) {
+    for (const n of ["casa", "enemy_house"]) {
+      for (const i of w.all(n)) {
+        if (!i.alive || i.onfire === 1 || i.visible === false || i.id % 3 === 0) continue;
+        out.push([i.x, i.y - 30, (0.65 + 0.03 * Math.sin(f * 0.05 + i.id)) * lit]);
+      }
     }
   }
   for (const i of w.all("flameqq_small")) if (i.alive) out.push([i.x, i.y, 2]);
