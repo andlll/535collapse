@@ -17,7 +17,8 @@
 //               ad almeno meta', salendo e calando
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
-//               di 4 e 5,2 gradi, piegata di 0 e 1,8 gradi (§9.94: erano 6,4 e 3)
+//               di 4 e 5,2 gradi, piegata di 0 e 1,8 gradi (§9.94: erano 6,4 e 3);
+//               le pale dei mulini a 0,3 e 0,45 fotogrammi a passo (§9.95)
 //   camini      le case del giocatore con camino (stili 1, 2, 4, 6), le case
 //               nemiche con camino (stili 2, 6) gia' viste e i due centri
 //               citta' (§9.93) fanno fumo dalla cima del camino (entro 8 px),
@@ -160,6 +161,13 @@ const res = await page.evaluate(() => {
     && V.pioggia[0][0] >= 250 && V.pioggia[0][1] <= 260 && V.pioggia[1][0] >= 235 && V.pioggia[1][1] <= 245
     && Math.abs(V.erba[0].ampiezza - 4) < 0.1 && Math.abs(V.erba[0].piega) < 0.1
     && Math.abs(V.erba[1].ampiezza - 5.2) < 0.15 && Math.abs(V.erba[1].piega - 1.8) < 0.15;
+  // §9.95: le pale dei mulini, alleato e nemico, 0,3 e 0,45 fotogrammi a passo
+  const mills = [w.create("barn", X - 300, Y + 300), w.create("enemy_mulino", X + 300, Y + 300)];
+  const millAt = (k) => { G.g.wind = k; run(2); return mills.map((m) => [m.sprite_index, +m.image_speed.toFixed(3)]); };
+  V.mulini = [millAt(0), millAt(1)];
+  V.ok &&= V.mulini[0].every(([s, v]) => v === 0.3) && V.mulini[1].every(([s, v]) => v === 0.45)
+    && V.mulini[0].map(([s]) => s).join() === "mul1,mub";
+  for (const m of mills) w.destroy(m);
   G.g.wind = 0.5;
   // camini
   const CH = { c1s: [-2, -113], c2s: [21, -106], c4s: [-27, -120], c6s: [42, -128], c2b: [-6, -126], c6b: [58, -92], cc_spr: [-138, -141], cc_b: [-138, -141] };

@@ -7751,3 +7751,20 @@ Visto negli screenshot: a inizio tutorial la prima miniera, mezza nel nero,
 senza scintille; tutta scoperta, le stelline sulle venature. Passano i
 test unitari, `ambience.mjs`, `resources.mjs`, `soak.mjs` e `saves.mjs`
 (match, lvl01, lvl02). Stessa PR di §9.93: versione 0.2605.
+
+### 9.95 Le pale dei mulini girano piu' in fretta col vento
+
+Richiesta dell'autore: col vento forte (§9.90) le pale dei mulini
+dovrebbero girare piu' in fretta, non troppo ma in modo che si veda. Prima
+giravano sempre a 0,3 fotogrammi a passo [C, barn Create:
+action_sprite_set(mul1, 0, 0.3); il mulino nemico mub uguale, §9.48]. Ora
+(ambience.js `millSpeed`, a ogni passo in ambienceStep) da 0,3 col vento
+minimo a 0,45 col massimo (`MILL_WIND` = 1,5 volte), in proporzione al
+vento della partita; col vento medio (e nei salvataggi di prima) 0,375.
+Vale per il mulino alleato (sprite mul1) e per quello nemico (mub), non
+per il deposito del cibo invisibile del centro (cc_barn). Solo estetico.
+
+`ambience.mjs`, voce "vento": un mulino alleato e uno nemico a 0,3
+fotogrammi a passo col vento a 0 e a 0,45 col vento a 1. Passano i test
+unitari, `ambience.mjs`, `soak.mjs` e `saves.mjs` (match, lvl01, lvl02).
+Stessa PR di §9.93: versione 0.2605.

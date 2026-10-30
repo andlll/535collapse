@@ -51,6 +51,12 @@ export const WIND_SPEED = [0.8, 1.5];
 const WIND_DIR = [-0.977, 0.215];
 export const windLevel = (g) => Math.max(0, Math.min(1, g.wind ?? 0.5));
 export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) * windLevel(g);
+// [§9.95, richiesta dell'autore] Le pale dei mulini (alleato: barn, mul1;
+// nemico: enemy_mulino, mub; 0,3 fotogrammi a passo [C]) girano piu' in
+// fretta col vento: da 1 volta col vento minimo a MILL_WIND volte col
+// massimo (vento medio, e salvataggi di prima: 1,25). Solo estetico.
+export const MILL_SPEED = 0.3, MILL_WIND = 1.5;
+export const millSpeed = (g) => MILL_SPEED * (1 + (MILL_WIND - 1) * windLevel(g));
 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). [§9.92] Si salva
@@ -306,6 +312,8 @@ const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_cata
 // Un passo (app.js, dopo il mondo)
 export function ambienceStep(w, cam) {
   if (w.particles) w.particles.wind = windLevel(w.g); // §9.90: erba e fiori
+  const ms = millSpeed(w.g); // §9.95: le pale dei mulini
+  for (const n of ["barn", "enemy_mulino"]) for (const m of w.all(n)) if (m.sprite_index === "mul1" || m.sprite_index === "mub") m.image_speed = ms;
   if (w.particles && !w.particles.hidden.has("fire")) mineSparkles(w, cam); // §9.94 (anche nel menu)
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
