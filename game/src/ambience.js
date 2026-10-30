@@ -53,10 +53,10 @@ export const windLevel = (g) => Math.max(0, Math.min(1, g.wind ?? 0.5));
 export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) * windLevel(g);
 // [§9.95, richiesta dell'autore] Le pale dei mulini (alleato: barn, mul1;
 // nemico: enemy_mulino, mub; 0,3 fotogrammi a passo [C]) girano piu' in
-// fretta col vento: da 1 volta col vento minimo a MILL_WIND volte col
-// massimo (vento medio, e salvataggi di prima: 1,25). Solo estetico.
-export const MILL_SPEED = 0.3, MILL_WIND = 1.5;
-export const millSpeed = (g) => MILL_SPEED * (1 + (MILL_WIND - 1) * windLevel(g));
+// fretta col vento: da MILL_SPEED[0] col vento minimo a MILL_SPEED[1] col
+// massimo (vento medio, e salvataggi di prima: 0,32). Solo estetico.
+export const MILL_SPEED = [0.3, 0.34];
+export const millSpeed = (g) => MILL_SPEED[0] + (MILL_SPEED[1] - MILL_SPEED[0]) * windLevel(g);
 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). [§9.92] Si salva
