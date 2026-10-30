@@ -7769,3 +7769,37 @@ per il deposito del cibo invisibile del centro (cc_barn). Solo estetico.
 fotogrammi a passo col vento a 0 e a 0,34 col vento a 1. Passano i test
 unitari, `ambience.mjs`, `soak.mjs` e `saves.mjs` (match, lvl01, lvl02).
 Stessa PR di §9.93: versione 0.2605.
+
+### 9.96 I nemici che si fanno da parte non vagano piu'
+
+Segnalazione dell'autore: dopo la PR di §9.93-9.95 la CI falliva sempre in
+`fireorder.mjs`, caso "enemy casa front": un cavaliere nemico fermo si
+spostava di 225 px, oltre il limite di 200 (HOLD).
+
+*Perche' proprio allora.* La prova fissa il seme di Math.random (5). Il
+vecchio luccichio delle miniere (§9.94) pescava due numeri a caso ogni 50
+passi per miniera; tolto, la sequenza dei numeri a caso della partita e'
+un'altra. Misurato su 36 semi, prima di §9.94 il caso superava i 200 px con
+6 semi (fino a 361 px), dopo con 7: lo stesso difetto, il seme 5 era solo
+capitato fra quelli buoni.
+
+*La causa.* Chi va a dare fuoco fa spostare di lato le unita' ferme della
+sua parte (§9.31, pathing.js stepAside): il cavaliere veniva mandato a
+79 px, in un posto scelto libero "passando sopra i compagni". Ma nel passo
+dei nemici, se la meta e' occupata (anche solo da un compagno che ci passa
+sopra), la meta si sposta a caso di +-20 px, e di +-30 se c'e' un solido
+[C]: a ogni passo in cui i fanti gli passavano accanto, una passeggiata a
+caso. Da (806, 4437) la meta e' andata fino a (896, 4333), 216 px dalla
+partenza. Gli alleati questo non lo fanno sul posto di una formazione o di
+uno spostamento di lato (ranged.js, civilians.js: `onFormationSlot`); i
+nemici si'.
+
+*Ora* (enemies.js) i nemici fanno come gli alleati: sul posto in cui si
+fanno da parte (o vicino al bersaglio, goNear) la meta non si sposta a
+caso; se a meno di 10 px il posto e' occupato da un compagno, arrivano
+dove sono invece di spingerlo (`slotBlocked`). Vale per guerrieri,
+picchieri, cavalieri e arcieri nemici.
+
+Misurato su 36 semi: il caso "enemy casa front" ora da' 151 px con tutti
+(prima da 94 a 361 px, e da 92 a 315 dopo §9.94), nessuna unita' dentro un
+edificio. Versione 0.2606.
