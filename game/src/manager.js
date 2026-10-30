@@ -7,7 +7,8 @@
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainExtinguish, rainRipples, waterLife } from "./effects.js";
+import { rainStart, rainStep, rainExtinguish, rainRipples, waterLife } from "./effects.js";
+import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
@@ -112,9 +113,9 @@ export class Manager {
   }
 
   // part_system_destroy(rain); global.raining=0
+  // [§9.91] il sistema resta: le gocce calano in 5 s (effects.js rainStep,
+  // che lo toglie a gocce finite)
   stopRain() {
-    if (this.world && this.rain) this.world.particles.systemDestroy(this.rain);
-    this.rain = null;
     this.g.raining = 0;
   }
 
@@ -177,8 +178,13 @@ export class Manager {
     if (g.gold > 9999) g.gold = 9999;
     if (g.popcap > 99) g.popcap = 99;
     if (this.fogalpha > 0) this.fogalpha -= 0.02;
-    // [§8.13] anelli delle gocce sul fiume
-    if (g.raining === 1 && this.world) rainRipples(this.world, cam);
+    // [§9.91] cielo coperto e gocce che crescono e calano piano
+    if (this.world) {
+      overcastStep(this.world, this.rain);
+      this.rain = rainStep(this.world, this.rain);
+    }
+    // [§8.13] anelli delle gocce sul fiume (§9.91: quante sono le gocce)
+    if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);
     // [§9.36] riflessi, increspature e schiuma sui fiumi
     if (this.world) waterLife(this.world, cam);
     // Hover dei pulsanti della minimappa: l'originale confronta mouse_x/y
@@ -234,7 +240,8 @@ export class Manager {
         this.al.set(6, irandomRange(12000, 15000));
         if (g.raining === 0) {
           g.raining = 1;
-          if (this.world) this.rain = rainStart(this.world);
+          // [§9.91] se le gocce stanno ancora calando riprendono a salire
+          if (this.world) this.rain = this.rain || rainStart(this.world);
         }
         break;
       case 6: // fine pioggia

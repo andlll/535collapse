@@ -51,9 +51,13 @@ export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). Solo estetico, non si
 // salva: dopo un caricamento riparte dal valore giusto.
+// [§9.91] Resta coperto finche' nascono gocce (`rain`, il sistema della
+// pioggia: rain.level, effects.js rainStep): smesso di piovere, si
+// rasserena solo quando le gocce sono calate fino a 0. Lo chiama
+// manager.step, prima di rainStep.
 const OVERCAST_EASE = 0.016;
-export function overcastStep(w) {
-  const target = w.g.raining === 1 ? 1 : 0;
+export function overcastStep(w, rain = null) {
+  const target = w.g.raining === 1 || (rain && rain.level > 0) ? 1 : 0;
   if (w.overcast === undefined) { w.overcast = target; return; }
   w.overcast += (target - w.overcast) * OVERCAST_EASE;
   if (Math.abs(target - w.overcast) < 0.002) w.overcast = target;
@@ -228,7 +232,6 @@ const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_cata
 
 // Un passo (app.js, dopo il mondo)
 export function ambienceStep(w, cam) {
-  overcastStep(w);
   if (w.particles) w.particles.wind = windLevel(w.g); // §9.90: erba e fiori
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;

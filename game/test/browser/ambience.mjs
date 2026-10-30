@@ -10,6 +10,9 @@
 //               della sagoma (anche specchiata e ruotata) e 1 fuori
 //   pioggia     cielo coperto (overcast) in pochi secondi, senza macchie;
 //               smesso di piovere, le macchie tornano
+//   graduale    (§9.91) le gocce nascono solo a cielo del tutto coperto e
+//               arrivano al pieno in 300 passi; smesso, calano in 300 col
+//               cielo ancora coperto, poi si rasserena e il sistema si toglie
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
 //               di 4 e 6,4 gradi, piegata di 0 e 3 gradi
@@ -82,6 +85,33 @@ const res = await page.evaluate(() => {
   out.pioggia.smesso = +(w.overcast || 0).toFixed(3); out.pioggia.macchieDopo = all();
   out.pioggia.ok = mezzo > 0.2 && mezzo < 0.9 && out.pioggia.coperto === 1 && out.pioggia.macchie === 0
     && out.pioggia.smesso === 0 && out.pioggia.macchieDopo > 5;
+  // pioggia graduale (§9.91): le gocce nascono solo col cielo del tutto
+  // coperto, crescono in 300 passi; smesso, calano in 300 col cielo coperto,
+  // poi si rasserena e il sistema si toglie a gocce finite
+  const born = () => (M.rain ? M.rain.parts.filter((q) => q.age === 1).length : 0);
+  const gr = { coperto: -1, primaGoccia: -1, piena: -1 };
+  let first60 = 0, full60 = 0;
+  M.alarm(4);
+  for (let s = 1; s <= 1000; s++) {
+    run(1);
+    const n = born();
+    if (gr.coperto < 0 && w.overcast === 1) gr.coperto = s;
+    if (gr.primaGoccia < 0 && n > 0) gr.primaGoccia = s;
+    if (gr.primaGoccia > 0 && s < gr.primaGoccia + 60) first60 += n;
+    if (gr.piena < 0 && M.rain.level === 1) gr.piena = s;
+    if (gr.piena > 0 && s >= gr.piena + 100 && s < gr.piena + 160) full60 += n;
+  }
+  gr.inizioSuPieno = +(first60 / Math.max(1, full60)).toFixed(3);
+  M.stopRain();
+  let finite = -1, copertoAlloStop = 1;
+  for (let s = 1; s <= 900 && finite < 0; s++) { run(1); if (M.rain) copertoAlloStop = Math.min(copertoAlloStop, w.overcast); else finite = s; }
+  run(700);
+  gr.calo = finite; gr.copertoMentreCala = copertoAlloStop; gr.sereno = w.overcast;
+  gr.sistemaTolto = !P.systems.some((q) => q.depth === -9000 && q.alive);
+  out.graduale = gr;
+  gr.ok = gr.coperto > 300 && gr.primaGoccia >= gr.coperto && gr.primaGoccia <= gr.coperto + 60 // all'inizio ~0,03 gocce a passo
+    && Math.abs(gr.piena - gr.coperto - 300) <= 2 && gr.inizioSuPieno < 0.15
+    && Math.abs(gr.calo - 300) <= 2 && gr.copertoMentreCala === 1 && gr.sereno === 0 && gr.sistemaTolto;
   // vento (§9.90): nuvole a 0,8-1,5 px a passo, pioggia piu' inclinata, erba
   // che ondeggia di piu' e si piega a ovest
   const wide = { x: -3000, y: -3000, w: w.roomW + 6000, h: w.roomH + 6000 };
@@ -91,8 +121,9 @@ const res = await page.evaluate(() => {
     return +(Math.hypot(b.x - a.x, b.y - a.y) / 100).toFixed(2);
   };
   const rainDirs = (k) => {
-    G.g.wind = k; G.g.raining = 0; M.alarm(4); run(3);
-    const d = M.rain.parts.map((q) => q.dir); M.stopRain(); run(1);
+    G.g.wind = k; G.g.raining = 0; M.alarm(4); M.rain.level = 1; w.overcast = 1; run(3); // §9.91: gia' piena
+    const d = M.rain.parts.map((q) => q.dir);
+    P.systemDestroy(M.rain); M.rain = null; G.g.raining = 0; w.overcast = 0;
     return [+Math.min(...d).toFixed(1), +Math.max(...d).toFixed(1)];
   };
   const grass = P.systems.find((q) => q.cat === "grass" && q.parts.some((x) => x.t.orientation[3] === 4)).parts.find((x) => x.t.orientation[3] === 4);

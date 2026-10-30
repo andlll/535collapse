@@ -7598,3 +7598,37 @@ di piu' e la pioggia e' piu' inclinata. Tutto solo estetico.
 a 250-260 e 235-245 gradi, erba con ampiezza 4 e 6,4 gradi e piega 0 e 3.
 Passano i test unitari e tutte le voci di `ambience.mjs`. Video di
 confronto (vento minimo e massimo, sole e pioggia) mandato all'autore.
+
+### 9.91 Pioggia che cresce e cala piano
+
+Domanda dell'autore sul video di §9.90 (il passaggio da sereno a pioggia era
+netto: due momenti montati insieme, 1,5 s tagliati). In gioco il cielo si
+copriva in ~5 s, ma le gocce nascevano tutte subito, e smesso di piovere il
+sistema si distruggeva: le gocce in aria sparivano di colpo. Richiesta: il
+numero di gocce che sale in 5 s da quando il cielo e' del tutto coperto, e
+lo stesso quando smette.
+
+Ora (effects.js `rainStep`, chiamato da manager.step dopo `overcastStep`):
+- *inizio*: global.raining=1, il cielo si copre come prima (~6,4 s fino al
+  pieno); da quel passo `ps.level` del sistema della pioggia sale da 0 a 1
+  in 300 passi (5 s) e le gocce a passo sono em.full x level (la parte
+  frazionaria a caso). Niente piu' flusso automatico (em.n = 0);
+- *fine*: global.raining=0 (manager.stopRain non distrugge piu' il
+  sistema), level scende a 0 in 300 passi col cielo ancora coperto
+  (overcastStep: coperto finche' level > 0); a 0 il sistema si toglie
+  quando le gocce in aria sono finite (releaseWhenEmpty; distrutto se la
+  pioggia e' spenta nelle opzioni) e il cielo si rasserena in ~5 s;
+- se ricomincia a piovere mentre le gocce calano, lo stesso sistema
+  riprende a salire;
+- gli anelli sul fiume in proporzione alle gocce.
+Il livello si salva col sistema (provato: salvato a 0,503, ricaricato a
+0,503, 60 passi dopo 0,703); i salvataggi di prima, col flusso automatico,
+ripartono a pioggia piena. Solo estetico: lo spegnimento dei fuochi segue
+global.raining come prima (anche nei ~11 s prima della pioggia piena).
+
+`ambience.mjs`, voce nuova "graduale": cielo coperto al passo 386, prima
+goccia subito dopo, pioggia piena 300 passi dopo il cielo coperto, nei
+primi 60 passi ~12% delle gocce di 60 passi a pioggia piena; smesso, gocce
+a 0 in 300 passi col cielo coperto, poi sereno e sistema tolto. Passano i
+test unitari, `ambience.mjs` e `saves.mjs` (match, lvl02). Video continuo
+senza tagli mandato all'autore.
