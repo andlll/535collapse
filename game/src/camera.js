@@ -20,6 +20,12 @@
 // finche' non rientra o la finestra perde il fuoco (input.js, edgeHold).
 
 export const ZOOM_MIN = 1, ZOOM_MAX = 1.7;
+// [§9.83, richiesta dell'autore] Zoom morbido: rotella e X/Z spostano la meta
+// (zoomTo), lo zoom la raggiunge di ZOOM_EASE della distanza a passo (zoomStep:
+// il 90% in 8 passi, ~130 ms; piu' scatti di fila si sommano alla meta e il
+// movimento non riparte da capo). Prima ogni scatto saltava di 0,1 in un
+// fotogramma. Sotto ZOOM_SNAP dalla meta ci si ferma esattamente li'.
+const ZOOM_EASE = 0.25, ZOOM_SNAP = 0.002;
 
 export class Camera {
   constructor(roomW, roomH, view) {
@@ -57,6 +63,33 @@ export class Camera {
     this.x = rx - px * this.scaleview;
     this.y = ry - py * this.scaleview;
     this.clamp();
+  }
+
+  // [§9.83] La meta dello zoom, e il punto dello schermo che resta fermo
+  // (il puntatore per la rotella, l'angolo in alto a sinistra per X/Z, come
+  // prima). La meta in corso, o lo zoom se non ce n'e': zoomGoal.
+  zoomTo(s, px, py) {
+    this.zoomTarget = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
+    this.zoomAnchor = [px, py];
+  }
+
+  get zoomGoal() { return this.zoomTarget ?? this.scaleview; }
+
+  // Un passo verso la meta (dal manager, a ogni passo), col punto fermo
+  // sotto l'ancora per tutto il movimento.
+  zoomStep() {
+    const t = this.zoomTarget;
+    if (t === undefined || t === null) return;
+    let s = this.scaleview + (t - this.scaleview) * ZOOM_EASE;
+    if (Math.abs(t - s) < ZOOM_SNAP) s = t;
+    const [px, py] = this.zoomAnchor;
+    const [rx, ry] = this.toRoom(px, py);
+    this.scaleview = s;
+    this.resize(this.cssW, this.cssH);
+    this.x = rx - px * s;
+    this.y = ry - py * s;
+    this.clamp();
+    if (s === t) this.zoomTarget = null;
   }
 
   // mouse_x / mouse_y: posizione del puntatore in coordinate di room.

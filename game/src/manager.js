@@ -60,17 +60,26 @@ export class Manager {
     // altrimenti lo zoom (non nel menu)
     // [§6.1 n.78] fino a ZOOM_MAX; la rotella (giu' = allontana) fa lo
     // stesso attorno al puntatore
+    // [§9.83] morbido: si sposta la meta (camera.js, zoomTo), di 0,1 a
+    // scatto dalla meta in corso (piu' scatti di fila si sommano); il
+    // touchpad di 0,1 ogni 100 px, senza arrotondare
+    const tenth = (s) => Math.round(s * 10) / 10;
+    const goal = cam.zoomGoal;
     if (P(88)) {
       if (g.sele === 1) g.sz++;
-      else if (g.scaleview < ZOOM_MAX && this.room !== "menu") cam.setScale((g.scaleview += 0.1));
+      else if (goal < ZOOM_MAX && this.room !== "menu") cam.zoomTo(tenth(goal + 0.1), 0, 0);
     }
     if (P(90)) {
       if (g.sele === 1) g.sz--;
-      else if (g.scaleview > ZOOM_MIN && this.room !== "menu") cam.setScale((g.scaleview -= 0.1));
+      else if (goal > ZOOM_MIN && this.room !== "menu") cam.zoomTo(tenth(goal - 0.1), 0, 0);
     }
-    if (input.wheelStep && this.room !== "menu") {
-      cam.zoomAt(cam.scaleview + 0.1 * input.wheelStep, input.x, input.y);
+    if ((input.wheelStep || input.wheelFine) && this.room !== "menu") {
+      let t = cam.zoomGoal;
+      if (input.wheelStep) t = tenth(t + 0.1 * input.wheelStep);
+      if (input.wheelFine) t += input.wheelFine / 1000;
+      cam.zoomTo(t, input.x, input.y);
     }
+    cam.zoomStep();
     g.scaleview = cam.scaleview;
     // Trucchi [C, tenuti anche fuori dal debug: decisione dell'autore §0.10]:
     // V + Alt + F/Q/S/W/P.
@@ -131,9 +140,27 @@ export class Manager {
     this.al.tick((i) => this.alarm(i));
   }
 
+  // [§9.84] Lo stadio rosa di alba e tramonto (0-1, fog.js skyColour), dagli
+  // allarmi del giorno e della notte: sale negli ultimi TWILIGHT passi del
+  // giorno (alarm 0), e' 1 durante il passaggio (global.night fra 0 e 1),
+  // scende nei primi TWILIGHT passi dopo l'alba (alarm 0 riarmato a 4000).
+  // Solo estetico, niente da salvare: gli allarmi si salvano gia'.
+  twilight() {
+    const g = this.g, TW = 900;
+    if (this.room === "lvl01" || this.room === "menu") return 0;
+    if (g.night > 0 && g.night < 1) return 1;
+    if (g.night >= 1) return 0;
+    const a0 = this.al.get(0);
+    if (a0 <= 1) return 0;
+    if (a0 < TW) return 1 - a0 / TW;
+    const since = 4000 - a0;
+    return since >= 0 && since < TW ? 1 - since / TW : 0;
+  }
+
   step(input, cam, roomW, roomH) {
     const g = this.g;
     g.frame++;
+    if (this.world) this.world.twilight = this.twilight(); // §9.84
     // manager Step [C]: tetti alle risorse (la pietra non ha tetto) e a popcap
     if (g.food > 9999) g.food = 9999;
     if (g.wood > 9999) g.wood = 9999;

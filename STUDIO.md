@@ -6994,3 +6994,469 @@ di 8 e l'assalto fallito che torna alla base; seme 1, 40 minuti):
 Il legno non manca piu' (fino a 2400). Il bot non fa micro (non punta le
 torri con le catapulte, non ritira i feriti): dice che il livello non si
 vince "a forza", non quanto e' difficile per un giocatore.
+
+### 9.79 Pulsante della fortezza, oro, presidio, catapulte
+
+Segnalazioni e richieste dell'autore.
+
+**Il pulsante di costruzione della fortezza non si illuminava** col
+puntatore sopra. Era cosi' nell'originale: il Draw_GUI di
+`castello_clicker` [C], unico fra i pulsanti di costruzione, non ridisegna
+il cerchio a 0,99, solo l'icona (che e' gia' a 1): il porting lo
+riproduceva (`noRing`). Ora il cerchio si illumina come negli altri
+(buildings.js).
+
+**Oro per miniera dimezzato**: 1250 invece di 2500 (civilians.js,
+`resource`), per tutte le miniere, del giocatore e del nemico; con 2500 una
+sola miniera bastava per la partita.
+
+**I pulsanti degli arcieri di presidio della fortezza** passano dalla
+seconda riga alla prima, a destra di ariete, catapulta e annulla (x 660,
+730, 800, 870); barra e coda della produzione tornano in seconda riga
+(production.js, niente piu' `queueY`): con una produzione in corso non si
+va piu' in una terza riga. A 1280-1440 px di larghezza il pannello degli
+obiettivi (ancorato a destra, da `W - 520`) copre il terzo e il quarto
+pulsante, come gia' copriva gli ultimi posti della coda.
+
+**L'anello blu delle unita' selezionate** e' 2,2 volte piu' largo sotto le
+macchine d'assedio, alleate e nemiche (units.js, `unitRing`): circ_1 e'
+un'ellisse di 67 x 33 px, e sotto un disegno largo ~200 px non si vedeva.
+
+**Il sasso della catapulta saliva troppo.** Nell'originale [C] la quota e'
+`time * startspeed - 0.1 * time^2` con `startspeed = 0.1 * t` (t = passi
+di volo, distanza / 5): vertice a 0,025 t^2, cioe' a 850 px (la gittata)
+~720 px d'altezza, a 300 px ~90. Ora il tiro e' a 45 gradi: sale a 5 px
+per passo (quanto avanza) e la caduta e' `5 / t` (`fall`): vertice a un
+quarto della distanza, 212 px a 850, 75 a 300. Stessa durata del volo e
+stesso punto d'arrivo; un sasso in volo in un salvataggio di prima finisce
+con la parabola vecchia.
+
+**Macchine d'assedio una sopra l'altra.** La maschera (cati11, 111 x 96) e'
+molto piu' piccola del disegno (~205 x 170): due catapulte con le maschere
+quasi a contatto si coprono per meta'. Le catapulte poi si fermano a tirare
+dove sono appena un edificio e' a tiro (sul flow field passano una
+sull'altra), due che arretrano dallo stesso edificio sceglievano lo stesso
+punto, e la formazione le metteva a 10 px di maschera. Ora (siege.js),
+con `SIEGE_FOOT` = 170 x 120 px, l'ingombro a vista (due macchine della
+stessa parte con i centri piu' vicini di cosi' in x e in y sono addosso):
+- prima di mirare (tiro automatico, alleate e nemiche, e ordine di
+  attacco), addosso a un'altra macchina ferma, la catapulta va a un posto
+  libero li' vicino (anelli da 60 a 240 px, il piu' lontano dall'altra) da
+  cui il bersaglio resta a tiro; al piu' una volta ogni 120 passi: se non
+  c'e' un posto, o arrivata e' ancora addosso, tira da li';
+- i punti di tiro (arretrare da un edificio troppo vicino, avvicinarsi per
+  un ordine) evitano le macchine ferme e le mete di quelle in cammino; se
+  non ce n'e' nessuno, come prima;
+- ogni 10 passi le macchine ferme e libere (arieti senza bersaglio
+  compresi) addosso a un'altra ferma si spostano allo stesso modo: quella
+  creata dopo, o quella libera se l'altra tira, colpisce o ricarica
+  (`settleSiege`, da app.js);
+- nella formazione (units.js) le macchine contano almeno SIEGE_FOOT.
+
+Prova nuova `game/test/browser/catapults.mjs` (nella CI): 4 catapulte in un
+quadrato con le maschere quasi a contatto (115 x 100 px) a ~600 px da un
+edificio, alleate e nemiche, e 6 catapulte alleate mandate col clic destro
+vero in un punto libero; 2400 passi. Prima: 2400 passi su 2400 con due
+catapulte addosso che tirano, 6 coppie addosso alla fine (8 nel gruppo).
+Ora 0 e 0 (e 0 nel gruppo); colpi arrivati 39 (40 prima).
+
+**Il ciclo giorno-notte** (domanda; non cambiato). Manager [C], a 60 passi
+al secondo: primo giorno 6000 passi (100 s), tramonto 200 (3,3 s, night
++0,005 a passo), notte piena 2000 (33 s), alba ~200 (3,3 s), poi giorno
+4000 (67 s): un giorno intero dura ~107 s, la notte e' la meta' del giorno
+(un terzo del ciclo). E' il rapporto di un giorno d'estate alle nostre
+latitudini (16 ore di luce e 8 di buio); in media sull'anno giorno e notte
+si equivalgono. Tramonto e alba durano il 3% del ciclo (il crepuscolo
+civile vero ~2%).
+
+### 9.80 Nemici nella nebbia; presidio nemico; vita degli arcieri che escono
+
+Richieste dell'autore.
+
+**Nebbia del tutorial** (le nuvole `fog01` di `fog_controller` nel match):
+i nemici erano quasi immobili. Nell'originale [C], vicino a una nuvola
+(entro 290 px) il guerriero non inseguiva mai (il difetto delle graffe,
+§3.10 n.39), l'arciere non inseguiva, ariete e catapulta nemici non
+facevano niente; picchiere e cavaliere inseguivano a 200 px invece di 400.
+Ora vedono solo meno (enemies.js, `fogSight`, `FOG_SIGHT` = 0,5): nella
+nebbia le distanze a cui si accorgono del giocatore si dimezzano, come di
+notte (e di notte nella nebbia si dimezzano due volte): l'inseguimento di
+tutti i soldati (400 -> 200), tiro (400 -> 200) e inseguimento (600 ->
+300) dell'arciere, l'edificio da colpire dell'ariete (700 -> 350), la
+gittata della catapulta (850 -> 425).
+
+**Presidio nemico** (enemygarrison.js), come quello del giocatore (§9.63):
+torri e fortezze nemiche tirano una freccia per arciere dentro (al massimo
+2 la torre, 4 la fortezza), l'arciere entra a contatto con l'edificio e
+sparisce, esce accanto con la vita che aveva entrando (l'ultimo entrato
+esce per primo; un soldato della regia economica torna in attesa delle
+ondate). Prima tiravano sempre 2 frecce senza nessuno dentro: torri e
+fortezze della mappa partono con 2 arcieri dentro (all'inizio tirano come
+prima, e un salvataggio di prima vale come 2), quelle che l'economia
+nemica costruisce (enemy_cantiere, `built`) partono vuote. Selezionate,
+mostrano gli arcieri dentro ("1/2", come la torre del giocatore).
+L'AI, ogni 30 passi per edificio:
+- *minaccia* (un'unita' del giocatore entro 700 px): gli arcieri nemici
+  liberi entro 600 px (fermi, o che inseguono senza tirare; della mappa,
+  difensori o in attesa delle ondate; non quelli delle regie dei livelli:
+  ritirata, strada, livelli 3, 4, 5) vanno a riempire i posti;
+- *in pace* un edificio vuoto lo occupa un arciere vicino (uno);
+- *sotto un quarto della vita* escono tutti (non muoiono nel crollo);
+- *30 s senza minaccia*: ne esce uno ogni 10 s, fino a uno dentro.
+Un arciere che in 15 s non arriva, o trova l'edificio pieno o crollato,
+lascia perdere. La torre di vedetta del livello 5 (watch) non tira ne'
+chiama nessuno. Distrutto l'edificio, chi e' dentro muore (come per il
+giocatore).
+
+**La vita degli arcieri che escono** (verifica): giusta. Entrando la vita
+va in `garrisonLives` dell'edificio, uscendo l'arciere nasce (vita 55 dal
+Create) e la riprende subito dopo. `garrison.mjs` ora prova anche un
+arciere a vita piena (55) insieme ai feriti (30, 35, 40) e che la vita
+sia la stessa 2 s dopo l'uscita: torre 30 e 55, fortezza 30, 35, 40 e 55.
+
+Prova nuova `game/test/browser/enemygarrison.mjs` (nella CI): torre
+nemica della mappa (parte con 2, tira; vuota non tira; in pace la
+rioccupa un arciere solo; con un soldato del giocatore a 680 px entra il
+secondo; a un quinto della vita escono tutti con 30 e 40, uguali 2 s
+dopo); fortezza con 4 arcieri in pace (a 28 s 4, a 40 s 2, a 60 s 1);
+fortezza finita da un cantiere (vuota, nessuna freccia); guerriero nemico
+accanto a una nuvola ferma: insegue un soldato a 180 px (prima restava
+fermo), non uno a 330.
+
+### 9.81 Suggerimenti del tutorial staccati dall'interfaccia
+
+Richiesta dell'autore: i suggerimenti del tutorial che si riferiscono ad
+altre finestre dell'interfaccia sempre a 20 px da quelle; quelli sugli
+elementi della partita (unita', edifici, risorse) restano come sono.
+
+Misure (prova nuova `game/test/browser/hintgap.mjs`, nella CI: la
+distanza di ogni suggerimento da risorse, pannello e pulsanti dell'unita'
+selezionata, inattivi, pausa, obiettivi, minimappa o suo pulsante, a
+1280 x 720, 1366 x 768 e 1920 x 1080). Prima:
+- `hint_idle` (W-410, 170) copriva il fondo del riquadro degli inattivi
+  (W-90..W-20, 100..200);
+- `hint_objective` e `hint_objective2` toccavano il riquadro degli
+  obiettivi (0 px: W-900 col riquadro da W-520, §9.27 lo segue quando si
+  allarga);
+- `hint_minimap` entrava di 10 px nella minimappa (H - testo - 98 - mappa);
+- a 1280 x 720 `hint_night` finiva sotto gli obiettivi, gli obiettivi su
+  pannello e pulsanti dell'unita' selezionata, e la colonna di sinistra
+  (`hint_vista`, alta 278 px) a 18,7 px dalla minimappa.
+
+Ora (hints.js; gia' a 20 px erano la colonna di sinistra a 20, 170 sotto le
+risorse e i pulsanti a 420, 170):
+- `hint_idle` sotto il riquadro degli inattivi, allineato al suo bordo
+  destro, e sotto quello degli obiettivi se e' piu' basso (endgame.js,
+  `w._objBottom`);
+- `hint_objective` / `objective2` a 20 px a sinistra degli obiettivi; se li'
+  finirebbero sui pulsanti di costruzione (schermi stretti), 20 px sotto;
+- `hint_minimap` 20 px sopra la minimappa (o sopra il suo pulsante, se
+  nascosta); se li' finirebbe sulle risorse (schermi bassi), accanto alla
+  minimappa, in fondo;
+- la colonna di sinistra (`hint_iniziale`, `vista`, `resource_tree`,
+  `lavori`, `resource`): se arriverebbe a meno di 20 px dalla minimappa, a
+  destra della minimappa;
+- `hint_night`, `hint_lavoratori` (420, 170): sotto gli obiettivi se ci
+  finirebbero addosso.
+Le posizioni si ricalcolano a ogni passo (minimappa nascosta o
+ridimensionata, obiettivi nascosti). Dopo: tutti a 20 px o piu' nelle tre
+misure dello schermo.
+
+La fortezza (§9.79): sentito l'autore, i quattro pulsanti degli arcieri
+restano in prima riga.
+
+### 9.82 Livello 5: l'AI nemica sotto osservazione
+
+Richiesta dell'autore: provare e osservare l'AI nemica del livello 5 per
+vedere se fa cose strane.
+
+**Strumento**: `game/test/browser/enemymonitor.js`, il monitor dell'AI
+nemica per `autoplay.mjs` (§9.77) con `MONITOR=1` (e `TRACE=1`: i passi
+di chi va avanti e indietro). Ogni 30 passi segnala: nemici fermi in
+cammino per 10 s (con chi hanno addosso o davanti, la cella davanti, il
+valore del flow field nella loro cella e se la linea verso la meta e'
+libera), 6 inversioni di marcia in 60 s (non i lavoratori, che fra un
+albero e un deposito a 100 px vanno avanti e indietro di continuo), nemici
+su celle chiuse (non i lavoratori nei campi) o fuori dalla room, colpiti
+fermi per 5 s, fermi con un soldato del giocatore a meno di 120 px, macchine
+d'assedio ferme una sopra l'altra, entrate e uscite dai presidi (e le
+rinunce), lavoratori fermi. Tre partite di 40 minuti (ordinato, aggressivo,
+lento; seme 1). La simulazione non e' del tutto deterministica (alcuni
+calcoli dei percorsi hanno un budget di tempo reale): due partite uguali
+non vanno uguali, si confrontano gli ordini di grandezza.
+
+**Trovato e corretto.**
+- *Un lavoratore nemico usciva dalla room e andava a est per sempre* (in
+  tutte e tre le partite, dal minuto 7: x 9117, poi oltre 10 000; la room
+  e' larga 9000). Un albero sul bordo est (8964, 1542) aveva un posto di
+  lavoro fuori dalla room (civilians.js `resSpots`, x 9017); da li', per
+  tornare al deposito, fuori dalla griglia `flowAt` vale 0, "verso est".
+  Ora i posti attorno alle risorse stanno dentro la room (`ver` 2: si
+  ricalcolano), e chi e' fuori dalla griglia torna verso la griglia
+  (pathing.js `moveFlowField`).
+- *Soldati della regia economica che tremano sul posto* (oltre 100
+  inversioni al minuto, ruolo 30, verso un punto a 2600 px): finita la
+  difesa (§9.50, l'intruso se ne va) tornavano in attesa ma restavano in
+  cammino verso l'ultima posizione dell'intruso, ora senza flow field
+  (ruolo 30), contro le mura. Ora si fermano dove sono, come diceva il
+  commento (economy.js).
+- *Soldati che inseguono dietro un ostacolo*: vicino alla meta, o senza un
+  campo proprio, i nemici vanno dritti (mp_potential_step [C]); i soldati
+  delle ondate arrivati (ruolo 32) che inseguivano un soldato del giocatore
+  dietro le sue torri tremavano sul posto (fino a 112 inversioni al minuto).
+  Ora con la linea chiusa da ostacoli fissi usano un campo verso la meta
+  (enemies.js `chaseField`: dei nemici, passa dalle loro porte; tenuto
+  finche' la meta non si sposta di 3 celle, al piu' 2 s; non salvato). Se
+  dalla loro cella la meta non si raggiunge (chiusi in un anello di alberi,
+  crowd.mjs "circondato") vanno dritti come prima; e non chi va a dare
+  fuoco (firework), che gira attorno all'edificio sulla sua orbita
+  (meleeSpot): col campo, in fireorder.mjs "enemy casa front", un
+  guerriero finiva sotto un cavaliere che si scansava per lui (§9.31,
+  warwork 4) e i due restavano fermi uno sull'altro, il guerriero ad
+  aspettare la precedenza del cavaliere che non riusciva a spostarsi. Lo
+  stallo c'era gia' (non corretto: non e' successo con il codice di prima
+  in nessuna prova).
+- *Soldati appena prodotti fermi accanto alle caserme* (10 s e piu', in
+  cammino, nessuno addosso, la cella davanti libera): il campo della
+  difesa e delle ondate (economy.js) contava come ostacolo anche le celle
+  dei soldati nemici fermi; con le porte della citta' piene di difensori
+  l'interno era irraggiungibile (-1 nella loro cella, nessuna uscita entro 6
+  celle). Ora difesa, ondate e inseguimento usano il campo dei soli
+  ostacoli fissi (`goalField` con `fixed`); col flow field si passa sopra
+  le unita'.
+- *Il presidio nemico (§9.80) svuotava le torri della citta'*: con la
+  regola "30 s senza minaccia: ne esce uno fino a uno", a inizio partita
+  ogni torre e fortezza scendeva da 2 a 1. Ora si scende fino alla
+  guarnigione di partenza (`keep`: 2 per gli edifici della mappa, 1 per
+  quelli costruiti); escono solo gli arcieri entrati in piu' sotto
+  minaccia. `enemygarrison.mjs`: la fortezza con 4 torna a 2.
+- autoplay.mjs contava come morti gli arcieri entrati in un presidio.
+
+**Trovato provando: due civili persi** (anche del giocatore: il codice e'
+lo stesso), da `idle.mjs` "nascosti" (fuori dalla CI), che con le miniere
+da 1250 oro (§9.79) ne esaurisce una durante la raccolta. Su main passava.
+- *Col carico accanto al deposito*: arrivato col campo nella cella accanto
+  al centro, a ~28 px (si scarica sotto i 10), "lontano" dalla meta (il
+  centro dell'edificio, a 218 px: un edificio grande); un civile inattivo
+  fermo li' (a miniera finita) lo respingeva e lui tornava, per sempre.
+  Ora col carico a meno di 48 px dal deposito si va dritti, sopra gli
+  alleati (civilians.js `depClose`).
+- *Il taglialegna col proprio albero finito*: `resAt` sceglieva il nuovo
+  albero (lo scoperto piu' vicino) e aggiornava woodx, ma la meta restava
+  sul vecchio finche' il civile non era entro 250 px dal nuovo: a 567 px
+  girava per sempre dove c'era il vecchio. Ora passa al nuovo anche la meta.
+
+**Numeri** (conteggi del monitor, passi di 0,5 s; prima -> dopo, ordinato /
+aggressivo / lento): fuori dalla room 4345 / 3961 / 3983 -> 0 / 0 / 0;
+avanti e indietro 10 948 / 29 840 / 20 727 -> 584 / 651 / 3611 (una
+seconda partita lenta, con l'eccezione di chi va a dare fuoco: 1291);
+soldati fermi alla nascita (campo a -1) da 6 a 14 per partita -> 0.
+
+**Resta (non corretto).** Ingorghi, non errori di logica: la guarnigione
+della citta' (ruolo 0) che insegue verso ovest si accoda alla porta ovest
+dietro i compagni (x 5727); gli attaccanti nella base del giocatore si
+ammassano fra le sue case e torri e qualcuno resta 10 s fermo dietro gli
+altri o va avanti e indietro fra due bersagli (le inversioni rimaste della
+strategia lenta, che costruisce 2 torri alla base). Nessuna macchina
+d'assedio nemica ferma sopra un'altra, nessun nemico colpito che non
+reagisce (uno o due casi per partita: arieti senza bersaglio), nessun
+presidio che entra ed esce di continuo.
+
+Passano tutte le prove nel browser della CI (soak e salvataggi su tutte le
+room compresi) e `idle.mjs`.
+
+### 9.83 Zoom morbido
+
+Richiesta dell'autore: lo zoom con la rotella fluido invece che a scatti.
+
+Prima ogni scatto della rotella (o X, Z) cambiava lo zoom di 0,1 in un
+fotogramma (`setScale`, arrotondato ai decimi: 8 livelli fra 1 e 1,7).
+Ora (camera.js `zoomTo`, `zoomStep`; manager.js):
+- rotella e tasti spostano la meta dello zoom, e lo zoom la raggiunge di un
+  quarto della distanza a passo (il 90% in 8 passi, ~130 ms; sotto 0,002 si
+  ferma esattamente sulla meta); piu' scatti di fila si sommano alla meta
+  (dalla meta in corso, non dallo zoom del momento) e il movimento non
+  riparte da capo;
+- il punto di room sotto il puntatore resta fermo per tutto il movimento
+  (prima solo all'arrivo, che era istantaneo); X e Z tengono fermo
+  l'angolo in alto a sinistra, come prima;
+- il touchpad (delta sotto i 50 px a evento) zooma in modo continuo, 0,1
+  ogni 100 px, senza arrotondare; prima i delta si sommavano fino a uno
+  scatto intero (input.js `wheelFine`). La rotella classica (~100 px a
+  scatto) resta a decimi;
+- limiti invariati (1 e ZOOM_MAX = 1,7); un salvataggio caricato a meta'
+  movimento ferma lo zoom (snapshot.js).
+Nessun punto del codice confronta lo zoom con valori esatti: posizione dei
+pulsanti, minimappa e suggerimenti seguono gia' qualunque valore.
+
+Prova nuova `game/test/browser/zoom.mjs` (nella CI), con eventi veri: uno
+scatto della rotella (da 1 a 1,1 in 10 passi intermedi, mai indietro, il
+punto sotto il puntatore fermo), due scatti di fila (+0,2), touchpad
+(12 x -10 px: -0,12, cioe' 1,18), limiti (1,7 e 1), X e Z (10 passi
+intermedi). Col codice di prima fallisce (0 passi intermedi, touchpad 1,2).
+Nella prova serve disegnare un fotogramma prima della rotella: con
+`nostart=1` il canvas resta nascosto (visibility: hidden, nessun evento)
+finche' non si disegna. Passano anche ui, hintgap, enemybuildings,
+salvataggi e soak.
+
+### 9.84 Effetti d'ambiente: nuvole, alba e tramonto, camini, crolli, polvere
+
+Richiesta dell'autore: effetti grafici poco costosi per migliorare la resa.
+Scelti dall'autore fra quelli proposti: ombre delle nuvole, alba e tramonto
+con uno stadio rosa (come NIMBUS), fumo dai camini, polvere ai crolli,
+polvere sotto cavalieri e macchine d'assedio, e da provare le finestre
+accese di notte. Scartati: lampo sul colpo, scossa della visuale. Tutto
+solo estetico (il gioco non legge niente di questo) e senza sprite nuovi
+(game/src/ambience.js, fog.js, fogdraw.js, manager.js, gl.js, world.js).
+
+**Ombre delle nuvole.** Macchie scure e morbide: lo sprite della luce dei
+fuochi (arealight, un disco nero sfumato) allargato 4-7,5 volte e
+schiacciato come il suolo (0,62), 3-5 per nuvola, una nuvola ogni
+2600 x 1900 px, portate dal vento (0,32 e 0,07 px a passo verso est e un
+po' a sud; dipendono solo dal passo: niente da salvare). Il problema degli
+oggetti alti (domanda dell'autore): un'ombra composta sopra tutto, pixel
+per pixel come nebbia e notte, darebbe alla cima di una torre l'ombra del
+terreno 250 px piu' a nord, e l'edificio sembrerebbe dipinto per terra.
+Quindi: sul suolo le macchie si disegnano subito dopo di lui, prima delle
+istanze; ogni istanza si scurisce tutta (Renderer.shade, un moltiplicatore
+dei colori dei quad) di quanto e' in ombra il punto in cui tocca terra,
+con lo stesso conto della miscela dei dischi (`shadeAt`, il profilo
+dell'alpha di arealight misurato sull'immagine). Una torre entra
+nell'ombra quando ci entra la sua base, senza deformarsi; un edificio molto
+largo si scurisce in blocco. Alpha 0,16 per macchia; spariscono nella prima
+meta' del tramonto. *Con la pioggia* (domanda dell'autore: non una
+nuvoletta che passa mentre piove) il cielo e' coperto: le macchie si
+dissolvono e tutta la scena si scurisce di un grigio freddo uniforme
+(sottrazione 0,17 / 0,15 / 0,10), in ~5 s, e tornano quando smette
+(`overcast`, solo estetico). *Costo*: il conto per istanza e' trascurabile
+(0,007 ms per 37 istanze); i dischi, 3 quad trasparenti grandi quasi
+quanto lo schermo, sono gratis su una GPU ma con SwiftShader costano ~4 ms
+a fotogramma (8,8 contro 4,9): niente nuvole col rendering software (quello
+che gia' fa comparire l'avviso) ne' con la qualita' "Bassa".
+
+**Alba e tramonto rosa.** Uno stadio intermedio sul rosa (`skyColour`): si
+sottraggono un po' di verde (0,2) e di blu (0,11), il rosso resta. Sale
+negli ultimi 900 passi (15 s) del giorno, e' pieno durante il passaggio
+(global.night fra 0 e 1, 200 passi) mentre il colore va verso quello della
+notte di sempre, e scende nei primi 900 passi dopo l'alba. Si ricava dagli
+allarmi del manager (giorno: alarm 0; dopo l'alba alarm 0 riparte da 4000),
+che si salvano gia': nessun campo nuovo. Il gioco legge solo global.night.
+Non nel livello 1 (sempre notte) ne' nel menu.
+
+**Finestre accese (da provare).** Di notte una luce piccola (arealight a
+0,65, che cresce mentre scende la notte) su due case intatte su tre,
+sempre le stesse, del giocatore e nemiche gia' viste. Da giudicare a occhio.
+
+**Fumo dai camini.** Solo le case del giocatore con un camino disegnato
+(stili 1, 2, 4, 6; il 3 e il 5 non ne hanno, quelle nemiche hanno il tetto
+piatto): uno sbuffo grigio (lo sprite del fumo degli incendi, nubespr, a
+0,18-0,26) ogni 50-70 passi dalla cima del camino (misurata sugli sprite:
+c1 -2,-113; c2 21,-106; c4 -27,-120; c6 42,-128 dall'origine), che sale e
+si allarga. Non dalle case in fiamme (hanno gia' il loro fumo).
+
+**Polvere ai crolli.** Quando compare una rovina nuova (non quelle della
+stanza o di un caricamento): 12 sbuffi color sabbia, 26 per gli edifici
+larghi piu' di 260 px, e 4-8 frammenti di mattone (sfx_mattone, quelli dei
+colpi di catapulta).
+
+**Polvere in corsa.** Sotto cavalieri e macchine d'assedio, alleati e
+nemici: uno sbuffo piccolo ogni 18 px percorsi, a terra (sotto tutte le
+istanze).
+
+Fumo e polvere sono particelle della categoria "fire" (opzione "Fiamme e
+scintille"), solo sullo schermo.
+
+Prova nuova `game/test/browser/ambience.mjs` (nella CI): crepuscolo (0 a
+950 passi dal tramonto, sale, 1 nel passaggio, 0 di notte piena, ancora
+rosa subito dopo l'alba, 0 dopo), nuvole (52 macchie nella stanza,
+nessuna di notte, ombra al centro di una macchia 0,67 e al bordo 0,75),
+pioggia (coperto al 38% dopo mezzo secondo, poi del tutto e senza macchie;
+smesso, 0 e le macchie tornano), camini (il fumo nasce entro 2 px dalla
+cima del camino negli stili 1, 2, 4, 6, nei 3 e 5 niente), crollo di una
+caserma (26 sbuffi, 8 frammenti), polvere di un cavaliere mandato col clic
+destro, fumo che riprende dopo salvataggio e caricamento. Passano tutte le
+prove nel browser della CI e idle.mjs; soak del livello 5 alla stessa
+velocita' di prima (12,4 s contro 13,9 s, sulla stessa macchina).
+
+### 9.85 Stadi di danno di edifici nemici di pietra, mura e porte
+
+Sprite dell'autore (nuovi/sprites/, commit "Sprites edifici danneggiati"):
+gli stadi di danno di torre, fortezza e monastero nemici (torre_b_r1/_r2,
+castello_b_r1/_r2, chiesa_b_r1/_r2) e di mura e porte del giocatore
+(m_ori, m_vert, porte orizzontali e verticali chiuse e aperte, _r1 e _r2).
+Decisioni dell'autore: le mura e porte nemiche danneggiate si ricavano da
+quelle del giocatore ricolorando le bandierine (come le mura nemiche intere,
+§9.75); i cantieri nemici restano quelli del giocatore.
+
+**Allineamento.** Le immagini sono ritagliate sul disegno ed esportate a
+un'altra scala: misure tutte diverse dagli integri (torre 192x256 contro
+196x258, fortezza 524x460 contro 511x451, muro orizzontale 566x167 contro
+537x294). tools/14_allinea.py (nuova parte, numpy, solo per questo
+strumento) cerca per ognuno scala (0,90-1,10) e spostamento che
+sovrappongono meglio contorni neri e sagoma all'integro (correlazione con la
+FFT): la scala e' 0,945-0,955 per tutti, cioe' un'esportazione al ~105%;
+si usa la mediana, 0,95, per tutti, e si rifanno gli spostamenti. Scrive
+"scala" e "a" nelle voci di nuovi.json ("su": lo sprite integro);
+tools/nuovi.py ricostruisce lo sprite sulla tela dell'integro (allargata se
+il disegno sporge: i muri verticali, 14-15 px sopra), con la sua origine.
+Sovrapposizione 0,53-0,86 (le differenze sono crepe e pezzi crollati;
+controllata a occhio su un'immagine in cui l'integro e' rosso e il
+danneggiato verde: i contorni coincidono). La pipeline legge solo i numeri:
+la CI non ha bisogno di numpy. 05_atlas ricava i danni di mura e porte
+nemiche (<mura>_b_r1, _r2) da quelli del giocatore con tint_flags.
+
+**Nel gioco** (game/src/damage.js): come gli edifici del giocatore (§3.5,
+buildings.js `damage`), sotto i 2/3 della vita lo sprite _r1, sotto 1/3
+_r2, in dissolvenza; riparati tornano indietro. Torre nemica (ranged.js),
+fortezza e monastero nemici (enemybuild.js), muri e porte del giocatore e
+nemici (walls.js). Le porte tengono il danno aprendosi e chiudendosi: il
+cambio aperta/chiusa resta istantaneo come prima, il cambio di stadio a
+porta ferma e' in dissolvenza; quelle che guardano chi c'e' solo ogni 10 o
+30 passi aggiornano il danno a ogni passo. Le maschere (mask_index) non
+cambiano: collisioni e percorsi restano quelli di prima.
+
+Prova nuova `game/test/browser/damage.mjs` (nella CI): undici edifici
+(torre, fortezza, monastero nemici; muri e porte del giocatore e nemici),
+vita al 60%, al 20% e di nuovo piena: sprite _r1, _r2 e integro, tutti
+nell'atlas, maschera invariata; le porte danneggiate aperte e chiuse
+restano _r1. Passano la pipeline (06, 07, 11, 12 --check, scenari
+invariati) e le prove nel browser della CI.
+
+### 9.86 Ombre delle nuvole disegnate dall'autore
+
+Richiesta dell'autore: sostituire le macchie delle ombre delle nuvole
+(§9.84: 3-5 copie di arealight per nuvola) con sagome sue. Accordo preso
+prima del disegno: poche forme intere e diverse (non pezzi da combinare),
+che il gioco varia con scala, specchiatura, stiramento e un po' di
+rotazione; nere su trasparente, viste dall'alto. Le ha disegnate gia'
+schiacciate come il suolo (circa 2:1) e a bordi netti: la sfumatura in
+Photoshop dava un nucleo netto con un alone, e si e' deciso di farla nella
+pipeline, dove si regola provando in gioco senza rifare i file.
+
+**Pipeline.** Sei sagome, nuovi/sprites/nn1-nn6 (commit "nuvole bordi
+netti", 1021x722, nero pieno con bordo antialias). Opzioni nuove di
+nuovi.json, in tools/nuovi.py: "sfuma" (deviazione della gaussiana in px
+dell'immagine: 18, cioe' una sfumatura dal 10 al 90% di ~45 px su sagome
+larghe 370-550 px, ~1/10) e "riduci" (0,5 dopo la sfocatura: 510x361;
+in gioco sono ingrandite 5,5-8,5 volte). La sfocatura e' solo sull'alpha,
+col colore dei pixel pieni (sagome di un colore solo). "griglia": 05_atlas
+scrive nel manifest ("alpha") la mappa dell'alpha di tutta la tela, 64x45
+celle in base64, che il gioco usa per scurire le istanze.
+
+**Nel gioco** (ambience.js): una sagoma per cella della griglia di prima
+(2600x1900 px), scelta a caso fra le sei con posizione, scala 5,5-8,5,
+x allungata o accorciata fino al 20%, specchiata a meta', ruotata fino a 8
+gradi: fisse per stanza (hash), mosse dal vento come prima. Alpha del nero
+pieno 0,3. Niente piu' schiacciamento (le sagome lo sono gia'). shadeAt
+(quanto e' in ombra il punto in cui un'istanza tocca terra) legge la mappa
+dell'alpha, bilineare, rifacendo al contrario la trasformazione di
+drawSprite. Verifica: due foto a 1600x900 (zoom 1,7) a 4100 passi di
+distanza; nei punti senza nuvole nella seconda, il rapporto dei pixel fra
+le due e' quello di shadeAt (1 / 0,958 / 0,841 / 0,704 contro 1 / 0,954 /
+0,848 / 0,718, correlazione 0,98), con sagome specchiate e ruotate.
+Invariati: niente ombre di notte e con la pioggia, spente col rendering
+software e con la qualita' bassa.
+
+`ambience.mjs`: le nuvole ora controllano che ci siano almeno 4 delle 6
+sagome, l'ombra 0,7 nel pieno di una sagoma specchiata e ruotata e 1
+fuori.

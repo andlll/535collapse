@@ -15,6 +15,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinationBack } from "./pathing.js";
 import { ramSpot } from "./melee.js";
+import { fogSight } from "./enemies.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -224,6 +225,7 @@ const LAUNCH = { 1: [-44, -62], 2: [-38, -50], 3: [0, -44], 4: [39, -59], 5: [45
 // 32: dall'ordine al lancio 25 passi invece di 60, un tiro ogni 240 passi
 // (4 s) invece di 180.
 const AIM = 15, RELOAD_STEP = 32;
+const ARC_RISE = 5; // = speed del sasso: 45 gradi
 
 function catapultAlarm2(i, w, bulletName) {
   if (i.action !== 2) return;
@@ -236,7 +238,13 @@ function catapultAlarm2(i, w, bulletName) {
     // alarm[0] = distance_to_point / speed (speed 5 dal Create del sasso)
     const t = Math.trunc(distanceToPoint(w, b, b.objectivex, b.objectivey) / b.speed);
     b.alarm.set(0, t);
-    b.startspeed = t * 0.1;
+    // [Richiesta dell'autore, §9.79] la parabola a 45 gradi: sale a
+    // ARC_RISE px per passo come avanza, e la caduta (fall) la riporta a
+    // terra in t passi; vertice a un quarto della distanza. Nell'originale
+    // [C] startspeed = t * 0.1 con caduta 0.1: vertice a 0.025 t^2, a 850 px
+    // ~720 px d'altezza, quasi quanto la gittata.
+    b.startspeed = ARC_RISE;
+    b.fall = ARC_RISE / Math.max(1, t);
     b.speed = 5;
     i.step = 2; i.alarm.set(2, 10); i.loaded = 0;
     return;
@@ -261,10 +269,17 @@ function catapultReload(i) {
 // raggiungibile a piedi in linea retta e per cui `score(x, y)` non e' null
 // (da li' si puo' tirare); il piu' vicino, a pari anello quello con lo
 // score piu' basso. null se non c'e'.
+// [§9.79] prima fra i punti senza un'altra macchina d'assedio addosso
+// (siegeNear), poi, se non ce ne sono, fra tutti.
 const MIN_SHOT = 300, SHOT_MARGIN = 30;
-function catapultSpot(w, i, score) {
+const SPOT_RINGS = [120, 200, 280, 360, 440, 520];
+function catapultSpot(w, i, score, rings = SPOT_RINGS) {
+  return spotSearch(w, i, score, rings, true) || spotSearch(w, i, score, rings, false);
+}
+
+function spotSearch(w, i, score, rings, apart) {
   const p = w.path;
-  for (const r of [120, 200, 280, 360, 440, 520]) {
+  for (const r of rings) {
     let best = null, bs = Infinity;
     for (let a = 0; a < 24; a++) {
       const x = Math.round(i.x + Math.cos((a * Math.PI) / 12) * r), y = Math.round(i.y + Math.sin((a * Math.PI) / 12) * r);
@@ -273,11 +288,77 @@ function catapultSpot(w, i, score) {
       const sc = score(x, y);
       if (sc === null || sc >= bs) continue;
       if (!w.placeFree(i, x, y) || !walkLine(p, i.x, i.y, x, y)) continue;
+      if (apart && siegeNear(w, i, x, y, true)) continue;
       best = [x, y]; bs = sc;
     }
     if (best) return best;
   }
   return null;
+}
+
+// [§9.79, segnalazione dell'autore] Macchine d'assedio una sopra l'altra
+// (soprattutto le catapulte). La maschera (cati11, 111 x 96) e' molto piu'
+// piccola del disegno (~205 x 170): due catapulte con le maschere quasi a
+// contatto si coprono per meta'. E le catapulte si fermano a tirare dove
+// sono appena un edificio e' a tiro, anche sopra un'altra (sul flow field si
+// passa una sull'altra), e due che arretrano dallo stesso edificio
+// sceglievano lo stesso punto di tiro. SIEGE_FOOT e' l'ingombro "a vista":
+// due macchine della stessa parte piu' vicine di cosi' (in x e in y) sono
+// addosso. Lo usano anche le caselle della formazione (units.js).
+export const SIEGE_FOOT = [170, 120];
+const SIEGE_OF = { ally: ["ally_ariete", "ally_catapulta"], enemy: ["enemy_ariete", "enemy_catapulta"] };
+
+// Un'altra macchina della stessa parte addosso al punto (x, y): ferma li',
+// o (con `dest`) in cammino verso li'. Chi e' in cammino altrove non conta:
+// sta passando. null se non c'e'.
+function siegeNear(w, i, x, y, dest) {
+  const near = (ox, oy) => Math.abs(ox - x) < SIEGE_FOOT[0] && Math.abs(oy - y) < SIEGE_FOOT[1];
+  for (const n of SIEGE_OF[i.object.startsWith("enemy") ? "enemy" : "ally"]) {
+    for (const o of w.all(n)) {
+      if (o === i || !o.alive) continue;
+      if (o.action !== 1 ? near(o.x, o.y) : dest && near(o.dirox, o.diroy)) return o;
+    }
+  }
+  return null;
+}
+
+// In cammino verso il posto scelto da unstack (un ordine nuovo, o una meta
+// spostata, lo annullano da se').
+const unstacking = (i) => i.action === 1 && i.unstackX === i.dirox && i.unstackY === i.diroy;
+
+// Addosso a un'altra macchina ferma: a un posto libero li' vicino (anelli
+// da 60 a 240 px, il piu' lontano dall'altra a pari anello) per cui `ok(x,
+// y)`; al piu' una volta ogni UNSTACK_WAIT passi (se non c'e' un posto, o
+// arrivati si e' ancora addosso, si resta). true se si parte.
+const UNSTACK_WAIT = 120, UNSTACK_RINGS = [60, 120, 180, 240];
+function unstack(w, i, ok) {
+  if ((i.unstackAt ?? -1e9) + UNSTACK_WAIT > w._stepNo) return false;
+  const o = siegeNear(w, i, i.x, i.y, false);
+  if (!o) return false;
+  i.unstackAt = w._stepNo;
+  const spot = spotSearch(w, i, (x, y) => (ok(x, y) ? -pointDistance(x, y, o.x, o.y) : null), UNSTACK_RINGS, true);
+  if (!spot) return false;
+  if (i.action !== 1) { i.alarm.set(0, irandomRange(5, 13)); i.step = 0; }
+  i.dirox = i.unstackX = spot[0]; i.diroy = i.unstackY = spot[1];
+  i.action = 1; i.speed = 0;
+  if (i.object.endsWith("catapulta")) i.retreat = 1; // retreatStuck; followOrder aspetta
+  return true;
+}
+
+// [§9.79] Ogni 10 passi (app.js, dopo il mondo): le macchine d'assedio
+// ferme e libere (azione 0, l'ariete senza bersaglio) addosso a un'altra
+// macchina ferma della stessa parte; si sposta quella creata dopo, o
+// quella libera se l'altra sta tirando, colpendo o ricaricando.
+export function settleSiege(w) {
+  if (w._stepNo % 10 !== 0) return;
+  for (const n of [...SIEGE_OF.ally, ...SIEGE_OF.enemy]) {
+    for (const i of w.all(n)) {
+      if (!i.alive || i.action !== 0 || (i.warwork && i.warwork !== 4) || i.order) continue;
+      const o = siegeNear(w, i, i.x, i.y, false);
+      if (!o || (o.action === 0 && o.id > i.id)) continue;
+      unstack(w, i, () => true);
+    }
+  }
 }
 
 // Arretrare per tirare agli edifici `target`: da li' l'edificio piu' vicino
@@ -300,11 +381,15 @@ function retreatSpot(w, i, target, range) {
 // px lungo la linea dall'edificio, oltre la distanza minima di tiro.
 function catapultAuto(i, w, target, range) {
   if (!((i.action === 0 || i.action === 1) && i.automatic === 1 && i.loaded === 1)) return null;
+  if (unstacking(i)) return null; // §9.79
   const b = w.nearest(i.x, i.y, target);
   if (!b) return null;
   const dist = w.distanceToInstance(i, b);
   if (!(dist < range)) return null;
   if (dist > 300) {
+    // [§9.79] addosso a un'altra macchina ferma: prima un posto suo, da cui
+    // l'edificio resti a tiro
+    if (unstack(w, i, (x, y) => { const d = distanceAt(w, i, x, y, b); return d > MIN_SHOT && d < range; })) return null;
     if (i.action !== 2) {
       i.action = 2; i.step = 0;
       i.direction = pointDirection(i.x, i.y, b.x, b.y);
@@ -378,7 +463,11 @@ function followOrder(i, w) {
   if (i.action !== 0 && i.action !== 1) return; // tira o ricarica: aspetta
   if (i.retreat === 1 && i.action === 1) return; // arretra verso il punto di tiro
   if (i.loaded !== 1) return;                    // la ricarica parte dallo Step
-  if (inRange) { i.speed = 0; i.orderGoal = null; aimAt(i, tx, ty); return; }
+  if (inRange) {
+    // [§9.79] addosso a un'altra macchina ferma: prima un posto suo
+    if (unstack(w, i, (x, y) => { const dd = distanceToPoint(w, i, tx, ty, x, y); return dd > MIN_SHOT && dd < RANGE; })) return;
+    i.speed = 0; i.orderGoal = null; aimAt(i, tx, ty); return;
+  }
   if (d >= RANGE) {
     // lontano: verso il bersaglio (la meta si aggiorna se si sposta di 100 px)
     const g = i.orderGoal;
@@ -477,7 +566,7 @@ export function catapultBullet(enemySide) {
     create(i) { Object.assign(i, { active: 0, time: 0, deviance: 0, godown: 0, rota: 0, startspeed: 0 }); i.speed = 5; },
     step(i) {
       i.time += 1;
-      i.deviance = i.time * i.startspeed - 0.1 * i.time * i.time;
+      i.deviance = i.time * i.startspeed - (i.fall ?? 0.1) * i.time * i.time; // §9.79 (0.1: sasso di un salvataggio di prima)
       i.depth = -i.y;
       i.rota += 15;
     },
@@ -741,16 +830,13 @@ export function enemyRam(base) {
       }
       const chase = () => {
         const t = w.nearest(i.x, i.y, "ally_build");
-        if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k && (i.warwork === 0 || i.warwork === 1)) {
+        if (w.distanceToInstance(i, t) < i.comp * (1 - 0.5 * g.night) * k * fogSight(w, i) && (i.warwork === 0 || i.warwork === 1)) { // §9.80
           if (i.action !== 1) i.alarm.set(0, 15);
           i.action = 1; i.warwork = 1;
           [i.dirox, i.diroy] = ramSpot(w, i, t); // §9.32
         }
       };
-      if (w.exists("fog01")) {
-        const f = w.nearest(i.x, i.y, "fog01");
-        if (w.distanceToInstance(i, f) > 290) chase();
-      } else chase();
+      chase(); // §9.80: nella nebbia vede meno (era: fermo)
     },
     collisions: {}, // nessuna reazione alle frecce
     drawGUI: enemyPanel("ico_ariete"),
@@ -804,11 +890,9 @@ export function enemyCatapult(base) {
       if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       if (w.number("torre_placer") > 0) g.sele = 1;
       if (i.action === 0 && i.loaded === 0) { i.action = 3; i.alarm.set(4, RELOAD_STEP); i.step = 0; }
-      const range = (1 - 0.5 * g.night) * 850;
-      if (w.exists("fog01")) {
-        const f = w.nearest(i.x, i.y, "fog01");
-        if (w.distanceToInstance(i, f) > 290 && catapultAuto(i, w, "ally_build", range) === "exit") return;
-      } else if (catapultAuto(i, w, "ally_build", range) === "exit") return;
+      // §9.80: nella nebbia vede meno (era: fermo)
+      const range = (1 - 0.5 * g.night) * 850 * fogSight(w, i);
+      if (catapultAuto(i, w, "ally_build", range) === "exit") return;
       ANIM.enemy_catapulta(i, w);
     },
     collisions: {

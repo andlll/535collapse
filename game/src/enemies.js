@@ -2,10 +2,10 @@
 // Trascrizione di src/objects/enemy_*/ e di scr_movimento_nemici_ff,
 // scr_atk_signal, scr_find_free_spawn_enemy. Nomi originali.
 //
-// Lo stesso codice in tre copie che si sono allontanate: il picchiere e il
-// cavaliere hanno la versione corretta del controllo sulla nebbia, il
-// guerriero no; le differenze sono nella tabella MELEE [C, confronto evento
-// per evento: STUDIO.md §3.10].
+// Lo stesso codice in tre copie che si sono allontanate: le differenze
+// sono nella tabella MELEE [C, confronto evento per evento: STUDIO.md
+// §3.10]. (Il controllo sulla nebbia, sbagliato nel guerriero, ora e'
+// fogSight, uguale per tutti: §9.80.)
 //
 // I nemici della room hanno role 0 e nessun flow field: si avvicinano
 // con mp_potential_step. Gli attaccanti delle ondate (role 30/31/32,
@@ -14,11 +14,12 @@
 import { hintOnce, dialogOpen } from "./hints.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
+import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE } from "./melee.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
-import { phaseOf, swingOn, swingVictim } from "./units.js";
+import { garrisonWalk } from "./enemygarrison.js";
+import { phaseOf, swingOn, swingVictim, unitRing } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
@@ -30,19 +31,19 @@ const MELEE = {
   enemy_warrior: {
     life: 75, rank: 3, corpse: "enemy_warrior_corpse", icon: "ico_guerriero",
     damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4, 50: 5 }, fleeStep0: true, atkSignal: true,
-    attackIso: false, charge: false, fire: true, place: "random", fogBroken: true,
+    attackIso: false, charge: false, fire: true, place: "random",
     palo: false, chaseAlarm: 15, spawnFree: true, menuMarch: true,
   },
   enemy_picchiere: {
     life: 60, rank: 3, corpse: "enemy_picchiere_corpse", icon: "ico_picchiere",
     damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8, 50: 5 }, fleeStep0: false, atkSignal: false,
-    attackIso: true, charge: false, fire: true, place: "back50", fogBroken: false,
+    attackIso: true, charge: false, fire: true, place: "back50",
     palo: true, chaseAlarm: 15, spawnFree: false, menuMarch: false,
   },
   enemy_cavaliere: {
     life: 90, rank: 5, corpse: "enemy_cavaliere_corpse", icon: "ico_cavaliere",
     damage: { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3, 50: 8 }, fleeStep0: false, atkSignal: true,
-    attackIso: true, charge: true, fire: false, place: "random", fogBroken: false,
+    attackIso: true, charge: true, fire: false, place: "random",
     palo: false, chaseAlarm: 10, spawnFree: false, menuMarch: false,
   },
 };
@@ -51,6 +52,19 @@ const MELEE = {
 // lontanissima [I].
 function distTo(w, i, o) {
   return o ? w.distanceToInstance(i, o) : Infinity;
+}
+
+// [§9.80, richiesta dell'autore] Nella nebbia (le nuvole fog01 del
+// tutorial, entro 290 px) i nemici vedono meno: le distanze a cui si
+// accorgono del giocatore (inseguire, tirare, attaccare un edificio) si
+// moltiplicano per FOG_SIGHT, come di notte. Nell'originale [C] vicino alla
+// nebbia il guerriero non inseguiva mai (§3.10 n.39), l'arciere e le
+// macchine d'assedio non facevano niente, picchiere e cavaliere inseguivano
+// a 200 px invece di 400: quasi immobili.
+export const FOG_SIGHT = 0.5;
+export function fogSight(w, i) {
+  if (!w.exists("fog01")) return 1;
+  return distTo(w, i, w.nearest(i.x, i.y, "fog01")) > 290 ? 1 : FOG_SIGHT;
 }
 
 // scr_find_free_spawn_enemy [C]: spirale sulle celle da 32 finche'
@@ -93,6 +107,30 @@ export function atkSignalObject() {
   };
 }
 
+// [§9.82] Vicino alla meta (o senza un flow field proprio) i nemici vanno
+// dritti con mp_potential_step [C]; con un ostacolo fisso in mezzo (un
+// edificio, le mura, un bosco) restavano a girare contro l'ostacolo: nel
+// livello 5 i soldati delle ondate arrivati (ruolo 32) che inseguivano un
+// soldato del giocatore dietro le torri tremavano sul posto, oltre 100
+// inversioni di marcia al minuto. Ora, con la linea chiusa, un campo verso
+// la meta (dei nemici: passa dalle loro porte), come gli alleati (§6.2 D);
+// tenuto finche' la meta non si sposta di 3 celle, al piu' 2 s.
+function chaseField(w, p, i) {
+  const gx = Math.floor(i.dirox / GRID), gy = Math.floor(i.diroy / GRID);
+  let c = i.chaseFf;
+  if (!c || Math.max(Math.abs(gx - c.gx), Math.abs(gy - c.gy)) > 3 || w._stepNo - c.at > 120 || c.ver !== p.solidVer) {
+    c = i.chaseFf = { f: p.goalField(i.dirox, i.diroy, true, false, true), gx, gy, at: w._stepNo, ver: p.solidVer }; // solo ostacoli fissi
+  }
+  // dalla sua cella la meta non si raggiunge (chiuso in un anello di
+  // alberi, crowd.mjs "circondato"): come prima, dritto
+  const ux = Math.floor(i.x / GRID), uy = Math.floor(i.y / GRID);
+  if (!p.inside(ux, uy) || c.f[uy * p.gw + ux] === -1) { mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); return; }
+  const own = i.flow_field;
+  i.flow_field = c.f;
+  moveFlowField(w, p, i);
+  i.flow_field = own;
+}
+
 // scr_movimento_nemici_ff [C]. La precedenza di GML e' (lontano && role 31)
 // || sovrapposto.
 // [Correzione decisa dall'autore, §3.10 n.37] un nemico senza flow field
@@ -117,6 +155,8 @@ function enemyMove(i, w, p) {
       if (otro.ordo < i.ordo || otro.action !== 1) pushThrough(w, p, i);
       else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
     } else pushThrough(w, p, i);
+  } else if (i.firework !== 1 && !p.clearSolid(i.x, i.y, i.dirox, i.diroy)) {
+    chaseField(w, p, i); // §9.82 (non chi va a dare fuoco: il suo posto e' sull'orbita attorno all'edificio, meleeSpot)
   } else {
     mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
     // [§7.7, segnalazione dell'autore] nell'originale il primo attaccante
@@ -254,16 +294,7 @@ function enemyAttack(i, w, T) {
     }
     return true;
   };
-  if (w.exists("fog01")) {
-    const farFromFog = distTo(w, i, w.nearest(i.x, i.y, "fog01")) > 290;
-    if (T.fogBroken) {
-      // enemy_warrior [C]: le graffe mancano, l'else si aggancia al "< 400":
-      // vicino alla nebbia (fog01 entro 290 px) il guerriero non insegue
-      // mai; lontano, il "< 200" non aggiunge nulla (§3.10 n.39)
-      if (farFromFog && !chase(400)) chase(200);
-    } else if (farFromFog) chase(400);
-    else chase(200);
-  } else chase(400);
+  chase(400 * fogSight(w, i)); // §9.80
   if (i.action === 0 && i.warwork === 1) i.warwork = 0;
   return null;
 }
@@ -458,7 +489,7 @@ export function enemyMelee(name, p) {
     drawEnd(i, w, d) {
       if (i.selected === 1 || i.hover === 1) {
         d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, C.blue);
-        d.sprite("circ_1", 0, i.x, i.y);
+        unitRing(d, i); // §9.79
         if (i.action === 1) d.sprite("director_blue", 0, i.dirox, i.diroy);
         d.sprite("director_blue", 0, i.foodx, i.foody);
       }
@@ -529,7 +560,8 @@ export function enemyArcher(p) {
     if (!w.exists("ally_unit")) return;
     const k = iso(i.direction), night = w.g.night;
     const n0 = w.nearest(i.x, i.y, "ally_unit");
-    const range = 400 * (1 - 0.5 * night) * k;
+    const fs = fogSight(w, i); // §9.80
+    const range = 400 * (1 - 0.5 * night) * k * fs;
     if (w.distanceToInstance(i, n0) < range) {
       // §6.4: l'alleato piu' vicino a tiro con la linea libera
       const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);
@@ -550,15 +582,14 @@ export function enemyArcher(p) {
     if (w.distanceToInstance(i, n0) > 720 * (1 - 0.5 * night)) { i.anchorX = null; i.anchorY = null; }
     const chase = (needStill) => {
       const n = w.nearest(i.x, i.y, "ally_unit");
-      if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k && (!needStill || i.action !== 1))) return;
+      if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k * fs && (!needStill || i.action !== 1))) return;
       if (i.warwork === 0 || i.warwork === 1) {
         if (i.action !== 1) i.alarm.set(0, 15);
         i.action = 1; i.warwork = 1; i.dirox = n.x; i.diroy = n.y;
       }
     };
-    if (w.exists("fog01")) {
-      if (distTo(w, i, w.nearest(i.x, i.y, "fog01")) > 290) chase(false);
-    } else chase(true);
+    // [C] con le nuvole nella room si insegue anche gia' in cammino
+    chase(!w.exists("fog01"));
     if (i.action === 0 && i.warwork === 1) i.warwork = 0;
   };
   return {
@@ -608,6 +639,8 @@ export function enemyArcher(p) {
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       if (retreatStep(i, w, p)) { ANIM[name](i, w); return; } // §9.76
+      // §9.80: verso il presidio di una torre o di una fortezza (enemygarrison.js)
+      if (garrisonWalk(i, w, () => enemyMove(i, w, p))) { if (i.alive) ANIM[name](i, w); return; }
       if (i.action === 1 && i.x === i.dirox && i.y === i.diroy) { i.action = 0; i.speed = 0; }
       enemyMove(i, w, p);
       ANIM[name](i, w);

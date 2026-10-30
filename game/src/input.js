@@ -27,6 +27,7 @@ export class Input {
     this.onUnlock = null;            // chiamata quando il blocco si perde
     this._unlockedAt = -1e9;
     this.wheel = 0;
+    this.wheelPx = 0;
     this._down = new Set(); this._pressed = new Set(); this._released = new Set();
     // tasti premuti con Shift tenuto (gruppi di unita': units.js,
     // controlGroups); presi al keydown, perche' Shift puo' essere gia'
@@ -90,17 +91,15 @@ export class Input {
     canvas.addEventListener("pointercancel", up);
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     // Rotella: scatti interi (+1 = giu'). Una rotella classica da' ~100 px
-    // a scatto; il touchpad tanti delta piccoli, che si sommano.
-    let wheelAcc = 0;
+    // a scatto. [§9.83] Il touchpad (delta sotto i 50 px) da' tanti delta
+    // piccoli: si sommano in wheelFine, in pixel, per uno zoom continuo
+    // (prima si sommavano fino a uno scatto intero da 100 px).
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
       pos(e);
       const px = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 300 : e.deltaY;
-      wheelAcc += px;
-      if (Math.abs(wheelAcc) >= 100 || (Math.abs(px) >= 50 && Math.abs(wheelAcc) >= 50)) {
-        this.wheel += Math.sign(wheelAcc);
-        wheelAcc = 0;
-      }
+      if (Math.abs(px) >= 50) this.wheel += Math.sign(px);
+      else this.wheelPx += px;
     }, { passive: false });
     window.addEventListener("keydown", (e) => {
       const k = keyCode(e);
@@ -150,6 +149,7 @@ export class Input {
     this.mousePressed = this._mp; this._mp = [false, false, false];
     this.mouseReleased = this._mr; this._mr = [false, false, false];
     this.wheelStep = this.wheel; this.wheel = 0;
+    this.wheelFine = this.wheelPx; this.wheelPx = 0;
   }
 }
 

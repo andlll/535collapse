@@ -291,7 +291,9 @@ def derived_sprites():
                  particella (le macchie d'erba, §8.18).
     <mura>_b     [§9.75] mura e porte nemiche: le bandierine rosse delle
                  mura del giocatore (m_ori, m_vert, porte aperte e chiuse)
-                 azzurre come le bandiere nemiche (tint_flags).
+                 azzurre come le bandiere nemiche (tint_flags). [§9.85] Lo
+                 stesso per i loro stadi di danno (<mura>_b_r1, _r2), nel
+                 ciclo degli sprite nuovi.
     """
     img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
     out = []
@@ -416,7 +418,8 @@ def main():
     # resta nel manifest senza immagine (origine, misura: le maschere e il
     # fiume lo usano), come gli sprite vuoti (Ponte_1, tutto uguale al fiume)
     extra = []
-    for name, d in nuovi.sprites().items():
+    nsprites, nraw = nuovi.sprites(), nuovi.load()["sprites"]
+    for name, d in nsprites.items():
         im, g = d["image"], d["gruppo"]
         if im is None:  # solo maschera (Ponte_varco)
             continue
@@ -437,6 +440,13 @@ def main():
             extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.slice_image(im, x0, x1), tuple(d["origin"])))
         for k, box in enumerate(d["pezzi"]):
             extra.append((name + nuovi.SLICE_SEP + str(k), g, nuovi.tile_image(im, box), tuple(d["origin"])))
+    # [§9.85] i danni delle mura e delle porte nemiche: quelli del giocatore
+    # (sprite nuovi "su" m_ori, m_vert, ...) con le bandierine azzurre, come
+    # le mura nemiche intere (<mura>_b): m_ori_r1 -> m_ori_b_r1
+    for name, d in nsprites.items():
+        su = nraw.get(name, {}).get("su")
+        if su in WALLS_B:
+            extra.append((su + "_b" + name[len(su):], d["gruppo"], tint_flags(d["image"]), tuple(d["origin"])))
     extra += nuovi.derived()  # [§9.13] segnalini e simili ricavati dagli sprite nuovi
     for name, g, im, (ox, oy) in derived_sprites() + extra:
         bb = im.getchannel("A").getbbox()
@@ -447,6 +457,8 @@ def main():
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
                                      "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
         items[g].append((name, 0, im.crop(bb)))
+        if nraw.get(name, {}).get("griglia"):  # [§9.86] l'alpha delle ombre delle nuvole, per shadeAt
+            manifest["sprites"][name]["alpha"] = nuovi.alpha_grid(im, nraw[name]["griglia"])
 
     # font e pixel bianco nel gruppo gui (non ritagliati: le coordinate dei
     # glifi restano quelle del foglio di GameMaker)

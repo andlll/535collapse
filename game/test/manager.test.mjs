@@ -5,10 +5,11 @@ import assert from "node:assert/strict";
 import { Alarms } from "../src/alarms.js";
 import { Manager } from "../src/manager.js";
 import { newGlobals } from "../src/state.js";
+import { Camera, ZOOM_MAX } from "../src/camera.js";
 
 const fakeInput = () => ({ pressed: new Set(), released: new Set(), down: new Set(),
                            mousePressed: [false, false, false], mouseReleased: [false, false, false], x: 0, y: 0 });
-const fakeCam = () => ({ x: 0, y: 0, w: 1280, h: 720, cssW: 1280, cssH: 720, scaleview: 1, setScale(s) { this.scaleview = Math.round(Math.min(1.5, Math.max(1, s)) * 10) / 10; } });
+const fakeCam = () => { const c = new Camera(7000, 7000, null); c.resize(1280, 720); return c; };
 
 function run(m, steps) {
   const input = fakeInput(), cam = fakeCam();
@@ -87,12 +88,41 @@ test("trucchi: V + Alt + F/W/S/Q/P, e solo con entrambi tenuti", () => {
   assert.deepEqual([g.food, g.wood, g.stone, g.gold], [1100, 1050, 1000, 1050]);
 });
 
-test("zoom: X/Z fra 1,0 e 1,5; con Ctrl cambiano la scala della minimappa", () => {
+test("zoom: X/Z fra 1,0 e ZOOM_MAX; con Ctrl cambiano la scala della minimappa", () => {
   const g = newGlobals("match"); const m = new Manager("match", g);
   const input = fakeInput(), cam = fakeCam();
   for (let i = 0; i < 10; i++) { input.pressed = new Set([88]); m.keys(input, cam); }
-  assert.equal(g.scaleview, 1.5);
+  input.pressed = new Set();
+  for (let i = 0; i < 60; i++) m.keys(input, cam); // §9.83: lo zoom raggiunge la meta
+  assert.equal(g.scaleview, ZOOM_MAX);
   input.pressed = new Set([17]); m.keys(input, cam);
   input.pressed = new Set([88]); m.keys(input, cam);
   assert.equal(g.sz, 31);
+});
+
+// [§9.83] Zoom morbido: lo scatto della rotella sposta la meta e lo zoom ci
+// arriva in piu' passi, col punto sotto il puntatore sempre fermo; due scatti
+// di fila si sommano; il touchpad (wheelFine) zooma senza arrotondare.
+test("zoom morbido con la rotella: meta, passi intermedi, punto fermo", () => {
+  const g = newGlobals("match"); const m = new Manager("match", g);
+  const input = fakeInput(), cam = fakeCam();
+  cam.x = 2000; cam.y = 2000;
+  input.x = 400; input.y = 300;
+  const [rx, ry] = cam.toRoom(400, 300);
+  input.wheelStep = 1; m.keys(input, cam);
+  input.wheelStep = 1; m.keys(input, cam); // secondo scatto mentre si muove
+  input.wheelStep = 0;
+  const seen = [];
+  for (let i = 0; i < 40; i++) {
+    m.keys(input, cam);
+    seen.push(cam.scaleview);
+    const [qx, qy] = cam.toRoom(400, 300);
+    assert.ok(Math.abs(qx - rx) < 1e-6 && Math.abs(qy - ry) < 1e-6, "il punto sotto il puntatore resta fermo");
+  }
+  assert.equal(g.scaleview, 1.2);
+  assert.ok(seen.some((s) => s > 1.0 && s < 1.2 && Math.abs(s * 10 - Math.round(s * 10)) > 0.01), "valori intermedi");
+  assert.ok(seen.every((s, k) => k === 0 || s >= seen[k - 1]), "senza tornare indietro");
+  input.wheelFine = -30; m.keys(input, cam); input.wheelFine = 0;
+  for (let i = 0; i < 40; i++) m.keys(input, cam);
+  assert.ok(Math.abs(g.scaleview - 1.17) < 1e-9, "touchpad: -30 px = -0,03");
 });

@@ -10,8 +10,7 @@
 // Si applicano con bm_subtract come nell'originale: la destinazione
 // moltiplicata per (1 - valore).
 
-import { bgrToRGB } from "./gl.js";
-import { fogActive, nightColour, nightLights } from "./fog.js";
+import { fogActive, skyColour, nightLights } from "./fog.js";
 
 const NIGHT_TEXEL = 8;
 // [§7.13] nebbia e notte composte su una superficie con un texel ogni 4 px
@@ -81,11 +80,11 @@ export class FogLayer {
     // nite
     const g = w.g;
     let nightMode = 0, nightCol = [0, 0, 0], nt = null, nr = null;
-    if (g.night > 0) {
-      const n2 = nightColour(g.night);
-      nightCol = bgrToRGB(n2);
+    const dusk = w.twilight || 0, ov = w.overcast || 0; // §9.84: alba e tramonto rosa, cielo coperto
+    if (g.night > 0 || dusk > 0 || ov > 0) {
+      nightCol = skyColour(g.night, dusk, ov);
       nightMode = 1;
-      const lights = nightLights(w).filter(([x, y, s]) => {
+      const lights = (g.night > 0 ? nightLights(w) : []).filter(([x, y, s]) => {
         const rad = LIGHT_RADIUS * s;
         return x + rad > cam.x && x - rad < cam.x + cam.w && y + rad > cam.y && y - rad < cam.y + cam.h;
       });

@@ -34,17 +34,34 @@ Per ogni sprite:
             {sprite: [x, y]} (le scrive tools/14_allinea.py, dalla sagoma
             dello sprite del progetto corrispondente: "togli" il prefisso del
             nome, b_ow11 -> ow11), "gruppo"
+  [§9.85] su: lo sprite del progetto di cui questo e' uno stadio di danno
+            (torre_b_r1 su torre_b): l'immagine dell'autore, ritagliata sul
+            disegno e a un'altra scala, si scala di "scala" e si mette in "a"
+            [x, y] su una tela grande come quella dello sprite "su" (allargata
+            se il disegno sporge), con la sua origine (scala e posizione:
+            tools/14_allinea.py)
   differenza {"sprite": s, "a": [x, y]}: i pixel uguali a quelli dello
             sprite s (questo messo in x, y dentro s) diventano trasparenti:
             gli stadi del ponte disegnano solo cio' che cambia, e l'acqua
             (coi suoi effetti) resta quella del fiume
+  [§9.86] sfuma  deviazione della sfocatura gaussiana, in px dell'immagine:
+            le ombre delle nuvole, disegnate dall'autore a bordi netti (la
+            sfumatura si regola qui, provando in gioco); la tela si allarga
+            di 3 deviazioni per lato se il disegno ci arriva
+  riduci    fattore di scala dopo la sfocatura (0,5: meta' risoluzione;
+            in gioco si disegnano comunque molto ingrandite)
+  griglia   lato lungo, in celle, della mappa dell'alpha che 05_atlas scrive
+            nel manifest ("alpha": quanto e' in ombra un punto, per scurire
+            le istanze che ci stanno sotto, ambience.js shadeAt)
 """
 import json
 import os
 
-from PIL import Image, ImageChops, ImageDraw
+import base64
 
-from _paths import REPO_DIR
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
+
+from _paths import DATA_DIR, REPO_DIR
 
 NUOVI_DIR = os.path.join(REPO_DIR, "nuovi")
 SPRITE_DIR = os.path.join(NUOVI_DIR, "sprites")
@@ -124,6 +141,10 @@ def sprites():
         if frames and any(f.size != frames[0].size for f in frames):
             raise SystemExit("%s: i fotogrammi non hanno la stessa misura" % name)
         im = frames[0] if frames else None if d.get("poligono") else image(name)
+        if d.get("su"):  # [§9.85] sulla tela dello sprite integro, con la sua origine
+            im, d = _on_base(name, d, im)
+        if d.get("sfuma"):  # [§9.86] le ombre delle nuvole
+            im = _soften(im, d["sfuma"], d.get("riduci", 1))
         if im is not None and d.get("differenza"):
             im = _difference(im, d["differenza"])
         m = _mask_of(name, d, im, cache)
@@ -170,6 +191,60 @@ def sprites():
         out[name] = {"image": im, "frames": frames or [im], "mask": m, "origin": o, "fette": slices, "pezzi": tiles,
                      "gruppo": d.get("gruppo", "edifici"), "acqua": bool(d.get("acqua"))}
     return out
+
+
+_PROJECT = None
+
+
+def _on_base(name, d, im):
+    """[§9.85] (immagine, d con l'origine dello sprite "su")."""
+    global _PROJECT
+    if _PROJECT is None:
+        _PROJECT = {s["name"]: s for s in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))}
+    if "scala" not in d or "a" not in d:
+        raise SystemExit("%s: manca scala o posizione su %s (lancia tools/14_allinea.py)" % (name, d["su"]))
+    b = _PROJECT[d["su"]]
+    sc = d["scala"]
+    im = im.resize((max(1, round(im.width * sc)), max(1, round(im.height * sc))), Image.LANCZOS)
+    # tela grande come quella dell'integro, allargata se il disegno sporge
+    # (i muri verticali danneggiati: 14 px sopra)
+    ax, ay = d["a"]
+    x0, y0 = min(0, ax), min(0, ay)
+    x1, y1 = max(b["width"], ax + im.width), max(b["height"], ay + im.height)
+    out = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+    out.paste(im, (ax - x0, ay - y0), im)
+    return out, {**d, "origin": [b["origin_x"] - x0, b["origin_y"] - y0]}
+
+
+def _soften(im, sigma, k):
+    """[§9.86] Una sagoma di un colore solo, sfocata (gaussiana di
+    deviazione sigma) e ridotta di k."""
+    a = im.getchannel("A")
+    bb = a.getbbox()
+    m = round(3 * sigma)
+    if bb and (bb[0] < m or bb[1] < m or bb[2] > im.width - m or bb[3] > im.height - m):
+        big = Image.new("RGBA", (im.width + 2 * m, im.height + 2 * m), (0, 0, 0, 0))
+        big.paste(im, (m, m))
+        im = big
+    # sagome di un colore solo: si sfoca l'alpha, il colore resta quello
+    # dei pixel pieni
+    a = im.getchannel("A")
+    full = a.point(lambda v: 255 if v == 255 else 0)
+    col = tuple(round(c) for c in ImageStat.Stat(im.convert("RGB"), mask=full).mean) if full.getbbox() else (0, 0, 0)
+    im = Image.new("RGBA", im.size, col + (0,))
+    im.putalpha(a.filter(ImageFilter.GaussianBlur(sigma)))
+    if k != 1:
+        im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    return im
+
+
+def alpha_grid(im, n):
+    """[§9.86] L'alpha di tutta la tela in una griglia di n celle sul lato
+    lungo: {"w", "h", "data": byte 0-255 riga per riga, in base64}."""
+    w, h = (n, max(1, round(n * im.height / im.width))) if im.width >= im.height else \
+        (max(1, round(n * im.width / im.height)), n)
+    g = im.getchannel("A").resize((w, h), Image.BOX)
+    return {"w": w, "h": h, "data": base64.b64encode(g.tobytes()).decode("ascii")}
 
 
 def tile_image(im, box):

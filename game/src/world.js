@@ -798,7 +798,9 @@ export class World {
   //
   // I sistemi di particelle (this.particles) si disegnano da soli alla loro
   // depth fra le istanze del Draw; a pari depth dopo le istanze [I].
-  draw(r, d, cam, manager = null) {
+  // shade(x, y): [§9.84] l'ombra delle nuvole nel punto in cui l'istanza tocca
+  // terra (ambience.js), su tutto quello che l'istanza disegna
+  draw(r, d, cam, manager = null, shade = null) {
     const vx0 = cam.x, vy0 = cam.y, vx1 = cam.x + cam.w, vy1 = cam.y + cam.h;
     const list = this.sorted();
     const P = this.particles, systems = P ? P.sorted() : [];
@@ -808,8 +810,9 @@ export class World {
     // tutte le istanze (la linea verso il punto di raccolta degli edifici)
     for (const i of list) if (i.visible) this.fire(i, "drawBelow", d);
     for (const i of list) {
-      while (si < systems.length && systems[si].depth > i.depth) P.draw(systems[si++], r, this.assets, cam);
+      while (si < systems.length && systems[si].depth > i.depth) { r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
       if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
+      r.shade = shade ? shade(i.x, i.y) : 1;
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
       const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
@@ -829,6 +832,7 @@ export class World {
       if (drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }
+    r.shade = 1;
     while (si < systems.length) P.draw(systems[si++], r, this.assets, cam);
     let managerDone = !manager;
     for (const i of list) {

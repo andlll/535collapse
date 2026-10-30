@@ -58,9 +58,6 @@ export const PRODUCERS = {
   // quanto pagato.
   castello: {
     ico: "ico_castello", cancel: "castello_indietro_clicker", cancelKey: 69, cancelX: 590, icoScale: 0.7,
-    // [§9.63] barra di produzione e coda in terza riga: la seconda e' dei
-    // pulsanti degli arcieri di presidio (ranged.js, garrisoned)
-    queueY: 190,
     alarm: 1, period: 30, start: 30, next: 30, popMargin: 2, popWait: 30, slots: true, spawn: "castle",
     units: {
       // [Correzione decisa dall'autore §1.6 n.1] col tasto Q l'ariete
@@ -207,7 +204,7 @@ export function producer(name, base, p) {
         for (const u of types) d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, 1);
         d.spriteExt("ico_indietro", 0, P.cancelX, 50, 0.7, 0.7, 0, WHITE, 1);
       }
-      const QY = P.queueY || 120; // §9.63: la riga di barra e coda
+      const QY = 120; // la riga di barra e coda
       if (i.progression > 0) {
         d.setAlpha(0.69);
         d.roundrectColourExt(420, QY - 30, 550, QY + 30, 60, 60, WHITE, WHITE, false);

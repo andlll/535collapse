@@ -15,6 +15,8 @@ import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
+import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
+import { showDamage } from "./damage.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
@@ -458,13 +460,13 @@ const GARRISON = {
 
 // [§9.63, richiesta dell'autore] Gli arcieri di presidio escono: con
 // l'edificio selezionato, un pulsante per arciere (l'icona nel cerchio
-// bianco, come i pulsanti della caserma) nella prima riga della torre e
-// nella seconda del castello (la prima e' della produzione; barra e coda
-// della produzione del castello passano alla terza, production.js). Il
+// bianco, come i pulsanti della caserma) nella prima riga, nel castello a
+// destra di ariete, catapulta e annulla (§9.79: prima nella seconda riga,
+// e barra e coda della produzione finivano in una terza). Il
 // clic fa uscire un arciere accanto all'edificio (findFreeSpawn, nel suo
 // Create), con la vita che aveva entrando; le frecce e le bandiere seguono
 // il numero di arcieri rimasti. Coordinate in pixel CSS, come il Draw GUI.
-const EXIT_ROW = { torre: 50, castello: 120 }, EXIT_X = 450, EXIT_DX = 70, EXIT_R = 30;
+const EXIT_ROW = 50, EXIT_X = { torre: 450, castello: 660 }, EXIT_DX = 70, EXIT_R = 30;
 const EXIT_TIP = { torre: "Click to send this archer out of the tower.", castello: "Click to send this archer out of the fortress." };
 
 // il pulsante (indice) sotto il puntatore, o -1
@@ -472,7 +474,7 @@ function exitHover(name, i, w) {
   const inp = w.input;
   if (i.selected !== 1 || !inp || !inp.inside) return -1;
   for (let k = 0; k < i.npresidio; k++) {
-    if (Math.hypot(inp.x - (EXIT_X + EXIT_DX * k), inp.y - EXIT_ROW[name]) < EXIT_R) return k;
+    if (Math.hypot(inp.x - (EXIT_X[name] + EXIT_DX * k), inp.y - EXIT_ROW) < EXIT_R) return k;
   }
   return -1;
 }
@@ -506,12 +508,12 @@ export function garrisoned(name, base) {
     drawGUI(i, w, d) {
       if (base.drawGUI) base.drawGUI(i, w, d);
       if (i.selected !== 1 || i.npresidio <= 0) return;
-      const h = exitHover(name, i, w), y = EXIT_ROW[name];
+      const h = exitHover(name, i, w), x0 = EXIT_X[name], y = EXIT_ROW;
       for (let k = 0; k < i.npresidio; k++) {
         d.setAlpha(k === h ? 0.99 : 0.69);
-        d.circleColour(EXIT_X + EXIT_DX * k, y, EXIT_R, WHITE, WHITE, false);
+        d.circleColour(x0 + EXIT_DX * k, y, EXIT_R, WHITE, WHITE, false);
         d.setAlpha(1);
-        d.spriteExt("ico_arciere", 0, EXIT_X + EXIT_DX * k, y, 0.6, 0.6, 0, WHITE, 1);
+        d.spriteExt("ico_arciere", 0, x0 + EXIT_DX * k, y, 0.6, 0.6, 0, WHITE, 1);
       }
       if (h < 0) return;
       // la scheda in basso, come quella dei pulsanti di produzione
@@ -630,6 +632,7 @@ export function centroArrows(base) {
 
 // enemy_torre [C]: due frecce ogni 50 passi su un alleato entro 600 px;
 // visibile come le unita' nemiche ma, una volta vista, resta visibile.
+// [§9.80] Una freccia per arciere di presidio (enemygarrison.js).
 // Distrutta, scala i contatori delle basi del tutorial di match.
 export function enemyTower(p) {
   return {
@@ -640,6 +643,7 @@ export function enemyTower(p) {
       i.alarm.set(1, 70);
       i.visible = false;
       w.create("flag_b", i.x, i.y - 170);
+      garrisonCreate(i); // §9.80
     },
     alarm0(i) { i.arm = 1; },
     alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
@@ -663,14 +667,10 @@ export function enemyTower(p) {
       }
       // [§6.5] l'alleato piu' vicino entro 600 px con la linea libera
       // [§9.76] una torre di vedetta (watch, regia del livello 5) non tira
-      const a = i.arm === 1 && !i.watch ? towerTarget(w, i, "ally_unit", 600) : null;
-      if (i.arm === 1 && a) {
-        i.arm = 0;
-        i.alarm.set(0, 50);
-        const dx = a.x > i.x ? 20 : -20;
-        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 60, i, a);
-        towerArrow(w, "b_arciere_bullet_t", i.x + dx, i.y - 77, i, a);
-      }
+      // [§9.80] una freccia per arciere di presidio, e l'AI del presidio
+      garrisonShoot(i, w, 50, 0);
+      garrisonAI(i, w);
+      showDamage(i, w, "torre_b"); // §9.85
     },
     globalLeftPressed(i) { i.selected = 0; },
     leftReleased(i, w) { if (i.visible === true && w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1; },
@@ -679,6 +679,8 @@ export function enemyTower(p) {
       if (i.selected === 1 || i.hover === 1 || (i.hit === 1 && w.room === "match")) {
         d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, blue);
       }
+      // §9.80: gli arcieri dentro, come la torre alleata
+      if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? 2) + "/" + ENEMY_GARRISON.enemy_torre.max); d.setHalign("left"); }
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;

@@ -23,6 +23,7 @@ import { tr } from "./i18n.js";
 import { pointDirection } from "./gm.js";
 import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondLifeBar } from "./buildings.js";
 import { revealBuilding, enemyBarAndPanel } from "./enemybuild.js";
+import { damageSuffix, showDamage } from "./damage.js";
 
 const WHITE = 0xffffff, RED = 0x0000ff;
 
@@ -36,6 +37,20 @@ const KIND = {
           plus: [["mplus_vb", 0, 0], ["mplus_va", 0, -300]],
           gateLife: 800, open: ["m_vert_pa", "m_vert_pa_mask"], closed: ["m_vert_p", "m_vert_p"] },
 };
+
+// [§9.85] Lo sprite di una porta (aperta o chiusa) col suo stadio di danno
+// (damage.js): cambiando stadio, a porta ferma, in dissolvenza; aprendo o
+// chiudendo di colpo, come prima.
+function look(i, w, [spr, mask]) {
+  const want = spr + damageSuffix(i);
+  if (i.sprite_index !== want) {
+    if (i.lookBase === spr) w.swapSprite(i, want);
+    else i.sprite_index = want;
+  }
+  i.lookBase = spr;
+  i.mask_index = mask;
+  w.moved(i);
+}
 
 // `with(x){if hover=1 var h=1 else var h=0}` [C]: vale l'ultima istanza
 // visitata; senza istanze la variabile resta non assegnata, cioe' 0 [I].
@@ -131,6 +146,7 @@ export function wall(k, p) {
         w.create("gate_clicker", 0, 0);
       }
       repairEnd(i, w);
+      showDamage(i, w, k === "ori" ? "m_ori" : "m_vert"); // §9.85
     },
     drawEnd(i, w, dr) {
       if (i.selected === 1) lifeBar(dr, i);
@@ -179,7 +195,7 @@ export function gate(k, p) {
   const K = KIND[k], plusNames = K.plus.map(([n]) => n);
   // (le celle "ostacolo per i nemici" restano quelle della maschera di
   // creazione: aprire e chiudere non le cambia)
-  const setLook = (i, w, [spr, mask]) => { i.sprite_index = spr; i.mask_index = mask; w.moved(i); };
+  const setLook = look; // §9.85: col danno
   return {
     create(i, w) {
       // (porta_ori Create rimette mask_index=m_ori_pa_mask, gia' quella
@@ -230,7 +246,7 @@ export function gate(k, p) {
         if (near) { if (i.open === 0) i.open = 1; } else if (i.open === 1) i.open = 0;
         if (k === "vert") { i.armed = 0; i.alarm.set(10, 30); }
         setLook(i, w, near ? K.open : K.closed);
-      }
+      } else if (i.lookBase) setLook(i, w, i.open === 1 ? K.open : K.closed); // §9.85: il danno anche fra un controllo e l'altro
     },
     drawEnd(i, w, dr) {
       if (i.selected === 1) lifeBar(dr, i);
@@ -281,14 +297,15 @@ export function enemyWall(k, p) {
     destroy(i) { p.markInstance(i, 1); },
     step(i, w) {
       revealBuilding(i, w);
-      if (i.life <= 0) w.destroy(i);
+      if (i.life <= 0) { w.destroy(i); return; }
+      showDamage(i, w, k === "ori" ? "m_ori_b" : "m_vert_b"); // §9.85
     },
   };
 }
 
 export function enemyGate(k, p) {
   const K = ENEMY_KIND[k];
-  const setLook = (i, w, [spr, mask]) => { i.sprite_index = spr; i.mask_index = mask; w.moved(i); };
+  const setLook = look; // §9.85: col danno
   return {
     ...enemyBarAndPanel("ico_gate", false),
     create(i, w) {
@@ -315,7 +332,10 @@ export function enemyGate(k, p) {
       revealBuilding(i, w);
       if (i.life <= 0) { w.destroy(i); return; }
       // al piu' ogni 10 passi si guarda chi c'e'
-      if ((i.lookAt || 0) > w._stepNo) return;
+      if ((i.lookAt || 0) > w._stepNo) {
+        if (i.sprite_index !== (i.open === 1 ? K.open : K.closed)[0] + damageSuffix(i)) setLook(i, w, i.open === 1 ? K.open : K.closed); // §9.85
+        return;
+      }
       i.lookAt = w._stepNo + 10;
       const u = w.nearest(i.x, i.y, "enemy_unit");
       const near = !!u && w.distanceToInstance(i, u) < 20;

@@ -14,6 +14,16 @@ Scrive "origini" nella serie in nuovi/nuovi.json e stampa la sovrapposizione
 peggiore (sotto 0,7: probabilmente l'immagine sbagliata). Rilanciare se
 cambiano le immagini.
 
+[§9.85] Gli sprite danneggiati dell'autore ("su": lo sprite del progetto
+integro, es. torre_b_r1 su torre_b) sono ritagliati sul disegno ed esportati
+a un'altra scala (~1,05). Per ognuno: la scala (0,90-1,10 a passi di
+0,005) e lo spostamento che sovrappongono meglio contorni neri e sagoma a
+quelli dell'integro (correlazione con la FFT: richiede numpy, solo qui; la
+pipeline legge i numeri scritti); poi una scala unica per tutti (la mediana:
+vengono dalla stessa esportazione) e gli spostamenti rifatti con quella.
+Scrive "scala" e "a" (il pixel (0, 0) dello sprite scalato va in (x, y)
+dell'integro) e stampa la sovrapposizione.
+
 Uso:  python3 tools/14_allinea.py
 """
 import json
@@ -56,10 +66,52 @@ def align(ref, new):
     return best
 
 
+def _features(im):
+    import numpy as np
+    a = np.asarray(im.convert("RGBA"), dtype=np.float32) / 255
+    lum = a[..., :3].mean(axis=2)
+    solid = a[..., 3] > 0.5
+    return (solid & (lum < 0.3)).astype(np.float32) * 2 + solid * 0.5
+
+
+def _register(ref, new, scales):
+    """(punteggio, scala, x, y): new scalato e messo in (x, y) su ref."""
+    import numpy as np
+    FR = _features(ref)
+    best = None
+    for sc in scales:
+        n = new.resize((max(1, round(new.width * sc)), max(1, round(new.height * sc))), Image.BICUBIC)
+        FN = _features(n)
+        H, W = FR.shape[0] + FN.shape[0], FR.shape[1] + FN.shape[1]
+        c = np.fft.irfft2(np.fft.rfft2(FR, (H, W)) * np.fft.rfft2(FN[::-1, ::-1], (H, W)), (H, W))
+        k = np.unravel_index(np.argmax(c), c.shape)
+        score = float(c[k] / np.sqrt((FR ** 2).sum() * (FN ** 2).sum()))
+        if best is None or score > best[0]:
+            best = (score, round(float(sc), 3), int(k[1] - (FN.shape[1] - 1)), int(k[0] - (FN.shape[0] - 1)))
+    return best
+
+
+def damaged(data, spr):
+    """[§9.85] scala e posizione degli sprite danneggiati ("su")."""
+    items = [(name, d) for name, d in data["sprites"].items() if d.get("su")]
+    if not items:
+        return
+    img = lambda n: Image.open(need(os.path.join(GMX_DIR, "sprites", "images", spr[n]["frames"][0]), n)).convert("RGBA")
+    scales = [0.9 + 0.005 * k for k in range(41)]
+    first = {name: _register(img(d["su"]), nuovi.image(name), scales) for name, d in items}
+    sc = sorted(v[1] for v in first.values())[len(first) // 2]
+    for name, d in items:
+        score, _, x, y = _register(img(d["su"]), nuovi.image(name), [sc])
+        d["scala"], d["a"] = sc, [x, y]
+        print("%-14s su %-10s scala %.3f in (%d, %d), sovrapposizione %.2f (scala propria %.3f)"
+              % (name, d["su"], sc, x, y, score, first[name][1]))
+
+
 def main():
     path = os.path.join(nuovi.NUOVI_DIR, "nuovi.json")
     data = json.load(open(path, encoding="utf-8"))
     spr = {s["name"]: s for s in json.load(open(os.path.join(DATA_DIR, "sprites.json"), encoding="utf-8"))}
+    damaged(data, spr)
     for name, d in data["sprites"].items():
         if not d.get("serie"):
             continue

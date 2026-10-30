@@ -18,7 +18,7 @@ import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 import { ZOOM_MAX } from "./camera.js";
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
-const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "_far", "_bb", "_tStep", "_tSum", "_trk"], classes: { Alarms }, roundKeys: ["parts"] };
+const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "chaseFf", "_far", "_bb", "_tStep", "_tSum", "_trk"], classes: { Alarms }, roundKeys: ["parts"] };
 
 export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const P = world.particles;
@@ -85,6 +85,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   P.seq = s.particles.seq;
   P.count = P.systems.reduce((n, ps) => n + ps.parts.length, 0);
   cam.scaleview = Math.min(ZOOM_MAX, s.cam.scaleview); // i salvataggi di quando si arrivava a 2,0
+  cam.zoomTarget = null; // §9.83: uno zoom in corso al caricamento si ferma
   cam.x = s.cam.x;
   cam.y = s.cam.y;
 }
