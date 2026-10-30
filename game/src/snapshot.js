@@ -75,6 +75,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.fogalpha = s.manager.fogalpha;
   manager.rain = s.manager.rain;
   manager.endlessNight();
+  world.twilight = manager.twilight(); // §9.88: la visuale del crepuscolo gia' al primo disegno
   path.cost.set(s.path.cost);
   path.enemyBlock.set(s.path.enemyBlock);
   if (s.path.enemyPass) path.enemyPass.set(s.path.enemyPass); else path.enemyPass.fill(0); // §9.75; i salvataggi di prima non l'hanno

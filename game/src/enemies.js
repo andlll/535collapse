@@ -12,6 +12,7 @@
 // scr_attacca) arrivano col punto 4e.
 
 import { hintOnce, dialogOpen } from "./hints.js";
+import { sightK } from "./fog.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY } from "./pathing.js";
@@ -341,7 +342,7 @@ function enemyFireHouses(i, w) {
 export function enemyMelee(name, p) {
   const T = MELEE[name];
   const visibility = (i, w) => {
-    const g = w.g, n = 1 - g.night;
+    const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
     const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || (T.palo && near("palo_1", 200)) || i.hit === 1
       || near("castello", 500) || near("torre", 500) || w.room === "menu" || g.fogville === 0;
@@ -534,7 +535,7 @@ export function enemyArcher(p) {
   const base = enemyMelee("enemy_warrior", p); // visibilita' e disegno in comune
   const name = "enemy_arciere";
   const visibility = (i, w) => {
-    const g = w.g, n = 1 - g.night;
+    const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
     const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0;

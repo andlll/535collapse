@@ -7501,3 +7501,37 @@ unitari e `ambience.mjs`.
 Visto e lasciato com'e' (dall'originale): il rettangolo di selezione e' blu
 solo con global.night uguale a 0, e dopo la prima alba global.night resta
 appena sotto 0, quindi da li' in poi e' bianco anche di giorno.
+
+### 9.88 Visuale intermedia al crepuscolo
+
+Richiesta dell'autore: una visibilita' intermedia (nebbia di guerra) nella
+fase di alba e tramonto; prima il passaggio alla notte era brusco.
+
+Nell'originale la visuale e' k = 1 - global.night (ellissi della nebbia
+r + r x k, la stessa formula per quando unita' ed edifici nemici si
+vedono): passa da giorno a notte solo nei 200 passi (3 s) del passaggio,
+mentre il cielo diventa rosa per 15 s prima (§9.84). Ora (fog.js `sightK`)
+il buio della visuale segue anche il crepuscolo: sale fino a `DUSK_SIGHT`
+(0,5, cioe' ellissi a 1,5 r invece di 2 r) negli ultimi 900 passi del
+giorno, con la stessa curva del rosa (manager.twilight, smoothstep), e il
+passaggio lo porta da li' alla notte (n + 0,5 x (1 - n)); all'alba lo
+stesso al contrario, con la risalita a giorno pieno nei 900 passi dopo.
+Continuo (mai piu' di 0,004 a passo, contro 0,005 del passaggio di prima).
+
+Vale per la nebbia (fogSources: scoperta e vista) e per la visibilita' di
+unita' nemiche, edifici nemici, civili nemici e macchine d'assedio
+(enemies.js, enemybuild.js, economy.js, siege.js, ranged.js: le stesse
+ellissi, cosi' cio' che si vede e cio' che e' scoperto coincidono). La
+vista dei nemici (portate di attacco e inseguimento, 1 - 0,5 x night)
+resta quella dell'originale: solo il giocatore vede meno al crepuscolo.
+Niente da salvare: w.twilight si ricava dagli allarmi salvati, in
+manager.step prima delle istanze e al caricamento (snapshot.js), cosi'
+anche il primo disegno dopo un caricamento in pausa e' giusto. Il livello 1
+(sempre notte) non cambia.
+
+Prova nuova in `manager.test.mjs`: giorno pieno 1, nel crepuscolo fra 0,5
+e 1, al primo passo del passaggio e alla fine dell'alba 0,5, di notte 0,
+giorno pieno 1000 passi dopo l'alba, nessun salto. Passano i test unitari,
+`ambience.mjs` e `saves.mjs` (match, lvl02, lvl03: ripristino identico).
+Verificato a occhio con cinque foto nel match (giorno, meta' crepuscolo,
+tramonto, meta' passaggio, notte): le zone viste si restringono per gradi.

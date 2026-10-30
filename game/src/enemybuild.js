@@ -6,6 +6,7 @@
 // def_assign). Trascrizione di src/objects/<oggetto>/; nomi originali.
 
 import { hintOnce, dialogOpen } from "./hints.js";
+import { sightK } from "./fog.js";
 import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
 import { fireStep, fireStop } from "./effects.js";
@@ -22,7 +23,7 @@ const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 // Visibilita' degli edifici nemici [C]: come le unita', ma una volta visti
 // restano visibili (nessun "else visible=false").
 export function revealBuilding(i, w) {
-  const g = w.g, n = 1 - g.night;
+  const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
   const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
   if (near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0) i.visible = true;

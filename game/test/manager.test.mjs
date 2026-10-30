@@ -6,6 +6,7 @@ import { Alarms } from "../src/alarms.js";
 import { Manager } from "../src/manager.js";
 import { newGlobals } from "../src/state.js";
 import { Camera, ZOOM_MAX } from "../src/camera.js";
+import { sightK, DUSK_SIGHT } from "../src/fog.js";
 
 const fakeInput = () => ({ pressed: new Set(), released: new Set(), down: new Set(),
                            mousePressed: [false, false, false], mouseReleased: [false, false, false], x: 0, y: 0 });
@@ -86,6 +87,30 @@ test("crepuscolo: nessun salto in tre giorni e tre notti, dal primo giorno", () 
     assert.equal(firstDayMax, 0, `${room}: rosa a meta' del primo giorno`);
     assert.ok(rises > 2000 && falls > 2000, `${room}: ${rises} su, ${falls} giu'`);
   }
+});
+
+// [§9.88, richiesta dell'autore] la visuale (nebbia e nemici visti) scende
+// gia' nel crepuscolo: a meta' (DUSK_SIGHT) quando comincia il passaggio,
+// a 0 di notte piena, e risale allo stesso modo dopo l'alba; senza salti
+test("visuale del crepuscolo: intermedia al tramonto e all'alba, continua", () => {
+  const g = newGlobals("match");
+  const m = new Manager("match", g);
+  m.al.set(4, -1); // niente pioggia nel test
+  const k = () => sightK({ g, twilight: m.twilight() }); // w.twilight: manager.step
+  const ks = [];
+  for (let s = 0; s < 6000 + 200 + 2000 + 200 + 4000; s++) { run(m, 1); ks.push([k(), g.night]); }
+  let maxJump = 0;
+  for (let s = 1; s < ks.length; s++) maxJump = Math.max(maxJump, Math.abs(ks[s][0] - ks[s - 1][0]));
+  assert.ok(maxJump < 0.01, `salto ${maxJump}`);
+  assert.equal(ks[4000][0], 1);                                  // giorno pieno
+  assert.ok(ks[5000][0] === 1 && ks[5400][0] < 1 && ks[5400][0] > 1 - DUSK_SIGHT, `crepuscolo ${ks[5400][0]}`);
+  const sunset = ks.findIndex(([, n]) => n > 0);                 // il primo passo del passaggio
+  assert.ok(Math.abs(ks[sunset][0] - (1 - DUSK_SIGHT)) < 0.01, `al tramonto ${ks[sunset][0]}`);
+  assert.equal(ks[7000][0], 0);                                  // notte piena
+  const dawnEnd = ks.findIndex(([, n], s) => s > 7000 && n < 0); // fine dell'alba
+  assert.ok(Math.abs(ks[dawnEnd][0] - (1 - DUSK_SIGHT)) < 0.01, `dopo l'alba ${ks[dawnEnd][0]}`);
+  assert.ok(ks[dawnEnd + 450][0] > ks[dawnEnd][0] && ks[dawnEnd + 450][0] < 1);
+  assert.equal(ks[dawnEnd + 1000][0], 1);
 });
 
 test("lvl01 parte di notte e ci resta a lungo; lvl02 comincia subito a schiarire", () => {
