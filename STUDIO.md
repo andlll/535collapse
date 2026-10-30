@@ -7516,7 +7516,8 @@ il buio della visuale segue anche il crepuscolo: sale fino a `DUSK_SIGHT`
 giorno, con la stessa curva del rosa (manager.twilight, smoothstep), e il
 passaggio lo porta da li' alla notte (n + 0,5 x (1 - n)); all'alba lo
 stesso al contrario, con la risalita a giorno pieno nei 900 passi dopo.
-Continuo (mai piu' di 0,004 a passo, contro 0,005 del passaggio di prima).
+Continuo: al massimo 0,0025 a passo nel passaggio (prima 0,005), meno
+di 0,001 nel crepuscolo.
 
 Vale per la nebbia (fogSources: scoperta e vista) e per la visibilita' di
 unita' nemiche, edifici nemici, civili nemici e macchine d'assedio
