@@ -7658,3 +7658,114 @@ rimesso a 1 a ogni passo) si spegne la prima volta al passo 545, con le
 gocce a 0,533 (prima: al primo passo), l'ultima volta mentre calano a
 0,517 con global.raining gia' a 0, mai dopo. Passano i test unitari,
 `ambience.mjs`, `burn.mjs` e `saves.mjs` (match, lvl02, lvl03).
+
+### 9.93 Pulsanti sbiaditi senza risorse; fumo dal centro e dalle case blu
+
+Richiesta dell'autore, in due parti.
+
+**Pulsanti senza risorse.** I pulsanti di costruzione (i 10 del civile) e di
+produzione (civile al centro; guerriero, picchiere, arciere in caserma;
+cavaliere in stalla; ariete e catapulta nel castello) che costano piu'
+delle risorse che ci sono si disegnano molto piu' trasparenti: cerchio e
+icona per `POOR_ALPHA` = 0,3 (cerchio 0,69 -> ~0,21, icona 1 -> 0,3; col
+puntatore sopra lo stesso, il cerchio evidenziato 0,99 -> ~0,3). Appena le
+risorse bastano tornano come gli altri, a ogni fotogramma (buildings.js
+`buttonAlpha`, usato da civilians.js `ominoPanel`, dal centro, da
+production.js). Conta solo il costo in cibo, legno, oro e pietra: la
+popolazione no (un pulsante con la popolazione piena resta normale, il
+clic continua a far lampeggiare `pop_blink`). Il pulsante "Annulla" non
+cambia. Visto negli screenshot: civile con 60 legno e 0 pietra, pieni solo
+casa (50) e mulino (60); caserma con 60 cibo, 40 oro, 50 legno, pieno solo
+il picchiere; centro con 40 cibo, civile sbiadito; con le risorse tornano
+tutti pieni.
+
+**Fumo dai camini.** In §9.84 il fumo usciva solo dalle case del giocatore
+(rosse) con camino. Guardati tutti gli sprite degli edifici, rossi e blu:
+hanno un camino anche il centro citta' (cc_spr) e quello nemico (cc_b),
+nello stesso punto (-138, -141 dall'origine), e due stili delle case
+nemiche blu, c2b (-6, -126) e c6b (58, -92); le altre case blu hanno il
+tetto piatto, e caserme, stalle, magazzini, mulini, chiese, castelli e
+torri non hanno camini (le torrette del castello non lo sono). La tabella
+`CHIMNEY` (ambience.js) ora e' per sprite e copre casa, enemy_house,
+centro ed enemy_centro, con le stesse regole: uno sbuffo ogni 50-70
+passi, niente dagli edifici in fiamme, solo sullo schermo; quelli nemici
+solo una volta visti (visible, come l'edificio stesso nella nebbia).
+
+`ambience.mjs`, voce "camini": oltre alle 6 case del giocatore, le 6 case
+nemiche e i due centri; il fumo nasce entro 2 px dalla cima del camino in
+c1s, c2s, c4s, c6s, c2b, c6b, cc_spr e cc_b, mai dalle case senza camino,
+e una casa nemica c6b non ancora vista resta senza fumo per 150 passi.
+Passano i test unitari, `ambience.mjs` (una prima esecuzione e' caduta
+sulla voce "graduale" della pioggia, che dipende dal caso: prima goccia 16
+passi dopo il cielo coperto, rapporto 0,16 contro il tetto di 0,15; la
+seconda passa; il codice della pioggia non e' toccato) e `soak.mjs`.
+Versione 0.2605.
+
+### 9.94 Scintille delle miniere in particelle; erba meno agitata col vento
+
+Richiesta dell'autore, in tre parti.
+
+**Scintille al posto di miniera_blink.** Il luccichio dell'originale era lo
+sprite miniera_blink (una stella bianca di 57 x 54 px) che compariva in un
+punto a caso entro 60 x 40 px dall'origine della miniera e sfumava in 50
+passi, disegnato nel Draw End. Ora sono particelle (ambience.js,
+`mineSparkles`): stelle a quattro punte con un alone, dal bianco caldo
+all'oro, additive, che si accendono e si spengono in 34-54 passi girando un
+poco, una ogni ~18 passi per miniera, piu' un granello dorato che sale ogni
+~34. Nascono solo sulle venature gialle dello sprite: 14 punti misurati
+sull'immagine (`VEINS`, dall'origine; tutte le miniere delle room hanno
+scala 1). Per la stella c'e' una forma nuova delle particelle, `star`
+(`__pt_star`, tools/05_atlas.py: quattro raggi affilati, quattro diagonali
+piu' corti e deboli, un nucleo), perche' il bagliore `flare` era troppo
+morbido e a quella misura si vedeva come un puntino. Un sistema per miniera
+alla sua depth (le unita' davanti la coprono), categoria "fire" ("Fiamme e
+scintille"); anche nel menu. Lo sprite miniera_blink non e' piu' usato
+(resta nell'atlas, che esclude solo gli sprite delle maschere), ne'
+i campi blinkfade/blinkx/blinky della miniera (nei salvataggi di prima
+restano e non servono).
+
+**Solo da una miniera del tutto scoperta.** Il motivo del difetto: il Draw
+End delle istanze sotto depth -1 si disegna dopo la nebbia (World.draw: il
+manager, con la nebbia, passa alla sua depth fra i Draw End), quindi la
+stella stava sopra il nero. E la miniera diventa "vista" (visible) appena un
+alleato e' a 400 px dal suo riquadro, non quando la nebbia la scopre: a
+inizio tutorial (match) la prima miniera e' gia' visible ma solo 15 delle
+96 celle della nebbia sotto il suo sprite sono scoperte (68 ancora nere), e
+il luccichio si vedeva. Ora le scintille nascono solo se la miniera e'
+visible e tutte le celle della scoperta sotto il suo sprite (172 x 117 px)
+sono piene (`mineSeen`); senza nebbia sempre. Le particelle si disegnano
+sotto la nebbia: in una zona gia' scoperta ma fuori vista si vedono
+attenuate come il resto.
+
+**Erba meno agitata.** Col vento forte (§9.90) l'oscillazione di erba,
+fiori e spighe era 1,6 volte piu' ampia e 1,6 volte piu' rapida, piegata di
+0,75 volte l'ampiezza: ora 1,3, 1,3 e 0,45 (particles.js `SWAY_*`); col
+vento minimo come prima. Sull'erba di prova: ampiezza 5,2 gradi invece di
+6,4, piegata di 1,8 invece di 3.
+
+`ambience.mjs`: voce nuova "miniere" (la miniera piu' lontana dagli
+alleati, visible: con la scoperta nulla e con meta' riquadro scoperto
+nessuna scintilla in 200 passi; tutta scoperta, 39 nascite in 300 passi,
+tutte entro 3,5 px da un punto delle venature) e "vento" coi valori nuovi.
+Visto negli screenshot: a inizio tutorial la prima miniera, mezza nel nero,
+senza scintille; tutta scoperta, le stelline sulle venature. Passano i
+test unitari, `ambience.mjs`, `resources.mjs`, `soak.mjs` e `saves.mjs`
+(match, lvl01, lvl02). Stessa PR di §9.93: versione 0.2605.
+
+### 9.95 Le pale dei mulini girano piu' in fretta col vento
+
+Richiesta dell'autore: col vento forte (§9.90) le pale dei mulini
+dovrebbero girare piu' in fretta, non troppo ma in modo che si veda. Prima
+giravano sempre a 0,3 fotogrammi a passo [C, barn Create:
+action_sprite_set(mul1, 0, 0.3); il mulino nemico mub uguale, §9.48]. Ora
+(ambience.js `millSpeed`, a ogni passo in ambienceStep) da 0,3 col vento
+minimo a 0,34 col massimo (`MILL_SPEED`; prima prova 0,45, ridotta
+dall'autore), in proporzione al vento della partita; col vento medio (e
+nei salvataggi di prima) 0,32.
+Vale per il mulino alleato (sprite mul1) e per quello nemico (mub), non
+per il deposito del cibo invisibile del centro (cc_barn). Solo estetico.
+
+`ambience.mjs`, voce "vento": un mulino alleato e uno nemico a 0,3
+fotogrammi a passo col vento a 0 e a 0,34 col vento a 1. Passano i test
+unitari, `ambience.mjs`, `soak.mjs` e `saves.mjs` (match, lvl01, lvl02).
+Stessa PR di §9.93: versione 0.2605.

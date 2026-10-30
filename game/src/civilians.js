@@ -17,6 +17,7 @@ import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 import { bridgeEnds, woodDue } from "./bridge.js";
+import { FAM, buttonAlpha } from "./buildings.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -1418,7 +1419,12 @@ function ominoPanel(i, w, d) {
   const white = 0xffffff;
   d.setAlpha(0.69);
   if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
-  for (const x of [450, 520, 590, 660, 730]) for (const y of [50, 120]) d.circleColour(x, y, 30, white, white, false);
+  // §9.93: piu' trasparenti i pulsanti che costano piu' di quel che c'e'
+  const buttons = ["casa", "torre", "magazzino", "barn", "campo", "mura", "caserma", "stalla", "castello", "chiesa"].map((f) => FAM[f]);
+  for (const b of buttons) {
+    d.setAlpha(0.69 * buttonAlpha(g, b.cost));
+    d.circleColour(b.bx, b.by, 30, white, white, false);
+  }
   d.setFont("GUI_1");
   d.setColour(0);
   d.setAlpha(0.75);
@@ -1426,10 +1432,7 @@ function ominoPanel(i, w, d) {
   d.setHalign("center");
   if (!multi) d.text(325, 120, i.life + " / " + i.slife);
   d.setAlpha(1);
-  const ico = (s, x, y) => d.spriteExt(s, 0, x, y, 0.5, 0.5, 0, white, 1);
-  ico("ico_casa", 450, 50); ico("ico_torre", 450, 120); ico("ico_magazzino", 520, 50); ico("ico_barn", 590, 50);
-  ico("ico_corn", 660, 50); ico("ico_mura", 520, 120); ico("ico_caserma", 590, 120); ico("ico_stalla", 660, 120);
-  ico("ico_castello", 730, 120); ico("ico_chiesa", 730, 50);
+  for (const b of buttons) d.spriteExt(b.ico, 0, b.bx, b.by, 0.5, 0.5, 0, white, buttonAlpha(g, b.cost));
   if (multi) return;
   if (!i.gold && !i.wood && !i.food && !i.stone) d.sprite("ico_omino", 0, 325, 70);
   else d.spriteExt("ico_omino", 0, 355, 70, 0.8, 0.8, 0, white, 1);
@@ -1498,9 +1501,6 @@ export function resource(p, kind) {
       if (kind === "miniera_oro") {
         for (const c of w.all("centro")) Object.assign(c, { woodir: 0, goldir: 0, stonedir: 0, foodir: 0, blinkfade: 1 });
         i.visible = false;
-        i.blinkfade = 0;
-        i.blinkx = i.x;
-        i.blinky = i.y;
       }
       if (kind === "pietra_grande") i.fase = 1;
     },
@@ -1511,10 +1511,6 @@ export function resource(p, kind) {
       }
       reveal(i, w, cfg.dist, cfg.fog);
       if (w.room === "menu" && cfg.fog) i.visible = true;
-      if (kind === "miniera_oro") {
-        if (i.blinkfade > 0) i.blinkfade -= 0.02;
-        else { i.blinkfade = 1; i.blinkx = i.x + irandomRange(-60, 60); i.blinky = i.y + irandomRange(-40, 40); }
-      }
     },
     destroy(i, w) {
       freeCells(p, i);
@@ -1549,11 +1545,12 @@ export function resource(p, kind) {
       if (cfg.hint) hintOnce(w, cfg.hint[0], cfg.hint[1], i.x, i.y, w.g.resourcehint === 1);
     },
     mouseLeave(i, w) { if (cfg.hover) w.g[cfg.hover] = 0; },
-    // Draw_End [C]: albero il cerchio di selezione; miniera il luccichio
-    // (miniera_blink) che compare in un punto a caso e sfuma; pietre niente.
+    // Draw_End [C]: albero il cerchio di selezione; pietre niente. La
+    // miniera disegnava qui il suo luccichio (miniera_blink, una stella che
+    // compariva in un punto a caso attorno e sfumava): [§9.94, richiesta
+    // dell'autore] ora sono particelle (ambience.js, scintille delle miniere).
     drawEnd(i, w, d) {
-      if (kind === "miniera_oro") d.spriteExt("miniera_blink", 0, i.blinkx, i.blinky, 1, 1, 0, 0xffffff, i.blinkfade);
-      else if ((kind === "albero" || kind === "albero_fake") && i.selected === 1) d.sprite("circ_1", 0, i.x, i.y);
+      if ((kind === "albero" || kind === "albero_fake") && i.selected === 1) d.sprite("circ_1", 0, i.x, i.y);
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1 || w.g.sel >= 1) return;

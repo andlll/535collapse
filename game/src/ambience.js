@@ -12,14 +12,18 @@
 //   passa mentre piove) il cielo e' coperto: le ombre si dissolvono e tutta
 //   la scena si scurisce di un grigio freddo uniforme (overcast, fog.js
 //   skyColour), in qualche secondo, e tornano quando smette;
-// - fumo dai camini delle case del giocatore che ne hanno uno (stili 1, 2, 4
-//   e 6; quelle nemiche hanno il tetto piatto): uno sbuffo ogni tanto;
+// - fumo dai camini degli edifici che ne hanno uno: case del giocatore
+//   (stili 1, 2, 4 e 6), case nemiche blu (stili 2 e 6), centro citta' del
+//   giocatore e nemico (§9.93): uno sbuffo ogni tanto;
 // - polvere e detriti quando un edificio crolla in rovina;
-// - polvere sotto cavalieri e macchine d'assedio in movimento.
+// - polvere sotto cavalieri e macchine d'assedio in movimento;
+// - [§9.94] scintille d'oro sulle venature delle miniere, solo quelle del
+//   tutto scoperte (prima il luccichio era lo sprite miniera_blink).
 // Fumo e polvere sono particelle della categoria "fire" (opzione "Fiamme e
 // scintille"); tutto solo sullo schermo e nella parte vista della nebbia.
 
 import { partType } from "./particles.js";
+import { fogActive } from "./fog.js";
 
 const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 
@@ -47,6 +51,12 @@ export const WIND_SPEED = [0.8, 1.5];
 const WIND_DIR = [-0.977, 0.215];
 export const windLevel = (g) => Math.max(0, Math.min(1, g.wind ?? 0.5));
 export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) * windLevel(g);
+// [§9.95, richiesta dell'autore] Le pale dei mulini (alleato: barn, mul1;
+// nemico: enemy_mulino, mub; 0,3 fotogrammi a passo [C]) girano piu' in
+// fretta col vento: da MILL_SPEED[0] col vento minimo a MILL_SPEED[1] col
+// massimo (vento medio, e salvataggi di prima: 0,32). Solo estetico.
+export const MILL_SPEED = [0.3, 0.34];
+export const millSpeed = (g) => MILL_SPEED[0] + (MILL_SPEED[1] - MILL_SPEED[0]) * windLevel(g);
 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). [§9.92] Si salva
@@ -179,9 +189,16 @@ const TRAIL = partType({
   alpha: [0.5, 0], speed: [0.15, 0.45, 0, 0], direction: [0, 360, 0, 0], life: [40, 60],
 });
 
-// Cima del camino rispetto all'origine della casa del giocatore, per stile
-// (c1s, c2s, c4s, c6s; 3 e 5 non hanno camino)
-export const CHIMNEY = { 1: [-2, -113], 2: [21, -106], 4: [-27, -120], 6: [42, -128] };
+// Cima del camino rispetto all'origine dell'edificio, per sprite: case del
+// giocatore c1s, c2s, c4s, c6s (3 e 5 non hanno camino); [§9.93] case
+// nemiche c2b, c6b (le altre hanno il tetto piatto senza camino), il centro
+// citta' (cc_spr) e quello nemico (cc_b), che hanno il camino nello stesso
+// punto. Gli altri edifici non hanno camini.
+export const CHIMNEY = {
+  c1s: [-2, -113], c2s: [21, -106], c4s: [-27, -120], c6s: [42, -128],
+  c2b: [-6, -126], c6b: [58, -92], cc_spr: [-138, -141], cc_b: [-138, -141],
+};
+const CHIMNEY_OBJECTS = ["casa", "enemy_house", "centro", "enemy_centro"];
 
 const onScreen = (cam, x, y, m = 200) => x > cam.x - m && x < cam.x + cam.w + m && y > cam.y - m && y < cam.y + cam.h + m;
 
@@ -228,12 +245,76 @@ function ruinNames(w) {
   return Object.keys(w.behaviours).filter((n) => /ruin\d?$/.test(n));
 }
 
+// ------------------------------------------------ scintille delle miniere
+
+// [§9.94, richiesta dell'autore] Al posto del luccichio dell'originale
+// (miniera_blink: una stella bianca grande che compariva in un punto a caso
+// attorno alla miniera e sfumava, disegnata nel Draw End, cioe' sopra la
+// nebbia: si vedeva anche su una miniera ancora nel nero) scintille d'oro
+// che nascono sulle venature gialle dello sprite (punti misurati
+// sull'immagine, dall'origine; le miniere hanno tutte scala 1): stelle a
+// quattro punte con un alone, che si accendono e si spengono girando un
+// poco, piu' qualche granello dorato che sale.
+// Additive, nella categoria "fire" ("Fiamme e scintille"). Un sistema per
+// miniera alla sua depth (le unita' davanti la coprono; la nebbia sta
+// sopra a tutte le particelle). Solo se la miniera e' stata vista e la
+// scoperta copre tutto il suo riquadro: niente scintille dal bordo del nero.
+export const VEINS = [[-26, -60], [-27, -47], [-26, -39], [-19, -38], [-7, -38], [43, -35], [44, -31],
+  [-58, -18], [-41, -17], [-47, -15], [37, 1], [42, 3], [50, 3], [41, 9]];
+const GLINT = partType({ // la stella (forma "star", tools/05_atlas.py)
+  shape: "star", size: [0.38, 0.52, -0.004, 0], orientation: [-12, 12, 0.6, 0],
+  colour: { list: [0xe6fcff, 0x60d8ff] }, alpha: [0, 1, 0], life: [34, 54], additive: true,
+});
+const HALO = partType({ // e il suo alone, nello stesso punto
+  shape: "flare", size: [0.14, 0.2, 0, 0], colour: { list: [0x80e0ff, 0x30a0ff] }, alpha: [0, 0.55, 0],
+  life: [34, 54], additive: true,
+});
+const MOTE = partType({
+  shape: "flare", size: [0.06, 0.09, 0, 0], colour: { rgb: [230, 255, 190, 225, 70, 120] },
+  alpha: [0, 0.75, 0], speed: [0.12, 0.28, 0, 0.05], direction: [80, 100, 0, 8], life: [60, 100], additive: true,
+});
+const GLINT_EVERY = 18, MOTE_EVERY = 30; // in media, passi fra una nascita e l'altra per miniera
+
+// La miniera e' del tutto scoperta? (sempre, senza nebbia)
+export function mineSeen(w, i) {
+  if (i.visible === false) return false;
+  if (!w.fog || !fogActive(w)) return true;
+  const F = w.fog, C = F.cell, bb = [i.x - 92, i.y - 82, i.x + 80, i.y + 35]; // lo sprite (172 x 117, origine 92, 82)
+  const x0 = Math.max(0, Math.floor(bb[0] / C)), x1 = Math.min(F.gw - 1, Math.floor(bb[2] / C));
+  const y0 = Math.max(0, Math.floor(bb[1] / C)), y1 = Math.min(F.gh - 1, Math.floor(bb[3] / C));
+  for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) if (F.explored[gy * F.gw + gx] < 255) return false;
+  return true;
+}
+
+const MINES = new WeakMap(); // miniera -> { ps, em }
+function mineSparkles(w, cam) {
+  const P = w.particles;
+  for (const i of w.all("miniera_oro")) {
+    if (!onScreen(cam, i.x, i.y)) continue;
+    const g = Math.random() * GLINT_EVERY < 1, m = Math.random() * MOTE_EVERY < 1;
+    if ((!g && !m) || !mineSeen(w, i)) continue;
+    let s = MINES.get(i);
+    if (!s || !s.ps.alive || !P.systems.includes(s.ps)) { // (dopo un caricamento i sistemi sono altri)
+      s = { ps: P.systemCreate(i.depth - 1, "fire") };
+      P.releaseWhenEmpty(s.ps);
+      s.em = P.emitterCreate(s.ps);
+      MINES.set(i, s);
+    }
+    const v = VEINS[Math.floor(Math.random() * VEINS.length)];
+    if (g) { P.create(s.ps, i.x + v[0], i.y + v[1], HALO, 1); P.create(s.ps, i.x + v[0], i.y + v[1], GLINT, 1); }
+    if (m) puffAt(w, s.ps, s.em, MOTE, i.x + v[0], i.y + v[1] - 2, 1, 3, 2);
+  }
+}
+
 const LAST = new WeakMap(); // posizione dell'ultimo sbuffo di polvere per unita'
 const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
 
 // Un passo (app.js, dopo il mondo)
 export function ambienceStep(w, cam) {
   if (w.particles) w.particles.wind = windLevel(w.g); // §9.90: erba e fiori
+  const ms = millSpeed(w.g); // §9.95: le pale dei mulini
+  for (const n of ["barn", "enemy_mulino"]) for (const m of w.all(n)) if (m.sprite_index === "mul1" || m.sprite_index === "mub") m.image_speed = ms;
+  if (w.particles && !w.particles.hidden.has("fire")) mineSparkles(w, cam); // §9.94 (anche nel menu)
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
   // crolli
@@ -249,14 +330,17 @@ export function ambienceStep(w, cam) {
   }
   if (P.hidden.has("fire")) return;
   const S = systems(w);
-  // camini: uno sbuffo ogni ~50-70 passi per casa (fase diversa per casa)
-  for (const h of w.all("casa")) {
-    const m = /^c(\d)s$/.exec(h.sprite_index || ""); // lo stile dallo sprite (le case della mappa non hanno tipo)
-    const c = m && CHIMNEY[m[1]];
-    if (!c || h.onfire === 1 || h.visible === false) continue;
-    if ((t + h.id * 37) % (50 + (h.id % 21)) !== 0) continue;
-    const x = h.x + c[0], y = h.y + c[1];
-    if (onScreen(cam, x, y)) puffAt(w, S.smoke, S.em, PUFF, x, y - 4, 1);
+  // camini: uno sbuffo ogni ~50-70 passi per edificio (fase diversa per
+  // edificio); il camino dallo sprite (le case della mappa non hanno tipo).
+  // Quelli nemici solo una volta visti (visible, enemybuild.js)
+  for (const n of CHIMNEY_OBJECTS) {
+    for (const h of w.all(n)) {
+      const c = CHIMNEY[h.sprite_index];
+      if (!c || h.onfire === 1 || h.visible === false) continue;
+      if ((t + h.id * 37) % (50 + (h.id % 21)) !== 0) continue;
+      const x = h.x + c[0], y = h.y + c[1];
+      if (onScreen(cam, x, y)) puffAt(w, S.smoke, S.em, PUFF, x, y - 4, 1);
+    }
   }
   // polvere in corsa: uno sbuffo ogni 18 px percorsi
   for (const n of TRAILERS) {

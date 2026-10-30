@@ -82,6 +82,13 @@ function canPay(g, cost) {
   return Object.entries(cost).every(([r, v]) => g[r] >= v);
 }
 
+// [§9.93, richiesta dell'autore] I pulsanti di costruzione e di produzione
+// che costano piu' delle risorse che ci sono si disegnano molto piu'
+// trasparenti (cerchio e icona, anche col puntatore sopra); appena le
+// risorse bastano tornano come gli altri. La popolazione non conta.
+export const POOR_ALPHA = 0.3;
+export const buttonAlpha = (g, cost) => (canPay(g, cost) ? 1 : POOR_ALPHA);
+
 // Lampeggi delle risorse che mancano [C]: wood_blink se manca il legno,
 // stone_blink se manca la pietra (chiesa: entrambi, indipendenti).
 function blinkMissing(w, fam, cost) {
@@ -164,10 +171,11 @@ export function clicker(fam) {
       dr.setHalign("right");
       dr.text(P.shortcut[1] + ex, H - 120, sc);
       dr.tooltipEnd(w);
-      dr.setAlpha(0.99);
+      const k = buttonAlpha(w.g, d.cost); // §9.93
+      dr.setAlpha(0.99 * k);
       dr.circleColour(d.bx, d.by, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
-      dr.spriteExt(d.ico, 0, d.bx, d.by, 0.5, 0.5, 0, WHITE, 1);
+      dr.spriteExt(d.ico, 0, d.bx, d.by, 0.5, 0.5, 0, WHITE, k);
     },
   };
 }
@@ -834,8 +842,10 @@ export function centro(p) {
     // Draw_GUI [C]: scheda con produzione e coda (fino a 6)
     drawGUI(i, w, dr) {
       if (i.selected !== 1) return;
-      dr.setAlpha(0.69);
+      const k = buttonAlpha(w.g, WORKER_COST); // §9.93
+      dr.setAlpha(0.69 * k);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
+      dr.setAlpha(0.69);
       dr.circleColour(520, 50, 30, WHITE, WHITE, false);
       if (i.progression > 0) {
         dr.roundrectColourExt(420, 90, 550, 150, 60, 60, WHITE, WHITE, false);
@@ -858,7 +868,7 @@ export function centro(p) {
       dr.setHalign("center");
       dr.text(325, 120, Math.floor(i.life) + " / " + i.slife); // [§9.42] il ponte cresce a frazioni
       dr.setAlpha(1);
-      dr.spriteExt("ico_omino", 0, 450, 50, 0.7, 0.7, 0, WHITE, 1);
+      dr.spriteExt("ico_omino", 0, 450, 50, 0.7, 0.7, 0, WHITE, k);
       dr.spriteExt("ico_indietro", 0, 520, 50, 0.7, 0.7, 0, WHITE, 1);
       if (i.progression > 0) { dr.setAlpha(0.4); dr.spriteExt("ico_omino", 0, 450, 120, 0.7, 0.7, 0, WHITE, 1); }
       dr.setAlpha(1);
@@ -876,15 +886,16 @@ export function centro(p) {
 }
 
 // Pulsante "crea civile" [C, omino_clicker]: 50 cibo, coda fino a 6.
+const WORKER_COST = { food: 50 };
 function enqueueWorker(i, w, fromKey) {
   const g = w.g;
   const c = [...w.all("centro")].find((x) => x.selected === 1);
   const ok = c && c.coda < 6;
-  if (g.food < 50) w.create("food_blink", 0, 0);
+  if (g.food < WORKER_COST.food) w.create("food_blink", 0, 0);
   if (g.pop >= g.popcap) w.create("pop_blink", 0, 0);
-  if (ok && g.food >= 50 && g.pop < g.popcap) {
+  if (ok && g.food >= WORKER_COST.food && g.pop < g.popcap) {
     i.active = 1;
-    g.food -= 50;
+    g.food -= WORKER_COST.food;
     for (const ce of w.all("centro")) {
       if (ce.selected !== 1) continue;
       if (ce.progression === 0) {
@@ -937,10 +948,11 @@ export function ominoClicker() {
       dr.setHalign("right");
       dr.text(350 + ex, H - 120, sc);
       dr.tooltipEnd(w);
-      dr.setAlpha(0.99);
+      const k = buttonAlpha(w.g, WORKER_COST); // §9.93
+      dr.setAlpha(0.99 * k);
       dr.circleColour(450, 50, 30, WHITE, WHITE, false);
       dr.setAlpha(1);
-      dr.spriteExt("ico_omino", 0, 450, 50, 0.7, 0.7, 0, WHITE, 1);
+      dr.spriteExt("ico_omino", 0, 450, 50, 0.7, 0.7, 0, WHITE, k);
     },
   };
 }

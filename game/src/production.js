@@ -15,6 +15,7 @@
 
 import { tr } from "./i18n.js";
 import { rallySpot } from "./pathing.js";
+import { buttonAlpha } from "./buildings.js";
 
 const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
 
@@ -195,13 +196,13 @@ export function producer(name, base, p) {
     globalRightReleased(i, w) { if (i.selected === 1) { i.flagx = w.mouse.x; i.flagy = w.mouse.y; } },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;
-      const sc = P.icoScale;
+      const sc = P.icoScale, k = (u) => buttonAlpha(w.g, u.cost); // §9.93
+      for (const u of types) { d.setAlpha(0.69 * k(u)); d.circleColour(u.bx, 50, 30, WHITE, WHITE, false); }
       d.setAlpha(0.69);
-      for (const u of types) d.circleColour(u.bx, 50, 30, WHITE, WHITE, false);
       d.circleColour(P.cancelX, 50, 30, WHITE, WHITE, false);
       if (P.slots) {
         d.setAlpha(1);
-        for (const u of types) d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, 1);
+        for (const u of types) d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, k(u));
         d.spriteExt("ico_indietro", 0, P.cancelX, 50, 0.7, 0.7, 0, WHITE, 1);
       }
       const QY = 120; // la riga di barra e coda
@@ -232,7 +233,7 @@ export function producer(name, base, p) {
         if (i.progression > 0 && P.units[i.coda0]) d.spriteExt(P.units[i.coda0].ico, 0, 450, QY, sc, sc, 0, WHITE, 1);
       } else {
         // stalla [C]: icone come il centro, quella in produzione a 0,4
-        d.spriteExt(types[0].ico, 0, 450, 50, sc, sc, 0, WHITE, 1);
+        d.spriteExt(types[0].ico, 0, types[0].bx, 50, sc, sc, 0, WHITE, k(types[0]));
         d.spriteExt("ico_indietro", 0, P.cancelX, 50, 0.7, 0.7, 0, WHITE, 1);
         if (i.progression > 0) { d.setAlpha(0.4); d.spriteExt(types[0].ico, 0, 450, 120, sc, sc, 0, WHITE, 1); }
       }
@@ -357,11 +358,12 @@ export function unitClicker(prod, type) {
       d.setHalign("right");
       d.text((u.wide ? 380 : 350) + ex, H - 120, shortcut);
       d.tooltipEnd(w);
-      d.setAlpha(0.99);
+      const k = buttonAlpha(w.g, u.cost); // §9.93
+      d.setAlpha(0.99 * k);
       d.circleColour(u.bx, 50, 30, WHITE, WHITE, false);
       d.setAlpha(1);
       const sc = PRODUCERS[prod].icoScale;
-      d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, 1);
+      d.spriteExt(u.ico, 0, u.bx, 50, sc, sc, 0, WHITE, k);
     },
   };
 }

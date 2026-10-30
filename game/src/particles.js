@@ -35,7 +35,8 @@ import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { mergeColour } from "./colours.js";
 import { drawSprite } from "./sprites.js";
 
-const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring" };
+// star: §9.94, le scintille delle miniere (tools/05_atlas.py)
+const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring", star: "__pt_star" };
 const TAU = Math.PI * 2;
 // [§9.90] Il vento (Particles.wind, 0-1, ambience.js) sulle piante: i tipi
 // con l'orientamento che oscilla (wiggle) e non relativo alla direzione, cioe'
@@ -43,8 +44,9 @@ const TAU = Math.PI * 2;
 // salvataggi di prima). Col vento massimo l'oscillazione e' SWAY_AMP volte
 // piu' ampia e SWAY_RATE volte piu' rapida, e le piante si piegano verso
 // ovest (dove va il vento) di SWAY_LEAN volte l'ampiezza. Con wind 0 come
-// prima.
-const SWAY_AMP = 1.6, SWAY_RATE = 1.6, SWAY_LEAN = 0.75;
+// prima. [§9.94, richiesta dell'autore] col vento forte era troppo e
+// distraeva: erano 1,6, 1,6 e 0,75.
+const SWAY_AMP = 1.3, SWAY_RATE = 1.3, SWAY_LEAN = 0.45;
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
