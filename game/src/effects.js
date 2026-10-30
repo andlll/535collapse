@@ -7,6 +7,7 @@
 import { c, makeColourRgb } from "./colours.js";
 import { partType } from "./particles.js";
 import { lengthdirX } from "./gm.js";
+import { windLevel } from "./ambience.js";
 
 const P = (w) => w.particles;
 
@@ -29,11 +30,56 @@ const GOCCIA = partType({
   life: [200, 300],
 });
 
+// [§9.90, richiesta dell'autore] col vento della partita (ambience.js
+// windLevel) la pioggia e' piu' inclinata: la direzione scende da 250-260 a
+// 235-245 gradi (le linee restano parallele alla caduta: orientamento
+// relativo). Il bordo da cui nasce si allunga a destra di quanto le gocce
+// derivano a sinistra cadendo per tutta la room (prima 300 px fissi: in
+// basso a destra non pioveva), con piu' gocce a passo in proporzione.
+const RAIN_SLANT = 15;
 export function rainStart(w) {
   const ps = P(w).systemCreate(-9000, "rain");
   const em = P(w).emitterCreate(ps);
-  P(w).region(em, 0, w.roomW + 300, -16, -16, "line", "linear");
-  P(w).stream(em, GOCCIA, 6);
+  const d = 255 - RAIN_SLANT * windLevel(w.g), lo = (d - 5) * Math.PI / 180;
+  const type = { ...GOCCIA, direction: [d - 5, d + 5, 0, 0] };
+  const right = Math.max(300, Math.ceil(w.roomH * Math.abs(Math.cos(lo) / Math.sin(lo))));
+  P(w).region(em, 0, w.roomW + right, -16, -16, "line", "linear");
+  // [§9.91] niente flusso automatico: le gocce le fa nascere rainStep, in
+  // proporzione a ps.level (em.full: quelle a passo con la pioggia piena)
+  em.type = type; em.full = Math.round(6 * (w.roomW + right) / (w.roomW + 300));
+  ps.level = 0;
+  return ps;
+}
+
+// [§9.91, richiesta dell'autore] Le gocce crescono e calano piano: con
+// global.raining=1 e il cielo ormai del tutto coperto (ambience.js
+// overcastStep, ~6 s) ps.level sale da 0 a 1 in RAIN_RAMP passi (5 s);
+// smesso di piovere scende a 0 negli stessi 5 s, e solo dopo il cielo si
+// rasserena. Le gocce gia' in aria finiscono di cadere (il sistema si toglie
+// quando e' vuoto; prima spariva di colpo). Restituisce il sistema, o null
+// quando e' finito (manager.rain). Il livello si salva col sistema; i
+// salvataggi di prima (flusso automatico) ripartono a pioggia piena.
+// [§9.92, richiesta dell'autore] I fuochi li spegne (manager alarm 2) solo
+// con ps.level ad almeno RAIN_PUT_OUT: ~2,5 s dopo le prime gocce, fino a
+// ~2,5 s dopo che hanno cominciato a calare. Il livello non dipende dalle
+// opzioni grafiche (con la pioggia spenta nelle opzioni sale e scende lo
+// stesso, senza gocce).
+const RAIN_RAMP = 300;
+export const RAIN_PUT_OUT = 0.5;
+export function rainStep(w, ps) {
+  if (!ps || !ps.alive) return null;
+  const P_ = P(w), em = ps.emitters[0];
+  if (ps.level === undefined) { ps.level = 1; if (em) { em.full = em.n; em.n = 0; } }
+  const up = w.g.raining === 1 && w.overcast === 1;
+  ps.level = Math.max(0, Math.min(1, ps.level + (up ? 1 : -1) / RAIN_RAMP));
+  if (ps.level === 0 && w.g.raining !== 1) {
+    if (P_.hidden.has(ps.cat)) P_.systemDestroy(ps); else P_.releaseWhenEmpty(ps);
+    return null;
+  }
+  if (em && em.full && ps.level > 0 && !P_.hidden.has(ps.cat)) {
+    const r = em.full * ps.level;
+    P_.burst(ps, em, em.type, Math.floor(r) + (Math.random() < r % 1 ? 1 : 0));
+  }
   return ps;
 }
 
@@ -132,12 +178,12 @@ function waterSystem(w, wm, kind, cat, x, y) {
   return ps;
 }
 
-export function rainRipples(w, cam) {
+export function rainRipples(w, cam, level = 1) {
   const P_ = P(w);
   if (P_.hidden.has("rain")) return;
   const wm = waterMap(w);
   if (!wm) return;
-  for (let k = 0; k < RIPPLE_TRIES; k++) {
+  for (let k = 0, n = Math.round(RIPPLE_TRIES * level); k < n; k++) { // §9.91: quante gocce
     const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
     const ps = waterSystem(w, wm, "ripples", "rain", x, y); // §9.36
     if (!ps) continue;

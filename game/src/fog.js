@@ -45,7 +45,8 @@ export function shadeOf(explored, visible) {
   return Math.round(255 * (1 - m));
 }
 
-// Ellisse di visuale di un'istanza [C, manager Draw_End]: k = 1 - night, di
+// Ellisse di visuale di un'istanza [C, manager Draw_End]: k = 1 - night (qui
+// sightK, §9.88), di
 // giorno la visuale raddoppia. Ogni oggetto e' anche un ally_build (o un
 // ally_unit), che ha l'ellisse base; quella specifica la contiene sempre,
 // quindi basta la piu' grande. Restituisce [cx, cy, rx, ry].
@@ -66,6 +67,23 @@ function shapeOf(w, i, k) {
   return [x, y, 200 + 200 * k, 120 + 120 * k];
 }
 
+// [§9.88, richiesta dell'autore] Quanto si vede (k: 1 di giorno, 0 di
+// notte). Nell'originale e' 1 - global.night, che passa da 1 a 0 nei 200
+// passi (3 s) del passaggio: troppo brusco. Qui il buio della visuale
+// arriva gia' a DUSK_SIGHT nel crepuscolo (manager.twilight: gli ultimi
+// 900 passi del giorno, con la stessa curva del rosa), poi il passaggio
+// lo porta da li' a 1; all'alba lo stesso al contrario. Vale per la nebbia
+// e per quando le unita' e gli edifici nemici si vedono (stesse ellissi);
+// la vista dei nemici (1 - 0,5 x night) resta quella dell'originale.
+// w.twilight si ricava dagli allarmi salvati (manager.step, prima delle
+// istanze; snapshot.js al caricamento): niente da salvare.
+export const DUSK_SIGHT = 0.5;
+export function sightK(w) {
+  const n = Math.max(0, Math.min(1, w.g.night));
+  const t = Math.max(0, Math.min(1, w.twilight || 0)), s = t * t * (3 - 2 * t);
+  return 1 - (n + DUSK_SIGHT * s * (1 - n));
+}
+
 // Le istanze che vedono, nell'ordine dei with(...) dell'originale (l'ordine
 // non conta: le ellissi si sommano).
 // [Correzioni decise dall'autore, §3.17] n.54: le anteprime dei
@@ -74,7 +92,7 @@ function shapeOf(w, i, k) {
 // chiarezza: le fonti sono ora le stesse).
 const PREVIEWS = new Set(["oodl", "oosl", "ovbl", "oval"]);
 export function fogSources(w, explore, cb) {
-  const k = 1 - w.g.night;
+  const k = sightK(w); // §9.88
   for (const fam of ["ally_unit", "ally_build", "palo_1"]) {
     for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object)) cb(i, shapeOf(w, i, k));
   }

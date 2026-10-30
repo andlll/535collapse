@@ -7460,3 +7460,201 @@ software e con la qualita' bassa.
 `ambience.mjs`: le nuvole ora controllano che ci siano almeno 4 delle 6
 sagome, l'ombra 0,7 nel pieno di una sagoma specchiata e ruotata e 1
 fuori.
+
+### 9.87 Alba e tramonto senza salti
+
+Segnalazione dell'autore: col ciclo giorno/notte di §9.84 il giorno
+diventava sera all'improvviso, poi tornava giorno sfumando; alla fine del
+giorno la sera saliva, tornava giorno di colpo e partiva il passaggio alla
+notte.
+
+Simulato il manager passo per passo (alarm, Step, `twilight`, `skyColour`),
+tre salti in `manager.twilight`, nessuno nel colore (`skyColour` e'
+monotono lungo tutto il passaggio):
+- *primo giorno*: la discesa dopo l'alba si ricavava come 4000 - alarm 0,
+  ma il primo giorno della room dura 6000 passi (non c'e' stata un'alba):
+  a 4000 passi dalla fine (2000 dall'inizio) il rosa compariva pieno di
+  colpo e scendeva in 900 passi. E' il "giorno, sera improvvisa, sera che
+  torna giorno" della segnalazione;
+- *fine di ogni giorno*: con alarm 0 a 1 (il passo prima del tramonto)
+  `twilight` dava 0, giorno pieno per un passo fra il rosa pieno e
+  l'inizio del passaggio (il lampo di giorno prima della notte);
+- *fine di ogni alba*: il passo in cui global.night scende sotto 0 alarm 0
+  non e' ancora riarmato (-1) e `twilight` dava 0, giorno pieno per un
+  passo fra la fine dell'alba e il rosa che scende.
+
+Correzione (manager.js `twilight`): la discesa solo dopo un'alba, che si
+riconosce da global.night appena sotto 0 (alarm 1 si ferma solo quando
+scende sotto lo 0; al primo giorno della room e' 0 esatto, anche nei
+salvataggi); il passo prima del tramonto e' rosa pieno (la salita va da 0 a
+alarm 0 = 901 a 1 ad alarm 0 = 1); il passo dopo l'alba, con alarm 1
+ancora armato, rosa pieno. I 4000 passi del giorno dopo l'alba sono una
+costante sola (`DAY_AFTER_DAWN`) per l'allarme e per il conto. Nessun
+campo nuovo; il gioco continua a leggere solo global.night.
+
+Prova nuova in `manager.test.mjs`: tre giorni e tre notti dal primo giorno
+(match e lvl02, che parte di notte), il rosa pesato come in `skyColour`
+(per 1 - night) non salta mai piu' di 0,01 a passo (prima 1), nessun rosa
+a meta' del primo giorno. Col codice di prima fallisce. Passano i test
+unitari e `ambience.mjs`.
+
+Visto e lasciato com'e' (dall'originale): il rettangolo di selezione e' blu
+solo con global.night uguale a 0, e dopo la prima alba global.night resta
+appena sotto 0, quindi da li' in poi e' bianco anche di giorno.
+
+### 9.88 Visuale intermedia al crepuscolo
+
+Richiesta dell'autore: una visibilita' intermedia (nebbia di guerra) nella
+fase di alba e tramonto; prima il passaggio alla notte era brusco.
+
+Nell'originale la visuale e' k = 1 - global.night (ellissi della nebbia
+r + r x k, la stessa formula per quando unita' ed edifici nemici si
+vedono): passa da giorno a notte solo nei 200 passi (3 s) del passaggio,
+mentre il cielo diventa rosa per 15 s prima (§9.84). Ora (fog.js `sightK`)
+il buio della visuale segue anche il crepuscolo: sale fino a `DUSK_SIGHT`
+(0,5, cioe' ellissi a 1,5 r invece di 2 r) negli ultimi 900 passi del
+giorno, con la stessa curva del rosa (manager.twilight, smoothstep), e il
+passaggio lo porta da li' alla notte (n + 0,5 x (1 - n)); all'alba lo
+stesso al contrario, con la risalita a giorno pieno nei 900 passi dopo.
+Continuo: al massimo 0,0025 a passo nel passaggio (prima 0,005), meno
+di 0,001 nel crepuscolo.
+
+Vale per la nebbia (fogSources: scoperta e vista) e per la visibilita' di
+unita' nemiche, edifici nemici, civili nemici e macchine d'assedio
+(enemies.js, enemybuild.js, economy.js, siege.js, ranged.js: le stesse
+ellissi, cosi' cio' che si vede e cio' che e' scoperto coincidono). La
+vista dei nemici (portate di attacco e inseguimento, 1 - 0,5 x night)
+resta quella dell'originale: solo il giocatore vede meno al crepuscolo.
+Niente da salvare: w.twilight si ricava dagli allarmi salvati, in
+manager.step prima delle istanze e al caricamento (snapshot.js), cosi'
+anche il primo disegno dopo un caricamento in pausa e' giusto. Il livello 1
+(sempre notte) non cambia.
+
+Prova nuova in `manager.test.mjs`: giorno pieno 1, nel crepuscolo fra 0,5
+e 1, al primo passo del passaggio e alla fine dell'alba 0,5, di notte 0,
+giorno pieno 1000 passi dopo l'alba, nessun salto. Passano i test unitari,
+`ambience.mjs` e `saves.mjs` (match, lvl02, lvl03: ripristino identico).
+Verificato a occhio con cinque foto nel match (giorno, meta' crepuscolo,
+tramonto, meta' passaggio, notte): le zone viste si restringono per gradi.
+
+### 9.89 Nuvole grandi come nel disegno
+
+Segnalazione dell'autore (provando il tutorial): le ombre delle nuvole
+sembravano molto lente e indistinguibili da una macchia scura generica.
+Il motivo: le sagome (larghe 370-550 px nel disegno, 1021x722) erano
+ingrandite 5,5-8,5 volte la meta' risoluzione, cioe' 2,75-4,25 volte il
+disegno: 1000-2300 px di room, piu' larghe dello schermo. Se ne vedeva
+solo un pezzo sfumato.
+
+Prove a foto nel match (a zoom 1 e 1,7, con un aggancio provvisorio per
+cambiare scala, densita', alpha e vento senza ricostruire; il rendering
+software del contenitore le spegne, forzato a mano nelle prove):
+- scala attuale; 1:1 col disegno (1,7-2,3 della meta' risoluzione, una
+  nuvola ogni 1100x800 px); 1,5 volte (2,6-3,4, una ogni 1500x1100); 2
+  volte (3,5-4,5);
+- alpha 0,3 e 0,45;
+- sfumatura della pipeline (`sfuma` di nuovi.json) 18, 8 e 3, con tre
+  atlas rigenerati (a 8 e 3 i lobi della sagoma si leggono di piu');
+- vento 0,32, 0,8 e 1,5 px a passo, in un video a velocita' reale.
+
+Scelta dell'autore: scala 1:1 con la sfumatura di sempre (18: "almeno non
+e' enorme e si capisce che e' una nuvola"). Quindi (ambience.js) scala
+1,7-2,3, una nuvola ogni 1100x800 px (circa quante prima per schermo, ma
+piccole), alpha 0,4 per compensare la sagoma piu' piccola. Pipeline e
+nuovi.json invariati. Il vento per ora resta 0,32 px a passo.
+
+`ambience.mjs`: l'ombra nel pieno di una sagoma e' ora 0,6 (era 0,7).
+Passa con 83 nuvole nella stanza (prima 20), 7 attorno alla view.
+
+### 9.90 Il vento della partita
+
+Richiesta dell'autore, dopo §9.89 e il video di prova dei venti (0,32, 0,8
+e 1,5 px a passo): "una mezza follia", nuvole da 0,8 a 1,5 secondo il vento
+della mappa, scelto a caso; col vento forte anche erba e fiori ondeggiano
+di piu' e la pioggia e' piu' inclinata. Tutto solo estetico.
+
+- *Vento*: g.wind, 0-1 a caso per partita (state.js), salvato con le
+  globali; nei salvataggi di prima vale 0,5 (ambience.js `windLevel`).
+- *Nuvole*: 0,8 + 0,7 x wind px a passo (`windSpeed`; erano 0,32 fissi),
+  ora verso ovest e un po' a sud invece che verso est: la pioggia
+  dell'originale cade verso sinistra, e il vento la inclina di piu' da
+  quella parte.
+- *Erba, spighe, fiori, germogli* (particles.js `angle`): i tipi il cui
+  orientamento oscilla e non e' relativo alla direzione (sono solo le
+  piante, anche nei salvataggi di prima). Col vento massimo l'oscillazione
+  e' 1,6 volte piu' ampia e piu' rapida, e si piegano verso ovest di 0,75
+  volte l'ampiezza (erba: 4 gradi -> 6,4, piegata di 3; i fiori in
+  proporzione). Con wind 0 come prima. Particles.wind lo aggiorna
+  ambienceStep a ogni passo.
+- *Pioggia* (effects.js `rainStart`): direzione da 250-260 gradi (vento
+  minimo, come prima) a 235-245 (massimo); le gocce restano parallele alla
+  caduta (orientamento relativo). Il bordo da cui nascono si allunga a
+  destra di quanto derivano a sinistra cadendo per tutta la room (prima
+  300 px fissi: nel match in basso a destra, ~1900 px, non pioveva), con
+  piu' gocce a passo in proporzione (densita' uguale). Si decide quando
+  comincia a piovere; il sistema si salva come prima.
+
+`ambience.mjs`, voce nuova "vento": nuvole a 0,8 e 1,5 px a passo, pioggia
+a 250-260 e 235-245 gradi, erba con ampiezza 4 e 6,4 gradi e piega 0 e 3.
+Passano i test unitari e tutte le voci di `ambience.mjs`. Video di
+confronto (vento minimo e massimo, sole e pioggia) mandato all'autore.
+
+### 9.91 Pioggia che cresce e cala piano
+
+Domanda dell'autore sul video di §9.90 (il passaggio da sereno a pioggia era
+netto: due momenti montati insieme, 1,5 s tagliati). In gioco il cielo si
+copriva in ~5 s, ma le gocce nascevano tutte subito, e smesso di piovere il
+sistema si distruggeva: le gocce in aria sparivano di colpo. Richiesta: il
+numero di gocce che sale in 5 s da quando il cielo e' del tutto coperto, e
+lo stesso quando smette.
+
+Ora (effects.js `rainStep`, chiamato da manager.step dopo `overcastStep`):
+- *inizio*: global.raining=1, il cielo si copre come prima (~6,4 s fino al
+  pieno); da quel passo `ps.level` del sistema della pioggia sale da 0 a 1
+  in 300 passi (5 s) e le gocce a passo sono em.full x level (la parte
+  frazionaria a caso). Niente piu' flusso automatico (em.n = 0);
+- *fine*: global.raining=0 (manager.stopRain non distrugge piu' il
+  sistema), level scende a 0 in 300 passi col cielo ancora coperto
+  (overcastStep: coperto finche' level > 0); a 0 il sistema si toglie
+  quando le gocce in aria sono finite (releaseWhenEmpty; distrutto se la
+  pioggia e' spenta nelle opzioni) e il cielo si rasserena in ~5 s;
+- se ricomincia a piovere mentre le gocce calano, lo stesso sistema
+  riprende a salire;
+- gli anelli sul fiume in proporzione alle gocce.
+Il livello si salva col sistema (provato: salvato a 0,503, ricaricato a
+0,503, 60 passi dopo 0,703); i salvataggi di prima, col flusso automatico,
+ripartono a pioggia piena. Solo estetico: lo spegnimento dei fuochi segue
+global.raining come prima (anche nei ~11 s prima della pioggia piena).
+
+`ambience.mjs`, voce nuova "graduale": cielo coperto al passo 386, prima
+goccia subito dopo, pioggia piena 300 passi dopo il cielo coperto, nei
+primi 60 passi ~12% delle gocce di 60 passi a pioggia piena; smesso, gocce
+a 0 in 300 passi col cielo coperto, poi sereno e sistema tolto. Passano i
+test unitari, `ambience.mjs` e `saves.mjs` (match, lvl02). Video continuo
+senza tagli mandato all'autore.
+
+### 9.92 La pioggia spegne i fuochi quando cadono le gocce
+
+Richiesta dell'autore, dopo §9.91: lo spegnimento dei fuochi (manager alarm
+2, ogni 10 passi gli edifici di legno alleati, §3.17 n.56) seguiva
+global.raining, quindi cominciava appena il cielo iniziava a coprirsi, ~11 s
+prima della pioggia piena, e smetteva di colpo allo stop mentre le gocce
+calavano ancora.
+
+Ora spegne solo con le gocce ad almeno meta' (`RAIN_PUT_OUT` = 0,5 di
+ps.level, effects.js): ~2,5 s dopo le prime gocce (~9 s dopo l'inizio della
+pioggia) fino a ~2,5 s dopo che hanno cominciato a calare. In tutto dura
+quanto prima, spostato di ~9 s. Il livello non dipende dalle opzioni
+grafiche (con la pioggia spenta nelle opzioni sale e scende lo stesso).
+
+Siccome ora il cielo coperto decide la partita (quando nascono le gocce, e
+le gocce quando si spengono i fuochi), w.overcast si salva (snapshot.js,
+con il manager): prima dopo un caricamento ripartiva dal valore finale, e le
+gocce potevano cominciare prima che senza caricare. I salvataggi di prima
+ripartono dal valore giusto come prima.
+
+`ambience.mjs`, voce "graduale": un edificio di legno in fiamme (onfire
+rimesso a 1 a ogni passo) si spegne la prima volta al passo 545, con le
+gocce a 0,533 (prima: al primo passo), l'ultima volta mentre calano a
+0,517 con global.raining gia' a 0, mai dopo. Passano i test unitari,
+`ambience.mjs`, `burn.mjs` e `saves.mjs` (match, lvl02, lvl03).

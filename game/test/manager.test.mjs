@@ -6,6 +6,7 @@ import { Alarms } from "../src/alarms.js";
 import { Manager } from "../src/manager.js";
 import { newGlobals } from "../src/state.js";
 import { Camera, ZOOM_MAX } from "../src/camera.js";
+import { sightK, DUSK_SIGHT } from "../src/fog.js";
 
 const fakeInput = () => ({ pressed: new Set(), released: new Set(), down: new Set(),
                            mousePressed: [false, false, false], mouseReleased: [false, false, false], x: 0, y: 0 });
@@ -60,6 +61,56 @@ test("giorno/notte: 6000 passi di giorno, rampa da 0,005 a passo, 2000 di notte,
   // alarm[1]=2000 armato al passo in cui night>=1 viene rilevato (quello dopo la rampa)
   assert.ok(back - full >= 2000 && back - full <= 2002, `notte ${back - full}`);
   assert.ok(day - back >= 199 && day - back <= 202, `rampa di ritorno ${day - back}`);
+});
+
+// [§9.87, segnalazione dell'autore] il rosa di alba e tramonto senza salti:
+// prima compariva all'improvviso a 4000 passi dalla fine del primo giorno,
+// e spariva per un passo alla fine di ogni giorno e di ogni alba
+test("crepuscolo: nessun salto in tre giorni e tre notti, dal primo giorno", () => {
+  for (const room of ["match", "lvl02"]) {
+    const g = newGlobals(room);
+    const m = new Manager(room, g);
+    m.al.set(4, -1); // niente pioggia nel test
+    let prev = m.twilight(), maxJump = 0, rises = 0, falls = 0, firstDayMax = 0;
+    for (let s = 0; s < 6000 + 3 * (200 + 2000 + 200 + 4000); s++) {
+      run(m, 1);
+      const tw = m.twilight();
+      // dove night e' fra 0 e 1 il rosa e' pesato da (1 - night): il salto
+      // da 1 a 0 a notte piena e da 0 a 1 all'inizio dell'alba non si vede
+      const p = (t) => t * (1 - Math.max(0, Math.min(1, g.night)));
+      maxJump = Math.max(maxJump, Math.abs(p(tw) - p(prev)));
+      if (tw > prev) rises++; else if (tw < prev) falls++;
+      if (room === "match" && s < 5000) firstDayMax = Math.max(firstDayMax, tw);
+      prev = tw;
+    }
+    assert.ok(maxJump < 0.01, `${room}: salto ${maxJump}`);
+    assert.equal(firstDayMax, 0, `${room}: rosa a meta' del primo giorno`);
+    assert.ok(rises > 2000 && falls > 2000, `${room}: ${rises} su, ${falls} giu'`);
+  }
+});
+
+// [§9.88, richiesta dell'autore] la visuale (nebbia e nemici visti) scende
+// gia' nel crepuscolo: a meta' (DUSK_SIGHT) quando comincia il passaggio,
+// a 0 di notte piena, e risale allo stesso modo dopo l'alba; senza salti
+test("visuale del crepuscolo: intermedia al tramonto e all'alba, continua", () => {
+  const g = newGlobals("match");
+  const m = new Manager("match", g);
+  m.al.set(4, -1); // niente pioggia nel test
+  const k = () => sightK({ g, twilight: m.twilight() }); // w.twilight: manager.step
+  const ks = [];
+  for (let s = 0; s < 6000 + 200 + 2000 + 200 + 4000; s++) { run(m, 1); ks.push([k(), g.night]); }
+  let maxJump = 0;
+  for (let s = 1; s < ks.length; s++) maxJump = Math.max(maxJump, Math.abs(ks[s][0] - ks[s - 1][0]));
+  assert.ok(maxJump < 0.01, `salto ${maxJump}`);
+  assert.equal(ks[4000][0], 1);                                  // giorno pieno
+  assert.ok(ks[5000][0] === 1 && ks[5400][0] < 1 && ks[5400][0] > 1 - DUSK_SIGHT, `crepuscolo ${ks[5400][0]}`);
+  const sunset = ks.findIndex(([, n]) => n > 0);                 // il primo passo del passaggio
+  assert.ok(Math.abs(ks[sunset][0] - (1 - DUSK_SIGHT)) < 0.01, `al tramonto ${ks[sunset][0]}`);
+  assert.equal(ks[7000][0], 0);                                  // notte piena
+  const dawnEnd = ks.findIndex(([, n], s) => s > 7000 && n < 0); // fine dell'alba
+  assert.ok(Math.abs(ks[dawnEnd][0] - (1 - DUSK_SIGHT)) < 0.01, `dopo l'alba ${ks[dawnEnd][0]}`);
+  assert.ok(ks[dawnEnd + 450][0] > ks[dawnEnd][0] && ks[dawnEnd + 450][0] < 1);
+  assert.equal(ks[dawnEnd + 1000][0], 1);
 });
 
 test("lvl01 parte di notte e ci resta a lungo; lvl02 comincia subito a schiarire", () => {

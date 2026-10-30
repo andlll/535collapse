@@ -36,6 +36,7 @@ import { fireStep, fireStop } from "./effects.js";
 import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
+import { sightK } from "./fog.js";
 
 export const ECO = {
   default: {
@@ -114,7 +115,7 @@ const unitCost = (o) => ({
 // Visibilita' [come le unita' nemiche, enemies.js]: vicino a un alleato,
 // colpito, vicino a castello o torre, o senza nebbia.
 function visibility(i, w) {
-  const g = w.g, n = 1 - g.night;
+  const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
   const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r);
   i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1
     || near("castello", 500) || near("torre", 500) || w.room === "menu" || g.fogville === 0;

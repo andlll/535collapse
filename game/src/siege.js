@@ -16,6 +16,7 @@ import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irando
 import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinationBack } from "./pathing.js";
 import { ramSpot } from "./melee.js";
 import { fogSight } from "./enemies.js";
+import { sightK } from "./fog.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -783,7 +784,7 @@ export function enemyRam(base) {
     },
     alarm4: undefined,
     step(i, w) {
-      const g = w.g, n = 1 - g.night;
+      const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
       const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || g.fogville === 0;
@@ -868,7 +869,7 @@ export function enemyCatapult(base) {
     },
     alarm4: catapultReload,
     step(i, w) {
-      const g = w.g, n = 1 - g.night;
+      const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
       const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
       i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
         || near("torre", 500) || w.room === "menu" || g.fogville === 0;
