@@ -17,11 +17,14 @@
 //               ad almeno meta', salendo e calando
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
-//               di 4 e 6,4 gradi, piegata di 0 e 3 gradi
+//               di 4 e 5,2 gradi, piegata di 0 e 1,8 gradi (§9.94: erano 6,4 e 3)
 //   camini      le case del giocatore con camino (stili 1, 2, 4, 6), le case
 //               nemiche con camino (stili 2, 6) gia' viste e i due centri
 //               citta' (§9.93) fanno fumo dalla cima del camino (entro 8 px),
 //               le case senza camino no, ne' una casa nemica non ancora vista
+//   miniere     (§9.94) scintille d'oro (particelle) solo da una miniera del
+//               tutto scoperta, nate sulle venature (entro 6 px dai punti
+//               misurati); con la scoperta a meta' o nulla, niente
 //   crollo      una caserma distrutta: polvere e detriti; le rovine della
 //               mappa al primo passo no
 //   polvere     un cavaliere mandato col clic destro lascia polvere
@@ -156,7 +159,7 @@ const res = await page.evaluate(() => {
   out.vento.ok = Math.abs(V.nuvole[0] - 0.8) < 0.02 && Math.abs(V.nuvole[1] - 1.5) < 0.02
     && V.pioggia[0][0] >= 250 && V.pioggia[0][1] <= 260 && V.pioggia[1][0] >= 235 && V.pioggia[1][1] <= 245
     && Math.abs(V.erba[0].ampiezza - 4) < 0.1 && Math.abs(V.erba[0].piega) < 0.1
-    && Math.abs(V.erba[1].ampiezza - 6.4) < 0.15 && Math.abs(V.erba[1].piega - 3) < 0.15;
+    && Math.abs(V.erba[1].ampiezza - 5.2) < 0.15 && Math.abs(V.erba[1].piega - 1.8) < 0.15;
   G.g.wind = 0.5;
   // camini
   const CH = { c1s: [-2, -113], c2s: [21, -106], c4s: [-27, -120], c6s: [42, -128], c2b: [-6, -126], c6b: [58, -92], cc_spr: [-138, -141], cc_b: [-138, -141] };
@@ -194,6 +197,37 @@ const res = await page.evaluate(() => {
   out.camini.nascosta = { visibile: hid.visible, sbuffi: hidPuffs };
   out.camini.ok &&= hid.visible === false && hidPuffs === 0;
   w.destroy(hid);
+  // miniere: quella piu' lontana dagli alleati, la view su di lei
+  const VEINS = [[-26, -60], [-27, -47], [-26, -39], [-19, -38], [-7, -38], [43, -35], [44, -31],
+    [-58, -18], [-41, -17], [-47, -15], [37, 1], [42, 3], [50, 3], [41, 9]];
+  const allies = [...w.all("ally_unit"), ...w.all("ally_build")];
+  const far = (m) => Math.min(...allies.map((a) => Math.hypot(a.x - m.x, a.y - m.y)));
+  const mine = [...w.all("miniera_oro")].sort((a, b) => far(b) - far(a))[0];
+  const F = G.fog, C = F.cell;
+  const cells = (frac) => { // scoperta del riquadro dello sprite: frac delle righe (dall'alto) a 255, il resto a 0
+    const y0 = Math.floor((mine.y - 82) / C), y1 = Math.floor((mine.y + 35) / C);
+    for (let gy = y0; gy <= y1; gy++) for (let gx = Math.floor((mine.x - 92) / C); gx <= Math.floor((mine.x + 80) / C); gx++) {
+      F.explored[gy * F.gw + gx] = gy < y0 + frac * (y1 - y0 + 1) ? 255 : 0;
+    }
+  };
+  const sparkles = (n) => {
+    const d = [];
+    for (let k = 0; k < n; k++) {
+      run(1);
+      for (const s of P.systems) if (s.depth === mine.depth - 1) {
+        for (const q of s.parts) if (q.age === 1 && q.t.additive) d.push(Math.min(...VEINS.map((v) => Math.hypot(q.x - (mine.x + v[0]), q.y - (mine.y + v[1])))));
+      }
+    }
+    return d;
+  };
+  cam.x = mine.x - cam.w / 2; cam.y = mine.y - cam.h / 2; cam.clamp();
+  mine.visible = true;
+  cells(0); const nulla = sparkles(200).length;
+  cells(0.5); const meta = sparkles(200).length;
+  cells(1); const piena = sparkles(300);
+  out.miniere = { distanza: Math.round(far(mine)), nulla, meta, piena: piena.length, scarto: piena.length ? +Math.max(...piena).toFixed(1) : null };
+  out.miniere.ok = nulla === 0 && meta === 0 && piena.length >= 10 && Math.max(...piena) <= 6;
+  cam.x = X - cam.w / 2; cam.y = Y - cam.h / 2; cam.clamp();
   // crollo
   const mat0 = w.number("sfx_mattone");
   const c = w.create("caserma", X + 300, Y + 150); run(5);

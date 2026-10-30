@@ -16,11 +16,14 @@
 //   (stili 1, 2, 4 e 6), case nemiche blu (stili 2 e 6), centro citta' del
 //   giocatore e nemico (§9.93): uno sbuffo ogni tanto;
 // - polvere e detriti quando un edificio crolla in rovina;
-// - polvere sotto cavalieri e macchine d'assedio in movimento.
+// - polvere sotto cavalieri e macchine d'assedio in movimento;
+// - [§9.94] scintille d'oro sulle venature delle miniere, solo quelle del
+//   tutto scoperte (prima il luccichio era lo sprite miniera_blink).
 // Fumo e polvere sono particelle della categoria "fire" (opzione "Fiamme e
 // scintille"); tutto solo sullo schermo e nella parte vista della nebbia.
 
 import { partType } from "./particles.js";
+import { fogActive } from "./fog.js";
 
 const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 
@@ -236,12 +239,74 @@ function ruinNames(w) {
   return Object.keys(w.behaviours).filter((n) => /ruin\d?$/.test(n));
 }
 
+// ------------------------------------------------ scintille delle miniere
+
+// [§9.94, richiesta dell'autore] Al posto del luccichio dell'originale
+// (miniera_blink: una stella bianca grande che compariva in un punto a caso
+// attorno alla miniera e sfumava, disegnata nel Draw End, cioe' sopra la
+// nebbia: si vedeva anche su una miniera ancora nel nero) scintille d'oro
+// che nascono sulle venature gialle dello sprite (punti misurati
+// sull'immagine, dall'origine; le miniere hanno tutte scala 1): stelle a
+// quattro punte con un alone, che si accendono e si spengono girando un
+// poco, piu' qualche granello dorato che sale.
+// Additive, nella categoria "fire" ("Fiamme e scintille"). Un sistema per
+// miniera alla sua depth (le unita' davanti la coprono; la nebbia sta
+// sopra a tutte le particelle). Solo se la miniera e' stata vista e la
+// scoperta copre tutto il suo riquadro: niente scintille dal bordo del nero.
+export const VEINS = [[-26, -60], [-27, -47], [-26, -39], [-19, -38], [-7, -38], [43, -35], [44, -31],
+  [-58, -18], [-41, -17], [-47, -15], [37, 1], [42, 3], [50, 3], [41, 9]];
+const GLINT = partType({ // la stella (forma "star", tools/05_atlas.py)
+  shape: "star", size: [0.38, 0.52, -0.004, 0], orientation: [-12, 12, 0.6, 0],
+  colour: { list: [0xe6fcff, 0x60d8ff] }, alpha: [0, 1, 0], life: [34, 54], additive: true,
+});
+const HALO = partType({ // e il suo alone, nello stesso punto
+  shape: "flare", size: [0.14, 0.2, 0, 0], colour: { list: [0x80e0ff, 0x30a0ff] }, alpha: [0, 0.55, 0],
+  life: [34, 54], additive: true,
+});
+const MOTE = partType({
+  shape: "flare", size: [0.06, 0.09, 0, 0], colour: { rgb: [230, 255, 190, 225, 70, 120] },
+  alpha: [0, 0.75, 0], speed: [0.12, 0.28, 0, 0.05], direction: [80, 100, 0, 8], life: [60, 100], additive: true,
+});
+const GLINT_EVERY = 18, MOTE_EVERY = 30; // in media, passi fra una nascita e l'altra per miniera
+
+// La miniera e' del tutto scoperta? (sempre, senza nebbia)
+export function mineSeen(w, i) {
+  if (i.visible === false) return false;
+  if (!w.fog || !fogActive(w)) return true;
+  const F = w.fog, C = F.cell, bb = [i.x - 92, i.y - 82, i.x + 80, i.y + 35]; // lo sprite (172 x 117, origine 92, 82)
+  const x0 = Math.max(0, Math.floor(bb[0] / C)), x1 = Math.min(F.gw - 1, Math.floor(bb[2] / C));
+  const y0 = Math.max(0, Math.floor(bb[1] / C)), y1 = Math.min(F.gh - 1, Math.floor(bb[3] / C));
+  for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) if (F.explored[gy * F.gw + gx] < 255) return false;
+  return true;
+}
+
+const MINES = new WeakMap(); // miniera -> { ps, em }
+function mineSparkles(w, cam) {
+  const P = w.particles;
+  for (const i of w.all("miniera_oro")) {
+    if (!onScreen(cam, i.x, i.y)) continue;
+    const g = Math.random() * GLINT_EVERY < 1, m = Math.random() * MOTE_EVERY < 1;
+    if ((!g && !m) || !mineSeen(w, i)) continue;
+    let s = MINES.get(i);
+    if (!s || !s.ps.alive || !P.systems.includes(s.ps)) { // (dopo un caricamento i sistemi sono altri)
+      s = { ps: P.systemCreate(i.depth - 1, "fire") };
+      P.releaseWhenEmpty(s.ps);
+      s.em = P.emitterCreate(s.ps);
+      MINES.set(i, s);
+    }
+    const v = VEINS[Math.floor(Math.random() * VEINS.length)];
+    if (g) { P.create(s.ps, i.x + v[0], i.y + v[1], HALO, 1); P.create(s.ps, i.x + v[0], i.y + v[1], GLINT, 1); }
+    if (m) puffAt(w, s.ps, s.em, MOTE, i.x + v[0], i.y + v[1] - 2, 1, 3, 2);
+  }
+}
+
 const LAST = new WeakMap(); // posizione dell'ultimo sbuffo di polvere per unita'
 const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
 
 // Un passo (app.js, dopo il mondo)
 export function ambienceStep(w, cam) {
   if (w.particles) w.particles.wind = windLevel(w.g); // §9.90: erba e fiori
+  if (w.particles && !w.particles.hidden.has("fire")) mineSparkles(w, cam); // §9.94 (anche nel menu)
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
   // crolli

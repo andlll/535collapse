@@ -22,7 +22,8 @@ Decorative, rasterizzati qui dai TTF di nuovi/font/; foglio intero come
 pseudo-sprite "__font_<nome>", piu' la tabella dei glifi in atlas.json
 "fonts"), "__white", un quadratino
 bianco per rettangoli, cerchi e linee, e le forme delle particelle
-("__pt_flare", "__pt_line", "__pt_pixel"): niente texture in piu' da legare.
+("__pt_flare", "__pt_line", "__pt_pixel", "__pt_ring", "__pt_star"): niente
+texture in piu' da legare.
 
 Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
 come sprite di un oggetto ne' nel codice): servono solo a tools/06_masks.py.
@@ -272,6 +273,24 @@ def particle_shapes():
             d = abs(math.hypot(x + 0.5 - 32, y + 0.5 - 32) - 27)
             px[x, y] = (255, 255, 255, round(255 * max(0.0, 1 - d / 3.6)))
     out.append(("__pt_ring", rg, [0, 0, 64, 64]))
+    # star [§9.94, richiesta dell'autore: le scintille delle miniere]: stella
+    # a quattro punte affilate (raggi che si assottigliano fino alla cima),
+    # quattro raggi diagonali piu' corti e deboli, un nucleo luminoso
+    st = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    px = st.load()
+    for y in range(64):
+        for x in range(64):
+            dx, dy = (x + 0.5 - 32) / 32, (y + 0.5 - 32) / 32
+            r = math.hypot(dx, dy)
+            v = max(0.0, 1 - r / 0.22) ** 1.5
+            for along, perp, long, k in ((abs(dx), abs(dy), 1.0, 1.0), (abs(dy), abs(dx), 1.0, 1.0),
+                                         (abs(dx + dy) / 1.4142, abs(dx - dy) / 1.4142, 0.45, 0.5),
+                                         (abs(dx - dy) / 1.4142, abs(dx + dy) / 1.4142, 0.45, 0.5)):
+                width = 0.07 * max(0.0, 1 - along / long)  # meta' larghezza, a zero sulla punta
+                if width > 0:
+                    v = max(v, k * max(0.0, 1 - perp / width) * (1 - along / long) ** 0.6)
+            px[x, y] = (255, 255, 255, round(255 * min(1.0, v)))
+    out.append(("__pt_star", st, [0, 0, 64, 64]))
     return out
 
 
