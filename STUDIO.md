@@ -7536,3 +7536,32 @@ giorno pieno 1000 passi dopo l'alba, nessun salto. Passano i test unitari,
 `ambience.mjs` e `saves.mjs` (match, lvl02, lvl03: ripristino identico).
 Verificato a occhio con cinque foto nel match (giorno, meta' crepuscolo,
 tramonto, meta' passaggio, notte): le zone viste si restringono per gradi.
+
+### 9.89 Nuvole grandi come nel disegno
+
+Segnalazione dell'autore (provando il tutorial): le ombre delle nuvole
+sembravano molto lente e indistinguibili da una macchia scura generica.
+Il motivo: le sagome (larghe 370-550 px nel disegno, 1021x722) erano
+ingrandite 5,5-8,5 volte la meta' risoluzione, cioe' 2,75-4,25 volte il
+disegno: 1000-2300 px di room, piu' larghe dello schermo. Se ne vedeva
+solo un pezzo sfumato.
+
+Prove a foto nel match (a zoom 1 e 1,7, con un aggancio provvisorio per
+cambiare scala, densita', alpha e vento senza ricostruire; il rendering
+software del contenitore le spegne, forzato a mano nelle prove):
+- scala attuale; 1:1 col disegno (1,7-2,3 della meta' risoluzione, una
+  nuvola ogni 1100x800 px); 1,5 volte (2,6-3,4, una ogni 1500x1100); 2
+  volte (3,5-4,5);
+- alpha 0,3 e 0,45;
+- sfumatura della pipeline (`sfuma` di nuovi.json) 18, 8 e 3, con tre
+  atlas rigenerati (a 8 e 3 i lobi della sagoma si leggono di piu');
+- vento 0,32, 0,8 e 1,5 px a passo, in un video a velocita' reale.
+
+Scelta dell'autore: scala 1:1 con la sfumatura di sempre (18: "almeno non
+e' enorme e si capisce che e' una nuvola"). Quindi (ambience.js) scala
+1,7-2,3, una nuvola ogni 1100x800 px (circa quante prima per schermo, ma
+piccole), alpha 0,4 per compensare la sagoma piu' piccola. Pipeline e
+nuovi.json invariati. Il vento per ora resta 0,32 px a passo.
+
+`ambience.mjs`: l'ombra nel pieno di una sagoma e' ora 0,6 (era 0,7).
+Passa con 83 nuvole nella stanza (prima 20), 7 attorno alla view.

@@ -2,8 +2,8 @@
 // non li legge mai, non si salvano):
 // - ombre delle nuvole: sagome disegnate dall'autore (§9.86, nn1-nn6: nere,
 //   a bordi netti, gia' schiacciate come il suolo; la pipeline le sfuma e le
-//   dimezza), molto ingrandite, che il vento porta lentamente attraverso la
-//   mappa. Sul suolo si disegnano subito dopo di lui; edifici, alberi e
+//   dimezza), grandi come nel disegno (§9.89), che il vento porta
+//   attraverso la mappa. Sul suolo si disegnano subito dopo di lui; edifici, alberi e
 //   unita' si scuriscono tutti interi (Renderer.shade) di quanto e' in
 //   ombra il punto in cui toccano terra: una torre non si "dipinge per
 //   terra", entra nell'ombra quando ci entra la sua base (la mappa
@@ -26,14 +26,18 @@ const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 // ------------------------------------------------------------- nuvole
 
 // [§9.86] Le sagome e quanto si ingrandiscono: a meta' risoluzione sono
-// larghe ~200-280 px (sfumatura compresa), in gioco ~1400-2700 px di room
+// larghe ~200-280 px (sfumatura compresa). [§9.89, segnalazione
+// dell'autore] ingrandite 5,5-8,5 volte (1400-2700 px di room, piu' dello
+// schermo) erano macchie scure senza forma: ora circa come nel disegno
+// (scala 2 della meta' risoluzione: il disegno e' largo 370-550 px), piu'
+// fitte, un po' piu' scure
 const CLOUD_SPRITES = ["nn1", "nn2", "nn3", "nn4", "nn5", "nn6"];
-const CLOUD_SCALE = [5.5, 8.5];  // scala (uguale in x e y), poi:
+const CLOUD_SCALE = [1.7, 2.3];  // scala (uguale in x e y), poi:
 const CLOUD_STRETCH = 0.2;       // x allungata o accorciata fino al 20%
 const CLOUD_TILT = 8;            // ruotata fino a 8 gradi; specchiata a caso
 const WIND = [0.32, 0.07];      // px di room a passo (verso est, un po' a sud)
-const CLOUD_CELL = [2600, 1900]; // una nuvola ogni tanti px di room
-const ALPHA = 0.3;              // il nero pieno della sagoma
+const CLOUD_CELL = [1100, 800];  // una nuvola ogni tanti px di room
+const ALPHA = 0.4;              // il nero pieno della sagoma
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). Solo estetico, non si
 // salva: dopo un caricamento riparte dal valore giusto.

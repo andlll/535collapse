@@ -6,7 +6,7 @@
 //               rosso no) e quello della notte di sempre a notte piena
 //   nuvole      ci sono nuvole (sagome nn1-nn6 dell'autore, §9.86) attorno
 //               alla view di giorno, nessuna di notte; l'ombra su un oggetto
-//               (shadeAt nel punto in cui tocca terra) e' 0,7 nel pieno
+//               (shadeAt nel punto in cui tocca terra) e' 0,6 nel pieno
 //               della sagoma (anche specchiata e ruotata) e 1 fuori
 //   pioggia     cielo coperto (overcast) in pochi secondi, senza macchie;
 //               smesso di piovere, le macchie tornano
@@ -69,7 +69,7 @@ const res = await page.evaluate(() => {
   out.nuvole = { vicine: blobs.length, tutte: big.length, sprite: [...new Set(big.map((q) => q.spr))].length,
                  centro: +centro.toFixed(3), fuori: +fuori.toFixed(3) };
   G.g.night = 1; out.nuvole.notte = G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length; G.g.night = 0;
-  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.sprite >= 4 && Math.abs(out.nuvole.centro - 0.7) < 0.01
+  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.sprite >= 4 && Math.abs(out.nuvole.centro - 0.6) < 0.01 // §9.89: alpha 0,4
     && out.nuvole.fuori === 1 && out.nuvole.notte === 0;
   // pioggia: cielo coperto in pochi secondi, niente macchie; smesso, tornano
   const all = () => G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length;
