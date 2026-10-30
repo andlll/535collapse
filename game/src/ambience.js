@@ -49,8 +49,9 @@ export const windLevel = (g) => Math.max(0, Math.min(1, g.wind ?? 0.5));
 export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) * windLevel(g);
 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
-// di OVERCAST_EASE della distanza (il 99% in ~5 s). Solo estetico, non si
-// salva: dopo un caricamento riparte dal valore giusto.
+// di OVERCAST_EASE della distanza (il 99% in ~5 s). [§9.92] Si salva
+// (snapshot.js): decide quando le gocce cominciano, e le gocce quando la
+// pioggia spegne i fuochi; i salvataggi di prima ripartono dal valore giusto.
 // [§9.91] Resta coperto finche' nascono gocce (`rain`, il sistema della
 // pioggia: rain.level, effects.js rainStep): smesso di piovere, si
 // rasserena solo quando le gocce sono calate fino a 0. Lo chiama

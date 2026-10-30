@@ -7,7 +7,7 @@
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainStep, rainExtinguish, rainRipples, waterLife } from "./effects.js";
+import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLife } from "./effects.js";
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 
@@ -227,7 +227,10 @@ export class Manager {
         // la pioggia spegne gli edifici di legno alleati ogni 10 passi, con
         // le loro fiamme (§3.17 n.56)
         this.al.set(2, 10);
-        if (g.raining === 1 && this.world) rainExtinguish(this.world);
+        // [§9.92, richiesta dell'autore] solo quando le gocce sono almeno a
+        // meta' (effects.js RAIN_PUT_OUT): non mentre il cielo si copre e le
+        // prime gocce cominciano a cadere, e ancora per un po' mentre calano
+        if (this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT && this.world) rainExtinguish(this.world);
         break;
       case 3: // aquila, ogni 3000 passi
         // [Correzione decisa dall'autore, §3.17 n.58] l'originale la crea a

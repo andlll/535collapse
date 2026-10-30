@@ -31,7 +31,7 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
     seeds: world.seeds || null,
     seedEmitter: world.seedEmitter || null,
     g,
-    manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain },
+    manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain, overcast: world.overcast }, // §9.92: overcast
     path: { cost: path.cost, enemyBlock: path.enemyBlock, enemyPass: path.enemyPass, solid: path.solid },
     fog: { explored: fog.explored },
     particles: { systems: P.systems, seq: P.seq },
@@ -74,6 +74,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.al = s.manager.al;
   manager.fogalpha = s.manager.fogalpha;
   manager.rain = s.manager.rain;
+  world.overcast = s.manager.overcast; // §9.92 (undefined nei salvataggi di prima: overcastStep lo rimette)
   manager.endlessNight();
   world.twilight = manager.twilight(); // §9.88: la visuale del crepuscolo gia' al primo disegno
   path.cost.set(s.path.cost);

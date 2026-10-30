@@ -7632,3 +7632,29 @@ primi 60 passi ~12% delle gocce di 60 passi a pioggia piena; smesso, gocce
 a 0 in 300 passi col cielo coperto, poi sereno e sistema tolto. Passano i
 test unitari, `ambience.mjs` e `saves.mjs` (match, lvl02). Video continuo
 senza tagli mandato all'autore.
+
+### 9.92 La pioggia spegne i fuochi quando cadono le gocce
+
+Richiesta dell'autore, dopo §9.91: lo spegnimento dei fuochi (manager alarm
+2, ogni 10 passi gli edifici di legno alleati, §3.17 n.56) seguiva
+global.raining, quindi cominciava appena il cielo iniziava a coprirsi, ~11 s
+prima della pioggia piena, e smetteva di colpo allo stop mentre le gocce
+calavano ancora.
+
+Ora spegne solo con le gocce ad almeno meta' (`RAIN_PUT_OUT` = 0,5 di
+ps.level, effects.js): ~2,5 s dopo le prime gocce (~9 s dopo l'inizio della
+pioggia) fino a ~2,5 s dopo che hanno cominciato a calare. In tutto dura
+quanto prima, spostato di ~9 s. Il livello non dipende dalle opzioni
+grafiche (con la pioggia spenta nelle opzioni sale e scende lo stesso).
+
+Siccome ora il cielo coperto decide la partita (quando nascono le gocce, e
+le gocce quando si spengono i fuochi), w.overcast si salva (snapshot.js,
+con il manager): prima dopo un caricamento ripartiva dal valore finale, e le
+gocce potevano cominciare prima che senza caricare. I salvataggi di prima
+ripartono dal valore giusto come prima.
+
+`ambience.mjs`, voce "graduale": un edificio di legno in fiamme (onfire
+rimesso a 1 a ogni passo) si spegne la prima volta al passo 545, con le
+gocce a 0,533 (prima: al primo passo), l'ultima volta mentre calano a
+0,517 con global.raining gia' a 0, mai dopo. Passano i test unitari,
+`ambience.mjs`, `burn.mjs` e `saves.mjs` (match, lvl02, lvl03).

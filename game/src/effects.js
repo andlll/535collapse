@@ -58,9 +58,14 @@ export function rainStart(w) {
 // rasserena. Le gocce gia' in aria finiscono di cadere (il sistema si toglie
 // quando e' vuoto; prima spariva di colpo). Restituisce il sistema, o null
 // quando e' finito (manager.rain). Il livello si salva col sistema; i
-// salvataggi di prima (flusso automatico) ripartono a pioggia piena. Solo
-// estetico: lo spegnimento dei fuochi segue global.raining come prima.
+// salvataggi di prima (flusso automatico) ripartono a pioggia piena.
+// [§9.92, richiesta dell'autore] I fuochi li spegne (manager alarm 2) solo
+// con ps.level ad almeno RAIN_PUT_OUT: ~2,5 s dopo le prime gocce, fino a
+// ~2,5 s dopo che hanno cominciato a calare. Il livello non dipende dalle
+// opzioni grafiche (con la pioggia spenta nelle opzioni sale e scende lo
+// stesso, senza gocce).
 const RAIN_RAMP = 300;
+export const RAIN_PUT_OUT = 0.5;
 export function rainStep(w, ps) {
   if (!ps || !ps.alive) return null;
   const P_ = P(w), em = ps.emitters[0];

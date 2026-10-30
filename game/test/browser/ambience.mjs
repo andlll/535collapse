@@ -12,7 +12,9 @@
 //               smesso di piovere, le macchie tornano
 //   graduale    (§9.91) le gocce nascono solo a cielo del tutto coperto e
 //               arrivano al pieno in 300 passi; smesso, calano in 300 col
-//               cielo ancora coperto, poi si rasserena e il sistema si toglie
+//               cielo ancora coperto, poi si rasserena e il sistema si toglie;
+//               (§9.92) un edificio in fiamme si spegne solo con le gocce
+//               ad almeno meta', salendo e calando
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
 //               di 4 e 6,4 gradi, piegata di 0 e 3 gradi
@@ -91,9 +93,15 @@ const res = await page.evaluate(() => {
   const born = () => (M.rain ? M.rain.parts.filter((q) => q.age === 1).length : 0);
   const gr = { coperto: -1, primaGoccia: -1, piena: -1 };
   let first60 = 0, full60 = 0;
+  // §9.92: un edificio di legno che brucia (onfire rimesso a 1 a ogni passo):
+  // la pioggia lo spegne solo con le gocce ad almeno meta'
+  const wood = [...w.all("ally_wooden")].find((q) => q.alive);
+  const out_ = [];
+  const fire = (s) => { if (wood.onfire === 0) out_.push([s, M.rain ? +M.rain.level.toFixed(3) : 0, G.g.raining]); wood.onfire = 1; };
+  wood.onfire = 1;
   M.alarm(4);
   for (let s = 1; s <= 1000; s++) {
-    run(1);
+    run(1); fire(s);
     const n = born();
     if (gr.coperto < 0 && w.overcast === 1) gr.coperto = s;
     if (gr.primaGoccia < 0 && n > 0) gr.primaGoccia = s;
@@ -104,14 +112,22 @@ const res = await page.evaluate(() => {
   gr.inizioSuPieno = +(first60 / Math.max(1, full60)).toFixed(3);
   M.stopRain();
   let finite = -1, copertoAlloStop = 1;
-  for (let s = 1; s <= 900 && finite < 0; s++) { run(1); if (M.rain) copertoAlloStop = Math.min(copertoAlloStop, w.overcast); else finite = s; }
-  run(700);
+  const stopAt = out_.length;
+  for (let s = 1; s <= 900 && finite < 0; s++) { run(1); fire(1000 + s); if (M.rain) copertoAlloStop = Math.min(copertoAlloStop, w.overcast); else finite = s; }
+  for (let s = 1; s <= 700; s++) { run(1); fire(2000 + s); }
+  wood.onfire = 0; if (wood.firestarted === 1) { wood.firestarted = 0; }
+  const spenti = out_.filter((e) => e[0] < 1000), dopo = out_.slice(stopAt);
+  gr.spegneDa = spenti.length ? spenti[0] : null;                 // [passo, livello, raining]
+  gr.spegneFinoA = dopo.length ? dopo[dopo.length - 1] : null;
+  gr.spegneDopoSereno = dopo.filter((e) => e[0] > 1000 + finite).length;
   gr.calo = finite; gr.copertoMentreCala = copertoAlloStop; gr.sereno = w.overcast;
   gr.sistemaTolto = !P.systems.some((q) => q.depth === -9000 && q.alive);
   out.graduale = gr;
   gr.ok = gr.coperto > 300 && gr.primaGoccia >= gr.coperto && gr.primaGoccia <= gr.coperto + 60 // all'inizio ~0,03 gocce a passo
     && Math.abs(gr.piena - gr.coperto - 300) <= 2 && gr.inizioSuPieno < 0.15
-    && Math.abs(gr.calo - 300) <= 2 && gr.copertoMentreCala === 1 && gr.sereno === 0 && gr.sistemaTolto;
+    && Math.abs(gr.calo - 300) <= 2 && gr.copertoMentreCala === 1 && gr.sereno === 0 && gr.sistemaTolto
+    && gr.spegneDa && gr.spegneDa[0] > gr.primaGoccia && gr.spegneDa[1] >= 0.5 && gr.spegneDa[1] < 0.54
+    && gr.spegneFinoA && gr.spegneFinoA[2] === 0 && gr.spegneFinoA[1] >= 0.5 && gr.spegneFinoA[1] < 0.54 && gr.spegneDopoSereno === 0;
   // vento (§9.90): nuvole a 0,8-1,5 px a passo, pioggia piu' inclinata, erba
   // che ondeggia di piu' e si piega a ovest
   const wide = { x: -3000, y: -3000, w: w.roomW + 6000, h: w.roomH + 6000 };
