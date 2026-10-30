@@ -7460,3 +7460,44 @@ software e con la qualita' bassa.
 `ambience.mjs`: le nuvole ora controllano che ci siano almeno 4 delle 6
 sagome, l'ombra 0,7 nel pieno di una sagoma specchiata e ruotata e 1
 fuori.
+
+### 9.87 Alba e tramonto senza salti
+
+Segnalazione dell'autore: col ciclo giorno/notte di §9.84 il giorno
+diventava sera all'improvviso, poi tornava giorno sfumando; alla fine del
+giorno la sera saliva, tornava giorno di colpo e partiva il passaggio alla
+notte.
+
+Simulato il manager passo per passo (alarm, Step, `twilight`, `skyColour`),
+tre salti in `manager.twilight`, nessuno nel colore (`skyColour` e'
+monotono lungo tutto il passaggio):
+- *primo giorno*: la discesa dopo l'alba si ricavava come 4000 - alarm 0,
+  ma il primo giorno della room dura 6000 passi (non c'e' stata un'alba):
+  a 4000 passi dalla fine (2000 dall'inizio) il rosa compariva pieno di
+  colpo e scendeva in 900 passi. E' il "giorno, sera improvvisa, sera che
+  torna giorno" della segnalazione;
+- *fine di ogni giorno*: con alarm 0 a 1 (il passo prima del tramonto)
+  `twilight` dava 0, giorno pieno per un passo fra il rosa pieno e
+  l'inizio del passaggio (il lampo di giorno prima della notte);
+- *fine di ogni alba*: il passo in cui global.night scende sotto 0 alarm 0
+  non e' ancora riarmato (-1) e `twilight` dava 0, giorno pieno per un
+  passo fra la fine dell'alba e il rosa che scende.
+
+Correzione (manager.js `twilight`): la discesa solo dopo un'alba, che si
+riconosce da global.night appena sotto 0 (alarm 1 si ferma solo quando
+scende sotto lo 0; al primo giorno della room e' 0 esatto, anche nei
+salvataggi); il passo prima del tramonto e' rosa pieno (la salita va da 0 a
+alarm 0 = 901 a 1 ad alarm 0 = 1); il passo dopo l'alba, con alarm 1
+ancora armato, rosa pieno. I 4000 passi del giorno dopo l'alba sono una
+costante sola (`DAY_AFTER_DAWN`) per l'allarme e per il conto. Nessun
+campo nuovo; il gioco continua a leggere solo global.night.
+
+Prova nuova in `manager.test.mjs`: tre giorni e tre notti dal primo giorno
+(match e lvl02, che parte di notte), il rosa pesato come in `skyColour`
+(per 1 - night) non salta mai piu' di 0,01 a passo (prima 1), nessun rosa
+a meta' del primo giorno. Col codice di prima fallisce. Passano i test
+unitari e `ambience.mjs`.
+
+Visto e lasciato com'e' (dall'originale): il rettangolo di selezione e' blu
+solo con global.night uguale a 0, e dopo la prima alba global.night resta
+appena sotto 0, quindi da li' in poi e' bianco anche di giorno.

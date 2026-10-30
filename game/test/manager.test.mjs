@@ -62,6 +62,32 @@ test("giorno/notte: 6000 passi di giorno, rampa da 0,005 a passo, 2000 di notte,
   assert.ok(day - back >= 199 && day - back <= 202, `rampa di ritorno ${day - back}`);
 });
 
+// [§9.87, segnalazione dell'autore] il rosa di alba e tramonto senza salti:
+// prima compariva all'improvviso a 4000 passi dalla fine del primo giorno,
+// e spariva per un passo alla fine di ogni giorno e di ogni alba
+test("crepuscolo: nessun salto in tre giorni e tre notti, dal primo giorno", () => {
+  for (const room of ["match", "lvl02"]) {
+    const g = newGlobals(room);
+    const m = new Manager(room, g);
+    m.al.set(4, -1); // niente pioggia nel test
+    let prev = m.twilight(), maxJump = 0, rises = 0, falls = 0, firstDayMax = 0;
+    for (let s = 0; s < 6000 + 3 * (200 + 2000 + 200 + 4000); s++) {
+      run(m, 1);
+      const tw = m.twilight();
+      // dove night e' fra 0 e 1 il rosa e' pesato da (1 - night): il salto
+      // da 1 a 0 a notte piena e da 0 a 1 all'inizio dell'alba non si vede
+      const p = (t) => t * (1 - Math.max(0, Math.min(1, g.night)));
+      maxJump = Math.max(maxJump, Math.abs(p(tw) - p(prev)));
+      if (tw > prev) rises++; else if (tw < prev) falls++;
+      if (room === "match" && s < 5000) firstDayMax = Math.max(firstDayMax, tw);
+      prev = tw;
+    }
+    assert.ok(maxJump < 0.01, `${room}: salto ${maxJump}`);
+    assert.equal(firstDayMax, 0, `${room}: rosa a meta' del primo giorno`);
+    assert.ok(rises > 2000 && falls > 2000, `${room}: ${rises} su, ${falls} giu'`);
+  }
+});
+
 test("lvl01 parte di notte e ci resta a lungo; lvl02 comincia subito a schiarire", () => {
   const g1 = newGlobals("lvl01"); const m1 = new Manager("lvl01", g1);
   run(m1, 5000);

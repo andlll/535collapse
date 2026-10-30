@@ -10,6 +10,9 @@ import { c } from "./colours.js";
 import { rainStart, rainExtinguish, rainRipples, waterLife } from "./effects.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 
+// passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
+const DAY_AFTER_DAWN = 4000;
+
 export class Manager {
   constructor(room, g) {
     this.room = room;
@@ -145,16 +148,23 @@ export class Manager {
   // giorno (alarm 0), e' 1 durante il passaggio (global.night fra 0 e 1),
   // scende nei primi TWILIGHT passi dopo l'alba (alarm 0 riarmato a 4000).
   // Solo estetico, niente da salvare: gli allarmi si salvano gia'.
+  // [§9.87, segnalazione dell'autore] senza salti: il primo giorno (6000
+  // passi, nessuna alba prima) non ha la discesa, che a 4000 passi dalla
+  // fine faceva comparire il rosa all'improvviso; l'ultimo passo del giorno
+  // (alarm 0 a 1) e quello dopo l'alba (alarm 1 a 1, alarm 0 non ancora
+  // riarmato) sono rosa pieno, non giorno per un fotogramma. Dopo un'alba
+  // global.night e' sempre appena sotto 0 (alarm 1 si ferma solo quando
+  // scende sotto lo 0), al primo giorno della room e' 0 esatto.
   twilight() {
     const g = this.g, TW = 900;
     if (this.room === "lvl01" || this.room === "menu") return 0;
-    if (g.night > 0 && g.night < 1) return 1;
     if (g.night >= 1) return 0;
+    if (g.night > 0) return 1;
     const a0 = this.al.get(0);
-    if (a0 <= 1) return 0;
-    if (a0 < TW) return 1 - a0 / TW;
-    const since = 4000 - a0;
-    return since >= 0 && since < TW ? 1 - since / TW : 0;
+    if (a0 <= 0) return this.al.get(1) > 0 ? 1 : 0; // l'alba appena finita
+    const rise = Math.max(0, 1 - (a0 - 1) / TW);
+    const fall = g.night < 0 ? Math.max(0, 1 - (DAY_AFTER_DAWN - a0) / TW) : 0;
+    return Math.min(1, Math.max(rise, fall));
   }
 
   step(input, cam, roomW, roomH) {
@@ -205,7 +215,7 @@ export class Manager {
       case 1: // passaggio notte-giorno (non nel livello 1, sempre di notte)
         if (this.room === "lvl01") break;
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
-        else this.al.set(0, 4000);
+        else this.al.set(0, DAY_AFTER_DAWN);
         break;
       case 2: // [C] (il resto e' il ridimensionamento della finestra)
         // la pioggia spegne gli edifici di legno alleati ogni 10 passi, con
