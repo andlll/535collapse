@@ -7658,3 +7658,45 @@ rimesso a 1 a ogni passo) si spegne la prima volta al passo 545, con le
 gocce a 0,533 (prima: al primo passo), l'ultima volta mentre calano a
 0,517 con global.raining gia' a 0, mai dopo. Passano i test unitari,
 `ambience.mjs`, `burn.mjs` e `saves.mjs` (match, lvl02, lvl03).
+
+### 9.93 Pulsanti sbiaditi senza risorse; fumo dal centro e dalle case blu
+
+Richiesta dell'autore, in due parti.
+
+**Pulsanti senza risorse.** I pulsanti di costruzione (i 10 del civile) e di
+produzione (civile al centro; guerriero, picchiere, arciere in caserma;
+cavaliere in stalla; ariete e catapulta nel castello) che costano piu'
+delle risorse che ci sono si disegnano molto piu' trasparenti: cerchio e
+icona per `POOR_ALPHA` = 0,3 (cerchio 0,69 -> ~0,21, icona 1 -> 0,3; col
+puntatore sopra lo stesso, il cerchio evidenziato 0,99 -> ~0,3). Appena le
+risorse bastano tornano come gli altri, a ogni fotogramma (buildings.js
+`buttonAlpha`, usato da civilians.js `ominoPanel`, dal centro, da
+production.js). Conta solo il costo in cibo, legno, oro e pietra: la
+popolazione no (un pulsante con la popolazione piena resta normale, il
+clic continua a far lampeggiare `pop_blink`). Il pulsante "Annulla" non
+cambia. Visto negli screenshot: civile con 60 legno e 0 pietra, pieni solo
+casa (50) e mulino (60); caserma con 60 cibo, 40 oro, 50 legno, pieno solo
+il picchiere; centro con 40 cibo, civile sbiadito; con le risorse tornano
+tutti pieni.
+
+**Fumo dai camini.** In §9.84 il fumo usciva solo dalle case del giocatore
+(rosse) con camino. Guardati tutti gli sprite degli edifici, rossi e blu:
+hanno un camino anche il centro citta' (cc_spr) e quello nemico (cc_b),
+nello stesso punto (-138, -141 dall'origine), e due stili delle case
+nemiche blu, c2b (-6, -126) e c6b (58, -92); le altre case blu hanno il
+tetto piatto, e caserme, stalle, magazzini, mulini, chiese, castelli e
+torri non hanno camini (le torrette del castello non lo sono). La tabella
+`CHIMNEY` (ambience.js) ora e' per sprite e copre casa, enemy_house,
+centro ed enemy_centro, con le stesse regole: uno sbuffo ogni 50-70
+passi, niente dagli edifici in fiamme, solo sullo schermo; quelli nemici
+solo una volta visti (visible, come l'edificio stesso nella nebbia).
+
+`ambience.mjs`, voce "camini": oltre alle 6 case del giocatore, le 6 case
+nemiche e i due centri; il fumo nasce entro 2 px dalla cima del camino in
+c1s, c2s, c4s, c6s, c2b, c6b, cc_spr e cc_b, mai dalle case senza camino,
+e una casa nemica c6b non ancora vista resta senza fumo per 150 passi.
+Passano i test unitari, `ambience.mjs` (una prima esecuzione e' caduta
+sulla voce "graduale" della pioggia, che dipende dal caso: prima goccia 16
+passi dopo il cielo coperto, rapporto 0,16 contro il tetto di 0,15; la
+seconda passa; il codice della pioggia non e' toccato) e `soak.mjs`.
+Versione 0.2605.

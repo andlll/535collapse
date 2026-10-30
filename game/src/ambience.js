@@ -12,8 +12,9 @@
 //   passa mentre piove) il cielo e' coperto: le ombre si dissolvono e tutta
 //   la scena si scurisce di un grigio freddo uniforme (overcast, fog.js
 //   skyColour), in qualche secondo, e tornano quando smette;
-// - fumo dai camini delle case del giocatore che ne hanno uno (stili 1, 2, 4
-//   e 6; quelle nemiche hanno il tetto piatto): uno sbuffo ogni tanto;
+// - fumo dai camini degli edifici che ne hanno uno: case del giocatore
+//   (stili 1, 2, 4 e 6), case nemiche blu (stili 2 e 6), centro citta' del
+//   giocatore e nemico (§9.93): uno sbuffo ogni tanto;
 // - polvere e detriti quando un edificio crolla in rovina;
 // - polvere sotto cavalieri e macchine d'assedio in movimento.
 // Fumo e polvere sono particelle della categoria "fire" (opzione "Fiamme e
@@ -179,9 +180,16 @@ const TRAIL = partType({
   alpha: [0.5, 0], speed: [0.15, 0.45, 0, 0], direction: [0, 360, 0, 0], life: [40, 60],
 });
 
-// Cima del camino rispetto all'origine della casa del giocatore, per stile
-// (c1s, c2s, c4s, c6s; 3 e 5 non hanno camino)
-export const CHIMNEY = { 1: [-2, -113], 2: [21, -106], 4: [-27, -120], 6: [42, -128] };
+// Cima del camino rispetto all'origine dell'edificio, per sprite: case del
+// giocatore c1s, c2s, c4s, c6s (3 e 5 non hanno camino); [§9.93] case
+// nemiche c2b, c6b (le altre hanno il tetto piatto senza camino), il centro
+// citta' (cc_spr) e quello nemico (cc_b), che hanno il camino nello stesso
+// punto. Gli altri edifici non hanno camini.
+export const CHIMNEY = {
+  c1s: [-2, -113], c2s: [21, -106], c4s: [-27, -120], c6s: [42, -128],
+  c2b: [-6, -126], c6b: [58, -92], cc_spr: [-138, -141], cc_b: [-138, -141],
+};
+const CHIMNEY_OBJECTS = ["casa", "enemy_house", "centro", "enemy_centro"];
 
 const onScreen = (cam, x, y, m = 200) => x > cam.x - m && x < cam.x + cam.w + m && y > cam.y - m && y < cam.y + cam.h + m;
 
@@ -249,14 +257,17 @@ export function ambienceStep(w, cam) {
   }
   if (P.hidden.has("fire")) return;
   const S = systems(w);
-  // camini: uno sbuffo ogni ~50-70 passi per casa (fase diversa per casa)
-  for (const h of w.all("casa")) {
-    const m = /^c(\d)s$/.exec(h.sprite_index || ""); // lo stile dallo sprite (le case della mappa non hanno tipo)
-    const c = m && CHIMNEY[m[1]];
-    if (!c || h.onfire === 1 || h.visible === false) continue;
-    if ((t + h.id * 37) % (50 + (h.id % 21)) !== 0) continue;
-    const x = h.x + c[0], y = h.y + c[1];
-    if (onScreen(cam, x, y)) puffAt(w, S.smoke, S.em, PUFF, x, y - 4, 1);
+  // camini: uno sbuffo ogni ~50-70 passi per edificio (fase diversa per
+  // edificio); il camino dallo sprite (le case della mappa non hanno tipo).
+  // Quelli nemici solo una volta visti (visible, enemybuild.js)
+  for (const n of CHIMNEY_OBJECTS) {
+    for (const h of w.all(n)) {
+      const c = CHIMNEY[h.sprite_index];
+      if (!c || h.onfire === 1 || h.visible === false) continue;
+      if ((t + h.id * 37) % (50 + (h.id % 21)) !== 0) continue;
+      const x = h.x + c[0], y = h.y + c[1];
+      if (onScreen(cam, x, y)) puffAt(w, S.smoke, S.em, PUFF, x, y - 4, 1);
+    }
   }
   // polvere in corsa: uno sbuffo ogni 18 px percorsi
   for (const n of TRAILERS) {

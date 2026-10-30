@@ -18,8 +18,10 @@
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
 //               di 4 e 6,4 gradi, piegata di 0 e 3 gradi
-//   camini      le case del giocatore con camino (stili 1, 2, 4, 6) fanno
-//               fumo dalla cima del camino (entro 8 px), quelle senza no
+//   camini      le case del giocatore con camino (stili 1, 2, 4, 6), le case
+//               nemiche con camino (stili 2, 6) gia' viste e i due centri
+//               citta' (§9.93) fanno fumo dalla cima del camino (entro 8 px),
+//               le case senza camino no, ne' una casa nemica non ancora vista
 //   crollo      una caserma distrutta: polvere e detriti; le rovine della
 //               mappa al primo passo no
 //   polvere     un cavaliere mandato col clic destro lascia polvere
@@ -157,22 +159,41 @@ const res = await page.evaluate(() => {
     && Math.abs(V.erba[1].ampiezza - 6.4) < 0.15 && Math.abs(V.erba[1].piega - 3) < 0.15;
   G.g.wind = 0.5;
   // camini
-  const CH = { 1: [-2, -113], 2: [21, -106], 4: [-27, -120], 6: [42, -128] };
-  const hs = [1, 2, 3, 4, 5, 6].map((t, k) => { const h = w.create("casa", X - 600 + k * 230, Y - 80); h.sprite_index = "c" + t + "s"; w.moved(h); return [t, h]; });
-  const births = new Map(hs.map(([t]) => [t, []]));
+  const CH = { c1s: [-2, -113], c2s: [21, -106], c4s: [-27, -120], c6s: [42, -128], c2b: [-6, -126], c6b: [58, -92], cc_spr: [-138, -141], cc_b: [-138, -141] };
+  const put = (obj, spr, x, y, vis = true) => { const h = w.create(obj, x, y); h.sprite_index = spr; h.visible = vis; w.moved(h); return [spr, h]; };
+  const hs = [
+    ...[1, 2, 3, 4, 5, 6].map((t, k) => put("casa", "c" + t + "s", X - 600 + k * 230, Y - 80)),
+    ...[1, 2, 3, 4, 5, 6].map((t, k) => put("enemy_house", "c" + t + "b", X - 600 + k * 230, Y + 400)),
+    put("centro", "cc_spr", X - 300, Y + 700), put("enemy_centro", "cc_b", X + 450, Y + 700),
+  ];
+  const births = new Map(hs.map(([, h]) => [h, []]));
   for (let k = 0; k < 300; k++) {
     run(1);
     const s = P.systems.find((q) => q.depth === -1e7);
     if (!s) continue;
     for (const q of s.parts) if (q.age === 1) {
-      const [t, h] = hs.reduce((a, c) => (Math.abs(c[1].x - q.x) < Math.abs(a[1].x - q.x) ? c : a));
-      births.get(t).push(CH[t] ? Math.hypot(q.x - (h.x + CH[t][0]), q.y - (h.y + CH[t][1] - 4)) : -1);
+      const [t, h] = hs.reduce((a, c) => {
+        const d = (e) => (CH[e[0]] ? Math.hypot(q.x - (e[1].x + CH[e[0]][0]), q.y - (e[1].y + CH[e[0]][1] - 4)) : Math.hypot(q.x - e[1].x, q.y - e[1].y));
+        return d(c) < d(a) ? c : a;
+      });
+      births.get(h).push(CH[t] ? Math.hypot(q.x - (h.x + CH[t][0]), q.y - (h.y + CH[t][1] - 4)) : -1);
     }
   }
-  out.camini = Object.fromEntries([...births].map(([t, l]) => [t, l.length ? Math.round(Math.max(...l)) : null]));
-  out.camini.ok = [1, 2, 4, 6].every((t) => births.get(t).length > 0 && Math.max(...births.get(t)) <= 8)
-    && births.get(3).length === 0 && births.get(5).length === 0;
+  out.camini = Object.fromEntries(hs.map(([t, h], k) => [k + ":" + t, births.get(h).length ? Math.round(Math.max(...births.get(h))) : null]));
+  out.camini.ok = hs.every(([t, h]) => (CH[t] ? births.get(h).length > 0 && Math.max(...births.get(h)) <= 8 : births.get(h).length === 0));
   for (const [, h] of hs) w.destroy(h);
+  // una casa nemica col camino non ancora vista (lontana dagli edifici del
+  // giocatore, che la rivelerebbero): niente fumo
+  const [, hid] = put("enemy_house", "c6b", X, Y + 300, false);
+  let hidPuffs = 0;
+  for (let k = 0; k < 150; k++) {
+    run(1);
+    const s = P.systems.find((q) => q.depth === -1e7);
+    if (s) hidPuffs += s.parts.filter((q) => q.age === 1).length;
+  }
+  out.camini.nascosta = { visibile: hid.visible, sbuffi: hidPuffs };
+  out.camini.ok &&= hid.visible === false && hidPuffs === 0;
+  w.destroy(hid);
   // crollo
   const mat0 = w.number("sfx_mattone");
   const c = w.create("caserma", X + 300, Y + 150); run(5);
