@@ -7565,3 +7565,36 @@ nuovi.json invariati. Il vento per ora resta 0,32 px a passo.
 
 `ambience.mjs`: l'ombra nel pieno di una sagoma e' ora 0,6 (era 0,7).
 Passa con 83 nuvole nella stanza (prima 20), 7 attorno alla view.
+
+### 9.90 Il vento della partita
+
+Richiesta dell'autore, dopo §9.89 e il video di prova dei venti (0,32, 0,8
+e 1,5 px a passo): "una mezza follia", nuvole da 0,8 a 1,5 secondo il vento
+della mappa, scelto a caso; col vento forte anche erba e fiori ondeggiano
+di piu' e la pioggia e' piu' inclinata. Tutto solo estetico.
+
+- *Vento*: g.wind, 0-1 a caso per partita (state.js), salvato con le
+  globali; nei salvataggi di prima vale 0,5 (ambience.js `windLevel`).
+- *Nuvole*: 0,8 + 0,7 x wind px a passo (`windSpeed`; erano 0,32 fissi),
+  ora verso ovest e un po' a sud invece che verso est: la pioggia
+  dell'originale cade verso sinistra, e il vento la inclina di piu' da
+  quella parte.
+- *Erba, spighe, fiori, germogli* (particles.js `angle`): i tipi il cui
+  orientamento oscilla e non e' relativo alla direzione (sono solo le
+  piante, anche nei salvataggi di prima). Col vento massimo l'oscillazione
+  e' 1,6 volte piu' ampia e piu' rapida, e si piegano verso ovest di 0,75
+  volte l'ampiezza (erba: 4 gradi -> 6,4, piegata di 3; i fiori in
+  proporzione). Con wind 0 come prima. Particles.wind lo aggiorna
+  ambienceStep a ogni passo.
+- *Pioggia* (effects.js `rainStart`): direzione da 250-260 gradi (vento
+  minimo, come prima) a 235-245 (massimo); le gocce restano parallele alla
+  caduta (orientamento relativo). Il bordo da cui nascono si allunga a
+  destra di quanto derivano a sinistra cadendo per tutta la room (prima
+  300 px fissi: nel match in basso a destra, ~1900 px, non pioveva), con
+  piu' gocce a passo in proporzione (densita' uguale). Si decide quando
+  comincia a piovere; il sistema si salva come prima.
+
+`ambience.mjs`, voce nuova "vento": nuvole a 0,8 e 1,5 px a passo, pioggia
+a 250-260 e 235-245 gradi, erba con ampiezza 4 e 6,4 gradi e piega 0 e 3.
+Passano i test unitari e tutte le voci di `ambience.mjs`. Video di
+confronto (vento minimo e massimo, sole e pioggia) mandato all'autore.

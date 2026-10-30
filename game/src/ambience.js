@@ -35,9 +35,19 @@ const CLOUD_SPRITES = ["nn1", "nn2", "nn3", "nn4", "nn5", "nn6"];
 const CLOUD_SCALE = [1.7, 2.3];  // scala (uguale in x e y), poi:
 const CLOUD_STRETCH = 0.2;       // x allungata o accorciata fino al 20%
 const CLOUD_TILT = 8;            // ruotata fino a 8 gradi; specchiata a caso
-const WIND = [0.32, 0.07];      // px di room a passo (verso est, un po' a sud)
 const CLOUD_CELL = [1100, 800];  // una nuvola ogni tanti px di room
 const ALPHA = 0.4;              // il nero pieno della sagoma
+// [§9.90, richiesta dell'autore] Il vento della partita, g.wind (0-1, a
+// caso, state.js; si salva con le globali; i salvataggi di prima: 0,5).
+// Le nuvole vanno da 0,8 a 1,5 px a passo (erano 0,32: troppo lente),
+// verso ovest e un po' a sud, come cade la pioggia (effects.js rainStart,
+// piu' inclinata col vento); erba, fiori e spighe ondeggiano di piu', piu'
+// in fretta e un po' piegati (particles.js, Particles.wind).
+export const WIND_SPEED = [0.8, 1.5];
+const WIND_DIR = [-0.977, 0.215];
+export const windLevel = (g) => Math.max(0, Math.min(1, g.wind ?? 0.5));
+export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) * windLevel(g);
+
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). Solo estetico, non si
 // salva: dopo un caricamento riparte dal valore giusto.
@@ -110,13 +120,13 @@ export function cloudBlobs(w, cam) {
   const day = Math.max(0, 1 - 2 * Math.max(0, g.night || 0)); // a meta' tramonto sono gia' sparite
   const a = ALPHA * day * (1 - (w.overcast || 0)); // con la pioggia il cielo e' coperto: niente ombre nette
   if (a <= 0.003) return [];
-  const C = cloudsOf(w), t = w._stepNo;
+  const C = cloudsOf(w), t = w._stepNo, v = windSpeed(g);
   const out = [];
   for (const cl of C.list) {
     const G = gridOf(w.assets, cl.spr);
     if (!G) continue;
-    const x = ((cl.cx + WIND[0] * t) % C.W + C.W) % C.W - C.M;
-    const y = ((cl.cy + WIND[1] * t) % C.H + C.H) % C.H - C.M;
+    const x = ((cl.cx + WIND_DIR[0] * v * t) % C.W + C.W) % C.W - C.M;
+    const y = ((cl.cy + WIND_DIR[1] * v * t) % C.H + C.H) % C.H - C.M;
     const rad = Math.hypot(G.W, G.H) / 2 * Math.max(Math.abs(cl.sx), cl.sy);
     if (x + rad < cam.x || x - rad > cam.x + cam.w || y + rad < cam.y || y - rad > cam.y + cam.h + 300) continue;
     const ang = -cl.rot * Math.PI / 180; // come drawSprite
@@ -219,6 +229,7 @@ const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_cata
 // Un passo (app.js, dopo il mondo)
 export function ambienceStep(w, cam) {
   overcastStep(w);
+  if (w.particles) w.particles.wind = windLevel(w.g); // §9.90: erba e fiori
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
   // crolli

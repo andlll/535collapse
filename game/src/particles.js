@@ -37,6 +37,14 @@ import { drawSprite } from "./sprites.js";
 
 const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring" };
 const TAU = Math.PI * 2;
+// [§9.90] Il vento (Particles.wind, 0-1, ambience.js) sulle piante: i tipi
+// con l'orientamento che oscilla (wiggle) e non relativo alla direzione, cioe'
+// erba, spighe, fiori, germogli (nessun altro tipo oscilla cosi'; anche nei
+// salvataggi di prima). Col vento massimo l'oscillazione e' SWAY_AMP volte
+// piu' ampia e SWAY_RATE volte piu' rapida, e le piante si piegano verso
+// ovest (dove va il vento) di SWAY_LEAN volte l'ampiezza. Con wind 0 come
+// prima.
+const SWAY_AMP = 1.6, SWAY_RATE = 1.6, SWAY_LEAN = 0.75;
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -72,6 +80,7 @@ export class Particles {
     this.pool = [];
     this.seq = 0;
     this.count = 0; // particelle vive, per la diagnostica
+    this.wind = 0;  // §9.90
   }
 
   // ------------------------------------------------------------ sistemi
@@ -202,6 +211,14 @@ export class Particles {
     return amount ? amount * Math.sin(TAU * (q.age / q.per + q.ph)) : 0;
   }
 
+  // orientamento disegnato: wiggle, direzione se relativo, vento (§9.90)
+  angle(q) {
+    const t = q.t, ow = t.orientation[3], k = !t.orientation[4] && ow ? this.wind : 0;
+    if (!k) return q.ang + this._wig(q, ow) + (t.orientation[4] ? q.dir : 0);
+    const amp = 1 + (SWAY_AMP - 1) * k, rate = 1 + (SWAY_RATE - 1) * k;
+    return q.ang + ow * (SWAY_LEAN * k + amp * Math.sin(TAU * (q.age * rate / q.per + q.ph)));
+  }
+
   step() {
     let anyDead = false;
     for (const ps of this.systems) {
@@ -275,7 +292,7 @@ export class Particles {
       if (c && c.list) col = lerpList(c.list, f, mergeColour);
       const a = t.alpha.length === 1 ? t.alpha[0] : lerpList(t.alpha, f, (u, v, k) => u + (v - u) * k);
       if (a <= 0) continue;
-      const ang = q.ang + this._wig(q, t.orientation[3]) + (t.orientation[4] ? q.dir : 0);
+      const ang = this.angle(q);
       const name = t.sprite ? t.sprite : SHAPES[t.shape];
       drawSprite(r, assets, name, 0, q.x, q.y, size * t.scale[0], size * t.scale[1], ang, col, Math.min(1, a));
     }

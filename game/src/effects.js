@@ -7,6 +7,7 @@
 import { c, makeColourRgb } from "./colours.js";
 import { partType } from "./particles.js";
 import { lengthdirX } from "./gm.js";
+import { windLevel } from "./ambience.js";
 
 const P = (w) => w.particles;
 
@@ -29,11 +30,21 @@ const GOCCIA = partType({
   life: [200, 300],
 });
 
+// [§9.90, richiesta dell'autore] col vento della partita (ambience.js
+// windLevel) la pioggia e' piu' inclinata: la direzione scende da 250-260 a
+// 235-245 gradi (le linee restano parallele alla caduta: orientamento
+// relativo). Il bordo da cui nasce si allunga a destra di quanto le gocce
+// derivano a sinistra cadendo per tutta la room (prima 300 px fissi: in
+// basso a destra non pioveva), con piu' gocce a passo in proporzione.
+const RAIN_SLANT = 15;
 export function rainStart(w) {
   const ps = P(w).systemCreate(-9000, "rain");
   const em = P(w).emitterCreate(ps);
-  P(w).region(em, 0, w.roomW + 300, -16, -16, "line", "linear");
-  P(w).stream(em, GOCCIA, 6);
+  const d = 255 - RAIN_SLANT * windLevel(w.g), lo = (d - 5) * Math.PI / 180;
+  const type = { ...GOCCIA, direction: [d - 5, d + 5, 0, 0] };
+  const right = Math.max(300, Math.ceil(w.roomH * Math.abs(Math.cos(lo) / Math.sin(lo))));
+  P(w).region(em, 0, w.roomW + right, -16, -16, "line", "linear");
+  P(w).stream(em, type, Math.round(6 * (w.roomW + right) / (w.roomW + 300)));
   return ps;
 }
 
