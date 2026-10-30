@@ -7720,9 +7720,9 @@ piu' corti e deboli, un nucleo), perche' il bagliore `flare` era troppo
 morbido e a quella misura si vedeva come un puntino. Un sistema per miniera
 alla sua depth (le unita' davanti la coprono), categoria "fire" ("Fiamme e
 scintille"); anche nel menu. Lo sprite miniera_blink non e' piu' usato
-(l'atlas non lo carica piu': nessun riferimento), ne' i campi
-blinkfade/blinkx/blinky della miniera (nei salvataggi di prima restano e
-non servono).
+(resta nell'atlas, che esclude solo gli sprite delle maschere), ne'
+i campi blinkfade/blinkx/blinky della miniera (nei salvataggi di prima
+restano e non servono).
 
 **Solo da una miniera del tutto scoperta.** Il motivo del difetto: il Draw
 End delle istanze sotto depth -1 si disegna dopo la nebbia (World.draw: il
