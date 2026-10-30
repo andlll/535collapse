@@ -4,9 +4,10 @@
 //               piena, scende nei primi 900 passi dopo l'alba; il colore
 //               sottratto (skyColour) e' rosa a meta' (verde e blu tolti,
 //               rosso no) e quello della notte di sempre a notte piena
-//   nuvole      ci sono macchie attorno alla view di giorno, nessuna di notte;
-//               l'ombra su un oggetto (shadeAt nel punto in cui tocca terra)
-//               e' fra 0,6 e 1 e scende verso il centro di una macchia
+//   nuvole      ci sono nuvole (sagome nn1-nn6 dell'autore, §9.86) attorno
+//               alla view di giorno, nessuna di notte; l'ombra su un oggetto
+//               (shadeAt nel punto in cui tocca terra) e' 0,7 nel pieno
+//               della sagoma (anche specchiata e ruotata) e 1 fuori
 //   pioggia     cielo coperto (overcast) in pochi secondi, senza macchie;
 //               smesso di piovere, le macchie tornano
 //   camini      le case del giocatore con camino (stili 1, 2, 4, 6) fanno
@@ -59,11 +60,17 @@ const res = await page.evaluate(() => {
   G.g.night = 0; M.al.set(0, 3000); M.al.set(1, -1); run(2);
   const blobs = G.ambience.cloudBlobs(w, cam);
   const big = G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH });
-  const b = big[0];
   const sh = (x, y) => G.ambience.shadeAt(big, x, y);
-  out.nuvole = { vicine: blobs.length, tutte: big.length, centro: +sh(b[0], b[1]).toFixed(3), bordo: +sh(b[0] + 95 * b[2] * 0.95, b[1]).toFixed(3) };
+  // il pieno: il punto piu' scuro attorno al centro di una sagoma
+  const b = big.find((q) => q.rot !== 0 && q.sx < 0) || big[0];
+  let centro = 1;
+  for (let dy = -200; dy <= 200; dy += 20) for (let dx = -400; dx <= 400; dx += 20) centro = Math.min(centro, G.ambience.shadeAt([b], b.x + dx, b.y + dy));
+  const fuori = G.ambience.shadeAt([b], b.x + b.g.W * Math.abs(b.sx) * 0.55, b.y);
+  out.nuvole = { vicine: blobs.length, tutte: big.length, sprite: [...new Set(big.map((q) => q.spr))].length,
+                 centro: +centro.toFixed(3), fuori: +fuori.toFixed(3) };
   G.g.night = 1; out.nuvole.notte = G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length; G.g.night = 0;
-  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.centro < out.nuvole.bordo && out.nuvole.centro >= 0.6 && out.nuvole.notte === 0;
+  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.sprite >= 4 && Math.abs(out.nuvole.centro - 0.7) < 0.01
+    && out.nuvole.fuori === 1 && out.nuvole.notte === 0;
   // pioggia: cielo coperto in pochi secondi, niente macchie; smesso, tornano
   const all = () => G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length;
   G.g.raining = 1; run(30); const mezzo = +(w.overcast || 0).toFixed(2); run(400);

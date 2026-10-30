@@ -7421,3 +7421,42 @@ vita al 60%, al 20% e di nuovo piena: sprite _r1, _r2 e integro, tutti
 nell'atlas, maschera invariata; le porte danneggiate aperte e chiuse
 restano _r1. Passano la pipeline (06, 07, 11, 12 --check, scenari
 invariati) e le prove nel browser della CI.
+
+### 9.86 Ombre delle nuvole disegnate dall'autore
+
+Richiesta dell'autore: sostituire le macchie delle ombre delle nuvole
+(§9.84: 3-5 copie di arealight per nuvola) con sagome sue. Accordo preso
+prima del disegno: poche forme intere e diverse (non pezzi da combinare),
+che il gioco varia con scala, specchiatura, stiramento e un po' di
+rotazione; nere su trasparente, viste dall'alto. Le ha disegnate gia'
+schiacciate come il suolo (circa 2:1) e a bordi netti: la sfumatura in
+Photoshop dava un nucleo netto con un alone, e si e' deciso di farla nella
+pipeline, dove si regola provando in gioco senza rifare i file.
+
+**Pipeline.** Sei sagome, nuovi/sprites/nn1-nn6 (commit "nuvole bordi
+netti", 1021x722, nero pieno con bordo antialias). Opzioni nuove di
+nuovi.json, in tools/nuovi.py: "sfuma" (deviazione della gaussiana in px
+dell'immagine: 18, cioe' una sfumatura dal 10 al 90% di ~45 px su sagome
+larghe 370-550 px, ~1/10) e "riduci" (0,5 dopo la sfocatura: 510x361;
+in gioco sono ingrandite 5,5-8,5 volte). La sfocatura e' solo sull'alpha,
+col colore dei pixel pieni (sagome di un colore solo). "griglia": 05_atlas
+scrive nel manifest ("alpha") la mappa dell'alpha di tutta la tela, 64x45
+celle in base64, che il gioco usa per scurire le istanze.
+
+**Nel gioco** (ambience.js): una sagoma per cella della griglia di prima
+(2600x1900 px), scelta a caso fra le sei con posizione, scala 5,5-8,5,
+x allungata o accorciata fino al 20%, specchiata a meta', ruotata fino a 8
+gradi: fisse per stanza (hash), mosse dal vento come prima. Alpha del nero
+pieno 0,3. Niente piu' schiacciamento (le sagome lo sono gia'). shadeAt
+(quanto e' in ombra il punto in cui un'istanza tocca terra) legge la mappa
+dell'alpha, bilineare, rifacendo al contrario la trasformazione di
+drawSprite. Verifica: due foto a 1600x900 (zoom 1,7) a 4100 passi di
+distanza; nei punti senza nuvole nella seconda, il rapporto dei pixel fra
+le due e' quello di shadeAt (1 / 0,958 / 0,841 / 0,704 contro 1 / 0,954 /
+0,848 / 0,718, correlazione 0,98), con sagome specchiate e ruotate.
+Invariati: niente ombre di notte e con la pioggia, spente col rendering
+software e con la qualita' bassa.
+
+`ambience.mjs`: le nuvole ora controllano che ci siano almeno 4 delle 6
+sagome, l'ombra 0,7 nel pieno di una sagoma specchiata e ruotata e 1
+fuori.

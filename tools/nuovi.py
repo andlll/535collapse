@@ -44,11 +44,22 @@ Per ogni sprite:
             sprite s (questo messo in x, y dentro s) diventano trasparenti:
             gli stadi del ponte disegnano solo cio' che cambia, e l'acqua
             (coi suoi effetti) resta quella del fiume
+  [§9.86] sfuma  deviazione della sfocatura gaussiana, in px dell'immagine:
+            le ombre delle nuvole, disegnate dall'autore a bordi netti (la
+            sfumatura si regola qui, provando in gioco); la tela si allarga
+            di 3 deviazioni per lato se il disegno ci arriva
+  riduci    fattore di scala dopo la sfocatura (0,5: meta' risoluzione;
+            in gioco si disegnano comunque molto ingrandite)
+  griglia   lato lungo, in celle, della mappa dell'alpha che 05_atlas scrive
+            nel manifest ("alpha": quanto e' in ombra un punto, per scurire
+            le istanze che ci stanno sotto, ambience.js shadeAt)
 """
 import json
 import os
 
-from PIL import Image, ImageChops, ImageDraw
+import base64
+
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageStat
 
 from _paths import DATA_DIR, REPO_DIR
 
@@ -132,6 +143,8 @@ def sprites():
         im = frames[0] if frames else None if d.get("poligono") else image(name)
         if d.get("su"):  # [§9.85] sulla tela dello sprite integro, con la sua origine
             im, d = _on_base(name, d, im)
+        if d.get("sfuma"):  # [§9.86] le ombre delle nuvole
+            im = _soften(im, d["sfuma"], d.get("riduci", 1))
         if im is not None and d.get("differenza"):
             im = _difference(im, d["differenza"])
         m = _mask_of(name, d, im, cache)
@@ -201,6 +214,37 @@ def _on_base(name, d, im):
     out = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
     out.paste(im, (ax - x0, ay - y0), im)
     return out, {**d, "origin": [b["origin_x"] - x0, b["origin_y"] - y0]}
+
+
+def _soften(im, sigma, k):
+    """[§9.86] Una sagoma di un colore solo, sfocata (gaussiana di
+    deviazione sigma) e ridotta di k."""
+    a = im.getchannel("A")
+    bb = a.getbbox()
+    m = round(3 * sigma)
+    if bb and (bb[0] < m or bb[1] < m or bb[2] > im.width - m or bb[3] > im.height - m):
+        big = Image.new("RGBA", (im.width + 2 * m, im.height + 2 * m), (0, 0, 0, 0))
+        big.paste(im, (m, m))
+        im = big
+    # sagome di un colore solo: si sfoca l'alpha, il colore resta quello
+    # dei pixel pieni
+    a = im.getchannel("A")
+    full = a.point(lambda v: 255 if v == 255 else 0)
+    col = tuple(round(c) for c in ImageStat.Stat(im.convert("RGB"), mask=full).mean) if full.getbbox() else (0, 0, 0)
+    im = Image.new("RGBA", im.size, col + (0,))
+    im.putalpha(a.filter(ImageFilter.GaussianBlur(sigma)))
+    if k != 1:
+        im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    return im
+
+
+def alpha_grid(im, n):
+    """[§9.86] L'alpha di tutta la tela in una griglia di n celle sul lato
+    lungo: {"w", "h", "data": byte 0-255 riga per riga, in base64}."""
+    w, h = (n, max(1, round(n * im.height / im.width))) if im.width >= im.height else \
+        (max(1, round(n * im.width / im.height)), n)
+    g = im.getchannel("A").resize((w, h), Image.BOX)
+    return {"w": w, "h": h, "data": base64.b64encode(g.tobytes()).decode("ascii")}
 
 
 def tile_image(im, box):

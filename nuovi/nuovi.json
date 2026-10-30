@@ -3,6 +3,48 @@
   "versione": 1,
   "descrizione": "Sprite e oggetti nuovi, fatti dall'autore dopo il progetto GameMaker (STUDIO.md §9.10). Le immagini sono in nuovi/sprites/: <sprite>.png e, se c'e', <sprite>_mask.png (maschera di collisione precisa, stessa misura). origin 'maschera' = baricentro dei pixel della maschera. fette = larghezza in px delle fette verticali disegnate ognuna con la depth del bordo anteriore della maschera in quella colonna (edifici lunghi e in diagonale). kit: false = non va nel kit di Tiled (lo crea il gioco). sprite null = oggetto senza sprite (regia, dialoghi). derivati: sprite ricavati da uno sprite nuovo, rimpiccioliti a 'lato' px di larghezza (origine al centro), nel gruppo di atlas 'gruppo'. [§9.40] maschera 'alpha', poligono (sprite di sola maschera), buchi, acqua, pezzi, gruppo, differenza: vedi tools/nuovi.py.",
   "sprites": {
+    "nn1": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
+    "nn2": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
+    "nn3": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
+    "nn4": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
+    "nn5": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
+    "nn6": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "sfuma": 18,
+      "riduci": 0.5,
+      "griglia": 64
+    },
     "monastero_corpo": {
       "origin": "maschera",
       "fette": 64

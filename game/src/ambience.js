@@ -1,16 +1,17 @@
 // [§9.84, richiesta dell'autore] Effetti d'ambiente, solo estetici (il gioco
 // non li legge mai, non si salvano):
-// - ombre delle nuvole: macchie scure e morbide (lo sprite della luce dei
-//   fuochi, arealight, nero e trasparente, allargato e schiacciato come il
-//   suolo) che il vento porta lentamente attraverso la mappa. Sul suolo si
-//   disegnano subito dopo di lui; edifici, alberi e unita' si scuriscono
-//   tutti interi (Renderer.shade) di quanto e' in ombra il punto in cui
-//   toccano terra: una torre non si "dipinge per terra", entra nell'ombra
-//   quando ci entra la sua base. Spariscono di notte. Con la pioggia
-//   (segnalazione dell'autore: non una nuvoletta che passa mentre piove) il
-//   cielo e' coperto: le macchie si dissolvono e tutta la scena si scurisce
-//   di un grigio freddo uniforme (overcast, fog.js skyColour), in qualche
-//   secondo, e tornano quando smette;
+// - ombre delle nuvole: sagome disegnate dall'autore (§9.86, nn1-nn6: nere,
+//   a bordi netti, gia' schiacciate come il suolo; la pipeline le sfuma e le
+//   dimezza), molto ingrandite, che il vento porta lentamente attraverso la
+//   mappa. Sul suolo si disegnano subito dopo di lui; edifici, alberi e
+//   unita' si scuriscono tutti interi (Renderer.shade) di quanto e' in
+//   ombra il punto in cui toccano terra: una torre non si "dipinge per
+//   terra", entra nell'ombra quando ci entra la sua base (la mappa
+//   dell'alpha di ogni sagoma e' nel manifest dell'atlas). Spariscono di
+//   notte. Con la pioggia (segnalazione dell'autore: non una nuvoletta che
+//   passa mentre piove) il cielo e' coperto: le ombre si dissolvono e tutta
+//   la scena si scurisce di un grigio freddo uniforme (overcast, fog.js
+//   skyColour), in qualche secondo, e tornano quando smette;
 // - fumo dai camini delle case del giocatore che ne hanno uno (stili 1, 2, 4
 //   e 6; quelle nemiche hanno il tetto piatto): uno sbuffo ogni tanto;
 // - polvere e detriti quando un edificio crolla in rovina;
@@ -24,20 +25,15 @@ const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 
 // ------------------------------------------------------------- nuvole
 
-// Profilo dell'alpha di arealight lungo il raggio (misurato sull'immagine,
-// orizzontale: 95 px; in verticale 85): a 0, 0,1, ... 1 del raggio.
-const AREA_R = 95, AREA_RY = 85;
-const PROFILE = [1, 1, 1, 1, 0.886, 0.588, 0.29, 0.106, 0.031, 0.004, 0];
-function areaAlpha(t) {
-  if (t >= 1) return 0;
-  const k = t * 10, i = Math.floor(k), f = k - i;
-  return PROFILE[i] + (PROFILE[i + 1] - PROFILE[i]) * f;
-}
-
+// [§9.86] Le sagome e quanto si ingrandiscono: a meta' risoluzione sono
+// larghe ~200-280 px (sfumatura compresa), in gioco ~1400-2700 px di room
+const CLOUD_SPRITES = ["nn1", "nn2", "nn3", "nn4", "nn5", "nn6"];
+const CLOUD_SCALE = [5.5, 8.5];  // scala (uguale in x e y), poi:
+const CLOUD_STRETCH = 0.2;       // x allungata o accorciata fino al 20%
+const CLOUD_TILT = 8;            // ruotata fino a 8 gradi; specchiata a caso
 const WIND = [0.32, 0.07];      // px di room a passo (verso est, un po' a sud)
 const CLOUD_CELL = [2600, 1900]; // una nuvola ogni tanti px di room
-const ALPHA = 0.16, SQUASH = 0.62;
-
+const ALPHA = 0.3;              // il nero pieno della sagoma
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). Solo estetico, non si
 // salva: dopo un caricamento riparte dal valore giusto.
@@ -57,8 +53,8 @@ function hash(n) {
 }
 const roomSeed = (room) => { let h = 7; for (const ch of String(room)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
 
-// Le nuvole della stanza: ognuna 3-5 macchie attorno a un centro, su una
-// griglia larga (con un margine oltre la stanza, da cui rientrano col vento)
+// Le nuvole della stanza: una sagoma per cella di una griglia larga (con un
+// margine oltre la stanza, da cui rientrano col vento)
 const CLOUDS = new Map();
 function cloudsOf(w) {
   let c = CLOUDS.get(w);
@@ -70,13 +66,13 @@ function cloudsOf(w) {
   for (let gy = 0; gy < ny; gy++) {
     for (let gx = 0; gx < nx; gx++) {
       const r = (j) => hash(seed + 7919 * (k * 16 + j));
-      const cx = (gx + r(0)) * (W / nx), cy = (gy + r(1)) * (H / ny);
-      const n = 3 + Math.floor(r(2) * 3), blobs = [];
-      for (let b = 0; b < n; b++) {
-        const s = 4 + r(3 + b) * 3.5;
-        blobs.push([(r(8 + b) - 0.5) * 900, (r(12 + b) - 0.5) * 380, s]);
-      }
-      list.push({ cx, cy, blobs });
+      const s = CLOUD_SCALE[0] + r(3) * (CLOUD_SCALE[1] - CLOUD_SCALE[0]);
+      const st = 1 + (r(4) * 2 - 1) * CLOUD_STRETCH;
+      list.push({
+        cx: (gx + r(0)) * (W / nx), cy: (gy + r(1)) * (H / ny),
+        spr: CLOUD_SPRITES[Math.floor(r(2) * CLOUD_SPRITES.length)],
+        sx: s * st * (r(5) < 0.5 ? -1 : 1), sy: s, rot: (r(6) * 2 - 1) * CLOUD_TILT,
+      });
       k++;
     }
   }
@@ -85,7 +81,25 @@ function cloudsOf(w) {
   return c;
 }
 
-// Le macchie vicine alla view, in coordinate di room: [x, y, sx, sy, alpha]
+// La mappa dell'alpha di una sagoma (manifest dell'atlas, tools/05_atlas.py)
+const GRIDS = new Map();
+function gridOf(assets, spr) {
+  let g = GRIDS.get(spr);
+  if (g === undefined) {
+    const s = assets && assets.sprites[spr];
+    g = null;
+    if (s && s.alpha) {
+      const bin = atob(s.alpha.data), data = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+      g = { w: s.alpha.w, h: s.alpha.h, data, W: s.width, H: s.height, ox: s.origin[0], oy: s.origin[1] };
+    }
+    GRIDS.set(spr, g);
+  }
+  return g;
+}
+
+// Le nuvole vicine alla view, in coordinate di room:
+// {spr, x, y, sx, sy, rot, a, c, s (coseno e seno della rotazione), g (mappa)}
 export function cloudBlobs(w, cam) {
   const g = w.g;
   if (w.room === "menu") return [];
@@ -95,30 +109,38 @@ export function cloudBlobs(w, cam) {
   const C = cloudsOf(w), t = w._stepNo;
   const out = [];
   for (const cl of C.list) {
+    const G = gridOf(w.assets, cl.spr);
+    if (!G) continue;
     const x = ((cl.cx + WIND[0] * t) % C.W + C.W) % C.W - C.M;
     const y = ((cl.cy + WIND[1] * t) % C.H + C.H) % C.H - C.M;
-    for (const [dx, dy, s] of cl.blobs) {
-      const bx = x + dx, by = y + dy, rx = AREA_R * s, ry = AREA_RY * s * SQUASH;
-      if (bx + rx < cam.x || bx - rx > cam.x + cam.w || by + ry < cam.y || by - ry > cam.y + cam.h + 300) continue;
-      out.push([bx, by, s, s * SQUASH, a]);
-    }
+    const rad = Math.hypot(G.W, G.H) / 2 * Math.max(Math.abs(cl.sx), cl.sy);
+    if (x + rad < cam.x || x - rad > cam.x + cam.w || y + rad < cam.y || y - rad > cam.y + cam.h + 300) continue;
+    const ang = -cl.rot * Math.PI / 180; // come drawSprite
+    out.push({ spr: cl.spr, x, y, sx: cl.sx, sy: cl.sy, rot: cl.rot, a, c: Math.cos(ang), s: Math.sin(ang), g: G });
   }
   return out;
 }
 
 // Sul suolo: subito dopo di lui, prima di tutte le istanze
 export function drawCloudShadows(d, blobs) {
-  for (const [x, y, sx, sy, a] of blobs) d.spriteExt("arealight", 0, x, y, sx, sy, 0, BLACK, a);
+  for (const b of blobs) d.spriteExt(b.spr, 0, b.x, b.y, b.sx, b.sy, b.rot, BLACK, b.a);
 }
 
 // Quanto resta di luce nel punto (x, y) (1 = niente ombra): lo stesso conto
-// della miscela dei dischi neri sul suolo, (1 - a f) per ogni macchia
+// della miscela delle sagome nere sul suolo, (1 - a alpha) per ognuna, con
+// l'alpha letta (bilineare) nella mappa della sagoma
 export function shadeAt(blobs, x, y) {
   let k = 1;
-  for (const [bx, by, sx, sy, a] of blobs) {
-    const dx = (x - bx) / (AREA_R * sx), dy = (y - by) / (AREA_RY * sy);
-    const t = Math.hypot(dx, dy);
-    if (t < 1) k *= 1 - a * areaAlpha(t);
+  for (const b of blobs) {
+    const dx = x - b.x, dy = y - b.y, G = b.g;
+    // dal punto della room al pixel della sagoma (drawSprite al contrario)
+    const px = (dx * b.c + dy * b.s) / b.sx + G.ox, py = (-dx * b.s + dy * b.c) / b.sy + G.oy;
+    const gx = px / G.W * G.w - 0.5, gy = py / G.H * G.h - 0.5;
+    if (gx <= -1 || gy <= -1 || gx >= G.w || gy >= G.h) continue;
+    const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
+    const at = (i, j) => (i < 0 || j < 0 || i >= G.w || j >= G.h ? 0 : G.data[j * G.w + i]);
+    const v = (at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx) * (1 - fy) + (at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx) * fy;
+    if (v > 0) k *= 1 - b.a * v / 255;
   }
   return k;
 }

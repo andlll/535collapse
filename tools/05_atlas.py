@@ -457,6 +457,8 @@ def main():
         manifest["sprites"][name] = {"group": g, "width": im.width, "height": im.height, "origin": [ox, oy],
                                      "scale": 1.0, "frames": [{"trim": [bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]]}]}
         items[g].append((name, 0, im.crop(bb)))
+        if nraw.get(name, {}).get("griglia"):  # [§9.86] l'alpha delle ombre delle nuvole, per shadeAt
+            manifest["sprites"][name]["alpha"] = nuovi.alpha_grid(im, nraw[name]["griglia"])
 
     # font e pixel bianco nel gruppo gui (non ritagliati: le coordinate dei
     # glifi restano quelle del foglio di GameMaker)
