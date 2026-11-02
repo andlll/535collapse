@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="140" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="36" nextobjectid="1093">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="140" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="36" nextobjectid="1115">
  <tileset firstgid="1" source="../tileset/terreno.tsx"/>
  <tileset firstgid="13" source="../tileset/montagne_fiumi.tsx"/>
  <tileset firstgid="33" source="../tileset/natura.tsx"/>
@@ -925,5 +925,17 @@
  <objectgroup color="#ffb000" draworder="index" id="9" name="regia">
   <object id="1" gid="180" x="100" y="100" width="84" height="118"/>
   <object id="2" name="vista iniziale" type="vista" x="3776" y="392" width="3000" height="2000"/>
+  <object id="1093" type="colonna" x="-218.864" y="2506.51">
+   <polyline points="0,0 948.411,203.231 1354.87,484.627 1995.83,510.683 2355.39,510.683 3147.47,369.984 3824.91,510.683 4424.18,760.813 5044.29,802.501 6565.92,1203.75 7358,1375.72"/>
+  </object>
+  <object id="1094" type="pattuglia" x="1714.43" y="4335.59">
+   <polygon points="0,0 62.5326,291.819 -578.426,828.557 171.965,182.387 515.894,-703.491 83.3768,250.13"/>
+  </object>
+  <object id="1095" name="pattuglia2" x="2876.5" y="3517.46">
+   <polygon points="0,0 291.819,156.331 -57.3215,-31.2663 -109.432,-328.296 166.754,-833.768 78.1657,-1120.38 -375.195,-1401.77 -865.034,-1078.69 -1266.28,-557.582 -380.406,-557.582 26.0552,-640.959 -145.909,-333.507"/>
+  </object>
+  <object id="1096" name="pattuglia3" x="1547.68" y="3163.11">
+   <polygon points="0,0 -270.974,-135.487 -771.235,-427.306 -922.355,-661.803 -573.215,-1235.02 -187.598,-1568.53 495.05,-1422.62 594.059,-969.255 145.909,-484.627"/>
+  </object>
  </objectgroup>
 </map>
