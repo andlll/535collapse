@@ -7953,3 +7953,11 @@ roadOutline, fiume ruotato di 90 gradi verso il basso, rifatta senza
 raddoppiare). Passano i test unitari (64), `rivers.mjs`, il `--check` del
 kit e gli scenari invariati. Da confermare in Tiled dall'autore. Stessa PR
 di §9.96: versione 0.2606.
+
+*Prova della pioggia graduale (`ambience.mjs`, §9.91).* In CI e' caduta su
+un commit che toccava solo il LEGGIMI (inizioSuPieno 0,152 contro il tetto
+0,15). La causa: le gocce dei "primi 60 passi" si contavano dalla prima
+goccia, che arriva a caso (qui al passo 402, col cielo coperto e la salita
+partita al 386): la finestra cadeva su gocce gia' piu' fitte, media del
+livello 0,155 invece di 0,10. Ora si contano dall'inizio della salita (il
+cielo coperto): tre esecuzioni 0,098, 0,102, 0,108. Il gioco non cambia.

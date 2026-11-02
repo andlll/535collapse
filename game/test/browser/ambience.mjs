@@ -111,7 +111,11 @@ const res = await page.evaluate(() => {
     const n = born();
     if (gr.coperto < 0 && w.overcast === 1) gr.coperto = s;
     if (gr.primaGoccia < 0 && n > 0) gr.primaGoccia = s;
-    if (gr.primaGoccia > 0 && s < gr.primaGoccia + 60) first60 += n;
+    // i primi 60 passi della salita (che parte col cielo coperto): media del
+    // livello 0,10. [§9.98] Contati dalla prima goccia, che arriva a caso
+    // fino a 15-20 passi dopo, la media saliva a 0,155 e la prova cadeva
+    // ogni tanto oltre 0,15 (CI, primaGoccia 402 col cielo coperto a 386)
+    if (gr.coperto > 0 && s >= gr.coperto && s < gr.coperto + 60) first60 += n;
     if (gr.piena < 0 && M.rain.level === 1) gr.piena = s;
     if (gr.piena > 0 && s >= gr.piena + 100 && s < gr.piena + 160) full60 += n;
   }
