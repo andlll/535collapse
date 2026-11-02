@@ -950,6 +950,23 @@
         25,
         -13
       ]
+    },
+    "ponte_dx": {
+      "origin": "maschera",
+      "gruppo": "terreno"
+    },
+    "ponte_dx2": {
+      "origin": "maschera",
+      "gruppo": "terreno"
+    },
+    "ponte_dx_bala": {
+      "origin": [
+        205,
+        176
+      ],
+      "maschera": "alpha",
+      "fette": 16,
+      "gruppo": "terreno"
     }
   },
   "objects": {
@@ -1432,6 +1449,38 @@
       },
       "kit": false,
       "nota": "il cantiere di un edificio nemico perso, da ricostruire (§9.45, economy.js); sprite, maschera e vita dal cantiere alleato corrispondente"
+    },
+    "ponte_dx": {
+      "sprite": "ponte_dx",
+      "mask": "ponte_dx",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] ponte dipinto dall'autore (livello 6): cotto nel suolo sopra i fiumi a linee; la maschera e' il piano percorribile (li' l'acqua non c'e'); crea la sua balaustra (ponte_dx_bala). In Tiled: un punto chiamato pontedx (\"specchiato\" per specchiarlo), al centro del piano"
+    },
+    "ponte_dx2": {
+      "sprite": "ponte_dx2",
+      "mask": "ponte_dx2",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] ponte dipinto dall'autore (livello 6), come ponte_dx, senza balaustra a parte. In Tiled: un punto chiamato pontedx2"
+    },
+    "ponte_dx_bala": {
+      "sprite": "ponte_dx_bala",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] la balaustra di ponte_dx, a fette: chi passa sul ponte o dietro di lei le sta dietro"
     }
   },
   "derivati": {

@@ -691,6 +691,14 @@ sola mappa aperta non parte; serve Tiled 1.8 o piu' recente). Nel menu
 Il livello `anteprima` non va nel gioco: lo script lo ignora. Puoi
 nasconderlo o cancellarlo quando vuoi; il comando lo rifa'.
 
+**Ponti dipinti** (come `ponte_dx`, `ponte_dx2` del livello 6). Un punto
+(*Inserisci punto*) nel livello `fiumi` o `strade`, chiamato col nome dello
+sprite senza trattino (`pontedx`, `pontedx2`), nel centro del piano del
+ponte; con `specchiato` nel nome (per esempio `pontedx specchiato`) il
+ponte si specchia sull'asse verticale. Il gioco lo disegna sopra il fiume,
+toglie l'acqua sotto il piano percorribile (la sua maschera) e, se c'e',
+mette la balaustra davanti.
+
 ## Strade (linee)
 
 Nel livello `strade` disegna una polilinea lungo la strada e scegli la

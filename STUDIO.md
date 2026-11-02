@@ -7993,3 +7993,46 @@ city1 e opacita' 0,7, poligono con uno sfondo sbagliato), screenshot
 (selciato concavo e pietra liscia sul prato, chiazze dipinte e strada
 sopra), test unitari (66), `soak.mjs`, `saves.mjs`, `--check` del kit e
 scenari invariati. Stessa PR di §9.96: versione 0.2606.
+
+### 9.100 Livello 6: la mappa, i ponti dipinti, le macchie di citta'
+
+L'autore ha caricato su `main` la mappa `mappe/lvl06.tmx` (7000 x 6000) e
+tre sprite (`ponte_dx`, `ponte_dx2` e la balaustra `ponte_dx_bala`) con le
+aree percorribili dei due ponti; portati sul branch della PR (merge). Nella
+mappa: fiumi e strade come polilinee coi loro valori, le aree da riempire
+col selciato del livello 1 (classe `citt2`, nel livello strade), i ponti
+come tre punti (`pontedx`, `pontedx2`, `ponte dx2 specchiato`).
+
+- *Aree*: la classe `citt2` non e' quella delle macchie: le 8 aree sono
+  passate a classe `macchia` (sfondo city2, il predefinito) nel livello
+  nuovo `macchie` (nella mappa, gli stessi poligoni).
+- *Ponti dipinti*: maschere rinominate `ponte_dx_mask.png`,
+  `ponte_dx2_mask.png` (gli spazi nel nome davano noia agli script);
+  sprite e oggetti in nuovi.json: origine nel baricentro dell'area
+  percorribile (il punto di Tiled e' il centro del piano), la balaustra
+  con la stessa origine e a fette di 16 px (chi le passa dietro le resta
+  dietro, anche specchiata). L'import trasforma i punti col nome dello
+  sprite senza trattino in ponti (`specchiato` nel nome: scala x -1). Nel
+  gioco (rivers.js `PAINTED_BRIDGES`, `BRIDGE_RAILS`; ground.js) i ponti si
+  cuociono nel suolo dopo strade, fiumi e ponti a linee; l'acqua sotto la
+  loro maschera non c'e' (si passa, non ci piove); il ponte con la
+  balaustra la crea, specchiata come lui. L'anteprima PNG dell'import li
+  disegna con lo sprite nuovo.
+- `lvl06` si apre con `?room=lvl06` (non ancora nella campagna: niente
+  regia), ed e' nella prova di stabilita' della CI.
+
+*Come si legano al fiume* (screenshot a scala 1): il ponte centrale
+(`ponte_dx`, campata in diagonale, su un tratto quasi orizzontale) bene;
+quello a destra (`ponte_dx2`, archi verso sud, su un tratto da nord a sud)
+nella direzione giusta, ma il fiume (93 px) e' molto piu' stretto del ponte
+(~360): l'acqua passa sotto un arco solo, gli altri stanno sul prato, e
+l'interno degli archi e' dipinto pieno (l'acqua non si vede attraverso).
+Quello a sinistra (`ponte_dx2` specchiato) resta quasi parallelo al fiume
+(che li' sale di ~18 gradi verso destra): la facciata con gli archi finisce
+sul prato. Con `ponte_dx` specchiato si lega bene (provato in gioco):
+proposto all'autore, la mappa resta com'e' finche' non decide.
+
+Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
+dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
+unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR
+di §9.96: versione 0.2606.

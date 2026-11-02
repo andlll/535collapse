@@ -192,6 +192,10 @@ export function drawRiver(r, geo, water, white) {
 // ------------------------------------------------------------ l'acqua
 
 export const RIVER_CELL = 8;      // come la mappa dell'acqua (effects.js)
+// [§9.100] i ponti dipinti dall'autore (nuovi.json): cotti nel suolo sopra i
+// fiumi (ground.js), la maschera e' il piano percorribile; [ponte, balaustra]
+export const PAINTED_BRIDGES = ["ponte_dx", "ponte_dx2"];
+export const BRIDGE_RAILS = { ponte_dx: "ponte_dx_bala" };
 const STRETCH = 20;               // punti per tratto: un'orientazione per tratto
 
 function insideQuad(px, py, q) { return insidePoly(px, py, q); }
@@ -231,6 +235,19 @@ export function riverCells(w) {
           const c = cy * gw + cx;
           if (grid[c] || !insideQuad((cx + 0.5) * C, (cy + 0.5) * C, q)) continue;
           grid[c] = 1; stretch[c] = si;
+        }
+      }
+    }
+  }
+  // [§9.100] sotto i ponti dipinti (il piano percorribile: la loro maschera)
+  // niente acqua
+  for (const name of PAINTED_BRIDGES) {
+    for (const i of w.all(name)) {
+      const bb = w.bbox(i);
+      if (!bb) continue;
+      for (let cy = Math.max(0, Math.floor(bb[1] / C)); cy <= Math.min(gh - 1, Math.floor(bb[3] / C)); cy++) {
+        for (let cx = Math.max(0, Math.floor(bb[0] / C)); cx <= Math.min(gw - 1, Math.floor(bb[2] / C)); cx++) {
+          if (grid[cy * gw + cx] && w.pointIn(i, (cx + 0.5) * C, (cy + 0.5) * C)) grid[cy * gw + cx] = 0;
         }
       }
     }

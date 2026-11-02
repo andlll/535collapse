@@ -274,6 +274,14 @@ def load_map(path, kit=None):
                 entries.append((oid, [inst]))
                 continue
             cls = o.get("type") or o.get("class") or ""
+            # [§9.100] un ponte dipinto: un punto col nome dello sprite
+            nm = (o.get("name") or "").lower()
+            key = nm.replace("specchiato", "").replace(" ", "").replace("_", "")
+            if o.find("point") is not None and key in tk.PAINTED_BRIDGES:
+                entries.append((oid, [{"object": tk.PAINTED_BRIDGES[key], "x": round(float(o.get("x", 0))),
+                                       "y": round(float(o.get("y", 0))), "scale_x": -1 if "specchiato" in nm else 1,
+                                       "scale_y": 1, "rotation": 0}]))
+                continue
             if cls == tk.VIEW_TYPE:
                 if view:
                     warn.append("%s: seconda vista iniziale, ignorata" % where)
@@ -505,8 +513,20 @@ def preview(scen, kit, S, out_path, order=None):
         dr.polygon([(x * S, y * S) for x, y in br["pts"]], fill=(166, 152, 155, 255), outline=(30, 30, 30, 255))
     info_path = os.path.join(REPO_DIR, "game", "assets", "objects.json")
     info = json.load(open(info_path, encoding="utf-8")) if os.path.exists(info_path) else {}
+    atlas_path = os.path.join(REPO_DIR, "game", "assets", "atlas.json")
+    atlas_sprites = json.load(open(atlas_path, encoding="utf-8"))["sprites"] if os.path.exists(atlas_path) else {}
     cache = {}
     for k, inst in enumerate((order or game_order)(scen["instances"], info)):
+        if inst["object"] not in tiles:
+            # [§9.100] oggetti fuori dal kit (i ponti dipinti): lo sprite nuovo,
+            # con l'origine dell'atlas del gioco
+            spr = (info.get(inst["object"]) or {}).get("sprite") or inst["object"]
+            png = os.path.join(REPO_DIR, "nuovi", "sprites", spr + ".png")
+            if os.path.exists(png) and spr in atlas_sprites:
+                if png not in cache:
+                    cache[png] = Image.open(png).convert("RGBA")
+                draw_instance(canvas, cache[png], atlas_sprites[spr]["origin"], inst, S)
+            continue
         by = tiles[inst["object"]]
         # senza variante scelta (alberi dei boschi) una a caso, come nel gioco
         t = by.get(inst.get("sprite")) or list(by.values())[random.Random(k).randrange(len(by))]

@@ -18,7 +18,7 @@
 // a una strada: ora la strada sta sotto.
 
 import { drawSprite, spriteBounds } from "./sprites.js";
-import { drawRiver, drawRoad, drawBridge, drawPatch } from "./rivers.js";
+import { drawRiver, drawRoad, drawBridge, drawPatch, PAINTED_BRIDGES } from "./rivers.js";
 
 export const GROUND = /^(traccia\d+|strada_\d+|chiazza01|erba_1|prato1)$/;
 const CH = 512, PAD = 1, S = CH + 2 * PAD, MAX = 48;
@@ -55,8 +55,23 @@ export class GroundCache {
   // un salvataggio, prima del primo disegno).
   _index() {
     const w = this.world, skip = new Set(), by = new Map();
+    const top = new Map(); // [§9.100] i ponti dipinti: dopo strade e fiumi
     for (const i of w.instances) {
-      if (!i.alive || !i.visible || !i.sprite_index || !GROUND.test(i.object)) continue;
+      if (!i.alive || !i.visible || !i.sprite_index) continue;
+      if (PAINTED_BRIDGES.includes(i.object)) {
+        const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
+        if (!bb) continue;
+        skip.add(i);
+        for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
+          for (let cx = Math.floor(bb[0] / CH); cx <= Math.floor(bb[2] / CH); cx++) {
+            const k = cx + "," + cy;
+            if (!top.has(k)) top.set(k, []);
+            top.get(k).push(i);
+          }
+        }
+        continue;
+      }
+      if (!GROUND.test(i.object)) continue;
       const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
       if (!bb) continue;
       skip.add(i);
@@ -71,6 +86,7 @@ export class GroundCache {
     }
     for (const l of by.values()) l.sort((a, b) => a.id - b.id);
     this.byChunk = by;
+    this.topChunks = top;
     // [§9.97] strade, fiumi e ponti a linee (rivers.js): quali toccano ogni
     // blocco, nell'ordine in cui si cuociono
     this.lineChunks = new Map(); // "cx,cy" -> [[tipo, geometria]]
@@ -126,6 +142,10 @@ export class GroundCache {
         else if (kind === "fiume" && water && white) drawRiver(r, g, water, white);
         else if (kind === "ponte" && paper && white) drawBridge(r, g, paper, white);
       }
+    }
+    for (const i of this.topChunks.get(cx + "," + cy) || []) { // §9.100
+      drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
+                 i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
     }
     r.endTarget();
     return t;

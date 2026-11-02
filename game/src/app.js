@@ -31,7 +31,7 @@ import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPr
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
-import { riverGeometry, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater } from "./rivers.js";
+import { riverGeometry, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -53,11 +53,11 @@ import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05"];
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"]; // lvl06: §9.100
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -189,6 +189,10 @@ async function main() {
   // "__fetta" per ogni striscia verticale dello sprite, ferma, con la depth
   // del bordo anteriore della maschera in quella colonna
   for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
+  // [§9.100] i ponti dipinti con la balaustra a parte: nasce con loro, specchiata come loro
+  for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
+    world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
+  }
   world.register("__neutrale", neutral());       // §9.11 (scenario.js)
   world.register("monastero", monastery(path));  // §9.11 (buildings.js)
   world.register("fiume_grande", fiumeGrande());  // §9.40 (bridge.js)

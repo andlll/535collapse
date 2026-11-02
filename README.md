@@ -58,7 +58,7 @@ acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (do
 `tools/01`) solo se cambiano i dipinti da cui vengono.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40) per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100) per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
