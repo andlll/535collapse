@@ -331,12 +331,23 @@ def build_kit(out_dir):
     with open(os.path.join(out_dir, "kit.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     write_project(out_dir)
+    write_extension(out_dir)
     n = sum(len(t["tiles"]) for t in manifest["tilesets"].values())
     print("kit: %d tile in %d tileset, memoria delle immagini in Tiled %.0f MB"
           % (n, len(manifest["tilesets"]), sum(ram.values()) / 1e6))
     for ts, b in ram.items():
         print("  %-15s %3d tile %6.1f MB" % (ts, len(manifest["tilesets"][ts]["tiles"]), b / 1e6))
     return manifest, info
+
+
+def write_extension(out_dir):
+    """[§9.98] L'estensione di Tiled (tools/tiled/anteprima.mjs) e il codice
+    del gioco che usa (game/src/rivers.js -> rivers.mjs) in extensions/:
+    Tiled la carica da sola aprendo il progetto."""
+    ext = os.path.join(out_dir, "extensions")
+    os.makedirs(ext, exist_ok=True)
+    shutil.copy(os.path.join(REPO_DIR, "tools", "tiled", "anteprima.mjs"), os.path.join(ext, "anteprima.mjs"))
+    shutil.copy(os.path.join(REPO_DIR, "game", "src", "rivers.js"), os.path.join(ext, "rivers.mjs"))
 
 
 def write_project(out_dir):
@@ -381,7 +392,14 @@ def write_project(out_dir):
                 {"name": "densita", "type": "float", "value": 1},
             ]}, {
             "id": 6, "name": tk.BRIDGE_TYPE, "type": "class", "useAs": ["object"],
-            "color": "#ffa6989b", "drawFill": True, "members": []}],
+            "color": "#ffa6989b", "drawFill": True, "members": []}, {
+            # [§9.98] le sagome dell'anteprima (extensions/anteprima.mjs)
+            "id": 7, "name": "anteprima_fiume", "type": "class", "useAs": ["object"],
+            "color": "#ff4f8c80", "drawFill": True, "members": []}, {
+            "id": 8, "name": "anteprima_strada1", "type": "class", "useAs": ["object"],
+            "color": "#ffc8c3a0", "drawFill": True, "members": []}, {
+            "id": 9, "name": "anteprima_strada2", "type": "class", "useAs": ["object"],
+            "color": "#ff9b9f82", "drawFill": True, "members": []}],
     }
     with open(os.path.join(out_dir, "535.tiled-project"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(proj, f, indent=4)
@@ -620,6 +638,21 @@ ruotare) di classe `ponte` messo di traverso sul fiume, un po' piu' lungo
 del fiume e' largo (deve poggiare sulle rive): il gioco lo disegna in
 pietra, con parapetti, archi sul fianco che si vede e l'ombra, e sotto il
 ponte si passa. Il lato lungo del rettangolo e' quello che attraversa.
+
+## Anteprima di fiumi e strade (estensione)
+
+In Tiled le polilinee sono tutte sottili. Il kit ha un'estensione
+(`extensions/anteprima.mjs`, con il codice del gioco in `rivers.mjs`) che
+Tiled carica da sola **aprendo il progetto** `535.tiled-project` (con la
+sola mappa aperta non parte; serve Tiled 1.8 o piu' recente). Nel menu
+*Map*:
+- **Anteprima larghezze (fiumi e strade)**, **Ctrl+Shift+L**: rifa' il
+  livello `anteprima` (bloccato, semitrasparente, sotto `strade`) con la
+  sagoma vera di fiumi e strade, larghi come in partita (`larghezza`,
+  `larghezza_fine`, curve, punte);
+- **Anteprima a ogni salvataggio** (acceso): la rifa' da sola quando salvi.
+Il livello `anteprima` non va nel gioco: lo script lo ignora. Puoi
+nasconderlo o cancellarlo quando vuoi; il comando lo rifa'.
 
 ## Strade (linee)
 

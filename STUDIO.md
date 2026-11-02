@@ -7922,3 +7922,34 @@ ponte da nord a sud, strade). Senza linee nulla cambia: test unitari,
 fermo proprio all'uscita del ponte faceva arrendere un compagno a 130 px
 dalla meta (movimento di sempre, moveStalled; ponti stretti da tenere
 d'occhio). Stessa PR di §9.96: versione 0.2606.
+
+### 9.98 Anteprima di fiumi e strade in Tiled (estensione del kit)
+
+Domanda dell'autore: in Tiled si puo' vedere la larghezza delle polilinee?
+No: Tiled le disegna tutte sottili (lo spessore e' una preferenza unica, non
+una proprieta' dell'oggetto). Quindi un'estensione di Tiled nel kit
+(tools/tiled/anteprima.mjs, copiata da tools/11_tiled_kit.py in
+`extensions/` accanto a 535.tiled-project, che indica gia' quella cartella):
+Tiled la carica da sola aprendo il progetto (da Tiled 1.8; con la sola
+mappa aperta no). Usa il codice del gioco (game/src/rivers.js, copiato come
+rivers.mjs): le sagome sono quelle della partita. Per questo rivers.js non
+usa piu' `??` (sintassi recente: il motore JavaScript di Tiled potrebbe non
+averla).
+
+Nel menu *Map*: **Anteprima larghezze (fiumi e strade)**, Ctrl+Shift+L,
+rifa' il livello `anteprima` (bloccato, semitrasparente, sotto `strade`) con
+le rive dei fiumi (riverGeometry: larghezza, larghezza_fine, curve strette,
+punte) e la fascia delle strade (roadOutline, nuova: +-0,5 della larghezza,
+dove cadono quasi tutti i sassolini), colorate con le classi
+anteprima_fiume, anteprima_strada1, anteprima_strada2 del progetto; **Anteprima
+a ogni salvataggio** (acceso) la rifa' quando si salva. Legge anche le
+polilinee ruotate e nei gruppi di livelli; i rettangoli dei ponti si vedono
+gia'. L'import (tools/12_tiled_import.py) ignora il livello `anteprima`.
+
+Tiled non si puo' far girare qui: provata in node con le API di Tiled finte
+(game/test/tiled.test.mjs: livello anteprima bloccato sotto strade, classi,
+rive del fiume entro 3 px da riverGeometry, strada da 80 a 160 px come
+roadOutline, fiume ruotato di 90 gradi verso il basso, rifatta senza
+raddoppiare). Passano i test unitari (64), `rivers.mjs`, il `--check` del
+kit e gli scenari invariati. Da confermare in Tiled dall'autore. Stessa PR
+di §9.96: versione 0.2606.

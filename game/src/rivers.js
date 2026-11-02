@@ -45,6 +45,10 @@ const WOBBLE = 0.12;  // la larghezza varia del +-12% lungo il fiume
 const INK = 0x1c1c1c, INK_ALPHA = 0.92, WALL_TINT = 0.78;
 const TIP = 120, EDGE = 20; // la punta alle estremita' dentro la room
 
+// (niente ?? e altra sintassi recente: questo file lo usa anche
+// l'estensione di Tiled del kit, tools/tiled/anteprima.mjs)
+const or = (v, d) => (v === undefined || v === null ? d : v);
+
 // rumore liscio e sempre uguale per lo stesso fiume (niente Math.random:
 // non tocca la sequenza casuale della partita)
 function wave(s, seed, len) {
@@ -94,7 +98,7 @@ export function riverGeometry(rv) {
   // la mezza larghezza di ogni lato: al piu' il 55% del raggio della curva
   // dalla parte interna, poi ammorbidita (media su +-8 punti, mai sopra il
   // limite) perche' il bordo interno giri tondo invece di fare un angolo
-  const total = S[n - 1] || 1, w0 = rv.width, w1 = rv.widthEnd ?? rv.width;
+  const total = S[n - 1] || 1, w0 = rv.width, w1 = or(rv.widthEnd, rv.width);
   // un'estremita' dentro la room (non sul bordo o oltre) finisce a punta,
   // come una sorgente, negli ultimi TIP px: tagliata dritta stonava
   const inRoom = (p) => rv.room && p[0] > EDGE && p[1] > EDGE && p[0] < rv.room[0] - EDGE && p[1] < rv.room[1] - EDGE;
@@ -301,14 +305,14 @@ export function roadGeometry(rd) {
   for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
   // [richiesta dell'autore] come i fiumi: widthEnd, se c'e', e' la
   // larghezza all'ultimo punto (cambia piano lungo la strada)
-  const total = S[n - 1] || 1, w0 = rd.width, w1 = rd.widthEnd ?? rd.width, width = Math.max(w0, w1);
+  const total = S[n - 1] || 1, w0 = rd.width, w1 = or(rd.widthEnd, rd.width), width = Math.max(w0, w1);
   const widthAt = (s) => w0 + (w1 - w0) * (s / total);
   const seed = Math.round(rd.pts[0][0] * 7 + rd.pts[0][1] * 13 + rd.pts.length * 101);
   const rand = rng(seed);
   const inRoom = (p) => rd.room && p[0] > EDGE && p[1] > EDGE && p[0] < rd.room[0] - EDGE && p[1] < rd.room[1] - EDGE;
   const fade0 = inRoom(rd.pts[0]), fade1 = inRoom(rd.pts[rd.pts.length - 1]);
   const K = ROAD_KINDS[rd.kind] || ROAD_KINDS[1];
-  const count = Math.round(total * width * STONES_PER_PX * K.density * (rd.density ?? 1));
+  const count = Math.round(total * width * STONES_PER_PX * K.density * or(rd.density, 1));
   const stones = [];
   let k = 0;
   const at = (s) => { // punto e tangente a distanza s lungo la linea
@@ -343,6 +347,23 @@ export function roadGeometry(rd) {
   const out = stones.map(([x, y, sc, v, , c]) => [x, y, sc, v,
     pack(((Math.min(255, Math.round(c[2] * 1.275)) << 16) | (Math.min(255, Math.round(c[1] * 1.275)) << 8) | Math.min(255, Math.round(c[0] * 1.275))), K.alpha)]);
   return { stones: out, bbox: [x0 - STONE, y0 - STONE, x1 + STONE, y1 + STONE] };
+}
+
+// Il contorno di una strada ({ L, R }, come riverGeometry): larga quanto la
+// fascia in cui cadono quasi tutti i sassolini (+-0,5 della larghezza). Lo
+// usa solo l'anteprima di Tiled (tools/tiled/anteprima.mjs).
+export function roadOutline(rd) {
+  const C = smooth(rd.pts).map(([x, y]) => [x, y / ISO]), n = C.length, S = [0];
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
+  const total = S[n - 1] || 1, w0 = rd.width, w1 = or(rd.widthEnd, rd.width);
+  const L = [], R = [];
+  for (let k = 0; k < n; k++) {
+    const a = C[Math.max(0, k - 1)], b = C[Math.min(n - 1, k + 1)], tl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const nx = -(b[1] - a[1]) / tl, ny = (b[0] - a[0]) / tl, hw = (w0 + (w1 - w0) * (S[k] / total)) / 2;
+    L.push({ x: C[k][0] + nx * hw, y: (C[k][1] + ny * hw) * ISO });
+    R.push({ x: C[k][0] - nx * hw, y: (C[k][1] - ny * hw) * ISO });
+  }
+  return { L, R };
 }
 
 // Disegna i sassolini della strada che cadono nel riquadro `box`

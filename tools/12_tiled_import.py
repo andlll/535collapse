@@ -214,6 +214,8 @@ def load_map(path, kit=None):
     rivers, roads, bridges = [], [], []  # [§9.97] (id, fiume / strada / ponte)
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
+        if layer == "anteprima":  # [§9.98] le sagome dell'estensione di Tiled
+            continue
         # [§9.11] livello "gruppo <nome>": gli oggetti che la regia del livello
         # tiene da parte (creati piu' tardi, o neutrali finche' non passano al
         # giocatore)
