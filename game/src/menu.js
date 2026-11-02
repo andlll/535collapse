@@ -36,7 +36,7 @@ import { irandomRange } from "./gm.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05" };
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06" }; // lvl06: §9.101
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -46,6 +46,8 @@ export const STORY = {
   4: "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.",
   // [§9.76] scritto per il porting dalla regia dell'autore, da rivedere con lui
   5: "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.",
+  // [§9.101] scritto per il porting dalla regia dell'autore, su sua richiesta
+  6: "The invaders' city has fallen, and the road home crosses the City of a Hundred Towers. We find it in ruins: its garrison is dead, its armory looted, its towers crumbling. Enemy patrols still roam the streets, and a great column is marching to cross the eastern bridge. The citizens have only their bows left: with them, and with their towers, they must hold.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
@@ -80,7 +82,7 @@ function titleButtons(W, H) {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
@@ -246,7 +248,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2605";
+const VERSION = "0.2606";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -330,6 +332,11 @@ const L4_ARROW = [291, -94, 0.9, 1.0, -10];
 const L5_MARK = [95, 60];
 const L5_LABEL = [95, -22];
 const L5_ARROW = [150, -25, 0.8, 1.0, 58];
+// [§9.101, indicazione dell'autore] il livello 6 (cap_l6, la Citta' delle
+// Cento Torri): a ovest del ponte del 4, sopra il 5, con la freccia dal 5
+const L6_MARK = [-3, -123];
+const L6_LABEL = [-3, -203];
+const L6_ARROW = [46, -31, 0.9, 1.0, -62];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -373,6 +380,11 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap_l5", 0, MX + L5_MARK[0], H / 2 + L5_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L5_ARROW[0], H / 2 + L5_ARROW[1], L5_ARROW[2], L5_ARROW[3], L5_ARROW[4], c.white, 1);
       d.text(MX + L5_LABEL[0], H / 2 + L5_LABEL[1], "5.");
+    }
+    if (i.lvlshown > 5) {
+      d.sprite("cap_l6", 0, MX + L6_MARK[0], H / 2 + L6_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L6_ARROW[0], H / 2 + L6_ARROW[1], L6_ARROW[2], L6_ARROW[3], L6_ARROW[4], c.white, 1);
+      d.text(MX + L6_LABEL[0], H / 2 + L6_LABEL[1], "6.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

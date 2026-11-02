@@ -567,8 +567,10 @@ export class World {
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
+  // [§9.97] terrainBlocks(inst, x, y): l'acqua dei fiumi a linee (app.js,
+  // rivers.js), che non e' un'istanza; null senza fiumi
   placeFree(inst, x, y) {
-    return !this.instancePlace(inst, x, y, null, true);
+    return !this.instancePlace(inst, x, y, null, true) && !(this.terrainBlocks && this.terrainBlocks(inst, x, y));
   }
 
   // place_free che non conta i solidi della famiglia `name` (§8.11: chi va
@@ -576,6 +578,7 @@ export class World {
   placeFreeExcept(inst, x, y, name) {
     const bb = this.bbox(inst, x, y);
     if (!bb) return true;
+    if (this.terrainBlocks && this.terrainBlocks(inst, x, y)) return false; // §9.97
     return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !this.is(o, name)
       && this.overlap(inst, x, y, o) ? o : null));
   }
@@ -587,7 +590,7 @@ export class World {
   }
 
   placeEmpty(inst, x, y) {
-    return !this.instancePlace(inst, x, y, null, false);
+    return !this.instancePlace(inst, x, y, null, false) && !(this.terrainBlocks && this.terrainBlocks(inst, x, y)); // §9.97
   }
 
   instancePosition(px, py, name) {

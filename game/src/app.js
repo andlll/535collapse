@@ -19,7 +19,7 @@ import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDumm
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, levelStep, lvl05Setup } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
@@ -31,6 +31,7 @@ import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPr
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
+import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -52,11 +53,11 @@ import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05"];
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"]; // lvl06: §9.100
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -120,10 +121,19 @@ async function main() {
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
-                    room.backgrounds.map((b) => b.name), progress);
+                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
+                     ...(room.patches || []).map((p) => p.bg || "city2")], progress); // §9.97, §9.99
 
   const [objects, masks] = await Promise.all(
     ["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
+  // [§9.100] i gruppi d'atlas degli sprite degli oggetti della room che TIERS
+  // non carica: nel livello 6 la citta' (110 oggetti) era invisibile
+  const needed = new Set();
+  for (const [obj] of room.instances) {
+    const o = objects[obj], s = o && o.sprite && assets.sprites[o.sprite];
+    if (s && !assets.groups.has(s.group)) needed.add(s.group);
+  }
+  if (needed.size) await assets.load([...needed], [], progress);
   // Il cursore del gioco (mouser Create: action_set_cursor(cursore) [C]),
   // come lo fa il runner: la freccia del sistema nascosta e lo sprite
   // disegnato dal gioco sopra a tutto (drawCursor). [§6.1 n.83] Prima era
@@ -157,6 +167,30 @@ async function main() {
   world.hooks.roomGoto = (name) => {
     location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
   };
+  // [§9.97] i fiumi disegnati come linee (rivers.js): forma, acqua, ostacolo
+  const FEET = [10, 5];
+  const useRivers = (list, roads = [], bridges = [], patches = []) => {
+    const R = [room.width, room.height];
+    world.patches = patches.map(patchGeometry); // §9.99
+    world.rivers = riverJoin(list, (rv) => riverGeometry({ ...rv, room: R })); // §9.100: le foci
+    world.roads = roads.map((rd) => roadGeometry({ ...rd, room: R }));
+    world.bridges = bridges.map(bridgeGeometry);
+    world._riverCells = undefined; world._water = undefined;
+    // le unita' contano i piedi (FEET px attorno al punto in cui toccano
+    // terra), i fantasmi degli edifici tutta la maschera: col riquadro intero
+    // un'unita' sulla riva "toccava" l'acqua, e i nemici che toccano
+    // qualcosa avanzano dritti (enemies.js pushThrough)
+    world.terrainBlocks = world.rivers.length ? (inst, x, y) => {
+      if (!stopsAtWater(world, inst)) return false;
+      const rc = riverCells(world);
+      if (!rc) return false;
+      if (!/_placer$/.test(inst.object)) return riverIn(rc, x - FEET[0], y - FEET[1], x + FEET[0], y + FEET[1]);
+      const bb = world.bbox(inst, x, y);
+      return !!bb && riverIn(rc, bb[0], bb[1], bb[2], bb[3]);
+    } : null;
+  };
+  useRivers(room.rivers || [], room.roads || [], room.bridges || [], room.patches || []);
+  world.routes = room.paths || []; // §9.101: i percorsi della regia (livello regia di Tiled)
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
@@ -164,6 +198,10 @@ async function main() {
   // "__fetta" per ogni striscia verticale dello sprite, ferma, con la depth
   // del bordo anteriore della maschera in quella colonna
   for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
+  // [§9.100] i ponti dipinti con la balaustra a parte: nasce con loro, specchiata come loro
+  for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
+    world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
+  }
   world.register("__neutrale", neutral());       // §9.11 (scenario.js)
   world.register("monastero", monastery(path));  // §9.11 (buildings.js)
   world.register("fiume_grande", fiumeGrande());  // §9.40 (bridge.js)
@@ -175,6 +213,7 @@ async function main() {
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
   world.register("enemy_manager_lv5", enemyManagerLv5(path)); // §9.76
+  world.register("enemy_manager_lv6", enemyManagerLv6(path)); // §9.101
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -223,6 +262,7 @@ async function main() {
     let b = built(f, path);
     if (PRODUCERS[f]) b = producer(f, b, path);
     if (f === "torre" || f === "castello") b = garrisoned(f, b);
+    if (f === "torre") b = lockedTower(b); // §9.101: le torri del livello 6
     if (f === "chiesa") b = church(b);
     world.register(f, b);
   }
@@ -328,6 +368,7 @@ async function main() {
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
+    if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
@@ -740,7 +781,15 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
+                    // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
+                    // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
+                    setRivers(list, roads = [], bridges = [], patches = []) {
+                      const apply = () => { useRivers(list, roads, bridges, patches); path._river = null; path.initCost(); ground.reset(); };
+                      const missing = patches.map((p) => p.bg || "city2").filter((b) => !assets.bg.get(b));
+                      if (missing.length) return assets.load([], missing).then(apply);
+                      apply();
+                    },
                     ambience: { cloudBlobs, shadeAt }, // §9.84
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };

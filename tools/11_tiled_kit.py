@@ -331,12 +331,23 @@ def build_kit(out_dir):
     with open(os.path.join(out_dir, "kit.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     write_project(out_dir)
+    write_extension(out_dir)
     n = sum(len(t["tiles"]) for t in manifest["tilesets"].values())
     print("kit: %d tile in %d tileset, memoria delle immagini in Tiled %.0f MB"
           % (n, len(manifest["tilesets"]), sum(ram.values()) / 1e6))
     for ts, b in ram.items():
         print("  %-15s %3d tile %6.1f MB" % (ts, len(manifest["tilesets"][ts]["tiles"]), b / 1e6))
     return manifest, info
+
+
+def write_extension(out_dir):
+    """[§9.98] L'estensione di Tiled (tools/tiled/anteprima.mjs) e il codice
+    del gioco che usa (game/src/rivers.js -> rivers.mjs) in extensions/:
+    Tiled la carica da sola aprendo il progetto."""
+    ext = os.path.join(out_dir, "extensions")
+    os.makedirs(ext, exist_ok=True)
+    shutil.copy(os.path.join(REPO_DIR, "tools", "tiled", "anteprima.mjs"), os.path.join(ext, "anteprima.mjs"))
+    shutil.copy(os.path.join(REPO_DIR, "game", "src", "rivers.js"), os.path.join(ext, "rivers.mjs"))
 
 
 def write_project(out_dir):
@@ -358,7 +369,45 @@ def write_project(out_dir):
             ]}, {
             # la vista iniziale: solo il contorno, senza coprire la mappa
             "id": 2, "name": tk.VIEW_TYPE, "type": "class", "useAs": ["object"],
-            "color": "#ffffb000", "drawFill": False, "members": []}],
+            "color": "#ffffb000", "drawFill": False, "members": []}, {
+            # [§9.97] fiumi, strade e ponti disegnati come linee e forme
+            "id": 3, "name": "fiume", "type": "class", "useAs": ["object"],
+            "color": "#ff2a7f9f", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.RIVER_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.RIVER_WIDTH},
+            ]}, {
+            "id": 4, "name": "strada1", "type": "class", "useAs": ["object"],
+            "color": "#ffc8c3a0", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "densita", "type": "float", "value": 1},
+            ]}, {
+            "id": 5, "name": "strada2", "type": "class", "useAs": ["object"],
+            "color": "#ff9b9f82", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "densita", "type": "float", "value": 1},
+            ]}, {
+            "id": 6, "name": tk.BRIDGE_TYPE, "type": "class", "useAs": ["object"],
+            "color": "#ffa6989b", "drawFill": True, "members": []}, {
+            # [§9.98] le sagome dell'anteprima (extensions/anteprima.mjs)
+            "id": 7, "name": "anteprima_fiume", "type": "class", "useAs": ["object"],
+            "color": "#ff4f8c80", "drawFill": True, "members": []}, {
+            "id": 8, "name": "anteprima_strada1", "type": "class", "useAs": ["object"],
+            "color": "#ffc8c3a0", "drawFill": True, "members": []}, {
+            "id": 9, "name": "anteprima_strada2", "type": "class", "useAs": ["object"],
+            "color": "#ff9b9f82", "drawFill": True, "members": []}, {
+            # [§9.99] macchie di un altro sfondo
+            "id": 10, "name": tk.PATCH_TYPE, "type": "class", "useAs": ["object"],
+            "color": "#ffa8a39a", "drawFill": True,
+            "members": [
+                {"name": "sfondo", "type": "string", "value": tk.PATCH_BG},
+                {"name": "sfumatura", "type": "float", "value": tk.PATCH_FEATHER},
+                {"name": "opacita", "type": "float", "value": 1},
+            ]}],
     }
     with open(os.path.join(out_dir, "535.tiled-project"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(proj, f, indent=4)
@@ -466,7 +515,8 @@ def new_map(manifest, w, h, bg="green1"):
 def write_readme(out_dir, manifest):
     rows = "\n".join("| `%s` | %s | %d |" % (ts, t["titolo"], len(t["tiles"]))
                      for ts, t in manifest["tilesets"].items())
-    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE)
+    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE, river=tk.RIVER_WIDTH, road=tk.ROAD_WIDTH,
+                         feather=tk.PATCH_FEATHER)
     with open(os.path.join(out_dir, "LEGGIMI.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
 
@@ -500,9 +550,12 @@ invece, sono tue.
 | Livello | Cosa ci va | Ordine di disegno |
 |---|---|---|
 | `sfondo` | lo sfondo ripetuto (bloccato: per cambiarlo, *Image* nelle proprieta' del livello, da `img/sfondi/`) | — |
+| `macchie` | macchie di un altro sfondo, per esempio il selciato della citta' (vedi sotto) | — |
 | `suolo` | strade, sentieri, prati, erba, chiazze, fiori, campi | nell'ordine in cui li metti |
 | `erba e spighe` | le macchie d'erba e di spighe (`natura`) | nell'ordine in cui li metti |
-| `terreno` | montagne, fiumi | dall'alto in basso, come nel gioco |
+| `strade` | le strade disegnate come linee (vedi sotto) | — |
+| `fiumi` | i fiumi disegnati come linee e i loro ponti (vedi sotto) | — |
+| `terreno` | montagne, fiumi dipinti | dall'alto in basso, come nel gioco |
 | `oggetti` | tutto il resto: alberi, risorse, edifici, unita', citta' | dall'alto in basso, come nel gioco |
 | `boschi` | forme da riempire di alberi (vedi sotto) | — |
 | `regia` | `manager` (uno per mappa, obbligatorio), segnali, suggerimenti, dialoghi, il rettangolo `vista iniziale` | — |
@@ -576,6 +629,89 @@ decorazione). La stessa forma da' sempre gli stessi alberi.
 Non e' un'anteprima: in Tiled la forma resta una macchia verde; gli alberi
 li vedi nell'anteprima dello script o nel gioco.
 
+## Macchie (un altro sfondo a chiazze)
+
+Nel livello `macchie` disegna aree: rettangoli (**R**), ellissi (**C**) o
+poligoni (**P**, chiudendoli sul primo punto), di classe `macchia`. Dentro
+il gioco stende un altro sfondo, ripetuto e allineato come lo sfondo della
+mappa (due macchie vicine si raccordano senza cuciture), col bordo che
+sfuma verso fuori, irregolare, cosi' non si vede la forma. Proprieta':
+`sfondo` (`city2` il selciato della citta', lo sfondo del livello 1;
+`city1` la pietra liscia; `green1` il prato; quelli di `img/sfondi/`),
+`sfumatura` (px, predefinito {feather}) e `opacita` (1 piena, 0,5 a meta').
+Le macchie stanno sopra lo sfondo e sotto tutto il resto: chiazze e strade
+dipinte, strade, fiumi, ponti. Non sono ostacoli.
+
+## Come si fa una polilinea
+
+Nelle versioni recenti di Tiled non c'e' uno strumento a parte: si usa
+**Inserisci poligono** (*Insert Polygon*, tasto **P**). Clicca i punti
+lungo il percorso e **finisci con Invio** (o clic destro, o doppio clic)
+senza tornare sul primo punto: e' una polilinea, una linea aperta. Se
+clicchi di nuovo sul primo punto si chiude in un poligono, che per fiumi e
+strade non va (lo script lo scarta con un avviso). Per correggerla dopo:
+**Modifica poligoni** (tasto **E**) per spostare i punti, Canc per
+toglierne uno, due punti vicini selezionati e clic destro, *Split Segment*,
+per aggiungerne uno in mezzo. Il primo punto e' l'inizio: `larghezza` vale
+li', `larghezza_fine` all'ultimo.
+
+## Fiumi (linee)
+
+Nel livello `fiumi` disegna una polilinea lungo il corso del fiume (vedi
+**Come si fa una polilinea** qui sopra):
+il gioco ci stende sopra l'acqua, le rive a inchiostro e la parete della
+riva lontana, nello stile dei fiumi dipinti, e la linea si ammorbidisce da
+sola (non servono tanti punti). Scegli la classe `fiume` e imposta
+`larghezza` (in px, predefinito {river}) e, se vuoi che cambi piano lungo il
+fiume, `larghezza_fine` (la larghezza all'ultimo punto; se la togli, il
+fiume e' largo uguale dappertutto). L'acqua e' un ostacolo per le unita' e
+ci cade la pioggia come sui fiumi dipinti. Per un fiume che si allarga e si
+stringe piu' volte, disegnalo in piu' polilinee che si toccano.
+Non e' un'anteprima: in Tiled resta una linea sottile; il fiume lo vedi
+nell'anteprima dello script o nel gioco.
+
+**Ponti.** Nello stesso livello `fiumi`, un rettangolo (**R**, si puo'
+ruotare) di classe `ponte` messo di traverso sul fiume, un po' piu' lungo
+del fiume e' largo (deve poggiare sulle rive): il gioco lo disegna in
+pietra, con parapetti, archi sul fianco che si vede e l'ombra, e sotto il
+ponte si passa. Il lato lungo del rettangolo e' quello che attraversa.
+
+## Anteprima di fiumi e strade (estensione)
+
+In Tiled le polilinee sono tutte sottili. Il kit ha un'estensione
+(`extensions/anteprima.mjs`, con il codice del gioco in `rivers.mjs`) che
+Tiled carica da sola **aprendo il progetto** `535.tiled-project` (con la
+sola mappa aperta non parte; serve Tiled 1.8 o piu' recente). Nel menu
+*Map*:
+- **Anteprima larghezze (fiumi e strade)**, **Ctrl+Shift+L**: rifa' il
+  livello `anteprima` (bloccato, semitrasparente, sotto `strade`) con la
+  sagoma vera di fiumi e strade, larghi come in partita (`larghezza`,
+  `larghezza_fine`, curve, punte);
+- **Anteprima a ogni salvataggio** (acceso): la rifa' da sola quando salvi.
+Il livello `anteprima` non va nel gioco: lo script lo ignora. Puoi
+nasconderlo o cancellarlo quando vuoi; il comando lo rifa'.
+
+**Ponti dipinti** (come `ponte_dx`, `ponte_dx2` del livello 6). Un punto
+(*Inserisci punto*) nel livello `fiumi` o `strade`, chiamato col nome dello
+sprite senza trattino (`pontedx`, `pontedx2`), nel centro del piano del
+ponte; con `specchiato` nel nome (per esempio `pontedx specchiato`) il
+ponte si specchia sull'asse verticale. Il gioco lo disegna sopra il fiume,
+toglie l'acqua sotto il piano percorribile (la sua maschera) e, se c'e',
+mette la balaustra davanti.
+
+## Strade (linee)
+
+Nel livello `strade` disegna una polilinea lungo la strada e scegli la
+classe: `strada1` e' la strada marcata (sassi chiari e fitti, come
+`strada4`-`strada8`), `strada2` la secondaria, piu' simile al terreno (come
+`traccia1`-`traccia4`). Proprieta': `larghezza` (px, predefinito {road}),
+`larghezza_fine` (la larghezza all'ultimo punto, come per i fiumi: la
+strada si allarga o si stringe piano; se la togli e' larga uguale
+dappertutto) e `densita` (1 = come negli sprite; 0,5 meta' dei sassi, 2 il
+doppio). Le
+strade non sono ostacoli. Dove una strada attraversa un fiume serve un
+ponte.
+
 ## Gruppi (oggetti che la regia del livello tiene da parte)
 
 Un livello che si chiama `gruppo <nome>` (per esempio `gruppo citta`) mette
@@ -594,6 +730,13 @@ spostare un oggetto in un gruppo: tasto destro sull'oggetto,
 - La logica del livello (obiettivi, dialoghi, ondate, risorse iniziali)
   per ora si scrive nel codice del gioco: descrivila a parole quando
   consegni la mappa.
+- Percorsi della regia (livello `regia`): una polilinea (Insert Polygon,
+  poi Invio prima di chiudere) o un poligono chiamato, o di classe,
+  `colonna` o `pattuglia` (anche `pattuglia2`, `pattuglia 3`: il numero
+  finale non conta). La polilinea e' un percorso aperto (dal primo
+  all'ultimo punto), il poligono un giro chiuso. Cosa ci cammina sopra lo
+  decide la regia del livello (nel livello 6: le pattuglie in giro e la
+  colonna fino al ponte).
 
 ## Consegnare una mappa
 

@@ -950,6 +950,30 @@
         25,
         -13
       ]
+    },
+    "ponte_dx": {
+      "origin": "maschera",
+      "gruppo": "terreno"
+    },
+    "ponte_dx2": {
+      "origin": "maschera",
+      "gruppo": "terreno"
+    },
+    "ponte_dx_bala": {
+      "origin": [
+        205,
+        176
+      ],
+      "maschera": "alpha",
+      "fette": 16,
+      "gruppo": "terreno"
+    },
+    "ponte_dx2_trasp": {
+      "origin": [
+        193,
+        92
+      ],
+      "gruppo": "terreno"
     }
   },
   "objects": {
@@ -1116,6 +1140,14 @@
       "kit": false,
       "nota": "la regia del livello 5 (§9.76, levels.js)"
     },
+    "enemy_manager_lv6": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 6 (§9.101, levels.js)"
+    },
     "dialogo_5_0": {
       "sprite": null,
       "parents": [
@@ -1162,6 +1194,69 @@
       "kit": false
     },
     "dialogo_5_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_3": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_4": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_6_6": {
       "sprite": null,
       "parents": [
         "parent_hint"
@@ -1432,6 +1527,38 @@
       },
       "kit": false,
       "nota": "il cantiere di un edificio nemico perso, da ricostruire (§9.45, economy.js); sprite, maschera e vita dal cantiere alleato corrispondente"
+    },
+    "ponte_dx": {
+      "sprite": "ponte_dx",
+      "mask": "ponte_dx",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] ponte dipinto dall'autore (livello 6): cotto nel suolo sopra i fiumi a linee; la maschera e' il piano percorribile (li' l'acqua non c'e'); crea la sua balaustra (ponte_dx_bala). In Tiled: un punto chiamato pontedx (\"specchiato\" per specchiarlo), al centro del piano"
+    },
+    "ponte_dx2": {
+      "sprite": "ponte_dx2_trasp",
+      "mask": "ponte_dx2",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] ponte dipinto dall'autore (livello 6), come ponte_dx, senza balaustra a parte. In Tiled: un punto chiamato pontedx2 [§9.101] disegnato con ponte_dx2_trasp (pile e archi che sfumano sott'acqua), stessa tela; ponte_dx2 resta per la maschera"
+    },
+    "ponte_dx_bala": {
+      "sprite": "ponte_dx_bala",
+      "parents": [],
+      "solid": false,
+      "depth": {
+        "y": 0
+      },
+      "kit": false,
+      "nota": "[§9.100] la balaustra di ponte_dx, a fette: chi passa sul ponte o dietro di lei le sta dietro"
     }
   },
   "derivati": {
@@ -1459,6 +1586,12 @@
       "lato": 120,
       "gruppo": "campagna",
       "nota": "segnalino del livello 5 (il castello nemico) sulla mappa della campagna, disegnato dall'autore (§9.76)"
+    },
+    "cap_l6": {
+      "da": "cap6",
+      "lato": 120,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101)"
     }
   }
 }

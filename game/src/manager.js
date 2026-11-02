@@ -446,6 +446,8 @@ export class Manager {
       for (const i of world.instances) {
         const match = Array.isArray(who) ? who.includes(i.object) : (i.object === who || i.parents.includes(who));
         if (!match || (needVisible && !i.visible)) continue;
+        // [§9.101] le torri del livello 6 non ancora recuperate: grigie, come le rovine
+        if (i.locked) { if (who === "ally_build") d.circleColour(ox + i.x / sz, oy + i.y / sz, 75 / sz, c.gray, c.dkgray, false); continue; }
         fn(ox + i.x / sz, oy + i.y / sz);
       }
     }

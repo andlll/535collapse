@@ -83,6 +83,18 @@ def shape_of(o):
     return [(x + px * c - py * s, y + px * s + py * c) for px, py in pts]
 
 
+def polyline_of(o):
+    """[§9.97] I punti di una polilinea (rotazione di Tiled compresa), o None."""
+    pl = o.find("polyline")
+    if pl is None:
+        return None
+    ox, oy, rot = float(o.get("x", 0)), float(o.get("y", 0)), math.radians(float(o.get("rotation", 0)))
+    c, s = math.cos(rot), math.sin(rot)
+    pts = [[round(ox + px * c - py * s, 1), round(oy + px * s + py * c, 1)]
+           for px, py in (tuple(float(v) for v in q.split(",")) for q in pl.get("points").split())]
+    return pts if len(pts) >= 2 else None
+
+
 def inside(pt, poly):
     x, y = pt
     n, ins = len(poly), False
@@ -199,8 +211,12 @@ def load_map(path, kit=None):
     gm_colour = ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
 
     entries, view = [], None  # (id, [istanze])
+    rivers, roads, bridges, patches = [], [], [], []  # [§9.97, §9.99] (id, fiume / strada / ponte / macchia)
+    paths = []  # [§9.101] (id, percorso della regia)
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
+        if layer == "anteprima":  # [§9.98] le sagome dell'estensione di Tiled
+            continue
         # [§9.11] livello "gruppo <nome>": gli oggetti che la regia del livello
         # tiene da parte (creati piu' tardi, o neutrali finche' non passano al
         # giocatore)
@@ -259,12 +275,93 @@ def load_map(path, kit=None):
                 entries.append((oid, [inst]))
                 continue
             cls = o.get("type") or o.get("class") or ""
+            # [§9.100] un ponte dipinto: un punto col nome dello sprite
+            nm = (o.get("name") or "").lower()
+            key = nm.replace("specchiato", "").replace(" ", "").replace("_", "")
+            if o.find("point") is not None and key in tk.PAINTED_BRIDGES:
+                entries.append((oid, [{"object": tk.PAINTED_BRIDGES[key], "x": round(float(o.get("x", 0))),
+                                       "y": round(float(o.get("y", 0))), "scale_x": -1 if "specchiato" in nm else 1,
+                                       "scale_y": 1, "rotation": 0}]))
+                continue
             if cls == tk.VIEW_TYPE:
                 if view:
                     warn.append("%s: seconda vista iniziale, ignorata" % where)
                     continue
                 view = {"x": round(float(o.get("x", 0))), "y": round(float(o.get("y", 0))),
                         "w": round(float(o.get("width", 3000))), "h": round(float(o.get("height", 2000)))}
+                continue
+            # [§9.101] percorsi della regia (nel livello regia): polilinee o
+            # poligoni (giri chiusi) di classe o nome tk.PATHS, con un numero
+            # in fondo se sono piu' d'uno (pattuglia, pattuglia2...)
+            pname = re.sub(r"[\s_]*\d+$", "", (cls or o.get("name") or "").strip().lower())
+            if layer == "regia" and pname in tk.PATHS:
+                pl = polyline_of(o)
+                poly = None if pl else shape_of(o)
+                if not pl and not poly:
+                    warn.append("%s: un percorso e' una polilinea o un poligono" % where)
+                    continue
+                pts = pl or [[round(x, 1), round(y, 1)] for x, y in poly]
+                paths.append((oid, {"name": pname, "pts": pts, "loop": not pl}))
+                continue
+            # [§9.99] macchie: aree (rettangoli, ellissi, poligoni) nel livello macchie
+            if layer == tk.PATCH_LAYER or cls == tk.PATCH_TYPE:
+                poly = shape_of(o)
+                if not poly or len(poly) < 3:
+                    warn.append("%s: nel livello macchie vanno rettangoli, ellissi o poligoni" % where)
+                    continue
+                p = props(o)
+                bg = str(p.get("sfondo", tk.PATCH_BG)).strip() or tk.PATCH_BG
+                if bg not in kit["sfondi"]:
+                    warn.append("%s: sfondo %r non e' fra quelli del kit (%s), uso %s"
+                                % (where, bg, ", ".join(sorted(kit["sfondi"])), tk.PATCH_BG))
+                    bg = tk.PATCH_BG
+                pt = {"pts": [[round(x, 1), round(y, 1)] for x, y in poly], "bg": bg,
+                      "feather": max(0.0, float(p.get("sfumatura", tk.PATCH_FEATHER)))}
+                if "opacita" in p:
+                    pt["alpha"] = max(0.0, min(1.0, float(p["opacita"])))
+                patches.append((oid, pt))
+                continue
+            # [§9.97] i ponti: rettangoli (anche ruotati) di classe ponte
+            if cls == tk.BRIDGE_TYPE:
+                poly = shape_of(o)
+                if not poly or len(poly) != 4 or o.find("polygon") is not None:
+                    warn.append("%s: un ponte e' un rettangolo" % where)
+                    continue
+                bridges.append((oid, {"pts": [[round(x, 1), round(y, 1)] for x, y in poly]}))
+                continue
+            # [§9.97] strade disegnate come linee: polilinee nel livello strade
+            if layer == tk.ROAD_LAYER or cls in tk.ROAD_KINDS:
+                pts = polyline_of(o)
+                if not pts:
+                    warn.append("%s: nel livello strade vanno polilinee di almeno due punti" % where)
+                    continue
+                p = props(o)
+                if cls not in tk.ROAD_KINDS:
+                    warn.append("%s: classe %r, uso strada1 (strada1 la marcata, strada2 la secondaria)" % (where, cls))
+                rd = {"pts": pts, "width": max(20.0, float(p.get("larghezza", tk.ROAD_WIDTH))),
+                      "kind": tk.ROAD_KINDS.get(cls, 1)}
+                if "larghezza_fine" in p:
+                    rd["widthEnd"] = max(20.0, float(p["larghezza_fine"]))
+                if "densita" in p:
+                    rd["density"] = max(0.05, float(p["densita"]))
+                roads.append((oid, rd))
+                continue
+            # [§9.97] fiumi disegnati come linee: polilinee nel livello fiumi
+            if layer == tk.RIVER_LAYER or cls == "fiume":
+                pts = polyline_of(o)
+                if not pts:
+                    warn.append("%s: nel livello fiumi vanno polilinee di almeno due punti (o rettangoli di classe ponte)" % where)
+                    continue
+                p = props(o)
+                rv = {"pts": pts, "width": float(p.get("larghezza", tk.RIVER_WIDTH))}
+                if "larghezza_fine" in p:
+                    rv["widthEnd"] = float(p["larghezza_fine"])
+                if min(rv["width"], rv.get("widthEnd", rv["width"])) < 20:
+                    warn.append("%s: larghezza sotto 20 px, uso 20" % where)
+                    rv["width"] = max(20.0, rv["width"])
+                    if "widthEnd" in rv:
+                        rv["widthEnd"] = max(20.0, rv["widthEnd"])
+                rivers.append((oid, rv))
                 continue
             if layer == tk.FOREST_LAYER or cls == "bosco":
                 poly = shape_of(o)
@@ -296,6 +393,10 @@ def load_map(path, kit=None):
         view = {"x": 0, "y": 0, "w": 3000, "h": 2000}
     scen = {"format": FORMAT, "version": VERSION, "name": name, "width": width, "height": height,
             "background": background, "colour": gm_colour, "view": view, "instances": instances}
+    # [§9.97] solo se ce ne sono: gli scenari di prima restano uguali
+    for key, lst in (("patches", patches), ("roads", roads), ("rivers", rivers), ("bridges", bridges), ("paths", paths)):
+        if lst:
+            scen[key] = [v for _, v in sorted(lst, key=lambda e: e[0])]
     return scen, warn
 
 
@@ -396,10 +497,50 @@ def preview(scen, kit, S, out_path, order=None):
         for y in range(0, H, bg.height):
             for x in range(0, W, bg.width):
                 canvas.alpha_composite(bg, (x, y))
+    # [§9.97] strade, fiumi e ponti a linee, sotto tutte le istanze come nel
+    # gioco: solo la forma (il disegno vero lo fa il gioco, game/src/rivers.js),
+    # con la larghezza schiacciata come il suolo in media
+    from PIL import ImageDraw
+    dr = ImageDraw.Draw(canvas)
+    for pt in scen.get("patches", []):  # [§9.99] le macchie: il colore medio del loro sfondo
+        bgi = Image.open(os.path.join(base, kit["sfondi"][pt["bg"]]["image"])).convert("RGB").resize((1, 1), Image.BOX)
+        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        ImageDraw.Draw(layer).polygon([(x * S, y * S) for x, y in pt["pts"]],
+                                      fill=bgi.getpixel((0, 0)) + (round(255 * pt.get("alpha", 1)),))
+        canvas.alpha_composite(layer)
+    for rd in scen.get("roads", []):
+        pts, w0 = rd["pts"], rd["width"]
+        w1 = rd.get("widthEnd", w0)
+        col = (200, 195, 160, 255) if rd["kind"] == 1 else (155, 159, 130, 255)
+        for k in range(len(pts) - 1):
+            wk = w0 + (w1 - w0) * (k + 0.5) / (len(pts) - 1)
+            dr.line([(pts[k][0] * S, pts[k][1] * S), (pts[k + 1][0] * S, pts[k + 1][1] * S)],
+                    fill=col, width=max(1, round(wk * 0.5 * S)), joint="curve")
+    for rv in scen.get("rivers", []):
+        pts, w0 = rv["pts"], rv["width"]
+        w1 = rv.get("widthEnd", w0)
+        for k in range(len(pts) - 1):
+            wk = w0 + (w1 - w0) * (k + 0.5) / (len(pts) - 1)
+            dr.line([(pts[k][0] * S, pts[k][1] * S), (pts[k + 1][0] * S, pts[k + 1][1] * S)],
+                    fill=(96, 140, 128, 255), width=max(1, round(wk * 0.8 * S)), joint="curve")
+    for br in scen.get("bridges", []):
+        dr.polygon([(x * S, y * S) for x, y in br["pts"]], fill=(166, 152, 155, 255), outline=(30, 30, 30, 255))
     info_path = os.path.join(REPO_DIR, "game", "assets", "objects.json")
     info = json.load(open(info_path, encoding="utf-8")) if os.path.exists(info_path) else {}
+    atlas_path = os.path.join(REPO_DIR, "game", "assets", "atlas.json")
+    atlas_sprites = json.load(open(atlas_path, encoding="utf-8"))["sprites"] if os.path.exists(atlas_path) else {}
     cache = {}
     for k, inst in enumerate((order or game_order)(scen["instances"], info)):
+        if inst["object"] not in tiles:
+            # [§9.100] oggetti fuori dal kit (i ponti dipinti): lo sprite nuovo,
+            # con l'origine dell'atlas del gioco
+            spr = (info.get(inst["object"]) or {}).get("sprite") or inst["object"]
+            png = os.path.join(REPO_DIR, "nuovi", "sprites", spr + ".png")
+            if os.path.exists(png) and spr in atlas_sprites:
+                if png not in cache:
+                    cache[png] = Image.open(png).convert("RGBA")
+                draw_instance(canvas, cache[png], atlas_sprites[spr]["origin"], inst, S)
+            continue
         by = tiles[inst["object"]]
         # senza variante scelta (alberi dei boschi) una a caso, come nel gioco
         t = by.get(inst.get("sprite")) or list(by.values())[random.Random(k).randrange(len(by))]

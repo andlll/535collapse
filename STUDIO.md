@@ -7769,3 +7769,413 @@ per il deposito del cibo invisibile del centro (cc_barn). Solo estetico.
 fotogrammi a passo col vento a 0 e a 0,34 col vento a 1. Passano i test
 unitari, `ambience.mjs`, `soak.mjs` e `saves.mjs` (match, lvl01, lvl02).
 Stessa PR di §9.93: versione 0.2605.
+
+### 9.96 I nemici che si fanno da parte non vagano piu'
+
+Segnalazione dell'autore: dopo la PR di §9.93-9.95 la CI falliva sempre in
+`fireorder.mjs`, caso "enemy casa front": un cavaliere nemico fermo si
+spostava di 225 px, oltre il limite di 200 (HOLD).
+
+*Perche' proprio allora.* La prova fissa il seme di Math.random (5). Il
+vecchio luccichio delle miniere (§9.94) pescava due numeri a caso ogni 50
+passi per miniera; tolto, la sequenza dei numeri a caso della partita e'
+un'altra. Misurato su 36 semi, prima di §9.94 il caso superava i 200 px con
+6 semi (fino a 361 px), dopo con 7: lo stesso difetto, il seme 5 era solo
+capitato fra quelli buoni.
+
+*La causa.* Chi va a dare fuoco fa spostare di lato le unita' ferme della
+sua parte (§9.31, pathing.js stepAside): il cavaliere veniva mandato a
+79 px, in un posto scelto libero "passando sopra i compagni". Ma nel passo
+dei nemici, se la meta e' occupata (anche solo da un compagno che ci passa
+sopra), la meta si sposta a caso di +-20 px, e di +-30 se c'e' un solido
+[C]: a ogni passo in cui i fanti gli passavano accanto, una passeggiata a
+caso. Da (806, 4437) la meta e' andata fino a (896, 4333), 216 px dalla
+partenza. Gli alleati questo non lo fanno sul posto di una formazione o di
+uno spostamento di lato (ranged.js, civilians.js: `onFormationSlot`); i
+nemici si'.
+
+*Ora* (enemies.js) i nemici fanno come gli alleati: sul posto in cui si
+fanno da parte (o vicino al bersaglio, goNear) la meta non si sposta a
+caso; se a meno di 10 px il posto e' occupato da un compagno, arrivano
+dove sono invece di spingerlo (`slotBlocked`). Vale per guerrieri,
+picchieri, cavalieri e arcieri nemici.
+
+Misurato su 36 semi: il caso "enemy casa front" ora da' 151 px con tutti
+(prima da 94 a 361 px, e da 92 a 315 dopo §9.94), nessuna unita' dentro un
+edificio. Versione 0.2606.
+
+### 9.97 Fiumi, strade e ponti disegnati come linee
+
+Domanda dell'autore: un sistema di fiumi e strade piu' leggero degli sprite
+dipinti (i soli fiumi, fiume1-4, fiume2_2, fiume2_3, fiume_2_1 e
+Fiume_Completo, sono ~660 KB da scaricare e ~41 MB di memoria video).
+Proposte: tileset isometrico (sconsigliato: decine di raccordi, effetto
+griglia), sprite ruotati (in isometria la rotazione rompe la prospettiva),
+linee disegnate in Tiled e stese dal gioco. Scelte le linee, provate prima
+per i fiumi, poi (richiesta dell'autore) ostacolo, pioggia, larghezza da
+Tiled, ponti, strade e antialiasing. Tutto in game/src/rivers.js, cotto nei
+blocchi del suolo (ground.js: prima le strade, poi i fiumi, poi i ponti),
+sopra strade e prati dipinti: a ogni fotogramma costa come prima. Le
+texture (nuovi/fiumi/, tools/15_fiumi.py, dai dipinti dell'autore) sono
+16 KB in WebP in tutto. Le mappe gia' fatte restano come sono (richiesta
+dell'autore: il fiume dipinto e il ponte del livello 4 non si toccano).
+
+**Fiumi.** In Tiled una polilinea nel livello `fiumi` (classe `fiume`,
+proprieta' `larghezza`, predefinita 150 px, e `larghezza_fine`, la
+larghezza all'ultimo punto). Il gioco ammorbidisce la linea (Catmull-Rom,
+un punto ogni 10 px) e ci stende una texture d'acqua di 256x192 px
+(acqua.png, 6,8 KB: ritagliata dall'acqua di Fiume_Completo e resa
+ripetibile), fissata al mondo (non si deforma nelle curve). Le rive si
+calcolano sul terreno "steso" (y / 0,62) e si schiacciano come il suolo:
+dove il fiume scorre in orizzontale e' piu' stretto. Stile dei fiumi
+dipinti: la riva lontana (che guarda in su) mostra la parete della sponda,
+una fascia d'acqua piu' scura alta fino a 16 px fra due linee nere; la riva
+vicina una linea sola; le linee a inchiostro di spessore variabile
+(2,2 +- 0,9 px); la larghezza varia del +-12% lungo il fiume. Nelle curve
+strette il lato interno si stringe (al piu' il 55% del raggio, poi
+ammorbidito): prima si accavallava e faceva le punte; resta un po'
+spigoloso, nello stile (parere dell'autore). Un'estremita' dentro la room
+finisce a punta arrotondata negli ultimi 120 px, come una sorgente.
+
+**Antialiasing** (richiesta dell'autore: le linee nere nette staccavano dai
+personaggi, che hanno i contorni filtrati). Ogni tratto d'inchiostro ha un
+nucleo pieno fino a mezzo pixel dal bordo e una frangia di un pixel che va
+a trasparente (colori per vertice). Solo nella cottura del suolo, una
+volta per blocco.
+
+**Acqua ed effetti.** Le celle da 8 px dentro le rive (riverCells) entrano
+nella mappa dell'acqua (effects.js waterMap), un "pezzo" per tratto di 20
+punti con la sua orientazione: pioggia (anelli), riflessi, increspature e
+schiuma funzionano come sui fiumi dipinti, in un solo sistema di
+particelle per tipo, sotto tutte le istanze.
+
+**Ostacolo.** Le celle della griglia dei percorsi che toccano l'acqua sono
+chiuse (pathing.js initCost) e restano chiuse se accanto sparisce un
+edificio. Le collisioni (world placeFree, placeFreeExcept, placeEmpty,
+`terrainBlocks`): le unita' contano i piedi (10 x 5 px attorno al punto in
+cui toccano terra; col riquadro intero un'unita' sulla riva "toccava"
+l'acqua, e un nemico che tocca qualcosa avanza dritto senza guardare:
+enemies.js pushThrough, ora fermo davanti all'acqua), i fantasmi degli
+edifici tutta la maschera (rossi sul fiume).
+
+**Ponti.** Un rettangolo (anche ruotato) di classe `ponte` nel livello
+`fiumi`, di traverso sul fiume: il lato lungo e' quello che attraversa.
+Sotto il ponte non c'e' acqua (si passa, non ci piove). Disegno, sulla
+grana di carta dell'acqua in grigio (carta.png) colorata come il ponte
+dipinto (Ponte_5): piano grigio-viola, parapetti in pietra chiara larghi
+8 px, inchiostro; il fianco che si vede (il lato lungo che guarda in giu',
+alto 20 px per quanto guarda in giu': un ponte da nord a sud non ne mostra)
+in pietra con 1-3 archi sull'acqua in ombra; l'ombra a destra in basso come
+quella degli edifici. Il ponte dipinto non si usa: ha un orientamento solo.
+
+**Strade.** Osservazione dell'autore: il sentiero dei dipinti e' un
+pennello di Photoshop che ripete la stessa particella con una gamma di
+colori. Quindi sei sassolini presi singoli da strada4 (sassi.png: macchie
+isolate di 45-90 px, piene come un'ellisse, senza buchi; in grigio, il
+colore lo da' il gioco) timbrati lungo la linea, a campana attorno al
+centro, dai piu' scuri ai piu' chiari. *Misura* (segnalazione dell'autore:
+i sassi dei dipinti sono piu' piccoli): i timbri erano i sassolini singoli
+piu' grandi (area 34-100 px), nei dipinti la mediana e' 12-14 px (10% sotto
+5, 10% sopra 42-52, strada4, strada5, traccia1; le strade dipinte sono a
+scala 1 nelle mappe). Ora l'area di ogni sassolino segue quella
+distribuzione, e quanti ne servono perche' coprano come il dipinto (74 e 47
+px per px di lunghezza) l'ha detto una simulazione coi timbri veri: 4,51 e
+2,05 sassi per px di lunghezza a 115 px di larghezza. I timbri sono gia'
+rimpiccioliti in cinque misure (una riga ciascuna, 0,3-1,15, con un buon
+filtro): il gioco usa la riga piu' vicina quasi a scala 1, rimpiccioliti al
+volo venivano sfocati. Due strade, come negli sprite (richiesta
+dell'autore), classi del livello `strade`: `strada1` la marcata
+(strada4-8: dal grigio-verde 134,130,108 al beige 200,195,160, scarto tipo
+0,3 della larghezza, misurati sul dipinto), `strada2` la secondaria
+(traccia1-4: un solo grigio-verde intorno a 155,159,130, alpha 0,85, piu'
+sparsa). Proprieta' `larghezza` (predefinita 110),
+`larghezza_fine` (richiesta dell'autore, come per i fiumi: la larghezza
+all'ultimo punto, la strada si allarga o si stringe piano; dove e' piu'
+stretta ha meno sassi, la densita' per area resta quella del dipinto) e
+`densita` (1 come negli sprite). Alle estremita' dentro la room si
+diradano. Non sono ostacoli. I numeri a caso di sassi e onde vengono da un
+generatore proprio (mulberry32) col seme dalla linea: la stessa strada e'
+sempre uguale e Math.random, della partita, non si tocca.
+
+**Tiled.** tools/12_tiled_import.py legge i livelli `strade` e `fiumi`
+(polilinee e rettangoli `ponte`) e scrive nello scenario `roads`, `rivers`
+e `bridges`, solo se ce ne sono (gli scenari di prima restano uguali);
+l'anteprima PNG ne disegna la forma; tools/07_scene.py li passa alla room.
+Il kit ha i livelli, le classi coi valori predefiniti (fiume, strada1,
+strada2, ponte) e le istruzioni nel LEGGIMI. Il renderer ha un quad con le
+coordinate di texture per angolo (gl.js quadUV).
+
+`rivers.mjs` (nuova, anche in CI): un fiume com'esce dall'import (180 ->
+100 px) che finisce a punta nella vista: 139 celle chiuse; un guerriero
+mandato sull'altra riva gira attorno alla punta e arriva in 337 passi
+senza mai i piedi nell'acqua; il fantasma della casa e' rosso sull'acqua e
+libero fuori; con la pioggia anelli e riflessi sul fiume; nessuna unita'
+coi piedi nell'acqua. Poi un fiume attraverso tutta la vista con una
+strada1 che lo passa su un ponte e una strada2: sotto il ponte niente
+acqua, un guerriero passa sul ponte (scostato al piu' 10 px, 178 passi)
+senza i piedi nell'acqua, 6924 sassi nella strada1 e 1225 nella strada2;
+una strada da 60 a 200 px ha i sassi sparsi 2,2 volte di piu' verso la
+fine (dove e' larga 2,35 volte).
+Visto negli screenshot (fiume, pioggia, ponte di traverso con gli archi,
+ponte da nord a sud, strade). Senza linee nulla cambia: test unitari,
+`soak.mjs`, `saves.mjs`, `bridge.mjs`. Nota: nella prova un guerriero
+fermo proprio all'uscita del ponte faceva arrendere un compagno a 130 px
+dalla meta (movimento di sempre, moveStalled; ponti stretti da tenere
+d'occhio). Stessa PR di §9.96: versione 0.2606.
+
+### 9.98 Anteprima di fiumi e strade in Tiled (estensione del kit)
+
+Domanda dell'autore: in Tiled si puo' vedere la larghezza delle polilinee?
+No: Tiled le disegna tutte sottili (lo spessore e' una preferenza unica, non
+una proprieta' dell'oggetto). Quindi un'estensione di Tiled nel kit
+(tools/tiled/anteprima.mjs, copiata da tools/11_tiled_kit.py in
+`extensions/` accanto a 535.tiled-project, che indica gia' quella cartella):
+Tiled la carica da sola aprendo il progetto (da Tiled 1.8; con la sola
+mappa aperta no). Usa il codice del gioco (game/src/rivers.js, copiato come
+rivers.mjs): le sagome sono quelle della partita. Per questo rivers.js non
+usa piu' `??` (sintassi recente: il motore JavaScript di Tiled potrebbe non
+averla).
+
+Nel menu *Map*: **Anteprima larghezze (fiumi e strade)**, Ctrl+Shift+L,
+rifa' il livello `anteprima` (bloccato, semitrasparente, sotto `strade`) con
+le rive dei fiumi (riverGeometry: larghezza, larghezza_fine, curve strette,
+punte) e la fascia delle strade (roadOutline, nuova: +-0,5 della larghezza,
+dove cadono quasi tutti i sassolini), colorate con le classi
+anteprima_fiume, anteprima_strada1, anteprima_strada2 del progetto; **Anteprima
+a ogni salvataggio** (acceso) la rifa' quando si salva. Legge anche le
+polilinee ruotate e nei gruppi di livelli; i rettangoli dei ponti si vedono
+gia'. L'import (tools/12_tiled_import.py) ignora il livello `anteprima`.
+
+Tiled non si puo' far girare qui: provata in node con le API di Tiled finte
+(game/test/tiled.test.mjs: livello anteprima bloccato sotto strade, classi,
+rive del fiume entro 3 px da riverGeometry, strada da 80 a 160 px come
+roadOutline, fiume ruotato di 90 gradi verso il basso, rifatta senza
+raddoppiare). Passano i test unitari (64), `rivers.mjs`, il `--check` del
+kit e gli scenari invariati. Da confermare in Tiled dall'autore. Stessa PR
+di §9.96: versione 0.2606.
+
+*Prova della pioggia graduale (`ambience.mjs`, §9.91).* In CI e' caduta su
+un commit che toccava solo il LEGGIMI (inizioSuPieno 0,152 contro il tetto
+0,15). La causa: le gocce dei "primi 60 passi" si contavano dalla prima
+goccia, che arriva a caso (qui al passo 402, col cielo coperto e la salita
+partita al 386): la finestra cadeva su gocce gia' piu' fitte, media del
+livello 0,155 invece di 0,10. Ora si contano dall'inizio della salita (il
+cielo coperto): tre esecuzioni 0,098, 0,102, 0,108. Il gioco non cambia.
+
+### 9.99 Macchie di un altro sfondo (livello macchie)
+
+Richiesta dell'autore: stendere a macchie, sopra lo sfondo e sotto le
+strade, la texture della citta' (city2, il selciato, lo sfondo del livello
+1). In Tiled i livelli immagine non si dipingono e i livelli di tile non li
+legge l'import: quindi aree, come i boschi. Nel livello nuovo `macchie` (il
+primo dal basso) rettangoli, ellissi o poligoni di classe `macchia`, con
+`sfondo` (uno degli sfondi del kit: city2 predefinito, city1, green1),
+`sfumatura` (px, 40) e `opacita` (1). tools/12_tiled_import.py li scrive
+nello scenario (`patches`; uno sfondo che non c'e' da' un avviso e torna a
+city2), l'anteprima PNG li colora col colore medio dello sfondo, il kit ha
+livello, classe e istruzioni.
+
+Nel gioco (rivers.js `patchGeometry`, `drawPatch`): il bordo con un punto
+ogni 16 px, diviso in triangoli (a orecchie: anche le forme concave); la
+texture e' lo sfondo ripetuto con le coordinate del mondo, come lo sfondo
+della mappa (due macchie vicine si raccordano); il bordo sfuma verso fuori,
+largo `sfumatura` x 0,4-1,6 lungo il contorno (onda liscia, sempre uguale),
+cosi' la forma disegnata non si vede. Si cuoce nei blocchi del suolo subito
+sopra lo sfondo, prima di chiazze e strade dipinte, strade, fiumi e ponti.
+Lo sfondo di una macchia si carica con la room (anche se la room ne usa un
+altro). Non sono ostacoli.
+
+Prove: `patches.test.mjs` (nuova: i triangoli di una U coprono la sua area
+nei due versi; sfumatura fuori dal bordo, 0,4-1,6 volte), `rivers.mjs`
+(voce "macchie": city2 caricato al volo in match, la macchia nel suo
+blocco, 98 triangoli), import di prova (rettangolo ruotato, ellisse con
+city1 e opacita' 0,7, poligono con uno sfondo sbagliato), screenshot
+(selciato concavo e pietra liscia sul prato, chiazze dipinte e strada
+sopra), test unitari (66), `soak.mjs`, `saves.mjs`, `--check` del kit e
+scenari invariati. Stessa PR di §9.96: versione 0.2606.
+
+### 9.100 Livello 6: la mappa, i ponti dipinti, le macchie di citta'
+
+L'autore ha caricato su `main` la mappa `mappe/lvl06.tmx` (7000 x 6000) e
+tre sprite (`ponte_dx`, `ponte_dx2` e la balaustra `ponte_dx_bala`) con le
+aree percorribili dei due ponti; portati sul branch della PR (merge). Nella
+mappa: fiumi e strade come polilinee coi loro valori, le aree da riempire
+col selciato del livello 1 (classe `citt2`, nel livello strade), i ponti
+come tre punti (`pontedx`, `pontedx2`, `ponte dx2 specchiato`).
+
+- *Aree*: la classe `citt2` non e' quella delle macchie: le 8 aree sono
+  passate a classe `macchia` (sfondo city2, il predefinito) nel livello
+  nuovo `macchie` (nella mappa, gli stessi poligoni).
+- *Ponti dipinti*: maschere rinominate `ponte_dx_mask.png`,
+  `ponte_dx2_mask.png` (gli spazi nel nome davano noia agli script);
+  sprite e oggetti in nuovi.json: origine nel baricentro dell'area
+  percorribile (il punto di Tiled e' il centro del piano), la balaustra
+  con la stessa origine e a fette di 16 px (chi le passa dietro le resta
+  dietro, anche specchiata). L'import trasforma i punti col nome dello
+  sprite senza trattino in ponti (`specchiato` nel nome: scala x -1). Nel
+  gioco (rivers.js `PAINTED_BRIDGES`, `BRIDGE_RAILS`; ground.js) i ponti si
+  cuociono nel suolo dopo strade, fiumi e ponti a linee; l'acqua sotto la
+  loro maschera non c'e' (si passa, non ci piove); il ponte con la
+  balaustra la crea, specchiata come lui. L'anteprima PNG dell'import li
+  disegna con lo sprite nuovo.
+- `lvl06` si apre con `?room=lvl06` (non ancora nella campagna: niente
+  regia), ed e' nella prova di stabilita' della CI.
+
+*Come si legano al fiume* (screenshot a scala 1): il ponte centrale
+(`ponte_dx`, campata in diagonale, su un tratto quasi orizzontale) bene;
+quello a destra (`ponte_dx2`, archi verso sud, su un tratto da nord a sud)
+nella direzione giusta, ma il fiume (93 px) e' molto piu' stretto del ponte
+(~360): l'acqua passa sotto un arco solo, gli altri stanno sul prato, e
+l'interno degli archi e' dipinto pieno (l'acqua non si vede attraverso).
+Quello a sinistra (`ponte_dx2` specchiato) resta quasi parallelo al fiume
+(che li' sale di ~18 gradi verso destra): la facciata con gli archi finisce
+sul prato. Con `ponte_dx` specchiato si lega bene (provato in gioco):
+scelto dall'autore, il punto si chiama ora `pontedx specchiato`. Gli archi
+di `ponte_dx2` l'autore li rifara' semitrasparenti (sprite aggiornati da
+SketchUp).
+
+*La citta' invisibile* (segnalazione dell'autore): i 110 oggetti della
+citta' (case, palazzi, anfiteatro, templi: gli ocr_*) erano nella partita
+ma senza sprite, perche' il loro gruppo d'atlas ("citta") si caricava solo
+per i livelli 1 e 2 (TIERS). Ora lvl06 lo carica e, in ogni room, app.js
+carica da se' i gruppi degli sprite degli oggetti della mappa che TIERS non
+prevede (non ricapita coi livelli nuovi).
+
+*Fiume piu' largo, verso fuori* (richiesta dell'autore: +50 px, c'e'
+margine verso l'esterno della citta'). Il fiume principale (id 5 nella
+mappa, 50 punti, gira attorno alla citta') da larghezza 100 a 150, e la sua
+linea spostata di 25 px (sul terreno steso) lontano dal centro della
+citta' (2751, 3458, il baricentro dei 110 oggetti della citta'): la riva
+lato citta' resta dov'era. Fatto nella mappa (lvl06.tmx), con uno script.
+
+*Le foci* (segnalazione dell'autore: fra i due ponti a destra "si vede
+l'attacco" del secondo fiume). rivers.js `riverJoin`: dove un fiume sbocca
+in un altro le rive di ciascuno (inchiostro e parete) dentro l'acqua
+dell'altro non si disegnano, e l'estremita' che finisce dentro un altro
+fiume non si stringe a punta: la foce si apre. Prova `riverjoin.test.mjs`
+(diramazione larga alla foce, rive nascoste solo li').
+
+Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
+dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
+unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR
+di §9.96: versione 0.2606.
+
+### 9.101 Livello 6: la regia
+
+Progetto concordato con l'autore, poi scritto quando sono arrivati la mappa
+coi giri delle pattuglie e il percorso della colonna, e gli sprite di
+`ponte_dx2` con gli archi semitrasparenti (`ponte_dx2_trasp`). Sotto, il
+progetto; in fondo, com'e' fatto e la taratura.
+
+Storia: la citta' e' stata devastata, le difese vanno ricostruite e
+potenziate prima di un grande attacco. La guarnigione e' caduta e
+l'armeria e' stata saccheggiata e bruciata: niente spade ne' armature, ma i
+cittadini sono una milizia di arcieri (gli archi si fanno). Quindi le due
+caserme della mappa addestrano solo arcieri; nascosti i pulsanti per
+costruire caserme e stalle.
+
+- *Inizio*: 400 cibo, 400 legno, 500 oro, 200 pietra; miniere d'oro e cave
+  di pietra nella mappa (l'autore conferma che ci sono).
+- *Fase 1, pattuglie*: i gruppi blu fra i fiumi fanno giri (polilinee
+  dell'autore nel livello regia), non attaccano gli edifici, inseguono le
+  unita' alleate vicine e tornano al giro. Obiettivo a schermo "Sconfiggi le
+  pattuglie (0/N)". Le torri della citta' (tutte quelle della mappa, 21) ci
+  sono ma non sono del giocatore.
+- *Fase 2, preparazione*: 20 minuti, con conto alla rovescia, da quando le
+  pattuglie sono sconfitte. Torri al 10-40% della vita (a caso, torre per
+  torre): si possono riparare e, superato il 60%, passano al giocatore col
+  messaggio "Torre recuperata: ora puoi presidiarla con gli arcieri" (scelta
+  dell'autore, invece di "sotto il 75% un arciere solo": confondeva).
+  Riparare costa 1 pietra per punto vita: al 60% servono 66-165 pietre per
+  torre (~115 in media, ~2400 tutte): si sceglie quali. Rinforzi di fanteria
+  (piccoli) ogni 3 minuti; dalla base nemica in alto 4-5 fanti (niente
+  cavalleria) ogni 3 minuti verso la citta' dal ponte di sinistra (la base si
+  puo' distruggere, ma si difende; non e' l'obiettivo).
+- *Fase 3, la colonna*: ~50 fanti e arcieri dalla zona del teatro romano al
+  ponte di destra, lungo un percorso fissato (polilinea dell'autore): non
+  attaccano gli edifici, solo le unita'. Contatore "Passati: n/5": al sesto
+  si perde; fermati tutti, si vince.
+
+Numeri del gioco che contano (per la taratura): una torre tira solo con
+arcieri di presidio, una freccia ogni 50 passi (0,8 s) per arciere, al
+massimo 2, fino a 600 px (in campo 400); una freccia toglie 6; guerriero
+nemico 75 di vita (13 frecce), picchiere 60 e arciere 55 (10): la colonna da
+50 sono ~550 frecce. Le torri sono intoccabili per la colonna: chi e' in
+torre non rischia, chi va in campo si'. Il limite vero sono gli arcieri
+(40 legno e 55 oro l'uno: 500 oro = 9). Da fare: una prova automatica che
+manda la colonna contro 0, 5, 10, 20 torri presidiate e conta quanti
+passano, per tarare colonna, intervalli e tempi.
+
+**Com'e' fatto** (`levels.js`, `enemyManagerLv6`, numeri in `LV6`):
+
+- *Percorsi della regia* (Tiled, livello `regia`): polilinee o poligoni di
+  classe o nome `colonna` / `pattuglia` (anche `pattuglia2`, `pattuglia 3`):
+  `12_tiled_import.py` li mette nello scenario (`paths`: nome, punti,
+  `loop` per i poligoni, i giri), `07_scene.py` nella room, il gioco in
+  `world.routes`. LEGGIMI del kit aggiornato.
+- *Pattuglie*: i nemici a meno di 300 px da una tappa di un giro sono di
+  quella pattuglia (14 in 3 gruppi); gli altri (la base) difendono dove
+  sono. Camminano di tappa in tappa col campo di flusso (come la strada del
+  livello 4, §9.57), inseguono gli alleati a tiro e, finito l'inseguimento,
+  riprendono il giro dalla loro tappa; `noFire`: non danno fuoco (enemies.js).
+- *Torri* (`i.locked`): 1 = della citta', 2 = si ripara (dalla fase 1), 0 =
+  del giocatore (oltre il 60%, con il messaggio; se un dialogo e' aperto il
+  messaggio aspetta). Chiuse: si selezionano soltanto (barra grigia, o
+  arancione da riparare), niente presidio, non vedono (fog.js), i nemici
+  vicini non si scoprono (`seenNear`, al posto di `nearWithin` nelle
+  visibilita' dei nemici), nella minimappa sono grigie. Vita a caso fra il
+  10 e il 40% dall'inizio. Le torri restano oggetti `torre` veri: vita,
+  danni, riparazione e presidio sono quelli di sempre.
+- *Solo arcieri*: `production.js ONLY_UNITS` (la caserma ha solo il pulsante
+  dell'arciere), `buildings.js NO_BUILD` (niente pulsanti ne' tasti di
+  caserma e stalla). Le due caserme del giocatore le ho messe io nella mappa
+  (5050, 1050 e 5450, 1650), provvisorie: l'autore le sposta dove vuole.
+- *Fase 1*: 20 minuti; ogni 3 minuti 4 fanti (2 guerrieri, 2 picchieri)
+  davanti al centro del giocatore, e un'incursione di 4 o 5 fanti (a turno)
+  dalle caserme nemiche: passano dal ponte di sinistra (tappe) e vanno
+  all'alleato piu' vicino all'uscita del ponte se e' in citta' (2500 px),
+  se no in mezzo alla citta' ad aspettare (la base del giocatore e' dalla
+  parte della base nemica: senza questo, passato il ponte, tornavano
+  indietro verso di lei). La regia economica (ECO.lvl06) lavora e si
+  difende, non attacca.
+- *Fase 2*: la colonna (10 file da 5: guerriero, picchiere, arciere,
+  picchiere, guerriero), una fila ogni 45 passi dal bordo sinistro (il
+  percorso tagliato a 60 px dai bordi), al passo 0,6 (`pace`: chi insegue va
+  al passo di sempre), `noFire`. Oltre x 6250 (passato il ponte di destra)
+  un soldato e' passato ed esce; al sesto la sconfitta ("La colonna nemica
+  ha sfondato al ponte a est"), finiti tutti la vittoria.
+- Obiettivi a schermo per fase, dialoghi `dialogo_6_0`...`6_6` (6 lingue),
+  testo della vittoria e codice per il livello 7 (0 7 3 6 0, quello del
+  lucchetto). Il livello 6 entra nella campagna ("One hundred towers" /
+  "Cento torri" era gia' il suo titolo nell'originale) e nei salvataggi.
+  La storia del menu, su richiesta dell'autore, riprende la fine del
+  livello 5 (la citta' degli invasori caduta) e chiama la citta' "la Citta'
+  delle Cento Torri". Il segnalino sulla mappa della campagna e' lo
+  sprite dell'autore (`cap6` -> `cap_l6`, lato 120 come il 5) dove l'ha
+  indicato lui (a ovest del ponte del 4, sopra il 5: menu.js L6_MARK),
+  con la freccia dal 5.
+
+**Taratura** (la colonna contro le N torri piu' vicine al suo percorso,
+presidiate da 2 arcieri, senza altre unita'; soldati passati su 50):
+
+| torri | passo 1 | passo 0,5 | passo 0,6 |
+|---|---|---|---|
+| 0 | 50 | 50 | — |
+| 5 | 44 | 28 | 37 |
+| 8 | — | — | 19 |
+| 10 | 31 | 0 | 12 |
+| 12 | — | — | 5 |
+| 15 | — | 0 | 0 |
+| 20 | 24 | 0 | — |
+
+Al passo normale la colonna traversa la mappa in ~45 s e le torri non
+bastano mai (20 torri: ne passano 24); a meta' passo 10 torri fermano
+tutto. Scelto 0,6: con le sole torri ne servono una dozzina ben messe
+(~1400 pietre di riparazioni e 24 arcieri), con meno servono anche i
+soldati in campo; le torri restano il grosso della difesa. Da rivedere
+giocando: passo, file, intervallo dei rinforzi.
+
+Prova: `game/test/browser/lvl06.mjs` (partenza, solo arcieri, torri chiuse,
+pattuglie in giro e reazione, fase 1, torre recuperata e presidiata,
+rinforzi e incursione dal ponte di sinistra, colonna, sconfitta al sesto,
+taratura con 15 e 5 torri), in CI; `saves.mjs` anche col livello 6.

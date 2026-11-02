@@ -36,7 +36,7 @@ import { fireStep, fireStop } from "./effects.js";
 import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
-import { sightK } from "./fog.js";
+import { sightK, seenNear } from "./fog.js";
 
 export const ECO = {
   default: {
@@ -88,6 +88,13 @@ export const ECO = {
   lvl05: { startWorkers: 4, workers: 10, start: { food: 300, wood: 300, gold: 200, stone: 3000 },
            mix: { wood: 3, gold: 2, food: 3, stone: 0 }, army: 12, armyEco: true, stoneWork: false,
            attackAt: 4, attackGrow: 1, firstAttack: 4 * 3600, attackEvery: 3 * 3600 },
+  // [§9.101, decisioni dell'autore] livello 6: la base nemica in alto a
+  // sinistra lavora e si difende (il presidio della mappa piu' qualche
+  // soldato suo), ma non attacca da sola: le incursioni verso la citta',
+  // pochi fanti ogni 3 minuti dal ponte di sinistra, le manda la regia del
+  // livello (levels.js, LV6)
+  lvl06: { startWorkers: 4, workers: 6, start: { food: 200, wood: 200, gold: 100, stone: 0 },
+           army: 6, armyEco: true, attackAt: 0 },
 };
 const UNIT_TIME = 1200;  // passi per un soldato: come caserma e stalla alleate (12 x 100)
 const RANGE = 1600;      // px dal deposito nemico entro cui si va a lavorare
@@ -116,7 +123,7 @@ const unitCost = (o) => ({
 // colpito, vicino a castello o torre, o senza nebbia.
 function visibility(i, w) {
   const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
-  const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r);
+  const near = (obj, r) => seenNear(w, i, obj, r + r * n, 2.01 * r);
   i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1
     || near("castello", 500) || near("torre", 500) || w.room === "menu" || g.fogville === 0;
 }

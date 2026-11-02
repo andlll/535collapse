@@ -183,11 +183,18 @@ export function clicker(fam) {
 // manager Step, "pulsanti di costruzione" [C]: con civili selezionati e
 // nessun soldato, un pulsante per famiglia (nell'ordine dell'originale).
 const BUTTON_ORDER = ["torre", "magazzino", "barn", "campo", "casa", "caserma", "stalla", "castello", "chiesa", "mura"];
+// [§9.101, regia del livello 6] gli edifici che in una room non si possono
+// costruire: niente pulsante (ne' tasto). Nella citta' in rovina si
+// addestrano solo arcieri (production.js, ONLY_UNITS): niente caserme
+// nuove ne' stalle
+export const NO_BUILD = { lvl06: ["caserma", "stalla"] };
+export const canBuild = (w, fam) => !(NO_BUILD[w.room] || []).includes(fam);
 export function buildButtons(w) {
   const g = w.g;
   if (!(g.sel > 0 && g.milsel <= 0)) return;
   const x = w.cam.x + w.cam.w / 2, y = w.cam.y + w.cam.h / 2;
   for (const f of BUTTON_ORDER) {
+    if (!canBuild(w, f)) continue;
     const n = f + "_clicker";
     if (w.behaviours[n] && w.number(n) === 0) w.create(n, x, y);
   }

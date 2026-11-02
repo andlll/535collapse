@@ -760,6 +760,74 @@ export const TEXTS = {
     it: "La città degli invasori è caduta: il territorio è nostro", es: "La ciudad de los invasores ha caído: la tierra es nuestra",
     pt: "A cidade dos invasores caiu: a terra é nossa", de: "Die Stadt der Eindringlinge ist gefallen: Das Land gehört uns",
     fr: "La ville des envahisseurs est tombée : la terre est à nous" },
+  // ------------------------------------------------- livello 6 (§9.101)
+  "The invaders' city has fallen, and the road home crosses the City of a Hundred Towers. We find it in ruins: its garrison is dead, its armory looted, its towers crumbling. Enemy patrols still roam the streets, and a great column is marching to cross the eastern bridge. The citizens have only their bows left: with them, and with their towers, they must hold.": {
+    it: "La città degli invasori è caduta, e la strada di casa attraversa la Città delle Cento Torri. La troviamo in rovina: la guarnigione è morta, l'armeria saccheggiata, le torri cadono a pezzi. Pattuglie nemiche girano ancora per le strade, e una grande colonna marcia per passare il ponte a est. Ai cittadini restano solo gli archi: con quelli, e con le loro torri, devono resistere.",
+    es: "La ciudad de los invasores ha caído, y el camino a casa cruza la Ciudad de las Cien Torres. La encontramos en ruinas: su guarnición ha muerto, su armería ha sido saqueada, sus torres se desmoronan. Patrullas enemigas aún recorren las calles, y una gran columna marcha para cruzar el puente del este. A los ciudadanos solo les quedan sus arcos: con ellos, y con sus torres, deben resistir.",
+    pt: "A cidade dos invasores caiu, e o caminho de casa atravessa a Cidade das Cem Torres. Nós a encontramos em ruínas: sua guarnição está morta, seu arsenal saqueado, suas torres desmoronando. Patrulhas inimigas ainda percorrem as ruas, e uma grande coluna marcha para atravessar a ponte a leste. Aos cidadãos restam apenas seus arcos: com eles, e com suas torres, devem resistir.",
+    de: "Die Stadt der Eindringlinge ist gefallen, und der Weg nach Hause führt durch die Stadt der Hundert Türme. Wir finden sie in Trümmern: Ihre Garnison ist tot, ihre Waffenkammer geplündert, ihre Türme zerfallen. Feindliche Patrouillen ziehen noch durch die Straßen, und eine große Kolonne marschiert, um die Ostbrücke zu überqueren. Den Bürgern bleiben nur ihre Bögen: Mit ihnen und mit ihren Türmen müssen sie standhalten.",
+    fr: "La ville des envahisseurs est tombée, et la route du retour traverse la Cité aux Cent Tours. Nous la trouvons en ruines : sa garnison est morte, son arsenal pillé, ses tours s'effondrent. Des patrouilles ennemies parcourent encore les rues, et une grande colonne marche pour franchir le pont est. Il ne reste aux citoyens que leurs arcs : avec eux, et avec leurs tours, ils doivent tenir bon." },
+  "The city is in ruins: the garrison has fallen and the armory has been looted. Enemy patrols still roam the streets between the rivers: wipe them out!": {
+    it: "La città è in rovina: la guarnigione è caduta e l'armeria è stata saccheggiata. Pattuglie nemiche girano ancora per le strade fra i fiumi: spazzatele via!",
+    es: "La ciudad está en ruinas: la guarnición ha caído y la armería ha sido saqueada. Patrullas enemigas aún recorren las calles entre los ríos: ¡acabad con ellas!",
+    pt: "A cidade está em ruínas: a guarnição caiu e o arsenal foi saqueado. Patrulhas inimigas ainda percorrem as ruas entre os rios: acabem com elas!",
+    de: "Die Stadt liegt in Trümmern: Die Garnison ist gefallen und die Waffenkammer geplündert. Feindliche Patrouillen ziehen noch durch die Straßen zwischen den Flüssen: Vernichtet sie!",
+    fr: "La ville est en ruines : la garnison est tombée et l'arsenal a été pillé. Des patrouilles ennemies parcourent encore les rues entre les rivières : éliminez-les !" },
+  "Only bows are left, and our citizens are militia archers: the barracks can train nothing else. The towers are badly damaged, we cannot use them yet.": {
+    it: "Sono rimasti solo archi, e i nostri cittadini sono arcieri della milizia: le caserme non possono addestrare altro. Le torri sono molto danneggiate, non possiamo ancora usarle.",
+    es: "Solo quedan arcos, y nuestros ciudadanos son arqueros de la milicia: los cuarteles no pueden entrenar nada más. Las torres están muy dañadas, aún no podemos usarlas.",
+    pt: "Restaram apenas arcos, e nossos cidadãos são arqueiros da milícia: os quartéis não podem treinar mais nada. As torres estão muito danificadas, ainda não podemos usá-las.",
+    de: "Es sind nur Bögen übrig, und unsere Bürger sind Bogenschützen der Miliz: Die Kasernen können nichts anderes ausbilden. Die Türme sind schwer beschädigt, wir können sie noch nicht nutzen.",
+    fr: "Il ne reste que des arcs, et nos citoyens sont des archers de la milice : les casernes ne peuvent rien former d'autre. Les tours sont très endommagées, nous ne pouvons pas encore les utiliser." },
+  "The patrols are destroyed! But our scouts bring bad news: a great enemy column is coming from the theatre, heading for the eastern bridge. It will be here in 20 minutes.": {
+    it: "Le pattuglie sono distrutte! Ma i nostri esploratori portano brutte notizie: una grande colonna nemica arriva dal teatro, diretta al ponte a est. Sarà qui fra 20 minuti.",
+    es: "¡Las patrullas han sido destruidas! Pero nuestros exploradores traen malas noticias: una gran columna enemiga viene del teatro, rumbo al puente del este. Estará aquí en 20 minutos.",
+    pt: "As patrulhas foram destruídas! Mas nossos batedores trazem más notícias: uma grande coluna inimiga vem do teatro, rumo à ponte a leste. Estará aqui em 20 minutos.",
+    de: "Die Patrouillen sind vernichtet! Aber unsere Späher bringen schlechte Nachrichten: Eine große feindliche Kolonne kommt vom Theater und zieht zur Ostbrücke. In 20 Minuten ist sie hier.",
+    fr: "Les patrouilles sont détruites ! Mais nos éclaireurs apportent de mauvaises nouvelles : une grande colonne ennemie arrive du théâtre, en direction du pont est. Elle sera là dans 20 minutes." },
+  "Repair the towers: above 60% they are ours again, and archers inside them can stop the column. If more than five soldiers cross the bridge, all is lost!": {
+    it: "Riparate le torri: sopra il 60% tornano nostre, e gli arcieri dentro possono fermare la colonna. Se più di cinque soldati passano il ponte, è tutto perduto!",
+    es: "Reparad las torres: por encima del 60% vuelven a ser nuestras, y los arqueros dentro pueden detener la columna. Si más de cinco soldados cruzan el puente, ¡todo está perdido!",
+    pt: "Reparem as torres: acima de 60% voltam a ser nossas, e os arqueiros dentro delas podem deter a coluna. Se mais de cinco soldados atravessarem a ponte, tudo estará perdido!",
+    de: "Repariert die Türme: Über 60% gehören sie wieder uns, und Bogenschützen darin können die Kolonne aufhalten. Wenn mehr als fünf Soldaten die Brücke überqueren, ist alles verloren!",
+    fr: "Réparez les tours : au-dessus de 60 % elles redeviennent nôtres, et les archers à l'intérieur peuvent arrêter la colonne. Si plus de cinq soldats franchissent le pont, tout est perdu !" },
+  "Reinforcements have arrived!": {
+    it: "Sono arrivati i rinforzi!", es: "¡Han llegado refuerzos!", pt: "Os reforços chegaram!",
+    de: "Verstärkung ist eingetroffen!", fr: "Des renforts sont arrivés !" },
+  "Tower recovered: now you can garrison it with archers": {
+    it: "Torre recuperata: ora puoi presidiarla con gli arcieri", es: "Torre recuperada: ahora puedes guarnecerla con arqueros",
+    pt: "Torre recuperada: agora você pode guarnecê-la com arqueiros", de: "Turm zurückerobert: Jetzt kannst du ihn mit Bogenschützen besetzen",
+    fr: "Tour reprise : tu peux maintenant y poster des archers" },
+  "The column is here! Stop them before they cross the eastern bridge!": {
+    it: "La colonna è qui! Fermateli prima che passino il ponte a est!", es: "¡La columna está aquí! ¡Detenedlos antes de que crucen el puente del este!",
+    pt: "A coluna chegou! Detenham-nos antes que atravessem a ponte a leste!", de: "Die Kolonne ist da! Haltet sie auf, bevor sie die Ostbrücke überqueren!",
+    fr: "La colonne est là ! Arrêtez-les avant qu'ils ne franchissent le pont est !" },
+  "Defeat the enemy patrols ({n}/{m})": {
+    it: "Sconfiggi le pattuglie nemiche ({n}/{m})", es: "Derrota a las patrullas enemigas ({n}/{m})", pt: "Derrote as patrulhas inimigas ({n}/{m})",
+    de: "Besiege die feindlichen Patrouillen ({n}/{m})", fr: "Vaincs les patrouilles ennemies ({n}/{m})" },
+  "The enemy column arrives in {t}": {
+    it: "La colonna nemica arriva fra {t}", es: "La columna enemiga llega en {t}", pt: "A coluna inimiga chega em {t}",
+    de: "Die feindliche Kolonne kommt in {t}", fr: "La colonne ennemie arrive dans {t}" },
+  "Recover the towers: repair them above 60% ({n}/{m})": {
+    it: "Recupera le torri: riparale oltre il 60% ({n}/{m})", es: "Recupera las torres: repáralas por encima del 60% ({n}/{m})",
+    pt: "Recupere as torres: repare-as acima de 60% ({n}/{m})", de: "Erobere die Türme zurück: Repariere sie über 60% ({n}/{m})",
+    fr: "Reprends les tours : répare-les au-delà de 60 % ({n}/{m})" },
+  "Stop the enemy column ({n} soldiers left)": {
+    it: "Ferma la colonna nemica (soldati rimasti: {n})", es: "Detén la columna enemiga (soldados restantes: {n})",
+    pt: "Detenha a coluna inimiga (soldados restantes: {n})", de: "Halte die feindliche Kolonne auf (verbleibende Soldaten: {n})",
+    fr: "Arrête la colonne ennemie (soldats restants : {n})" },
+  "Soldiers across the bridge: {n} (defeat above {m})": {
+    it: "Soldati oltre il ponte: {n} (sconfitta oltre {m})", es: "Soldados al otro lado del puente: {n} (derrota si son más de {m})",
+    pt: "Soldados além da ponte: {n} (derrota acima de {m})", de: "Soldaten über der Brücke: {n} (Niederlage über {m})",
+    fr: "Soldats de l'autre côté du pont : {n} (défaite au-delà de {m})" },
+  "The column has been stopped: the city will rise again": {
+    it: "La colonna è stata fermata: la città risorgerà", es: "La columna ha sido detenida: la ciudad resurgirá",
+    pt: "A coluna foi detida: a cidade renascerá", de: "Die Kolonne wurde aufgehalten: Die Stadt wird wieder auferstehen",
+    fr: "La colonne a été arrêtée : la ville renaîtra" },
+  "The enemy column broke through the eastern bridge.": {
+    it: "La colonna nemica ha sfondato al ponte a est.", es: "La columna enemiga ha cruzado el puente del este.",
+    pt: "A coluna inimiga rompeu pela ponte a leste.", de: "Die feindliche Kolonne ist über die Ostbrücke durchgebrochen.",
+    fr: "La colonne ennemie a percé au pont est." },
   // ------------------------------------------------- livello 2 (§9.14)
   "Precious workers": { it: "Lavoratori preziosi", es: "Trabajadores valiosos", pt: "Trabalhadores preciosos",
                         de: "Wertvolle Arbeiter", fr: "Ouvriers précieux" },

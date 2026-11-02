@@ -116,9 +116,16 @@ function spiral64(p, ax, ay) {
 // L'edificio che produce: si aggiunge al comportamento dell'edificio finito
 // (built in buildings.js), che resta responsabile di vita, rovina, fuoco,
 // riparazione e selezione.
+// [§9.101, regia del livello 6] Le unita' che un edificio puo' produrre in
+// una room, se non tutte: nella citta' in rovina l'armeria e' stata
+// saccheggiata e i cittadini sono una milizia di arcieri
+export const ONLY_UNITS = { lvl06: { caserma: ["ally_arciere"] } };
+
 export function producer(name, base, p) {
-  const P = PRODUCERS[name], types = Object.values(P.units).filter((u) => u.clicker);
-  const buttons = [...types.map((u) => u.clicker), P.cancel];
+  const P = PRODUCERS[name], all = Object.values(P.units).filter((u) => u.clicker);
+  const only = (w) => ONLY_UNITS[w.room] && ONLY_UNITS[w.room][name];
+  const typesOf = (w) => (only(w) ? all.filter((u) => only(w).includes(u.obj)) : all);
+  const buttons = [...all.map((u) => u.clicker), P.cancel];
   return {
     ...base,
     create(i, w) {
@@ -129,8 +136,11 @@ export function producer(name, base, p) {
     step(i, w) {
       base.step(i, w);
       if (!i.alive) return;
-      // pulsanti di selezione
-      if (i.selected === 1 && w.number(types[0].clicker) === 0) for (const n of buttons) w.create(n, 0, 0);
+      // pulsanti di selezione (§9.101: solo quelli delle unita' della room)
+      const types = typesOf(w);
+      if (i.selected === 1 && types.length && w.number(types[0].clicker) === 0) {
+        for (const n of [...types.map((u) => u.clicker), P.cancel]) w.create(n, 0, 0);
+      }
     },
     // Alarm di produzione [C]: avanzamento e nascita
     ["alarm" + P.alarm](i, w) {
@@ -196,6 +206,7 @@ export function producer(name, base, p) {
     globalRightReleased(i, w) { if (i.selected === 1) { i.flagx = w.mouse.x; i.flagy = w.mouse.y; } },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;
+      const types = typesOf(w); // §9.101
       const sc = P.icoScale, k = (u) => buttonAlpha(w.g, u.cost); // §9.93
       for (const u of types) { d.setAlpha(0.69 * k(u)); d.circleColour(u.bx, 50, 30, WHITE, WHITE, false); }
       d.setAlpha(0.69);

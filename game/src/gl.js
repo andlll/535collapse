@@ -421,6 +421,23 @@ export class Renderer {
     this.stats.quads++;
   }
 
+  // [§9.97] Quad con le coordinate di texture di ogni
+  // angolo (in pixel della texture), per stendere una texture ripetuta lungo
+  // una forma qualsiasi (rivers.js); [§9.99] un colore per angolo se serve.
+  quadUV(t, x0, y0, u0, v0, x1, y1, u1, v1, x2, y2, u2, v2, x3, y3, u3, v3, rgba, c1 = rgba, c2 = rgba, c3 = rgba) {
+    if (this.count >= MAX_QUADS) this.flush();
+    const unit = this._unit(t);
+    const iw = 1 / t.width, ih = 1 / t.height;
+    const f = this.f32, u = this.u32;
+    let o = this.count * 4 * FLOATS_PER_VERTEX;
+    f[o] = x0; f[o + 1] = y0; f[o + 2] = u0 * iw; f[o + 3] = v0 * ih; u[o + 4] = rgba; f[o + 5] = unit; o += 6;
+    f[o] = x1; f[o + 1] = y1; f[o + 2] = u1 * iw; f[o + 3] = v1 * ih; u[o + 4] = c1; f[o + 5] = unit; o += 6;
+    f[o] = x2; f[o + 1] = y2; f[o + 2] = u2 * iw; f[o + 3] = v2 * ih; u[o + 4] = c2; f[o + 5] = unit; o += 6;
+    f[o] = x3; f[o + 1] = y3; f[o + 2] = u3 * iw; f[o + 3] = v3 * ih; u[o + 4] = c3; f[o + 5] = unit;
+    this.count++;
+    this.stats.quads++;
+  }
+
   flush() {
     this.used.fill(0);
     if (!this.count) return;

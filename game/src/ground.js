@@ -18,6 +18,7 @@
 // a una strada: ora la strada sta sotto.
 
 import { drawSprite, spriteBounds } from "./sprites.js";
+import { drawRiver, drawRoad, drawBridge, drawPatch, PAINTED_BRIDGES } from "./rivers.js";
 
 export const GROUND = /^(traccia\d+|strada_\d+|chiazza01|erba_1|prato1)$/;
 const CH = 512, PAD = 1, S = CH + 2 * PAD, MAX = 48;
@@ -43,13 +44,34 @@ export class GroundCache {
     this.frame = 0;
   }
 
+  // [§9.97] si ricuoce tutto il suolo (i fiumi a linee sono cambiati)
+  reset() {
+    this.byChunk = null;
+    this.free();
+  }
+
   // Le istanze del suolo e i blocchi che toccano. Si fa una volta: sono
   // ferme e non nascono ne' muoiono (la room si carica, o si ripristina
   // un salvataggio, prima del primo disegno).
   _index() {
     const w = this.world, skip = new Set(), by = new Map();
+    const top = new Map(); // [§9.100] i ponti dipinti: dopo strade e fiumi
     for (const i of w.instances) {
-      if (!i.alive || !i.visible || !i.sprite_index || !GROUND.test(i.object)) continue;
+      if (!i.alive || !i.visible || !i.sprite_index) continue;
+      if (PAINTED_BRIDGES.includes(i.object)) {
+        const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
+        if (!bb) continue;
+        skip.add(i);
+        for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
+          for (let cx = Math.floor(bb[0] / CH); cx <= Math.floor(bb[2] / CH); cx++) {
+            const k = cx + "," + cy;
+            if (!top.has(k)) top.set(k, []);
+            top.get(k).push(i);
+          }
+        }
+        continue;
+      }
+      if (!GROUND.test(i.object)) continue;
       const bb = spriteBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
       if (!bb) continue;
       skip.add(i);
@@ -64,6 +86,34 @@ export class GroundCache {
     }
     for (const l of by.values()) l.sort((a, b) => a.id - b.id);
     this.byChunk = by;
+    this.topChunks = top;
+    // [§9.97] strade, fiumi e ponti a linee (rivers.js): quali toccano ogni
+    // blocco, nell'ordine in cui si cuociono
+    this.lineChunks = new Map(); // "cx,cy" -> [[tipo, geometria]]
+    const feats = [...(w.roads || []).map((g) => ["strada", g]), ...(w.rivers || []).map((g) => ["fiume", g]),
+                   ...(w.bridges || []).map((g) => ["ponte", g])];
+    // [§9.99] le macchie, a parte: si cuociono prima degli sprite del suolo
+    this.patchChunks = new Map();
+    for (const g of w.patches || []) {
+      const bb = g.bbox;
+      for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
+        for (let cx = Math.floor(bb[0] / CH); cx <= Math.floor(bb[2] / CH); cx++) {
+          const k = cx + "," + cy;
+          if (!this.patchChunks.has(k)) this.patchChunks.set(k, []);
+          this.patchChunks.get(k).push(g);
+        }
+      }
+    }
+    for (const f of feats) {
+      const bb = f[1].bbox;
+      for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
+        for (let cx = Math.floor(bb[0] / CH); cx <= Math.floor(bb[2] / CH); cx++) {
+          const k = cx + "," + cy;
+          if (!this.lineChunks.has(k)) this.lineChunks.set(k, []);
+          this.lineChunks.get(k).push(f);
+        }
+      }
+    }
     w.skipDraw = skip;
   }
 
@@ -73,7 +123,27 @@ export class GroundCache {
     r.beginTarget(t, x0, y0, S, S, this.clear);
     r.setBlend("normal");
     drawBackgrounds(r, this.assets, this.room, { x: x0, y: y0, w: S, h: S });
+    for (const g of this.patchChunks.get(cx + "," + cy) || []) { // §9.99
+      const tex = this.assets.bg.get(g.bg);
+      if (tex) drawPatch(r, g, tex);
+    }
     for (const i of this.byChunk.get(cx + "," + cy) || []) {
+      drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
+                 i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
+    }
+    const feats = this.lineChunks.get(cx + "," + cy);
+    if (feats) {
+      const A = this.assets, wf = A.frame("__white", 0);
+      const white = wf && { t: wf.tex, u: wf.f.rect[0] + 4, v: wf.f.rect[1] + 4 };
+      const water = A.bg.get("fiume_acqua"), stones = A.bg.get("fiume_sassi"), paper = A.bg.get("fiume_carta");
+      const box = [x0, y0, x0 + S, y0 + S];
+      for (const [kind, g] of feats) {
+        if (kind === "strada" && stones) drawRoad(r, g, stones, box);
+        else if (kind === "fiume" && water && white) drawRiver(r, g, water, white);
+        else if (kind === "ponte" && paper && white) drawBridge(r, g, paper, white);
+      }
+    }
+    for (const i of this.topChunks.get(cx + "," + cy) || []) { // §9.100
       drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                  i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
     }

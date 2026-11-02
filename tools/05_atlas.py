@@ -559,6 +559,13 @@ def main():
         im.save(os.path.join(OUT, "bg", b["name"] + ".webp"), "WEBP", quality=QUALITY, method=6)
         manifest["backgrounds"][b["name"]] = {"file": "bg/%s.webp" % b["name"],
                                               "width": im.width, "height": im.height}
+    # [§9.97] le texture di fiumi, strade e ponti disegnati come linee
+    # (nuovi/fiumi/, tools/15_fiumi.py), come gli sfondi
+    for path in sorted(glob.glob(os.path.join(REPO_DIR, "nuovi", "fiumi", "*.png"))):
+        name = "fiume_" + os.path.splitext(os.path.basename(path))[0]
+        im = Image.open(path).convert("RGBA")
+        im.save(os.path.join(OUT, "bg", name + ".webp"), "WEBP", quality=QUALITY, method=6)
+        manifest["backgrounds"][name] = {"file": "bg/%s.webp" % name, "width": im.width, "height": im.height}
     with open(os.path.join(OUT, "atlas.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, separators=(",", ":"))
     print("esclusi (solo maschera o mai usati): %d" % len(manifest["excluded"]))

@@ -44,8 +44,30 @@ GID_MASK = 0x0FFFFFFF
 
 # Livelli delle mappe, dal basso. "boschi" contiene forme (rettangoli,
 # ellissi, poligoni) che tools/12_tiled_import.py riempie di alberi.
-LAYERS = ["suolo", "erba e spighe", "terreno", "oggetti", "boschi", "regia"]
+LAYERS = ["macchie", "suolo", "erba e spighe", "strade", "fiumi", "terreno", "oggetti", "boschi", "regia"]
 FOREST_LAYER = "boschi"
+# [§9.97] i fiumi disegnati come linee: polilinee con le proprieta'
+# larghezza (px, RIVER_WIDTH se manca) e larghezza_fine (all'ultimo punto)
+RIVER_LAYER = "fiumi"
+RIVER_WIDTH = 150
+# le strade come linee: polilinee nel livello strade, classe strada1 (la
+# marcata) o strada2 (la secondaria), con larghezza e densita'; i ponti:
+# rettangoli di classe ponte nel livello fiumi
+ROAD_LAYER = "strade"
+ROAD_KINDS = {"strada1": 1, "strada2": 2}
+ROAD_WIDTH = 110
+BRIDGE_TYPE = "ponte"
+# [§9.99] macchie di un altro sfondo (aree di classe macchia nel livello
+# macchie): sfondo, sfumatura (px), opacita'
+PATCH_LAYER, PATCH_TYPE = "macchie", "macchia"
+PATCH_BG, PATCH_FEATHER = "city2", 40
+# [§9.100] i ponti dipinti dall'autore: un punto (Inserisci punto) col nome
+# dello sprite senza trattino (pontedx, pontedx2), al centro del piano;
+# "specchiato" nel nome lo specchia sull'asse verticale
+PAINTED_BRIDGES = {"pontedx": "ponte_dx", "pontedx2": "ponte_dx2"}
+# [§9.101] i percorsi della regia dei livelli (livello regia): la colonna
+# del livello 6, i giri delle pattuglie
+PATHS = ("colonna", "pattuglia")
 VIEW_TYPE = "vista"
 FOREST_SPACING = 90          # distanza fra gli alberi del pennello bosco (px)           # rettangolo della vista iniziale, nel livello regia
 
