@@ -332,6 +332,11 @@ const L4_ARROW = [291, -94, 0.9, 1.0, -10];
 const L5_MARK = [95, 60];
 const L5_LABEL = [95, -22];
 const L5_ARROW = [150, -25, 0.8, 1.0, 58];
+// [§9.101, indicazione dell'autore] il livello 6 (cap_l6, la Citta' delle
+// Cento Torri): a ovest del ponte del 4, sopra il 5, con la freccia dal 5
+const L6_MARK = [-3, -123];
+const L6_LABEL = [-3, -203];
+const L6_ARROW = [46, -31, 0.9, 1.0, -62];
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -375,6 +380,11 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap_l5", 0, MX + L5_MARK[0], H / 2 + L5_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L5_ARROW[0], H / 2 + L5_ARROW[1], L5_ARROW[2], L5_ARROW[3], L5_ARROW[4], c.white, 1);
       d.text(MX + L5_LABEL[0], H / 2 + L5_LABEL[1], "5.");
+    }
+    if (i.lvlshown > 5) {
+      d.sprite("cap_l6", 0, MX + L6_MARK[0], H / 2 + L6_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L6_ARROW[0], H / 2 + L6_ARROW[1], L6_ARROW[2], L6_ARROW[3], L6_ARROW[4], c.white, 1);
+      d.text(MX + L6_LABEL[0], H / 2 + L6_LABEL[1], "6.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

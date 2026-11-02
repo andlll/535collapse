@@ -1586,6 +1586,12 @@
       "lato": 120,
       "gruppo": "campagna",
       "nota": "segnalino del livello 5 (il castello nemico) sulla mappa della campagna, disegnato dall'autore (§9.76)"
+    },
+    "cap_l6": {
+      "da": "cap6",
+      "lato": 120,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101)"
     }
   }
 }

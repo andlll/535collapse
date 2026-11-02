@@ -8150,8 +8150,10 @@ passano, per tarare colonna, intervalli e tempi.
   "Cento torri" era gia' il suo titolo nell'originale) e nei salvataggi.
   La storia del menu, su richiesta dell'autore, riprende la fine del
   livello 5 (la citta' degli invasori caduta) e chiama la citta' "la Citta'
-  delle Cento Torri"; segnalino e freccia sulla mappa della campagna
-  aspettano lo sprite e la posizione dell'autore.
+  delle Cento Torri". Il segnalino sulla mappa della campagna e' lo
+  sprite dell'autore (`cap6` -> `cap_l6`, lato 120 come il 5) dove l'ha
+  indicato lui (a ovest del ponte del 4, sopra il 5: menu.js L6_MARK),
+  con la freccia dal 5.
 
 **Taratura** (la colonna contro le N torri piu' vicine al suo percorso,
 presidiate da 2 arcieri, senza altre unita'; soldati passati su 50):
