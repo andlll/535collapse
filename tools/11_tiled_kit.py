@@ -635,7 +635,7 @@ li', `larghezza_fine` all'ultimo.
 ## Fiumi (linee)
 
 Nel livello `fiumi` disegna una polilinea lungo il corso del fiume (vedi
-**Come si fa una polilinea** qui sotto):
+**Come si fa una polilinea** qui sopra):
 il gioco ci stende sopra l'acqua, le rive a inchiostro e la parete della
 riva lontana, nello stile dei fiumi dipinti, e la linea si ammorbidisce da
 sola (non servono tanti punti). Scegli la classe `fiume` e imposta
