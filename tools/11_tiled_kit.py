@@ -619,9 +619,23 @@ decorazione). La stessa forma da' sempre gli stessi alberi.
 Non e' un'anteprima: in Tiled la forma resta una macchia verde; gli alberi
 li vedi nell'anteprima dello script o nel gioco.
 
+## Come si fa una polilinea
+
+Nelle versioni recenti di Tiled non c'e' uno strumento a parte: si usa
+**Inserisci poligono** (*Insert Polygon*, tasto **P**). Clicca i punti
+lungo il percorso e **finisci con Invio** (o clic destro, o doppio clic)
+senza tornare sul primo punto: e' una polilinea, una linea aperta. Se
+clicchi di nuovo sul primo punto si chiude in un poligono, che per fiumi e
+strade non va (lo script lo scarta con un avviso). Per correggerla dopo:
+**Modifica poligoni** (tasto **E**) per spostare i punti, Canc per
+toglierne uno, due punti vicini selezionati e clic destro, *Split Segment*,
+per aggiungerne uno in mezzo. Il primo punto e' l'inizio: `larghezza` vale
+li', `larghezza_fine` all'ultimo.
+
 ## Fiumi (linee)
 
-Nel livello `fiumi` disegna una polilinea (**L**) lungo il corso del fiume:
+Nel livello `fiumi` disegna una polilinea lungo il corso del fiume (vedi
+**Come si fa una polilinea** qui sotto):
 il gioco ci stende sopra l'acqua, le rive a inchiostro e la parete della
 riva lontana, nello stile dei fiumi dipinti, e la linea si ammorbidisce da
 sola (non servono tanti punti). Scegli la classe `fiume` e imposta
