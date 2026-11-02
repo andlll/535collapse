@@ -8059,3 +8059,48 @@ Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
 dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
 unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR
 di §9.96: versione 0.2606.
+
+### 9.101 Livello 6: la regia (progetto, da fare)
+
+Progetto concordato con l'autore (non ancora scritto: aspetta la mappa coi
+giri delle pattuglie e il percorso della colonna, e gli sprite di
+`ponte_dx2` con gli archi semitrasparenti).
+
+Storia: la citta' e' stata devastata, le difese vanno ricostruite e
+potenziate prima di un grande attacco. La guarnigione e' caduta e
+l'armeria e' stata saccheggiata e bruciata: niente spade ne' armature, ma i
+cittadini sono una milizia di arcieri (gli archi si fanno). Quindi le due
+caserme della mappa addestrano solo arcieri; nascosti i pulsanti per
+costruire caserme e stalle.
+
+- *Inizio*: 400 cibo, 400 legno, 500 oro, 200 pietra; miniere d'oro e cave
+  di pietra nella mappa (l'autore conferma che ci sono).
+- *Fase 1, pattuglie*: i gruppi blu fra i fiumi fanno giri (polilinee
+  dell'autore nel livello regia), non attaccano gli edifici, inseguono le
+  unita' alleate vicine e tornano al giro. Obiettivo a schermo "Sconfiggi le
+  pattuglie (0/N)". Le torri della citta' (tutte quelle della mappa, 21) ci
+  sono ma non sono del giocatore.
+- *Fase 2, preparazione*: 20 minuti, con conto alla rovescia, da quando le
+  pattuglie sono sconfitte. Torri al 10-40% della vita (a caso, torre per
+  torre): si possono riparare e, superato il 60%, passano al giocatore col
+  messaggio "Torre recuperata: ora puoi presidiarla con gli arcieri" (scelta
+  dell'autore, invece di "sotto il 75% un arciere solo": confondeva).
+  Riparare costa 1 pietra per punto vita: al 60% servono 66-165 pietre per
+  torre (~115 in media, ~2400 tutte): si sceglie quali. Rinforzi di fanteria
+  (piccoli) ogni 3 minuti; dalla base nemica in alto 4-5 fanti (niente
+  cavalleria) ogni 3 minuti verso la citta' dal ponte di sinistra (la base si
+  puo' distruggere, ma si difende; non e' l'obiettivo).
+- *Fase 3, la colonna*: ~50 fanti e arcieri dalla zona del teatro romano al
+  ponte di destra, lungo un percorso fissato (polilinea dell'autore): non
+  attaccano gli edifici, solo le unita'. Contatore "Passati: n/5": al sesto
+  si perde; fermati tutti, si vince.
+
+Numeri del gioco che contano (per la taratura): una torre tira solo con
+arcieri di presidio, una freccia ogni 50 passi (0,8 s) per arciere, al
+massimo 2, fino a 600 px (in campo 400); una freccia toglie 6; guerriero
+nemico 75 di vita (13 frecce), picchiere 60 e arciere 55 (10): la colonna da
+50 sono ~550 frecce. Le torri sono intoccabili per la colonna: chi e' in
+torre non rischia, chi va in campo si'. Il limite vero sono gli arcieri
+(40 legno e 55 oro l'uno: 500 oro = 9). Da fare: una prova automatica che
+manda la colonna contro 0, 5, 10, 20 torri presidiate e conta quanti
+passano, per tarare colonna, intervalli e tempi.
