@@ -57,7 +57,7 @@ const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lv
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"] };
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -126,6 +126,14 @@ async function main() {
 
   const [objects, masks] = await Promise.all(
     ["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
+  // [§9.100] i gruppi d'atlas degli sprite degli oggetti della room che TIERS
+  // non carica: nel livello 6 la citta' (110 oggetti) era invisibile
+  const needed = new Set();
+  for (const [obj] of room.instances) {
+    const o = objects[obj], s = o && o.sprite && assets.sprites[o.sprite];
+    if (s && !assets.groups.has(s.group)) needed.add(s.group);
+  }
+  if (needed.size) await assets.load([...needed], [], progress);
   // Il cursore del gioco (mouser Create: action_set_cursor(cursore) [C]),
   // come lo fa il runner: la freccia del sistema nascosta e lo sprite
   // disegnato dal gioco sopra a tutto (drawCursor). [§6.1 n.83] Prima era

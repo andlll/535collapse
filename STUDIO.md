@@ -8034,6 +8034,13 @@ scelto dall'autore, il punto si chiama ora `pontedx specchiato`. Gli archi
 di `ponte_dx2` l'autore li rifara' semitrasparenti (sprite aggiornati da
 SketchUp).
 
+*La citta' invisibile* (segnalazione dell'autore): i 110 oggetti della
+citta' (case, palazzi, anfiteatro, templi: gli ocr_*) erano nella partita
+ma senza sprite, perche' il loro gruppo d'atlas ("citta") si caricava solo
+per i livelli 1 e 2 (TIERS). Ora lvl06 lo carica e, in ogni room, app.js
+carica da se' i gruppi degli sprite degli oggetti della mappa che TIERS non
+prevede (non ricapita coi livelli nuovi).
+
 Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
 dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
 unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR
