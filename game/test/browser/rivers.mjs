@@ -12,6 +12,9 @@
 //               acqua; un guerriero mandato sull'altra riva passa sul ponte
 //               (non gira attorno) senza i piedi nell'acqua; i sassolini
 //               delle strade ci sono, piu' fitti nella strada1
+//   larghezza   una strada da 60 a 200 px (larghezza_fine): i sassi sono
+//               sparsi come la larghezza della strada in quel punto (fra
+//               1,9 e 2,8 volte di piu' verso la fine, dove e' 2,35 volte)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -100,6 +103,18 @@ const res = await page.evaluate(() => {
   }
   const [s1, s2] = w.roads.map((g) => g.stones.length);
   out.ponte = { sottoAcqua: wet2(cx - 300, cy - 80), arrivato: arr2, piediInAcqua: feet2, scostamento: Math.round(far), sassi: [s1, s2] };
+  // larghezza_fine: una strada1 da 60 a 200 px, i sassi all'inizio e alla
+  // fine (scarto trasversale): piu' larga in fondo
+  const taper = { width: 60, widthEnd: 200, kind: 1, pts: [[cx - 800, cy + 600], [cx + 800, cy + 600]] };
+  G.setRivers([], [taper], []);
+  const st = w.roads[0].stones, band = (x0, x1) => {
+    const ys = st.filter((q) => q[0] > x0 && q[0] < x1).map((q) => q[1]);
+    const m = ys.reduce((a, b) => a + b, 0) / ys.length;
+    return Math.round(Math.sqrt(ys.reduce((a, b) => a + (b - m) ** 2, 0) / ys.length));
+  };
+  out.larghezza = { inizio: band(cx - 700, cx - 500), fine: band(cx + 500, cx + 700) };
+  // (nei due tratti la strada e' larga ~77 e ~182 px: 2,35 volte)
+  out.larghezza.ok = out.larghezza.fine > 1.9 * out.larghezza.inizio && out.larghezza.fine < 2.8 * out.larghezza.inizio;
   out.ponte.ok = !out.ponte.sottoAcqua && wet2(cx - 600, cy + 20) && arr2 > 0 && feet2 === 0 && far < 150 && s1 > s2 && s2 > 100;
   return out;
 }).catch((e) => ({ errore: { ok: false, msg: e.message } }));

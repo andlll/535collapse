@@ -23,7 +23,7 @@
 // livello "fiumi": tools/12_tiled_import.py); widthEnd, se c'e', e' la
 // larghezza all'ultimo punto (cambia piano lungo il fiume).
 //
-// Strade (roads: [{ pts, width, kind, density }], livello "strade", classi
+// Strade (roads: [{ pts, width, widthEnd, kind, density }], livello "strade", classi
 // strada1 e strada2): il sentiero
 // di sassolini dei dipinti e' un pennello che ripete la stessa particella
 // con una gamma di colori (osservazione dell'autore). Qui lo stesso: sei
@@ -299,7 +299,10 @@ const ROAD_FADE = 80;                       // alle estremita' dentro la room si
 export function roadGeometry(rd) {
   const C = smooth(rd.pts).map(([x, y]) => [x, y / ISO]), n = C.length, S = [0];
   for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
-  const total = S[n - 1] || 1, width = rd.width;
+  // [richiesta dell'autore] come i fiumi: widthEnd, se c'e', e' la
+  // larghezza all'ultimo punto (cambia piano lungo la strada)
+  const total = S[n - 1] || 1, w0 = rd.width, w1 = rd.widthEnd ?? rd.width, width = Math.max(w0, w1);
+  const widthAt = (s) => w0 + (w1 - w0) * (s / total);
   const seed = Math.round(rd.pts[0][0] * 7 + rd.pts[0][1] * 13 + rd.pts.length * 101);
   const rand = rng(seed);
   const inRoom = (p) => rd.room && p[0] > EDGE && p[1] > EDGE && p[0] < rd.room[0] - EDGE && p[1] < rd.room[1] - EDGE;
@@ -319,11 +322,13 @@ export function roadGeometry(rd) {
   for (let j = 0; j < count; j++) {
     const s = rand() * total;
     // diradati alle estremita' dentro la room (non tagliati dritti)
-    const keep = Math.min(fade0 ? s / ROAD_FADE : 1, fade1 ? (total - s) / ROAD_FADE : 1, 1);
+    // (e, dove la strada e' piu' stretta, meno sassi: la densita' per area
+    // resta quella del dipinto)
+    const keep = Math.min(fade0 ? s / ROAD_FADE : 1, fade1 ? (total - s) / ROAD_FADE : 1, 1) * (widthAt(s) / width);
     const r1 = rand(), r2 = rand(), r3 = rand(), r4 = rand(), r5 = rand(), r6 = rand(), r7 = rand();
     if (r7 > keep) continue;
     const [x, y, tx, ty] = at(s);
-    const off = ((r1 + r2 + r3) / 3 - 0.5) * SPREAD * K.spread * width;
+    const off = ((r1 + r2 + r3) / 3 - 0.5) * SPREAD * K.spread * widthAt(s);
     const t = r4 * r4 * (3 - 2 * r4); // piu' toni medi che estremi
     const col = K.dark.map((d, c) => d + (K.light[c] - d) * t);
     let j = 0;

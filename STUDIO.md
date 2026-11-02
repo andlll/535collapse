@@ -7888,8 +7888,11 @@ dell'autore), classi del livello `strade`: `strada1` la marcata
 (strada4-8: dal grigio-verde 134,130,108 al beige 200,195,160, scarto tipo
 0,3 della larghezza, misurati sul dipinto), `strada2` la secondaria
 (traccia1-4: un solo grigio-verde intorno a 155,159,130, alpha 0,85, piu'
-sparsa). Proprieta' `larghezza` (predefinita 110)
-e `densita` (1 come negli sprite). Alle estremita' dentro la room si
+sparsa). Proprieta' `larghezza` (predefinita 110),
+`larghezza_fine` (richiesta dell'autore, come per i fiumi: la larghezza
+all'ultimo punto, la strada si allarga o si stringe piano; dove e' piu'
+stretta ha meno sassi, la densita' per area resta quella del dipinto) e
+`densita` (1 come negli sprite). Alle estremita' dentro la room si
 diradano. Non sono ostacoli. I numeri a caso di sassi e onde vengono da un
 generatore proprio (mulberry32) col seme dalla linea: la stessa strada e'
 sempre uguale e Math.random, della partita, non si tocca.
@@ -7910,7 +7913,9 @@ libero fuori; con la pioggia anelli e riflessi sul fiume; nessuna unita'
 coi piedi nell'acqua. Poi un fiume attraverso tutta la vista con una
 strada1 che lo passa su un ponte e una strada2: sotto il ponte niente
 acqua, un guerriero passa sul ponte (scostato al piu' 10 px, 178 passi)
-senza i piedi nell'acqua, 6924 sassi nella strada1 e 1225 nella strada2.
+senza i piedi nell'acqua, 6924 sassi nella strada1 e 1225 nella strada2;
+una strada da 60 a 200 px ha i sassi sparsi 2,2 volte di piu' verso la
+fine (dove e' larga 2,35 volte).
 Visto negli screenshot (fiume, pioggia, ponte di traverso con gli archi,
 ponte da nord a sud, strade). Senza linee nulla cambia: test unitari,
 `soak.mjs`, `saves.mjs`, `bridge.mjs`. Nota: nella prova un guerriero

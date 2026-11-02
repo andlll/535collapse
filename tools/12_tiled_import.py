@@ -298,6 +298,8 @@ def load_map(path, kit=None):
                     warn.append("%s: classe %r, uso strada1 (strada1 la marcata, strada2 la secondaria)" % (where, cls))
                 rd = {"pts": pts, "width": max(20.0, float(p.get("larghezza", tk.ROAD_WIDTH))),
                       "kind": tk.ROAD_KINDS.get(cls, 1)}
+                if "larghezza_fine" in p:
+                    rd["widthEnd"] = max(20.0, float(p["larghezza_fine"]))
                 if "densita" in p:
                     rd["density"] = max(0.05, float(p["densita"]))
                 roads.append((oid, rd))
@@ -459,8 +461,13 @@ def preview(scen, kit, S, out_path, order=None):
     from PIL import ImageDraw
     dr = ImageDraw.Draw(canvas)
     for rd in scen.get("roads", []):
-        dr.line([(x * S, y * S) for x, y in rd["pts"]], fill=(200, 195, 160, 255) if rd["kind"] == 1 else (155, 159, 130, 255),
-                width=max(1, round(rd["width"] * 0.5 * S)), joint="curve")
+        pts, w0 = rd["pts"], rd["width"]
+        w1 = rd.get("widthEnd", w0)
+        col = (200, 195, 160, 255) if rd["kind"] == 1 else (155, 159, 130, 255)
+        for k in range(len(pts) - 1):
+            wk = w0 + (w1 - w0) * (k + 0.5) / (len(pts) - 1)
+            dr.line([(pts[k][0] * S, pts[k][1] * S), (pts[k + 1][0] * S, pts[k + 1][1] * S)],
+                    fill=col, width=max(1, round(wk * 0.5 * S)), joint="curve")
     for rv in scen.get("rivers", []):
         pts, w0 = rv["pts"], rv["width"]
         w1 = rv.get("widthEnd", w0)

@@ -370,12 +370,14 @@ def write_project(out_dir):
             "color": "#ffc8c3a0", "drawFill": False,
             "members": [
                 {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.ROAD_WIDTH},
                 {"name": "densita", "type": "float", "value": 1},
             ]}, {
             "id": 5, "name": "strada2", "type": "class", "useAs": ["object"],
             "color": "#ff9b9f82", "drawFill": False,
             "members": [
                 {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.ROAD_WIDTH},
                 {"name": "densita", "type": "float", "value": 1},
             ]}, {
             "id": 6, "name": tk.BRIDGE_TYPE, "type": "class", "useAs": ["object"],
@@ -624,8 +626,11 @@ ponte si passa. Il lato lungo del rettangolo e' quello che attraversa.
 Nel livello `strade` disegna una polilinea lungo la strada e scegli la
 classe: `strada1` e' la strada marcata (sassi chiari e fitti, come
 `strada4`-`strada8`), `strada2` la secondaria, piu' simile al terreno (come
-`traccia1`-`traccia4`). Proprieta': `larghezza` (px, predefinito {road}) e
-`densita` (1 = come negli sprite; 0,5 meta' dei sassi, 2 il doppio). Le
+`traccia1`-`traccia4`). Proprieta': `larghezza` (px, predefinito {road}),
+`larghezza_fine` (la larghezza all'ultimo punto, come per i fiumi: la
+strada si allarga o si stringe piano; se la togli e' larga uguale
+dappertutto) e `densita` (1 = come negli sprite; 0,5 meta' dei sassi, 2 il
+doppio). Le
 strade non sono ostacoli. Dove una strada attraversa un fiume serve un
 ponte.
 
