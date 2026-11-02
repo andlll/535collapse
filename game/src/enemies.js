@@ -152,7 +152,9 @@ function slotBlocked(i, w) {
 function pushThrough(w, p, i) {
   if (i.flow_field) { moveFlowField(w, p, i); return; }
   i.direction = pointDirection(i.x, i.y, i.dirox, i.diroy);
-  w.setPos(i, i.x + lengthdirX(i.autospeed, i.direction), i.y + lengthdirY(i.autospeed, i.direction));
+  const nx = i.x + lengthdirX(i.autospeed, i.direction), ny = i.y + lengthdirY(i.autospeed, i.direction);
+  if (w.terrainBlocks && w.terrainBlocks(i, nx, ny)) return; // [§9.97] non dentro un fiume a linee
+  w.setPos(i, nx, ny);
 }
 
 function enemyMove(i, w, p) {

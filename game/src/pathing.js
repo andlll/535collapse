@@ -20,6 +20,7 @@
 // array, che nessuno modifica dopo averlo generato.
 
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
+import { riverCells, riverIn } from "./rivers.js";
 
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
@@ -129,6 +130,25 @@ export class Pathing {
     for (const fam of HOLDERS) {
       for (const inst of this.w.all(fam)) this.markInstance(inst, 1000);
     }
+    // [§9.97] l'acqua dei fiumi a linee: ostacolo come un edificio
+    for (const k of this.riverCells()) { this.cost[k] = 1000; this.solid[k] = 1; }
+  }
+
+  // [§9.97] Le celle della griglia che toccano l'acqua dei fiumi a linee
+  // (rivers.js riverCells, celle da 8 px): restano chiuse anche quando
+  // accanto sparisce un edificio (markInstance)
+  riverCells() {
+    if (this._river) return this._river;
+    const rc = riverCells(this.w), out = [];
+    this._riverSet = new Set();
+    if (rc) {
+      for (let gy = 0; gy < this.gh; gy++) {
+        for (let gx = 0; gx < this.gw; gx++) {
+          if (riverIn(rc, gx * GRID, gy * GRID, gx * GRID + GRID - 1, gy * GRID + GRID - 1)) { out.push(gy * this.gw + gx); this._riverSet.add(gy * this.gw + gx); }
+        }
+      }
+    }
+    return (this._river = out);
   }
 
   // collision_rectangle sulla cella, maschera precisa, solo quell'istanza [C]
@@ -147,7 +167,7 @@ export class Pathing {
   markInstance(inst, value) {
     const s = value >= 1000 ? 1 : 0;
     for (const k of this._cellsOf(inst)) {
-      if (!s && this.cost[k] >= 1000 && this._heldByOther(k, inst)) continue;
+      if (!s && this.cost[k] >= 1000 && (this._heldByOther(k, inst) || (this.riverCells(), this._riverSet.has(k)))) continue; // §9.97
       this.cost[k] = value; this.solid[k] = s;
     }
     inst.gridMark = s;

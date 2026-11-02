@@ -31,6 +31,7 @@ import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPr
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
+import { riverGeometry, roadGeometry, bridgeGeometry, riverCells, riverIn, stopsAtWater } from "./rivers.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -120,7 +121,7 @@ async function main() {
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
-                    room.backgrounds.map((b) => b.name), progress);
+                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta"], progress); // §9.97
 
   const [objects, masks] = await Promise.all(
     ["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
@@ -157,6 +158,28 @@ async function main() {
   world.hooks.roomGoto = (name) => {
     location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
   };
+  // [§9.97] i fiumi disegnati come linee (rivers.js): forma, acqua, ostacolo
+  const FEET = [10, 5];
+  const useRivers = (list, roads = [], bridges = []) => {
+    const R = [room.width, room.height];
+    world.rivers = list.map((rv) => riverGeometry({ ...rv, room: R }));
+    world.roads = roads.map((rd) => roadGeometry({ ...rd, room: R }));
+    world.bridges = bridges.map(bridgeGeometry);
+    world._riverCells = undefined; world._water = undefined;
+    // le unita' contano i piedi (FEET px attorno al punto in cui toccano
+    // terra), i fantasmi degli edifici tutta la maschera: col riquadro intero
+    // un'unita' sulla riva "toccava" l'acqua, e i nemici che toccano
+    // qualcosa avanzano dritti (enemies.js pushThrough)
+    world.terrainBlocks = world.rivers.length ? (inst, x, y) => {
+      if (!stopsAtWater(world, inst)) return false;
+      const rc = riverCells(world);
+      if (!rc) return false;
+      if (!/_placer$/.test(inst.object)) return riverIn(rc, x - FEET[0], y - FEET[1], x + FEET[0], y + FEET[1]);
+      const bb = world.bbox(inst, x, y);
+      return !!bb && riverIn(rc, bb[0], bb[1], bb[2], bb[3]);
+    } : null;
+  };
+  useRivers(room.rivers || [], room.roads || [], room.bridges || []);
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
@@ -740,7 +763,9 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
+                    // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
+                    setRivers(list, roads = [], bridges = []) { useRivers(list, roads, bridges); path._river = null; path.initCost(); ground.reset(); },
                     ambience: { cloudBlobs, shadeAt }, // §9.84
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };

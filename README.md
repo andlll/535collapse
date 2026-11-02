@@ -52,7 +52,10 @@ I font dell'interfaccia sono Cinzel e Cinzel Decorative (OFL, `nuovi/font/`,
 solo se cambiano testo, font o misura. Le origini degli sprite del
 lavoratore nemico (`nuovi/sprites/omino_blu/`, §9.49) e scala e posizione
 degli sprite danneggiati dell'autore (§9.85) si ricalcolano con
-`python3 tools/14_allinea.py` (richiede numpy) se cambiano le immagini.
+`python3 tools/14_allinea.py` (richiede numpy) se cambiano le immagini. Le texture dei
+fiumi, delle strade e dei ponti disegnati come linee in Tiled (`nuovi/fiumi/`, §9.97:
+acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (dopo
+`tools/01`) solo se cambiano i dipinti da cui vengono.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
 `?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40) per entrare direttamente in una room. Sono giocabili il menu
@@ -106,6 +109,7 @@ node game/test/browser/enemygarrison.mjs                # presidio nemico in tor
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
 node game/test/browser/zoom.mjs                         # zoom morbido con rotella, touchpad e X/Z, punto sotto il puntatore fermo
 node game/test/browser/ambience.mjs                     # nuvole, alba e tramonto rosa, pioggia, camini, crolli, polvere
+node game/test/browser/rivers.mjs                       # fiumi, strade e ponti a linee: acqua, ostacolo, pioggia, ponte
 node game/test/browser/damage.mjs                       # stadi di danno di edifici nemici di pietra, mura e porte
 node game/test/browser/attackorder.mjs                  # gruppo misto mandato ad attaccare: tutti arrivano a colpire
 node game/test/browser/burn.mjs                         # edifici di legno: fiamme visibili e frecce incendiarie

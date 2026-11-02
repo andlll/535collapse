@@ -83,6 +83,18 @@ def shape_of(o):
     return [(x + px * c - py * s, y + px * s + py * c) for px, py in pts]
 
 
+def polyline_of(o):
+    """[§9.97] I punti di una polilinea (rotazione di Tiled compresa), o None."""
+    pl = o.find("polyline")
+    if pl is None:
+        return None
+    ox, oy, rot = float(o.get("x", 0)), float(o.get("y", 0)), math.radians(float(o.get("rotation", 0)))
+    c, s = math.cos(rot), math.sin(rot)
+    pts = [[round(ox + px * c - py * s, 1), round(oy + px * s + py * c, 1)]
+           for px, py in (tuple(float(v) for v in q.split(",")) for q in pl.get("points").split())]
+    return pts if len(pts) >= 2 else None
+
+
 def inside(pt, poly):
     x, y = pt
     n, ins = len(poly), False
@@ -199,6 +211,7 @@ def load_map(path, kit=None):
     gm_colour = ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
 
     entries, view = [], None  # (id, [istanze])
+    rivers, roads, bridges = [], [], []  # [§9.97] (id, fiume / strada / ponte)
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
         # [§9.11] livello "gruppo <nome>": gli oggetti che la regia del livello
@@ -266,6 +279,46 @@ def load_map(path, kit=None):
                 view = {"x": round(float(o.get("x", 0))), "y": round(float(o.get("y", 0))),
                         "w": round(float(o.get("width", 3000))), "h": round(float(o.get("height", 2000)))}
                 continue
+            # [§9.97] i ponti: rettangoli (anche ruotati) di classe ponte
+            if cls == tk.BRIDGE_TYPE:
+                poly = shape_of(o)
+                if not poly or len(poly) != 4 or o.find("polygon") is not None:
+                    warn.append("%s: un ponte e' un rettangolo" % where)
+                    continue
+                bridges.append((oid, {"pts": [[round(x, 1), round(y, 1)] for x, y in poly]}))
+                continue
+            # [§9.97] strade disegnate come linee: polilinee nel livello strade
+            if layer == tk.ROAD_LAYER or cls in tk.ROAD_KINDS:
+                pts = polyline_of(o)
+                if not pts:
+                    warn.append("%s: nel livello strade vanno polilinee di almeno due punti" % where)
+                    continue
+                p = props(o)
+                if cls not in tk.ROAD_KINDS:
+                    warn.append("%s: classe %r, uso strada1 (strada1 la marcata, strada2 la secondaria)" % (where, cls))
+                rd = {"pts": pts, "width": max(20.0, float(p.get("larghezza", tk.ROAD_WIDTH))),
+                      "kind": tk.ROAD_KINDS.get(cls, 1)}
+                if "densita" in p:
+                    rd["density"] = max(0.05, float(p["densita"]))
+                roads.append((oid, rd))
+                continue
+            # [§9.97] fiumi disegnati come linee: polilinee nel livello fiumi
+            if layer == tk.RIVER_LAYER or cls == "fiume":
+                pts = polyline_of(o)
+                if not pts:
+                    warn.append("%s: nel livello fiumi vanno polilinee di almeno due punti (o rettangoli di classe ponte)" % where)
+                    continue
+                p = props(o)
+                rv = {"pts": pts, "width": float(p.get("larghezza", tk.RIVER_WIDTH))}
+                if "larghezza_fine" in p:
+                    rv["widthEnd"] = float(p["larghezza_fine"])
+                if min(rv["width"], rv.get("widthEnd", rv["width"])) < 20:
+                    warn.append("%s: larghezza sotto 20 px, uso 20" % where)
+                    rv["width"] = max(20.0, rv["width"])
+                    if "widthEnd" in rv:
+                        rv["widthEnd"] = max(20.0, rv["widthEnd"])
+                rivers.append((oid, rv))
+                continue
             if layer == tk.FOREST_LAYER or cls == "bosco":
                 poly = shape_of(o)
                 if not poly:
@@ -296,6 +349,10 @@ def load_map(path, kit=None):
         view = {"x": 0, "y": 0, "w": 3000, "h": 2000}
     scen = {"format": FORMAT, "version": VERSION, "name": name, "width": width, "height": height,
             "background": background, "colour": gm_colour, "view": view, "instances": instances}
+    # [§9.97] solo se ce ne sono: gli scenari di prima restano uguali
+    for key, lst in (("roads", roads), ("rivers", rivers), ("bridges", bridges)):
+        if lst:
+            scen[key] = [v for _, v in sorted(lst, key=lambda e: e[0])]
     return scen, warn
 
 
@@ -396,6 +453,23 @@ def preview(scen, kit, S, out_path, order=None):
         for y in range(0, H, bg.height):
             for x in range(0, W, bg.width):
                 canvas.alpha_composite(bg, (x, y))
+    # [§9.97] strade, fiumi e ponti a linee, sotto tutte le istanze come nel
+    # gioco: solo la forma (il disegno vero lo fa il gioco, game/src/rivers.js),
+    # con la larghezza schiacciata come il suolo in media
+    from PIL import ImageDraw
+    dr = ImageDraw.Draw(canvas)
+    for rd in scen.get("roads", []):
+        dr.line([(x * S, y * S) for x, y in rd["pts"]], fill=(200, 195, 160, 255) if rd["kind"] == 1 else (155, 159, 130, 255),
+                width=max(1, round(rd["width"] * 0.5 * S)), joint="curve")
+    for rv in scen.get("rivers", []):
+        pts, w0 = rv["pts"], rv["width"]
+        w1 = rv.get("widthEnd", w0)
+        for k in range(len(pts) - 1):
+            wk = w0 + (w1 - w0) * (k + 0.5) / (len(pts) - 1)
+            dr.line([(pts[k][0] * S, pts[k][1] * S), (pts[k + 1][0] * S, pts[k + 1][1] * S)],
+                    fill=(96, 140, 128, 255), width=max(1, round(wk * 0.8 * S)), joint="curve")
+    for br in scen.get("bridges", []):
+        dr.polygon([(x * S, y * S) for x, y in br["pts"]], fill=(166, 152, 155, 255), outline=(30, 30, 30, 255))
     info_path = os.path.join(REPO_DIR, "game", "assets", "objects.json")
     info = json.load(open(info_path, encoding="utf-8")) if os.path.exists(info_path) else {}
     cache = {}

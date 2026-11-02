@@ -8,6 +8,7 @@ import { c, makeColourRgb } from "./colours.js";
 import { partType } from "./particles.js";
 import { lengthdirX } from "./gm.js";
 import { windLevel } from "./ambience.js";
+import { riverCells } from "./rivers.js";
 
 const P = (w) => w.particles;
 
@@ -148,6 +149,16 @@ function waterMap(w) {
     const vx = sxx / n - (sx_ / n) ** 2, vy = syy / n - (sy_ / n) ** 2, cxy = sxy / n - (sx_ / n) * (sy_ / n);
     angles.push(n ? -0.5 * Math.atan2(2 * cxy, vx - vy) * 180 / Math.PI : 0);
   }
+  // [§9.97] i fiumi a linee (rivers.js): le loro celle d'acqua, un "pezzo"
+  // per tratto (con la sua orientazione), sotto tutte le istanze come il
+  // suolo in cui sono disegnati; un solo sistema di particelle per tipo
+  const rc = riverCells(w);
+  if (rc) {
+    if (!grid) { grid = new Uint8Array(gw * gh); owner = new Int32Array(gw * gh).fill(-1); }
+    const base = pieces.length;
+    for (const [k, s] of rc.stretches.entries()) { pieces.push({ id: "fiume" + k, depth: 1e8, sysKey: "fiumi" }); angles.push(s.angle); }
+    for (let c = 0; c < rc.grid.length; c++) if (rc.grid[c] && owner[c] === -1) { grid[c] = 1; owner[c] = base + rc.stretch[c]; }
+  }
   w._water = grid ? { C, gw, gh, grid, owner, pieces, angles } : null;
   return w._water;
 }
@@ -166,7 +177,7 @@ function waterSystem(w, wm, kind, cat, x, y) {
   const cx = Math.floor(x / wm.C), cy = Math.floor(y / wm.C);
   if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) return null;
   const piece = wm.pieces[wm.owner[cy * wm.gw + cx]];
-  const key = kind + ":" + piece.id;
+  const key = kind + ":" + (piece.sysKey || piece.id); // §9.97
   const P_ = P(w);
   const sys = wm.sys || (wm.sys = new Map());
   let ps = sys.get(key);

@@ -358,7 +358,28 @@ def write_project(out_dir):
             ]}, {
             # la vista iniziale: solo il contorno, senza coprire la mappa
             "id": 2, "name": tk.VIEW_TYPE, "type": "class", "useAs": ["object"],
-            "color": "#ffffb000", "drawFill": False, "members": []}],
+            "color": "#ffffb000", "drawFill": False, "members": []}, {
+            # [§9.97] fiumi, strade e ponti disegnati come linee e forme
+            "id": 3, "name": "fiume", "type": "class", "useAs": ["object"],
+            "color": "#ff2a7f9f", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.RIVER_WIDTH},
+                {"name": "larghezza_fine", "type": "float", "value": tk.RIVER_WIDTH},
+            ]}, {
+            "id": 4, "name": "strada1", "type": "class", "useAs": ["object"],
+            "color": "#ffc8c3a0", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "densita", "type": "float", "value": 1},
+            ]}, {
+            "id": 5, "name": "strada2", "type": "class", "useAs": ["object"],
+            "color": "#ff9b9f82", "drawFill": False,
+            "members": [
+                {"name": "larghezza", "type": "float", "value": tk.ROAD_WIDTH},
+                {"name": "densita", "type": "float", "value": 1},
+            ]}, {
+            "id": 6, "name": tk.BRIDGE_TYPE, "type": "class", "useAs": ["object"],
+            "color": "#ffa6989b", "drawFill": True, "members": []}],
     }
     with open(os.path.join(out_dir, "535.tiled-project"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(proj, f, indent=4)
@@ -466,7 +487,7 @@ def new_map(manifest, w, h, bg="green1"):
 def write_readme(out_dir, manifest):
     rows = "\n".join("| `%s` | %s | %d |" % (ts, t["titolo"], len(t["tiles"]))
                      for ts, t in manifest["tilesets"].items())
-    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE)
+    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE, river=tk.RIVER_WIDTH, road=tk.ROAD_WIDTH)
     with open(os.path.join(out_dir, "LEGGIMI.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
 
@@ -502,7 +523,9 @@ invece, sono tue.
 | `sfondo` | lo sfondo ripetuto (bloccato: per cambiarlo, *Image* nelle proprieta' del livello, da `img/sfondi/`) | — |
 | `suolo` | strade, sentieri, prati, erba, chiazze, fiori, campi | nell'ordine in cui li metti |
 | `erba e spighe` | le macchie d'erba e di spighe (`natura`) | nell'ordine in cui li metti |
-| `terreno` | montagne, fiumi | dall'alto in basso, come nel gioco |
+| `strade` | le strade disegnate come linee (vedi sotto) | — |
+| `fiumi` | i fiumi disegnati come linee e i loro ponti (vedi sotto) | — |
+| `terreno` | montagne, fiumi dipinti | dall'alto in basso, come nel gioco |
 | `oggetti` | tutto il resto: alberi, risorse, edifici, unita', citta' | dall'alto in basso, come nel gioco |
 | `boschi` | forme da riempire di alberi (vedi sotto) | — |
 | `regia` | `manager` (uno per mappa, obbligatorio), segnali, suggerimenti, dialoghi, il rettangolo `vista iniziale` | — |
@@ -575,6 +598,36 @@ forma e modifica `distanza` (piu' piccola = piu' fitto) o `oggetto`
 decorazione). La stessa forma da' sempre gli stessi alberi.
 Non e' un'anteprima: in Tiled la forma resta una macchia verde; gli alberi
 li vedi nell'anteprima dello script o nel gioco.
+
+## Fiumi (linee)
+
+Nel livello `fiumi` disegna una polilinea (**L**) lungo il corso del fiume:
+il gioco ci stende sopra l'acqua, le rive a inchiostro e la parete della
+riva lontana, nello stile dei fiumi dipinti, e la linea si ammorbidisce da
+sola (non servono tanti punti). Scegli la classe `fiume` e imposta
+`larghezza` (in px, predefinito {river}) e, se vuoi che cambi piano lungo il
+fiume, `larghezza_fine` (la larghezza all'ultimo punto; se la togli, il
+fiume e' largo uguale dappertutto). L'acqua e' un ostacolo per le unita' e
+ci cade la pioggia come sui fiumi dipinti. Per un fiume che si allarga e si
+stringe piu' volte, disegnalo in piu' polilinee che si toccano.
+Non e' un'anteprima: in Tiled resta una linea sottile; il fiume lo vedi
+nell'anteprima dello script o nel gioco.
+
+**Ponti.** Nello stesso livello `fiumi`, un rettangolo (**R**, si puo'
+ruotare) di classe `ponte` messo di traverso sul fiume, un po' piu' lungo
+del fiume e' largo (deve poggiare sulle rive): il gioco lo disegna in
+pietra, con parapetti, archi sul fianco che si vede e l'ombra, e sotto il
+ponte si passa. Il lato lungo del rettangolo e' quello che attraversa.
+
+## Strade (linee)
+
+Nel livello `strade` disegna una polilinea lungo la strada e scegli la
+classe: `strada1` e' la strada marcata (sassi chiari e fitti, come
+`strada4`-`strada8`), `strada2` la secondaria, piu' simile al terreno (come
+`traccia1`-`traccia4`). Proprieta': `larghezza` (px, predefinito {road}) e
+`densita` (1 = come negli sprite; 0,5 meta' dei sassi, 2 il doppio). Le
+strade non sono ostacoli. Dove una strada attraversa un fiume serve un
+ponte.
 
 ## Gruppi (oggetti che la regia del livello tiene da parte)
 

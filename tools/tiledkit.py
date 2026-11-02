@@ -44,8 +44,19 @@ GID_MASK = 0x0FFFFFFF
 
 # Livelli delle mappe, dal basso. "boschi" contiene forme (rettangoli,
 # ellissi, poligoni) che tools/12_tiled_import.py riempie di alberi.
-LAYERS = ["suolo", "erba e spighe", "terreno", "oggetti", "boschi", "regia"]
+LAYERS = ["suolo", "erba e spighe", "strade", "fiumi", "terreno", "oggetti", "boschi", "regia"]
 FOREST_LAYER = "boschi"
+# [§9.97] i fiumi disegnati come linee: polilinee con le proprieta'
+# larghezza (px, RIVER_WIDTH se manca) e larghezza_fine (all'ultimo punto)
+RIVER_LAYER = "fiumi"
+RIVER_WIDTH = 150
+# le strade come linee: polilinee nel livello strade, classe strada1 (la
+# marcata) o strada2 (la secondaria), con larghezza e densita'; i ponti:
+# rettangoli di classe ponte nel livello fiumi
+ROAD_LAYER = "strade"
+ROAD_KINDS = {"strada1": 1, "strada2": 2}
+ROAD_WIDTH = 110
+BRIDGE_TYPE = "ponte"
 VIEW_TYPE = "vista"
 FOREST_SPACING = 90          # distanza fra gli alberi del pennello bosco (px)           # rettangolo della vista iniziale, nel livello regia
 

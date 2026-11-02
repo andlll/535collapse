@@ -7803,3 +7803,108 @@ picchieri, cavalieri e arcieri nemici.
 Misurato su 36 semi: il caso "enemy casa front" ora da' 151 px con tutti
 (prima da 94 a 361 px, e da 92 a 315 dopo §9.94), nessuna unita' dentro un
 edificio. Versione 0.2606.
+
+### 9.97 Fiumi, strade e ponti disegnati come linee
+
+Domanda dell'autore: un sistema di fiumi e strade piu' leggero degli sprite
+dipinti (i soli fiumi, fiume1-4, fiume2_2, fiume2_3, fiume_2_1 e
+Fiume_Completo, sono ~660 KB da scaricare e ~41 MB di memoria video).
+Proposte: tileset isometrico (sconsigliato: decine di raccordi, effetto
+griglia), sprite ruotati (in isometria la rotazione rompe la prospettiva),
+linee disegnate in Tiled e stese dal gioco. Scelte le linee, provate prima
+per i fiumi, poi (richiesta dell'autore) ostacolo, pioggia, larghezza da
+Tiled, ponti, strade e antialiasing. Tutto in game/src/rivers.js, cotto nei
+blocchi del suolo (ground.js: prima le strade, poi i fiumi, poi i ponti),
+sopra strade e prati dipinti: a ogni fotogramma costa come prima. Le
+texture (nuovi/fiumi/, tools/15_fiumi.py, dai dipinti dell'autore) sono
+13 KB in WebP in tutto. Le mappe gia' fatte restano come sono (richiesta
+dell'autore: il fiume dipinto e il ponte del livello 4 non si toccano).
+
+**Fiumi.** In Tiled una polilinea nel livello `fiumi` (classe `fiume`,
+proprieta' `larghezza`, predefinita 150 px, e `larghezza_fine`, la
+larghezza all'ultimo punto). Il gioco ammorbidisce la linea (Catmull-Rom,
+un punto ogni 10 px) e ci stende una texture d'acqua di 256x192 px
+(acqua.png, 6,8 KB: ritagliata dall'acqua di Fiume_Completo e resa
+ripetibile), fissata al mondo (non si deforma nelle curve). Le rive si
+calcolano sul terreno "steso" (y / 0,62) e si schiacciano come il suolo:
+dove il fiume scorre in orizzontale e' piu' stretto. Stile dei fiumi
+dipinti: la riva lontana (che guarda in su) mostra la parete della sponda,
+una fascia d'acqua piu' scura alta fino a 16 px fra due linee nere; la riva
+vicina una linea sola; le linee a inchiostro di spessore variabile
+(2,2 +- 0,9 px); la larghezza varia del +-12% lungo il fiume. Nelle curve
+strette il lato interno si stringe (al piu' il 55% del raggio, poi
+ammorbidito): prima si accavallava e faceva le punte; resta un po'
+spigoloso, nello stile (parere dell'autore). Un'estremita' dentro la room
+finisce a punta arrotondata negli ultimi 120 px, come una sorgente.
+
+**Antialiasing** (richiesta dell'autore: le linee nere nette staccavano dai
+personaggi, che hanno i contorni filtrati). Ogni tratto d'inchiostro ha un
+nucleo pieno fino a mezzo pixel dal bordo e una frangia di un pixel che va
+a trasparente (colori per vertice). Solo nella cottura del suolo, una
+volta per blocco.
+
+**Acqua ed effetti.** Le celle da 8 px dentro le rive (riverCells) entrano
+nella mappa dell'acqua (effects.js waterMap), un "pezzo" per tratto di 20
+punti con la sua orientazione: pioggia (anelli), riflessi, increspature e
+schiuma funzionano come sui fiumi dipinti, in un solo sistema di
+particelle per tipo, sotto tutte le istanze.
+
+**Ostacolo.** Le celle della griglia dei percorsi che toccano l'acqua sono
+chiuse (pathing.js initCost) e restano chiuse se accanto sparisce un
+edificio. Le collisioni (world placeFree, placeFreeExcept, placeEmpty,
+`terrainBlocks`): le unita' contano i piedi (10 x 5 px attorno al punto in
+cui toccano terra; col riquadro intero un'unita' sulla riva "toccava"
+l'acqua, e un nemico che tocca qualcosa avanza dritto senza guardare:
+enemies.js pushThrough, ora fermo davanti all'acqua), i fantasmi degli
+edifici tutta la maschera (rossi sul fiume).
+
+**Ponti.** Un rettangolo (anche ruotato) di classe `ponte` nel livello
+`fiumi`, di traverso sul fiume: il lato lungo e' quello che attraversa.
+Sotto il ponte non c'e' acqua (si passa, non ci piove). Disegno, sulla
+grana di carta dell'acqua in grigio (carta.png) colorata come il ponte
+dipinto (Ponte_5): piano grigio-viola, parapetti in pietra chiara larghi
+8 px, inchiostro; il fianco che si vede (il lato lungo che guarda in giu',
+alto 20 px per quanto guarda in giu': un ponte da nord a sud non ne mostra)
+in pietra con 1-3 archi sull'acqua in ombra; l'ombra a destra in basso come
+quella degli edifici. Il ponte dipinto non si usa: ha un orientamento solo.
+
+**Strade.** Osservazione dell'autore: il sentiero dei dipinti e' un
+pennello di Photoshop che ripete la stessa particella con una gamma di
+colori. Quindi sei sassolini presi singoli da strada4 (sassi.png, 852 byte:
+macchie isolate di 45-90 px, piene come un'ellisse, senza buchi; in grigio,
+il colore lo da' il gioco) timbrati lungo la linea, a campana attorno al
+centro, dai piu' scuri ai piu' chiari. Due strade, come negli sprite
+(richiesta dell'autore), classi del livello `strade`: `strada1` la marcata
+(strada4-8: dal grigio-verde 134,130,108 al beige 200,195,160, 2,1 sassi
+per px di lunghezza ogni 115 px di larghezza, scarto tipo 0,3 della
+larghezza, misurati sul dipinto), `strada2` la secondaria (traccia1-4: un
+solo grigio-verde intorno a 155,159,130, alpha 0,76, il 64% dei sassi,
+piu' sparsa, sassi piu' piccoli). Proprieta' `larghezza` (predefinita 110)
+e `densita` (1 come negli sprite). Alle estremita' dentro la room si
+diradano. Non sono ostacoli. I numeri a caso di sassi e onde vengono da un
+generatore proprio (mulberry32) col seme dalla linea: la stessa strada e'
+sempre uguale e Math.random, della partita, non si tocca.
+
+**Tiled.** tools/12_tiled_import.py legge i livelli `strade` e `fiumi`
+(polilinee e rettangoli `ponte`) e scrive nello scenario `roads`, `rivers`
+e `bridges`, solo se ce ne sono (gli scenari di prima restano uguali);
+l'anteprima PNG ne disegna la forma; tools/07_scene.py li passa alla room.
+Il kit ha i livelli, le classi coi valori predefiniti (fiume, strada1,
+strada2, ponte) e le istruzioni nel LEGGIMI. Il renderer ha un quad con le
+coordinate di texture per angolo (gl.js quadUV).
+
+`rivers.mjs` (nuova, anche in CI): un fiume com'esce dall'import (180 ->
+100 px) che finisce a punta nella vista: 139 celle chiuse; un guerriero
+mandato sull'altra riva gira attorno alla punta e arriva in 337 passi
+senza mai i piedi nell'acqua; il fantasma della casa e' rosso sull'acqua e
+libero fuori; con la pioggia anelli e riflessi sul fiume; nessuna unita'
+coi piedi nell'acqua. Poi un fiume attraverso tutta la vista con una
+strada1 che lo passa su un ponte e una strada2: sotto il ponte niente
+acqua, un guerriero passa sul ponte (scostato al piu' 10 px, 178 passi)
+senza i piedi nell'acqua, 3217 sassi nella strada1 e 801 nella strada2.
+Visto negli screenshot (fiume, pioggia, ponte di traverso con gli archi,
+ponte da nord a sud, strade). Senza linee nulla cambia: test unitari,
+`soak.mjs`, `saves.mjs`, `bridge.mjs`. Nota: nella prova un guerriero
+fermo proprio all'uscita del ponte faceva arrendere un compagno a 130 px
+dalla meta (movimento di sempre, moveStalled; ponti stretti da tenere
+d'occhio). Stessa PR di §9.96: versione 0.2606.
