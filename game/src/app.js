@@ -31,7 +31,7 @@ import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPr
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
-import { riverGeometry, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
+import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -172,7 +172,7 @@ async function main() {
   const useRivers = (list, roads = [], bridges = [], patches = []) => {
     const R = [room.width, room.height];
     world.patches = patches.map(patchGeometry); // §9.99
-    world.rivers = list.map((rv) => riverGeometry({ ...rv, room: R }));
+    world.rivers = riverJoin(list, (rv) => riverGeometry({ ...rv, room: R })); // §9.100: le foci
     world.roads = roads.map((rd) => roadGeometry({ ...rd, room: R }));
     world.bridges = bridges.map(bridgeGeometry);
     world._riverCells = undefined; world._water = undefined;

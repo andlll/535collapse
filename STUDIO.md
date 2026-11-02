@@ -8041,6 +8041,20 @@ per i livelli 1 e 2 (TIERS). Ora lvl06 lo carica e, in ogni room, app.js
 carica da se' i gruppi degli sprite degli oggetti della mappa che TIERS non
 prevede (non ricapita coi livelli nuovi).
 
+*Fiume piu' largo, verso fuori* (richiesta dell'autore: +50 px, c'e'
+margine verso l'esterno della citta'). Il fiume principale (id 5 nella
+mappa, 50 punti, gira attorno alla citta') da larghezza 100 a 150, e la sua
+linea spostata di 25 px (sul terreno steso) lontano dal centro della
+citta' (2751, 3458, il baricentro dei 110 oggetti della citta'): la riva
+lato citta' resta dov'era. Fatto nella mappa (lvl06.tmx), con uno script.
+
+*Le foci* (segnalazione dell'autore: fra i due ponti a destra "si vede
+l'attacco" del secondo fiume). rivers.js `riverJoin`: dove un fiume sbocca
+in un altro le rive di ciascuno (inchiostro e parete) dentro l'acqua
+dell'altro non si disegnano, e l'estremita' che finisce dentro un altro
+fiume non si stringe a punta: la foce si apre. Prova `riverjoin.test.mjs`
+(diramazione larga alla foce, rive nascoste solo li').
+
 Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
 dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
 unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR

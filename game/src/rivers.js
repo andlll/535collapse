@@ -102,7 +102,8 @@ export function riverGeometry(rv) {
   // un'estremita' dentro la room (non sul bordo o oltre) finisce a punta,
   // come una sorgente, negli ultimi TIP px: tagliata dritta stonava
   const inRoom = (p) => rv.room && p[0] > EDGE && p[1] > EDGE && p[0] < rv.room[0] - EDGE && p[1] < rv.room[1] - EDGE;
-  const tip0 = inRoom(rv.pts[0]), tip1 = inRoom(rv.pts[rv.pts.length - 1]);
+  // ([§9.100] non se finisce dentro un altro fiume: riverJoin)
+  const tip0 = inRoom(rv.pts[0]) && !rv.noTip0, tip1 = inRoom(rv.pts[rv.pts.length - 1]) && !rv.noTip1;
   const ease = (d) => { const t = Math.max(0, Math.min(1, d / TIP)); return Math.sqrt(t * (2 - t)); };
   const HW = S.map((s) => ((w0 + (w1 - w0) * (s / total)) / 2) * (1 + WOBBLE * wave(s, seed, 160))
     * (tip0 ? ease(s) : 1) * (tip1 ? ease(total - s) : 1));
@@ -173,7 +174,7 @@ export function drawRiver(r, geo, water, white) {
   }
   // la parete della riva lontana: giu' dal bordo, alta WALL x quanto il
   // bordo guarda in su, con l'acqua piu' scura
-  const wall = (e) => (e.ny < 0 ? WALL * -e.ny : 0);
+  const wall = (e) => (e.ny < 0 && !e.hidden ? WALL * -e.ny : 0);
   const dark = grey(WALL_TINT);
   for (const E of [L, R]) {
     for (let k = 0; k < n - 1; k++) {
@@ -184,9 +185,38 @@ export function drawRiver(r, geo, water, white) {
   }
   // l'inchiostro: il bordo, e la base della parete dove e' alta almeno 3 px
   for (const E of [L, R]) {
-    inkLine(r, white, E, () => 0, () => true);
+    inkLine(r, white, E, () => 0, (e) => !e.hidden);
     inkLine(r, white, E, wall, (e) => wall(e) >= 3);
   }
+}
+
+// [§9.100, segnalazione dell'autore: "si vede l'attacco"] Dove un fiume
+// sbocca in un altro: le rive (inchiostro e parete) di ciascuno dentro
+// l'acqua dell'altro non si disegnano (la foce si apre), e l'estremita' che
+// finisce dentro un altro fiume non si stringe a punta. `list` sono i
+// fiumi della room (pts, width...), `make` riverGeometry con la stanza.
+export function riverJoin(list, make) {
+  const inRiver = (g, x, y) => {
+    const b = g.bbox;
+    if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) return false;
+    const { L, R } = g;
+    for (let k = 0; k < L.length - 1; k++) {
+      if (insidePoly(x, y, [[L[k].x, L[k].y], [L[k + 1].x, L[k + 1].y], [R[k + 1].x, R[k + 1].y], [R[k].x, R[k].y]])) return true;
+    }
+    return false;
+  };
+  let geos = list.map((rv) => make(rv));
+  geos = list.map((rv, k) => {
+    const others = geos.filter((_, j) => j !== k), a = rv.pts[0], b = rv.pts[rv.pts.length - 1];
+    const noTip0 = others.some((g) => inRiver(g, a[0], a[1])), noTip1 = others.some((g) => inRiver(g, b[0], b[1]));
+    return noTip0 || noTip1 ? make(Object.assign({}, rv, { noTip0, noTip1 })) : geos[k];
+  });
+  geos.forEach((g, k) => {
+    const others = geos.filter((_, j) => j !== k);
+    if (!others.length) return;
+    for (const E of [g.L, g.R]) for (const e of E) e.hidden = others.some((o) => inRiver(o, e.x, e.y));
+  });
+  return geos;
 }
 
 // ------------------------------------------------------------ l'acqua
