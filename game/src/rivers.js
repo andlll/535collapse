@@ -467,3 +467,85 @@ export function drawBridge(r, g, paper, white) {
     for (const e of archEdges) inkLine(r, white, e, () => 0, () => true);
   }
 }
+
+// ------------------------------------------------------------ macchie
+
+// [§9.99, richiesta dell'autore] Macchie di un altro sfondo sopra quello
+// della mappa (patches: [{ pts: contorno, bg, feather, alpha }], aree di
+// classe "macchia" nel livello "macchie" di Tiled): per esempio il selciato
+// della citta' (city2, lo sfondo del livello 1) a chiazze sul prato. La
+// texture e' quella dello sfondo, ripetuta e allineata al mondo come lo
+// sfondo (due macchie vicine si raccordano senza cuciture); il bordo sfuma
+// verso l'esterno in `feather` px, irregolare (la larghezza della
+// sfumatura varia lungo il bordo), cosi' non si vede la forma disegnata.
+// Si cuoce sopra lo sfondo, sotto chiazze e strade dipinte, strade, fiumi e
+// ponti (ground.js).
+const PATCH_STEP = 16;    // un punto del bordo ogni tanti px
+
+function area2(P) { let a = 0; for (let i = 0, j = P.length - 1; i < P.length; j = i++) a += P[j][0] * P[i][1] - P[i][0] * P[j][1]; return a / 2; }
+
+// triangoli (indici) del poligono semplice P, a orecchie
+export function triangulate(P) {
+  const n = P.length, idx = [], out = [];
+  for (let i = 0; i < n; i++) idx.push(i);
+  if (area2(P) < 0) idx.reverse(); // antiorario (con y in giu': area positiva)
+  const cross = (a, b, c) => (P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0]);
+  const inside = (p, a, b, c) => cross(a, b, p) >= 0 && cross(b, c, p) >= 0 && cross(c, a, p) >= 0;
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 10000) {
+    let cut = false;
+    for (let k = 0; k < idx.length; k++) {
+      const a = idx[(k + idx.length - 1) % idx.length], b = idx[k], c = idx[(k + 1) % idx.length];
+      if (cross(a, b, c) <= 0) continue; // angolo rientrante
+      let ear = true;
+      for (const p of idx) if (p !== a && p !== b && p !== c && inside(p, a, b, c)) { ear = false; break; }
+      if (!ear) continue;
+      out.push([a, b, c]); idx.splice(k, 1); cut = true; break;
+    }
+    if (!cut) break; // poligono che si incrocia: quel che resta, a ventaglio
+  }
+  for (let k = 1; k < idx.length - 1; k++) out.push([idx[0], idx[k], idx[k + 1]]);
+  return out;
+}
+
+export function patchGeometry(p) {
+  // il bordo, un punto ogni PATCH_STEP px, in senso antiorario
+  let P = [];
+  for (let i = 0; i < p.pts.length; i++) {
+    const a = p.pts[i], b = p.pts[(i + 1) % p.pts.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / PATCH_STEP));
+    for (let j = 0; j < n; j++) P.push([a[0] + (b[0] - a[0]) * (j / n), a[1] + (b[1] - a[1]) * (j / n)]);
+  }
+  if (area2(P) < 0) P = P.reverse();
+  const n = P.length, F = or(p.feather, 40), seed = (p.pts[0][0] * 0.011 + p.pts[0][1] * 0.017) % 6.28;
+  // la sfumatura: verso fuori (normale media dei due lati), larga F x 0,4-1,6
+  const out = [];
+  let s = 0;
+  for (let k = 0; k < n; k++) {
+    const a = P[(k + n - 1) % n], b = P[k], c = P[(k + 1) % n];
+    const n1 = [b[1] - a[1], -(b[0] - a[0])], n2 = [c[1] - b[1], -(c[0] - b[0])];
+    const l1 = Math.hypot(n1[0], n1[1]) || 1, l2 = Math.hypot(n2[0], n2[1]) || 1;
+    let nx = n1[0] / l1 + n2[0] / l2, ny = n1[1] / l1 + n2[1] / l2;
+    const nl = Math.hypot(nx, ny) || 1;
+    nx /= nl; ny /= nl;
+    if (k > 0) s += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const f = F * (1 + 0.6 * wave(s, seed, 40));
+    out.push([b[0] + nx * f, b[1] + ny * f]);
+  }
+  const xs = out.map((q) => q[0]), ys = out.map((q) => q[1]);
+  return { P, out, tri: triangulate(P), bg: p.bg || "city2", alpha: or(p.alpha, 1),
+    bbox: [Math.min(...xs) - 2, Math.min(...ys) - 2, Math.max(...xs) + 2, Math.max(...ys) + 2] };
+}
+
+// La macchia con la texture `tex` (lo sfondo, ripetuto: coordinate = mondo)
+export function drawPatch(r, g, tex) {
+  const c = pack(0xffffff, g.alpha), z = 0, { P, out } = g;
+  for (const [a, b, d] of g.tri) {
+    r.quadUV(tex, P[a][0], P[a][1], P[a][0], P[a][1], P[b][0], P[b][1], P[b][0], P[b][1],
+             P[d][0], P[d][1], P[d][0], P[d][1], P[d][0], P[d][1], P[d][0], P[d][1], c);
+  }
+  // la sfumatura: dal bordo (pieno) a fuori (trasparente), colori per angolo
+  for (let k = 0; k < P.length; k++) {
+    const j = (k + 1) % P.length, a = P[k], b = P[j], oa = out[k], ob = out[j];
+    r.quadUV(tex, a[0], a[1], a[0], a[1], b[0], b[1], b[0], b[1], ob[0], ob[1], ob[0], ob[1], oa[0], oa[1], oa[0], oa[1], c, c, z, z);
+  }
+}

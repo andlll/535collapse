@@ -15,6 +15,9 @@
 //   larghezza   una strada da 60 a 200 px (larghezza_fine): i sassi sono
 //               sparsi come la larghezza della strada in quel punto (fra
 //               1,9 e 2,8 volte di piu' verso la fine, dove e' 2,35 volte)
+//   macchie     (§9.99) una macchia di city2 (sfondo che la room non usa):
+//               caricato al volo, la macchia nel blocco del suolo che la
+//               contiene, divisa in triangoli
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -118,6 +121,20 @@ const res = await page.evaluate(() => {
   out.ponte.ok = !out.ponte.sottoAcqua && wet2(cx - 600, cy + 20) && arr2 > 0 && feet2 === 0 && far < 150 && s1 > s2 && s2 > 100;
   return out;
 }).catch((e) => ({ errore: { ok: false, msg: e.message } }));
+// [§9.99] le macchie: un altro sfondo (city2, non caricato dalla room match)
+// a chiazze, cotto sopra lo sfondo
+Object.assign(res, await page.evaluate(async () => {
+  const G = window.__game, w = G.world, cam = G.cam, cx = cam.x + cam.w / 2, cy = cam.y + cam.h / 2;
+  const ell = Array.from({ length: 40 }, (_, k) => [cx + 250 * Math.cos(k * Math.PI / 20), cy + 150 * Math.sin(k * Math.PI / 20)]);
+  await G.setRivers([], [], [], [{ bg: "city2", feather: 40, pts: ell }]);
+  for (let k = 0; k < 3; k++) G.advance(1);
+  G.loop.render();
+  const k = Math.floor(cx / 512) + "," + Math.floor(cy / 512);
+  const out = { caricato: !!G.assets.bg.get("city2"), macchie: w.patches.length, nelBlocco: (G.ground.patchChunks.get(k) || []).length,
+    triangoli: w.patches[0].tri.length };
+  out.ok = out.caricato && out.macchie === 1 && out.nelBlocco === 1 && out.triangoli > 30;
+  return { macchie: out };
+}).catch((e) => ({ macchie: { ok: false, msg: e.message } })));
 let failed = errs.length > 0;
 for (const [k, v] of Object.entries(res)) {
   console.log(k.padEnd(10), JSON.stringify(v), v.ok ? "" : "NON VA");

@@ -163,7 +163,7 @@ def main():
                  # [§9.11] ottavo campo: il gruppo della mappa (livello "gruppo <nome>" in Tiled)
                  "instances": [[i["object"], i["x"], i["y"], i["scale_x"], i["scale_y"], i["rotation"], 4294967295]
                                + ([i["group"]] if i.get("group") else []) for i in sc["instances"]]}
-        for key in ("roads", "rivers", "bridges"):  # [§9.97] strade, fiumi e ponti a linee (game/src/rivers.js)
+        for key in ("patches", "roads", "rivers", "bridges"):  # [§9.97, §9.99] macchie, strade, fiumi e ponti (game/src/rivers.js)
             if sc.get(key):
                 scene[key] = sc[key]
         with open(os.path.join(OUT, sc["name"] + ".json"), "w", encoding="utf-8", newline="\n") as f:

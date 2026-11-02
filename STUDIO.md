@@ -7961,3 +7961,35 @@ goccia, che arriva a caso (qui al passo 402, col cielo coperto e la salita
 partita al 386): la finestra cadeva su gocce gia' piu' fitte, media del
 livello 0,155 invece di 0,10. Ora si contano dall'inizio della salita (il
 cielo coperto): tre esecuzioni 0,098, 0,102, 0,108. Il gioco non cambia.
+
+### 9.99 Macchie di un altro sfondo (livello macchie)
+
+Richiesta dell'autore: stendere a macchie, sopra lo sfondo e sotto le
+strade, la texture della citta' (city2, il selciato, lo sfondo del livello
+1). In Tiled i livelli immagine non si dipingono e i livelli di tile non li
+legge l'import: quindi aree, come i boschi. Nel livello nuovo `macchie` (il
+primo dal basso) rettangoli, ellissi o poligoni di classe `macchia`, con
+`sfondo` (uno degli sfondi del kit: city2 predefinito, city1, green1),
+`sfumatura` (px, 40) e `opacita` (1). tools/12_tiled_import.py li scrive
+nello scenario (`patches`; uno sfondo che non c'e' da' un avviso e torna a
+city2), l'anteprima PNG li colora col colore medio dello sfondo, il kit ha
+livello, classe e istruzioni.
+
+Nel gioco (rivers.js `patchGeometry`, `drawPatch`): il bordo con un punto
+ogni 16 px, diviso in triangoli (a orecchie: anche le forme concave); la
+texture e' lo sfondo ripetuto con le coordinate del mondo, come lo sfondo
+della mappa (due macchie vicine si raccordano); il bordo sfuma verso fuori,
+largo `sfumatura` x 0,4-1,6 lungo il contorno (onda liscia, sempre uguale),
+cosi' la forma disegnata non si vede. Si cuoce nei blocchi del suolo subito
+sopra lo sfondo, prima di chiazze e strade dipinte, strade, fiumi e ponti.
+Lo sfondo di una macchia si carica con la room (anche se la room ne usa un
+altro). Non sono ostacoli.
+
+Prove: `patches.test.mjs` (nuova: i triangoli di una U coprono la sua area
+nei due versi; sfumatura fuori dal bordo, 0,4-1,6 volte), `rivers.mjs`
+(voce "macchie": city2 caricato al volo in match, la macchia nel suo
+blocco, 98 triangoli), import di prova (rettangolo ruotato, ellisse con
+city1 e opacita' 0,7, poligono con uno sfondo sbagliato), screenshot
+(selciato concavo e pietra liscia sul prato, chiazze dipinte e strada
+sopra), test unitari (66), `soak.mjs`, `saves.mjs`, `--check` del kit e
+scenari invariati. Stessa PR di §9.96: versione 0.2606.

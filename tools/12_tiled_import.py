@@ -211,7 +211,7 @@ def load_map(path, kit=None):
     gm_colour = ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
 
     entries, view = [], None  # (id, [istanze])
-    rivers, roads, bridges = [], [], []  # [§9.97] (id, fiume / strada / ponte)
+    rivers, roads, bridges, patches = [], [], [], []  # [§9.97, §9.99] (id, fiume / strada / ponte / macchia)
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
         if layer == "anteprima":  # [§9.98] le sagome dell'estensione di Tiled
@@ -280,6 +280,24 @@ def load_map(path, kit=None):
                     continue
                 view = {"x": round(float(o.get("x", 0))), "y": round(float(o.get("y", 0))),
                         "w": round(float(o.get("width", 3000))), "h": round(float(o.get("height", 2000)))}
+                continue
+            # [§9.99] macchie: aree (rettangoli, ellissi, poligoni) nel livello macchie
+            if layer == tk.PATCH_LAYER or cls == tk.PATCH_TYPE:
+                poly = shape_of(o)
+                if not poly or len(poly) < 3:
+                    warn.append("%s: nel livello macchie vanno rettangoli, ellissi o poligoni" % where)
+                    continue
+                p = props(o)
+                bg = str(p.get("sfondo", tk.PATCH_BG)).strip() or tk.PATCH_BG
+                if bg not in kit["sfondi"]:
+                    warn.append("%s: sfondo %r non e' fra quelli del kit (%s), uso %s"
+                                % (where, bg, ", ".join(sorted(kit["sfondi"])), tk.PATCH_BG))
+                    bg = tk.PATCH_BG
+                pt = {"pts": [[round(x, 1), round(y, 1)] for x, y in poly], "bg": bg,
+                      "feather": max(0.0, float(p.get("sfumatura", tk.PATCH_FEATHER)))}
+                if "opacita" in p:
+                    pt["alpha"] = max(0.0, min(1.0, float(p["opacita"])))
+                patches.append((oid, pt))
                 continue
             # [§9.97] i ponti: rettangoli (anche ruotati) di classe ponte
             if cls == tk.BRIDGE_TYPE:
@@ -354,7 +372,7 @@ def load_map(path, kit=None):
     scen = {"format": FORMAT, "version": VERSION, "name": name, "width": width, "height": height,
             "background": background, "colour": gm_colour, "view": view, "instances": instances}
     # [§9.97] solo se ce ne sono: gli scenari di prima restano uguali
-    for key, lst in (("roads", roads), ("rivers", rivers), ("bridges", bridges)):
+    for key, lst in (("patches", patches), ("roads", roads), ("rivers", rivers), ("bridges", bridges)):
         if lst:
             scen[key] = [v for _, v in sorted(lst, key=lambda e: e[0])]
     return scen, warn
@@ -462,6 +480,12 @@ def preview(scen, kit, S, out_path, order=None):
     # con la larghezza schiacciata come il suolo in media
     from PIL import ImageDraw
     dr = ImageDraw.Draw(canvas)
+    for pt in scen.get("patches", []):  # [§9.99] le macchie: il colore medio del loro sfondo
+        bgi = Image.open(os.path.join(base, kit["sfondi"][pt["bg"]]["image"])).convert("RGB").resize((1, 1), Image.BOX)
+        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        ImageDraw.Draw(layer).polygon([(x * S, y * S) for x, y in pt["pts"]],
+                                      fill=bgi.getpixel((0, 0)) + (round(255 * pt.get("alpha", 1)),))
+        canvas.alpha_composite(layer)
     for rd in scen.get("roads", []):
         pts, w0 = rd["pts"], rd["width"]
         w1 = rd.get("widthEnd", w0)

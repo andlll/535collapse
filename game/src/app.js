@@ -31,7 +31,7 @@ import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPr
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
-import { riverGeometry, roadGeometry, bridgeGeometry, riverCells, riverIn, stopsAtWater } from "./rivers.js";
+import { riverGeometry, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater } from "./rivers.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -121,7 +121,8 @@ async function main() {
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
-                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta"], progress); // §9.97
+                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
+                     ...(room.patches || []).map((p) => p.bg || "city2")], progress); // §9.97, §9.99
 
   const [objects, masks] = await Promise.all(
     ["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
@@ -160,8 +161,9 @@ async function main() {
   };
   // [§9.97] i fiumi disegnati come linee (rivers.js): forma, acqua, ostacolo
   const FEET = [10, 5];
-  const useRivers = (list, roads = [], bridges = []) => {
+  const useRivers = (list, roads = [], bridges = [], patches = []) => {
     const R = [room.width, room.height];
+    world.patches = patches.map(patchGeometry); // §9.99
     world.rivers = list.map((rv) => riverGeometry({ ...rv, room: R }));
     world.roads = roads.map((rd) => roadGeometry({ ...rd, room: R }));
     world.bridges = bridges.map(bridgeGeometry);
@@ -179,7 +181,7 @@ async function main() {
       return !!bb && riverIn(rc, bb[0], bb[1], bb[2], bb[3]);
     } : null;
   };
-  useRivers(room.rivers || [], room.roads || [], room.bridges || []);
+  useRivers(room.rivers || [], room.roads || [], room.bridges || [], room.patches || []);
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
@@ -765,7 +767,13 @@ async function main() {
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
-                    setRivers(list, roads = [], bridges = []) { useRivers(list, roads, bridges); path._river = null; path.initCost(); ground.reset(); },
+                    // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
+                    setRivers(list, roads = [], bridges = [], patches = []) {
+                      const apply = () => { useRivers(list, roads, bridges, patches); path._river = null; path.initCost(); ground.reset(); };
+                      const missing = patches.map((p) => p.bg || "city2").filter((b) => !assets.bg.get(b));
+                      if (missing.length) return assets.load([], missing).then(apply);
+                      apply();
+                    },
                     ambience: { cloudBlobs, shadeAt }, // §9.84
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };

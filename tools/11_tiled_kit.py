@@ -399,7 +399,15 @@ def write_project(out_dir):
             "id": 8, "name": "anteprima_strada1", "type": "class", "useAs": ["object"],
             "color": "#ffc8c3a0", "drawFill": True, "members": []}, {
             "id": 9, "name": "anteprima_strada2", "type": "class", "useAs": ["object"],
-            "color": "#ff9b9f82", "drawFill": True, "members": []}],
+            "color": "#ff9b9f82", "drawFill": True, "members": []}, {
+            # [§9.99] macchie di un altro sfondo
+            "id": 10, "name": tk.PATCH_TYPE, "type": "class", "useAs": ["object"],
+            "color": "#ffa8a39a", "drawFill": True,
+            "members": [
+                {"name": "sfondo", "type": "string", "value": tk.PATCH_BG},
+                {"name": "sfumatura", "type": "float", "value": tk.PATCH_FEATHER},
+                {"name": "opacita", "type": "float", "value": 1},
+            ]}],
     }
     with open(os.path.join(out_dir, "535.tiled-project"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(proj, f, indent=4)
@@ -507,7 +515,8 @@ def new_map(manifest, w, h, bg="green1"):
 def write_readme(out_dir, manifest):
     rows = "\n".join("| `%s` | %s | %d |" % (ts, t["titolo"], len(t["tiles"]))
                      for ts, t in manifest["tilesets"].items())
-    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE, river=tk.RIVER_WIDTH, road=tk.ROAD_WIDTH)
+    text = README.format(tilesets=rows, spacing=tk.FOREST_SPACING, tile=tk.TILE, river=tk.RIVER_WIDTH, road=tk.ROAD_WIDTH,
+                         feather=tk.PATCH_FEATHER)
     with open(os.path.join(out_dir, "LEGGIMI.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
 
@@ -541,6 +550,7 @@ invece, sono tue.
 | Livello | Cosa ci va | Ordine di disegno |
 |---|---|---|
 | `sfondo` | lo sfondo ripetuto (bloccato: per cambiarlo, *Image* nelle proprieta' del livello, da `img/sfondi/`) | — |
+| `macchie` | macchie di un altro sfondo, per esempio il selciato della citta' (vedi sotto) | — |
 | `suolo` | strade, sentieri, prati, erba, chiazze, fiori, campi | nell'ordine in cui li metti |
 | `erba e spighe` | le macchie d'erba e di spighe (`natura`) | nell'ordine in cui li metti |
 | `strade` | le strade disegnate come linee (vedi sotto) | — |
@@ -618,6 +628,19 @@ forma e modifica `distanza` (piu' piccola = piu' fitto) o `oggetto`
 decorazione). La stessa forma da' sempre gli stessi alberi.
 Non e' un'anteprima: in Tiled la forma resta una macchia verde; gli alberi
 li vedi nell'anteprima dello script o nel gioco.
+
+## Macchie (un altro sfondo a chiazze)
+
+Nel livello `macchie` disegna aree: rettangoli (**R**), ellissi (**C**) o
+poligoni (**P**, chiudendoli sul primo punto), di classe `macchia`. Dentro
+il gioco stende un altro sfondo, ripetuto e allineato come lo sfondo della
+mappa (due macchie vicine si raccordano senza cuciture), col bordo che
+sfuma verso fuori, irregolare, cosi' non si vede la forma. Proprieta':
+`sfondo` (`city2` il selciato della citta', lo sfondo del livello 1;
+`city1` la pietra liscia; `green1` il prato; quelli di `img/sfondi/`),
+`sfumatura` (px, predefinito {feather}) e `opacita` (1 piena, 0,5 a meta').
+Le macchie stanno sopra lo sfondo e sotto tutto il resto: chiazze e strade
+dipinte, strade, fiumi, ponti. Non sono ostacoli.
 
 ## Come si fa una polilinea
 

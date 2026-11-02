@@ -18,7 +18,7 @@
 // a una strada: ora la strada sta sotto.
 
 import { drawSprite, spriteBounds } from "./sprites.js";
-import { drawRiver, drawRoad, drawBridge } from "./rivers.js";
+import { drawRiver, drawRoad, drawBridge, drawPatch } from "./rivers.js";
 
 export const GROUND = /^(traccia\d+|strada_\d+|chiazza01|erba_1|prato1)$/;
 const CH = 512, PAD = 1, S = CH + 2 * PAD, MAX = 48;
@@ -76,6 +76,18 @@ export class GroundCache {
     this.lineChunks = new Map(); // "cx,cy" -> [[tipo, geometria]]
     const feats = [...(w.roads || []).map((g) => ["strada", g]), ...(w.rivers || []).map((g) => ["fiume", g]),
                    ...(w.bridges || []).map((g) => ["ponte", g])];
+    // [§9.99] le macchie, a parte: si cuociono prima degli sprite del suolo
+    this.patchChunks = new Map();
+    for (const g of w.patches || []) {
+      const bb = g.bbox;
+      for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
+        for (let cx = Math.floor(bb[0] / CH); cx <= Math.floor(bb[2] / CH); cx++) {
+          const k = cx + "," + cy;
+          if (!this.patchChunks.has(k)) this.patchChunks.set(k, []);
+          this.patchChunks.get(k).push(g);
+        }
+      }
+    }
     for (const f of feats) {
       const bb = f[1].bbox;
       for (let cy = Math.floor(bb[1] / CH); cy <= Math.floor(bb[3] / CH); cy++) {
@@ -95,6 +107,10 @@ export class GroundCache {
     r.beginTarget(t, x0, y0, S, S, this.clear);
     r.setBlend("normal");
     drawBackgrounds(r, this.assets, this.room, { x: x0, y: y0, w: S, h: S });
+    for (const g of this.patchChunks.get(cx + "," + cy) || []) { // §9.99
+      const tex = this.assets.bg.get(g.bg);
+      if (tex) drawPatch(r, g, tex);
+    }
     for (const i of this.byChunk.get(cx + "," + cy) || []) {
       drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                  i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
