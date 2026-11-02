@@ -84,6 +84,17 @@ export function sightK(w) {
   return 1 - (n + DUSK_SIGHT * s * (1 - n));
 }
 
+// [§9.101, regia del livello 6] Le torri della citta' in rovina non sono
+// del giocatore finche' non le ripara oltre il 60% (levels.js, LV6): con
+// `locked` non vedono (fogSources) e i nemici vicini non si scoprono. Le
+// visibilita' dei nemici (enemies.js, economy.js, ...) passano da qui:
+// con torri chiuse (global.towersLocked) si scartano, se no nearWithin.
+export function seenNear(w, i, obj, r, rmax) {
+  if (!w.g.towersLocked || (obj !== "torre" && obj !== "ally_build")) return w.nearWithin(i, obj, r, rmax);
+  for (const o of w.all(obj)) if (o.alive && !o.locked && w.distanceToInstance(i, o) < r) return true;
+  return false;
+}
+
 // Le istanze che vedono, nell'ordine dei with(...) dell'originale (l'ordine
 // non conta: le ellissi si sommano).
 // [Correzioni decise dall'autore, §3.17] n.54: le anteprime dei
@@ -94,7 +105,7 @@ const PREVIEWS = new Set(["oodl", "oosl", "ovbl", "oval"]);
 export function fogSources(w, explore, cb) {
   const k = sightK(w); // §9.88
   for (const fam of ["ally_unit", "ally_build", "palo_1"]) {
-    for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object)) cb(i, shapeOf(w, i, k));
+    for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object) && !i.locked) cb(i, shapeOf(w, i, k)); // §9.101: locked
   }
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) {
     for (const i of w.all(n)) if (i.alive && i.attiva === 1) cb(i, shapeOf(w, i, k));

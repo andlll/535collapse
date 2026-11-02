@@ -12,7 +12,7 @@
 // scr_attacca) arrivano col punto 4e.
 
 import { hintOnce, dialogOpen } from "./hints.js";
-import { sightK } from "./fog.js";
+import { sightK, seenNear } from "./fog.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY, onFormationSlot } from "./pathing.js";
@@ -140,6 +140,11 @@ function slotBlocked(i, w) {
     i.dirox = i.x; i.diroy = i.y;
   }
 }
+
+// [§9.101, regia del livello 6] La colonna marcia piu' piano (i.pace,
+// levels.js LV6.columnPace): sotto le torri piu' a lungo. Chi insegue un
+// alleato o combatte va al passo di sempre.
+const marchPace = (i) => (i.pace && !i.warwork ? i.pace : 1);
 
 // scr_movimento_nemici_ff [C]. La precedenza di GML e' (lontano && role 31)
 // || sovrapposto.
@@ -354,7 +359,7 @@ export function enemyMelee(name, p) {
   const T = MELEE[name];
   const visibility = (i, w) => {
     const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
-    const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
+    const near = (obj, r) => seenNear(w, i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || (T.palo && near("palo_1", 200)) || i.hit === 1
       || near("castello", 500) || near("torre", 500) || w.room === "menu" || g.fogville === 0;
   };
@@ -432,7 +437,7 @@ export function enemyMelee(name, p) {
         corpse.direction = diro;
         return;
       }
-      i.autospeed = 4 * iso(i.direction);
+      i.autospeed = 4 * iso(i.direction) * marchPace(i); // §9.101
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       if (retreatStep(i, w, p)) { ANIM[name](i, w); return; } // §9.76
@@ -460,7 +465,7 @@ export function enemyMelee(name, p) {
         if (i.action === 1 && !w.placeFree(i, i.dirox, i.diroy)) { i.dirox += irandomRange(-30, 30); i.diroy += irandomRange(-30, 30); }
       }
       if (w.number("torre_placer") > 0) g.sele = 1;
-      if (T.fire) enemyFireHouses(i, w);
+      if (T.fire && !i.noFire) enemyFireHouses(i, w); // §9.101: pattuglie e colonna del livello 6 no
       if (name === "enemy_picchiere") {
         // "hint attaccare" [C]: il puntatore entro 60 px, con soldati selezionati
         hintOnce(w, "hint_attack", "attackhint", i.x, i.y,
@@ -556,7 +561,7 @@ export function enemyArcher(p) {
   const name = "enemy_arciere";
   const visibility = (i, w) => {
     const g = w.g, n = sightK(w); // §9.88: 1 - night, anche nel crepuscolo
-    const near = (obj, r) => w.nearWithin(i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
+    const near = (obj, r) => seenNear(w, i, obj, r + r * n, 2.01 * r); // §6.3 N3: stesso risultato di distance_to_object(instance_nearest) < r + r*n
     i.visible = near("ally_unit", 150) || near("ally_build", 200) || i.hit === 1 || near("castello", 500)
       || near("torre", 500) || w.room === "menu" || g.fogville === 0;
   };
@@ -656,7 +661,7 @@ export function enemyArcher(p) {
         corpse.direction = diro;
         return;
       }
-      i.autospeed = 4 * iso(i.direction);
+      i.autospeed = 4 * iso(i.direction) * marchPace(i); // §9.101
       i.depth = -i.y;
       i.phase = phaseOf(i.direction);
       if (retreatStep(i, w, p)) { ANIM[name](i, w); return; } // §9.76

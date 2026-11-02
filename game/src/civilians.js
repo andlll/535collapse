@@ -17,7 +17,7 @@ import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 import { bridgeEnds, woodDue } from "./bridge.js";
-import { FAM, buttonAlpha } from "./buildings.js";
+import { FAM, buttonAlpha, canBuild } from "./buildings.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const OM = "ally_omino";
@@ -1420,7 +1420,8 @@ function ominoPanel(i, w, d) {
   d.setAlpha(0.69);
   if (!multi) d.roundrectColourExt(260, 20, 390, 150, 60, 60, white, white, false);
   // §9.93: piu' trasparenti i pulsanti che costano piu' di quel che c'e'
-  const buttons = ["casa", "torre", "magazzino", "barn", "campo", "mura", "caserma", "stalla", "castello", "chiesa"].map((f) => FAM[f]);
+  const buttons = ["casa", "torre", "magazzino", "barn", "campo", "mura", "caserma", "stalla", "castello", "chiesa"]
+    .filter((f) => canBuild(w, f)).map((f) => FAM[f]); // §9.101
   for (const b of buttons) {
     d.setAlpha(0.69 * buttonAlpha(g, b.cost));
     d.circleColour(b.bx, b.by, 30, white, white, false);

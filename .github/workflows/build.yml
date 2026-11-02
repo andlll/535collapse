@@ -98,12 +98,12 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
 
-      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, catapulte, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, presidio nemico, suggerimenti, zoom, ambiente, fiumi a linee, danni, ostacoli, cantieri vicini, risorse, viaggi lunghi, soldati ammassati, mura nemiche, livello 5, zip in un iframe)
+      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, catapulte, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, presidio nemico, suggerimenti, zoom, ambiente, fiumi a linee, danni, ostacoli, cantieri vicini, risorse, viaggi lunghi, soldati ammassati, mura nemiche, livello 5, livello 6, zip in un iframe)
         run: |
           python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
           node game/test/browser/soak.mjs http://localhost:8123 3000 menu match lvl01 lvl02 lvl03 lvl04 lvl05 lvl06
-          node game/test/browser/saves.mjs http://localhost:8123 4000 match lvl01 lvl02 lvl03 lvl04 lvl05
+          node game/test/browser/saves.mjs http://localhost:8123 4000 match lvl01 lvl02 lvl03 lvl04 lvl05 lvl06
           node game/test/browser/melee.mjs match
           node game/test/browser/monastery.mjs
           node game/test/browser/rally.mjs
@@ -120,6 +120,7 @@ jobs:
           node game/test/browser/enemydefense.mjs
           node game/test/browser/lvl04.mjs
           node game/test/browser/lvl05.mjs
+          node game/test/browser/lvl06.mjs
           node game/test/browser/depot.mjs
           node game/test/browser/settle.mjs
           node game/test/browser/garrison.mjs

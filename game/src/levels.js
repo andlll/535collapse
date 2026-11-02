@@ -16,7 +16,10 @@ import { activateGroup } from "./scenario.js";
 import { GRID, generateFields } from "./pathing.js";
 import { panTo, panStep } from "./camera.js";
 import { noMovesCheck } from "./endgame.js";
+import { dialogOpen } from "./hints.js";
 import { startFarm } from "./economy.js";
+import { sendRepair } from "./buildings.js";
+import { c } from "./colours.js";
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -1016,6 +1019,311 @@ export function enemyManagerLv5(p) {
       // vittoria: la citta' distrutta
       L.left = LV5.city.reduce((n, o) => n + w.number(o), 0);
       if (L.left === 0) {
+        g.victory = 1;
+        w.create("victory_manager", 0, 0);
+      }
+    },
+  };
+}
+
+// ----------------------------------------------------- livello 6
+
+// [§9.101, regia e ambientazione dell'autore] La citta' devastata: la
+// guarnigione e' caduta e l'armeria saccheggiata; i cittadini sono una
+// milizia di arcieri, e le caserme addestrano solo arcieri (production.js
+// ONLY_UNITS; niente caserme nuove ne' stalle: buildings.js NO_BUILD).
+// Fase 0: tre pattuglie nemiche (i gruppi fra i fiumi) girano per la citta'
+// lungo i percorsi "pattuglia" della mappa (livello regia di Tiled, chiusi:
+// in giro), reagiscono agli alleati e poi riprendono il giro; non danno
+// fuoco agli edifici (noFire). Le 21 torri ci sono ma non sono del
+// giocatore (locked: non vedono, non si presidiano, non si riparano).
+// Fase 1, sconfitte le pattuglie: 20 minuti di conto alla rovescia; le
+// torri, a vita fra il 10 e il 40% (a caso, dall'inizio), si riparano e
+// oltre il 60% diventano del giocatore, con un messaggio. Ogni 3 minuti un
+// piccolo contingente di fanteria di rinforzo davanti al centro, e
+// un'incursione di 4-5 fanti dalla base nemica in alto a sinistra, dal
+// ponte di sinistra (la base si puo' distruggere e si difende: economy.js
+// ECO.lvl06; non e' un obiettivo).
+// Fase 2, allo zero: la colonna, una cinquantina di fanti e arcieri, entra
+// dal bordo sinistro (il teatro) e segue il percorso "colonna" fino al
+// ponte di destra; attacca solo le unita'. Passato il ponte (passX) un
+// soldato e' passato: piu' di maxPass passati, sconfitta; fermati tutti,
+// vittoria. Numeri da tarare giocando (la prova di taratura: STUDIO §9.101).
+export const LV6 = {
+  start: { food: 400, wood: 400, gold: 500, stone: 200 },
+  patrolR: 300,                       // nemici a meno di tanti px da una tappa di una pattuglia: della pattuglia
+  next: 120,                          // a tanti px dalla tappa, la tappa dopo
+  towerLife: [10, 40],                // vita delle torri all'inizio, in percento
+  unlockAt: 0.6,                      // riparata oltre questa parte della vita: la torre e' del giocatore
+  prep: 20 * MIN,                     // dalle pattuglie sconfitte alla colonna
+  reinfEvery: 3 * MIN,                // rinforzi del giocatore, nella fase 1
+  reinf: ["ally_warrior", "ally_picchiere", "ally_warrior", "ally_picchiere"],
+  reinfAt: [5240, 1700],              // davanti al centro del giocatore
+  raidEvery: 3 * MIN,                 // incursioni dalla base nemica, dalla fase 1
+  raidN: [4, 5],                      // fanti per incursione, a turno
+  raidRoute: [[1276, 1488], [1420, 1760]], // il ponte di sinistra e la sua uscita verso la citta'
+  raidReach: 2500,                    // passato il ponte: verso un alleato a meno di tanti px dall'uscita...
+  raidCamp: [2450, 2750],             // ...se no in mezzo alla citta', ad aspettare
+  raidHunt: 1500,                     // fermi: verso un alleato a meno di tanti px
+  // la colonna: file da 5 (fanti davanti e dietro, l'arciere in mezzo), 10 file
+  columnRow: ["enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_picchiere", "enemy_warrior"],
+  columnRows: 10, columnEvery: 45,    // passi fra una fila e l'altra
+  columnPace: 0.6,                    // la colonna marcia piu' piano (enemies.js, marchPace): taratura in STUDIO §9.101
+  margin: 60,                         // entrata e uscita della colonna a tanti px dal bordo della mappa
+  passX: 6250,                        // oltre il ponte di destra: passato
+  maxPass: 5,
+};
+
+const RAID = ["enemy_warrior", "enemy_picchiere"];
+
+// Il punto sul bordo (a `m` px) fra a, fuori dalla mappa, e b, dentro
+function edgePoint(a, b, W, H, m) {
+  const inside = ([x, y]) => x >= m && x <= W - m && y >= m && y <= H - m;
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 24; k++) {
+    const t = (lo + hi) / 2;
+    if (inside([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])) hi = t; else lo = t;
+  }
+  return [a[0] + (b[0] - a[0]) * hi, a[1] + (b[1] - a[1]) * hi];
+}
+
+// Il percorso tagliato ai bordi della mappa: entra e esce a `m` px dal bordo
+export function clipRoute(pts, W, H, m) {
+  const inside = ([x, y]) => x >= m && x <= W - m && y >= m && y <= H - m;
+  const out = [];
+  for (let k = 0; k < pts.length; k++) {
+    if (inside(pts[k])) {
+      if (!out.length && k > 0) out.push(edgePoint(pts[k - 1], pts[k], W, H, m));
+      out.push(pts[k]);
+    } else if (out.length) { out.push(edgePoint(pts[k], pts[k - 1], W, H, m)); break; }
+  }
+  return out.map(([x, y]) => [Math.round(x), Math.round(y)]);
+}
+
+// L'edificio alleato piu' vicino che sia del giocatore (non una torre chiusa)
+function nearestOpen(w, x, y, name = "ally_build") {
+  let best = null, bd = Infinity;
+  for (const o of w.all(name)) {
+    if (!o.alive || o.locked) continue;
+    const d = Math.hypot(o.x - x, o.y - y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+const allyTarget = (w, x, y) => w.nearest(x, y, "ally_unit") || nearestOpen(w, x, y);
+// la meta di un incursore passato il ponte: l'alleato piu' vicino all'uscita
+// del ponte, se e' in citta', se no il mezzo della citta'
+function raidGoal(w) {
+  const [x, y] = LV6.raidRoute[LV6.raidRoute.length - 1], t = allyTarget(w, x, y);
+  return t && Math.hypot(t.x - x, t.y - y) < LV6.raidReach ? [t.x, t.y] : LV6.raidCamp;
+}
+
+// [§9.101] La torre del livello 6 (app.js, sopra garrisoned): con
+// i.locked 1 non e' del giocatore (si seleziona e basta), con 2 si ripara
+// e basta (non si presidia, niente "n/2"), senza e' una torre come le
+// altre. La barra della vita chiusa e' grigia, da riparare arancione. Non
+// vede (fog.js) e la minimappa la disegna grigia (manager.js).
+export function lockedTower(base) {
+  return {
+    ...base,
+    leftReleased(i, w) {
+      if (!i.locked) { base.leftReleased(i, w); return; }
+      if (w.number("clicchero") === 0 && w.g.sel === 0) i.selected = 1;
+    },
+    rightReleased(i, w) {
+      if (!i.locked) { base.rightReleased(i, w); return; }
+      if (i.locked === 2 && i.life < i.slife) sendRepair(i, w);
+    },
+    // (come ally_build, ma la torre chiusa non mostra il puntatore della riparazione)
+    mouseEnter(i, w) { i.hover = 1; if (i.life < i.slife && i.locked !== 1) w.g.buildhover = 1; },
+    keyPress46(i, w) { if (!i.locked && base.keyPress46) base.keyPress46(i, w); },
+    drawEnd(i, w, d) {
+      if (!i.locked) { base.drawEnd(i, w, d); return; }
+      if (i.hover === 1 || i.hit === 1 || i.selected === 1) {
+        d.lifeBar(i.x - 25, i.y - 212, i.life / i.slife, i.locked === 2 ? c.orange : c.gray);
+      }
+    },
+  };
+}
+
+export function enemyManagerLv6(p) {
+  // un dialogo vicino a (x, y), o al centro della vista; `only`: chiude
+  // prima le finestre uguali ancora aperte
+  const say = (w, name, at = null, only = false) => {
+    if (only) for (const d of [...w.all(name)]) w.destroy(d);
+    const [x, y] = at || [w.cam.x + w.cam.w / 2, w.cam.y + w.cam.h / 2];
+    const s = w.nearest(x, y, "ally_militare") || w.nearest(x, y, "ally_unit");
+    if (s) w.create(name, s.x, s.y);
+  };
+  const routes = (w, name) => (w.routes || []).filter((r) => r.name === name);
+  // in cammino lungo un percorso (come la strada del livello 4, §9.57)
+  const walk = (i, e, k) => {
+    e.roadK = k;
+    const [x, y] = e.road[k];
+    if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
+    e.role = 31; e.action = 1; e.dirox = x; e.diroy = y; e.flow_field = roadField(i, p, x, y);
+  };
+  const towerCount = (w) => {
+    let n = 0, open = 0;
+    for (const t of w.all("torre")) { n++; if (!t.locked) open++; }
+    return [n, open];
+  };
+  return {
+    create(i, w) {
+      const g = w.g;
+      i.sprite_index = null;
+      Object.assign(g, LV6.start);
+      // le pattuglie: i nemici vicini a una tappa di un percorso "pattuglia"
+      // partono dalla tappa piu' vicina; gli altri (la base) difendono dove sono
+      const pr = routes(w, "pattuglia");
+      const groups = new Set();
+      for (const e of w.all("enemy_unit")) {
+        let best = null;
+        pr.forEach((r, gi) => r.pts.forEach(([x, y], k) => {
+          const d = Math.hypot(e.x - x, e.y - y);
+          if (d < LV6.patrolR && (!best || d < best.d)) best = { d, gi, k };
+        }));
+        if (!best) { e.defender = 1; continue; }
+        groups.add(best.gi);
+        Object.assign(e, { l6: "p", l6g: best.gi, l6loop: 1, road: pr[best.gi].pts.map(([x, y]) => [x, y]), roadK: best.k,
+                           noFire: 1, defender: 0, role: 32, action: 0 });
+      }
+      // le torri: in rovina e chiuse
+      const [a, b] = LV6.towerLife;
+      for (const t of w.all("torre")) {
+        t.life = Math.max(1, Math.round(t.slife * irandomRange(a, b) / 100));
+        t.locked = 1;
+      }
+      const [nt] = towerCount(w);
+      g.towersLocked = nt;
+      if (!g.en) g.en = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, idle: 0 };
+      g.l6 = { phase: 0, t: 0, patrols: groups.size, patrolsLeft: groups.size, left: LV6.prep, towers: nt, towersOk: 0,
+               reinf: 0, raid: 0, col: 0, colN: LV6.columnRow.length * LV6.columnRows, colLeft: 0, passed: 0, max: LV6.maxPass };
+      i.alarm.set(1, 60);
+    },
+    alarm1(i, w) { say(w, "dialogo_6_0"); },
+    step(i, w) {
+      const g = w.g, L = g.l6;
+      if (!L || g.victory === 1 || g.gameover === 1) return;
+      L.t++;
+      // in cammino lungo i percorsi (pattuglie, incursioni, colonna): vicino
+      // alla tappa, la tappa dopo (le pattuglie ricominciano il giro). Chi
+      // insegue un alleato lascia il percorso; finito l'inseguimento (fermo)
+      // lo riprende dalla sua tappa
+      for (const e of w.all("enemy_unit")) {
+        if (!e.l6 || !e.road || (e.role !== 31 && e.role !== 32) || e.warwork) continue;
+        if (e.action === 0) { walk(i, e, e.roadK); continue; }
+        const [tx, ty] = e.road[e.roadK];
+        if (e.role !== 31 || e.action !== 1 || Math.hypot(e.x - tx, e.y - ty) > LV6.next) continue;
+        if (e.roadK + 1 < e.road.length) { walk(i, e, e.roadK + 1); continue; }
+        if (e.l6loop) { walk(i, e, 0); continue; }
+        if (e.l6 === "c") continue; // (la colonna passa il ponte prima dell'ultima tappa)
+        // l'incursione, passato il ponte: verso l'alleato piu' vicino in
+        // citta' (raidReach px), se no in mezzo alla citta' (raidCamp) ad aspettare
+        e.road = null;
+        const [tx2, ty2] = raidGoal(w);
+        e.dirox = tx2; e.diroy = ty2; e.flow_field = p.flowField(p.goalField(tx2, ty2, true, false, true));
+      }
+      if (L.t % 20 === 0) {
+        const [nt, open] = towerCount(w);
+        L.towers = nt; L.towersOk = open; g.towersLocked = nt - open;
+      }
+      // fase 0: le pattuglie
+      if (L.phase === 0) {
+        if (L.t % 20 !== 0) return;
+        const alive = new Set();
+        for (const e of w.all("enemy_unit")) if (e.l6 === "p") alive.add(e.l6g);
+        L.patrolsLeft = alive.size;
+        if (alive.size > 0) return;
+        L.phase = 1; L.p1 = L.t;
+        for (const t of w.all("torre")) if (t.locked) t.locked = 2;
+        say(w, "dialogo_6_2");
+        return;
+      }
+      // le torri riparate oltre unlockAt: del giocatore
+      if (L.t % 10 === 0) {
+        for (const t of w.all("torre")) {
+          if (t.locked !== 2 || t.life < t.slife * LV6.unlockAt) continue;
+          t.locked = 0;
+          L.towersOk++; g.towersLocked = Math.max(0, g.towersLocked - 1);
+          L.msg = [t.x, t.y];
+        }
+        // il messaggio della torre recuperata (l'ultima), quando non ce n'e'
+        // un altro aperto: sopra un dialogo della regia lo copriva
+        if (L.msg && !(dialogOpen(w) && !w.exists("dialogo_6_5"))) { say(w, "dialogo_6_5", L.msg, true); L.msg = null; }
+      }
+      // incursioni dalle caserme della base nemica (finche' ce ne sono)
+      const since = L.t - L.p1;
+      if (since >= (L.raid + 1) * LV6.raidEvery) {
+        const n = LV6.raidN[L.raid % LV6.raidN.length];
+        L.raid++;
+        const cs = [...w.all("enemy_caserma")];
+        for (let k = 0; k < n && cs.length; k++) {
+          const c = cs[k % cs.length];
+          const e = w.create(RAID[(L.raid + k) % RAID.length], c.x + (k % 3) * 50 - 50, c.y + 130);
+          freeSpawnEnemy(e, w);
+          Object.assign(e, { l6: "r", road: LV6.raidRoute.map(([x, y]) => [x, y]), defender: 0, warwork: 0 });
+          walk(i, e, 0);
+        }
+      }
+      // gli incursori arrivati e fermi: verso l'alleato piu' vicino (entro
+      // raidHunt px: la base del giocatore e' dall'altra parte del fiume)
+      if (L.t % 60 === 0) {
+        for (const e of w.all("enemy_unit")) {
+          if (e.l6 !== "r" || e.road || e.action !== 0 || e.role === 31) continue;
+          const t = allyTarget(w, e.x, e.y);
+          if (!t || Math.hypot(t.x - e.x, t.y - e.y) > LV6.raidHunt) continue;
+          e.action = 1; e.warwork = 1; e.dirox = t.x; e.diroy = t.y; e.alarm.set(0, 15);
+        }
+      }
+      // fase 1: il conto alla rovescia e i rinforzi
+      if (L.phase === 1) {
+        L.left = Math.max(0, LV6.prep - since);
+        if (since >= (L.reinf + 1) * LV6.reinfEvery && L.left > 0) {
+          L.reinf++;
+          const c = w.nearest(LV6.reinfAt[0], LV6.reinfAt[1], "centro"), [rx, ry] = c ? [c.x, c.y + 330] : LV6.reinfAt;
+          LV6.reinf.forEach((obj, k) => {
+            const u = w.create(obj, rx - 90 + k * 60, ry);
+            freeSpawnEnemy(u, w); // un posto libero (vale per qualunque istanza)
+            p.occupy(u);
+          });
+          say(w, "dialogo_6_4", [rx, ry], true);
+        }
+        if (L.left > 0) return;
+        L.phase = 2;
+        const col = routes(w, "colonna")[0];
+        L.colRoute = col ? clipRoute(col.pts, w.roomW, w.roomH, LV6.margin) : [[LV6.margin, 2560], [LV6.passX + 200, 3800]];
+        L.colAt = L.t;
+        say(w, "dialogo_6_6", L.colRoute[0]);
+      }
+      // fase 2: la colonna, una fila alla volta dall'entrata
+      const R = L.colRoute;
+      if (L.col < LV6.columnRows && L.t >= L.colAt + L.col * LV6.columnEvery) {
+        const [ex, ey] = R[0], [nx, ny] = R[1];
+        const d = Math.hypot(nx - ex, ny - ey) || 1, px = -(ny - ey) / d, py = (nx - ex) / d; // di traverso
+        LV6.columnRow.forEach((obj, k) => {
+          const off = (k - (LV6.columnRow.length - 1) / 2) * 55;
+          const e = w.create(obj, ex + px * off, ey + py * off);
+          freeSpawnEnemy(e, w);
+          Object.assign(e, { l6: "c", road: R.map(([x, y]) => [x, y]), noFire: 1, defender: 0, warwork: 0, pace: LV6.columnPace });
+          walk(i, e, 1);
+        });
+        L.col++;
+      }
+      // passati il ponte: escono dalla mappa
+      let left = 0;
+      for (const e of [...w.all("enemy_unit")]) {
+        if (e.l6 !== "c") continue;
+        if (e.x > LV6.passX) { L.passed++; w.destroy(e); continue; }
+        left++;
+      }
+      L.colLeft = left + (LV6.columnRows - L.col) * LV6.columnRow.length;
+      if (L.passed > L.max) {
+        g.gameover = 1; L.lost = 1;
+        w.create("gameover_manager", 0, 0);
+        return;
+      }
+      if (L.colLeft === 0) {
         g.victory = 1;
         w.create("victory_manager", 0, 0);
       }

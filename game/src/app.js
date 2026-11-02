@@ -19,7 +19,7 @@ import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDumm
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, levelStep, lvl05Setup } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
@@ -190,6 +190,7 @@ async function main() {
     } : null;
   };
   useRivers(room.rivers || [], room.roads || [], room.bridges || [], room.patches || []);
+  world.routes = room.paths || []; // §9.101: i percorsi della regia (livello regia di Tiled)
   const path = new Pathing(world, room.width, room.height);
   world.path = path;
   // [§9.10] oggetti nuovi disegnati a fette (tools/nuovi.py): l'oggetto
@@ -212,6 +213,7 @@ async function main() {
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
   world.register("enemy_manager_lv5", enemyManagerLv5(path)); // §9.76
+  world.register("enemy_manager_lv6", enemyManagerLv6(path)); // §9.101
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -260,6 +262,7 @@ async function main() {
     let b = built(f, path);
     if (PRODUCERS[f]) b = producer(f, b, path);
     if (f === "torre" || f === "castello") b = garrisoned(f, b);
+    if (f === "torre") b = lockedTower(b); // §9.101: le torri del livello 6
     if (f === "chiesa") b = church(b);
     world.register(f, b);
   }
@@ -365,6 +368,7 @@ async function main() {
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
+    if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY

@@ -730,6 +730,13 @@ spostare un oggetto in un gruppo: tasto destro sull'oggetto,
 - La logica del livello (obiettivi, dialoghi, ondate, risorse iniziali)
   per ora si scrive nel codice del gioco: descrivila a parole quando
   consegni la mappa.
+- Percorsi della regia (livello `regia`): una polilinea (Insert Polygon,
+  poi Invio prima di chiudere) o un poligono chiamato, o di classe,
+  `colonna` o `pattuglia` (anche `pattuglia2`, `pattuglia 3`: il numero
+  finale non conta). La polilinea e' un percorso aperto (dal primo
+  all'ultimo punto), il poligono un giro chiuso. Cosa ci cammina sopra lo
+  decide la regia del livello (nel livello 6: le pattuglie in giro e la
+  colonna fino al ponte).
 
 ## Consegnare una mappa
 

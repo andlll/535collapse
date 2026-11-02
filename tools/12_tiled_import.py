@@ -212,6 +212,7 @@ def load_map(path, kit=None):
 
     entries, view = [], None  # (id, [istanze])
     rivers, roads, bridges, patches = [], [], [], []  # [§9.97, §9.99] (id, fiume / strada / ponte / macchia)
+    paths = []  # [§9.101] (id, percorso della regia)
     for g in root.iter("objectgroup"):
         layer = g.get("name", "")
         if layer == "anteprima":  # [§9.98] le sagome dell'estensione di Tiled
@@ -288,6 +289,19 @@ def load_map(path, kit=None):
                     continue
                 view = {"x": round(float(o.get("x", 0))), "y": round(float(o.get("y", 0))),
                         "w": round(float(o.get("width", 3000))), "h": round(float(o.get("height", 2000)))}
+                continue
+            # [§9.101] percorsi della regia (nel livello regia): polilinee o
+            # poligoni (giri chiusi) di classe o nome tk.PATHS, con un numero
+            # in fondo se sono piu' d'uno (pattuglia, pattuglia2...)
+            pname = re.sub(r"[\s_]*\d+$", "", (cls or o.get("name") or "").strip().lower())
+            if layer == "regia" and pname in tk.PATHS:
+                pl = polyline_of(o)
+                poly = None if pl else shape_of(o)
+                if not pl and not poly:
+                    warn.append("%s: un percorso e' una polilinea o un poligono" % where)
+                    continue
+                pts = pl or [[round(x, 1), round(y, 1)] for x, y in poly]
+                paths.append((oid, {"name": pname, "pts": pts, "loop": not pl}))
                 continue
             # [§9.99] macchie: aree (rettangoli, ellissi, poligoni) nel livello macchie
             if layer == tk.PATCH_LAYER or cls == tk.PATCH_TYPE:
@@ -380,7 +394,7 @@ def load_map(path, kit=None):
     scen = {"format": FORMAT, "version": VERSION, "name": name, "width": width, "height": height,
             "background": background, "colour": gm_colour, "view": view, "instances": instances}
     # [§9.97] solo se ce ne sono: gli scenari di prima restano uguali
-    for key, lst in (("patches", patches), ("roads", roads), ("rivers", rivers), ("bridges", bridges)):
+    for key, lst in (("patches", patches), ("roads", roads), ("rivers", rivers), ("bridges", bridges), ("paths", paths)):
         if lst:
             scen[key] = [v for _, v in sorted(lst, key=lambda e: e[0])]
     return scen, warn

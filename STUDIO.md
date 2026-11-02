@@ -8060,11 +8060,12 @@ dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
 unitari, `--check` del kit e scenari delle altre mappe invariati. Stessa PR
 di §9.96: versione 0.2606.
 
-### 9.101 Livello 6: la regia (progetto, da fare)
+### 9.101 Livello 6: la regia
 
-Progetto concordato con l'autore (non ancora scritto: aspetta la mappa coi
-giri delle pattuglie e il percorso della colonna, e gli sprite di
-`ponte_dx2` con gli archi semitrasparenti).
+Progetto concordato con l'autore, poi scritto quando sono arrivati la mappa
+coi giri delle pattuglie e il percorso della colonna, e gli sprite di
+`ponte_dx2` con gli archi semitrasparenti (`ponte_dx2_trasp`). Sotto, il
+progetto; in fondo, com'e' fatto e la taratura.
 
 Storia: la citta' e' stata devastata, le difese vanno ricostruite e
 potenziate prima di un grande attacco. La guarnigione e' caduta e
@@ -8104,3 +8105,72 @@ torre non rischia, chi va in campo si'. Il limite vero sono gli arcieri
 (40 legno e 55 oro l'uno: 500 oro = 9). Da fare: una prova automatica che
 manda la colonna contro 0, 5, 10, 20 torri presidiate e conta quanti
 passano, per tarare colonna, intervalli e tempi.
+
+**Com'e' fatto** (`levels.js`, `enemyManagerLv6`, numeri in `LV6`):
+
+- *Percorsi della regia* (Tiled, livello `regia`): polilinee o poligoni di
+  classe o nome `colonna` / `pattuglia` (anche `pattuglia2`, `pattuglia 3`):
+  `12_tiled_import.py` li mette nello scenario (`paths`: nome, punti,
+  `loop` per i poligoni, i giri), `07_scene.py` nella room, il gioco in
+  `world.routes`. LEGGIMI del kit aggiornato.
+- *Pattuglie*: i nemici a meno di 300 px da una tappa di un giro sono di
+  quella pattuglia (14 in 3 gruppi); gli altri (la base) difendono dove
+  sono. Camminano di tappa in tappa col campo di flusso (come la strada del
+  livello 4, §9.57), inseguono gli alleati a tiro e, finito l'inseguimento,
+  riprendono il giro dalla loro tappa; `noFire`: non danno fuoco (enemies.js).
+- *Torri* (`i.locked`): 1 = della citta', 2 = si ripara (dalla fase 1), 0 =
+  del giocatore (oltre il 60%, con il messaggio; se un dialogo e' aperto il
+  messaggio aspetta). Chiuse: si selezionano soltanto (barra grigia, o
+  arancione da riparare), niente presidio, non vedono (fog.js), i nemici
+  vicini non si scoprono (`seenNear`, al posto di `nearWithin` nelle
+  visibilita' dei nemici), nella minimappa sono grigie. Vita a caso fra il
+  10 e il 40% dall'inizio. Le torri restano oggetti `torre` veri: vita,
+  danni, riparazione e presidio sono quelli di sempre.
+- *Solo arcieri*: `production.js ONLY_UNITS` (la caserma ha solo il pulsante
+  dell'arciere), `buildings.js NO_BUILD` (niente pulsanti ne' tasti di
+  caserma e stalla). Le due caserme del giocatore le ho messe io nella mappa
+  (5050, 1050 e 5450, 1650), provvisorie: l'autore le sposta dove vuole.
+- *Fase 1*: 20 minuti; ogni 3 minuti 4 fanti (2 guerrieri, 2 picchieri)
+  davanti al centro del giocatore, e un'incursione di 4 o 5 fanti (a turno)
+  dalle caserme nemiche: passano dal ponte di sinistra (tappe) e vanno
+  all'alleato piu' vicino all'uscita del ponte se e' in citta' (2500 px),
+  se no in mezzo alla citta' ad aspettare (la base del giocatore e' dalla
+  parte della base nemica: senza questo, passato il ponte, tornavano
+  indietro verso di lei). La regia economica (ECO.lvl06) lavora e si
+  difende, non attacca.
+- *Fase 2*: la colonna (10 file da 5: guerriero, picchiere, arciere,
+  picchiere, guerriero), una fila ogni 45 passi dal bordo sinistro (il
+  percorso tagliato a 60 px dai bordi), al passo 0,6 (`pace`: chi insegue va
+  al passo di sempre), `noFire`. Oltre x 6250 (passato il ponte di destra)
+  un soldato e' passato ed esce; al sesto la sconfitta ("La colonna nemica
+  ha sfondato al ponte a est"), finiti tutti la vittoria.
+- Obiettivi a schermo per fase, dialoghi `dialogo_6_0`...`6_6` (6 lingue),
+  testo della vittoria e codice per il livello 7 (0 7 3 6 0, quello del
+  lucchetto). Il livello 6 entra nella campagna ("One hundred towers" /
+  "Cento torri" era gia' il suo titolo nell'originale) con una storia
+  scritta per il porting, da rivedere con l'autore, e nei salvataggi.
+
+**Taratura** (la colonna contro le N torri piu' vicine al suo percorso,
+presidiate da 2 arcieri, senza altre unita'; soldati passati su 50):
+
+| torri | passo 1 | passo 0,5 | passo 0,6 |
+|---|---|---|---|
+| 0 | 50 | 50 | — |
+| 5 | 44 | 28 | 37 |
+| 8 | — | — | 19 |
+| 10 | 31 | 0 | 12 |
+| 12 | — | — | 5 |
+| 15 | — | 0 | 0 |
+| 20 | 24 | 0 | — |
+
+Al passo normale la colonna traversa la mappa in ~45 s e le torri non
+bastano mai (20 torri: ne passano 24); a meta' passo 10 torri fermano
+tutto. Scelto 0,6: con le sole torri ne servono una dozzina ben messe
+(~1400 pietre di riparazioni e 24 arcieri), con meno servono anche i
+soldati in campo; le torri restano il grosso della difesa. Da rivedere
+giocando: passo, file, intervallo dei rinforzi.
+
+Prova: `game/test/browser/lvl06.mjs` (partenza, solo arcieri, torri chiuse,
+pattuglie in giro e reazione, fase 1, torre recuperata e presidiata,
+rinforzi e incursione dal ponte di sinistra, colonna, sconfitta al sesto,
+taratura con 15 e 5 torri), in CI; `saves.mjs` anche col livello 6.

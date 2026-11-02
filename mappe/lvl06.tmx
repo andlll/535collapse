@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="140" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="36" nextobjectid="1115">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="140" height="120" tilewidth="50" tileheight="50" infinite="0" backgroundcolor="#c0c0c0" nextlayerid="36" nextobjectid="1117">
  <tileset firstgid="1" source="../tileset/terreno.tsx"/>
  <tileset firstgid="13" source="../tileset/montagne_fiumi.tsx"/>
  <tileset firstgid="33" source="../tileset/natura.tsx"/>
@@ -920,6 +920,8 @@
   <object id="155" gid="60" x="64" y="2696" width="384" height="272"/>
   <object id="1003" gid="110" x="1760.61" y="1442.42" width="254" height="408"/>
   <object id="1004" gid="110" x="1836" y="2020" width="254" height="408"/>
+  <object id="1115" gid="88" x="5050" y="1050" width="420" height="362"/>
+  <object id="1116" gid="88" x="5450" y="1650" width="420" height="362"/>
  </objectgroup>
  <objectgroup color="#2e7d32" draworder="index" id="8" name="boschi" opacity="0.6"/>
  <objectgroup color="#ffb000" draworder="index" id="9" name="regia">

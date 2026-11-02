@@ -271,6 +271,18 @@ export const DIALOGS = {
                  text: "Our fortress stands! Now we can build rams and catapults. Tear their city down, to the last building." },
   dialogo_5_5: { who: SOLDIER2, arm: 30, timeout: 600,
                  text: "Their soldiers saw the fortress and turned back... They will warn the city: next time they will bring siege engines." },
+  // livello 6 [§9.101]: la regia e' in levels.js (enemyManagerLv6), che li crea
+  dialogo_6_0: { who: SOLDIER2, arm: 30, next: "dialogo_6_1",
+                 text: "The city is in ruins: the garrison has fallen and the armory has been looted. Enemy patrols still roam the streets between the rivers: wipe them out!" },
+  dialogo_6_1: { who: SOLDIER2, arm: 30,
+                 text: "Only bows are left, and our citizens are militia archers: the barracks can train nothing else. The towers are badly damaged, we cannot use them yet." },
+  dialogo_6_2: { who: SOLDIER2, arm: 30, next: "dialogo_6_3",
+                 text: "The patrols are destroyed! But our scouts bring bad news: a great enemy column is coming from the theatre, heading for the eastern bridge. It will be here in 20 minutes." },
+  dialogo_6_3: { who: SOLDIER2, arm: 30,
+                 text: "Repair the towers: above 60% they are ours again, and archers inside them can stop the column. If more than five soldiers cross the bridge, all is lost!" },
+  dialogo_6_4: { who: SOLDIER2, arm: 30, timeout: 300, text: "Reinforcements have arrived!" },
+  dialogo_6_5: { who: SOLDIER2, arm: 30, timeout: 300, text: "Tower recovered: now you can garrison it with archers" },
+  dialogo_6_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "The column is here! Stop them before they cross the eastern bridge!" },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

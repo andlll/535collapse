@@ -65,6 +65,9 @@ PATCH_BG, PATCH_FEATHER = "city2", 40
 # dello sprite senza trattino (pontedx, pontedx2), al centro del piano;
 # "specchiato" nel nome lo specchia sull'asse verticale
 PAINTED_BRIDGES = {"pontedx": "ponte_dx", "pontedx2": "ponte_dx2"}
+# [§9.101] i percorsi della regia dei livelli (livello regia): la colonna
+# del livello 6, i giri delle pattuglie
+PATHS = ("colonna", "pattuglia")
 VIEW_TYPE = "vista"
 FOREST_SPACING = 90          # distanza fra gli alberi del pennello bosco (px)           # rettangolo della vista iniziale, nel livello regia
 
