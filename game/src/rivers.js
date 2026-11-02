@@ -272,17 +272,25 @@ function rng(seed) {
 }
 
 const STONE = 16, STONES = 6;               // la cella e quanti sassolini in sassi.png
-const STONES_PER_PX = 2.1 / 115;            // sassolini per px di lunghezza e px di larghezza (strada4)
+const STONE_ROWS = [0.3, 0.45, 0.65, 0.9, 1.15]; // le misure gia' pronte, una riga ciascuna (tools/15_fiumi.py)
+const STONES_PER_PX = 4.51 / 115;           // sassolini per px di lunghezza e px di larghezza (strada4)
+const STONE_AREA = 55;                      // area (px) di un sassolino di sassi.png a scala 1
+// [richiesta dell'autore: i sassi delle strade dipinte sono piu' piccoli]
+// L'area di ogni sassolino segue quella dei sassolini singoli dei dipinti
+// (percentili 0, 10, 25, 50, 75, 90, 100 in px; mediana 12-14: i timbri
+// erano i sassolini piu' grandi, 45-90 px); quanti, perche' coprano come il
+// dipinto (74 e 47 px per px di lunghezza): simulato coi timbri veri.
+const AREA_Q = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
 const SPREAD = 1.77;                        // media di 3 uniformi x SPREAD: scarto tipo ~0,3 della larghezza
 // [richiesta dell'autore] due strade, come negli sprite: kind 1 la strada
 // marcata (strada4-8: sassi fitti, dal grigio-verde al beige), kind 2 la
 // secondaria, simile al terreno (traccia1-4: un solo grigio-verde,
-// semitrasparente, piu' rada e sparsa, sassi in media piu' piccoli).
+// semitrasparente, piu' rada e sparsa).
 // Misurate sui dipinti: copertura 74 e 47 px per px di lunghezza, scarto
 // tipo 34 e 39 px.
 const ROAD_KINDS = {
-  1: { dark: [134, 130, 108], light: [200, 195, 160], alpha: 1, density: 1, spread: 1, scale: [0.75, 1.3] },
-  2: { dark: [148, 152, 124], light: [162, 166, 136], alpha: 0.76, density: 0.64, spread: 1.15, scale: [0.5, 1.2] },
+  1: { dark: [134, 130, 108], light: [200, 195, 160], alpha: 1, density: 1, spread: 1, area: [3, 5, 8, 12, 26, 42, 90] },
+  2: { dark: [148, 152, 124], light: [162, 166, 136], alpha: 0.85, density: 0.455, spread: 1.15, area: [3, 5, 8, 14, 29, 52, 100] },
 };
 const ROAD_FADE = 80;                       // alle estremita' dentro la room si diradano in tanti px
 
@@ -318,7 +326,10 @@ export function roadGeometry(rd) {
     const off = ((r1 + r2 + r3) / 3 - 0.5) * SPREAD * K.spread * width;
     const t = r4 * r4 * (3 - 2 * r4); // piu' toni medi che estremi
     const col = K.dark.map((d, c) => d + (K.light[c] - d) * t);
-    stones.push([x - ty * off, (y + tx * off) * ISO, K.scale[0] + (K.scale[1] - K.scale[0]) * r5, Math.floor(r6 * STONES), t, col]);
+    let j = 0;
+    while (j < AREA_Q.length - 2 && r5 > AREA_Q[j + 1]) j++;
+    const area = K.area[j] + (K.area[j + 1] - K.area[j]) * ((r5 - AREA_Q[j]) / (AREA_Q[j + 1] - AREA_Q[j]));
+    stones.push([x - ty * off, (y + tx * off) * ISO, Math.sqrt(area / STONE_AREA), Math.floor(r6 * STONES), t, col]);
   }
   stones.sort((a, b) => a[4] - b[4]);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -330,12 +341,16 @@ export function roadGeometry(rd) {
 }
 
 // Disegna i sassolini della strada che cadono nel riquadro `box`
+// (la riga di sassi.png con la misura piu' vicina, quasi a scala 1: un
+// sassolino rimpicciolito al volo veniva sfocato)
 export function drawRoad(r, geo, tex, box) {
   const h = STONE / 2;
   for (const [x, y, sc, v, c] of geo.stones) {
     if (x < box[0] - STONE || x > box[2] + STONE || y < box[1] - STONE || y > box[3] + STONE) continue;
-    const e = h * sc;
-    r.quad(tex, x - e, y - e, x + e, y - e, x + e, y + e, x - e, y + e, v * STONE, 0, (v + 1) * STONE, STONE, c);
+    let row = 0;
+    for (let k = 1; k < STONE_ROWS.length; k++) if (Math.abs(Math.log(sc / STONE_ROWS[k])) < Math.abs(Math.log(sc / STONE_ROWS[row]))) row = k;
+    const e = h * (sc / STONE_ROWS[row]);
+    r.quad(tex, x - e, y - e, x + e, y - e, x + e, y + e, x - e, y + e, v * STONE, row * STONE, (v + 1) * STONE, (row + 1) * STONE, c);
   }
 }
 

@@ -7817,7 +7817,7 @@ Tiled, ponti, strade e antialiasing. Tutto in game/src/rivers.js, cotto nei
 blocchi del suolo (ground.js: prima le strade, poi i fiumi, poi i ponti),
 sopra strade e prati dipinti: a ogni fotogramma costa come prima. Le
 texture (nuovi/fiumi/, tools/15_fiumi.py, dai dipinti dell'autore) sono
-13 KB in WebP in tutto. Le mappe gia' fatte restano come sono (richiesta
+16 KB in WebP in tutto. Le mappe gia' fatte restano come sono (richiesta
 dell'autore: il fiume dipinto e il ponte del livello 4 non si toccano).
 
 **Fiumi.** In Tiled una polilinea nel livello `fiumi` (classe `fiume`,
@@ -7870,16 +7870,25 @@ quella degli edifici. Il ponte dipinto non si usa: ha un orientamento solo.
 
 **Strade.** Osservazione dell'autore: il sentiero dei dipinti e' un
 pennello di Photoshop che ripete la stessa particella con una gamma di
-colori. Quindi sei sassolini presi singoli da strada4 (sassi.png, 852 byte:
-macchie isolate di 45-90 px, piene come un'ellisse, senza buchi; in grigio,
-il colore lo da' il gioco) timbrati lungo la linea, a campana attorno al
-centro, dai piu' scuri ai piu' chiari. Due strade, come negli sprite
-(richiesta dell'autore), classi del livello `strade`: `strada1` la marcata
-(strada4-8: dal grigio-verde 134,130,108 al beige 200,195,160, 2,1 sassi
-per px di lunghezza ogni 115 px di larghezza, scarto tipo 0,3 della
-larghezza, misurati sul dipinto), `strada2` la secondaria (traccia1-4: un
-solo grigio-verde intorno a 155,159,130, alpha 0,76, il 64% dei sassi,
-piu' sparsa, sassi piu' piccoli). Proprieta' `larghezza` (predefinita 110)
+colori. Quindi sei sassolini presi singoli da strada4 (sassi.png: macchie
+isolate di 45-90 px, piene come un'ellisse, senza buchi; in grigio, il
+colore lo da' il gioco) timbrati lungo la linea, a campana attorno al
+centro, dai piu' scuri ai piu' chiari. *Misura* (segnalazione dell'autore:
+i sassi dei dipinti sono piu' piccoli): i timbri erano i sassolini singoli
+piu' grandi (area 34-100 px), nei dipinti la mediana e' 12-14 px (10% sotto
+5, 10% sopra 42-52, strada4, strada5, traccia1; le strade dipinte sono a
+scala 1 nelle mappe). Ora l'area di ogni sassolino segue quella
+distribuzione, e quanti ne servono perche' coprano come il dipinto (74 e 47
+px per px di lunghezza) l'ha detto una simulazione coi timbri veri: 4,51 e
+2,05 sassi per px di lunghezza a 115 px di larghezza. I timbri sono gia'
+rimpiccioliti in cinque misure (una riga ciascuna, 0,3-1,15, con un buon
+filtro): il gioco usa la riga piu' vicina quasi a scala 1, rimpiccioliti al
+volo venivano sfocati. Due strade, come negli sprite (richiesta
+dell'autore), classi del livello `strade`: `strada1` la marcata
+(strada4-8: dal grigio-verde 134,130,108 al beige 200,195,160, scarto tipo
+0,3 della larghezza, misurati sul dipinto), `strada2` la secondaria
+(traccia1-4: un solo grigio-verde intorno a 155,159,130, alpha 0,85, piu'
+sparsa). Proprieta' `larghezza` (predefinita 110)
 e `densita` (1 come negli sprite). Alle estremita' dentro la room si
 diradano. Non sono ostacoli. I numeri a caso di sassi e onde vengono da un
 generatore proprio (mulberry32) col seme dalla linea: la stessa strada e'
@@ -7901,7 +7910,7 @@ libero fuori; con la pioggia anelli e riflessi sul fiume; nessuna unita'
 coi piedi nell'acqua. Poi un fiume attraverso tutta la vista con una
 strada1 che lo passa su un ponte e una strada2: sotto il ponte niente
 acqua, un guerriero passa sul ponte (scostato al piu' 10 px, 178 passi)
-senza i piedi nell'acqua, 3217 sassi nella strada1 e 801 nella strada2.
+senza i piedi nell'acqua, 6924 sassi nella strada1 e 1225 nella strada2.
 Visto negli screenshot (fiume, pioggia, ponte di traverso con gli archi,
 ponte da nord a sud, strade). Senza linee nulla cambia: test unitari,
 `soak.mjs`, `saves.mjs`, `bridge.mjs`. Nota: nella prova un guerriero

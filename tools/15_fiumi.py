@@ -5,7 +5,8 @@
 - nuovi/fiumi/sassi.png: i sassolini del sentiero di strada4 (gmx/), sei
   presi singoli dal dipinto (le macchie isolate di 45-90 px), in grigio
   (la luminosita' relativa, il colore lo da' il gioco) e alpha, uno ogni
-  SASSO px: il "pennello" che il gioco timbra lungo le strade
+  SASSO px, in una riga per misura (SASSO_SCALE, rimpiccioliti qui con un
+  buon filtro): il "pennello" che il gioco timbra lungo le strade
   (suggerimento dell'autore: il sentiero e' un pennello che ripete la
   stessa particella con una gamma di colori).
 - nuovi/fiumi/carta.png: la grana di carta dell'acqua, in grigio (media
@@ -25,6 +26,9 @@ ROAD_SRC = os.path.join(ROOT, "gmx", "sprites", "images", "strada4_0.png")
 STONES_OUT = os.path.join(ROOT, "nuovi", "fiumi", "sassi.png")
 PAPER_OUT = os.path.join(ROOT, "nuovi", "fiumi", "carta.png")
 SASSO, N_SASSI = 16, 6
+# [§9.97] le misure gia' pronte (una riga per misura): il gioco usa la riga
+# piu' vicina quasi a scala 1, invece di rimpicciolire al volo (sfocava)
+SASSO_SCALE = [0.3, 0.45, 0.65, 0.9, 1.15]
 BOX = (2620, 1005, 2620 + 256, 1005 + 192)  # solo acqua, niente bordi
 
 
@@ -87,8 +91,8 @@ def stones(im):
             # piena come un'ellisse (0,785 del riquadro): non due sassi uniti
             if 45 <= len(px) <= 90 and 8 <= bw <= 14 and 5 <= bh <= 10 and len(px) >= 0.62 * bw * bh and convex(px):
                 found.append((min(xs), min(ys), bw, bh, px))
-    sheet = Image.new("RGBA", (SASSO * N_SASSI, SASSO), (255, 255, 255, 0))
-    q = sheet.load()
+    one = Image.new("RGBA", (SASSO * N_SASSI, SASSO), (255, 255, 255, 0))
+    q = one.load()
     for i, (x0, y0, bw, bh, cell) in enumerate(found[:N_SASSI]):
         lum = [0.3 * a[x, y][0] + 0.59 * a[x, y][1] + 0.11 * a[x, y][2] for x, y in cell]
         mean = sum(lum) / len(lum)
@@ -97,6 +101,15 @@ def stones(im):
             g = max(0, min(255, round(200 * l / mean)))  # 200 = la media: un po' di margine per le luci
             q[ox + x - x0, oy + y - y0] = (g, g, g, a[x, y][3])
     assert len(found) >= N_SASSI, "troppo pochi sassolini singoli"
+    # una riga per misura: ogni sassolino rimpicciolito (o ingrandito) al
+    # centro della sua cella
+    sheet = Image.new("RGBA", (SASSO * N_SASSI, SASSO * len(SASSO_SCALE)), (255, 255, 255, 0))
+    for r, sc in enumerate(SASSO_SCALE):
+        for i in range(N_SASSI):
+            cell = one.crop((i * SASSO, 0, (i + 1) * SASSO, SASSO))
+            n = max(1, round(SASSO * sc))
+            small = cell.resize((n, n), Image.LANCZOS)
+            sheet.alpha_composite(small, (i * SASSO + (SASSO - n) // 2, r * SASSO + (SASSO - n) // 2))
     return sheet
 
 
