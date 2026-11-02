@@ -714,7 +714,7 @@
   <object id="1051" gid="73" x="1400" y="2220" width="266" height="338"/>
   <object id="1052" gid="73" x="2444" y="1880" width="266" height="338"/>
   <object id="1053" gid="74" x="2824" y="1284" width="416" height="340"/>
-  <object id="1072" name="ponte dx2 specchiato" x="1276" y="1488">
+  <object id="1072" name="pontedx specchiato" x="1276" y="1488">
    <point/>
   </object>
   <object id="1073" name="pontedx" x="3896" y="2204">

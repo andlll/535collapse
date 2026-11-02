@@ -8030,7 +8030,9 @@ l'interno degli archi e' dipinto pieno (l'acqua non si vede attraverso).
 Quello a sinistra (`ponte_dx2` specchiato) resta quasi parallelo al fiume
 (che li' sale di ~18 gradi verso destra): la facciata con gli archi finisce
 sul prato. Con `ponte_dx` specchiato si lega bene (provato in gioco):
-proposto all'autore, la mappa resta com'e' finche' non decide.
+scelto dall'autore, il punto si chiama ora `pontedx specchiato`. Gli archi
+di `ponte_dx2` l'autore li rifara' semitrasparenti (sprite aggiornati da
+SketchUp).
 
 Prove: screenshot della mappa intera (senza nebbia, notte e interfaccia) e
 dei ponti a scala 1, `soak.mjs` (lvl06, 1500 passi, nessun errore), test
