@@ -46,8 +46,8 @@ export const STORY = {
   4: "The road to the invaders' town is cut by a river, and its only bridge lies in ruins. It must be rebuilt under the raids of an enemy camp: beyond the river, the enemy is waiting.",
   // [§9.76] scritto per il porting dalla regia dell'autore, da rivedere con lui
   5: "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.",
-  // [§9.101] scritto per il porting dalla regia dell'autore, da rivedere con lui
-  6: "The road home crosses a city that was once our ally. Its garrison has fallen, its armory has been looted, and its hundred towers are crumbling. Only a militia of archers remains, and a great enemy column is on its way.",
+  // [§9.101] scritto per il porting dalla regia dell'autore, su sua richiesta
+  6: "The invaders' city has fallen, and the road home crosses the City of a Hundred Towers. We find it in ruins: its garrison is dead, its armory looted, its towers crumbling. Enemy patrols still roam the streets, and a great column is marching to cross the eastern bridge. The citizens have only their bows left: with them, and with their towers, they must hold.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],

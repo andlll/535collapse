@@ -8147,8 +8147,11 @@ passano, per tarare colonna, intervalli e tempi.
 - Obiettivi a schermo per fase, dialoghi `dialogo_6_0`...`6_6` (6 lingue),
   testo della vittoria e codice per il livello 7 (0 7 3 6 0, quello del
   lucchetto). Il livello 6 entra nella campagna ("One hundred towers" /
-  "Cento torri" era gia' il suo titolo nell'originale) con una storia
-  scritta per il porting, da rivedere con l'autore, e nei salvataggi.
+  "Cento torri" era gia' il suo titolo nell'originale) e nei salvataggi.
+  La storia del menu, su richiesta dell'autore, riprende la fine del
+  livello 5 (la citta' degli invasori caduta) e chiama la citta' "la Citta'
+  delle Cento Torri"; segnalino e freccia sulla mappa della campagna
+  aspettano lo sprite e la posizione dell'autore.
 
 **Taratura** (la colonna contro le N torri piu' vicine al suo percorso,
 presidiate da 2 arcieri, senza altre unita'; soldati passati su 50):
