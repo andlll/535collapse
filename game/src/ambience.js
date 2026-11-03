@@ -79,16 +79,82 @@ export const millSpeed = (g) => MILL_SPEED[0] + (MILL_SPEED[1] - MILL_SPEED[0]) 
 export const TREE_SWAY = { h: 150, amp: [1.8, 4.5], period: [330, 200], rain: 1.4, lean: [0.3, 1.4], wave: [0.004, 0.0018],
                            hit: 5, hitSteps: 26 };
 export const SWAY_OBJECTS = new Set(["albero", "albero_fake"]);
+const swayPeriod = (v) => TREE_SWAY.period[0] + (TREE_SWAY.period[1] - TREE_SWAY.period[0]) * v;
+const swayPhase = (i, t, per) => 2 * Math.PI * t / per + i.x * TREE_SWAY.wave[0] + i.y * TREE_SWAY.wave[1] + ((i.id * 0.618034) % 1) * 1.3;
 export function treeSway(w, i) {
   const T = TREE_SWAY, v = windLevel(w.g), t = w._stepNo;
   const amp = (T.amp[0] + (T.amp[1] - T.amp[0]) * v) * (1 + (T.rain - 1) * (w.overcast || 0));
-  const per = T.period[0] + (T.period[1] - T.period[0]) * v;
-  const a = 2 * Math.PI * t / per + i.x * T.wave[0] + i.y * T.wave[1] + ((i.id * 0.618034) % 1) * 1.3;
+  const a = swayPhase(i, t, swayPeriod(v));
   let off = amp * (0.78 * Math.sin(a) + 0.22 * Math.sin(2.37 * a + i.id));
   off += (T.lean[0] + (T.lean[1] - T.lean[0]) * v) * Math.sign(WIND_DIR[0]);
   const dt = t - (i.hitAt ?? -1e9);
   if (dt >= 0 && dt < T.hitSteps) off += T.hit * (1 - dt / T.hitSteps) * Math.sin(dt * 0.95);
   return off;
+}
+
+// [§9.106, richiesta dell'autore] Foglie che cadono dagli alberi sullo
+// schermo: ognuna del colore della chioma da cui cade (LEAF_RGB, misurato
+// sugli sprite), portata dal vento (piu' vento: piu' foglie e piu' di
+// traverso, verso ovest), che volteggia (direzione e orientamento che
+// oscillano) e sparisce arrivata a terra. Di piu' quando la raffica piega
+// l'albero (la stessa fase di treeSway), con la pioggia e a ogni colpo
+// d'ascia (2-4 foglie). Categoria "grass" (opzione "Erba e fiori"), niente
+// con la qualita' bassa (come l'ondeggiamento). Poche: ~0,5 foglie al
+// secondo per 60 alberi in vista col vento minimo, ~4 col massimo.
+export const LEAF = { rate: [0.00025, 0.0017], rain: 1.6, hit: [2, 4], life: [170, 250], size: [0.17, 0.25],
+                      speed: [0.55, 0.8], windSpeed: 0.5, fall: 262, windTurn: 45 };
+const LEAF_RGB = {
+  alb1: [53, 93, 93, 151, 39, 70], alb2: [188, 221, 168, 203, 76, 110], alb3: [118, 179, 96, 162, 55, 98],
+  alb4: [181, 213, 117, 175, 55, 96], alb5: [177, 208, 112, 153, 52, 85], alb6: [166, 193, 151, 180, 89, 118],
+  alb7: [157, 194, 131, 182, 33, 74], alb8: [116, 158, 95, 135, 55, 81],
+};
+LEAF_RGB.alb1_F = LEAF_RGB.alb1;
+const LEAF_TYPES = new Map();
+export function leafType(spr, v) {
+  const k = Math.round(v * 4), key = spr + k; // il vento a 5 gradini
+  let t = LEAF_TYPES.get(key);
+  if (!t) {
+    const wv = k / 4, dir = LEAF.fall - LEAF.windTurn * wv;
+    t = partType({
+      shape: "leaf", size: [LEAF.size[0], LEAF.size[1], 0, 0], colour: { rgb: LEAF_RGB[spr] || LEAF_RGB.alb3 },
+      alpha: [1, 1, 0], speed: [LEAF.speed[0] + LEAF.windSpeed * wv, LEAF.speed[1] + LEAF.windSpeed * wv, 0, 0.25],
+      direction: [dir - 10, dir + 10, 0, 32], orientation: [0, 360, 2.4, 40, false], life: LEAF.life, wigglePeriod: [70, 110],
+    });
+    LEAF_TYPES.set(key, t);
+  }
+  return t;
+}
+const LEAVES = new WeakMap();
+function leafSystem(w) {
+  const P = w.particles;
+  let s = LEAVES.get(w);
+  if (!s || !P.exists(s.ps) || !P.systems.includes(s.ps)) { // dopo un caricamento: un altro
+    s = { ps: P.systemCreate(-2e7, "grass") };
+    s.em = P.emitterCreate(s.ps);
+    LEAVES.set(w, s);
+  }
+  return s;
+}
+function leavesStep(w, cam) {
+  const P = w.particles;
+  if (!P || P.hidden.has("grass") || !w.sway || !cam) return;
+  const v = windLevel(w.g), t = w._stepNo, per = swayPeriod(v);
+  const rate = (LEAF.rate[0] + (LEAF.rate[1] - LEAF.rate[0]) * v) * (1 + (LEAF.rain - 1) * (w.overcast || 0));
+  let S = null;
+  for (const n of SWAY_OBJECTS) {
+    for (const tr of w.all(n)) {
+      if (!tr.alive || tr.visible === false || !onScreen(cam, tr.x, tr.y - 100, 60)) continue;
+      let k = 0;
+      if (tr.hitAt === t - 1 || tr.hitAt === t) { if (tr.leafHit !== tr.hitAt) { tr.leafHit = tr.hitAt; k = LEAF.hit[0] + Math.floor(Math.random() * (LEAF.hit[1] - LEAF.hit[0] + 1)); } }
+      const s = Math.sin(swayPhase(tr, t, per)), gust = 0.3 + 1.7 * (s > 0 ? s * s : 0);
+      if (Math.random() < rate * gust) k++;
+      if (!k) continue;
+      S = S || leafSystem(w);
+      const top = treeSway(w, tr) * 0.6, type = leafType(tr.sprite_index, v);
+      P.region(S.em, tr.x - 45 + top, tr.x + 45 + top, tr.y - 150, tr.y - 70, "ellipse", "gaussian");
+      P.burst(S.ps, S.em, type, k);
+    }
+  }
 }
 
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
@@ -348,6 +414,7 @@ export function ambienceStep(w, cam) {
   const ms = millSpeed(w.g); // §9.95: le pale dei mulini
   for (const n of ["barn", "enemy_mulino"]) for (const m of w.all(n)) if (m.sprite_index === "mul1" || m.sprite_index === "mub") m.image_speed = ms;
   if (w.particles && !w.particles.hidden.has("fire")) mineSparkles(w, cam); // §9.94 (anche nel menu)
+  leavesStep(w, cam); // §9.106 (anche nel menu)
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
   // crolli

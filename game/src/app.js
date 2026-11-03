@@ -21,7 +21,7 @@ import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
-import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_OBJECTS } from "./ambience.js";
+import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_OBJECTS, leafType } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
@@ -794,7 +794,7 @@ async function main() {
                       if (missing.length) return assets.load([], missing).then(apply);
                       apply();
                     },
-                    ambience: { cloudBlobs, shadeAt }, // §9.84
+                    ambience: { cloudBlobs, shadeAt, leafType }, // §9.84, §9.106
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }

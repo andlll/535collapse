@@ -36,7 +36,7 @@ import { mergeColour } from "./colours.js";
 import { drawSprite } from "./sprites.js";
 
 // star: §9.94, le scintille delle miniere (tools/05_atlas.py)
-const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring", star: "__pt_star" };
+const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring", star: "__pt_star", leaf: "__pt_leaf" }; // leaf: §9.106
 const TAU = Math.PI * 2;
 // [§9.90] Il vento (Particles.wind, 0-1, ambience.js) sulle piante: i tipi
 // con l'orientamento che oscilla (wiggle) e non relativo alla direzione, cioe'

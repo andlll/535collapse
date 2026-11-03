@@ -8389,5 +8389,33 @@ Verificato: valori dell'ondeggiamento per vento 0 / 0,5 / 1 (in cima: -2/+1,5,
 -3,5/+2,3, -5,7/+3 px), lo scossone dopo un colpo; due video di 10 s
 registrati dal gioco (vento medio e massimo, un taglialegna al lavoro)
 mandati all'autore. Soak, salvataggi, ambience, zoom, resources e le prove
-unitarie passano. Da tarare con l'autore guardando il gioco: ampiezza,
-velocita', se il movimento distrae.
+unitarie passano. L'autore: "e' bellissimo, cosi' va bene, anche al massimo
+non da' fastidio".
+
+### 9.106 Foglie che cadono dagli alberi
+
+Richiesta dell'autore (3 novembre 2026, stessa PR), dopo §9.105: integrare
+le particelle (le foglie col vento proposte con l'ondeggiamento).
+
+**Com'e' fatto** (ambience.js `leavesStep`, numeri in `LEAF`):
+- forma nuova delle particelle `__pt_leaf` (tools/05_atlas.py, nel gruppo
+  gui come le altre forme): una foglia a mandorla appena curva, bianca col
+  bordo e la nervatura piu' scuri; la tinge il colore della particella;
+- ogni foglia ha il colore della chioma da cui cade (`LEAF_RGB`, misurato su
+  alb1-alb8: il 20-80% dei pixel della chioma), grande 11-16 px, gira su se
+  stessa (di taglio diventa sottile), volteggia (direzione e velocita'
+  oscillano), scende portata verso ovest dal vento (piu' di traverso col
+  vento forte) e sparisce in fondo alla caduta (3-4 s);
+- nascono solo dagli alberi sullo schermo e visibili, a caso, di piu' col
+  vento, quando la raffica piega l'albero (la stessa fase dell'ondeggiamento)
+  e con la pioggia; 2-4 a ogni colpo d'ascia;
+- un solo sistema di particelle, sopra le istanze (depth -2e7: le foglie
+  sono in aria), categoria "grass" (l'opzione "Erba e fiori" le spegne), e
+  niente con la qualita' bassa (come l'ondeggiamento). Anche nel menu.
+
+Misurato (`ambience.mjs`, "foglie": 10 s, ~15-20 alberi in vista): 2 foglie
+col vento minimo, 28 col massimo, 4 colori diversi; 4 foglie a un colpo
+d'ascia. Due video di 10 s all'autore (vento medio e massimo) e una foto da
+vicino sopra l'erba. Soak, salvataggi e prove unitarie passano. Da tarare
+con l'autore: quante, quanto grandi; sopra il bosco, dello stesso colore
+delle chiome, si vedono poco (e' voluto: si notano dove cadono sull'erba).
