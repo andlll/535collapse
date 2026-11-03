@@ -28,7 +28,7 @@ import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
 import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
-import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
+import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
@@ -301,6 +301,7 @@ async function main() {
   world.register("firestarter", fireStarter(true));
   world.register("firestarter_small", fireStarter(false));
   world.register("palo_1", palo(path));
+  if (objects.fiaccola_casa) world.register("fiaccola_casa", houseTorch()); // §9.104
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4", "o_statua1_real"]) world.register(n, statue());
   for (const n of HINT_NAMES) world.register(n, hint(n));
   for (const n of DIALOG_NAMES) world.register(n, dialog(n));
@@ -505,6 +506,7 @@ async function main() {
     settleOverlaps(world, path); // §9.62
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
+    houseTorches(world); // §9.104: le fiaccole sulle case
     recountSelection(world); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);

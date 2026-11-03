@@ -8318,3 +8318,41 @@ verdi. Oppure fare togliere alla luce solo "la notte": scelta questa.
 
 **Musica**: la fa l'autore, un pezzo alla volta; obiettivo contenere il peso
 del gioco (§9.102, punto 6).
+
+### 9.104 Fiaccole sulle case al posto delle finestre accese (prototipo)
+
+Richiesta dell'autore (3 novembre 2026, stessa PR, versione 0.2607): le luci
+notturne sulle case (§9.84, "finestre accese": una macchia di luce sul tetto
+di due case su tre) sembravano tende o superfici traslucide con la luce
+dentro. Proposta sua: fiaccole legate alla casa, su alcune case a caso,
+distrutte con la casa.
+
+**Com'e' fatto** (props.js `houseTorches`, `houseTorch`, `HOUSE_TORCH`;
+fog.js `nightLights`):
+- oggetto nuovo `fiaccola_casa` (nuovi.json), con lo sprite `torchspr_part`
+  dell'originale (un bastone da torcia, mai usato nel gioco) a scala 0,7 e
+  la fiamma a particelle della torcia del palo (TORCIA, categoria "fuoco");
+- ogni casa (del giocatore e nemica, anche quelle finite in partita) decide
+  una volta sola se averla: circa meta', scelte dall'id (sempre le stesse;
+  `i.torch` 1 o 0, si salva). Il controllo gira ogni 30 passi;
+- il punto d'appoggio sul muro e il verso, per ognuno dei 12 sprite delle
+  case (c1s-c6s, c1b-c6b), misurati sugli sprite: sul muro di destra la
+  fiaccola pende a destra, su quello di sinistra e' specchiata;
+- legata alla casa (`t.casa`): sparisce con lei (distrutta, crollata),
+  e' visibile solo se la casa lo e' (le case nemiche nella nebbia), si
+  disegna subito sopra di lei;
+- di giorno resta il bastone; la fiamma e la luce si accendono nella notte
+  che scende (come facevano le finestre: da notte 0,3 a pieno a 0,8), solo
+  nella view e non con la casa in fiamme;
+- le finestre accese sono tolte: la luce ora e' quella della fiaccola.
+
+Verificato: 20 case nuove, 10 con la fiaccola (piu' le 8 delle case della
+mappa); di giorno nessuna particella, di notte si'; distrutte 3 case con la
+fiaccola restano 15 fiaccole, nessuna senza casa. Salvataggi (match, lvl02,
+lvl05, lvl06: ripristino identico), soak su tutte le room, burn, ambience,
+prove unitarie: passano. Foto all'autore di giorno, al tramonto e di notte.
+
+**Da decidere con l'autore**: il bastone di giorno (tenerlo o mostrare la
+fiaccola solo di notte); quante case (ora la meta'); lo sprite (quello
+dell'originale e' piu' liscio del resto: un disegno suo nello stile del
+gioco starebbe meglio); la grandezza della luce.

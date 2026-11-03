@@ -280,16 +280,15 @@ export function nightLights(w) {
       if (i.alive && i.onfire === 1) out.push([i.x, i.y, base + (1 - i.life / i.slife) + flicker(i)]);
     }
   }
-  // [§9.84, da provare] finestre accese: una luce piccola su due case intatte
-  // su tre (sempre le stesse), che si accende nella notte che scende; le case
-  // nemiche solo se gia' viste
+  // [§9.104, richiesta dell'autore] le fiaccole sulle case (props.js), al
+  // posto delle finestre accese (§9.84: una luce sul tetto di due case su
+  // tre, sembravano tende con la luce dentro); si accendono nella notte che
+  // scende, non con la casa in fiamme (la luce e' gia' quella del fuoco)
   const lit = Math.max(0, Math.min(1, (w.g.night - 0.3) / 0.5));
   if (lit > 0) {
-    for (const n of ["casa", "enemy_house"]) {
-      for (const i of w.all(n)) {
-        if (!i.alive || i.onfire === 1 || i.visible === false || i.id % 3 === 0) continue;
-        out.push([i.x, i.y - 30, (0.65 + 0.03 * Math.sin(f * 0.05 + i.id)) * lit]);
-      }
+    for (const i of w.all("fiaccola_casa")) {
+      if (!i.alive || i.visible === false || !i.casa || i.casa.onfire === 1) continue;
+      out.push([i.x, i.y, (0.7 + 0.04 * Math.sin(f * 0.17 + i.id)) * lit]);
     }
   }
   for (const i of w.all("flameqq_small")) if (i.alive) out.push([i.x, i.y, 2]);

@@ -1559,6 +1559,14 @@
       },
       "kit": false,
       "nota": "[§9.100] la balaustra di ponte_dx, a fette: chi passa sul ponte o dietro di lei le sta dietro"
+    },
+    "fiaccola_casa": {
+      "sprite": "torchspr_part",
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la fiaccola appesa al muro di circa meta' delle case (§9.104, props.js houseTorches): legata alla casa, accesa di notte; sprite torchspr_part dell'originale"
     }
   },
   "derivati": {
