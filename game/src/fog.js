@@ -250,6 +250,18 @@ export function skyColour(night, tw, overcast = 0) {
   return [0, 1, 2].map((k) => 1 - (1 - Math.min(1, PINK[k] * p + full[k])) * (1 - OVERCAST[k] * ov));
 }
 
+// [§9.103, segnalazione dell'autore] La parte del colore sottratto che non e'
+// notte: il rosa di alba e tramonto e il grigio del cielo coperto. Le luci
+// tolgono solo la notte e lasciano questa: prima toglievano tutto, e nel
+// tramonto (rosso, cioe' verde e blu sottratti) la macchia di luce tornava
+// ai colori del giorno e in mezzo al rosso sembrava verde.
+export function skyTint(night, tw, overcast = 0) {
+  const n = Math.max(0, Math.min(1, night));
+  const t = Math.max(0, Math.min(1, tw)), p = t * t * (3 - 2 * t) * (1 - n);
+  const ov = Math.max(0, Math.min(1, overcast));
+  return [0, 1, 2].map((k) => 1 - (1 - PINK[k] * p) * (1 - OVERCAST[k] * ov));
+}
+
 // Fuochi che illuminano la notte [C, manager Draw_End, superficie `nite`]:
 // [x, y, scala] dello sprite arealight, nell'ordine dei with(...).
 const BUILDING_LIGHTS = [

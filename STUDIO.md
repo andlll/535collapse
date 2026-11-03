@@ -23,7 +23,7 @@ numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
 servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 "Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
-`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove).
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
 
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
@@ -8280,3 +8280,41 @@ suoni che danno informazioni (attacco in corso fuori schermo, edificio
 finito, unita' pronta, obiettivo completato, clic dell'interfaccia) prima
 dell'ambiente (vento, pioggia, fuoco) e della musica; suoni con licenza
 libera (CC0) o fatti per il gioco. Da decidere con l'autore.
+
+### 9.103 Le luci nel tramonto non diventano verdi; livello 6 sbloccato
+
+Segnalazione dell'autore (3 novembre 2026, stessa PR di §9.102, versione
+0.2607): nel passaggio dal tramonto alla notte le luci che si accendono
+(finestre, fuochi, torce) "vanno in sottrazione al rosso del tramonto" e
+sembrano verdi.
+
+**Perche'.** La notte e' un colore sottratto alla scena (fog.js
+`skyColour`): nel tramonto e' il rosa di §9.84 (verde e blu tolti, il rosso
+no) piu' la notte che sale. Le luci (lo sprite `arealight`, una macchia nera
+sfumata disegnata sulla superficie della notte, come nell'originale [C])
+azzeravano la sottrazione: dentro la luce tornavano i colori del giorno, e in
+mezzo al rosso del tramonto una macchia "giorno" si legge verde. A notte
+piena non si vedeva perche' fuori dalla luce c'e' solo la notte.
+
+**Le due strade discusse.** Accendere le luci solo a notte completa: ma i
+fuochi e le case in fiamme ci sono anche nel tramonto, e resterebbero
+verdi. Oppure fare togliere alla luce solo "la notte": scelta questa.
+- `skyTint` (fog.js): la parte del colore sottratto che non e' notte (il rosa
+  del tramonto e il grigio del cielo coperto dalla pioggia, con gli stessi
+  pesi di `skyColour`); a notte piena e di giorno sereno vale 0.
+- La superficie della notte ora e' la maschera delle luci (bianca = buio,
+  la macchia nera = luce piena; fogdraw.js), e lo shader `fog` (gl.js) compone
+  `tinta + (notte - tinta) x maschera`: dentro la luce resta il rosa del
+  tramonto, si toglie solo il buio. A notte piena e' identico a prima (tinta
+  0: notte x maschera, come la superficie di prima).
+- Foto di confronto all'autore (notte 0,2 e 0,45, le stesse case): prima
+  chiazze verdastre attorno a torce e finestre, ora calde.
+- Prova: `fog.test.mjs` (la tinta e' 0 a notte piena e di giorno, e' il rosa
+  nel tramonto, mai piu' del colore di fuori); `ambience`, `burn`, `ui`
+  passano.
+
+**Livello 6 sbloccato** per le prove dell'autore: `progress.js UNLOCK_ALL = 6`
+(provvisorio, da rimettere a 1 prima dell'uscita, "Cose da fare").
+
+**Musica**: la fa l'autore, un pezzo alla volta; obiettivo contenere il peso
+del gioco (§9.102, punto 6).
