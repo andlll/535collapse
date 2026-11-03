@@ -8358,3 +8358,36 @@ dell'originale, l'autore prova a disegnarne uno nello stile del gioco. Per
 cambiarlo basta lo sprite di `fiaccola_casa` in nuovi.json (con l'origine in
 cima, dove nasce la fiamma); se cambia la lunghezza del bastone si
 ritoccano `TORCH_SCALE` e `TORCH_TOP` in props.js (dalla base alla cima).
+
+### 9.105 Gli alberi ondeggiano col vento (prototipo)
+
+Richiesta dell'autore (3 novembre 2026, stessa PR): animare gli alberi; scelta
+l'animazione calcolata dal gioco (strada "B") invece dei fotogrammi
+preparati fuori, per il peso (8 alberi x 8 fotogrammi: ~10 MB di memoria
+video e 1-2 MB da scaricare in piu').
+
+**Com'e' fatto**
+- sprites.js `drawSway`: l'albero si disegna in 6 strisce orizzontali sopra
+  l'origine (la base del tronco), ognuna spostata in orizzontale di
+  top x (altezza / 150)^2; sotto l'origine una striscia ferma. Le strisce
+  sono parallelogrammi coi bordi in comune: niente cuciture, nessuna texture
+  in piu', 7 quad per albero invece di 1. L'ombra disegnata nello sprite
+  (a destra del tronco, all'altezza dell'origine e sotto) resta ferma.
+- ambience.js `treeSway`, numeri in `TREE_SWAY`: un'oscillazione lenta
+  (periodo da 5,5 s col vento minimo a 3,3 s col massimo) con una seconda
+  piu' veloce e piccola; ampiezza in cima alla chioma da ~2 px (vento minimo)
+  a ~5-6 px (massimo), 1,4 volte con la pioggia; la fase segue il punto della
+  mappa, un'onda che passa verso ovest come il vento (raffiche che
+  attraversano il bosco), piu' un po' di caso dall'id; una leggera
+  inclinazione verso ovest. Il vento e' quello della partita (g.wind, §9.90).
+- Lo scossone sotto l'ascia: a ogni colpo del taglialegna (civilians.js
+  workTick, `albero.hitAt`) ~3-4 px che si smorzano in 26 passi.
+- Solo `albero` e `albero_fake`; con la qualita' "Bassa" niente (world.sway
+  nullo, app.js).
+
+Verificato: valori dell'ondeggiamento per vento 0 / 0,5 / 1 (in cima: -2/+1,5,
+-3,5/+2,3, -5,7/+3 px), lo scossone dopo un colpo; due video di 10 s
+registrati dal gioco (vento medio e massimo, un taglialegna al lavoro)
+mandati all'autore. Soak, salvataggi, ambience, zoom, resources e le prove
+unitarie passano. Da tarare con l'autore guardando il gioco: ampiezza,
+velocita', se il movimento distrae.

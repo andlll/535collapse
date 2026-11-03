@@ -1154,7 +1154,7 @@ function workTick(i, w) {
     if (a === 2) {
       i.wood += 2;
       const t = w.nearest(ax, ay, "albero");
-      if (t) { t.wood -= 2; if (t.wood === 0) w.destroy(t); }
+      if (t) { t.wood -= 2; t.hitAt = w._stepNo; if (t.wood === 0) w.destroy(t); } // §9.105: lo scossone (ambience.js treeSway)
     } else if (a === 3) {
       i.gold += 1;
       const t = w.nearest(ax, ay, "miniera_oro");

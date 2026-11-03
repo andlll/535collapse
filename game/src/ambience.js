@@ -60,6 +60,37 @@ export const windSpeed = (g) => WIND_SPEED[0] + (WIND_SPEED[1] - WIND_SPEED[0]) 
 export const MILL_SPEED = [0.3, 0.34];
 export const millSpeed = (g) => MILL_SPEED[0] + (MILL_SPEED[1] - MILL_SPEED[0]) * windLevel(g);
 
+// [§9.105, richiesta dell'autore] Gli alberi ondeggiano col vento (solo
+// estetico: niente da salvare oltre a hitAt). Lo spostamento in px a
+// TREE_SWAY.h px sopra la base del tronco (sprites.js drawSway: cresce col
+// quadrato dell'altezza, la base e l'ombra restano ferme):
+// - un'oscillazione lenta (periodo da period[0] passi col vento minimo a
+//   period[1] col massimo), ampia da amp[0] ad amp[1] px, con una seconda
+//   piu' veloce e piccola perche' non sia un pendolo; con la pioggia (cielo
+//   coperto) rain volte piu' ampia;
+// - la fase dipende dal punto della mappa: un'onda che passa verso ovest,
+//   come il vento (WIND_DIR), cosi' gli alberi vicini si piegano quasi
+//   insieme e le raffiche attraversano il bosco; piu' un po' di caso
+//   dall'id, perche' due vicini non siano identici;
+// - una piccola inclinazione costante verso ovest, da lean[0] a lean[1] px;
+// - lo scossone sotto l'ascia: a ogni colpo del taglialegna (civilians.js
+//   workTick, albero.hitAt) hit px che si smorzano in hitSteps passi.
+// Sottile apposta: in un gioco di strategia il movimento chiama l'occhio.
+export const TREE_SWAY = { h: 150, amp: [1.8, 4.5], period: [330, 200], rain: 1.4, lean: [0.3, 1.4], wave: [0.004, 0.0018],
+                           hit: 5, hitSteps: 26 };
+export const SWAY_OBJECTS = new Set(["albero", "albero_fake"]);
+export function treeSway(w, i) {
+  const T = TREE_SWAY, v = windLevel(w.g), t = w._stepNo;
+  const amp = (T.amp[0] + (T.amp[1] - T.amp[0]) * v) * (1 + (T.rain - 1) * (w.overcast || 0));
+  const per = T.period[0] + (T.period[1] - T.period[0]) * v;
+  const a = 2 * Math.PI * t / per + i.x * T.wave[0] + i.y * T.wave[1] + ((i.id * 0.618034) % 1) * 1.3;
+  let off = amp * (0.78 * Math.sin(a) + 0.22 * Math.sin(2.37 * a + i.id));
+  off += (T.lean[0] + (T.lean[1] - T.lean[0]) * v) * Math.sign(WIND_DIR[0]);
+  const dt = t - (i.hitAt ?? -1e9);
+  if (dt >= 0 && dt < T.hitSteps) off += T.hit * (1 - dt / T.hitSteps) * Math.sin(dt * 0.95);
+  return off;
+}
+
 // [§9.84] Il cielo coperto (0-1, w.overcast): segue la pioggia, ogni passo
 // di OVERCAST_EASE della distanza (il 99% in ~5 s). [§9.92] Si salva
 // (snapshot.js): decide quando le gocce cominciano, e le gocce quando la

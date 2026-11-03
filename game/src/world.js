@@ -18,7 +18,7 @@
 // 128 px aggiornata quando si muovono (moved()).
 
 import { Alarms } from "./alarms.js";
-import { drawSprite, spriteBounds } from "./sprites.js";
+import { drawSprite, drawSway, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 
 const CELL = 128;
@@ -832,7 +832,11 @@ export class World {
                        i.image_yscale, i.image_angle, i.image_blend, a * Math.min(1, 2 * t))) drawn++;
         continue;
       }
-      if (drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
+      // [§9.105] gli alberi ondeggiano col vento (ambience.js treeSway)
+      const sw = this.sway && i.image_angle === 0 ? this.sway(i) : null;
+      if (sw !== null ? drawSway(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale, i.image_yscale, sw,
+                                 i.image_blend, i.image_alpha)
+        : drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }
     r.shade = 1;
