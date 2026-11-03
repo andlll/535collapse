@@ -1,16 +1,20 @@
 // Prova nel browser della regia del livello 5 (§9.76), sulla mappa
 // dell'autore:
 //   partenza    risorse del giocatore; la regia economica con 4 lavoratori e
-//               la riserva di pietra; le due torri di vedetta; il primo
-//               dialogo; l'obiettivo della fase 0
-//   vedetta     un soldato accanto a una torre di vedetta per 10 s: nessuna
-//               freccia
+//               la riserva di pietra; le due torri fuori dalle mura (non
+//               della regia economica); il primo dialogo; l'obiettivo della
+//               fase 0
+//   torri       (§9.102) un soldato accanto a una torre fuori dalle mura per
+//               10 s: la torre tira (prima, di vedetta, no)
 //   ritirata    la battaglia d'apertura: ridotti a due terzi (o dopo 45 s) i
 //               nemici si ritirano (fase 1, dialogo) ed entrano in citta'
 //               dalla porta
 //   mura        un alleato davanti alle mura: fase 2, dialogo (spesso gia'
 //               da solo: i soldati inseguono i nemici fino alle mura)
 //   acropoli    poi un alleato alle rovine: fase 3, dialogo
+//   sortita     (§9.102) un soldato a 280 px dalla porta ovest per 15 s: esce
+//               il presidio della citta' (almeno 4, il piu' vicino a meno di
+//               100 px da lui); andato via, tornano ai loro posti
 //   pietra      un edificio di legno danneggiato si ripara, uno di pietra
 //               no; distrutti, si ricostruisce solo quello di legno
 //   fortezza    una fortezza finita: fase 4, dialogo, l'obiettivo della citta'
@@ -45,17 +49,17 @@ const res = await page.evaluate(() => {
   const L = () => g.l5;
   out.partenza = {
     risorse: [g.food, g.wood, g.gold, g.stone].join("/"), eco: w.number("enemy_eco"), lavoratori: w.number("enemy_omino"),
-    pietra: g.en && g.en.stone, vedetta: [...w.all("enemy_torre")].filter((t) => t.watch === 1).length,
+    pietra: g.en && g.en.stone, vedetta: [...w.all("enemy_torre")].filter((t) => t.x < 5100 && t.noEco === 1 && !t.watch).length,
     apertura: L().n0, fase: L().phase, dialogo: dialogs.has("dialogo_5_0"),
   };
-  // vedetta: un guerriero (invulnerabile) accanto a una torre di vedetta
-  const tw = [...w.all("enemy_torre")].find((t) => t.watch === 1);
+  // torri: un guerriero (invulnerabile) accanto a una torre fuori dalle mura
+  const tw = [...w.all("enemy_torre")].find((t) => t.x < 5100);
   const before = w.number("b_arciere_bullet_t");
   let arrows = 0;
   const spy = w.create("ally_warrior", tw.x - 150, tw.y + 60);
   for (let s = 0; s < 600; s++) { spy.life = spy.slife; step(1); arrows = Math.max(arrows, w.number("b_arciere_bullet_t") - before); }
   w.destroy(spy);
-  out.vedetta = arrows;
+  out.vedetta = arrows; // §9.102: ora la torre tira
   // la ritirata, da sola (puo' essere gia' cominciata)
   let t0 = 0;
   for (let s = 0; s < 3000 && L().phase === 0; s++) { step(1); t0 = s; }
@@ -69,12 +73,29 @@ const res = await page.evaluate(() => {
   // le mura
   const sold = w.create("ally_cavaliere", 4650, 2450);
   sold.comp = 50;
-  step(40);
+  const keep = (n) => { for (let k = 0; k < n; k++) { sold.life = sold.slife; step(1); } }; // §9.102: le torri fuori dalle mura tirano
+  keep(40);
   out.mura = { fase: L().phase, dialogo: dialogs.has("dialogo_5_2") };
   // l'acropoli
   w.setPos(sold, 3000, 2400);
-  step(400);
+  keep(700); // §9.102: acropolisAfter (600) dopo le mura, ora raggiunte solo qui
   out.acropoli = { fase: L().phase, dialogo: dialogs.has("dialogo_5_3") };
+  // la sortita: un guerriero invulnerabile davanti alla porta ovest
+  const gate = [...w.all("enemy_porta_vert"), ...w.all("enemy_porta_ori")].sort((a, b) => a.x - b.x)[0];
+  const bait = w.create("ally_warrior", gate.x - 280, gate.y);
+  bait.comp = 50;
+  let closest = 1e9;
+  for (let s = 0; s < 900; s++) {
+    bait.life = bait.slife; step(1);
+    for (const e of w.all("enemy_unit")) if (e.l5sally === 1) closest = Math.min(closest, w.distanceToInstance(e, bait));
+  }
+  const out5 = [...w.all("enemy_unit")].filter((e) => e.l5sally === 1);
+  w.destroy(bait);
+  step(2400);
+  const home = out5.filter((e) => e.alive && Math.hypot(e.x - e.l5post[0], e.y - e.l5post[1]) < 150);
+  out.sortita = { usciti: out5.length, vicino: Math.round(closest), tornati: home.length,
+                  vivi: out5.filter((e) => e.alive).length,
+                  fuori: out5.filter((e) => e.alive && !home.includes(e)).map((e) => [e.object.slice(6, 9), Math.round(e.x), Math.round(e.y), e.l5post.map(Math.round), e.l5sally, !!e.retreat, e.action, e.warwork, e.role]) };
   // la pietra: un edificio di legno e uno di pietra danneggiati, poi distrutti
   const c = w.all("enemy_centro").next().value;
   const near = (o) => [...w.all(o)].sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y))[0];
@@ -126,7 +147,8 @@ console.log(JSON.stringify(res));
 const p = res.partenza, r = res.ritirata, a = res.avviso;
 const ok = p.risorse === "200/200/100/0" && p.eco === 1 && p.lavoratori >= 4 && p.pietra >= 3000 && p.vedetta === 2
   && p.apertura === 15 && p.fase === 0 && p.dialogo
-  && res.vedetta === 0
+  && res.vedetta > 0
+  && res.sortita.usciti >= 4 && res.sortita.vicino < 100 && res.sortita.tornati >= res.sortita.vivi - 1
   && r.fase >= 1 && r.dialogo && r.dentro >= r.vivi - 1 && r.vivi > 0
   && res.mura.fase >= 2 && res.mura.dialogo && res.acropoli.fase === 3 && res.acropoli.dialogo
   && res.pietra.casa > 0 && res.pietra.castello === 0 && /enemy_house/.test(res.pietra.persi) && !/enemy_castello/.test(res.pietra.persi)

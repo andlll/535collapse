@@ -501,7 +501,8 @@ uniform int uFogOn;
 uniform sampler2D uNight;
 uniform vec4 uNightRect; // x, y, w, h in room della superficie della notte
 uniform vec3 uNightCol;
-uniform int uNightMode;  // 0 niente, 1 colore unico, 2 superficie
+uniform vec3 uNightTint; // §9.103: la parte che le luci non tolgono (tramonto, cielo coperto)
+uniform int uNightMode;  // 0 niente, 1 colore unico, 2 maschera delle luci
 in vec2 vPos;
 out vec4 o;
 vec4 cubic(float v) {
@@ -527,7 +528,7 @@ void main() {
   float f = uFogOn == 1 ? bicubic(vPos / uFogCell) : 0.0;
   vec3 n = vec3(0.0);
   if (uNightMode == 1) n = uNightCol;
-  else if (uNightMode == 2) n = textureLod(uNight, vec2((vPos.x - uNightRect.x) / uNightRect.z, 1.0 - (vPos.y - uNightRect.y) / uNightRect.w), 0.0).rgb;
+  else if (uNightMode == 2) n = uNightTint + (uNightCol - uNightTint) * textureLod(uNight, vec2((vPos.x - uNightRect.x) / uNightRect.z, 1.0 - (vPos.y - uNightRect.y) / uNightRect.w), 0.0).rgb;
   o = vec4(1.0 - (1.0 - f) * (1.0 - n), 1.0);
 }`,
   // pannello di vetro: lo sfondo sfocato dentro un rettangolo arrotondato,

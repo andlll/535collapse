@@ -22,7 +22,7 @@ Decorative, rasterizzati qui dai TTF di nuovi/font/; foglio intero come
 pseudo-sprite "__font_<nome>", piu' la tabella dei glifi in atlas.json
 "fonts"), "__white", un quadratino
 bianco per rettangoli, cerchi e linee, e le forme delle particelle
-("__pt_flare", "__pt_line", "__pt_pixel", "__pt_ring", "__pt_star"): niente
+("__pt_flare", "__pt_line", "__pt_pixel", "__pt_ring", "__pt_star", "__pt_leaf"): niente
 texture in piu' da legare.
 
 Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
@@ -291,6 +291,28 @@ def particle_shapes():
                     v = max(v, k * max(0.0, 1 - perp / width) * (1 - along / long) ** 0.6)
             px[x, y] = (255, 255, 255, round(255 * min(1.0, v)))
     out.append(("__pt_star", st, [0, 0, 64, 64]))
+    # leaf [§9.106, richiesta dell'autore: le foglie che cadono dagli alberi]:
+    # una foglia a mandorla orizzontale, lunga 56 px e larga 22, appena
+    # curva, bianca (la tinge il colore della particella) col bordo e la
+    # nervatura piu' scuri, come il tratto degli alberi
+    lf = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    px = lf.load()
+    for y in range(64):
+        for x in range(64):
+            u = (x + 0.5 - 32) / 28                          # -1..1 lungo la foglia
+            if abs(u) >= 1:
+                continue
+            mid = 32 + 4 * (1 - u * u) - 2                    # la linea centrale, curva
+            half = 11 * (1 - u * u) ** 0.8 * (1 - 0.25 * max(0.0, u))  # piu' stretta verso la punta
+            dy = abs(y + 0.5 - mid)
+            if dy > half + 0.7:
+                continue
+            a = max(0.0, min(1.0, half + 0.7 - dy))         # bordo antialias
+            edge = max(0.0, 1 - (half - dy) / 2.2)            # vicino al bordo: piu' scuro
+            rib = max(0.0, 1 - dy / 1.2) * (1 - abs(u))       # la nervatura
+            v = round(255 * (1 - 0.45 * max(edge, rib * 0.8)))
+            px[x, y] = (v, v, v, round(255 * a))
+    out.append(("__pt_leaf", lf, [0, 0, 64, 64]))
     return out
 
 

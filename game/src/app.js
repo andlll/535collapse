@@ -21,14 +21,14 @@ import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
-import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep } from "./ambience.js";
+import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_OBJECTS, leafType } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
 import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
-import { CITY_FIRES, cityBuilding, fireStarter, palo, statue } from "./props.js";
+import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
@@ -301,6 +301,7 @@ async function main() {
   world.register("firestarter", fireStarter(true));
   world.register("firestarter_small", fireStarter(false));
   world.register("palo_1", palo(path));
+  if (objects.fiaccola_casa) world.register("fiaccola_casa", houseTorch()); // §9.104
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4", "o_statua1_real"]) world.register(n, statue());
   for (const n of HINT_NAMES) world.register(n, hint(n));
   for (const n of DIALOG_NAMES) world.register(n, dialog(n));
@@ -505,6 +506,7 @@ async function main() {
     settleOverlaps(world, path); // §9.62
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
+    houseTorches(world); // §9.104: le fiaccole sulle case
     recountSelection(world); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
     fog.update(world);
@@ -541,6 +543,8 @@ async function main() {
     // software ne' con la qualita' bassa: 3 dischi trasparenti grandi quasi
     // quanto lo schermo, gratis su una GPU, ~4 ms a fotogramma su SwiftShader
     const blobs = r.software || settings.quality === "low" ? [] : cloudBlobs(world, cam);
+    // [§9.105] gli alberi che ondeggiano col vento (non con la qualita' bassa)
+    world.sway = settings.quality === "low" ? null : (i) => (SWAY_OBJECTS.has(i.object) ? treeSway(world, i) : null);
     drawCloudShadows(draw, blobs);
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
@@ -790,7 +794,7 @@ async function main() {
                       if (missing.length) return assets.load([], missing).then(apply);
                       apply();
                     },
-                    ambience: { cloudBlobs, shadeAt }, // §9.84
+                    ambience: { cloudBlobs, shadeAt, leafType }, // §9.84, §9.106
                     // per i test: avanza la simulazione di n passi senza disegnare
                     advance(n) { for (let k = 0; k < n; k++) step(); } };
 }

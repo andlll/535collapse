@@ -867,8 +867,10 @@ export function enemyManagerLv4(p) {
 // pietra del nemico (che non la usa per riparare o ricostruire gli edifici
 // di pietra: economy.js stoneWork). Vittoria: la citta' nemica distrutta
 // (tutti gli edifici tranne mura, porte e campi). Le due torri nemiche fuori
-// dalle mura sono di vedetta: non tirano (ranged.js, watch). Numeri da
-// tarare giocando.
+// dalle mura erano di vedetta, senza tirare (ranged.js, watch); [§9.102,
+// richiesta dell'autore] ora tirano dall'inizio (il giocatore si accampava
+// li' fuori). E chi si avvicina troppo alle mura (LV5.sallyR) fa uscire il
+// presidio della citta' (lv5Sally). Numeri da tarare giocando.
 export const LV5 = {
   start: { food: 200, wood: 200, gold: 100, stone: 0 },
   east: 4500,                        // la citta' nemica: x >= east
@@ -887,6 +889,14 @@ export const LV5 = {
   city: ["enemy_centro", "enemy_house", "enemy_caserma", "enemy_stalla", "enemy_chiesa", "enemy_castello",
          "enemy_magazzino", "enemy_mulino", "enemy_torre", "enemy_fondamenta"],
   walls: ["enemy_mura_ori", "enemy_mura_vert", "enemy_porta_ori", "enemy_porta_vert"],
+  // [§9.102] la sortita: un alleato a sallyR px dalle mura o da una porta fa
+  // uscire i soldati del presidio entro sallyFrom px da lui; nessun alleato
+  // a sallyR + 300 px dalle mura per sallyCalm passi, chi non combatte (nessun
+  // alleato a sallyFree px) torna al suo posto
+  sallyR: 500,
+  sallyFrom: 2000,
+  sallyCalm: 360,
+  sallyFree: 350,
 };
 const LV5_ENEMY = { mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori",
                     porta_vert: "enemy_porta_vert", campo_fond: "enemy_campo" };
@@ -899,9 +909,56 @@ export function lvl05Setup(w) {
       w.create(to, x, y);
     }
   }
-  // [§9.76] le torri di vedetta: non tirano e non sono della regia
-  // economica (un alleato vicino non chiama la difesa della citta')
-  for (const t of w.all("enemy_torre")) if (t.x < LV5.watch) { t.watch = 1; t.noEco = 1; }
+  // [§9.76] le torri fuori dalle mura non sono della regia economica (un
+  // alleato vicino non chiama la difesa della citta'). [§9.102] Tirano
+  // (prima, di vedetta, no: watch)
+  for (const t of w.all("enemy_torre")) if (t.x < LV5.watch) t.noEco = 1;
+}
+
+// [§9.102, richiesta dell'autore] La sortita: chi si avvicina troppo alle
+// mura (sallyR) fa uscire il presidio della citta' (i soldati della mappa
+// dentro le mura, non quelli della regia economica, che difendono gia' da
+// soli: economy.js, defendR; non chi si ritira o va in un presidio), quelli
+// entro sallyFrom px dall'alleato: col flow field dei nemici (passa dalle
+// loro porte) verso di lui, poi combattono come sempre. Tornata la calma
+// (nessun alleato vicino alle mura per sallyCalm passi), chi non sta
+// combattendo torna al suo posto (retreatTo; l5sally: 1 fuori, 2 di
+// ritorno). Prima il presidio restava fermo dentro le mura e il giocatore
+// poteva restare li' fuori a lungo.
+const sallying = (e) => e.l5sally === 1 && e.alive;
+function lv5Sally(w, p, L, allyNear) {
+  const a = allyNear(w, LV5.walls, LV5.sallyR);
+  if (a) {
+    L.calm = 0;
+    let ff = null;
+    for (const e of w.all("enemy_unit")) {
+      if (e.object === "enemy_omino" || e.eco === 1 || e.l5w || e.presidiowork === 1 || (e.x < LV5.east && !e.l5sally)) continue;
+      if (e.retreat && !e.l5sally) continue; // la ritirata della battaglia d'apertura
+      if (e.warwork === 2 || (e.action === 1 && e.warwork === 1 && !e.retreat)) continue; // gia' combatte o insegue
+      if (Math.hypot(e.x - a.x, e.y - a.y) > LV5.sallyFrom) continue;
+      if (!e.l5sally) e.l5post = [e.x, e.y];
+      e.l5sally = 1;
+      ff = ff || p.flowField(p.goalField(a.x, a.y, true, false, true));
+      if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
+      Object.assign(e, { retreat: null, action: 1, warwork: 1, role: 31, defender: 0, dirox: a.x, diroy: a.y, flow_field: ff });
+    }
+    return;
+  }
+  // la calma: nessun alleato vicino alle mura per sallyCalm passi
+  if (allyNear(w, LV5.walls, LV5.sallyR + 300)) { L.calm = 0; return; }
+  L.calm = (L.calm || 0) + 20;
+  if (L.calm < LV5.sallyCalm) return;
+  for (const e of w.all("enemy_unit")) {
+    if (!sallying(e) || e.retreat || e.warwork === 2) continue;
+    const n = w.nearest(e.x, e.y, "ally_unit");
+    if (n && Math.hypot(n.x - e.x, n.y - e.y) < LV5.sallyFree) continue;
+    e.l5sally = 2; // torna al suo posto (una sortita nuova lo riprende)
+    // col campo dei soli ostacoli fissi (§9.82): con quello di sempre i
+    // compagni fermi nel varco della porta la chiudevano, e chi era fuori
+    // restava li' (fuori dal campo)
+    const [x, y] = e.l5post;
+    retreatTo(w, p, e, x, y, p.flowField(p.goalField(x, y, true, false, true)));
+  }
 }
 
 // I nemici della lista si ritirano in citta' (enemies.js, retreatTo), un
@@ -975,6 +1032,7 @@ export function enemyManagerLv5(p) {
         }
       }
       if (L.t % 20 === 0) {
+        lv5Sally(w, p, L, allyNear); // §9.102
         // fase 1, l'inseguimento: un alleato arrivato davanti alle mura
         if (L.phase === 1) {
           const a = allyNear(w, LV5.walls, LV5.wallsR);

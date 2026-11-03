@@ -8,9 +8,10 @@ const KEY = "535.progress";
 const VERSION = 1;
 
 // [Provvisorio, richiesta dell'autore, §9.53] per le prove dei primi
-// livelli tutti sbloccati: almeno fino a UNLOCK_ALL (§9.74: anche il 5). Da
+// livelli tutti sbloccati: almeno fino a UNLOCK_ALL (§9.74: anche il 5;
+// §9.103: anche il 6). Da
 // rimettere a 1 prima dell'uscita (STUDIO.md, "Cose da fare").
-export const UNLOCK_ALL = 5;
+export const UNLOCK_ALL = 6;
 
 export function loadUnlock() {
   try {

@@ -325,6 +325,42 @@ function over(i, w) {
 
 function place(i, w, inst) {
   if (inst) [i.posx, i.posy] = toScreen(w, inst.x, inst.y);
+  keepClear(w, i);
+}
+
+// [§9.102, segnalazione dell'autore] Le finestre che seguono un'unita' o un
+// oggetto (i dialoghi, i suggerimenti "vicino" e "mouse") nascevano nel punto
+// dello schermo dell'unita': all'inizio del livello 5 finivano sotto il
+// pannello delle risorse, o fuori dallo schermo (a 1280 x 720 il primo
+// dialogo usciva in basso a destra). Ora restano nello schermo (a CLEAR_M
+// px dai bordi) e fuori dai riquadri dell'interfaccia: risorse e pulsanti in
+// alto a sinistra, pausa e inattivi a destra, obiettivi, minimappa. Se la
+// finestra ne tocca uno, va nel posto libero piu' vicino lungo i suoi bordi.
+const CLEAR_M = 10;
+function hudRects(w) {
+  const W = w.cam.cssW, H = w.cam.cssH, [, top, right] = minimapBox(w);
+  const r = [[0, 0, 780, 150 + GAP], [W - 90 - GAP, 0, W, 200 + GAP], [0, top - GAP, right + GAP, H]];
+  if (objShown(w)) r.push([w._objLeft - GAP, 0, W, w._objBottom + GAP]);
+  return r;
+}
+// (pad: il ritratto dei dialoghi, centrato sull'angolo in alto a sinistra)
+function keepClear(w, i) {
+  const W = w.cam.cssW, H = w.cam.cssH, ww = W380, hh = hintH(i), pad = i.pad || 0;
+  const clamp = (x, y) => [Math.max(CLEAR_M + pad, Math.min(x, W - ww - CLEAR_M)), Math.max(CLEAR_M + pad, Math.min(y, H - hh - CLEAR_M))];
+  const R = hudRects(w);
+  const hit = (x, y) => R.some(([l, t, r, b]) => x - pad < r && x + ww > l && y - pad < b && y + hh > t);
+  const [x, y] = clamp(i.posx, i.posy);
+  let best = [x, y];
+  if (hit(x, y)) {
+    let bd = Infinity;
+    for (const [l, t, r, b] of R) {
+      for (const [cx, cy] of [[x, b + pad], [x, t - hh], [r + pad, y], [l - ww, y], [r + pad, b + pad], [l - ww, b + pad], [r + pad, t - hh], [l - ww, t - hh]]) {
+        const [qx, qy] = clamp(cx, cy), d = Math.hypot(qx - x, qy - y);
+        if (d < bd && !hit(qx, qy)) { bd = d; best = [qx, qy]; }
+      }
+    }
+  }
+  [i.posx, i.posy] = best;
 }
 
 // Il disegno comune [C, Draw_GUI di hint_legna e dialogo_1_0]
@@ -373,7 +409,7 @@ export function hint(name) {
       measure(i, w);
       if (H.anchor.kind === "vicino") i.vicino = w.nearest(w.mouse.x, w.mouse.y, H.anchor.obj);
       i.posx = i.posy = 0;
-      if (H.anchor.kind === "mouse" && !w.exists(H.anchor.obj)) [i.posx, i.posy] = toScreen(w, i.x, i.y); // [§3.18 n.64]
+      if (H.anchor.kind === "mouse" && !w.exists(H.anchor.obj)) { [i.posx, i.posy] = toScreen(w, i.x, i.y); keepClear(w, i); } // [§3.18 n.64]
       anchorNow(i, w);
       if (H.arm) i.alarm.set(0, H.arm);
     },
@@ -402,7 +438,7 @@ export function dialog(name) {
   const [obj, portrait, titolo] = D.who;
   return {
     create(i, w) {
-      Object.assign(i, { titolo, testo: D.text, hover: 0, arm: 0 });
+      Object.assign(i, { titolo, testo: D.text, hover: 0, arm: 0, pad: portrait ? 30 : 0 });
       i.sprite_index = null;
       i.parlante = w.nearest(i.x, i.y, obj);
       measure(i, w);
@@ -423,6 +459,7 @@ export function dialog(name) {
       // morta (errore); qui la finestra resta dov'era [deviazione
       // confermata dall'autore, §3.18 n.68]
       if (!gone) place(i, w, i.parlante);
+      else keepClear(w, i); // §9.102
       if (D.step) D.step(i, w);
     },
     globalLeftPressed(i, w) {

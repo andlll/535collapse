@@ -3,7 +3,7 @@
 // persistente, trucco della nebbia, colore della notte e fuochi.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FogMap, FOG_CELL, SHADE_BLACK, SHADE_FOG, SHADE_VISIBLE, shadeOf, nightColour, nightLights } from "../src/fog.js";
+import { FogMap, FOG_CELL, SHADE_BLACK, SHADE_FOG, SHADE_VISIBLE, shadeOf, nightColour, nightLights, skyColour, skyTint } from "../src/fog.js";
 
 const PARENTS = {
   ally_omino: ["ally_unit", "ally"], castello: ["ally_build", "ally"], centro: ["ally_build", "ally"],
@@ -142,4 +142,23 @@ test("fuochi: bracieri, edifici in fiamme, freccia e fante che la accende", () =
   assert.ok(Math.abs(l[1][2] - (3.5 + 0.15 * Math.sin(500 + 10 * 0.17))) < 1e-9);
   assert.deepEqual(l[2], [50, 60, 1]);
   assert.deepEqual(l[3], [700, 633, 1]);
+});
+
+// [§9.103] Le luci tolgono solo la notte: dentro la luce resta skyTint (il
+// rosa del tramonto, il grigio del cielo coperto), mai piu' del colore di
+// fuori; a notte piena e di giorno sereno nulla (come prima: la luce toglie
+// tutto)
+test("luci: tolgono la notte, non il tramonto", () => {
+  const close = (a, b) => a.every((v, k) => Math.abs(v - b[k]) < 1e-9);
+  assert.ok(close(skyTint(1, 0, 0), [0, 0, 0]));
+  assert.ok(close(skyTint(0, 0, 0), [0, 0, 0]));
+  // tramonto pieno, notte appena cominciata: il rosa (verde e blu tolti, il rosso no)
+  const t = skyTint(0, 1, 0);
+  assert.ok(close(t, skyColour(0, 1, 0)));
+  assert.equal(t[0], 0);
+  assert.ok(t[1] > 0 && t[2] > 0);
+  for (const night of [0, 0.2, 0.45, 0.8, 1]) for (const tw of [0, 0.5, 1]) for (const ov of [0, 1]) {
+    const tin = skyTint(night, tw, ov), all = skyColour(night, tw, ov);
+    assert.ok(tin.every((v, k) => v <= all[k] + 1e-9), `${night} ${tw} ${ov}`);
+  }
 });

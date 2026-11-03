@@ -250,6 +250,18 @@ export function skyColour(night, tw, overcast = 0) {
   return [0, 1, 2].map((k) => 1 - (1 - Math.min(1, PINK[k] * p + full[k])) * (1 - OVERCAST[k] * ov));
 }
 
+// [§9.103, segnalazione dell'autore] La parte del colore sottratto che non e'
+// notte: il rosa di alba e tramonto e il grigio del cielo coperto. Le luci
+// tolgono solo la notte e lasciano questa: prima toglievano tutto, e nel
+// tramonto (rosso, cioe' verde e blu sottratti) la macchia di luce tornava
+// ai colori del giorno e in mezzo al rosso sembrava verde.
+export function skyTint(night, tw, overcast = 0) {
+  const n = Math.max(0, Math.min(1, night));
+  const t = Math.max(0, Math.min(1, tw)), p = t * t * (3 - 2 * t) * (1 - n);
+  const ov = Math.max(0, Math.min(1, overcast));
+  return [0, 1, 2].map((k) => 1 - (1 - PINK[k] * p) * (1 - OVERCAST[k] * ov));
+}
+
 // Fuochi che illuminano la notte [C, manager Draw_End, superficie `nite`]:
 // [x, y, scala] dello sprite arealight, nell'ordine dei with(...).
 const BUILDING_LIGHTS = [
@@ -268,16 +280,15 @@ export function nightLights(w) {
       if (i.alive && i.onfire === 1) out.push([i.x, i.y, base + (1 - i.life / i.slife) + flicker(i)]);
     }
   }
-  // [§9.84, da provare] finestre accese: una luce piccola su due case intatte
-  // su tre (sempre le stesse), che si accende nella notte che scende; le case
-  // nemiche solo se gia' viste
+  // [§9.104, richiesta dell'autore] le fiaccole sulle case (props.js), al
+  // posto delle finestre accese (§9.84: una luce sul tetto di due case su
+  // tre, sembravano tende con la luce dentro); si accendono nella notte che
+  // scende, non con la casa in fiamme (la luce e' gia' quella del fuoco)
   const lit = Math.max(0, Math.min(1, (w.g.night - 0.3) / 0.5));
   if (lit > 0) {
-    for (const n of ["casa", "enemy_house"]) {
-      for (const i of w.all(n)) {
-        if (!i.alive || i.onfire === 1 || i.visible === false || i.id % 3 === 0) continue;
-        out.push([i.x, i.y - 30, (0.65 + 0.03 * Math.sin(f * 0.05 + i.id)) * lit]);
-      }
+    for (const i of w.all("fiaccola_casa")) {
+      if (!i.alive || i.visible === false || !i.casa || i.casa.onfire === 1) continue;
+      out.push([i.x, i.y, (0.7 + 0.04 * Math.sin(f * 0.17 + i.id)) * lit]);
     }
   }
   for (const i of w.all("flameqq_small")) if (i.alive) out.push([i.x, i.y, 2]);

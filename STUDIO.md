@@ -23,7 +23,7 @@ numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
 servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 "Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
-`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove).
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
 
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
@@ -8179,3 +8179,247 @@ Prova: `game/test/browser/lvl06.mjs` (partenza, solo arcieri, torri chiuse,
 pattuglie in giro e reazione, fase 1, torre recuperata e presidiata,
 rinforzi e incursione dal ponte di sinistra, colonna, sconfitta al sesto,
 taratura con 15 e 5 torri), in CI; `saves.mjs` anche col livello 6.
+
+### 9.102 Nuvole, segnalino del 6, civili al cantiere, obiettivi, livello 5
+
+Richieste e segnalazioni dell'autore (3 novembre 2026), sei punti; il sesto
+(il suono) e' una discussione, senza codice. Versione 0.2607 (§9.73).
+
+**1. Nuvole** (ambience.js): il 60% piu' grandi (scala 2,72-3,68, era
+1,7-2,3) e piu' trasparenti, al 60% dell'opacita' di prima (il nero pieno
+della sagoma 0,24, era 0,4). Foto di confronto all'autore (prima, +50%,
++60%, la stessa inquadratura del livello 5): tenuto +60%, da rivedere con
+lui. `ambience.mjs`: l'ombra nel pieno della sagoma ora vale 0,76.
+
+**2. Segnalino del livello 6** sulla mappa della campagna: lato 100 (era 120,
+nuovi.json `cap_l6`), il numero "6." 13 px piu' in basso (menu.js
+`L6_LABEL`).
+
+**3. Civili "in tilt" andando a costruire** (civilians.js, `edgeRescue`,
+`aroundTarget`). Segnalazione: incontrando un altro personaggio in
+movimento restavano bloccati finche' non si dava loro un altro ordine, anche
+col passaggio libero. L'incrocio semplice (un civile e un soldato, anche in
+un corridoio fra due case) non lo riproduceva; lo riproduce una prova piu'
+affollata: 12 civili mandati a gruppi di 3 su quattro cantieri e 16 soldati
+che attraversano la zona ogni 2 s. Col codice di prima, su 4 semi e 288
+ordini da 40 s, 9 civili restavano per tutto il giro a 30-65 px dal bordo
+del cantiere, girando in tondo sul posto (direzione +30 gradi a passo). Il
+meccanismo, seguito passo per passo:
+- vicino al cantiere (entro 300 px dalla meta) il civile va al suo posto sul
+  bordo (toEdgeSpot: meleeSpot, §9.64) con mp_potential_step, cioe' dritto;
+- un'unita' che passa gli occupa il posto o gli sta davanti: dopo 40 passi
+  senza avvicinarsi meleeSpot gliene sceglie un altro, e con i posti vicini
+  presi dai compagni al lavoro il nuovo e' dietro l'edificio;
+- il percorso locale che dovrebbe aggirare l'ostacolo (melee.js `route`) usa
+  i rettangoli delle istanze, e quello di un fiume vicino (migliaia di px)
+  chiude tutto: niente percorso, si va dritti;
+- dritto contro l'edificio mp_potential_step gira di 30 gradi a passo
+  avanzando di 3 px: un cerchio di ~6 px, per sempre (l'unita' passata non
+  c'entra piu'). Varianti viste: staccarsi da chi gli cammina addosso
+  (separate) e tornarci, avanti e indietro; restare a 15-30 px dal bordo,
+  oltre i 10 a cui si comincia.
+
+Correzione: si guarda il progresso verso l'edificio (non verso il posto). Se
+il civile non gli si avvicina di almeno 2 px da `EDGE_STUCK` passi (60), a
+meno di `EDGE_NEAR` px (30) comincia a lavorare da dove e' (buildStep e la
+riparazione accettano 30 px al posto di 10, solo in quel caso); piu' lontano
+segue il campo verso l'edificio (`fieldTo`, §8.19: parte dalle celle libere
+che lo toccano, sulla griglia dei costi, con edifici, fiumi e unita' ferme,
+senza collisioni con le unita') fino alla cella libera piu' vicina accanto
+all'edificio. E se la linea dritta verso il posto attraversa l'edificio,
+col campo da subito. `edgeT` (l'edificio seguito) non si salva
+(snapshot.js). Misurato con la stessa prova: 288 ordini su 288 arrivano a
+lavorare (tempo medio uguale, ~270 passi), nessuno in tondo per tutto il
+giro.
+
+Prova nuova `game/test/browser/buildstuck.mjs` (nella CI): la prova
+affollata, sei giri da 40 s col seme 7; tutti devono arrivare e nessuno
+restare fermo con l'ordine di costruire. Col codice di prima: 2 civili non
+arrivano (NON VA); col nuovo, 72 su 72. Passano anche sites, workers, idle,
+deposit, mining, depot, settle, crowd, blocked, monastery, bridge, economy.
+
+**4. Obiettivi completati** (endgame.js): niente piu' barra nera sopra il
+testo; il testo in trasparenza (alpha 0,4) e una spunta verde (due tratti, a
+10 px dalla fine dell'ultima riga). La larghezza del riquadro conta anche la
+spunta.
+
+**5. Livello 5.**
+- *Finestre sotto il pannello delle risorse* (hints.js `keepClear`): i
+  dialoghi e i suggerimenti che seguono un'unita' nascevano nel suo punto
+  dello schermo, anche sotto le risorse o fuori dallo schermo (a 1280 x 720
+  il primo dialogo del livello 5 usciva in basso a destra). Ora restano
+  nello schermo e fuori dai riquadri dell'interfaccia (risorse e pulsanti in
+  alto a sinistra, pausa e inattivi a destra, obiettivi, minimappa, a GAP
+  px), ritratto compreso; se ne toccano uno vanno nel posto libero piu'
+  vicino lungo i suoi bordi. Vale per tutti i livelli.
+- *Le due torri vicino alle rovine* (4872, 2529 e 4580, 2129) tirano
+  dall'inizio, con i loro 2 arcieri (prima di vedetta, §9.76: il giocatore
+  si accampava li' fuori). Restano fuori dalla regia economica.
+- *La sortita* (levels.js `lv5Sally`, numeri in `LV5`): un alleato a meno di
+  500 px dalle mura o da una porta (`sallyR`) fa uscire i soldati del
+  presidio della citta' (quelli della mappa, non della regia economica, che
+  difendono gia' da soli entro 600 px, §9.50) entro 2000 px da lui: col
+  flow field dei nemici verso di lui, poi combattono come sempre. Nessun
+  alleato a 800 px dalle mura per 6 s: chi non combatte (nessun alleato a
+  350 px) torna al suo posto, col campo dei soli ostacoli fissi (con quello
+  di sempre i compagni fermi nel varco della porta la chiudevano e 4-5
+  soldati restavano fuori, fermi: lo stesso di §9.82). Il dialogo delle mura
+  (600 px) arriva poco prima.
+- `lvl05.mjs`: la torre fuori dalle mura tira; la sortita (un guerriero a
+  280 px dalla porta ovest per 15 s: escono 29 soldati, il piu' vicino gli
+  arriva a contatto; andato via, tornano tutti ai loro posti); il cavaliere
+  della prova verso le rovine ora e' invulnerabile (le torri lo uccidevano) e
+  aspetta i 600 passi dell'acropoli.
+
+**6. Il suono** (discussione con l'autore, nessuna decisione ancora): nel
+progetto originale non c'e' audio (§0.6, cartella `sound` vuota), e la prima
+uscita era stata decisa "senza audio" (§0.10, punto 4). Proposta: un modulo
+audio piccolo (Web Audio, un AudioContext sbloccato al primo clic, volumi
+musica ed effetti nel menu di pausa, salvati con le impostazioni), poi pochi
+suoni che danno informazioni (attacco in corso fuori schermo, edificio
+finito, unita' pronta, obiettivo completato, clic dell'interfaccia) prima
+dell'ambiente (vento, pioggia, fuoco) e della musica; suoni con licenza
+libera (CC0) o fatti per il gioco. Da decidere con l'autore.
+
+### 9.103 Le luci nel tramonto non diventano verdi; livello 6 sbloccato
+
+Segnalazione dell'autore (3 novembre 2026, stessa PR di §9.102, versione
+0.2607): nel passaggio dal tramonto alla notte le luci che si accendono
+(finestre, fuochi, torce) "vanno in sottrazione al rosso del tramonto" e
+sembrano verdi.
+
+**Perche'.** La notte e' un colore sottratto alla scena (fog.js
+`skyColour`): nel tramonto e' il rosa di §9.84 (verde e blu tolti, il rosso
+no) piu' la notte che sale. Le luci (lo sprite `arealight`, una macchia nera
+sfumata disegnata sulla superficie della notte, come nell'originale [C])
+azzeravano la sottrazione: dentro la luce tornavano i colori del giorno, e in
+mezzo al rosso del tramonto una macchia "giorno" si legge verde. A notte
+piena non si vedeva perche' fuori dalla luce c'e' solo la notte.
+
+**Le due strade discusse.** Accendere le luci solo a notte completa: ma i
+fuochi e le case in fiamme ci sono anche nel tramonto, e resterebbero
+verdi. Oppure fare togliere alla luce solo "la notte": scelta questa.
+- `skyTint` (fog.js): la parte del colore sottratto che non e' notte (il rosa
+  del tramonto e il grigio del cielo coperto dalla pioggia, con gli stessi
+  pesi di `skyColour`); a notte piena e di giorno sereno vale 0.
+- La superficie della notte ora e' la maschera delle luci (bianca = buio,
+  la macchia nera = luce piena; fogdraw.js), e lo shader `fog` (gl.js) compone
+  `tinta + (notte - tinta) x maschera`: dentro la luce resta il rosa del
+  tramonto, si toglie solo il buio. A notte piena e' identico a prima (tinta
+  0: notte x maschera, come la superficie di prima).
+- Foto di confronto all'autore (notte 0,2 e 0,45, le stesse case): prima
+  chiazze verdastre attorno a torce e finestre, ora calde.
+- Prova: `fog.test.mjs` (la tinta e' 0 a notte piena e di giorno, e' il rosa
+  nel tramonto, mai piu' del colore di fuori); `ambience`, `burn`, `ui`
+  passano.
+
+**Livello 6 sbloccato** per le prove dell'autore: `progress.js UNLOCK_ALL = 6`
+(provvisorio, da rimettere a 1 prima dell'uscita, "Cose da fare").
+
+**Musica**: la fa l'autore, un pezzo alla volta; obiettivo contenere il peso
+del gioco (§9.102, punto 6).
+
+### 9.104 Fiaccole sulle case al posto delle finestre accese (prototipo)
+
+Richiesta dell'autore (3 novembre 2026, stessa PR, versione 0.2607): le luci
+notturne sulle case (§9.84, "finestre accese": una macchia di luce sul tetto
+di due case su tre) sembravano tende o superfici traslucide con la luce
+dentro. Proposta sua: fiaccole legate alla casa, su alcune case a caso,
+distrutte con la casa.
+
+**Com'e' fatto** (props.js `houseTorches`, `houseTorch`, `HOUSE_TORCH`;
+fog.js `nightLights`):
+- oggetto nuovo `fiaccola_casa` (nuovi.json), con lo sprite `torchspr_part`
+  dell'originale (un bastone da torcia, mai usato nel gioco) a scala 0,7 e
+  la fiamma a particelle della torcia del palo (TORCIA, categoria "fuoco");
+- ogni casa (del giocatore e nemica, anche quelle finite in partita) decide
+  una volta sola se averla: circa meta', scelte dall'id (sempre le stesse;
+  `i.torch` 1 o 0, si salva). Il controllo gira ogni 30 passi;
+- il punto d'appoggio sul muro e il verso, per ognuno dei 12 sprite delle
+  case (c1s-c6s, c1b-c6b), misurati sugli sprite: sul muro di destra la
+  fiaccola pende a destra, su quello di sinistra e' specchiata;
+- legata alla casa (`t.casa`): sparisce con lei (distrutta, crollata),
+  e' visibile solo se la casa lo e' (le case nemiche nella nebbia), si
+  disegna subito sopra di lei;
+- di giorno resta il bastone; la fiamma e la luce si accendono nella notte
+  che scende (come facevano le finestre: da notte 0,3 a pieno a 0,8), solo
+  nella view e non con la casa in fiamme;
+- le finestre accese sono tolte: la luce ora e' quella della fiaccola.
+
+Verificato: 20 case nuove, 10 con la fiaccola (piu' le 8 delle case della
+mappa); di giorno nessuna particella, di notte si'; distrutte 3 case con la
+fiaccola restano 15 fiaccole, nessuna senza casa. Salvataggi (match, lvl02,
+lvl05, lvl06: ripristino identico), soak su tutte le room, burn, ambience,
+prove unitarie: passano. Foto all'autore di giorno, al tramonto e di notte.
+
+**Decisioni dell'autore** (dopo le foto): il bastone di giorno resta; la
+meta' delle case va bene; la luce va bene cosi'. Lo sprite: per ora quello
+dell'originale, l'autore prova a disegnarne uno nello stile del gioco. Per
+cambiarlo basta lo sprite di `fiaccola_casa` in nuovi.json (con l'origine in
+cima, dove nasce la fiamma); se cambia la lunghezza del bastone si
+ritoccano `TORCH_SCALE` e `TORCH_TOP` in props.js (dalla base alla cima).
+
+### 9.105 Gli alberi ondeggiano col vento (prototipo)
+
+Richiesta dell'autore (3 novembre 2026, stessa PR): animare gli alberi; scelta
+l'animazione calcolata dal gioco (strada "B") invece dei fotogrammi
+preparati fuori, per il peso (8 alberi x 8 fotogrammi: ~10 MB di memoria
+video e 1-2 MB da scaricare in piu').
+
+**Com'e' fatto**
+- sprites.js `drawSway`: l'albero si disegna in 6 strisce orizzontali sopra
+  l'origine (la base del tronco), ognuna spostata in orizzontale di
+  top x (altezza / 150)^2; sotto l'origine una striscia ferma. Le strisce
+  sono parallelogrammi coi bordi in comune: niente cuciture, nessuna texture
+  in piu', 7 quad per albero invece di 1. L'ombra disegnata nello sprite
+  (a destra del tronco, all'altezza dell'origine e sotto) resta ferma.
+- ambience.js `treeSway`, numeri in `TREE_SWAY`: un'oscillazione lenta
+  (periodo da 5,5 s col vento minimo a 3,3 s col massimo) con una seconda
+  piu' veloce e piccola; ampiezza in cima alla chioma da ~2 px (vento minimo)
+  a ~5-6 px (massimo), 1,4 volte con la pioggia; la fase segue il punto della
+  mappa, un'onda che passa verso ovest come il vento (raffiche che
+  attraversano il bosco), piu' un po' di caso dall'id; una leggera
+  inclinazione verso ovest. Il vento e' quello della partita (g.wind, §9.90).
+- Lo scossone sotto l'ascia: a ogni colpo del taglialegna (civilians.js
+  workTick, `albero.hitAt`) ~3-4 px che si smorzano in 26 passi.
+- Solo `albero` e `albero_fake`; con la qualita' "Bassa" niente (world.sway
+  nullo, app.js).
+
+Verificato: valori dell'ondeggiamento per vento 0 / 0,5 / 1 (in cima: -2/+1,5,
+-3,5/+2,3, -5,7/+3 px), lo scossone dopo un colpo; due video di 10 s
+registrati dal gioco (vento medio e massimo, un taglialegna al lavoro)
+mandati all'autore. Soak, salvataggi, ambience, zoom, resources e le prove
+unitarie passano. L'autore: "e' bellissimo, cosi' va bene, anche al massimo
+non da' fastidio".
+
+### 9.106 Foglie che cadono dagli alberi
+
+Richiesta dell'autore (3 novembre 2026, stessa PR), dopo §9.105: integrare
+le particelle (le foglie col vento proposte con l'ondeggiamento).
+
+**Com'e' fatto** (ambience.js `leavesStep`, numeri in `LEAF`):
+- forma nuova delle particelle `__pt_leaf` (tools/05_atlas.py, nel gruppo
+  gui come le altre forme): una foglia a mandorla appena curva, bianca col
+  bordo e la nervatura piu' scuri; la tinge il colore della particella;
+- ogni foglia ha il colore della chioma da cui cade (`LEAF_RGB`, misurato su
+  alb1-alb8: il 20-80% dei pixel della chioma), grande 11-16 px, gira su se
+  stessa (di taglio diventa sottile), volteggia (direzione e velocita'
+  oscillano), scende portata verso ovest dal vento (piu' di traverso col
+  vento forte) e sparisce in fondo alla caduta (2-3 s);
+- [richiesta dell'autore, dopo i video] nasce a meta' della chioma, fra 60
+  e 105 px sopra la base del tronco (`LEAF.from`; la chioma va da ~20 a
+  ~160), non dalla cima (prima 70-150): la caduta e' piu' corta e la vita
+  pure (130-190 passi, era 170-250);
+- nascono solo dagli alberi sullo schermo e visibili, a caso, di piu' col
+  vento, quando la raffica piega l'albero (la stessa fase dell'ondeggiamento)
+  e con la pioggia; 2-4 a ogni colpo d'ascia;
+- un solo sistema di particelle, sopra le istanze (depth -2e7: le foglie
+  sono in aria), categoria "grass" (l'opzione "Erba e fiori" le spegne), e
+  niente con la qualita' bassa (come l'ondeggiamento). Anche nel menu.
+
+Misurato (`ambience.mjs`, "foglie": 10 s, ~15-20 alberi in vista): 2 foglie
+col vento minimo, 28 col massimo, 4 colori diversi; 4 foglie a un colpo
+d'ascia. Due video di 10 s all'autore (vento medio e massimo) e una foto da
+vicino sopra l'erba. Soak, salvataggi e prove unitarie passano. Da tarare
+con l'autore: quante, quanto grandi; sopra il bosco, dello stesso colore
+delle chiome, si vedono poco (e' voluto: si notano dove cadono sull'erba).

@@ -100,3 +100,71 @@ export function statue() {
     },
   };
 }
+
+// ------------------------------------------------- fiaccole sulle case
+
+// [§9.104, richiesta dell'autore] Di notte, invece delle finestre accese (una
+// luce sul tetto di due case su tre, §9.84: sembravano tende o superfici
+// traslucide con la luce dentro), una fiaccola appesa al muro di circa meta'
+// delle case, scelte a caso (sempre le stesse: dall'id), del giocatore e del
+// nemico. E' un'istanza (fiaccola_casa) legata alla sua casa: se la casa
+// non c'e' piu' (distrutta, crollata, convertita) sparisce anche lei. Di
+// giorno resta il bastone; la fiamma (le particelle della torcia del palo,
+// categoria "fuoco") e la luce si accendono con la notte, come facevano le
+// finestre, e non con la casa in fiamme. Lo sprite e' torchspr_part
+// dell'originale (mai usato), rimpicciolito.
+//
+// Il punto d'appoggio sul muro per sprite della casa, dall'origine, e il
+// verso: 1 sul muro di destra (la fiaccola pende verso destra), -1 su quello
+// di sinistra (specchiata). Misurati sugli sprite.
+export const HOUSE_TORCH = {
+  c1s: [14, -2, 1], c2s: [24, -6, 1], c3s: [10, 5, -1], c4s: [-25, 15, -1], c5s: [18, 14, 1], c6s: [26, -8, 1],
+  c1b: [15, 5, 1], c2b: [15, 0, 1], c3b: [0, 15, -1], c4b: [-30, 22, -1], c5b: [15, 15, 1], c6b: [20, 5, 1],
+};
+const TORCH_SCALE = 0.7, TORCH_TOP = [6, -24]; // dalla base del bastone alla cima (la fiamma), a scala 0,7
+const TORCH_SHARE = 50;                      // case con la fiaccola, su 100
+const TORCH_EVERY = 30;                      // passi fra un controllo delle case e l'altro
+export const torchLit = (g) => Math.max(0, Math.min(1, ((g.night || 0) - 0.3) / 0.5));
+const torchHash = (id) => (Math.imul(id, 2654435761) >>> 0) % 100;
+
+// Le case nuove (anche quelle finite durante la partita) ricevono la
+// fiaccola o no una volta sola (i.torch: 1 o 0, si salva)
+export function houseTorches(w) {
+  if (w.room === "menu" || w._stepNo % TORCH_EVERY !== 0 || !w.behaviours.fiaccola_casa) return;
+  for (const n of ["casa", "enemy_house"]) {
+    for (const h of w.all(n)) {
+      if (!h.alive || h.torch !== undefined) continue;
+      const m = HOUSE_TORCH[h.sprite_index];
+      h.torch = m && torchHash(h.id) < TORCH_SHARE ? 1 : 0;
+      if (!h.torch) continue;
+      const side = m[2];
+      w.create("fiaccola_casa", h.x + m[0] + side * TORCH_TOP[0], h.y + m[1] + TORCH_TOP[1], { init: (t) => { t.casa = h; t.side = side; } });
+    }
+  }
+}
+
+export function houseTorch() {
+  return {
+    create(i, w) {
+      fireStarterCreate(i, w, true); // la fiamma: come la torcia del palo
+      w.particles.stream(i.fire_emitter, i.fire_part, 0);
+      i.depth = i.casa ? i.casa.depth - 1 : -i.y;
+    },
+    step(i, w) {
+      const h = i.casa;
+      if (!h || !h.alive) { w.destroy(i); return; }
+      i.visible = h.visible !== false;
+      i.depth = h.depth - 1;
+      const cam = w.cam, inView = cam && i.x > cam.x - 50 && i.x < cam.x + cam.w + 50 && i.y > cam.y - 50 && i.y < cam.y + cam.h + 50;
+      const on = i.visible && h.onfire !== 1 && torchLit(w.g) > 0.15 && inView;
+      w.particles.stream(i.fire_emitter, i.fire_part, on ? 2 : 0);
+    },
+    draw(i, w, d) {
+      if (!i.visible) return;
+      const s = TORCH_SCALE;
+      d.spriteExt("torchspr_part", 0, i.x, i.y, (i.side || 1) * s, s, 0, 0xffffff, 1);
+      w.particles.draw(i.fire_ps, d.r, w.assets, w.cam);
+    },
+    destroy(i, w) { w.particles.systemDestroy(i.fire_ps); },
+  };
+}

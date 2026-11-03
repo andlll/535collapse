@@ -10,7 +10,7 @@
 // Si applicano con bm_subtract come nell'originale: la destinazione
 // moltiplicata per (1 - valore).
 
-import { fogActive, skyColour, nightLights } from "./fog.js";
+import { fogActive, skyColour, skyTint, nightLights } from "./fog.js";
 
 const NIGHT_TEXEL = 8;
 // [§7.13] nebbia e notte composte su una superficie con un texel ogni 4 px
@@ -79,10 +79,11 @@ export class FogLayer {
     }
     // nite
     const g = w.g;
-    let nightMode = 0, nightCol = [0, 0, 0], nt = null, nr = null;
+    let nightMode = 0, nightCol = [0, 0, 0], nightTint = [0, 0, 0], nt = null, nr = null;
     const dusk = w.twilight || 0, ov = w.overcast || 0; // §9.84: alba e tramonto rosa, cielo coperto
     if (g.night > 0 || dusk > 0 || ov > 0) {
       nightCol = skyColour(g.night, dusk, ov);
+      nightTint = skyTint(g.night, dusk, ov); // §9.103: quello che le luci non tolgono
       nightMode = 1;
       const lights = (g.night > 0 ? nightLights(w) : []).filter(([x, y, s]) => {
         const rad = LIGHT_RADIUS * s;
@@ -96,7 +97,11 @@ export class FogLayer {
         const tw = Math.ceil(cam.w / NIGHT_TEXEL) + 2, th = Math.ceil(cam.h / NIGHT_TEXEL) + 2;
         nt = this._nightTarget(tw, th);
         nr = [fx, fy, tw * NIGHT_TEXEL, th * NIGHT_TEXEL];
-        r.beginTarget(nt, fx, fy, nr[2], nr[3], nightCol);
+        // [§9.103] la superficie e' la maschera delle luci (1 = buio, 0 =
+        // luce piena); il colore lo compone lo shader (uNightTint + la notte
+        // per la maschera): prima era gia' il colore, e la luce toglieva
+        // anche il rosa del tramonto
+        r.beginTarget(nt, fx, fy, nr[2], nr[3], [1, 1, 1]);
         r.setBlend("normal");
         for (const [x, y, s] of lights) d.spriteExt("arealight", 0, x, y, s, s, 0, 0xffffff, 1);
         r.endTarget();
@@ -120,6 +125,7 @@ export class FogLayer {
       gl.uniform1i(U.uNight, tex(nt || this.tex));
       gl.uniform4f(U.uNightRect, ...(nr || [0, 0, 1, 1]));
       gl.uniform3f(U.uNightCol, ...nightCol);
+      gl.uniform3f(U.uNightTint, ...nightTint); // §9.103
       gl.uniform1i(U.uNightMode, nightMode);
     });
     r.endTarget();

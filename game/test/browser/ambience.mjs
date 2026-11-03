@@ -6,7 +6,7 @@
 //               rosso no) e quello della notte di sempre a notte piena
 //   nuvole      ci sono nuvole (sagome nn1-nn6 dell'autore, §9.86) attorno
 //               alla view di giorno, nessuna di notte; l'ombra su un oggetto
-//               (shadeAt nel punto in cui tocca terra) e' 0,6 nel pieno
+//               (shadeAt nel punto in cui tocca terra) e' 0,76 nel pieno
 //               della sagoma (anche specchiata e ruotata) e 1 fuori
 //   pioggia     cielo coperto (overcast) in pochi secondi, senza macchie;
 //               smesso di piovere, le macchie tornano
@@ -29,6 +29,8 @@
 //   crollo      una caserma distrutta: polvere e detriti; le rovine della
 //               mappa al primo passo no
 //   polvere     un cavaliere mandato col clic destro lascia polvere
+//   foglie      (§9.106) dagli alberi in vista, piu' col vento massimo che
+//               col minimo, del colore della chioma; 2-4 a un colpo d'ascia
 //   salvataggio salvato e ricaricato (una pagina nuova), il fumo riprende
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -83,7 +85,7 @@ const res = await page.evaluate(() => {
   out.nuvole = { vicine: blobs.length, tutte: big.length, sprite: [...new Set(big.map((q) => q.spr))].length,
                  centro: +centro.toFixed(3), fuori: +fuori.toFixed(3) };
   G.g.night = 1; out.nuvole.notte = G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length; G.g.night = 0;
-  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.sprite >= 4 && Math.abs(out.nuvole.centro - 0.6) < 0.01 // §9.89: alpha 0,4
+  out.nuvole.ok = out.nuvole.tutte > 5 && out.nuvole.sprite >= 4 && Math.abs(out.nuvole.centro - 0.76) < 0.01 // §9.102: alpha 0,24
     && out.nuvole.fuori === 1 && out.nuvole.notte === 0;
   // pioggia: cielo coperto in pochi secondi, niente macchie; smesso, tornano
   const all = () => G.ambience.cloudBlobs(w, { x: 0, y: 0, w: w.roomW, h: w.roomH }).length;
@@ -257,6 +259,31 @@ const res = await page.evaluate(() => {
   let trail = 0;
   for (let k = 0; k < 90; k++) { run(1); const s = P.systems.find((q) => q.depth === 1e9); if (s) trail = Math.max(trail, s.parts.length); }
   out.polvere = { sbuffi: trail, ok: trail >= 3 };
+  // [§9.106] foglie: dagli alberi in vista (resi visibili, scena disegnata:
+  // l'ondeggiamento e le foglie si accendono col primo disegno), col vento
+  // massimo piu' che col minimo, del colore della chioma; un colpo d'ascia
+  // ne fa cadere 2-4 subito
+  {
+    const trees = [...w.all("albero")];
+    const t0 = trees[Math.floor(trees.length / 2)];
+    cam.x = t0.x - cam.w / 2; cam.y = t0.y - cam.h / 2;
+    for (const t of trees) t.visible = true;
+    G.loop.render();
+    const leafPs = () => P.systems.filter((q) => q.depth === -2e7 && q.cat === "grass");
+    const count = (wind, n) => {
+      G.g.wind = wind; let born = 0;
+      for (let k = 0; k < n; k++) { run(1); for (const q of leafPs()) for (const l of q.parts) if (l.age === 1) born++; }
+      return born;
+    };
+    const minimo = count(0, 600), massimo = count(1, 600);
+    const cols = new Set(); for (const q of leafPs()) for (const l of q.parts) cols.add(l.t.colour.rgb.join(","));
+    const vicino = trees.filter((t) => t.x > cam.x && t.x < cam.x + cam.w && t.y > cam.y && t.y < cam.y + cam.h)[0] || t0;
+    G.g.wind = 0; run(1);
+    let colpo = 0; vicino.hitAt = w._stepNo + 1; run(1);
+    for (const q of leafPs()) for (const l of q.parts) if (l.age === 1 && Math.abs(l.x - vicino.x) < 80) colpo++;
+    out.foglie = { minimo, massimo, colori: cols.size, colpo, ok: massimo > minimo && massimo >= 5 && cols.size >= 1 && colpo >= 2 && colpo <= 5 };
+    cam.x = X - cam.w / 2; cam.y = Y - cam.h / 2; cam.clamp();
+  }
   // per il salvataggio: una casa col camino vicino alla view
   const h = w.create("casa", X, Y - 80); h.sprite_index = "c1s"; w.moved(h);
   run(120);
