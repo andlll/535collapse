@@ -8179,3 +8179,104 @@ Prova: `game/test/browser/lvl06.mjs` (partenza, solo arcieri, torri chiuse,
 pattuglie in giro e reazione, fase 1, torre recuperata e presidiata,
 rinforzi e incursione dal ponte di sinistra, colonna, sconfitta al sesto,
 taratura con 15 e 5 torri), in CI; `saves.mjs` anche col livello 6.
+
+### 9.102 Nuvole, segnalino del 6, civili al cantiere, obiettivi, livello 5
+
+Richieste e segnalazioni dell'autore (3 novembre 2026), sei punti; il sesto
+(il suono) e' una discussione, senza codice. Versione 0.2607 (§9.73).
+
+**1. Nuvole** (ambience.js): il 60% piu' grandi (scala 2,72-3,68, era
+1,7-2,3) e piu' trasparenti, al 60% dell'opacita' di prima (il nero pieno
+della sagoma 0,24, era 0,4). Foto di confronto all'autore (prima, +50%,
++60%, la stessa inquadratura del livello 5): tenuto +60%, da rivedere con
+lui. `ambience.mjs`: l'ombra nel pieno della sagoma ora vale 0,76.
+
+**2. Segnalino del livello 6** sulla mappa della campagna: lato 100 (era 120,
+nuovi.json `cap_l6`), il numero "6." 13 px piu' in basso (menu.js
+`L6_LABEL`).
+
+**3. Civili "in tilt" andando a costruire** (civilians.js, `edgeRescue`,
+`aroundTarget`). Segnalazione: incontrando un altro personaggio in
+movimento restavano bloccati finche' non si dava loro un altro ordine, anche
+col passaggio libero. L'incrocio semplice (un civile e un soldato, anche in
+un corridoio fra due case) non lo riproduceva; lo riproduce una prova piu'
+affollata: 12 civili mandati a gruppi di 3 su quattro cantieri e 16 soldati
+che attraversano la zona ogni 2 s. Col codice di prima, su 4 semi e 288
+ordini da 40 s, 9 civili restavano per tutto il giro a 30-65 px dal bordo
+del cantiere, girando in tondo sul posto (direzione +30 gradi a passo). Il
+meccanismo, seguito passo per passo:
+- vicino al cantiere (entro 300 px dalla meta) il civile va al suo posto sul
+  bordo (toEdgeSpot: meleeSpot, §9.64) con mp_potential_step, cioe' dritto;
+- un'unita' che passa gli occupa il posto o gli sta davanti: dopo 40 passi
+  senza avvicinarsi meleeSpot gliene sceglie un altro, e con i posti vicini
+  presi dai compagni al lavoro il nuovo e' dietro l'edificio;
+- il percorso locale che dovrebbe aggirare l'ostacolo (melee.js `route`) usa
+  i rettangoli delle istanze, e quello di un fiume vicino (migliaia di px)
+  chiude tutto: niente percorso, si va dritti;
+- dritto contro l'edificio mp_potential_step gira di 30 gradi a passo
+  avanzando di 3 px: un cerchio di ~6 px, per sempre (l'unita' passata non
+  c'entra piu'). Varianti viste: staccarsi da chi gli cammina addosso
+  (separate) e tornarci, avanti e indietro; restare a 15-30 px dal bordo,
+  oltre i 10 a cui si comincia.
+
+Correzione: si guarda il progresso verso l'edificio (non verso il posto). Se
+il civile non gli si avvicina di almeno 2 px da `EDGE_STUCK` passi (60), a
+meno di `EDGE_NEAR` px (30) comincia a lavorare da dove e' (buildStep e la
+riparazione accettano 30 px al posto di 10, solo in quel caso); piu' lontano
+segue il campo verso l'edificio (`fieldTo`, §8.19: parte dalle celle libere
+che lo toccano, sulla griglia dei costi, con edifici, fiumi e unita' ferme,
+senza collisioni con le unita') fino alla cella libera piu' vicina accanto
+all'edificio. E se la linea dritta verso il posto attraversa l'edificio,
+col campo da subito. `edgeT` (l'edificio seguito) non si salva
+(snapshot.js). Misurato con la stessa prova: 288 ordini su 288 arrivano a
+lavorare (tempo medio uguale, ~270 passi), nessuno in tondo per tutto il
+giro.
+
+Prova nuova `game/test/browser/buildstuck.mjs` (nella CI): la prova
+affollata, sei giri da 40 s col seme 7; tutti devono arrivare e nessuno
+restare fermo con l'ordine di costruire. Col codice di prima: 2 civili non
+arrivano (NON VA); col nuovo, 72 su 72. Passano anche sites, workers, idle,
+deposit, mining, depot, settle, crowd, blocked, monastery, bridge, economy.
+
+**4. Obiettivi completati** (endgame.js): niente piu' barra nera sopra il
+testo; il testo in trasparenza (alpha 0,4) e una spunta verde (due tratti, a
+10 px dalla fine dell'ultima riga). La larghezza del riquadro conta anche la
+spunta.
+
+**5. Livello 5.**
+- *Finestre sotto il pannello delle risorse* (hints.js `keepClear`): i
+  dialoghi e i suggerimenti che seguono un'unita' nascevano nel suo punto
+  dello schermo, anche sotto le risorse o fuori dallo schermo (a 1280 x 720
+  il primo dialogo del livello 5 usciva in basso a destra). Ora restano
+  nello schermo e fuori dai riquadri dell'interfaccia (risorse e pulsanti in
+  alto a sinistra, pausa e inattivi a destra, obiettivi, minimappa, a GAP
+  px), ritratto compreso; se ne toccano uno vanno nel posto libero piu'
+  vicino lungo i suoi bordi. Vale per tutti i livelli.
+- *Le due torri vicino alle rovine* (4872, 2529 e 4580, 2129) tirano
+  dall'inizio, con i loro 2 arcieri (prima di vedetta, §9.76: il giocatore
+  si accampava li' fuori). Restano fuori dalla regia economica.
+- *La sortita* (levels.js `lv5Sally`, numeri in `LV5`): un alleato a meno di
+  500 px dalle mura o da una porta (`sallyR`) fa uscire i soldati del
+  presidio della citta' (quelli della mappa, non della regia economica, che
+  difendono gia' da soli entro 600 px, §9.50) entro 2000 px da lui: col
+  flow field dei nemici verso di lui, poi combattono come sempre. Nessun
+  alleato a 800 px dalle mura per 6 s: chi non combatte (nessun alleato a
+  350 px) torna al suo posto, col campo dei soli ostacoli fissi (con quello
+  di sempre i compagni fermi nel varco della porta la chiudevano e 4-5
+  soldati restavano fuori, fermi: lo stesso di §9.82). Il dialogo delle mura
+  (600 px) arriva poco prima.
+- `lvl05.mjs`: la torre fuori dalle mura tira; la sortita (un guerriero a
+  280 px dalla porta ovest per 15 s: escono 29 soldati, il piu' vicino gli
+  arriva a contatto; andato via, tornano tutti ai loro posti); il cavaliere
+  della prova verso le rovine ora e' invulnerabile (le torri lo uccidevano) e
+  aspetta i 600 passi dell'acropoli.
+
+**6. Il suono** (discussione con l'autore, nessuna decisione ancora): nel
+progetto originale non c'e' audio (§0.6, cartella `sound` vuota), e la prima
+uscita era stata decisa "senza audio" (§0.10, punto 4). Proposta: un modulo
+audio piccolo (Web Audio, un AudioContext sbloccato al primo clic, volumi
+musica ed effetti nel menu di pausa, salvati con le impostazioni), poi pochi
+suoni che danno informazioni (attacco in corso fuori schermo, edificio
+finito, unita' pronta, obiettivo completato, clic dell'interfaccia) prima
+dell'ambiente (vento, pioggia, fuoco) e della musica; suoni con licenza
+libera (CC0) o fatti per il gioco. Da decidere con l'autore.

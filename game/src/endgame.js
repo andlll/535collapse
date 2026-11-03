@@ -186,6 +186,15 @@ function widestDigit(d) {
 const LV5_GOALS = ["Drive back the enemy attack", "Chase the enemy back to their city", "Fall back and find stone",
                    "Build a fortress", "Destroy the enemy city ({n} buildings left)"];
 
+// [§9.102] la spunta verde degli obiettivi completati: due tratti, larga
+// CHECK_W px col margine, centrata in altezza su (x, cy)
+const CHECK_W = 32, DONE_ALPHA = 0.4, CHECK_GREEN = 0x3caa32; // BGR di (50, 170, 60)
+function checkMark(d, x, cy) {
+  d.setAlpha(0.9);
+  d.lineWidthColour(x, cy, x + 7, cy + 7, 4, CHECK_GREEN, CHECK_GREEN);
+  d.lineWidthColour(x + 6, cy + 7, x + 19, cy - 8, 4, CHECK_GREEN, CHECK_GREEN);
+}
+
 export function objectiveButton() {
   return {
     create(i) { i.sprite_index = null; },
@@ -196,7 +205,7 @@ export function objectiveButton() {
       if (w.number("victory_manager") || w.number("gameover_manager")) return;
       const nobs = w.room === "match" ? 4 : 3;
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
-      // [y, testo, barrato]
+      // [y, testo, completato (prima: la y della barra)]
       const lines = [];
       // [§9.22] testi che contano solo per la larghezza del riquadro (non si
       // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
@@ -287,12 +296,12 @@ export function objectiveButton() {
       // l'ultima colonna dei pulsanti). Sugli schermi stretti, dove gia'
       // l'originale li toccava, resta com'era.
       d.setFont("overdue");
-      const maxW = Math.max(0, ...lines.map(([, s]) => d.stringWidth(s)), ...sizing.map((s) => d.stringWidth(s)));
+      const maxW = Math.max(0, ...lines.map(([, s, done]) => d.stringWidth(s) + (done ? CHECK_W : 0)), ...sizing.map((s) => d.stringWidth(s)));
       const room = Math.max(0, W - 520 - TOP_BUTTONS_RIGHT);
       const ex = Math.min(Math.max(0, Math.ceil(maxW - 360)), room);
       const x = W - 500 - ex, wrapW = 360 + ex;
-      const wrap = (s) => (d.stringWidth(s) > wrapW ? d._lines(s, 30, wrapW) : [s]);
-      const extra = lines.reduce((n, [, s]) => n + wrap(s).length - 1, 0);
+      const wrap = (s, done) => (d.stringWidth(s) > wrapW - (done ? CHECK_W : 0) ? d._lines(s, 30, wrapW - (done ? CHECK_W : 0)) : [s]);
+      const extra = lines.reduce((n, [, s, done]) => n + wrap(s, done).length - 1, 0);
       d.setAlpha(0.69);
       d.roundrectColourExt(W - 520 - ex, 20, W - 120, 38 + 30 * nobs + 30 * extra, 60, 60, c.white, c.white, false);
       w._objLeft = W - 520 - ex; // §9.27: il suggerimento sugli obiettivi gli sta accanto (hints.js)
@@ -303,15 +312,21 @@ export function objectiveButton() {
       d.setHalign("left");
       d.setAlpha(0.75);
       d.setFont("overdue");
+      // [§9.102, richiesta dell'autore] l'obiettivo completato non e' piu'
+      // barrato (la barra nera non gli piaceva): il testo in trasparenza e una
+      // spunta verde accanto, dopo l'ultima riga
       let down = 0;
-      for (const [y, str, strikeY] of lines) {
-        for (const piece of wrap(str)) {
+      for (const [y, str, done] of lines) {
+        const pieces = wrap(str, done);
+        pieces.forEach((piece, k) => {
+          d.setAlpha(done ? DONE_ALPHA : 0.75);
           d.text(x, y + down, piece);
-          if (strikeY) { d.setColour(c.black); d.rectangle(x, strikeY + down, x + d.stringWidth(piece), strikeY + down + 2, false); }
+          if (done && k === pieces.length - 1) checkMark(d, x + d.stringWidth(piece) + 10, y + down - 13);
           down += 30;
-        }
+        });
         down -= 30;
       }
+      d.setAlpha(0.75);
       d.setFont("GUI_1");
       d.setValign("middle");
       d.setAlpha(1);

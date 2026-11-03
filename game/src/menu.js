@@ -248,7 +248,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2606";
+const VERSION = "0.2607";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -333,9 +333,11 @@ const L5_MARK = [95, 60];
 const L5_LABEL = [95, -22];
 const L5_ARROW = [150, -25, 0.8, 1.0, 58];
 // [§9.101, indicazione dell'autore] il livello 6 (cap_l6, la Citta' delle
-// Cento Torri): a ovest del ponte del 4, sopra il 5, con la freccia dal 5
+// Cento Torri): a ovest del ponte del 4, sopra il 5, con la freccia dal 5.
+// [§9.102, richiesta dell'autore] un po' piu' piccolo (lato 100, era 120):
+// il numero scende con lui
 const L6_MARK = [-3, -123];
-const L6_LABEL = [-3, -203];
+const L6_LABEL = [-3, -190];
 const L6_ARROW = [46, -31, 0.9, 1.0, -62];
 
 function drawCampaign(i, g, d, W, H) {

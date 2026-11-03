@@ -34,13 +34,15 @@ const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 // dell'autore] ingrandite 5,5-8,5 volte (1400-2700 px di room, piu' dello
 // schermo) erano macchie scure senza forma: ora circa come nel disegno
 // (scala 2 della meta' risoluzione: il disegno e' largo 370-550 px), piu'
-// fitte, un po' piu' scure
+// fitte, un po' piu' scure.
+// [§9.102, richiesta dell'autore] il 60% piu' grandi (erano 1,7-2,3) e piu'
+// trasparenti (il 60% dell'opacita' di prima: 0,4 -> 0,24)
 const CLOUD_SPRITES = ["nn1", "nn2", "nn3", "nn4", "nn5", "nn6"];
-const CLOUD_SCALE = [1.7, 2.3];  // scala (uguale in x e y), poi:
+const CLOUD_SCALE = [2.72, 3.68]; // scala (uguale in x e y), poi:
 const CLOUD_STRETCH = 0.2;       // x allungata o accorciata fino al 20%
 const CLOUD_TILT = 8;            // ruotata fino a 8 gradi; specchiata a caso
 const CLOUD_CELL = [1100, 800];  // una nuvola ogni tanti px di room
-const ALPHA = 0.4;              // il nero pieno della sagoma
+const ALPHA = 0.24;             // il nero pieno della sagoma
 // [§9.90, richiesta dell'autore] Il vento della partita, g.wind (0-1, a
 // caso, state.js; si salva con le globali; i salvataggi di prima: 0,5).
 // Le nuvole vanno da 0,8 a 1,5 px a passo (erano 0,32: troppo lente),

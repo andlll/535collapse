@@ -1589,9 +1589,9 @@
     },
     "cap_l6": {
       "da": "cap6",
-      "lato": 120,
+      "lato": 100,
       "gruppo": "campagna",
-      "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101)"
+      "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101); lato 100 (era 120, §9.102: un po' piu' piccolo)"
     }
   }
 }

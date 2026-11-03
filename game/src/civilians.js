@@ -506,7 +506,63 @@ const EDGE = { sep: 30, extras: [0] }; // §9.64: solo a contatto (cantiere, rip
 function toEdgeSpot(w, i, t) {
   if (!t) return;
   const s = meleeSpot(w, i, t, null, EDGE);
+  if (s && aroundTarget(w, i, t, s)) return; // §9.102
   mpPotentialStep(w, i, s ? s[0] : t.x, s ? s[1] : t.y, i.autospeed);
+}
+
+// [§9.102, segnalazione dell'autore] Il civile che va al cantiere (o a
+// riparare) "in tilt" vicino all'edificio, finche' non gli si dava un altro
+// ordine. Misurato (40 civili e soldati che si incrociano attorno a quattro
+// cantieri): incontrando un'unita' in movimento il civile
+// - se ne staccava (separate) e ci tornava addosso, avanti e indietro, se
+//   l'altra andava dalla sua parte;
+// - perso il posto sul bordo (meleeSpot ne sceglie un altro dopo STUCK
+//   passi senza avvicinarsi) ne prendeva uno dietro l'edificio o chiuso dai
+//   compagni al lavoro e ci andava dritto con mp_potential_step: contro
+//   l'ostacolo girava in tondo sul posto (30 gradi a passo), anche passata
+//   l'unita'. Il percorso locale (melee.js, route) usa i rettangoli delle
+//   istanze, e un fiume vicino (un rettangolo di migliaia di px) lo chiudeva;
+// - restava a 15-30 px dal bordo, oltre i 10 a cui si comincia.
+// Ora si guarda il progresso: se il civile non si avvicina all'edificio di
+// almeno 2 px da EDGE_STUCK passi, a meno di EDGE_NEAR px comincia a
+// lavorare da dove e' (buildStep), piu' lontano segue il campo verso
+// l'edificio (fieldTo: parte dalle celle libere che lo toccano, sulla
+// griglia dei costi con edifici, fiumi e unita' ferme; senza collisioni con
+// le unita'), che lo porta alla cella libera piu' vicina accanto
+// all'edificio. E se la linea dritta verso il posto attraversa l'edificio,
+// col campo da subito (toEdgeSpot).
+const EDGE_STUCK = 60, EDGE_NEAR = 30;
+function edgeRescue(w, p, i, t) {
+  const now = w._stepNo, d = w.distanceToInstance(i, t);
+  if (i.edgeT !== t || now - (i.edgeSeen || 0) > 1) { i.edgeT = t; i.edgeBest = d; i.edgeAt = now; i.edgeNear = 0; }
+  else if (d < i.edgeBest - 2) { i.edgeBest = d; i.edgeAt = now; i.edgeNear = 0; }
+  i.edgeSeen = now;
+  if (now - i.edgeAt < EDGE_STUCK) return false;
+  if (d < EDGE_NEAR) { i.edgeNear = 1; return false; } // buildStep: si comincia da qui
+  return fieldToward(w, p, i, t);
+}
+function fieldToward(w, p, i, t) {
+  if (!fieldTo(w, p, i, t.x, t.y, false)) return false; // da qui non ci si arriva: come prima
+  moveFlowField(w, p, i);
+  return true;
+}
+// [§9.102] il posto dall'altra parte dell'edificio: col campo (vedi sopra)
+function aroundTarget(w, i, t, s) {
+  const b = w.bbox(t);
+  return !!b && segmentHitsBox(i.x, i.y, s[0], s[1], b[0] + 2, b[1] + 2, b[2] - 2, b[3] - 2) && fieldToward(w, w.path, i, t);
+}
+// il segmento (x0, y0)-(x1, y1) passa dentro il rettangolo? (Liang-Barsky)
+function segmentHitsBox(x0, y0, x1, y1, l, t, r, b) {
+  if (r <= l || b <= t) return false;
+  let u0 = 0, u1 = 1;
+  const dx = x1 - x0, dy = y1 - y0;
+  for (const [pp, q] of [[-dx, x0 - l], [dx, r - x0], [-dy, y0 - t], [dy, b - y0]]) {
+    if (pp === 0) { if (q < 0) return false; continue; }
+    const u = q / pp;
+    if (pp < 0) { if (u > u1) return false; if (u > u0) u0 = u; }
+    else { if (u < u0) return false; if (u < u1) u1 = u; }
+  }
+  return u0 < u1;
 }
 const WAIT_MAX = 60; // passi di attesa di fila per la precedenza (1 s), ominoMove
 const DEP_NEAR = 150; // §9.60: px da un deposito entro cui chi raccoglie passa sopra i compagni
@@ -759,7 +815,8 @@ function ominoMove(i, w, p) {
     const bldT = i.buildwork === 1 ? n(S.fond, i.buildx, i.buildy)
       : i.repairwork === 1 && !complexOf(i.repT) ? n(S.build, i.repx, i.repy) : null;
     const blocked = !!bldT && !seesTarget(w, p, i, bldT);
-    if (atRes) toResSpot(w, i, res); // §9.21
+    if (bldT && !far && edgeRescue(w, p, i, bldT)) { /* §9.102: gia' mosso col campo */ }
+    else if (atRes) toResSpot(w, i, res); // §9.21
     // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
     // vero (albero, edificio) in cui il campo l'ha portato
     // [§9.82] col carico a meno di DEP_CLOSE px dal bordo del deposito si va
@@ -1123,7 +1180,7 @@ function buildStep(i, w, p) {
   // costruzione: l'else e' agganciato a "ci sono cantieri" [C]
   // [§9.40] il ponte del livello 4 si ripara da piu' lontano (buildReach):
   // all'imbocco c'e' posto per due, gli altri restavano in coda per sempre
-  const reach = (f) => (f && f.buildReach) || 10;
+  const reach = (f) => (f && f.buildReach) || (i.edgeNear === 1 ? EDGE_NEAR : 10); // §9.102: bloccato vicino al bordo
   if (i.buildwork === 1) {
     if (w.number(S.fond) > 0) {
       if (w.distanceToInstance(i, fondNear()) < reach(fondNear())) {
@@ -1166,7 +1223,7 @@ function buildStep(i, w, p) {
   // posto sul bordo (toEdgeSpot, a 4 px) l'ultimo passo, chiuso
   // dall'edificio, poteva lasciare il civile a 6 px, fermo a camminare
   const rc = complexOf(i.repT);
-  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, S.build)) < 10)) {
+  if (i.repairwork === 1 && (rc ? complexNear(w, i, rc, 5) : w.distanceToInstance(i, w.nearest(i.repx, i.repy, S.build)) < (i.edgeNear === 1 ? EDGE_NEAR : 10))) { // §9.102
     i.repairwork = 0;
     p.occupy(i);
     i.action = 7;
