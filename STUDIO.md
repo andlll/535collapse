@@ -8405,7 +8405,11 @@ le particelle (le foglie col vento proposte con l'ondeggiamento).
   alb1-alb8: il 20-80% dei pixel della chioma), grande 11-16 px, gira su se
   stessa (di taglio diventa sottile), volteggia (direzione e velocita'
   oscillano), scende portata verso ovest dal vento (piu' di traverso col
-  vento forte) e sparisce in fondo alla caduta (3-4 s);
+  vento forte) e sparisce in fondo alla caduta (2-3 s);
+- [richiesta dell'autore, dopo i video] nasce a meta' della chioma, fra 60
+  e 105 px sopra la base del tronco (`LEAF.from`; la chioma va da ~20 a
+  ~160), non dalla cima (prima 70-150): la caduta e' piu' corta e la vita
+  pure (130-190 passi, era 170-250);
 - nascono solo dagli alberi sullo schermo e visibili, a caso, di piu' col
   vento, quando la raffica piega l'albero (la stessa fase dell'ondeggiamento)
   e con la pioggia; 2-4 a ogni colpo d'ascia;

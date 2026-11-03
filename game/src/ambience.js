@@ -96,12 +96,13 @@ export function treeSway(w, i) {
 // schermo: ognuna del colore della chioma da cui cade (LEAF_RGB, misurato
 // sugli sprite), portata dal vento (piu' vento: piu' foglie e piu' di
 // traverso, verso ovest), che volteggia (direzione e orientamento che
-// oscillano) e sparisce arrivata a terra. Di piu' quando la raffica piega
+// oscillano) e sparisce arrivata a terra. Nasce a meta' della chioma
+// (LEAF.from: px sopra la base del tronco), non dalla cima. Di piu' quando la raffica piega
 // l'albero (la stessa fase di treeSway), con la pioggia e a ogni colpo
 // d'ascia (2-4 foglie). Categoria "grass" (opzione "Erba e fiori"), niente
 // con la qualita' bassa (come l'ondeggiamento). Poche: ~0,5 foglie al
 // secondo per 60 alberi in vista col vento minimo, ~4 col massimo.
-export const LEAF = { rate: [0.00025, 0.0017], rain: 1.6, hit: [2, 4], life: [170, 250], size: [0.17, 0.25],
+export const LEAF = { rate: [0.00025, 0.0017], rain: 1.6, hit: [2, 4], life: [130, 190], size: [0.17, 0.25], from: [60, 105],
                       speed: [0.55, 0.8], windSpeed: 0.5, fall: 262, windTurn: 45 };
 const LEAF_RGB = {
   alb1: [53, 93, 93, 151, 39, 70], alb2: [188, 221, 168, 203, 76, 110], alb3: [118, 179, 96, 162, 55, 98],
@@ -150,8 +151,9 @@ function leavesStep(w, cam) {
       if (Math.random() < rate * gust) k++;
       if (!k) continue;
       S = S || leafSystem(w);
-      const top = treeSway(w, tr) * 0.6, type = leafType(tr.sprite_index, v);
-      P.region(S.em, tr.x - 45 + top, tr.x + 45 + top, tr.y - 150, tr.y - 70, "ellipse", "gaussian");
+      const top = treeSway(w, tr) * 0.35, type = leafType(tr.sprite_index, v);
+      // [richiesta dell'autore] dalla meta' della chioma, non dalla cima
+      P.region(S.em, tr.x - 40 + top, tr.x + 40 + top, tr.y - LEAF.from[1], tr.y - LEAF.from[0], "ellipse", "gaussian");
       P.burst(S.ps, S.em, type, k);
     }
   }
