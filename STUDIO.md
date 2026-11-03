@@ -8352,7 +8352,9 @@ fiaccola restano 15 fiaccole, nessuna senza casa. Salvataggi (match, lvl02,
 lvl05, lvl06: ripristino identico), soak su tutte le room, burn, ambience,
 prove unitarie: passano. Foto all'autore di giorno, al tramonto e di notte.
 
-**Da decidere con l'autore**: il bastone di giorno (tenerlo o mostrare la
-fiaccola solo di notte); quante case (ora la meta'); lo sprite (quello
-dell'originale e' piu' liscio del resto: un disegno suo nello stile del
-gioco starebbe meglio); la grandezza della luce.
+**Decisioni dell'autore** (dopo le foto): il bastone di giorno resta; la
+meta' delle case va bene; la luce va bene cosi'. Lo sprite: per ora quello
+dell'originale, l'autore prova a disegnarne uno nello stile del gioco. Per
+cambiarlo basta lo sprite di `fiaccola_casa` in nuovi.json (con l'origine in
+cima, dove nasce la fiamma); se cambia la lunghezza del bastone si
+ritoccano `TORCH_SCALE` e `TORCH_TOP` in props.js (dalla base alla cima).
