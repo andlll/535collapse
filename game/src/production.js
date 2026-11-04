@@ -327,7 +327,7 @@ export function unitClicker(prod, type) {
     destroy(i, w) { w.g.sele = 0; i.hover = 0; },
     mouseEnter(i) { i.hover = 1; },
     mouseLeave(i) { i.hover = 0; },
-    drawGUI(i, w, d) {
+    drawGUITop(i, w, d) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       d.setAlpha(0.69);
@@ -417,7 +417,7 @@ export function cancelClicker(prod) {
     destroy(i, w) { w.g.sele = 0; i.hover = 0; },
     mouseEnter(i) { i.hover = 1; },
     mouseLeave(i) { i.hover = 0; },
-    drawGUI(i, w, d) {
+    drawGUITop(i, w, d) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       d.setAlpha(0.69);

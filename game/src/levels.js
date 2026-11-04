@@ -700,6 +700,11 @@ export const LV4 = {
   // bersaglio, poi al bersaglio come prima
   road: [[2600, 760], [2250, 560], [1900, 330], [1400, 280], [900, 330], [560, 800]],
   roadNext: 150,
+  // [§9.107, segnalazione dell'autore] a ponte riparato la base sud riceve
+  // rinforzi: escono dalle sue caserme e dalla stalla (o dal centro) e
+  // restano a difenderla, soldati della regia economica (economy.js, ECO.lvl04)
+  reinforce: ["enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_warrior", "enemy_picchiere", "enemy_arciere",
+              "enemy_cavaliere", "enemy_cavaliere"],
 };
 
 // [§9.57] Le tappe della strada (LV4.road) fino a quella piu' vicina al
@@ -772,6 +777,17 @@ export function enemyManagerLv4(p) {
       if (L.phase === 0 && w.exists("ponte_fatto")) {
         L.phase = 1; L.bridge = 100;
         g.en.hold = 0;
+        // [§9.107] i rinforzi della base sud
+        const south = [...w.all("enemy_caserma"), ...w.all("enemy_stalla")].filter((b) => b.noEco !== 1);
+        const home = w.all("enemy_centro").next().value;
+        LV4.reinforce.forEach((obj, k) => {
+          const src = obj === "enemy_cavaliere" ? south.find((b) => b.object === "enemy_stalla") : south.filter((b) => b.object === "enemy_caserma")[k % 2];
+          const at = src || home;
+          if (!at) return;
+          const e = w.create(obj, at.x, at.y + 120);
+          freeSpawnEnemy(e, w);
+          e.role = 30; e.eco = 1; e.stay = 1; // non partono con le ondate
+        });
         const s = w.nearest(LV4.centro[0], LV4.centro[1], "ally_unit");
         if (s) w.create("dialogo_4_1", s.x, s.y);
       }

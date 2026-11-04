@@ -22,7 +22,8 @@ Decorative, rasterizzati qui dai TTF di nuovi/font/; foglio intero come
 pseudo-sprite "__font_<nome>", piu' la tabella dei glifi in atlas.json
 "fonts"), "__white", un quadratino
 bianco per rettangoli, cerchi e linee, e le forme delle particelle
-("__pt_flare", "__pt_line", "__pt_pixel", "__pt_ring", "__pt_star", "__pt_leaf"): niente
+("__pt_flare", "__pt_line", "__pt_pixel", "__pt_ring", "__pt_star", "__pt_leaf",
+"__pt_chip"): niente
 texture in piu' da legare.
 
 Esclusi: sprite usati solo come maschera di collisione (nessun riferimento
@@ -313,6 +314,32 @@ def particle_shapes():
             v = round(255 * (1 - 0.45 * max(edge, rib * 0.8)))
             px[x, y] = (v, v, v, round(255 * a))
     out.append(("__pt_leaf", lf, [0, 0, 64, 64]))
+    # chip [§9.107, richiesta dell'autore: le schegge di pietra e d'oro sotto
+    # il piccone]: un sassolino irregolare (sette lati, raggio 14-22 px),
+    # bianco (lo tinge il colore della particella), piu' chiaro in alto a
+    # sinistra e piu' scuro in basso a destra, col bordo scuro come il tratto
+    # delle rocce
+    ch = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+    px = ch.load()
+    radii = [20, 15, 22, 17, 14, 21, 16]
+    def chip_r(a):
+        k = a / (2 * math.pi) * len(radii)
+        i0 = int(k) % len(radii)
+        t = k - int(k)
+        return radii[i0] * (1 - t) + radii[(i0 + 1) % len(radii)] * t
+    for y in range(64):
+        for x in range(64):
+            dx, dy = x + 0.5 - 32, y + 0.5 - 32
+            r = math.hypot(dx, dy)
+            edge = chip_r(math.atan2(dy, dx) % (2 * math.pi))
+            if r > edge + 0.7:
+                continue
+            a = max(0.0, min(1.0, edge + 0.7 - r))
+            light = 0.78 + 0.22 * max(-1.0, min(1.0, -(dx + dy) / 30))
+            rim = max(0.0, 1 - (edge - r) / 2.6)
+            v = round(255 * light * (1 - 0.5 * rim))
+            px[x, y] = (v, v, v, round(255 * a))
+    out.append(("__pt_chip", ch, [0, 0, 64, 64]))
     return out
 
 

@@ -63,6 +63,9 @@ export const ECO = {
     // §9.76
     armyEco: false,                              // il tetto army conta solo i soldati della regia (non quelli della mappa)
     stoneWork: true,                             // ripara e ricostruisce anche gli edifici di pietra
+    // §9.107
+    guard: 0,                                    // soldati della regia che restano a casa (non partono con le ondate)
+    anyTroop: false,                             // senza le risorse per la truppa di turno, un'altra che si puo' pagare
   },
   // [Decisione dell'autore] livello 4: solo ricostruzione degli edifici
   // persi (e riparazioni), niente edifici nuovi; il resto da tarare con la
@@ -75,9 +78,16 @@ export const ECO = {
   // (pochi alberi e una miniera, sul bordo della mappa)
   // [§9.59, richiesta dell'autore] altri lavoratori, senza valanga: fino a 9
   // (non 6), uno ogni 30 s (non 17)
-  lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 10,
+  // [§9.107, segnalazione dell'autore] a ponte riparato la base sud cadeva
+  // subito: una sola miniera, l'oro finiva verso il decimo minuto e senza oro
+  // ne' guerrieri ne' arcieri ne' cavalieri (cibo e legno restavano li', 2800
+  // e 2900 al sedicesimo); e ogni ondata si portava via tutti i soldati in
+  // attesa, la base restava vuota. Ora: tetto 16 (era 10), 6 restano sempre
+  // a casa, senza oro picchieri (cibo e legno), e i rinforzi di LV4.reinforce
+  // quando il ponte e' riparato (levels.js)
+  lvl04: { startWorkers: 4, start: { food: 200, wood: 200, gold: 100, stone: 0 }, army: 16,
            attackAt: 4, attackGrow: 1, attackEvery: 9000, mix: { wood: 2, gold: 2, food: 3, stone: 1 },
-           workers: 9, workerTime: 1800 },
+           workers: 9, workerTime: 1800, guard: 6, anyTroop: true },
   // [§9.76, decisioni dell'autore] livello 5: economia bilanciata, al piu'
   // 10 lavoratori (4 gia' attorno al centro), una grande riserva di pietra
   // (paga le macchine d'assedio: la regia del livello, levels.js) che non
@@ -625,7 +635,8 @@ export function enemyEco(p) {
       }
       // soldati da caserme e stalle, pagando, con abbastanza lavoratori (o
       // senza centro) e sotto il tetto
-      let army = (E.armyEco ? soldiers(w).filter((e) => e.eco === 1) : soldiers(w)).length; // §9.76: armyEco
+      // §9.107: i rinforzi che restano a casa (stay) fuori dal tetto
+      let army = (E.armyEco ? soldiers(w).filter((e) => e.eco === 1) : soldiers(w)).filter((e) => !e.stay).length; // §9.76: armyEco
       const enough = n >= E.workers || !c;
       for (const b of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
         if (b.noEco === 1) continue; // §9.52: un'altra base (la regia del livello)
@@ -637,7 +648,10 @@ export function enemyEco(p) {
         }
         if (b.prodUntil) { army++; continue; }
         if (!enough || army >= E.army) continue;
-        const obj = b.object === "enemy_stalla" ? "enemy_cavaliere" : E.troops[(b.prodK || 0) % E.troops.length];
+        let obj = b.object === "enemy_stalla" ? "enemy_cavaliere" : E.troops[(b.prodK || 0) % E.troops.length];
+        if (!canPay(en, unitCost(obj), keep) && E.anyTroop) { // §9.107: un'altra truppa, se si puo' pagare
+          obj = [...E.troops.slice((b.prodK || 0) % E.troops.length), ...E.troops].find((o) => canPay(en, unitCost(o), keep)) || obj;
+        }
         if (!canPay(en, unitCost(obj), keep)) continue;
         pay(en, unitCost(obj));
         b.prodK = (b.prodK || 0) + 1;
@@ -685,8 +699,14 @@ export function enemyEco(p) {
       // attackGrow a ogni ondata, fino al tetto), non prima di firstAttack
       // e a distanza di attackEvery dall'ondata prima; arrivati e fermi
       // (ruolo 32), verso il bersaglio alleato piu' vicino
-      const waiting = army2.filter((e) => e.role === 30 && e.action === 0);
-      const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army);
+      // [§9.107] i guard piu' vicini a casa restano li': partono gli altri
+      // (e mai chi ha stay: i rinforzi del livello 4, levels.js)
+      let waiting = army2.filter((e) => e.role === 30 && e.action === 0 && !e.stay);
+      if (E.guard > 0 && home) {
+        const d = (e) => Math.hypot(e.x - home.x, e.y - home.y);
+        waiting = waiting.sort((a, b) => d(a) - d(b) || a.id - b.id).slice(E.guard);
+      }
+      const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army - E.guard);
       const ready = !en.hold && now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0); // hold: §9.52
       const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need ? attackTarget(w, home) : null;
       if (t) {

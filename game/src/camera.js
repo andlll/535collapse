@@ -20,6 +20,9 @@
 // finche' non rientra o la finestra perde il fuoco (input.js, edgeHold).
 
 export const ZOOM_MIN = 1, ZOOM_MAX = 1.7;
+// [Richiesta dell'autore, §9.107] lo zoom di partenza (partite e menu) a meta'
+// fra il piu' vicino e il piu' lontano; prima era ZOOM_MIN, il piu' vicino.
+export const ZOOM_DEFAULT = (ZOOM_MIN + ZOOM_MAX) / 2;
 // [§9.83, richiesta dell'autore] Zoom morbido: rotella e X/Z spostano la meta
 // (zoomTo), lo zoom la raggiunge di ZOOM_EASE della distanza a passo (zoomStep:
 // il 90% in 8 passi, ~130 ms; piu' scatti di fila si sommano alla meta e il
@@ -38,11 +41,19 @@ export class Camera {
     this.follow = view ? view.follow : null;
     this.hborder = view ? view.hborder : 0;
     this.vborder = view ? view.vborder : 0;
-    this.scaleview = 1; // global.scaleview
+    this.scaleview = ZOOM_DEFAULT; // global.scaleview (1 nell'originale [C])
+    this.centerFirst = true; // §9.107 (resize); no dopo un caricamento (snapshot.js)
   }
 
   // Dimensioni in pixel CSS dell'area di gioco (il "browser_width/height").
   resize(cssW, cssH) {
+    // [§9.107] la prima volta la view resta centrata dove lo era a zoom 1
+    // (il punto di partenza dei livelli e del menu non cambia)
+    if (this.centerFirst) {
+      this.centerFirst = false;
+      this.x += (cssW - cssW * this.scaleview) / 2;
+      this.y += (cssH - cssH * this.scaleview) / 2;
+    }
     this.cssW = cssW;
     this.cssH = cssH;
     this.w = cssW * this.scaleview;

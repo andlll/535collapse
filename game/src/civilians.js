@@ -1164,6 +1164,8 @@ function workTick(i, w) {
       const t = w.nearest(ax, ay, "stone_parent");
       if (t) { t.stone -= 1; if (t.stone === 0) w.destroy(t); }
     }
+    // [§9.107] il colpo di piccone: schegge e polvere (ambience.js workChips)
+    if (a !== 2) { i.workHit = w._stepNo; i.workKind = a === 3 ? "gold" : "stone"; i.workX = ax; i.workY = ay; }
     return;
   }
   otherWorkTick(i, w);
@@ -1305,6 +1307,9 @@ function otherWorkTick(i, w) {
     i.food += 1;
     const c = w.nearest(i.x, i.y, S.campo);
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
+    // [§9.107] la falce nel grano: pagliuzze (ambience.js workChips)
+    i.workHit = w._stepNo; i.workKind = "food";
+    i.workX = i.x + 20 * Math.cos(degtorad(i.direction)); i.workY = i.y - 20 * Math.sin(degtorad(i.direction));
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
@@ -1576,6 +1581,14 @@ export function resource(p, kind) {
       if (cfg.dying) {
         const m = w.create(cfg.dying, i.x, i.y);
         if (i.type) { m.type = i.type; m.sprite_index = ALB[i.type - 1]; }
+        // [Segnalazione dell'autore, §9.107] albero_morente nasce invisibile
+        // [C] e si rivela vicino a un alleato (dying, Step): nel porting non si
+        // rivelava mai, l'albero finito spariva di colpo invece di sbiadire.
+        // Visibile se lo era la risorsa; l'ondeggiamento continua dalla stessa
+        // fase (swayId, ambience.js treeSway) e con lo stesso scossone
+        if (i.visible) m.visible = true;
+        m.swayId = i.swayId ?? i.id;
+        m.hitAt = i.hitAt;
       }
     },
     // Mouse_RightReleased [C]: i civili selezionati vanno a lavorare qui; il
@@ -1634,7 +1647,13 @@ export function resource(p, kind) {
 export function dying() {
   return {
     create(i) { i.depth = -i.y; i.alarm.set(0, 40); },
-    step(i) { i.image_alpha -= 0.025; },
+    // [§9.107] "visibile" [C, albero_morente Step]: un alleato entro 600 px, o
+    // senza nebbia; nel menu sempre (gli altri *_morente sono gia' visibili)
+    step(i, w) {
+      if (!i.visible) reveal(i, w, 600, true);
+      if (w.room === "menu") i.visible = true;
+      i.image_alpha -= 0.025;
+    },
     alarm0(i, w) { w.destroy(i); },
   };
 }

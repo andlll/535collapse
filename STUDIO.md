@@ -8423,3 +8423,119 @@ d'ascia. Due video di 10 s all'autore (vento medio e massimo) e una foto da
 vicino sopra l'erba. Soak, salvataggi e prove unitarie passano. Da tarare
 con l'autore: quante, quanto grandi; sopra il bosco, dello stesso colore
 delle chiome, si vedono poco (e' voluto: si notano dove cadono sull'erba).
+
+### 9.107 Pulsanti evidenziati, livello 4, salvataggi, alberi, zoom, livello 6, schegge
+
+Segnalazioni e richieste dell'autore (4 novembre 2026, versione 0.2608).
+
+**1. Pulsanti che non si illuminano col puntatore** ("circa 1 volta su 3,
+per tutti i pulsanti della finestra, finche' non seleziono un'altra
+unita'"; la scheda sotto si vede e il clic funziona). Non era la
+trasparenza di §9.93: con l'interfaccia di vetro (accesa di partenza) i
+cerchi del pannello (civile, centro, caserme...) sono un passaggio che
+ridisegna il mondo sfocato (draw.js `_glass`), e coprono cio' che c'e'
+sotto. Il pulsante evidenziato (il cerchio a 0,99 del *_clicker) si
+disegnava prima o dopo il pannello secondo la depth: quella del pulsante e'
+-(y della view + 50 x zoom) - 999, quella del pannello la -y dell'unita'.
+Con l'unita' piu' in basso di ~1000 px dalla cima della view (zoom
+lontano, schermi alti) il pannello veniva dopo e copriva l'evidenziazione
+di tutti i suoi pulsanti; cambiando selezione tornava. Ora il Draw GUI dei
+pulsanti (scheda e cerchio evidenziato) e' un evento a parte,
+`drawGUITop`, che il mondo disegna dopo il Draw GUI di tutti (world.js):
+pulsanti di costruzione, produzione, Annulla, centro, comportamento,
+porta. Prova `hover.mjs` (nuova, anche nella CI): civile in alto e in basso
+nella view, col vetro; il cerchio della casa col puntatore 254 in tutti e
+due i casi, quello del magazzino 192. Con l'ordine di prima, in basso, 168:
+piu' scuro degli altri.
+
+**2. Livello 4: a ponte riparato la base sud cadeva subito.** Misurato
+(giocatore immortale, 16 minuti, ponte a 6): la base sud arriva a 10
+soldati (il tetto), alla prima ondata partono tutti e la base resta vuota;
+l'oro (una sola miniera) finisce verso il decimo minuto e senza oro non si
+fanno guerrieri, arcieri ne' cavalieri, mentre cibo e legno si accumulano
+(2800 e 2900 al sedicesimo minuto); dal dodicesimo 0 soldati. Ora
+(economy.js `ECO.lvl04`, levels.js `LV4.reinforce`):
+- tetto 16 soldati (era 10);
+- `guard: 6`: i 6 soldati in attesa piu' vicini al centro restano a casa,
+  le ondate partono con gli altri (al piu' 10, come prima);
+- `anyTroop`: senza le risorse per la truppa di turno la caserma fa
+  un'altra che si puo' pagare (senza oro: picchieri, cibo e legno);
+- a ponte riparato 8 rinforzi (2 guerrieri, 2 picchieri, 2 arcieri dalle
+  due caserme, 2 cavalieri dalla stalla) che restano sempre a difendere la
+  base (`stay`: fuori dal tetto e dalle ondate).
+Le due opzioni nuove valgono solo dove le si accende (default 0 e false):
+gli altri livelli non cambiano. Misurato come sopra: dopo il ponte 14-21
+soldati alla base, ondate ancora ogni 2,5 minuti (3 in 10 minuti). Prova
+`lvl04.mjs`: 8 rinforzi, almeno 10 soldati entro 1500 px dal centro 3
+minuti dopo (22). Da tarare giocando.
+
+**3. Il salvataggio automatico spesso fallisce.** Gli slot erano tutti in
+localStorage, gzip in base64: 0,3-2 MB l'uno (lvl03 1,1 MB, lvl05 2 MB),
+e lo spazio di un sito e' circa 5 MB (su itch.io anche diviso con gli altri
+giochi dello stesso dominio). Riprodotto: dopo aver salvato le room dalla
+prima alla quinta (5 MB in tutto) il salvataggio del livello 6, manuale e
+automatico, dava `QuotaExceededError`, "Saving failed"; da li' in poi ogni
+salvataggio di una room nuova. Ora (save.js) il corpo dello slot (gzip in
+byte, senza base64: un terzo in meno) va in IndexedDB, che ha uno spazio
+molto piu' grande; in localStorage resta solo l'intestazione (room e data,
+per i menu); le intestazioni di IndexedDB si leggono all'avvio
+(`loadSlotIndex`, app.js), cosi' i menu vedono gli slot anche se
+localStorage e' pieno. Senza IndexedDB (alcune finestre private) si torna a
+localStorage come prima. I salvataggi vecchi si leggono ancora; il primo
+salvataggio nuovo della stessa room toglie quello vecchio (e libera
+spazio). Prova `saves.mjs`, ora con localStorage riempito fino alla quota
+prima di salvare: il salvataggio riesce, il corpo e' in IndexedDB, il
+ripristino identico, in tutte le room.
+
+**4. Gli alberi finiti non sbiadiscono.** Non era l'ondeggiamento:
+`albero_morente` nell'originale nasce invisibile e nel suo Step si rivela
+con un alleato entro 600 px [C]; nel porting quel controllo mancava
+(civilians.js `dying`), e l'albero finito spariva di colpo. Ora e'
+visibile se lo era l'albero (e si rivela come nell'originale), e ondeggia
+come lui dalla stessa fase (`swayId`, ambience.js `SWAY_DRAW`: niente salto
+dritto all'ultimo colpo), con lo stesso scossone. Le altre risorse
+(`*_morente` di miniere, pietre, rovine) erano gia' visibili. Prova
+`ambience.mjs`, "dissolvenza": visibile, ondeggia, alpha 0,975 -> 0,475
+dopo 20 passi, via dopo 40.
+
+**5. Zoom di partenza a meta'.** Era 1 (ZOOM_MIN, il piu' vicino); ora
+`ZOOM_DEFAULT` = (ZOOM_MIN + ZOOM_MAX) / 2 = 1,35 (camera.js, state.js),
+nelle partite e nel menu. La prima volta la view resta centrata dove lo
+era a zoom 1 (il punto di partenza dei livelli non cambia); dopo un
+caricamento no (`centerFirst`, snapshot.js: la view salvata cosi' com'era;
+la prima versione la spostava e `saves.mjs` lo ha visto). I salvataggi
+riprendono lo zoom salvato. Gli scatti di X/Z e della rotella ora vanno al
+decimo dopo nella loro direzione (manager.js `tenths`): da 1,35 a 1,4 o 1,3
+(con l'arrotondamento di prima 1,5 e 1,3); da un decimo di 0,1 come prima.
+Prove: manager.test.mjs, `zoom.mjs` (parte da 1,35); menu e lvl02 guardati.
+
+**6. Livello 6: il ponte in alto sotto la base del giocatore** (3896, 2204).
+Tre case della citta' (della mappa, non del giocatore) chiudevano il suo
+piede sud: `ocr_25` (3870, 2348), `ocr_35` (3700, 2428), `ocr_24` (3882,
+2512), oggetti 50, 51 e 52 di mappe/lvl06.tmx. Tolte (sotto c'era gia' la
+strada lastricata: ora e' una piazzetta al piede del ponte che porta nelle
+strade); scenari/lvl06.json rifatto con tools/12. Misurato col campo dei
+percorsi e con un soldato vero mandato col clic destro: prima la piazza era
+irraggiungibile dall'erba a nord (-1) e la citta' (3450, 2700) a 270 celle
+(il giro dall'altro ponte; il soldato dopo 40 s era ancora a nord); ora 24
+e 42 celle, il soldato arriva in 3 e 5 s, e torna indietro in 4,5 s. Prova
+`lvl06.mjs`, "ponteAlto" (il resto della prova, taratura della colonna
+compresa, passa come prima).
+
+**7. Particelle per le altre risorse** (come le foglie sotto l'ascia,
+§9.106; ambience.js `workChips`, numeri in `WORK`): a ogni colpo di piccone
+(civilians.js workTick segna `workHit`, `workKind` e il punto colpito)
+saltano 4-6 schegge di roccia (forma nuova `__pt_chip`, tools/05_atlas.py:
+un sassolino irregolare, piu' chiaro in alto, col bordo scuro) che ricadono
+a terra, con un filo di polvere; dalla miniera 3-4 schegge piu' scure e,
+una volta su due, un luccichio dorato; nei campi, a ogni colpo di falce,
+3-4 pagliuzze chiare (piu' chiare del grano, se no non si vedevano) che
+volano via. Solo i civili sullo schermo e visibili (anche quelli nemici, non
+nella nebbia); pietra e oro nella categoria "fire" (fumo e polvere), la
+paglia in "grass". Foto da vicino all'autore. Prova `ambience.mjs`,
+"schegge". Da tarare con l'autore: quante, quanto grandi.
+
+Passano: prove unitarie, `hover`, `ambience`, `lvl04`, `lvl06`, `saves`
+(tutte le room), `soak` (tutte le room), `zoom`, `hintgap`, `ui`, `melee`,
+`rally`, `garrison`, `enemyarmy`, `enemydefense`, `economy`, `enemydepots`,
+`lvl05`, `resources`, `burn`, `rivers`.

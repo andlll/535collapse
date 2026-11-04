@@ -67,19 +67,22 @@ export class Manager {
     // [§9.83] morbido: si sposta la meta (camera.js, zoomTo), di 0,1 a
     // scatto dalla meta in corso (piu' scatti di fila si sommano); il
     // touchpad di 0,1 ogni 100 px, senza arrotondare
-    const tenth = (s) => Math.round(s * 10) / 10;
+    // [§9.107] n scatti: fino al decimo dopo nella direzione dello scatto,
+    // poi di 0,1 (da 1,35, lo zoom di partenza, a 1,4 o 1,3; prima
+    // l'arrotondamento dava 1,5 e 1,3); da un decimo, di 0,1 come prima
+    const tenths = (s, n) => (n > 0 ? Math.floor(s * 10 + 1e-6) + n : Math.ceil(s * 10 - 1e-6) + n) / 10;
     const goal = cam.zoomGoal;
     if (P(88)) {
       if (g.sele === 1) g.sz++;
-      else if (goal < ZOOM_MAX && this.room !== "menu") cam.zoomTo(tenth(goal + 0.1), 0, 0);
+      else if (goal < ZOOM_MAX && this.room !== "menu") cam.zoomTo(tenths(goal, 1), 0, 0);
     }
     if (P(90)) {
       if (g.sele === 1) g.sz--;
-      else if (goal > ZOOM_MIN && this.room !== "menu") cam.zoomTo(tenth(goal - 0.1), 0, 0);
+      else if (goal > ZOOM_MIN && this.room !== "menu") cam.zoomTo(tenths(goal, -1), 0, 0);
     }
     if ((input.wheelStep || input.wheelFine) && this.room !== "menu") {
       let t = cam.zoomGoal;
-      if (input.wheelStep) t = tenth(t + 0.1 * input.wheelStep);
+      if (input.wheelStep) t = tenths(t, input.wheelStep);
       if (input.wheelFine) t += input.wheelFine / 1000;
       cam.zoomTo(t, input.x, input.y);
     }

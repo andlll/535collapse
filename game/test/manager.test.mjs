@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { Alarms } from "../src/alarms.js";
 import { Manager } from "../src/manager.js";
 import { newGlobals } from "../src/state.js";
-import { Camera, ZOOM_MAX } from "../src/camera.js";
+import { Camera, ZOOM_MAX, ZOOM_MIN, ZOOM_DEFAULT } from "../src/camera.js";
 import { sightK, DUSK_SIGHT } from "../src/fog.js";
 
 const fakeInput = () => ({ pressed: new Set(), released: new Set(), down: new Set(),
@@ -151,12 +151,31 @@ test("zoom: X/Z fra 1,0 e ZOOM_MAX; con Ctrl cambiano la scala della minimappa",
   assert.equal(g.sz, 31);
 });
 
+// [§9.107] Lo zoom di partenza e' a meta' fra ZOOM_MIN e ZOOM_MAX, e la view
+// resta centrata dove lo era a zoom 1 (xview, yview della room).
+test("zoom di partenza a meta', view centrata come a zoom 1", () => {
+  const c = new Camera(7000, 7000, { xview: 2000, yview: 1500, wview: 1600, hview: 900, follow: null, hborder: 0, vborder: 0 });
+  c.resize(1280, 720);
+  assert.equal(c.scaleview, ZOOM_DEFAULT);
+  assert.ok(Math.abs(ZOOM_DEFAULT - (ZOOM_MIN + ZOOM_MAX) / 2) < 1e-9);
+  assert.ok(Math.abs(c.x + c.w / 2 - (2000 + 640)) < 1e-6 && Math.abs(c.y + c.h / 2 - (1500 + 360)) < 1e-6);
+  assert.equal(newGlobals("match").scaleview, ZOOM_DEFAULT);
+  // uno scatto da 1,35: al decimo dopo nella sua direzione
+  for (const [key, want] of [[88, 1.4], [90, 1.3]]) {
+    const g = newGlobals("match"), m = new Manager("match", g), input = fakeInput(), cam = fakeCam();
+    input.pressed = new Set([key]); m.keys(input, cam); input.pressed = new Set();
+    for (let i = 0; i < 60; i++) m.keys(input, cam);
+    assert.equal(g.scaleview, want);
+  }
+});
+
 // [§9.83] Zoom morbido: lo scatto della rotella sposta la meta e lo zoom ci
 // arriva in piu' passi, col punto sotto il puntatore sempre fermo; due scatti
 // di fila si sommano; il touchpad (wheelFine) zooma senza arrotondare.
 test("zoom morbido con la rotella: meta, passi intermedi, punto fermo", () => {
   const g = newGlobals("match"); const m = new Manager("match", g);
   const input = fakeInput(), cam = fakeCam();
+  cam.setScale(1); // da zoom 1 (§9.107: ora si parte da ZOOM_DEFAULT)
   cam.x = 2000; cam.y = 2000;
   input.x = 400; input.y = 300;
   const [rx, ry] = cam.toRoom(400, 300);

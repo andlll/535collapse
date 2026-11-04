@@ -21,7 +21,7 @@ import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
-import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_OBJECTS, leafType } from "./ambience.js";
+import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_DRAW, leafType } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
@@ -48,7 +48,7 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
-import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
+import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
@@ -337,10 +337,11 @@ async function main() {
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
   world.fog = fog;
-  // Partita salvata (save.js, snapshot.js): ?load=slot (localStorage) o
+  // Partita salvata (save.js, snapshot.js): ?load=slot (IndexedDB, §9.107) o
   // ?load=file (il file scelto, passato da setPending). Il parametro si
   // toglie subito: "Ricomincia livello" riparte dalla room.
   const loadMode = params.get("load");
+  await loadSlotIndex(); // §9.107: le intestazioni degli slot in IndexedDB, per i menu
   let saved = null;
   if (loadMode) {
     saved = loadMode === "slot" ? await loadSlot(roomName) : await takePending();
@@ -544,7 +545,7 @@ async function main() {
     // quanto lo schermo, gratis su una GPU, ~4 ms a fotogramma su SwiftShader
     const blobs = r.software || settings.quality === "low" ? [] : cloudBlobs(world, cam);
     // [§9.105] gli alberi che ondeggiano col vento (non con la qualita' bassa)
-    world.sway = settings.quality === "low" ? null : (i) => (SWAY_OBJECTS.has(i.object) ? treeSway(world, i) : null);
+    world.sway = settings.quality === "low" ? null : (i) => (SWAY_DRAW.has(i.object) ? treeSway(world, i) : null);
     drawCloudShadows(draw, blobs);
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti

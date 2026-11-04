@@ -150,7 +150,7 @@ export function clicker(fam) {
         dr.spriteExt(spr, 0, w.mouse.x, w.mouse.y, 1, 1, 0, p.place === 1 ? WHITE : RED, 0.5);
       }
     },
-    drawGUI(i, w, dr) {
+    drawGUITop(i, w, dr) {
       if (i.hover !== 1 && i.active !== 1) return;
       const H = w.cam.cssH, P = d.panel;
       const title = tr(P.title), desc = tr(P.desc), sc = tr("Shortcut: {key}", { key: P.shortcut[0].slice(-1) });
@@ -932,7 +932,7 @@ export function ominoClicker() {
     mouseEnter(i, w) { i.hover = 1; w.g.sele = 1; },
     mouseLeave(i, w) { i.hover = 0; w.g.sele = 0; },
     destroy(i, w) { w.g.sele = 0; },
-    drawGUI(i, w, dr) {
+    drawGUITop(i, w, dr) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);
@@ -991,7 +991,7 @@ export function centroCancel() {
     mouseEnter(i) { i.hover = 1; },
     mouseLeave(i) { i.hover = 0; },
     destroy(i, w) { w.g.sele = 0; i.hover = 0; },
-    drawGUI(i, w, dr) {
+    drawGUITop(i, w, dr) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH;
       dr.setAlpha(0.69);

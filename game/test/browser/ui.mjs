@@ -198,7 +198,7 @@ const INGAME = () => {
     for (const i of [...w.instances]) {
       if (!i.alive || !("hover" in i) || i.object.startsWith("ally_") || i.object.startsWith("enemy_")) continue;
       const beh = w.behaviours[i.object];
-      if (!beh || !beh.drawGUI) continue;
+      if (!beh || !(beh.drawGUI || beh.drawGUITop)) continue;
       const old = i.hover; i.hover = 1;
       UI.shot(label + ": " + i.object + " col puntatore");
       i.hover = old;

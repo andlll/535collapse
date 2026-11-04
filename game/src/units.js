@@ -613,7 +613,7 @@ export function behaviourClicker(kind) {
     [attack ? "keyPress81" : "keyPress65"](i, w) { apply(w); },
     mouseEnter(i, w) { i.hover = 1; w.g.sele = 2; },
     mouseLeave(i, w) { i.hover = 0; w.g.sele = 0; },
-    drawGUI(i, w, d) {
+    drawGUITop(i, w, d) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH, white = 0xffffff, y = attack ? 50 : 120;
       d.setAlpha(0.69);
