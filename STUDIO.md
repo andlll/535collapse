@@ -8691,3 +8691,53 @@ sono vicini.
 Passano: prove unitarie, `minimap`, `alarms`, `ui`, `hintgap`, `zoom`,
 `rally`, `attackorder`, `movement`, `lvl04`, `lvl05`, `economy`, `soak`
 (tutte le room), `saves` (match, lvl05, lvl06).
+
+### 9.110 Minimappa: unita' a puntini, marrone, acqua e linee sfumate, nebbia col puntatore
+
+Decisioni dell'autore dopo le foto di §9.109 (5 novembre 2026, stessa PR,
+versione 0.2608):
+- **Unita' come puntini** (le icone a 7 px in gruppo facevano una macchia, e
+  il guerriero aveva la forma dell'allarme di battaglia): pallini di raggio
+  50/sz come nell'originale (almeno 1,7 px); gli edifici restano icone.
+- **I tuoi marroni** (124, 72, 36), non piu' rosso caldo; **gli allarmi piu'
+  arancioni**: anelli e icone (245, 140, 26). Le icone dell'allarme nella
+  minimappa sono versioni bianche, colorate dalla minimappa: `mm_battle`
+  (da ico_battle, tools/05_atlas.py) e `mm_fiamma` (dal disegno dell'autore,
+  nuovi.json); il suggerimento hint_allarme tiene le icone di prima.
+- **Acqua sfumata**: ogni pixel della minimappa ha la sua copertura d'acqua
+  (le celle d'acqua da 8 px col centro nel pixel, sul totale), a sedicesimi
+  d'alpha, in corse di pixel uguali: l'interno in poche corse lunghe, il
+  bordo pixel per pixel (minimap.js `runsOf`). Niente piu' scalini.
+- **Linea della bandierina** (dall'edificio al punto di raccolta): tratti
+  coi bordi sfumati (draw.js `_lineAA`, 9 quad per tratto invece di 1: una
+  linea di 500 px sono ~20 tratti, solo con l'edificio selezionato).
+- **La nebbia di guerra, come l'ha pensata l'autore**: senza puntatore la
+  minimappa resta com'e'; col puntatore sopra diventa piu' opaca (come lo
+  0,69 di prima) solo la parte scoperta (fog.explored, coi bordi sfumati
+  come l'acqua, rifatta ogni 30 passi). Senza nebbia (trucco, menu) come
+  prima, tutta. Nota: lo 0,69 di prima, con l'interfaccia di vetro, era il
+  vetro sfocato; la parte scoperta e' bianco semplice sopra il fondo di
+  vetro a 0,19.
+- **Il riquadro della view negli angoli**: gli angoli col raggio 5, ma in un
+  angolo della minimappa quello del riquadro ha il raggio della minimappa
+  meno la distanza dai due lati (draw.js `roundRectRadii`, minimap.js
+  `viewRadii`): se tocca i due lati e' concentrico con l'angolo della
+  minimappa e non ne esce. Acqua e parte scoperta seguono anche loro gli
+  angoli arrotondati.
+
+- **Le risorse con le icone** (richiesta dell'autore), coi colori di prima:
+  la miniera (mm_miniera, il carrello) gialla, pietre (mm_stone) e rovine
+  (mm_ruin) grigie, grandi quanto la loro impronta come gli edifici; gli
+  alberi restano triangoli.
+- **Il centro col mulino sopra** (segnalazione dell'autore): il centro crea
+  `cc_barn`, un oggetto invisibile e senza sprite che gli fa da deposito del
+  cibo; col suo nome prendeva l'icona del mulino. Ora la minimappa salta gli
+  oggetti senza sprite (anche i pezzi invisibili delle mura, oodl, oval...,
+  che erano pallini).
+- Da guardare con l'autore: l'icona della caserma sono spade incrociate come
+  l'allarme di battaglia (diverse nel colore: marrone e arancione).
+
+Prove: `minimap.test.mjs` (nuova: icone per oggetto, raggi del riquadro),
+`minimap.mjs` (il riquadro coi raggi per angolo). Foto all'autore: lvl06 e
+lvl04 col puntatore e senza (nebbia), allarmi arancioni, la view
+nell'angolo; la linea della bandierina da vicino.

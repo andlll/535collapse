@@ -316,14 +316,62 @@ export class Draw {
 
   // Linea tratteggiata: tratti di `dash` px separati da `gap`, dal primo
   // estremo.
-  dashedLine(x1, y1, x2, y2, w, col, dash = 14, gap = 10) {
+  dashedLine(x1, y1, x2, y2, w, col, dash = 14, gap = 10, aa = false) {
     const len = Math.hypot(x2 - x1, y2 - y1);
     if (len < 0.5) return;
     const ux = (x2 - x1) / len, uy = (y2 - y1) / len, c = packColor(col, this.alpha);
     for (let s = 0; s < len; s += dash + gap) {
       const e = Math.min(len, s + dash);
-      this._line(x1 + ux * s, y1 + uy * s, x1 + ux * e, y1 + uy * e, w, c, c);
+      if (aa) this._lineAA(x1 + ux * s, y1 + uy * s, x1 + ux * e, y1 + uy * e, w, c);
+      else this._line(x1 + ux * s, y1 + uy * s, x1 + ux * e, y1 + uy * e, w, c, c);
     }
+  }
+
+  // [§9.110] Un segmento coi bordi sfumati: il pieno largo w - 2*AA, poi ai
+  // lati e oltre i due capi una fascia di 2*AA px che va a trasparente
+  // (colori premoltiplicati: trasparente = 0). 9 quad invece di 1.
+  _lineAA(x1, y1, x2, y2, w, c) {
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    const h = Math.max(0, w / 2 - AA), f = h + 2 * AA, e = 2 * AA;
+    const P = (x, y, a, t) => [x + nx * a + ux * t, y + ny * a + uy * t];
+    const side = (x, y, t) => [P(x, y, f, t), P(x, y, h, t), P(x, y, -h, t), P(x, y, -f, t)];
+    const [o1, a1, a4, o4] = side(x1, y1, 0), [o2, a2, a3, o3] = side(x2, y2, 0);
+    const [p1, s1, s4, p4] = side(x1, y1, -e), [q2, t2, t3, q3] = side(x2, y2, e);
+    this._quad(...a1, ...a2, ...a3, ...a4, c, c, c, c);
+    this._quad(...o1, ...o2, ...a2, ...a1, 0, 0, c, c);
+    this._quad(...a4, ...a3, ...o3, ...o4, c, c, 0, 0);
+    // i capi
+    this._quad(...a1, ...a4, ...s4, ...s1, c, c, 0, 0);
+    this._quad(...o1, ...a1, ...s1, ...p1, 0, c, 0, 0);
+    this._quad(...a4, ...o4, ...p4, ...s4, c, 0, 0, 0);
+    this._quad(...a2, ...a3, ...t3, ...t2, c, c, 0, 0);
+    this._quad(...o2, ...a2, ...t2, ...q2, 0, c, 0, 0);
+    this._quad(...a3, ...o3, ...q3, ...t3, c, 0, 0, 0);
+  }
+
+  // [§9.110] Contorno di un rettangolo arrotondato con un raggio per angolo
+  // (in alto a sinistra, in alto a destra, in basso a destra, in basso a
+  // sinistra): il riquadro della view nella minimappa, che negli angoli
+  // della minimappa ne segue la curva
+  roundRectRadii(x1, y1, x2, y2, radii, col, outline = true) {
+    const l = Math.min(x1, x2), r = Math.max(x1, x2), t = Math.min(y1, y2), b = Math.max(y1, y2);
+    const lim = Math.min((r - l) / 2, (b - t) / 2);
+    const [ra, rb, rc, rd] = radii.map((v) => Math.max(0, Math.min(lim, v)));
+    const pts = [];
+    const corner = (cx, cy, rad, a0) => {
+      const q = Math.max(2, Math.ceil(segments(Math.max(rad, 1)) / 4));
+      for (let i = 0; i <= q; i++) {
+        const a = a0 + (i / q) * (Math.PI / 2);
+        pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+      }
+    };
+    corner(r - rc, b - rc, rc, 0);
+    corner(l + rd, b - rd, rd, Math.PI / 2);
+    corner(l + ra, t + ra, ra, Math.PI);
+    corner(r - rb, t + rb, rb, Math.PI * 1.5);
+    const p = packColor(col, this.alpha);
+    this._poly((l + r) / 2, (t + b) / 2, pts, p, p, outline);
   }
 
   // [Richiesta dell'autore] Punto di raccolta di un edificio che produce
@@ -334,7 +382,9 @@ export class Draw {
   // stessa del presidio alleato; bflag e' delle torri nemiche; 0,1
   // fotogrammi per passo) in trasparenza, sopra (Draw End). `step`: il
   // passo corrente, per l'animazione.
-  rallyLine(x0, y0, fx, fy) { this.dashedLine(x0, y0, fx, fy, 2, 0xffffff); }
+  // [§9.110, richiesta dell'autore] tratti coi bordi sfumati (antialiasing):
+  // prima quad netti, a scalini sulle diagonali
+  rallyLine(x0, y0, fx, fy) { this.dashedLine(x0, y0, fx, fy, 2, 0xffffff, 14, 10, true); }
 
   rallyFlag(fx, fy, step) {
     const n = this.a.sprites.rflag ? this.a.sprites.rflag.frames.length : 1;

@@ -433,7 +433,9 @@ def derived_sprites():
 # [§9.109] le icone dell'interfaccia che la minimappa usa (mm_<nome>)
 MM_ICONS = ["ico_casa", "ico_caserma", "ico_stalla", "ico_castello", "ico_chiesa", "ico_magazzino", "ico_barn",
             "ico_torre", "ico_centro", "ico_corn", "ico_omino", "ico_guerriero", "ico_picchiere", "ico_arciere",
-            "ico_cavaliere", "ico_catapulta", "ico_ariete"]
+            "ico_cavaliere", "ico_catapulta", "ico_ariete",
+            "ico_battle",  # [§9.110] l'allarme di battaglia, colorato di arancione dalla minimappa
+            "ico_miniera", "ico_stone", "ico_ruin"]  # [§9.110] le risorse
 MM_SIDE = 32
 
 

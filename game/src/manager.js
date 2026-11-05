@@ -11,7 +11,8 @@ import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLi
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
-import { MM, drawWater, drawMountains, drawIcon, isWall } from "./minimap.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii } from "./minimap.js";
+import { fogActive } from "./fog.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -461,8 +462,13 @@ export class Manager {
     const g = this.g, sz = g.sz;
     const mw = world.roomW / sz, mh = world.roomH / sz;
     const ox = 20, oy = H - 20 - mh;
-    d.setAlpha(this.minimHover ? 0.69 : 0.19);
+    const R = Math.min(40, mw / 2, mh / 2); // il raggio degli angoli (80 / 2, come roundrectColourExt)
+    // [§9.110, proposta dell'autore] col puntatore sopra il fondo diventa piu'
+    // opaco solo dove il giocatore ha scoperto la mappa (senza nebbia, tutto)
+    const fogOn = fogActive(world) && !!world.fog;
+    d.setAlpha(this.minimHover && !fogOn ? 0.69 : 0.19);
     d.roundrectColourExt(20, oy, 20 + mw, H - 20, 80, 80, c.white, c.white, false);
+    if (this.minimHover && fogOn) drawExplored(d, world, ox, oy, sz, R);
     const button = (hover, y) => {
       d.setAlpha(hover ? 0.69 : 0.19);
       d.circleColour(50 + mw, y, 15, c.white, c.white, false);
@@ -479,18 +485,21 @@ export class Manager {
     // risorse, poi edifici e unita' con le loro icone (minimap.js); prima
     // l'ordine dei with(...) dell'originale, alberi sopra le unita'
     const P = (i) => [ox + i.x / sz, oy + i.y / sz];
-    drawWater(d, world, ox, oy, sz);
+    drawWater(d, world, ox, oy, sz, R);
     drawMountains(d, world, ox, oy, sz);
-    const res = [
-      ["albero", (x, y) => { d.setAlpha(MM.treeAlpha); d.triangleColour(x - 60 / sz, y + 60 / sz, x + 60 / sz, y + 60 / sz, x, y - 60 / sz, MM.tree, MM.tree, MM.tree, false); }],
-      ["miniera_oro", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.yellow, c.olive, false); }],
-      ["pietra_grande", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false); }],
-      ["castelloruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false); }],
-      ["torreruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
-      ["chiesaruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
-      ["pietr_piccolo", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
-    ];
-    for (const [name, fn] of res) for (const i of world.all(name)) if (i.visible) fn(...P(i));
+    // [§9.110, richiesta dell'autore] le risorse con le loro icone (miniera,
+    // pietra, rovina), coi colori di prima (giallo l'oro, grigio la pietra);
+    // gli alberi triangoli
+    for (const i of world.all("albero")) {
+      if (!i.visible) continue;
+      const [x, y] = P(i);
+      d.setAlpha(MM.treeAlpha);
+      d.triangleColour(x - 60 / sz, y + 60 / sz, x + 60 / sz, y + 60 / sz, x, y - 60 / sz, MM.tree, MM.tree, MM.tree, false);
+    }
+    for (const [name, col] of [["miniera_oro", c.yellow], ["pietra_grande", c.gray], ["pietr_piccolo", c.gray],
+                               ["castelloruin", c.gray], ["torreruin", c.gray], ["chiesaruin", c.gray]]) {
+      for (const i of world.all(name)) if (i.visible) drawIcon(d, world, i, ...P(i), sz, col);
+    }
     d.setAlpha(1);
     // mura e porte: linee, come nell'originale [C]
     const wall = (i, col) => {
@@ -503,12 +512,19 @@ export class Manager {
                                            ["ally_unit", MM.ally, false], ["enemy_unit", MM.enemy, true]]) {
       for (const i of world.all(who)) {
         if (needVisible && !i.visible) continue;
+        // [§9.110] gli oggetti senza sprite no: cc_barn (il deposito del cibo
+        // del centro, invisibile: col suo nome dava al centro anche l'icona
+        // del mulino) e i pezzi invisibili delle mura (oodl, oval...)
+        if (!i.sprite_index) continue;
         if (isWall(i.object)) { wall(i, col); continue; }
-        // [§9.101] le torri del livello 6 non ancora recuperate: grigie
         const [x, y] = P(i);
-        if (drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col)) continue;
+        // [§9.110, decisione dell'autore] le unita' puntini (come
+        // nell'originale, 50/sz), gli edifici icone
+        const unit = who.endsWith("unit");
+        // [§9.101] le torri del livello 6 non ancora recuperate: grigie
+        if (!unit && drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col)) continue;
         d.setAlpha(1);
-        d.circleColour(x, y, (who.endsWith("build") ? 100 : 50) / sz, col, col, false);
+        d.circleColour(x, y, unit ? Math.max(MM.unit, 50 / sz) : 100 / sz, col, col, false);
       }
     }
     d.setAlpha(1);
@@ -516,8 +532,10 @@ export class Manager {
     // view_hport/sz, non view_hview/sz: con lo zoom piu' basso della view
     // vera, il 74% a zoom 1,35]; angoli poco arrotondati (con raggio 80 era
     // quasi sempre un ovale)
-    d.roundrectColourExt(ox + cam.x / sz, oy + cam.y / sz, ox + (cam.x + cam.w) / sz, oy + (cam.y + cam.h) / sz,
-                         10, 10, c.black, c.black, true);
+    // [§9.110] negli angoli della minimappa l'angolo del riquadro ne segue la curva
+    const vl = ox + cam.x / sz, vt = oy + cam.y / sz, vr = ox + (cam.x + cam.w) / sz, vb = oy + (cam.y + cam.h) / sz;
+    d.setAlpha(1);
+    d.roundRectRadii(vl, vt, vr, vb, viewRadii(vl, vt, vr, vb, ox, oy, ox + mw, oy + mh, R), c.black, true);
     // [§9.108] gli allarmi, sopra tutto (attackalarm.js)
     drawAlarms(d, g, world._stepNo, ox, oy, sz);
   }

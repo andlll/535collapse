@@ -81,9 +81,11 @@ res.riquadro = await page.evaluate(() => {
   // drawMinimap su un disegnatore finto che registra le chiamate
   const d = new Proxy({}, { get: (t, k) => (...a) => calls.push([k, a]) });
   G.manager.drawMinimap(d, cam, G.world, cam.cssH);
-  const rect = calls.find(([k, a]) => k === "roundrectColourExt" && a[8] === true);
-  const sz = G.g.sz, h = rect ? rect[1][3] - rect[1][1] : 0;
-  return { alto: +h.toFixed(1), atteso: +(cam.h / sz).toFixed(1), raggio: rect && rect[1][4], ok: !!rect && Math.abs(h - cam.h / sz) < 0.01 && rect[1][4] <= 12 };
+  // [§9.110] roundRectRadii: un raggio per angolo (5, o quello della minimappa nei suoi angoli)
+  const rect = calls.find(([k]) => k === "roundRectRadii");
+  const sz = G.g.sz, h = rect ? rect[1][3] - rect[1][1] : 0, radii = rect ? rect[1][4] : [];
+  return { alto: +h.toFixed(1), atteso: +(cam.h / sz).toFixed(1), raggi: radii.map((r) => +r.toFixed(1)),
+           ok: !!rect && Math.abs(h - cam.h / sz) < 0.01 && radii.every((r) => r >= 5 && r <= 40) };
 });
 let ok = errs.length === 0;
 for (const [k, v] of Object.entries(res)) { console.log(k.padEnd(10), JSON.stringify(v), v.ok ? "" : "NON VA"); ok = ok && v.ok; }

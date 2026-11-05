@@ -1621,6 +1621,17 @@
       ],
       "gruppo": "gui",
       "nota": "[§9.108] la fiamma degli allarmi sulla minimappa (incendi e armi d'assedio sugli edifici del giocatore): disegno dell'autore, alta 42 px e dello stesso colore pieno di ico_battle (le spade incrociate), per stare in coppia"
+    },
+    "mm_fiamma": {
+      "da": "fiamma",
+      "alto": 42,
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "gruppo": "gui",
+      "nota": "[§9.110] la fiamma degli allarmi nella minimappa, bianca: la colora la minimappa (arancione); ico_fiamma resta per il suggerimento"
     }
   }
 }

@@ -33,11 +33,11 @@ export const ALARM = {
   grace: 120,      // passi all'inizio della partita senza allarmi
   ring: { n: 3, every: 22, life: 70, r: [5, 38] }, // anelli: quanti, ogni quanti passi, vita, raggio (px dello schermo)
   blink: 10 * 60,  // passi in cui il pulsante della minimappa chiusa lampeggia, dopo un allarme nuovo
-  icon: { battle: ["ico_battle", 0.36], fire: ["ico_fiamma", 0.36] }, // sprite e scala (~16 px)
-  // [§9.109, richiesta dell'autore] gli anelli arancioni come le due icone
-  // (135, 73, 0), un po' piu' chiari per vedersi anche sul buio; prima rossi
-  // (battaglie) e arancio (fuoco)
-  colour: { battle: 0x1470d2, fire: 0x1470d2 }, // BGR di (210, 112, 20)
+  // [§9.110, richiesta dell'autore] icone e anelli arancioni (le icone
+  // bianche mm_battle e mm_fiamma, colorate qui): i tuoi nella minimappa
+  // sono marroni, del colore delle icone di prima (135, 73, 0)
+  icon: { battle: ["mm_battle", 0.52], fire: ["mm_fiamma", 0.36] }, // sprite e scala (~16 px)
+  colour: { battle: 0x1a8cf5, fire: 0x1a8cf5 }, // BGR di (245, 140, 26)
 };
 
 const state = (g) => g.alarms || (g.alarms = { zones: [], seq: 0 });
@@ -125,7 +125,7 @@ export function drawAlarms(d, g, now, ox, oy, sz) {
     const pulse = 1 + 0.08 * Math.sin(age * 0.12);
     const s = sc * pulse * (1 + 2.5 * (1 - a0));
     d.setAlpha(1);
-    d.spriteExt(spr, 0, x, y, s, s, 0, 0xffffff, a0 * end * (0.85 + 0.15 * Math.sin(age * 0.12)));
+    d.spriteExt(spr, 0, x, y, s, s, 0, col, a0 * end * (0.85 + 0.15 * Math.sin(age * 0.12)));
   }
   d.setAlpha(1);
 }

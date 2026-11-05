@@ -8,33 +8,44 @@
 // - le montagne con un simbolo: una catena di cime piccole, la neve sulle
 //   piu' alte, grande quanto lo sprite e dentro la minimappa;
 // - gli alberi come prima (triangoli), di un verde piu' tenue e meno saturo;
-// - edifici e unita' con le loro icone (le icone dell'interfaccia, bianche:
-//   mm_* da tools/05_atlas.py), del colore della parte: rosso caldo i tuoi,
-//   blu i nemici. Gli edifici larghi quanto la loro impronta (la maschera)
-//   in scala, fra BUILD_PX px; le unita' tutte MM.unit px. I cantieri piu'
-//   trasparenti, le torri chiuse del livello 6 grigie; mura e porte linee.
+// - gli edifici con le loro icone (le icone dell'interfaccia, bianche: mm_*
+//   da tools/05_atlas.py), del colore della parte: marroni i tuoi, blu i
+//   nemici, larghi quanto la loro impronta (la maschera) in scala, fra
+//   MM.build px; i cantieri piu' trasparenti, le torri chiuse del livello 6
+//   grigie; mura e porte linee. Le unita' puntini (§9.110: le icone in
+//   gruppo facevano una macchia);
+// - [§9.110] acqua e parte scoperta coi bordi sfumati; col puntatore sopra
+//   piu' opaca solo la parte scoperta (la nebbia di guerra).
 
 import { waterMap } from "./effects.js";
 import { makeColourRgb } from "./colours.js";
 
 export const MM = {
-  ally: makeColourRgb(226, 74, 46),    // rosso caldo (prima c_red, 255, 0, 0)
+  // [§9.110, richiesta dell'autore] i tuoi marroni (in §9.109 rosso caldo
+  // 226, 74, 46; nell'originale c_red): gli allarmi sono arancioni
+  ally: makeColourRgb(124, 72, 36),
   enemy: makeColourRgb(46, 112, 232),
   grey: makeColourRgb(130, 130, 130),
   water: makeColourRgb(120, 182, 226), waterAlpha: 0.8,
   tree: makeColourRgb(112, 146, 104), treeAlpha: 0.6,
   rock: makeColourRgb(128, 118, 104), snow: makeColourRgb(238, 238, 232),
-  unit: 7,                              // px, le icone delle unita'
+  unit: 1.7,                            // [§9.110] raggio minimo dei puntini delle unita' (px; 50/sz come l'originale)
   build: [7, 22],                       // px, le icone degli edifici (min, max)
   site: 0.45,                           // alpha dei cantieri
   // [§9.109] le montagne: spente in attesa dello sprite dell'autore (la
   // catena di cime provata non lo convinceva); drawMountains sa gia' dove e
   // quanto e' grande il disegno di ogni montagna (il trim dello sprite)
   mountains: false,
+  // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
+  // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
+  // fondo di sempre
+  explored: (0.69 - 0.19) / (1 - 0.19),
 };
 
 // nome dell'oggetto -> icona (mm_<nome>)
 const ICONS = [
+  // [§9.110] le risorse (prima delle famiglie: castelloruin non e' un castello)
+  [/miniera/, "miniera"], [/pietr/, "stone"], [/ruin/, "ruin"],
   [/omino/, "omino"], [/warrior/, "guerriero"], [/picchiere/, "picchiere"], [/arciere/, "arciere"],
   [/cavaliere/, "cavaliere"], [/catapulta/, "catapulta"], [/ariete/, "ariete"],
   [/casa|house/, "casa"], [/caserma/, "caserma"], [/stalla/, "stalla"], [/castello/, "castello"],
@@ -54,40 +65,88 @@ export function mmIcon(obj) {
 export const isWall = (obj) => /^(enemy_)?(mura|porta)_/.test(obj);
 const isSite = (obj) => /_fond$|cantiere/.test(obj);
 
-// le corse d'acqua per la scala sz: [x, y, lunghezza] in px della minimappa
-const WATER = new WeakMap();
-function waterRuns(w, sz) {
-  let c = WATER.get(w);
-  if (c && c.sz === sz) return c.runs;
-  const wm = waterMap(w), runs = [];
-  if (wm) {
-    const mw = Math.ceil(w.roomW / sz), mh = Math.ceil(w.roomH / sz), px = new Uint8Array(mw * mh);
-    for (let cy = 0; cy < wm.gh; cy++) {
-      const y = Math.min(mh - 1, Math.floor((cy + 0.5) * wm.C / sz));
-      for (let cx = 0; cx < wm.gw; cx++) if (wm.grid[cy * wm.gw + cx]) px[y * mw + Math.min(mw - 1, Math.floor((cx + 0.5) * wm.C / sz))]++;
-    }
-    // un pixel e' acqua se lo e' almeno un terzo delle sue celle
-    const need = Math.max(1, Math.round((sz / wm.C) * (sz / wm.C) / 3));
-    for (let y = 0; y < mh; y++) {
-      let x0 = -1;
-      for (let x = 0; x <= mw; x++) {
-        const on = x < mw && px[y * mw + x] >= need;
-        if (on && x0 < 0) x0 = x;
-        if (!on && x0 >= 0) { runs.push([x0, y, x - x0]); x0 = -1; }
+// [§9.110] La copertura di ogni pixel della minimappa (0-1) diventa corse
+// orizzontali di pixel con la stessa alpha (a sedicesimi): l'interno pieno
+// in poche corse lunghe, i bordi pixel per pixel, sfumati (antialiasing;
+// prima l'acqua era piena o vuota, a scalini). La copertura si moltiplica per
+// quella degli angoli arrotondati della minimappa (raggio R), cosi' niente
+// esce dalla sua forma.
+function runsOf(cov, mw, mh, R) {
+  const runs = [];
+  const corner = (x, y) => {
+    const cx = x + 0.5, cy = y + 0.5;
+    const qx = cx < R ? R - cx : cx > mw - R ? cx - (mw - R) : 0;
+    const qy = cy < R ? R - cy : cy > mh - R ? cy - (mh - R) : 0;
+    if (!qx || !qy) return 1;
+    return Math.max(0, Math.min(1, R + 0.5 - Math.hypot(qx, qy)));
+  };
+  for (let y = 0; y < mh; y++) {
+    let x0 = 0, a0 = 0;
+    for (let x = 0; x <= mw; x++) {
+      const a = x < mw ? Math.round(cov[y * mw + x] * corner(x, y) * 16) / 16 : 0;
+      if (a !== a0) {
+        if (a0 > 0) runs.push([x0, y, x - x0, a0]);
+        x0 = x; a0 = a;
       }
     }
   }
-  WATER.set(w, (c = { sz, runs }));
   return runs;
 }
 
-export function drawWater(d, w, ox, oy, sz) {
-  const runs = waterRuns(w, sz);
-  if (!runs.length) return;
-  d.setAlpha(MM.waterAlpha);
-  d.setColour(MM.water);
-  for (const [x, y, n] of runs) d.rectangle(ox + x, oy + y, ox + x + n - 1, oy + y, false); // (rectangle comprende l'ultimo pixel [I])
+function drawRuns(d, runs, ox, oy, col, alpha) {
+  d.setColour(col);
+  for (const [x, y, n, a] of runs) {
+    d.setAlpha(alpha * a);
+    d.rectangle(ox + x, oy + y, ox + x + n - 1, oy + y, false); // (rectangle comprende l'ultimo pixel [I])
+  }
   d.setAlpha(1);
+}
+
+// la copertura per pixel della minimappa di una griglia di room (celle da
+// C px; value(k) 0-1): la media delle celle col centro nel pixel
+function coverage(gw, gh, C, sz, mw, mh, value) {
+  const sum = new Float32Array(mw * mh), n = new Uint16Array(mw * mh);
+  for (let cy = 0; cy < gh; cy++) {
+    const y = Math.min(mh - 1, Math.floor((cy + 0.5) * C / sz));
+    for (let cx = 0; cx < gw; cx++) {
+      const p = y * mw + Math.min(mw - 1, Math.floor((cx + 0.5) * C / sz));
+      sum[p] += value(cy * gw + cx); n[p]++;
+    }
+  }
+  for (let p = 0; p < sum.length; p++) sum[p] = n[p] ? sum[p] / n[p] : 0;
+  return sum;
+}
+
+const dims = (w, sz) => [Math.ceil(w.roomW / sz), Math.ceil(w.roomH / sz)];
+
+// l'acqua: dalla mappa dell'acqua (fiumi dipinti e a linee), rifatta solo se
+// cambiano la scala o il raggio
+const WATER = new WeakMap();
+export function drawWater(d, w, ox, oy, sz, R) {
+  let c = WATER.get(w);
+  if (!c || c.sz !== sz || c.R !== R) {
+    const wm = waterMap(w), [mw, mh] = dims(w, sz);
+    const runs = wm ? runsOf(coverage(wm.gw, wm.gh, wm.C, sz, mw, mh, (k) => wm.grid[k]), mw, mh, R) : [];
+    WATER.set(w, (c = { sz, R, runs }));
+  }
+  if (c.runs.length) drawRuns(d, c.runs, ox, oy, MM.water, MM.waterAlpha);
+}
+
+// [§9.110, proposta dell'autore] la nebbia di guerra sulla minimappa: senza
+// puntatore niente cambia; col puntatore sopra diventa piu' opaca solo la
+// parte scoperta (fog.explored), rifatta ogni EXPLORED_EVERY passi
+const EXPLORED = new WeakMap(), EXPLORED_EVERY = 30;
+export function drawExplored(d, w, ox, oy, sz, R) {
+  const F = w.fog;
+  if (!F) return false;
+  let c = EXPLORED.get(w);
+  if (!c || c.sz !== sz || c.R !== R || w._stepNo - c.at >= EXPLORED_EVERY || w._stepNo < c.at) {
+    const [mw, mh] = dims(w, sz);
+    const runs = runsOf(coverage(F.gw, F.gh, F.cell, sz, mw, mh, (k) => F.explored[k] / 255), mw, mh, R);
+    EXPLORED.set(w, (c = { sz, R, at: w._stepNo, runs }));
+  }
+  drawRuns(d, c.runs, ox, oy, 0xffffff, MM.explored);
+  return true;
 }
 
 // il simbolo di una montagna: una catena di cime piccole (larghe ~PEAK px,
@@ -131,17 +190,24 @@ export function drawMountains(d, w, ox, oy, sz) {
 }
 
 // l'icona di un edificio o di un'unita' (false se l'oggetto non ne ha una)
+// (gli edifici: le unita' sono puntini, §9.110)
 export function drawIcon(d, w, i, x, y, sz, colour) {
   const spr = mmIcon(i.object);
   if (!spr) return false;
-  let px = MM.unit;
-  const unit = w.is(i, "ally_unit") || w.is(i, "enemy_unit");
-  if (!unit) {
-    const b = w.bbox(i);
-    px = Math.max(MM.build[0], Math.min(MM.build[1], b ? (b[2] - b[0]) / sz : MM.build[0]));
-  }
+  const b = w.bbox(i);
+  const px = Math.max(MM.build[0], Math.min(MM.build[1], b ? (b[2] - b[0]) / sz : MM.build[0]));
   const s = px / 32; // MM_SIDE in tools/05_atlas.py
   d.setAlpha(1);
   d.spriteExt(spr, 0, x, y, s, s, 0, colour, isSite(i.object) ? MM.site : 1);
   return true;
+}
+
+// [§9.110, richiesta dell'autore] Il riquadro della view: angoli poco
+// arrotondati (raggio VIEW_R), ma in un angolo della minimappa quello del
+// riquadro segue la curva della minimappa (raggio R, lo stesso centro se
+// tocca i due lati), cosi' non ne esce.
+const VIEW_R = 5;
+export function viewRadii(l, t, r, b, PL, PT, PR, PB, R) {
+  const one = (dx, dy) => Math.max(VIEW_R, R - Math.max(dx, dy));
+  return [one(l - PL, t - PT), one(PR - r, t - PT), one(PR - r, PB - b), one(l - PL, PB - b)];
 }
