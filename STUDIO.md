@@ -8879,3 +8879,16 @@ sulla montagna che rappresenta.
 
 Foto all'autore: tutorial (12 montagne, le grandi e le piccole), livello 5 e
 6. Passano `minimap`, `ui`, `soak` e le prove unitarie.
+
+**Fiumi e montagne solo dove la mappa e' scoperta** (richiesta dell'autore:
+"il fiume dovrebbe rivelarsi gradualmente, non tutto insieme"). Con la
+nebbia attiva:
+- la copertura d'acqua di ogni pixel della minimappa si moltiplica per
+  quella della parte scoperta (minimap.js `exploredCov`, la stessa della
+  nebbia col puntatore, §9.110, rifatta ogni 30 passi): il fiume compare a
+  pezzi, man mano che lo si scopre, coi bordi sfumati;
+- una montagna compare sfumando con la parte scoperta del suo disegno
+  (piena da un terzo in su, `MTN_SEEN`).
+Senza nebbia (menu, trucco) tutto come prima. Foto all'autore: livello 6
+all'inizio (solo il fiume vicino alla base) e dopo aver scoperto una fascia
+verso ovest. Passano `minimap`, `alarms`, `soak` e le prove unitarie.

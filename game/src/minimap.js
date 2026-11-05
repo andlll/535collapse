@@ -135,36 +135,55 @@ function coverage(gw, gh, C, sz, mw, mh, value) {
 
 const dims = (w, sz) => [Math.ceil(w.roomW / sz), Math.ceil(w.roomH / sz)];
 
-// l'acqua: dalla mappa dell'acqua (fiumi dipinti e a linee), rifatta solo se
-// cambiano la scala o il raggio
-const WATER = new WeakMap();
 // il raggio degli angoli della minimappa alla scala sz (come drawMinimap)
 const radiusAt = (w, sz) => Math.min(40, w.roomW / sz / 2, w.roomH / sz / 2);
 
-// sz: la scala disegnata; szT: quella scelta, a cui si calcolano le corse
-export function drawWater(d, w, ox, oy, sz, szT = sz) {
+// [§9.110] la copertura della parte scoperta (fog.explored) per pixel della
+// minimappa alla scala szT, rifatta ogni EXPLORED_EVERY passi; null senza
+// nebbia (fogOn falso: menu, trucco), cioe' tutto scoperto
+const EXPLORED = new WeakMap(), EXPLORED_EVERY = 30;
+function exploredCov(w, szT, fogOn) {
+  const F = w.fog;
+  if (!F || !fogOn) return null;
+  let c = EXPLORED.get(w);
+  if (!c || c.sz !== szT || w._stepNo - c.at >= EXPLORED_EVERY || w._stepNo < c.at) {
+    const [mw, mh] = dims(w, szT);
+    const cov = coverage(F.gw, F.gh, F.cell, szT, mw, mh, (k) => F.explored[k] / 255);
+    EXPLORED.set(w, (c = { sz: szT, at: w._stepNo, cov, runs: runsOf(cov, mw, mh, radiusAt(w, szT)) }));
+  }
+  return c;
+}
+
+// l'acqua: dalla mappa dell'acqua (fiumi dipinti e a linee), la copertura
+// rifatta solo se cambia la scala. [§9.115, richiesta dell'autore] e solo
+// dove la mappa e' scoperta: la copertura dell'acqua per quella della parte
+// scoperta, pixel per pixel (il fiume si rivela a pezzi, man mano, coi bordi
+// sfumati come la nebbia); le corse si rifanno quando cambia la parte
+// scoperta. sz: la scala disegnata; szT: quella scelta, a cui si calcolano
+const WATER = new WeakMap();
+export function drawWater(d, w, ox, oy, sz, szT = sz, fogOn = false) {
   let c = WATER.get(w);
   if (!c || c.sz !== szT) {
     const wm = waterMap(w), [mw, mh] = dims(w, szT);
-    const runs = wm ? runsOf(coverage(wm.gw, wm.gh, wm.C, szT, mw, mh, (k) => wm.grid[k]), mw, mh, radiusAt(w, szT)) : [];
-    WATER.set(w, (c = { sz: szT, runs }));
+    WATER.set(w, (c = { sz: szT, cov: wm ? coverage(wm.gw, wm.gh, wm.C, szT, mw, mh, (k) => wm.grid[k]) : null, runs: null, ex: undefined }));
+  }
+  if (!c.cov) return;
+  const ex = exploredCov(w, szT, fogOn);
+  if (!c.runs || c.ex !== ex) {
+    const [mw, mh] = dims(w, szT);
+    const cov = ex ? c.cov.map((v, p) => v * ex.cov[p]) : c.cov;
+    c.runs = runsOf(cov, mw, mh, radiusAt(w, szT));
+    c.ex = ex;
   }
   if (c.runs.length) drawRuns(d, c.runs, ox, oy, MM.water, MM.waterAlpha, szT / sz);
 }
 
 // [§9.110, proposta dell'autore] la nebbia di guerra sulla minimappa: senza
 // puntatore niente cambia; col puntatore sopra diventa piu' opaca solo la
-// parte scoperta (fog.explored), rifatta ogni EXPLORED_EVERY passi
-const EXPLORED = new WeakMap(), EXPLORED_EVERY = 30;
+// parte scoperta
 export function drawExplored(d, w, ox, oy, sz, alpha = MM.explored, szT = sz) {
-  const F = w.fog;
-  if (!F) return false;
-  let c = EXPLORED.get(w);
-  if (!c || c.sz !== szT || w._stepNo - c.at >= EXPLORED_EVERY || w._stepNo < c.at) {
-    const [mw, mh] = dims(w, szT);
-    const runs = runsOf(coverage(F.gw, F.gh, F.cell, szT, mw, mh, (k) => F.explored[k] / 255), mw, mh, radiusAt(w, szT));
-    EXPLORED.set(w, (c = { sz: szT, at: w._stepNo, runs }));
-  }
+  const c = exploredCov(w, szT, true);
+  if (!c) return false;
   drawRuns(d, c.runs, ox, oy, 0xffffff, alpha, szT / sz);
   return true;
 }
@@ -177,9 +196,14 @@ export function drawExplored(d, w, ox, oy, sz, alpha = MM.explored, szT = sz) {
 // spesso oltre i bordi della mappa). Prima (§9.109) una catena di cime
 // disegnata a triangoli: non convinceva.
 const MTN_W = 93, MTN_H = 75; // il disegno, ritagliato (nuovi.json derivati)
-export function drawMountains(d, w, ox, oy, sz) {
+// [§9.115, richiesta dell'autore] solo se scoperte: l'alpha cresce con la
+// parte scoperta del disegno (piena da MTN_SEEN in su), cosi' una montagna
+// compare sfumando man mano che la si scopre
+const MTN_SEEN = 0.35;
+export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
   if (!MM.mountains) return;
   const mw = w.roomW / sz, mh = w.roomH / sz;
+  const ex = exploredCov(w, szT, fogOn), [ew] = dims(w, szT), kT = sz / szT;
   for (const i of w.instances) {
     if (!i.alive || !i.object.startsWith("montagna") || !i.sprite_index) continue;
     const fr = w.assets.frame(i.sprite_index, 0);
@@ -190,9 +214,17 @@ export function drawMountains(d, w, ox, oy, sz) {
     const x0 = Math.max(0, Math.min(bx0, bx0 + tw * sx) / sz), x1 = Math.min(mw, Math.max(bx0, bx0 + tw * sx) / sz);
     const y0 = Math.max(0, Math.min(by0, by0 + th * sy) / sz), y1 = Math.min(mh, Math.max(by0, by0 + th * sy) / sz);
     if (x1 - x0 < 6 || y1 - y0 < 5) continue;
+    let seen = 1;
+    if (ex) { // la parte scoperta del riquadro (in px della scala szT)
+      let sum = 0, n = 0;
+      const X0 = Math.floor(x0 * kT), X1 = Math.ceil(x1 * kT), Y0 = Math.floor(y0 * kT), Y1 = Math.ceil(y1 * kT);
+      for (let y = Y0; y < Y1; y++) for (let x = X0; x < X1; x++) { const v = ex.cov[y * ew + x]; if (v !== undefined) { sum += v; n++; } }
+      seen = n ? Math.min(1, sum / n / MTN_SEEN) : 0;
+      if (seen <= 0.01) continue;
+    }
     const k = Math.min((x1 - x0) / MTN_W, (y1 - y0) / MTN_H) * MM.mountainFill;
     d.setAlpha(1);
-    d.spriteExt("mm_montagna", 0, ox + (x0 + x1) / 2, oy + (y0 + y1) / 2, k, k, 0, MM.mountain, MM.mountainAlpha);
+    d.spriteExt("mm_montagna", 0, ox + (x0 + x1) / 2, oy + (y0 + y1) / 2, k, k, 0, MM.mountain, MM.mountainAlpha * seen);
   }
   d.setAlpha(1);
 }

@@ -529,8 +529,9 @@ export class Manager {
     // risorse, poi edifici e unita' con le loro icone (minimap.js); prima
     // l'ordine dei with(...) dell'originale, alberi sopra le unita'
     const P = (i) => [ox + i.x / sz, oy + i.y / sz];
-    drawWater(d, world, ox, oy, sz, g.sz);
-    drawMountains(d, world, ox, oy, sz);
+    // [§9.115] fiumi e montagne solo dove la mappa e' scoperta (con la nebbia)
+    drawWater(d, world, ox, oy, sz, g.sz, fogOn);
+    drawMountains(d, world, ox, oy, sz, g.sz, fogOn);
     // [§9.110, richiesta dell'autore] le risorse con le loro icone (miniera,
     // pietra, rovina), coi colori di prima (giallo l'oro, grigio la pietra);
     // gli alberi triangoli
