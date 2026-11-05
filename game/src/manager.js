@@ -242,11 +242,6 @@ export class Manager {
     if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);
     // [§9.36] riflessi, increspature e schiuma sui fiumi
     if (this.world) waterLife(this.world, cam);
-    // Hover dei pulsanti della minimappa: l'originale confronta mouse_x/y
-    // in coordinate di room con i rettangoli GUI riportati nella room
-    // (x scaleview); qui si confronta direttamente in coordinate GUI, che e'
-    // la stessa cosa.
-    const px = input.x, py = input.y, H = cam.cssH;
     // [§9.113] zoom morbido della minimappa: la scala disegnata insegue
     // quella scelta (global.sz), come lo zoom del mondo (§9.83)
     g.sz = clampSz(g.sz);
@@ -254,6 +249,19 @@ export class Manager {
     let s = s0 + (t - s0) * MM.szEase;
     if (Math.abs(t - s) < 0.002 * t) s = t;
     this.mmSz = s;
+    this.hoverMinimap(input, cam, roomW, roomH);
+  }
+
+  // Hover dei pulsanti della minimappa: l'originale confronta mouse_x/y
+  // in coordinate di room con i rettangoli GUI riportati nella room
+  // (x scaleview); qui si confronta direttamente in coordinate GUI, che e'
+  // la stessa cosa. [§9.114, trovato dalla CI] Si rifa' anche subito prima
+  // dei clic (app.js), col puntatore di adesso: calcolato solo nello Step
+  // [C], valeva la posizione del passo prima, e un clic fatto spostando il
+  // puntatore nello stesso passo (le prove, un gesto rapido) era giudicato
+  // sulla minimappa o fuori a torto: un ordine nel mondo poteva perdersi.
+  hoverMinimap(input, cam, roomW, roomH) {
+    const g = this.g, px = input.x, py = input.y, H = cam.cssH, s = this.mmScale();
     const mw = roomW / s, mh = roomH / s;
     if (g.minim === 1) {
       this.minimHover = +(px > 20 && px < 20 + mw && py > H - 20 - mh && py < H - 20);

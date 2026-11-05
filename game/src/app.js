@@ -499,6 +499,7 @@ async function main() {
     manager.alarms();
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
+    manager.hoverMinimap(input, cam, room.width, room.height); // §9.114: col puntatore di adesso
     manager.mouse(input, mx, my);
     // [§9.109] i clic sulla minimappa non vanno al mondo sotto di lei; il
     // destro e' un ordine verso il punto della mappa (manager.js)

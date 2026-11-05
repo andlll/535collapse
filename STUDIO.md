@@ -8848,3 +8848,15 @@ Prove: `minimap.mjs`, "raccolta" (la bandierina col clic destro sulla
 minimappa); i segnalini controllati livello per livello (window.__game
 `objectives()`); foto del livello 4 col centro e tre soldati selezionati,
 la bandierina e il ponte da riparare.
+
+**[Trovato dalla CI] Il clic giudicato col puntatore di prima.** Lo stato
+"puntatore sulla minimappa" (manager.js minimHover e pulsanti) si calcolava
+solo nello Step del manager [C], cioe' alla fine del passo prima: un clic
+fatto spostando il puntatore nello stesso passo era giudicato con la
+posizione vecchia. Con i clic che non passano piu' al mondo (§9.109), un
+ordine nel mondo dato subito dopo un clic in basso a sinistra poteva essere
+preso per un clic sulla minimappa e perdersi: `buildstuck.mjs` ("incrocio",
+gli ordini col clic destro su quattro cantieri) aveva un civile che non
+arrivava mai al lavoro. Ora l'hover si rifa' anche subito prima dei clic,
+col puntatore di adesso (`hoverMinimap`, app.js): la prova passa (0 in
+ritardo su 72 ordini).
