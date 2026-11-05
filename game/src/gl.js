@@ -541,6 +541,7 @@ uniform vec4 uBox;   // centro x, y, mezza larghezza, mezza altezza (px della pr
 uniform float uR;    // raggio degli angoli
 uniform vec2 uScale; // px della proiezione -> unita' 0..1 della superficie
 uniform float uAlpha;
+uniform float uFrost; // [§9.111] la brina (0,3; la minimappa la separa dalla sfocatura)
 in vec2 vPos;
 in vec2 vScr;
 out vec4 o;
@@ -561,7 +562,7 @@ void main() {
   vec3 bg = texture(uBg, uv).rgb;
   float l = dot(bg, vec3(0.299, 0.587, 0.114));
   bg = mix(vec3(l), bg, 1.25);                         // un po' piu' saturo
-  bg = mix(bg, vec3(1.0), 0.3);                        // brina: sul nero resta leggibile
+  bg = mix(bg, vec3(1.0), uFrost);                     // brina: sul nero resta leggibile
   float rim = pow(1.0 - clamp(-d / 3.0, 0.0, 1.0), 2.0); // filo chiaro sul bordo
   float spec = k * clamp(dot(nrm, normalize(vec2(-1.0, -1.0))), 0.0, 1.0);
   vec3 col = bg + vec3(0.30 * spec + 0.25 * rim);

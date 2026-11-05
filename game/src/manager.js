@@ -464,11 +464,36 @@ export class Manager {
     const ox = 20, oy = H - 20 - mh;
     const R = Math.min(40, mw / 2, mh / 2); // il raggio degli angoli (80 / 2, come roundrectColourExt)
     // [§9.110, proposta dell'autore] col puntatore sopra il fondo diventa piu'
-    // opaco solo dove il giocatore ha scoperto la mappa (senza nebbia, tutto)
-    const fogOn = fogActive(world) && !!world.fog;
-    d.setAlpha(this.minimHover && !fogOn ? 0.69 : 0.19);
+    // opaco solo dove il giocatore ha scoperto la mappa (senza nebbia, tutto).
+    // [§9.111, richiesta dell'autore] e col vetro il mondo sotto si sfoca
+    // come a 0,69 su tutta la minimappa, anche dove non e' scoperta (lo
+    // sfondo non distrae), con la brina ridotta perche' la chiarezza resti
+    // quella di 0,19; il passaggio dura MM.hoverTime s, avanti e indietro
+    // (a tempo vero: anche a gioco in pausa o con meno fotogrammi)
+    const now = performance.now(), dt = this._mmT ? Math.min(0.1, (now - this._mmT) / 1000) : 0;
+    this._mmT = now;
+    this.mmHover = Math.max(0, Math.min(1, (this.mmHover || 0) + (this.minimHover ? 1 : -1) * dt / MM.hoverTime));
+    const e = this.mmHover * this.mmHover * (3 - 2 * this.mmHover); // smoothstep
+    const fogOn = fogActive(world) && !!world.fog, glassOn = !!d.glass;
+    d.setAlpha(0.19);
+    if (glassOn) {
+      const b0 = 0.19 / 0.69, blend = b0 + (1 - b0) * e;
+      d.glassBlend = blend; d.glassFrost = 0.3 * b0 / blend; // la brina del vetro a 0,19, su tutto il vetro
+    }
     d.roundrectColourExt(20, oy, 20 + mw, H - 20, 80, 80, c.white, c.white, false);
-    if (this.minimHover && fogOn) drawExplored(d, world, ox, oy, sz, R);
+    d.glassBlend = d.glassFrost = undefined;
+    const ex = (glassOn ? MM.exploredGlass : MM.explored) * e;
+    if (ex > 0.001) {
+      if (fogOn) drawExplored(d, world, ox, oy, sz, R, ex);
+      else { // senza nebbia: tutta, bianco semplice (non un altro vetro)
+        const g0 = d.glass;
+        d.glass = null;
+        d.setAlpha(ex);
+        d.roundrectColourExt(20, oy, 20 + mw, H - 20, 80, 80, c.white, c.white, false);
+        d.glass = g0;
+        d.setAlpha(1);
+      }
+    }
     const button = (hover, y) => {
       d.setAlpha(hover ? 0.69 : 0.19);
       d.circleColour(50 + mw, y, 15, c.white, c.white, false);

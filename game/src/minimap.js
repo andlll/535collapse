@@ -40,6 +40,11 @@ export const MM = {
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
   // fondo di sempre
   explored: (0.69 - 0.19) / (1 - 0.19),
+  // [§9.111] lo stesso col vetro: sopra il fondo gia' tutto sfocato (con
+  // meno brina) il bianco che porta la parte scoperta alla chiarezza del
+  // vetro a 0,69 (brina 0,3, bianco 0,69 x 0,65: 61% verso il bianco)
+  exploredGlass: 0.52,
+  hoverTime: 0.3, // s: il passaggio col puntatore (sfocatura e parte scoperta)
 };
 
 // nome dell'oggetto -> icona (mm_<nome>)
@@ -136,7 +141,7 @@ export function drawWater(d, w, ox, oy, sz, R) {
 // puntatore niente cambia; col puntatore sopra diventa piu' opaca solo la
 // parte scoperta (fog.explored), rifatta ogni EXPLORED_EVERY passi
 const EXPLORED = new WeakMap(), EXPLORED_EVERY = 30;
-export function drawExplored(d, w, ox, oy, sz, R) {
+export function drawExplored(d, w, ox, oy, sz, R, alpha = MM.explored) {
   const F = w.fog;
   if (!F) return false;
   let c = EXPLORED.get(w);
@@ -145,7 +150,7 @@ export function drawExplored(d, w, ox, oy, sz, R) {
     const runs = runsOf(coverage(F.gw, F.gh, F.cell, sz, mw, mh, (k) => F.explored[k] / 255), mw, mh, R);
     EXPLORED.set(w, (c = { sz, R, at: w._stepNo, runs }));
   }
-  drawRuns(d, c.runs, ox, oy, 0xffffff, MM.explored);
+  drawRuns(d, c.runs, ox, oy, 0xffffff, alpha);
   return true;
 }
 

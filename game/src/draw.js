@@ -239,13 +239,18 @@ export class Draw {
   _glass(l, t, rgt, btm, rad, c1, c2, outline) {
     const g = this.glass;
     if (!g || outline || c1 !== 0xffffff || c2 !== 0xffffff || this.alpha >= 0.95 || this.alpha <= 0.05) return false;
-    const R = this.r, pw = R.proj[2], ph = R.proj[3], a = Math.min(1, this.alpha / 0.69);
+    // [§9.111] glassBlend e glassFrost (se ci sono) decidono quanto vetro
+    // sfocato copre il mondo e quanta brina ha, invece dell'alpha (la
+    // minimappa: sfocata come a 0,69 ma chiara come a 0,19)
+    const R = this.r, pw = R.proj[2], ph = R.proj[3], a = this.glassBlend ?? Math.min(1, this.alpha / 0.69);
+    const frost = this.glassFrost ?? 0.3;
     R.pass("glass", l - 2, t - 2, rgt + 2, btm + 2, (gl, U, tex) => {
       gl.uniform1i(U.uBg, tex(g));
       gl.uniform4f(U.uBox, (l + rgt) / 2, (t + btm) / 2, (rgt - l) / 2, (btm - t) / 2);
       gl.uniform1f(U.uR, Math.min(rad, (rgt - l) / 2, (btm - t) / 2));
       gl.uniform2f(U.uScale, 1 / pw, 1 / ph);
       gl.uniform1f(U.uAlpha, a);
+      gl.uniform1f(U.uFrost, frost);
     });
     return true;
   }

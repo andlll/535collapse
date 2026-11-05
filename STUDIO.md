@@ -8741,3 +8741,32 @@ Prove: `minimap.test.mjs` (nuova: icone per oggetto, raggi del riquadro),
 `minimap.mjs` (il riquadro coi raggi per angolo). Foto all'autore: lvl06 e
 lvl04 col puntatore e senza (nebbia), allarmi arancioni, la view
 nell'angolo; la linea della bandierina da vicino.
+
+### 9.111 Minimappa: col puntatore il mondo sotto si sfoca, con un passaggio di 0,3 s
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): col
+puntatore sopra la minimappa il mondo sotto deve sfocarsi come col vetro a
+0,69, su tutta la minimappa (anche dove non e' scoperta: lo sfondo non
+distrae), e il passaggio essere un'animazione di circa 0,3 s.
+
+**Perche' non lo faceva piu'.** Il vetro (§7.14, shader `glass`) lega
+sfocatura e chiarezza all'alpha del pannello: a 0,19 il mondo sfocato copre
+quello nitido per il 27,5%, a 0,69 del tutto, e la brina bianca (0,3) cresce
+con lui. Con la nebbia di §9.110 col puntatore il vetro restava a 0,19 (e
+sopra la parte scoperta un velo bianco): niente sfocatura in piu'.
+
+**Ora** la sfocatura e la brina si regolano da sole (draw.js `glassBlend`,
+`glassFrost`; nello shader la brina e' un uniform, 0,3 di serie):
+- col puntatore il vetro copre il mondo fino al 100% (come a 0,69) su tutta
+  la minimappa, con la brina ridotta (0,3 x 0,275 / copertura) perche' la
+  parte non scoperta resti chiara come senza puntatore;
+- la parte scoperta si schiarisce fino alla chiarezza del vetro a 0,69
+  (`MM.exploredGlass` 0,52 di bianco sopra il vetro; senza vetro come in
+  §9.110);
+- il passaggio dura 0,3 s (`MM.hoverTime`), con una curva morbida
+  (smoothstep), avanti e indietro, a tempo vero (anche a gioco in pausa).
+
+Misurato su un tratto di prato non scoperto sotto la minimappa (lvl06,
+1920 x 1080): il dettaglio del mondo (media dei bordi) da 20,3 a 11,6 col
+puntatore, la luminosita' uguale (152 / 149). Foto all'autore a inizio,
+meta' e fine del passaggio. Passano `minimap`, `hover`, `ui`, `soak`.
