@@ -1632,6 +1632,17 @@
       ],
       "gruppo": "gui",
       "nota": "[§9.110] la fiamma degli allarmi nella minimappa, bianca: la colora la minimappa (arancione); ico_fiamma resta per il suggerimento"
+    },
+    "mm_montagna": {
+      "da": "montagna_minimappa",
+      "lato": 93,
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "gruppo": "gui",
+      "nota": "[§9.115] il simbolo delle montagne nella minimappa: disegno dell'autore (linee nere, 96 x 96), bianco e ritagliato; lo colora (nocciola) e lo scala sulla montagna la minimappa"
     }
   }
 }

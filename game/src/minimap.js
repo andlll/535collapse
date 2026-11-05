@@ -5,8 +5,8 @@
 //   dell'acqua della room, effects.js waterMap: fiumi dipinti e a linee,
 //   senza le parti coperte dai ponti), a corse orizzontali di pixel della
 //   minimappa, rifatte solo se cambia la scala;
-// - le montagne con un simbolo: una catena di cime piccole, la neve sulle
-//   piu' alte, grande quanto lo sprite e dentro la minimappa;
+// - le montagne col simbolo dell'autore (§9.115), nocciola, grande quanto il
+//   disegno della montagna e dentro la minimappa;
 // - gli alberi come prima (triangoli), di un verde piu' tenue e meno saturo;
 // - gli edifici con le loro icone (le icone dell'interfaccia, bianche: mm_*
 //   da tools/05_atlas.py), del colore della parte: marroni i tuoi, blu i
@@ -29,14 +29,15 @@ export const MM = {
   selected: 0xffffff,                   // [§9.114] i tuoi selezionati, bianchi
   water: makeColourRgb(120, 182, 226), waterAlpha: 0.8,
   tree: makeColourRgb(112, 146, 104), treeAlpha: 0.6,
-  rock: makeColourRgb(128, 118, 104), snow: makeColourRgb(238, 238, 232),
   unit: 1.7,                            // [§9.110] raggio minimo dei puntini delle unita' (px; 50/sz come l'originale)
   build: [7, 22],                       // px, le icone degli edifici (min, max)
   site: 0.45,                           // alpha dei cantieri
   // [§9.109] le montagne: spente in attesa dello sprite dell'autore (la
-  // catena di cime provata non lo convinceva); drawMountains sa gia' dove e
-  // quanto e' grande il disegno di ogni montagna (il trim dello sprite)
-  mountains: false,
+  // catena di cime provata non lo convinceva); [§9.115] ora col suo simbolo
+  mountains: true,
+  mountain: makeColourRgb(166, 123, 91), // nocciola
+  mountainAlpha: 0.9,
+  mountainFill: 0.9,                     // il simbolo occupa al piu' il 90% del disegno della montagna
   // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
   // fondo di sempre
@@ -168,42 +169,30 @@ export function drawExplored(d, w, ox, oy, sz, alpha = MM.explored, szT = sz) {
   return true;
 }
 
-// il simbolo di una montagna: una catena di cime piccole (larghe ~PEAK px,
-// alte 5-8, la neve sulle piu' alte) che riempie lo sprite in scala, su piu'
-// file se e' alto; solo dentro la minimappa (gli sprite delle montagne
-// sporgono spesso oltre i bordi della mappa)
-const PEAK = 9;
+// [§9.115, richiesta dell'autore] il simbolo delle montagne: il disegno
+// dell'autore (mm_montagna, linee bianche 93 x 75 colorate nocciola), grande
+// quanto il disegno della montagna in scala (il trim dello sprite: le tele
+// delle montagne, fino a 2342 x 1461, sono in gran parte vuote), al centro
+// della sua parte dentro la minimappa (gli sprite delle montagne sporgono
+// spesso oltre i bordi della mappa). Prima (§9.109) una catena di cime
+// disegnata a triangoli: non convinceva.
+const MTN_W = 93, MTN_H = 75; // il disegno, ritagliato (nuovi.json derivati)
 export function drawMountains(d, w, ox, oy, sz) {
   if (!MM.mountains) return;
   const mw = w.roomW / sz, mh = w.roomH / sz;
   for (const i of w.instances) {
     if (!i.alive || !i.object.startsWith("montagna") || !i.sprite_index) continue;
-    // il riquadro del disegno (trim), non della tela: le tele delle montagne
-    // (fino a 2342 x 1461) sono in gran parte vuote
     const fr = w.assets.frame(i.sprite_index, 0);
     if (!fr) continue;
     const [tx, ty, tw, th] = fr.f.trim, [sx, sy] = [i.image_xscale || 1, i.image_yscale || 1];
     const bx0 = i.x + (tx - fr.s.origin[0]) * sx, by0 = i.y + (ty - fr.s.origin[1]) * sy;
-    const x0 = Math.min(bx0, bx0 + tw * sx) / sz, x1 = Math.max(bx0, bx0 + tw * sx) / sz;
-    const y0 = Math.min(by0, by0 + th * sy) / sz, y1 = Math.max(by0, by0 + th * sy) / sz;
-    const rows = Math.max(1, Math.min(3, Math.round((y1 - y0) / 14)));
-    for (let r = 0; r < rows; r++) {
-      const base = y0 + (y1 - y0) * (r + 1) / (rows + 0.4), shift = r % 2 ? PEAK / 2 : 0;
-      const n = Math.max(1, Math.round((x1 - x0 - shift) / PEAK));
-      const step = (x1 - x0 - shift) / n;
-      for (let k = 0; k < n; k++) {
-        const cx = x0 + shift + step * (k + 0.5);
-        if (cx < 4 || cx > mw - 4 || base < 6 || base > mh) continue;
-        const tall = (k + r + (i.id % 2)) % 3 === 0, h = tall ? 8 : 5.5, half = PEAK * 0.62;
-        const X = ox + cx, Y = oy + base;
-        d.setAlpha(0.9);
-        d.triangleColour(X - half, Y, X + half, Y, X, Y - h, MM.rock, MM.rock, MM.rock, false);
-        if (tall) {
-          d.setAlpha(1);
-          d.triangleColour(X - half * 0.34, Y - h * 0.66, X + half * 0.34, Y - h * 0.66, X, Y - h, MM.snow, MM.snow, MM.snow, false);
-        }
-      }
-    }
+    // il disegno in px della minimappa, ristretto alla minimappa
+    const x0 = Math.max(0, Math.min(bx0, bx0 + tw * sx) / sz), x1 = Math.min(mw, Math.max(bx0, bx0 + tw * sx) / sz);
+    const y0 = Math.max(0, Math.min(by0, by0 + th * sy) / sz), y1 = Math.min(mh, Math.max(by0, by0 + th * sy) / sz);
+    if (x1 - x0 < 6 || y1 - y0 < 5) continue;
+    const k = Math.min((x1 - x0) / MTN_W, (y1 - y0) / MTN_H) * MM.mountainFill;
+    d.setAlpha(1);
+    d.spriteExt("mm_montagna", 0, ox + (x0 + x1) / 2, oy + (y0 + y1) / 2, k, k, 0, MM.mountain, MM.mountainAlpha);
   }
   d.setAlpha(1);
 }

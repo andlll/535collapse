@@ -8860,3 +8860,22 @@ gli ordini col clic destro su quattro cantieri) aveva un civile che non
 arrivava mai al lavoro. Ora l'hover si rifa' anche subito prima dei clic,
 col puntatore di adesso (`hoverMinimap`, app.js): la prova passa (0 in
 ritardo su 72 ordini).
+
+### 9.115 Le montagne nella minimappa col simbolo dell'autore
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): il suo
+disegno di una montagna (linee nere su trasparente, 96 x 96;
+nuovi/sprites/montagna_minimappa.png) come simbolo, color nocciola, scalato
+sulla montagna che rappresenta.
+- `mm_montagna` fra i derivati di nuovi.json: ritagliato (93 x 75) e bianco,
+  alla sua risoluzione; la minimappa lo colora nocciola (166, 123, 91) al 90%.
+- Grande quanto il disegno della montagna in scala (il trim dello sprite,
+  non la tela, in gran parte vuota), fino al 90% di quel riquadro e con le
+  proporzioni del simbolo; al centro della parte del disegno che cade dentro
+  la minimappa (gli sprite delle montagne sporgono spesso oltre i bordi
+  della mappa); niente se ne cade dentro meno di 6 x 5 px.
+- Le montagne si riaccendono (`MM.mountains`); tolta la catena di cime a
+  triangoli di §9.109.
+
+Foto all'autore: tutorial (12 montagne, le grandi e le piccole), livello 5 e
+6. Passano `minimap`, `ui`, `soak` e le prove unitarie.
