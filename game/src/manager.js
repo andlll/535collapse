@@ -570,6 +570,9 @@ export class Manager {
         // nell'originale, 50/sz), gli edifici icone
         const unit = who.endsWith("unit");
         // [§9.101] le torri del livello 6 non ancora recuperate: grigie
+        // [§9.115, richiesta dell'autore] le torri chiuse del livello 6 (non
+        // ancora tue) solo dove la mappa e' scoperta
+        if (i.locked && fogOn && !world.fog.isExplored(i.x, i.y)) continue;
         const tint = sel ? MM.selected : i.locked ? MM.grey : col;
         if (!unit && drawIcon(d, world, i, x, y, sz, tint)) continue;
         d.setAlpha(1);
