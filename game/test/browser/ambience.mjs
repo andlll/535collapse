@@ -31,6 +31,10 @@
 //   polvere     un cavaliere mandato col clic destro lascia polvere
 //   foglie      (§9.106) dagli alberi in vista, piu' col vento massimo che
 //               col minimo, del colore della chioma; 2-4 a un colpo d'ascia
+//   dissolvenza (§9.107) l'albero finito sbiadisce (albero_morente visibile,
+//               ondeggia, via dopo 40 passi)
+//   schegge     (§9.107) un colpo di piccone fa saltare schegge e polvere
+//               (pietra, oro), uno di falce pagliuzze
 //   salvataggio salvato e ricaricato (una pagina nuova), il fumo riprende
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -282,6 +286,32 @@ const res = await page.evaluate(() => {
     let colpo = 0; vicino.hitAt = w._stepNo + 1; run(1);
     for (const q of leafPs()) for (const l of q.parts) if (l.age === 1 && Math.abs(l.x - vicino.x) < 80) colpo++;
     out.foglie = { minimo, massimo, colori: cols.size, colpo, ok: massimo > minimo && massimo >= 5 && cols.size >= 1 && colpo >= 2 && colpo <= 5 };
+    // [§9.107] l'albero finito sbiadisce: albero_morente visibile, che
+    // ondeggia, piu' trasparente a ogni passo, via dopo 40 passi
+    vicino.wood = 0; w.destroy(vicino); run(1);
+    const m = w.all("albero_morente").next().value;
+    const a0 = m ? m.image_alpha : 1;
+    run(20);
+    const meta = m && m.alive ? { vis: m.visible, a: m.image_alpha, sway: w.sway ? w.sway(m) !== null : null } : null;
+    run(25);
+    out.dissolvenza = { visibile: !!(m && meta && meta.vis), alpha: meta && [a0, +meta.a.toFixed(3)], ondeggia: meta && meta.sway, via: !!m && !m.alive,
+                        ok: !!(m && meta && meta.vis && meta.a < a0 && meta.a > 0.3 && meta.sway !== false && !m.alive) };
+    // [§9.107] le schegge: un colpo di piccone su pietra e oro, di falce nel
+    // grano, davanti a un civile in vista
+    const o = w.create("ally_omino", cam.x + cam.w / 2, cam.y + cam.h / 2);
+    run(2);
+    out.schegge = { ok: true };
+    for (const kind of ["stone", "gold", "food"]) {
+      o.workKind = kind; o.workX = o.x + 30; o.workY = o.y; o.workHit = w._stepNo + 1; run(1);
+      const c = {};
+      for (const q of P.systems) for (const l of q.parts) {
+        if (l.age !== 1 || Math.abs(l.x - o.workX) > 40) continue;
+        const k = l.t.shape || l.t.sprite; c[k] = (c[k] || 0) + 1;
+      }
+      out.schegge[kind] = c;
+      out.schegge.ok &&= kind === "food" ? c.line >= 3 && !c.chip : c.chip >= 3 && c.nubespr === 1;
+    }
+    w.destroy(o);
     cam.x = X - cam.w / 2; cam.y = Y - cam.h / 2; cam.clamp();
   }
   // per il salvataggio: una casa col camino vicino alla view

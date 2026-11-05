@@ -87,6 +87,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   P.seq = s.particles.seq;
   P.count = P.systems.reduce((n, ps) => n + ps.parts.length, 0);
   cam.scaleview = Math.min(ZOOM_MAX, s.cam.scaleview); // i salvataggi di quando si arrivava a 2,0
+  cam.centerFirst = false; // §9.107: la view salvata, cosi' com'era
   cam.zoomTarget = null; // §9.83: uno zoom in corso al caricamento si ferma
   cam.x = s.cam.x;
   cam.y = s.cam.y;

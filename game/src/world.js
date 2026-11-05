@@ -850,8 +850,15 @@ export class World {
     this.drawn = drawn;
   }
 
+  // [Segnalazione dell'autore, §9.107] "drawGUITop": i pulsanti evidenziati
+  // col puntatore (cerchio pieno e scheda), dopo il Draw GUI di tutti. Con
+  // l'interfaccia di vetro il cerchio del pannello e' un passaggio che
+  // ridisegna il mondo sfocato: se il pannello veniva dopo il pulsante (la
+  // depth dipende da dove sta l'unita' rispetto alla view) lo copriva.
   drawGUI(d) {
-    for (const i of this.sorted()) if (i.visible) this.fire(i, "drawGUI", d);
+    const list = this.sorted();
+    for (const i of list) if (i.visible) this.fire(i, "drawGUI", d);
+    for (const i of list) if (i.visible) this.fire(i, "drawGUITop", d);
   }
 
   // Draw GUI End [I]: dopo il Draw GUI di tutte le istanze (i *_blink).

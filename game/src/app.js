@@ -18,10 +18,11 @@ import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
+import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup, objectiveMarks } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
-import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_OBJECTS, leafType } from "./ambience.js";
+import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_DRAW, leafType } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
@@ -48,7 +49,7 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
-import { saveSlot, loadSlot, takePending, setPending, saveFile, openFile } from "./save.js";
+import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
@@ -337,10 +338,11 @@ async function main() {
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
   world.fog = fog;
-  // Partita salvata (save.js, snapshot.js): ?load=slot (localStorage) o
+  // Partita salvata (save.js, snapshot.js): ?load=slot (IndexedDB, §9.107) o
   // ?load=file (il file scelto, passato da setPending). Il parametro si
   // toglie subito: "Ricomincia livello" riparte dalla room.
   const loadMode = params.get("load");
+  await loadSlotIndex(); // §9.107: le intestazioni degli slot in IndexedDB, per i menu
   let saved = null;
   if (loadMode) {
     saved = loadMode === "slot" ? await loadSlot(roomName) : await takePending();
@@ -497,12 +499,24 @@ async function main() {
     manager.alarms();
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
+    manager.hoverMinimap(input, cam, room.width, room.height); // §9.114: col puntatore di adesso
     manager.mouse(input, mx, my);
+    // [§9.109] i clic sulla minimappa non vanno al mondo sotto di lei; il
+    // destro e' un ordine verso il punto della mappa (manager.js)
+    const mm = manager.minimapInput(input, cam, room.width, room.height);
+    if (mm) {
+      input.mousePressed = [false, false, false];
+      input.mouseReleased = [false, !!mm.order, false];
+    }
     manager.step(input, cam, room.width, room.height);
     if (victoryAt > 0 && --victoryAt === 0 && !world.exists("victory_manager")) { g.victory = 1; world.create("victory_manager", 0, 0); }
     world.input = input;
-    world.step(input, mx, my);
+    const inside = input.inside;
+    if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
+    world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
+    input.inside = inside;
     recountIdle(world); // §6.1 n.80
+    alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
     settleOverlaps(world, path); // §9.62
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
@@ -516,7 +530,10 @@ async function main() {
       settings.diagnostics = diag.visible;
       saveSettings(settings);
     }
-    if (cam.follow && (input.inside || input.edgeHold)) {
+    // [§9.109] sulla minimappa (o trascinandola) lo schermo non scorre: e' a
+    // 20 px dai bordi, dentro la fascia che fa scorrere
+    const onMinimap = manager.mmDrag || (manager.overMinimap() && !input.edgeHold);
+    if (cam.follow && (input.inside || input.edgeHold) && !onMinimap) {
       const [mx, my] = cam.toRoom(input.x, input.y); // mouser Step: x=mouse_x, y=mouse_y
       cam.followPoint(mx, my);
     } else {
@@ -544,7 +561,7 @@ async function main() {
     // quanto lo schermo, gratis su una GPU, ~4 ms a fotogramma su SwiftShader
     const blobs = r.software || settings.quality === "low" ? [] : cloudBlobs(world, cam);
     // [§9.105] gli alberi che ondeggiano col vento (non con la qualita' bassa)
-    world.sway = settings.quality === "low" ? null : (i) => (SWAY_OBJECTS.has(i.object) ? treeSway(world, i) : null);
+    world.sway = settings.quality === "low" ? null : (i) => (SWAY_DRAW.has(i.object) ? treeSway(world, i) : null);
     drawCloudShadows(draw, blobs);
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
@@ -688,15 +705,43 @@ async function main() {
     draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
   };
 
+  // [§9.112, richiesta dell'autore] Lo sfondo della pausa arriva in
+  // PAUSE_FADE s invece che di colpo: la scena ferma nitida, sopra quella
+  // sfocata che compare e il velo scuro che sale (curva morbida); chiudendo
+  // la pausa lo stesso all'indietro, sopra la scena che riparte. A tempo
+  // vero (il gioco e' fermo).
+  const PAUSE_FADE = 0.3, PAUSE_DARK = 0.4;
+  let pauseK = 0, pauseT = 0;
+  const pauseEase = () => {
+    const now = performance.now(), dt = pauseT ? Math.min(0.1, (now - pauseT) / 1000) : 0;
+    pauseT = now;
+    pauseK = Math.max(0, Math.min(1, pauseK + (pause.paused ? 1 : -1) * dt / PAUSE_FADE));
+    return pauseK * pauseK * (3 - 2 * pauseK);
+  };
+  const pauseVeil = (B, e) => {
+    const last = B.t[3];
+    r.setProjection(0, 0, cam.cssW, cam.cssH);
+    r.setBlend("mix", e); // a trasparenza e, senza l'alpha della superficie (che la nebbia azzera)
+    r.quad(last, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, last.height, last.width, 0, 0xffffffff);
+    r.setBlend("normal");
+    draw.reset();
+    draw.setColour(0);
+    draw.setAlpha(PAUSE_DARK * e);
+    draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
+    draw.setAlpha(1);
+  };
+
   let shown = false;
   const render = () => {
     // il canvas si mostra col primo fotogramma (index.html: prima e' nascosto)
     if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
     r.beginFrame(cam, clear);
     r.gpuBegin(); // §6.8 G0
+    const e = pauseEase(); // §9.112
     if (!pause.paused) {
-      if (blur) freeBlur();
+      if (blur && (e <= 0 || blur.fresh !== false)) freeBlur();
       renderScene();
+      if (blur) pauseVeil(blur, e); // la pausa che si chiude: lo sfondo sfuma via
       drawCursor();
       r.flush();
       r.gpuEnd();
@@ -715,12 +760,12 @@ async function main() {
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     r.setBlend("normal");
     const last = B.t[3];
-    r.quad(last, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, last.height, last.width, 0, 0xffffffff);
-    draw.reset();
-    draw.setColour(0);
-    draw.setAlpha(0.4);
-    draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
-    draw.setAlpha(1);
+    // [§9.112] la scena nitida sotto, finche' lo sfocato non la copre tutta
+    if (e < 1) {
+      r.setBlend("replace"); // l'alpha delle superfici e' azzerato dalla nebbia: niente sfondo che traspare
+      r.quad(B.t[0], 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, B.t[0].height, B.t[0].width, 0, 0xffffffff);
+    }
+    pauseVeil(B, e);
     draw.setGlass(settings.glass ? last : null); // §7.14: il pannello di vetro sullo sfondo gia' sfocato
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
     draw.setGlass(null);
@@ -786,6 +831,7 @@ async function main() {
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
+                    objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
                     setRivers(list, roads = [], bridges = [], patches = []) {

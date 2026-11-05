@@ -21,7 +21,7 @@ test("dialoghi tradotti (testo e titolo)", () => {
     assert.ok(TEXTS[D.text], n);
     assert.ok(TEXTS[D.who[2]], `${n}: ${D.who[2]}`);
   }
-  assert.ok(Object.keys(HINTS).length === 28); // 26 dell'originale + hint_lavoratori (§9.14) + hint_lavori (§9.26)
+  assert.ok(Object.keys(HINTS).length === 29) // §9.108: hint_allarme; // 26 dell'originale + hint_lavoratori (§9.14) + hint_lavori (§9.26)
 });
 
 test("tr: lingua scelta, segnaposto, ricaduta sull'inglese", () => {

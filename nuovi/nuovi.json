@@ -1567,6 +1567,16 @@
       "depth": 0,
       "kit": false,
       "nota": "la fiaccola appesa al muro di circa meta' delle case (§9.104, props.js houseTorches): legata alla casa, accesa di notte; sprite torchspr_part dell'originale"
+    },
+    "hint_allarme": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false,
+      "nota": "il suggerimento degli allarmi d'attacco sulla minimappa, la prima volta che ce n'e' uno (§9.108, attackalarm.js)"
     }
   },
   "derivati": {
@@ -1600,6 +1610,39 @@
       "lato": 100,
       "gruppo": "campagna",
       "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101); lato 100 (era 120, §9.102: un po' piu' piccolo)"
+    },
+    "ico_fiamma": {
+      "da": "fiamma",
+      "alto": 42,
+      "colore": [
+        135,
+        73,
+        0
+      ],
+      "gruppo": "gui",
+      "nota": "[§9.108] la fiamma degli allarmi sulla minimappa (incendi e armi d'assedio sugli edifici del giocatore): disegno dell'autore, alta 42 px e dello stesso colore pieno di ico_battle (le spade incrociate), per stare in coppia"
+    },
+    "mm_fiamma": {
+      "da": "fiamma",
+      "alto": 42,
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "gruppo": "gui",
+      "nota": "[§9.110] la fiamma degli allarmi nella minimappa, bianca: la colora la minimappa (arancione); ico_fiamma resta per il suggerimento"
+    },
+    "mm_montagna": {
+      "da": "montagna_minimappa",
+      "lato": 93,
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "gruppo": "gui",
+      "nota": "[§9.115] il simbolo delle montagne nella minimappa: disegno dell'autore (linee nere, 96 x 96), bianco e ritagliato; lo colora (nocciola) e lo scala sulla montagna la minimappa"
     }
   }
 }

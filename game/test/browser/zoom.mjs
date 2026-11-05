@@ -1,7 +1,8 @@
 // Prova nel browser dello zoom morbido (§9.83), nel match, con eventi veri
 // (rotella del mouse di Playwright, X e Z da tastiera):
 // (scaleview: px di room per px dello schermo; 1 e' lo zoom piu' vicino)
-//   rotella    uno scatto in giu' (100 px) allontana di 0,1 in piu' passi,
+//   rotella    [§9.107] si parte da 1,35; uno scatto in giu' (100 px)
+//              allontana fino al decimo dopo (1,4) in piu' passi,
 //              con valori intermedi, senza tornare indietro, e il punto di
 //              room sotto il puntatore resta li' per tutto il movimento
 //   due scatti di fila (il secondo a meta' movimento) si sommano: 0,2
@@ -44,13 +45,16 @@ const [rx0, ry0] = await page.evaluate(([px, py]) => window.__game.cam.toRoom(px
 const z0 = await zoom();
 await page.mouse.wheel(0, 100);
 const tr = await steps(40);
+// [§9.107] si parte da 1,35 (a meta' fra 1 e 1,7): lo scatto va a 1,4, il
+// decimo dopo
+const z0t = Math.floor(z0 * 10 + 1e-6) / 10 + 0.1;
 res.rotella = {
   da: z0, a: tr.at(-1)[0],
-  intermedi: tr.filter(([s]) => s > z0 && s < z0 + 0.1 - 0.005).length,
+  intermedi: tr.filter(([s]) => s > z0 && s < z0t - 0.005).length,
   monotono: tr.every(([s], k) => k === 0 || s >= tr[k - 1][0]),
   puntoFermo: Math.max(...tr.map(([, x, y]) => Math.hypot(x - rx0, y - ry0))),
 };
-res.rotella.ok = near(res.rotella.a, z0 + 0.1) && res.rotella.intermedi >= 4 && res.rotella.monotono && res.rotella.puntoFermo < 0.5;
+res.rotella.ok = near(z0, 1.35) && near(res.rotella.a, 1.4) && res.rotella.intermedi >= 4 && res.rotella.monotono && res.rotella.puntoFermo < 0.5;
 
 // due scatti di fila: il secondo a meta' movimento
 const z1 = await zoom();

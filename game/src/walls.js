@@ -525,7 +525,7 @@ export function gateClicker() {
     // Draw_GUI [C]. [Correzione §3.8 n.29] l'originale usa quasi sempre
     // view_hview (altezza della view nella room): con lo zoom la scheda
     // scendeva sotto lo schermo. Qui tutto in view_hport.
-    drawGUI(i, w, dr) {
+    drawGUITop(i, w, dr) {
       if (i.hover !== 1) return;
       const H = w.cam.cssH, Hp = H;
       dr.setAlpha(0.69);

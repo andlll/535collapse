@@ -8423,3 +8423,475 @@ d'ascia. Due video di 10 s all'autore (vento medio e massimo) e una foto da
 vicino sopra l'erba. Soak, salvataggi e prove unitarie passano. Da tarare
 con l'autore: quante, quanto grandi; sopra il bosco, dello stesso colore
 delle chiome, si vedono poco (e' voluto: si notano dove cadono sull'erba).
+
+### 9.107 Pulsanti evidenziati, livello 4, salvataggi, alberi, zoom, livello 6, schegge
+
+Segnalazioni e richieste dell'autore (4 novembre 2026, versione 0.2608).
+
+**1. Pulsanti che non si illuminano col puntatore** ("circa 1 volta su 3,
+per tutti i pulsanti della finestra, finche' non seleziono un'altra
+unita'"; la scheda sotto si vede e il clic funziona). Non era la
+trasparenza di §9.93: con l'interfaccia di vetro (accesa di partenza) i
+cerchi del pannello (civile, centro, caserme...) sono un passaggio che
+ridisegna il mondo sfocato (draw.js `_glass`), e coprono cio' che c'e'
+sotto. Il pulsante evidenziato (il cerchio a 0,99 del *_clicker) si
+disegnava prima o dopo il pannello secondo la depth: quella del pulsante e'
+-(y della view + 50 x zoom) - 999, quella del pannello la -y dell'unita'.
+Con l'unita' piu' in basso di ~1000 px dalla cima della view (zoom
+lontano, schermi alti) il pannello veniva dopo e copriva l'evidenziazione
+di tutti i suoi pulsanti; cambiando selezione tornava. Ora il Draw GUI dei
+pulsanti (scheda e cerchio evidenziato) e' un evento a parte,
+`drawGUITop`, che il mondo disegna dopo il Draw GUI di tutti (world.js):
+pulsanti di costruzione, produzione, Annulla, centro, comportamento,
+porta. Prova `hover.mjs` (nuova, anche nella CI): civile in alto e in basso
+nella view, col vetro; il cerchio della casa col puntatore 254 in tutti e
+due i casi, quello del magazzino 192. Con l'ordine di prima, in basso, 168:
+piu' scuro degli altri.
+
+**2. Livello 4: a ponte riparato la base sud cadeva subito.** Misurato
+(giocatore immortale, 16 minuti, ponte a 6): la base sud arriva a 10
+soldati (il tetto), alla prima ondata partono tutti e la base resta vuota;
+l'oro (una sola miniera) finisce verso il decimo minuto e senza oro non si
+fanno guerrieri, arcieri ne' cavalieri, mentre cibo e legno si accumulano
+(2800 e 2900 al sedicesimo minuto); dal dodicesimo 0 soldati. Ora
+(economy.js `ECO.lvl04`, levels.js `LV4.reinforce`):
+- tetto 16 soldati (era 10);
+- `guard: 6`: i 6 soldati in attesa piu' vicini al centro restano a casa,
+  le ondate partono con gli altri (al piu' 10, come prima);
+- `anyTroop`: senza le risorse per la truppa di turno la caserma fa
+  un'altra che si puo' pagare (senza oro: picchieri, cibo e legno);
+- a ponte riparato 8 rinforzi (2 guerrieri, 2 picchieri, 2 arcieri dalle
+  due caserme, 2 cavalieri dalla stalla) che restano sempre a difendere la
+  base (`stay`: fuori dal tetto e dalle ondate).
+Le due opzioni nuove valgono solo dove le si accende (default 0 e false):
+gli altri livelli non cambiano. Misurato come sopra: dopo il ponte 14-21
+soldati alla base, ondate ancora ogni 2,5 minuti (3 in 10 minuti). Prova
+`lvl04.mjs`: 8 rinforzi, almeno 10 soldati entro 1500 px dal centro 3
+minuti dopo (22). Da tarare giocando.
+
+**3. Il salvataggio automatico spesso fallisce.** Gli slot erano tutti in
+localStorage, gzip in base64: 0,3-2 MB l'uno (lvl03 1,1 MB, lvl05 2 MB),
+e lo spazio di un sito e' circa 5 MB (su itch.io anche diviso con gli altri
+giochi dello stesso dominio). Riprodotto: dopo aver salvato le room dalla
+prima alla quinta (5 MB in tutto) il salvataggio del livello 6, manuale e
+automatico, dava `QuotaExceededError`, "Saving failed"; da li' in poi ogni
+salvataggio di una room nuova. Ora (save.js) il corpo dello slot (gzip in
+byte, senza base64: un terzo in meno) va in IndexedDB, che ha uno spazio
+molto piu' grande; in localStorage resta solo l'intestazione (room e data,
+per i menu); le intestazioni di IndexedDB si leggono all'avvio
+(`loadSlotIndex`, app.js), cosi' i menu vedono gli slot anche se
+localStorage e' pieno. Senza IndexedDB (alcune finestre private) si torna a
+localStorage come prima. I salvataggi vecchi si leggono ancora; il primo
+salvataggio nuovo della stessa room toglie quello vecchio (e libera
+spazio). Prova `saves.mjs`, ora con localStorage riempito fino alla quota
+prima di salvare: il salvataggio riesce, il corpo e' in IndexedDB, il
+ripristino identico, in tutte le room.
+
+**4. Gli alberi finiti non sbiadiscono.** Non era l'ondeggiamento:
+`albero_morente` nell'originale nasce invisibile e nel suo Step si rivela
+con un alleato entro 600 px [C]; nel porting quel controllo mancava
+(civilians.js `dying`), e l'albero finito spariva di colpo. Ora e'
+visibile se lo era l'albero (e si rivela come nell'originale), e ondeggia
+come lui dalla stessa fase (`swayId`, ambience.js `SWAY_DRAW`: niente salto
+dritto all'ultimo colpo), con lo stesso scossone. Le altre risorse
+(`*_morente` di miniere, pietre, rovine) erano gia' visibili. Prova
+`ambience.mjs`, "dissolvenza": visibile, ondeggia, alpha 0,975 -> 0,475
+dopo 20 passi, via dopo 40.
+
+**5. Zoom di partenza a meta'.** Era 1 (ZOOM_MIN, il piu' vicino); ora
+`ZOOM_DEFAULT` = (ZOOM_MIN + ZOOM_MAX) / 2 = 1,35 (camera.js, state.js),
+nelle partite e nel menu. La prima volta la view resta centrata dove lo
+era a zoom 1 (il punto di partenza dei livelli non cambia); dopo un
+caricamento no (`centerFirst`, snapshot.js: la view salvata cosi' com'era;
+la prima versione la spostava e `saves.mjs` lo ha visto). I salvataggi
+riprendono lo zoom salvato. Gli scatti di X/Z e della rotella ora vanno al
+decimo dopo nella loro direzione (manager.js `tenths`): da 1,35 a 1,4 o 1,3
+(con l'arrotondamento di prima 1,5 e 1,3); da un decimo di 0,1 come prima.
+Prove: manager.test.mjs, `zoom.mjs` (parte da 1,35); menu e lvl02 guardati.
+
+**6. Livello 6: il ponte in alto sotto la base del giocatore** (3896, 2204).
+Tre case della citta' (della mappa, non del giocatore) chiudevano il suo
+piede sud: `ocr_25` (3870, 2348), `ocr_35` (3700, 2428), `ocr_24` (3882,
+2512), oggetti 50, 51 e 52 di mappe/lvl06.tmx. Tolte (sotto c'era gia' la
+strada lastricata: ora e' una piazzetta al piede del ponte che porta nelle
+strade); scenari/lvl06.json rifatto con tools/12. Misurato col campo dei
+percorsi e con un soldato vero mandato col clic destro: prima la piazza era
+irraggiungibile dall'erba a nord (-1) e la citta' (3450, 2700) a 270 celle
+(il giro dall'altro ponte; il soldato dopo 40 s era ancora a nord); ora 24
+e 42 celle, il soldato arriva in 3 e 5 s, e torna indietro in 4,5 s. Prova
+`lvl06.mjs`, "ponteAlto" (il resto della prova, taratura della colonna
+compresa, passa come prima).
+
+**7. Particelle per le altre risorse** (come le foglie sotto l'ascia,
+§9.106; ambience.js `workChips`, numeri in `WORK`): a ogni colpo di piccone
+(civilians.js workTick segna `workHit`, `workKind` e il punto colpito)
+saltano 4-6 schegge di roccia (forma nuova `__pt_chip`, tools/05_atlas.py:
+un sassolino irregolare, piu' chiaro in alto, col bordo scuro) che ricadono
+a terra, con un filo di polvere; dalla miniera 3-4 schegge piu' scure e,
+una volta su due, un luccichio dorato; nei campi, a ogni colpo di falce,
+3-4 pagliuzze chiare (piu' chiare del grano, se no non si vedevano) che
+volano via. Solo i civili sullo schermo e visibili (anche quelli nemici, non
+nella nebbia); pietra e oro nella categoria "fire" (fumo e polvere), la
+paglia in "grass". Foto da vicino all'autore. Prova `ambience.mjs`,
+"schegge". Da tarare con l'autore: quante, quanto grandi.
+
+Passano: prove unitarie, `hover`, `ambience`, `lvl04`, `lvl06`, `saves`
+(tutte le room), `soak` (tutte le room), `zoom`, `hintgap`, `ui`, `melee`,
+`rally`, `garrison`, `enemyarmy`, `enemydefense`, `economy`, `enemydepots`,
+`lvl05`, `resources`, `burn`, `rivers`.
+
+### 9.108 Allarmi d'attacco sulla minimappa
+
+Richiesta dell'autore (5 novembre 2026, stessa PR di §9.107, versione
+0.2608): segnali sulla minimappa per gli attacchi nemici, soprattutto il
+primo in una zona ("altrimenti diventa un bordello"), ben visibili.
+
+**Cosa c'era nell'originale** [C]: `scr_atk_signal` (colpo di guerriero,
+picchiere o cavaliere nemico, freccia nemica su un'unita' alleata), solo
+fuori dalla view e non entro 500 px da un segnale attivo, creava
+`atk_signal`; la minimappa (manager Draw_GUI) lo disegnava come
+`ico_battle` per 1,25 s, entrando rimpicciolito e sfumando (scala
+0,3/fade). `flm_signal` (un segnale d'incendio, 1 s) non lo creava nessuno:
+lasciato a meta'. Nel porting il disegno si era perso (il commento diceva
+"non disegna nulla") e il picchiere non lo chiamava. E anche ripristinato:
+in una mischia lunga un segnale nuovo ogni 1,25 s, troppo breve per
+notarlo, niente per gli edifici, niente a minimappa chiusa.
+
+**Decisioni dell'autore** (dopo la proposta): l'anello subito e l'icona che
+resta finche' dura la battaglia; lo stesso per incendi e armi d'assedio
+sugli edifici, con l'icona della fiamma; un tasto per andare all'allarme
+(H era gia' dei suggerimenti, decisione: **J**); il simbolo nel tutorial la
+prima volta; niente suoni per ora.
+
+**Com'e' fatto** (attackalarm.js, numeri in `ALARM`):
+- *zone*: un punto e un tipo, "battle" (ico_battle) quando un'unita'
+  alleata perde vita, "fire" (ico_fiamma) quando la perde un edificio
+  alleato (fuoco, arieti, catapulte, frecce incendiarie). Il colpo si
+  riconosce dalla vita che cala, guardata a ogni passo (`alLife`
+  sull'istanza): copre ogni attacco senza agganciare ogni punto del codice.
+  Non contano la demolizione col tasto Canc (selezionato, vita 0), le torri
+  chiuse del livello 6 e i primi 2 s della partita (le vite di partenza
+  messe dalle regie). Sostituisce `scr_atk_signal` (atk_signal resta
+  registrato per i salvataggi di prima);
+- un colpo entro 800 px da una zona dello stesso tipo la tiene viva, senza
+  un allarme nuovo; se no nasce una zona: fuori dalla view con **3 anelli**
+  che si allargano (rossi per le battaglie, arancio per il fuoco: da 5 a 38
+  px, uno ogni 22 passi, 70 passi ciascuno), dentro la view senza anelli
+  (la si vede gia'), ma con l'icona;
+- l'**icona** entra rimpicciolendosi come atk_signal, poi pulsa piano finche'
+  per 30 s non arrivano colpi; poi sfuma in 1 s. Disegnata sopra tutto il
+  resto della minimappa;
+- *minimappa chiusa*: per 10 s dopo un allarme nuovo il suo pulsante
+  lampeggia di rosso;
+- **J** porta la view sulla zona piu' recente; di nuovo entro 5 s, sulla
+  precedente (manager.js);
+- la prima volta il suggerimento **hint_allarme** ("Allarmi", accanto alla
+  minimappa, coi due simboli in alto a destra della finestra: hints.js
+  `icons`), tradotto nelle sei lingue; se un altro suggerimento e' aperto,
+  aspetta che si chiuda;
+- le zone stanno in g.alarms: si salvano con la partita.
+
+**L'icona della fiamma**: disegno dell'autore (nero su trasparente, 90 x 90
+px; nuovi/sprites/fiamma.png), resa come ico_battle (50 x 50, il disegno
+alto 42 px, lo stesso colore pieno 135, 73, 0): `ico_fiamma` fra i derivati
+di nuovi.json; tools/nuovi.py ha due opzioni nuove per i derivati, `alto`
+(l'altezza al posto della larghezza) e `colore` (colore pieno, l'alpha
+resta). Foto della coppia all'autore.
+
+Prove: `alarm.test.mjs` (unitaria: zone, anelli dentro e fuori dalla view,
+fine, demolizione, inizio partita, menu, suggerimento una volta) e
+`alarms.mjs` (nuova, anche nella CI): un guerriero nemico contro un
+soldato fuori dalla view per 40 s, una sola zona con gli anelli (con
+atk_signal sarebbero stati ~32 segnali); il suggerimento una volta; una
+mischia nella view senza anelli; una casa in fiamme fuori dalla view; J sulla
+piu' recente e poi sulla precedente; tutto fermo per 31 s, le zone spariscono;
+salvate e ricaricate uguali. Foto della minimappa (anelli, icona, pulsante
+che lampeggia) all'autore. Da tarare con l'autore: raggio della zona (800
+px), durata (30 s), grandezza di anelli e icone.
+
+Passano anche: prove unitarie, `soak` (tutte le room), `saves` (match,
+lvl04), `ui`, `hintgap`, `burn`.
+
+### 9.109 La minimappa: clic, riquadro della view, icone, fiumi, colori
+
+Discussione con l'autore (5 novembre 2026, stessa PR, versione 0.2608)
+dopo una revisione della minimappa. Decisioni, punto per punto:
+
+1. **Fondo**: resta trasparente come nell'originale (0,19, col puntatore
+   sopra 0,69): piu' coprente prenderebbe troppo spazio.
+2. **Riquadro della view**: alto view_hview/sz, non view_hport/sz
+   (l'originale [C]: con lo zoom il riquadro era piu' basso della view
+   vera, il 74% allo zoom di partenza 1,35); angoli col raggio 10 (era 80:
+   quasi sempre un ovale).
+3. **I clic non passano piu' al mondo.** Prima il clic destro sulla
+   minimappa mandava le unita' selezionate al punto del mondo che stava
+   *sotto* la minimappa sullo schermo, il sinistro deselezionava, e anche i
+   pulsanti "+", "-" e "occhio" deselezionavano (provato nel browser). Ora
+   (manager.js `minimapInput`, app.js) sopra la minimappa e i suoi pulsanti
+   il mondo non riceve clic ne' hover, niente rettangolo di selezione, e lo
+   schermo non scorre (la minimappa e' dentro la fascia dei bordi che lo fa
+   scorrere).
+4. **Icone**: edifici e unita' con le icone dell'interfaccia (mm_*:
+   tools/05_atlas.py le rifa' bianche e piene, ritagliate, 32 px; la
+   minimappa le colora). Gli edifici larghi quanto la loro impronta in
+   scala (fra 7 e 22 px), le unita' 7 px; cantieri al 45%, le torri chiuse
+   del livello 6 grigie, mura e porte linee (anche quelle nemiche, prima
+   pallini). Gli oggetti senza icona restano pallini.
+5. **Colori**: i tuoi rosso caldo (226, 74, 46; era 255, 0, 0), i nemici blu
+   (46, 112, 232); gli anelli degli allarmi (§9.108) arancioni come le due
+   icone (210, 112, 20: il loro colore un po' piu' chiaro, per vedersi
+   anche sul buio), per battaglie e fuoco.
+6. **Alberi**: verde piu' tenue e meno saturo (112, 146, 104) al 60%.
+7. **Fiumi** in azzurro (120, 182, 226) larghi quanto il fiume: dalla mappa
+   dell'acqua della room (effects.js waterMap, fiumi dipinti e a linee, senza
+   le parti sotto i ponti), corse orizzontali di pixel della minimappa
+   rifatte solo se cambia la scala. **Montagne**: provata una catena di cime
+   stilizzate (grande quanto il disegno della montagna: le tele degli sprite,
+   fino a 2342 x 1461, sono in gran parte vuote, si usa il trim); l'autore
+   non e' convinto e disegnera' lui lo sprite. Spente intanto (minimap.js
+   `MM.mountains`); il riquadro del disegno di ogni montagna e' gia' calcolato.
+8. **Nebbia di guerra sulla minimappa**: da ragionare (l'autore teme che
+   diventi troppo coprente, come per il punto 1).
+9. **Clic sinistro** sulla minimappa (e trascinando): la view si centra su
+   quel punto. 10. **Clic destro**: le unita' selezionate vanno li' (l'ordine
+   di movimento di sempre, col punto della mappa; non raccolta ne' attacco).
+
+Prova `minimap.mjs` (nuova, anche nella CI), con eventi veri del mouse:
+destro verso il punto della mappa (4200, 3500: arrivato a meno di 1 px
+come meta), sinistro che centra la view (selezione intatta, niente
+rettangolo), trascinamento, il pulsante "-" (la scala cambia, il soldato
+resta selezionato), il riquadro alto quanto la view vera e col raggio 10.
+Foto della minimappa all'autore in quattro livelli, col puntatore sopra e
+senza.
+
+**Campi nemici visibili dalla partenza** (segnalazione dell'autore, guardando
+la minimappa: "campi di grano blu, si vedono gia' anche se sono edifici
+nemici"). Due cause:
+- `enemy_campo` (economy.js) usava il comportamento del campo del
+  giocatore, che e' sempre visibile: nessun edificio nemico si vede finche'
+  un alleato non gli e' vicino (enemybuild.js revealBuilding), il campo
+  si'. Ora nasce nascosto e si rivela come gli altri; le sue righe di
+  spighe (sistemi di particelle a parte) si disegnano solo se il campo e'
+  visibile. Nel livello 4 la fattoria della base sud ora si scopre
+  arrivandoci.
+- nel livello 5 la regia (levels.js lvl05Setup) sostituiva i cantieri di
+  campo della mappa (del giocatore) con campi nemici uno alla volta: ogni
+  campo nuovo vedeva i cantieri vicini non ancora sostituiti (edifici del
+  giocatore entro 200 px) e si rivelava. 7 campi su 8 visibili dalla
+  partenza; ora prima si tolgono tutti, poi si creano: 0 su 8.
+Gli altri edifici nemici di lvl04, lvl05, lvl06 e match all'inizio sono
+tutti nascosti (controllati uno per uno). Prove: `lvl04.mjs` e `lvl05.mjs`
+("campi": nessun campo nemico ne' spiga visibile alla partenza).
+
+Da guardare con l'autore: le unita' a 7 px in gruppo fanno una macchia di
+icone, e l'icona del guerriero (le spade incrociate) e' la stessa forma
+dell'allarme di battaglia; il rosso caldo dei tuoi e l'arancio degli anelli
+sono vicini.
+
+Passano: prove unitarie, `minimap`, `alarms`, `ui`, `hintgap`, `zoom`,
+`rally`, `attackorder`, `movement`, `lvl04`, `lvl05`, `economy`, `soak`
+(tutte le room), `saves` (match, lvl05, lvl06).
+
+### 9.110 Minimappa: unita' a puntini, marrone, acqua e linee sfumate, nebbia col puntatore
+
+Decisioni dell'autore dopo le foto di §9.109 (5 novembre 2026, stessa PR,
+versione 0.2608):
+- **Unita' come puntini** (le icone a 7 px in gruppo facevano una macchia, e
+  il guerriero aveva la forma dell'allarme di battaglia): pallini di raggio
+  50/sz come nell'originale (almeno 1,7 px); gli edifici restano icone.
+- **I tuoi marroni** (124, 72, 36), non piu' rosso caldo; **gli allarmi piu'
+  arancioni**: anelli e icone (245, 140, 26). Le icone dell'allarme nella
+  minimappa sono versioni bianche, colorate dalla minimappa: `mm_battle`
+  (da ico_battle, tools/05_atlas.py) e `mm_fiamma` (dal disegno dell'autore,
+  nuovi.json); il suggerimento hint_allarme tiene le icone di prima.
+- **Acqua sfumata**: ogni pixel della minimappa ha la sua copertura d'acqua
+  (le celle d'acqua da 8 px col centro nel pixel, sul totale), a sedicesimi
+  d'alpha, in corse di pixel uguali: l'interno in poche corse lunghe, il
+  bordo pixel per pixel (minimap.js `runsOf`). Niente piu' scalini.
+- **Linea della bandierina** (dall'edificio al punto di raccolta): tratti
+  coi bordi sfumati (draw.js `_lineAA`, 9 quad per tratto invece di 1: una
+  linea di 500 px sono ~20 tratti, solo con l'edificio selezionato).
+- **La nebbia di guerra, come l'ha pensata l'autore**: senza puntatore la
+  minimappa resta com'e'; col puntatore sopra diventa piu' opaca (come lo
+  0,69 di prima) solo la parte scoperta (fog.explored, coi bordi sfumati
+  come l'acqua, rifatta ogni 30 passi). Senza nebbia (trucco, menu) come
+  prima, tutta. Nota: lo 0,69 di prima, con l'interfaccia di vetro, era il
+  vetro sfocato; la parte scoperta e' bianco semplice sopra il fondo di
+  vetro a 0,19.
+- **Il riquadro della view negli angoli**: gli angoli col raggio 5, ma in un
+  angolo della minimappa quello del riquadro ha il raggio della minimappa
+  meno la distanza dai due lati (draw.js `roundRectRadii`, minimap.js
+  `viewRadii`): se tocca i due lati e' concentrico con l'angolo della
+  minimappa e non ne esce. Acqua e parte scoperta seguono anche loro gli
+  angoli arrotondati.
+
+- **Le risorse con le icone** (richiesta dell'autore), coi colori di prima:
+  la miniera (mm_miniera, il carrello) gialla, pietre (mm_stone) e rovine
+  (mm_ruin) grigie, grandi quanto la loro impronta come gli edifici; gli
+  alberi restano triangoli.
+- **Il centro col mulino sopra** (segnalazione dell'autore): il centro crea
+  `cc_barn`, un oggetto invisibile e senza sprite che gli fa da deposito del
+  cibo; col suo nome prendeva l'icona del mulino. Ora la minimappa salta gli
+  oggetti senza sprite (anche i pezzi invisibili delle mura, oodl, oval...,
+  che erano pallini).
+- Da guardare con l'autore: l'icona della caserma sono spade incrociate come
+  l'allarme di battaglia (diverse nel colore: marrone e arancione).
+
+Prove: `minimap.test.mjs` (nuova: icone per oggetto, raggi del riquadro),
+`minimap.mjs` (il riquadro coi raggi per angolo). Foto all'autore: lvl06 e
+lvl04 col puntatore e senza (nebbia), allarmi arancioni, la view
+nell'angolo; la linea della bandierina da vicino.
+
+### 9.111 Minimappa: col puntatore il mondo sotto si sfoca, con un passaggio di 0,3 s
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): col
+puntatore sopra la minimappa il mondo sotto deve sfocarsi come col vetro a
+0,69, su tutta la minimappa (anche dove non e' scoperta: lo sfondo non
+distrae), e il passaggio essere un'animazione di circa 0,3 s.
+
+**Perche' non lo faceva piu'.** Il vetro (§7.14, shader `glass`) lega
+sfocatura e chiarezza all'alpha del pannello: a 0,19 il mondo sfocato copre
+quello nitido per il 27,5%, a 0,69 del tutto, e la brina bianca (0,3) cresce
+con lui. Con la nebbia di §9.110 col puntatore il vetro restava a 0,19 (e
+sopra la parte scoperta un velo bianco): niente sfocatura in piu'.
+
+**Ora** la sfocatura e la brina si regolano da sole (draw.js `glassBlend`,
+`glassFrost`; nello shader la brina e' un uniform, 0,3 di serie):
+- col puntatore il vetro copre il mondo fino al 100% (come a 0,69) su tutta
+  la minimappa, con la brina ridotta (0,3 x 0,275 / copertura) perche' la
+  parte non scoperta resti chiara come senza puntatore;
+- la parte scoperta si schiarisce fino alla chiarezza del vetro a 0,69
+  (`MM.exploredGlass` 0,52 di bianco sopra il vetro; senza vetro come in
+  §9.110);
+- il passaggio dura 0,3 s (`MM.hoverTime`), con una curva morbida
+  (smoothstep), avanti e indietro, a tempo vero (anche a gioco in pausa).
+
+Misurato su un tratto di prato non scoperto sotto la minimappa (lvl06,
+1920 x 1080): il dettaglio del mondo (media dei bordi) da 20,3 a 11,6 col
+puntatore, la luminosita' uguale (152 / 149). Foto all'autore a inizio,
+meta' e fine del passaggio. Passano `minimap`, `hover`, `ui`, `soak`.
+
+### 9.112 Lo sfondo della pausa arriva in 0,3 s
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608), dopo
+§9.111. Il menu di pausa sfocava e scuriva gia' tutto lo schermo (§7.12,
+come NIMBUS: la scena ferma ridotta a meta' e sfocata, sotto un velo nero
+al 40%), ma di colpo. Ora (app.js `pauseEase`, `pauseVeil`) in 0,3 s, con
+una curva morbida: la scena ferma nitida, sopra quella sfocata che compare e
+il velo che sale; chiudendo la pausa lo stesso all'indietro, sopra il gioco
+che riparte. A tempo vero (il gioco e' fermo). Il pannello del menu compare
+e sparisce subito.
+
+La scena ferma nitida va disegnata ignorando la sua alpha (fusione
+"replace", gia' usata per lo stesso motivo in §6.8: la sottrazione di nebbia
+e notte azzera l'alpha delle superfici; con la fusione normale nei primi
+fotogrammi traspariva lo sfondo chiaro della pagina, la scena usciva quasi
+bianca), e lo sfocato sopra con una trasparenza costante che ignora anche
+lei l'alpha della superficie: fusione nuova "mix" (gl.js setBlend, con
+gl.blendColor).
+
+Verificato con foto a 0, 100, 200 e 400 ms dall'apertura e a 0, 150 e 400
+ms dalla chiusura (mandate all'autore). Passano `ui`, `saves`, `hover`,
+`minimap`, `soak` e le prove unitarie.
+
+### 9.113 Lo zoom della minimappa morbido; la scala fra 12 e 60
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): lo zoom
+della minimappa ("+" e "-" accanto, Ctrl+Z e Ctrl+X) fluido come quello del
+mondo (§9.83), non a scatti.
+- global.sz (px di room per px della minimappa) resta la scala scelta, di 1
+  a scatto come nell'originale; quella disegnata (manager.js `mmSz`,
+  `mmScale`) la insegue del 25% della distanza a passo e si ferma esatta
+  sotto lo 0,2%: ~16 passi (un quarto di secondo) per uno scatto, e piu'
+  scatti di fila si sommano alla meta. Disegno, clic sulla minimappa e
+  hover dei suoi pulsanti usano la scala disegnata.
+- Acqua e parte scoperta (§9.110) si calcolano alla scala scelta e durante
+  il passaggio si disegnano ingrandite (minimap.js drawRuns, `k`): niente
+  ricalcolo delle coperture a ogni fotogramma.
+- [Correzione] la scala non aveva limiti [C]: col "+" arrivava a 0 e sotto
+  (divisioni per zero, minimappa enorme o capovolta). Ora fra 12 e 60
+  (`MM.szRange`; 30 di partenza), anche per i salvataggi di prima.
+
+Prova `minimap.mjs`, "morbido": 6 scatti di colpo, da 31 a 25 con 16 valori
+intermedi, senza tornare indietro; 1 e 500 diventano 12 e 60. Passano
+anche `hintgap`, `ui`, `alarms`, `soak` e le prove unitarie.
+
+### 9.114 Minimappa: selezione, punto di raccolta, obiettivi
+
+Proposte accettate dall'autore (5 novembre 2026, stessa PR, versione 0.2608):
+1. **Selezione**: le tue unita', i tuoi edifici, mura e porte selezionati
+   sono bianchi (`MM.selected`): col clic destro sulla minimappa (§9.109) si
+   vede chi si sta mandando. [Decisione dell'autore, dopo la foto] prima un
+   anello bianco attorno al puntino o all'icona: non convinceva.
+2. **Punto di raccolta**: dell'edificio selezionato, una linea bianca
+   sottile dall'edificio e un piccolo stendardo (`drawRally`). Il clic
+   destro sulla minimappa lo sposta li', come nel mondo (provato: col
+   centro selezionato la bandierina va nel punto della mappa indicato).
+3. **Obiettivi in corso** (levels.js `objectiveMarks`, minimap.js
+   `drawObjectives`): un rombo bianco che pulsa piano, col bordino scuro;
+   piu' tenue se facoltativo. Un luogo fisso sempre, un edificio nemico solo
+   se gia' visto (la minimappa non rivela basi non scoperte); niente per gli
+   obiettivi senza un luogo (sopravvivere, le pattuglie, la fortezza):
+   - livello 1: i cancelli a nord (4836, 331) finche' non li si raggiunge;
+   - livello 3: il villaggio, poi il monastero, e caserme e stalle nemiche
+     quando si sa da dove vengono le ondate;
+   - livello 4: il ponte finche' non e' riparato, l'accampamento a nord-est
+     (facoltativo), poi il centro nemico;
+   - livello 5: la porta ovest della citta' nell'inseguimento, le rovine per
+     la pietra, poi il centro nemico;
+   - livello 6: il ponte di destra quando arriva la colonna.
+   I segnalini all'inizio erano anelli come la selezione di allora e si
+   confondevano (foto): ora rombi.
+
+Passano `minimap`, `alarms`, `ui`, `hintgap`, `lvl04`, `soak` e le prove unitarie.
+Prove: `minimap.mjs`, "raccolta" (la bandierina col clic destro sulla
+minimappa); i segnalini controllati livello per livello (window.__game
+`objectives()`); foto del livello 4 col centro e tre soldati selezionati,
+la bandierina e il ponte da riparare.
+
+**[Trovato dalla CI] Il clic giudicato col puntatore di prima.** Lo stato
+"puntatore sulla minimappa" (manager.js minimHover e pulsanti) si calcolava
+solo nello Step del manager [C], cioe' alla fine del passo prima: un clic
+fatto spostando il puntatore nello stesso passo era giudicato con la
+posizione vecchia. Con i clic che non passano piu' al mondo (§9.109), un
+ordine nel mondo dato subito dopo un clic in basso a sinistra poteva essere
+preso per un clic sulla minimappa e perdersi: `buildstuck.mjs` ("incrocio",
+gli ordini col clic destro su quattro cantieri) aveva un civile che non
+arrivava mai al lavoro. Ora l'hover si rifa' anche subito prima dei clic,
+col puntatore di adesso (`hoverMinimap`, app.js): la prova passa (0 in
+ritardo su 72 ordini).
+
+### 9.115 Le montagne nella minimappa col simbolo dell'autore
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): il suo
+disegno di una montagna (linee nere su trasparente, 96 x 96;
+nuovi/sprites/montagna_minimappa.png) come simbolo, color nocciola, scalato
+sulla montagna che rappresenta.
+- `mm_montagna` fra i derivati di nuovi.json: ritagliato (93 x 75) e bianco,
+  alla sua risoluzione; la minimappa lo colora nocciola (166, 123, 91) al 90%.
+- Grande quanto il disegno della montagna in scala (il trim dello sprite,
+  non la tela, in gran parte vuota), fino al 90% di quel riquadro e con le
+  proporzioni del simbolo; al centro della parte del disegno che cade dentro
+  la minimappa (gli sprite delle montagne sporgono spesso oltre i bordi
+  della mappa); niente se ne cade dentro meno di 6 x 5 px.
+- Le montagne si riaccendono (`MM.mountains`); tolta la catena di cime a
+  triangoli di §9.109.
+
+Foto all'autore: tutorial (12 montagne, le grandi e le piccole), livello 5 e
+6. Passano `minimap`, `ui`, `soak` e le prove unitarie.
+
+**Fiumi e montagne solo dove la mappa e' scoperta** (richiesta dell'autore:
+"il fiume dovrebbe rivelarsi gradualmente, non tutto insieme"). Con la
+nebbia attiva:
+- la copertura d'acqua di ogni pixel della minimappa si moltiplica per
+  quella della parte scoperta (minimap.js `exploredCov`, la stessa della
+  nebbia col puntatore, §9.110, rifatta ogni 30 passi): il fiume compare a
+  pezzi, man mano che lo si scopre, coi bordi sfumati;
+- una montagna compare sfumando con la parte scoperta del suo disegno
+  (piena da un terzo in su, `MTN_SEEN`).
+- [decisione dell'autore] le torri chiuse del livello 6 (§9.101: non ancora
+  tue, grigie) solo dove la mappa e' scoperta: prima si vedevano tutte e 21
+  dalla partenza, perche' edifici del giocatore.
+Senza nebbia (menu, trucco) tutto come prima. Foto all'autore: livello 6
+all'inizio (solo il fiume vicino alla base) e dopo aver scoperto una fascia
+verso ovest. Passano `minimap`, `alarms`, `soak` e le prove unitarie.

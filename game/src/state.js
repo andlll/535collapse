@@ -1,3 +1,4 @@
+import { ZOOM_DEFAULT } from "./camera.js";
 // Le variabili global.* dell'originale che servono ai sistemi portati
 // finora. I nomi restano quelli di GameMaker per poterli ritrovare in src/.
 // Valori iniziali da manager Create [C], salvo dove l'autore ha deciso
@@ -20,7 +21,7 @@ export function newGlobals(room) {
     sel: 0,         // selezionati
     milsel: 0,      // selezionati non civili
     multi: 0, startx: 0, starty: 0,
-    scaleview: 1,
+    scaleview: ZOOM_DEFAULT, // §9.107
     hint: room === "menu" ? 3 : 1,
     obj: 1,
     fogville: 1,    // nebbia attiva (trucco Ctrl+V+Canc la spegne)
@@ -43,6 +44,7 @@ export function newGlobals(room) {
     // manager Create: un suggerimento per tipo, una volta sola [C]
     woodhint: 0, goldhint: 0, stonehint: 0, foodhint: 0, casahint: 0, firehint: 0, attackhint: 0,
     presidiohint: 0, nighthint: 0, resourcehint: 0, hintata: 0,
+    alarmhint: 0, alarms: { zones: [], seq: 0 }, // §9.108 (attackalarm.js)
     dialogoenemy1: 0,
     // campagna: global.unlock persistente (progress.js, caricato da app.js)
     campagna: 0, unlock: 1,

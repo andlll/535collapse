@@ -12,7 +12,6 @@ import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irando
 import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, moveStalled } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
-import { atkSignal } from "./enemies.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
@@ -74,7 +73,6 @@ export function enemyArrow(tower) {
   for (const [name, dmg] of Object.entries(ENEMY_HIT)) {
     collisions[name] = (i, w, o) => {
       const io_x = i.x, io_y = i.y;
-      atkSignal(i, w);
       o.life -= dmg;
       o.hit = 1;
       o.alarm.set(5, 47);

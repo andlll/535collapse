@@ -79,13 +79,15 @@ export const millSpeed = (g) => MILL_SPEED[0] + (MILL_SPEED[1] - MILL_SPEED[0]) 
 export const TREE_SWAY = { h: 150, amp: [1.8, 4.5], period: [330, 200], rain: 1.4, lean: [0.3, 1.4], wave: [0.004, 0.0018],
                            hit: 5, hitSteps: 26 };
 export const SWAY_OBJECTS = new Set(["albero", "albero_fake"]);
+// [§9.107] ondeggia anche l'albero finito che sbiadisce (ma non perde foglie)
+export const SWAY_DRAW = new Set([...SWAY_OBJECTS, "albero_morente"]);
 const swayPeriod = (v) => TREE_SWAY.period[0] + (TREE_SWAY.period[1] - TREE_SWAY.period[0]) * v;
-const swayPhase = (i, t, per) => 2 * Math.PI * t / per + i.x * TREE_SWAY.wave[0] + i.y * TREE_SWAY.wave[1] + ((i.id * 0.618034) % 1) * 1.3;
+const swayPhase = (i, t, per) => 2 * Math.PI * t / per + i.x * TREE_SWAY.wave[0] + i.y * TREE_SWAY.wave[1] + (((i.swayId ?? i.id) * 0.618034) % 1) * 1.3;
 export function treeSway(w, i) {
   const T = TREE_SWAY, v = windLevel(w.g), t = w._stepNo;
   const amp = (T.amp[0] + (T.amp[1] - T.amp[0]) * v) * (1 + (T.rain - 1) * (w.overcast || 0));
   const a = swayPhase(i, t, swayPeriod(v));
-  let off = amp * (0.78 * Math.sin(a) + 0.22 * Math.sin(2.37 * a + i.id));
+  let off = amp * (0.78 * Math.sin(a) + 0.22 * Math.sin(2.37 * a + (i.swayId ?? i.id)));
   off += (T.lean[0] + (T.lean[1] - T.lean[0]) * v) * Math.sign(WIND_DIR[0]);
   const dt = t - (i.hitAt ?? -1e9);
   if (dt >= 0 && dt < T.hitSteps) off += T.hit * (1 - dt / T.hitSteps) * Math.sin(dt * 0.95);
@@ -407,6 +409,65 @@ function mineSparkles(w, cam) {
   }
 }
 
+// [§9.107, richiesta dell'autore] Come le foglie sotto l'ascia (§9.106), le
+// altre risorse: a ogni colpo di piccone (civilians.js workTick: workHit,
+// workKind, il punto colpito workX/workY, 30 px davanti al civile) saltano
+// schegge di roccia (la forma "chip", tools/05_atlas.py) che ricadono a
+// terra, con un filo di polvere; dalla miniera d'oro schegge piu' scure e,
+// una volta su due, un luccichio dorato. Nei campi, a ogni colpo di falce
+// (otherWorkTick), qualche pagliuzza che vola via portata dal vento. Numeri
+// in WORK: n schegge (min, max), h px sopra il punto colpito. Solo i civili
+// sullo schermo e visibili (quelli nemici nella nebbia no); pietra e oro
+// nella categoria "fire" (fumo e polvere), la paglia in "grass" (le foglie).
+export const WORK = { stone: { n: [4, 6], h: 18, dust: 1 }, gold: { n: [3, 4], h: 16, dust: 1, glint: 0.5 }, food: { n: [3, 4], h: 12 } };
+const CHIP = (rgb) => partType({
+  shape: "chip", size: [0.1, 0.17, 0, 0], colour: { rgb }, alpha: [1, 1, 0], speed: [1.4, 2.5, 0, 0],
+  direction: [35, 145, 0, 0], gravity: [0.15, 270], orientation: [0, 360, 11, 0, false], life: [24, 34],
+});
+const CHIP_TYPES = {
+  stone: CHIP([150, 190, 145, 182, 132, 168]), // il grigio caldo delle pietre
+  gold: CHIP([112, 150, 98, 132, 78, 104]),    // la roccia scura della miniera
+};
+const CHIP_DUST = partType({
+  sprite: "nubespr", size: [0.07, 0.11, 0.0025, 0], colour: { rgb: [170, 195, 160, 182, 135, 155] },
+  alpha: [0.4, 0.22, 0], speed: [0.15, 0.4, 0, 0], direction: [60, 120, 0, 10], life: [40, 60],
+});
+const CHIP_GLINT = partType({
+  shape: "star", size: [0.16, 0.24, -0.006, 0], orientation: [-15, 15, 0, 0], colour: { rgb: [250, 255, 205, 225, 90, 130] },
+  alpha: [1, 0.8, 0], speed: [0.3, 0.8, 0, 0], direction: [40, 140, 0, 0], life: [12, 18], additive: true,
+});
+const CHAFF = partType({
+  shape: "line", size: [0.15, 0.22, 0, 0], colour: { rgb: [238, 252, 226, 242, 168, 196] }, alpha: [1, 1, 0], // piu' chiara del grano
+  speed: [0.6, 1.2, -0.006, 0.1], direction: [55, 125, 0, 14], gravity: [0.03, 270], orientation: [0, 360, 7, 0, false], life: [40, 60],
+});
+const WORKERS = ["ally_omino", "enemy_omino"];
+const CHIPS = new WeakMap(); // civile -> { ps, em, cat }
+function workChips(w, cam) {
+  const P = w.particles, t = w._stepNo;
+  for (const n of WORKERS) {
+    for (const u of w.all(n)) {
+      if (!(u.workHit === t || u.workHit === t - 1) || u.chipHit === u.workHit) continue;
+      u.chipHit = u.workHit;
+      const W = WORK[u.workKind], cat = u.workKind === "food" ? "grass" : "fire";
+      if (!W || u.visible === false || P.hidden.has(cat) || !onScreen(cam, u.workX, u.workY, 60)) continue;
+      let s = CHIPS.get(u);
+      if (!s || s.cat !== cat || !P.exists(s.ps) || !P.systems.includes(s.ps)) { // (dopo un caricamento: un altro)
+        s = { ps: P.systemCreate(0, cat), cat };
+        P.releaseWhenEmpty(s.ps);
+        s.em = P.emitterCreate(s.ps);
+        CHIPS.set(u, s);
+      }
+      // sopra il civile e la risorsa colpita (le schegge le saltano davanti)
+      s.ps.depth = Math.min(u.depth, -u.workY) - 2;
+      const x = u.workX, y = u.workY - W.h, k = W.n[0] + Math.floor(Math.random() * (W.n[1] - W.n[0] + 1));
+      if (u.workKind === "food") { puffAt(w, s.ps, s.em, CHAFF, x, y, k, 12, 5); continue; }
+      puffAt(w, s.ps, s.em, CHIP_TYPES[u.workKind], x, y, k, 5, 4);
+      if (W.dust) puffAt(w, s.ps, s.em, CHIP_DUST, x, y + 6, W.dust, 4, 2);
+      if (W.glint && Math.random() < W.glint) puffAt(w, s.ps, s.em, CHIP_GLINT, x, y, 1, 4, 4);
+    }
+  }
+}
+
 const LAST = new WeakMap(); // posizione dell'ultimo sbuffo di polvere per unita'
 const TRAILERS = ["ally_cavaliere", "enemy_cavaliere", "ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
 
@@ -417,6 +478,7 @@ export function ambienceStep(w, cam) {
   for (const n of ["barn", "enemy_mulino"]) for (const m of w.all(n)) if (m.sprite_index === "mul1" || m.sprite_index === "mub") m.image_speed = ms;
   if (w.particles && !w.particles.hidden.has("fire")) mineSparkles(w, cam); // §9.94 (anche nel menu)
   leavesStep(w, cam); // §9.106 (anche nel menu)
+  if (w.particles) workChips(w, cam); // §9.107 (anche nel menu)
   if (w.room === "menu" || !w.particles) return;
   const P = w.particles, t = w._stepNo;
   // crolli

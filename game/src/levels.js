@@ -700,6 +700,11 @@ export const LV4 = {
   // bersaglio, poi al bersaglio come prima
   road: [[2600, 760], [2250, 560], [1900, 330], [1400, 280], [900, 330], [560, 800]],
   roadNext: 150,
+  // [§9.107, segnalazione dell'autore] a ponte riparato la base sud riceve
+  // rinforzi: escono dalle sue caserme e dalla stalla (o dal centro) e
+  // restano a difenderla, soldati della regia economica (economy.js, ECO.lvl04)
+  reinforce: ["enemy_warrior", "enemy_picchiere", "enemy_arciere", "enemy_warrior", "enemy_picchiere", "enemy_arciere",
+              "enemy_cavaliere", "enemy_cavaliere"],
 };
 
 // [§9.57] Le tappe della strada (LV4.road) fino a quella piu' vicina al
@@ -772,6 +777,17 @@ export function enemyManagerLv4(p) {
       if (L.phase === 0 && w.exists("ponte_fatto")) {
         L.phase = 1; L.bridge = 100;
         g.en.hold = 0;
+        // [§9.107] i rinforzi della base sud
+        const south = [...w.all("enemy_caserma"), ...w.all("enemy_stalla")].filter((b) => b.noEco !== 1);
+        const home = w.all("enemy_centro").next().value;
+        LV4.reinforce.forEach((obj, k) => {
+          const src = obj === "enemy_cavaliere" ? south.find((b) => b.object === "enemy_stalla") : south.filter((b) => b.object === "enemy_caserma")[k % 2];
+          const at = src || home;
+          if (!at) return;
+          const e = w.create(obj, at.x, at.y + 120);
+          freeSpawnEnemy(e, w);
+          e.role = 30; e.eco = 1; e.stay = 1; // non partono con le ondate
+        });
         const s = w.nearest(LV4.centro[0], LV4.centro[1], "ally_unit");
         if (s) w.create("dialogo_4_1", s.x, s.y);
       }
@@ -901,14 +917,19 @@ export const LV5 = {
 const LV5_ENEMY = { mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori",
                     porta_vert: "enemy_porta_vert", campo_fond: "enemy_campo" };
 export function lvl05Setup(w) {
+  // [§9.109] prima via tutti, poi i nemici: creati uno alla volta, ogni
+  // campo nemico vedeva i cantieri di campo vicini non ancora sostituiti
+  // (edifici del giocatore) e si rivelava subito (7 campi su 8 visibili dalla
+  // partenza, oltre la nebbia)
+  const made = [];
   for (const [from, to] of Object.entries(LV5_ENEMY)) {
     for (const i of [...w.all(from)]) {
       if (i.x < LV5.east) continue;
-      const { x, y } = i;
+      made.push([to, i.x, i.y]);
       w.destroy(i);
-      w.create(to, x, y);
     }
   }
+  for (const [to, x, y] of made) w.create(to, x, y);
   // [§9.76] le torri fuori dalle mura non sono della regia economica (un
   // alleato vicino non chiama la difesa della citta'). [§9.102] Tirano
   // (prima, di vedetta, no: watch)
@@ -1387,4 +1408,46 @@ export function enemyManagerLv6(p) {
       }
     },
   };
+}
+
+// [§9.114, richiesta dell'autore] I segnalini degli obiettivi in corso sulla
+// minimappa (manager.js drawMinimap, minimap.js drawObjectives): [{ x, y,
+// optional }]. Un luogo fisso (i cancelli, il villaggio, il ponte, il
+// monastero, le rovine) sempre; un edificio nemico solo se gia' visto (la
+// minimappa non rivela basi non scoperte). Gli obiettivi senza un luogo
+// (sopravvivere, le pattuglie, costruire la fortezza) niente.
+export function objectiveMarks(w) {
+  const g = w.g, out = [];
+  const at = (x, y, optional = false) => out.push({ x, y, optional });
+  const seen = (names, optional = false, f = () => true) => {
+    for (const n of names) for (const i of w.all(n)) if (i.visible && f(i)) at(i.x, i.y, optional);
+  };
+  if (g.victory === 1 || g.gameover === 1) return out;
+  if (w.room === "lvl01" && (g.lvl01_gate ?? 0) < 4) at(4836, 331); // i cancelli a nord
+  if (w.room === "lvl03") {
+    const L = g.l3 || { phase: 0 };
+    if (L.phase !== 2) at(...LV3.town);
+    else {
+      const m = w.all("monastero").next().value || w.all("monastero_corpo").next().value;
+      if (m) at(m.x, m.y);
+      if (L.baseKnown) seen(["enemy_caserma", "enemy_stalla"]);
+    }
+  }
+  if (w.room === "lvl04") {
+    const L = g.l4 || { phase: 0, north: 0 };
+    if (L.phase === 0) { const b = w.all("ponte").next().value; if (b) at(b.x, b.y); }
+    if (!L.north) seen(["enemy_caserma", "enemy_stalla"], true, (b) => b.noEco === 1); // facoltativo: la base nord
+    if (L.phase === 1) seen(["enemy_centro"]);
+  }
+  if (w.room === "lvl05") {
+    const L = g.l5 || { phase: 0 };
+    if (L.phase === 1) at(...LV5.home);       // inseguire il nemico fino alla sua citta'
+    if (L.phase === 2) at(...LV5.acropolis);  // la pietra delle rovine
+    if (L.phase === 4) seen(["enemy_centro"]);
+  }
+  if (w.room === "lvl06") {
+    const L = g.l6 || { phase: 0 };
+    if (L.phase === 2) { const b = w.all("ponte_dx2").next().value; if (b) at(b.x, b.y); } // fermare la colonna prima del ponte di destra
+  }
+  return out;
 }

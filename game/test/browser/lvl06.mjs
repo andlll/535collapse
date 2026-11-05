@@ -23,6 +23,9 @@
 //               suo percorso, presidiate da 2 arcieri, senza altre unita':
 //               ne passano al piu' 5, vittoria. Con 5 torri ne passano piu'
 //               della meta' (le torri contano, ma da sole poche non bastano)
+//   ponteAlto   (§9.107) il ponte in alto sotto la base del giocatore: un
+//               soldato lo attraversa ed entra nella citta', e torna; il
+//               percorso quasi diritto (prima il piede era chiuso da tre case)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -168,6 +171,38 @@ const taratura = async (N) => {
 };
 res.taratura = [await taratura(15), await taratura(5)];
 
+// [§9.107] il ponte in alto sotto la base del giocatore: dall'erba a nord, un
+// soldato mandato col clic destro lo attraversa ed entra nella citta' (la
+// piazza al piede del ponte, una strada piu' in la'), e torna indietro; il
+// percorso e' quasi diritto. Prima tre case della mappa chiudevano il piede
+// del ponte: la piazza irraggiungibile, la citta' col giro dall'altro ponte
+res.ponteAlto = await (async () => {
+  const p = await open();
+  const r = await p.evaluate(() => {
+    const G = window.__game, w = G.world, cam = G.cam, P = w.path, out = [];
+    const run = (n) => { for (let k = 0; k < n; k++) { G.advance(1); for (const d of [...w.all("parent_hint")]) w.destroy(d); } };
+    run(70);
+    const input = w.input;
+    for (const [A, B] of [[[4060, 1960], [3800, 2480]], [[4060, 1960], [3450, 2700]], [[3800, 2480], [4300, 1800]]]) {
+      const f = P.goalField(B[0], B[1], false, false, true);
+      const celle = f[Math.floor(A[1] / 32) * P.gw + Math.floor(A[0] / 32)], diritta = Math.hypot(A[0] - B[0], A[1] - B[1]) / 32;
+      const u = w.create("ally_warrior", A[0], A[1]); run(2);
+      for (const a of w.all("ally_unit")) a.selected = 0;
+      u.selected = 1; G.g.sel = 1; G.g.milsel = 1;
+      cam.x = B[0] - cam.w / 2; cam.y = B[1] - cam.h / 2;
+      input.x = (B[0] - cam.x) * cam.cssW / cam.w; input.y = (B[1] - cam.y) * cam.cssH / cam.h; input.inside = true; input._mr[1] = true;
+      run(1); u.selected = 0;
+      let t = 0;
+      while (t < 1200 && Math.hypot(u.x - B[0], u.y - B[1]) > 90) { u.life = u.slife; run(1); t++; }
+      out.push({ celle, rapporto: +(celle / diritta).toFixed(2), secondi: +(t / 60).toFixed(1), arrivato: Math.hypot(u.x - B[0], u.y - B[1]) <= 90 });
+      w.destroy(u);
+    }
+    return out;
+  }).catch((e) => [{ errore: e.message }]);
+  await p.close();
+  return r;
+})();
+
 console.log(JSON.stringify(res));
 const p = res.partenza || {}, f = res.fase1 || {}, t = res.torre || {}, ri = res.rinforzi || {}, c = res.colonna || {}, [t15, t5] = res.taratura;
 const ok = !res.errore && p.risorse === "400/400/500/200" && p.pattuglie === 3 && p.nemici === 14 && p.torri === 21 && p.chiuse === 21
@@ -180,7 +215,8 @@ const ok = !res.errore && p.risorse === "400/400/500/200" && p.pattuglie === 3 &
   && ri.soldati === 4 && ri.dialogo && ri.incursori === 4 && ri.ponte.every((d) => d < 300) && ri.oltre === 4
   && c.fase === 2 && c.dialogo && c.soldati === 50 && c.passo === "0.6" && c.fuoco === 0
   && c.cinque.passati === 5 && c.cinque.perso === 0 && c.sei.passati === 6 && c.sei.perso === 1 && c.sei.manager === 1
-  && t15.passati <= 5 && t15.vinto === 1 && t5.passati > 25 && errs.length === 0;
+  && t15.passati <= 5 && t15.vinto === 1 && t5.passati > 25
+  && res.ponteAlto.every((q) => q.arrivato && q.celle > 0 && q.rapporto < 1.6 && q.secondi < 10) && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");
 await browser.close();

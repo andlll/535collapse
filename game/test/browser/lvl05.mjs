@@ -51,6 +51,8 @@ const res = await page.evaluate(() => {
     risorse: [g.food, g.wood, g.gold, g.stone].join("/"), eco: w.number("enemy_eco"), lavoratori: w.number("enemy_omino"),
     pietra: g.en && g.en.stone, vedetta: [...w.all("enemy_torre")].filter((t) => t.x < 5100 && t.noEco === 1 && !t.watch).length,
     apertura: L().n0, fase: L().phase, dialogo: dialogs.has("dialogo_5_0"),
+    // [§9.109] i campi nemici nascosti dalla nebbia, spighe comprese
+    campi: [...w.all("enemy_campo")].filter((c) => c.visible || (c.crop_rows || []).some((ps) => ps.autoDraw)).length,
   };
   // torri: un guerriero (invulnerabile) accanto a una torre fuori dalle mura
   const tw = [...w.all("enemy_torre")].find((t) => t.x < 5100);
@@ -146,7 +148,7 @@ const res = await page.evaluate(() => {
 console.log(JSON.stringify(res));
 const p = res.partenza, r = res.ritirata, a = res.avviso;
 const ok = p.risorse === "200/200/100/0" && p.eco === 1 && p.lavoratori >= 4 && p.pietra >= 3000 && p.vedetta === 2
-  && p.apertura === 15 && p.fase === 0 && p.dialogo
+  && p.apertura === 15 && p.fase === 0 && p.dialogo && p.campi === 0
   && res.vedetta > 0
   && res.sortita.usciti >= 4 && res.sortita.vicino < 100 && res.sortita.tornati >= res.sortita.vivi - 1
   && r.fase >= 1 && r.dialogo && r.dentro >= r.vivi - 1 && r.vivi > 0

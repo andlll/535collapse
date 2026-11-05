@@ -8,6 +8,8 @@
 //   ponte     = riparato: fase 1, dialogo, ondate della base sud libere
 //   nord      = distrutte caserma e stalla a nord: obiettivo facoltativo
 //               fatto, dialogo, niente piu' ondate da li'
+//   difesa    = [§9.107] a ponte riparato 8 rinforzi restano alla base sud;
+//               3 minuti dopo ci sono almeno 10 soldati entro 1500 px dal centro
 //   vittoria  = distrutto il centro nemico
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -33,6 +35,8 @@ const res = await page.evaluate(() => {
     risorse: [g.food, g.wood, g.gold].join("/"), centro: c ? [c.x, c.y] : null, eco: w.number("enemy_eco"),
     lavoratori: w.number("enemy_omino"), nord: north.map((b) => b.object).sort().join(","), sud: south.length,
     obiettivi: w.number("objective_button"), dialogo: w.number("dialogo_4_0"), hold: g.en.hold,
+    // [§9.109] la fattoria della base sud nascosta dalla nebbia (prima i campi si vedevano subito)
+    campi: [...w.all("enemy_campo")].filter((c) => c.visible || (c.crop_rows || []).some((ps) => ps.autoDraw)).length,
   };
   for (const d of [...w.all("dialogo_4_0")]) w.destroy(d);
   // il giocatore non deve perdere nel frattempo: unita' alleate immortali
@@ -51,7 +55,8 @@ const res = await page.evaluate(() => {
   const b = w.all("ponte").next().value;
   b.life = b.slife;
   G.advance(5);
-  out.ponte = { fase: g.l4.phase, dialogo: w.number("dialogo_4_1"), hold: g.en.hold, ponte: w.number("ponte_fatto") };
+  out.ponte = { fase: g.l4.phase, dialogo: w.number("dialogo_4_1"), hold: g.en.hold, ponte: w.number("ponte_fatto"),
+                rinforzi: [...w.all("enemy_unit")].filter((e) => e.stay === 1 && e.eco === 1).length };
   // base nord distrutta
   for (const n of north) n.life = 0;
   G.advance(30);
@@ -61,6 +66,7 @@ const res = await page.evaluate(() => {
   out.nord = { fatto: g.l4.north, dialogo: w.number("dialogo_4_2") > 0 || g.l4.north === 1, nuove: spawned > before };
   // vittoria
   const c2 = w.all("enemy_centro").next().value;
+  out.difesa = [...w.all("enemy_unit")].filter((e) => e.eco === 1 && Math.hypot(e.x - c2.x, e.y - c2.y) < 1500).length;
   c2.life = 0;
   G.advance(10);
   out.vittoria = g.victory === 1 && w.number("victory_manager") === 1;
@@ -69,9 +75,10 @@ const res = await page.evaluate(() => {
 console.log(JSON.stringify(res));
 const P = res.partenza;
 const ok = P.risorse === "300/300/150" && P.centro && P.eco === 1 && P.lavoratori >= 4 && P.nord === "enemy_caserma,enemy_stalla"
-  && P.sud === 3 && P.obiettivi === 1 && P.dialogo === 1 && P.hold === 1
+  && P.sud === 3 && P.obiettivi === 1 && P.dialogo === 1 && P.hold === 1 && P.campi === 0
   && res.ondata1 >= 2 && res.trattenuti
   && res.ponte.fase === 1 && res.ponte.dialogo === 1 && res.ponte.hold === 0 && res.ponte.ponte === 1
+  && res.ponte.rinforzi === 8 && res.difesa >= 10
   && res.nord.fatto === 1 && !res.nord.nuove && res.vittoria && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");

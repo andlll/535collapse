@@ -1,7 +1,7 @@
 // Salvataggi (Fase 4, decisione dell'autore §0.10: "come NIMBUS"). Metodo
 // di n_redux (game/src/save.js): JSON esplicito con versione del formato e
-// checksum leggero, uno slot in localStorage per il salvataggio rapido e un
-// file esportabile/importabile.
+// checksum leggero, uno slot per room per il salvataggio rapido (IndexedDB,
+// §9.107; prima localStorage) e un file esportabile/importabile.
 //
 // L'originale non salva nulla [C, §0.6]. In NIMBUS lo stato era gia' fatto
 // di dati semplici; qui una partita e' il mondo intero: istanze (che si
@@ -244,13 +244,22 @@ export function decodeGraph(data, opts = {}) {
 
 // --------------------------------------------------------- compressione
 
-// gzip + base64 per localStorage (un mondo e' 1-2 MB di JSON, lo spazio di
-// un sito e' circa 5 MB). Senza CompressionStream (browser vecchi) resta
-// il JSON in chiaro.
-export async function gzipBase64(str) {
+// gzip (byte per IndexedDB, base64 per localStorage: un mondo e' 1-3 MB di
+// JSON). Senza CompressionStream (browser vecchi) resta il JSON in chiaro.
+export async function gzipBytes(str) {
   if (typeof CompressionStream === "undefined") return null;
   const stream = new Blob([str]).stream().pipeThrough(new CompressionStream("gzip"));
-  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+export async function gunzipBytes(buf) {
+  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return await new Response(stream).text();
+}
+
+export async function gzipBase64(str) {
+  const buf = await gzipBytes(str);
+  if (!buf) return null;
   let bin = "";
   for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
   return btoa(bin);
@@ -260,29 +269,108 @@ export async function gunzipBase64(b64) {
   const bin = atob(b64);
   const buf = new Uint8Array(bin.length);
   for (let k = 0; k < bin.length; k++) buf[k] = bin.charCodeAt(k);
-  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return await new Response(stream).text();
+  return gunzipBytes(buf);
 }
 
 // -------------------------------------------------------------- slot
+//
+// [Segnalazione dell'autore, §9.107: "il salvataggio automatico spesso
+// fallisce"] Gli slot stavano tutti in localStorage, gzip in base64: 0,3-1,1
+// MB l'uno (lvl03 1,1 MB, lvl05 e lvl06 di piu'), e lo spazio di un sito e'
+// circa 5 MB (su itch.io anche diviso con gli altri giochi dello stesso
+// dominio): con tre o quattro livelli salvati setItem falliva (quota) e ogni
+// salvataggio dopo, automatico o no, dava "Saving failed". Ora il corpo
+// dello slot (gzip in byte, senza base64) va in IndexedDB, che ha uno spazio
+// molto piu' grande; in localStorage resta solo l'intestazione (room, data)
+// che il menu legge senza aspettare. Senza IndexedDB (alcune finestre
+// private) si torna a localStorage come prima. I salvataggi vecchi, tutti in
+// localStorage, si leggono ancora; il primo salvataggio nuovo della stessa
+// room li toglie (e libera lo spazio).
 
 // uno slot per room: "535.save.match", "535.save.lvl01", ...
 const slotKey = (room) => "535.save." + room;
 export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"];
 
+const DB_NAME = "535-saves", BODY = "slots", HEAD = "info";
+let dbOpen = null;
+function db() {
+  if (!dbOpen) {
+    dbOpen = new Promise((resolve, reject) => {
+      if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB non disponibile")); return; }
+      const rq = indexedDB.open(DB_NAME, 1);
+      rq.onupgradeneeded = () => { rq.result.createObjectStore(BODY); rq.result.createObjectStore(HEAD); };
+      rq.onsuccess = () => resolve(rq.result);
+      rq.onerror = () => reject(rq.error);
+      rq.onblocked = () => reject(new Error("IndexedDB bloccato"));
+    });
+    dbOpen.catch(() => { dbOpen = null; });
+  }
+  return dbOpen;
+}
+// una transazione su `stores`; fn(store per nome) -> la richiesta di cui si
+// vuole il risultato (o niente); si risolve a transazione completata
+async function idb(stores, mode, fn) {
+  const d = await db();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction(stores, mode);
+    const rq = fn((n) => tx.objectStore(n));
+    tx.oncomplete = () => resolve(rq ? rq.result : undefined);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("transazione annullata"));
+  });
+}
+
+// le intestazioni degli slot in IndexedDB, lette all'avvio (loadSlotIndex)
+// e tenute al passo dai salvataggi: il menu le legge ogni fotogramma
+const heads = new Map();
+export async function loadSlotIndex() {
+  try {
+    const all = await idb([HEAD], "readonly", (st) => st(HEAD).getAll());
+    for (const h of all || []) if (h && h.room) heads.set(h.room, h);
+  } catch (e) { /* senza IndexedDB: solo localStorage */ }
+}
+
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsRemove = (k) => { try { localStorage.removeItem(k); } catch (e) { /* storage non disponibile */ } };
+
 // data: { game, v, room, date, state }; ritorna il numero di byte scritti
 export async function saveSlot(data) {
   const json = JSON.stringify(sign(data));
+  const head = { v: SAVE_VERSION, room: data.room, date: data.date };
+  let idbError = null;
+  try {
+    const gz = await gzipBytes(json);
+    await idb([BODY, HEAD], "readwrite", (st) => {
+      st(BODY).put(gz ? { gz } : { json }, data.room);
+      st(HEAD).put(head, data.room);
+    });
+    heads.set(data.room, head);
+    // in localStorage solo l'intestazione: prima si toglie lo slot vecchio
+    // (che puo' essere grande), poi la si scrive; se non c'e' posto basta
+    // quella in IndexedDB
+    lsRemove(slotKey(data.room));
+    try { localStorage.setItem(slotKey(data.room), JSON.stringify({ ...head, idb: 1 })); } catch (e) { /* va bene lo stesso */ }
+    return gz ? gz.length : json.length;
+  } catch (e) { idbError = e; }
+  // senza IndexedDB: tutto in localStorage, come prima
   const gz = await gzipBase64(json);
-  const entry = JSON.stringify({ v: SAVE_VERSION, room: data.room, date: data.date, ...(gz ? { gz } : { json }) });
-  localStorage.setItem(slotKey(data.room), entry);
+  const entry = JSON.stringify({ ...head, ...(gz ? { gz } : { json }) });
+  try {
+    localStorage.setItem(slotKey(data.room), entry);
+  } catch (e) {
+    throw new Error("salvataggio non riuscito: " + (idbError && idbError.message) + " / " + e.message);
+  }
+  heads.delete(data.room);
+  try { await idb([BODY, HEAD], "readwrite", (st) => { st(BODY).delete(data.room); st(HEAD).delete(data.room); }); } catch (e) { /* niente IndexedDB */ }
   return entry.length;
 }
 
 // intestazione dello slot (per il menu) senza leggere il mondo
 export function slotInfo(room) {
+  const h = heads.get(room);
+  if (h && h.v === SAVE_VERSION) return { room: h.room, date: h.date };
   try {
-    const raw = localStorage.getItem(slotKey(room));
+    const raw = lsGet(slotKey(room));
     if (!raw) return null;
     const e = JSON.parse(raw);
     return e && e.v === SAVE_VERSION ? { room: e.room, date: e.date } : null;
@@ -291,10 +379,14 @@ export function slotInfo(room) {
 
 export async function loadSlot(room) {
   try {
-    const raw = localStorage.getItem(slotKey(room));
-    if (!raw) return null;
-    const e = JSON.parse(raw);
-    return parseSave(e.gz ? await gunzipBase64(e.gz) : e.json);
+    const raw = lsGet(slotKey(room));
+    const e = raw ? JSON.parse(raw) : null;
+    // nello slot di localStorage c'e' il corpo (salvataggi vecchi, o senza
+    // IndexedDB): quello; se no IndexedDB
+    if (e && (e.gz || e.json)) return parseSave(e.gz ? await gunzipBase64(e.gz) : e.json);
+    const b = await idb([BODY], "readonly", (st) => st(BODY).get(room));
+    if (!b) return null;
+    return parseSave(b.gz ? await gunzipBytes(b.gz) : b.json);
   } catch (e) { return null; }
 }
 

@@ -64,7 +64,8 @@ cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
 vittoria e sconfitta (la lista aggiornata è in cima a `STUDIO.md`). Puntatore ai bordi o frecce per muoversi (anche
 col puntatore uscito dalla finestra; nelle opzioni grafiche si può
-bloccare il mouse nella finestra), X/Z o la rotella per lo zoom (morbido, §9.83),
+bloccare il mouse nella finestra), X/Z o la rotella per lo zoom (morbido, §9.83), J per
+andare all'ultimo allarme d'attacco della minimappa (§9.108),
 **F3** per il pannello di diagnostica (anche `?diag=1`: tempo CPU e, se
 il browser lo espone, tempo GPU per frame); `?fps=30` per il
 tetto a 30 fps. Nelle opzioni grafiche "Quality" (Alta, Media, Bassa)
@@ -72,7 +73,7 @@ disegna il mondo a risoluzione ridotta sugli schermi ad alta densita',
 lasciando nitida l'interfaccia (e, in Media e Bassa, l'erba piu' rada);
 "Glass interface" rende i pannelli di vetro sfocato. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
-salvataggi (uno slot per room nel browser, salvataggio automatico ogni 5
+salvataggi (uno slot per room nel browser, in IndexedDB, salvataggio automatico ogni 5
 minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
@@ -107,6 +108,9 @@ node game/test/browser/rams.mjs                         # piu' arieti contro lo 
 node game/test/browser/catapults.mjs                    # catapulte che tirano o si fermano senza stare una sopra l'altra
 node game/test/browser/enemygarrison.mjs                # presidio nemico in torri e fortezze; nemici nella nebbia
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
+node game/test/browser/hover.mjs                        # pulsanti col puntatore evidenziati anche sotto i pannelli di vetro
+node game/test/browser/alarms.mjs                       # allarmi d'attacco sulla minimappa: per zona, anelli, J, suggerimento
+node game/test/browser/minimap.mjs                      # clic sulla minimappa: sposta la view, ordini col destro, riquadro della view
 node game/test/browser/zoom.mjs                         # zoom morbido con rotella, touchpad e X/Z, punto sotto il puntatore fermo
 node game/test/browser/ambience.mjs                     # nuvole, alba e tramonto rosa, pioggia, camini, crolli, polvere
 node game/test/browser/rivers.mjs                       # fiumi, strade e ponti a linee: acqua, ostacolo, pioggia, ponte
