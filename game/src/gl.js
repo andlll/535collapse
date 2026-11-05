@@ -344,11 +344,19 @@ export class Renderer {
   // (bm_zero, bm_inv_src_colour) [I, documentazione del motore]: la
   // destinazione moltiplicata per (1 - colore sorgente), cioe' scurisce.
   // E' il modo con cui l'originale applica nebbia e notte (manager Draw_End).
-  setBlend(mode) {
-    if (mode === this.blend) return;
+  // [§9.112] "mix": dissolvenza a trasparenza costante k (gl.blendColor),
+  // ignorando l'alpha della superficie (come "replace"): lo sfondo sfocato
+  // della pausa che compare sopra la scena nitida
+  setBlend(mode, k = 1) {
+    if (mode === this.blend && (mode !== "mix" || k === this.blendK)) return;
     this.flush();
     const gl = this.gl;
-    if (mode === "add") {
+    if (mode === "mix") {
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendColor(0, 0, 0, k);
+      gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+      this.blendK = k;
+    } else if (mode === "add") {
       gl.blendEquation(gl.FUNC_ADD);
       gl.blendFunc(gl.ONE, gl.ONE);
     } else if (mode === "replace") {

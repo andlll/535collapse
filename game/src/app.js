@@ -704,15 +704,43 @@ async function main() {
     draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
   };
 
+  // [§9.112, richiesta dell'autore] Lo sfondo della pausa arriva in
+  // PAUSE_FADE s invece che di colpo: la scena ferma nitida, sopra quella
+  // sfocata che compare e il velo scuro che sale (curva morbida); chiudendo
+  // la pausa lo stesso all'indietro, sopra la scena che riparte. A tempo
+  // vero (il gioco e' fermo).
+  const PAUSE_FADE = 0.3, PAUSE_DARK = 0.4;
+  let pauseK = 0, pauseT = 0;
+  const pauseEase = () => {
+    const now = performance.now(), dt = pauseT ? Math.min(0.1, (now - pauseT) / 1000) : 0;
+    pauseT = now;
+    pauseK = Math.max(0, Math.min(1, pauseK + (pause.paused ? 1 : -1) * dt / PAUSE_FADE));
+    return pauseK * pauseK * (3 - 2 * pauseK);
+  };
+  const pauseVeil = (B, e) => {
+    const last = B.t[3];
+    r.setProjection(0, 0, cam.cssW, cam.cssH);
+    r.setBlend("mix", e); // a trasparenza e, senza l'alpha della superficie (che la nebbia azzera)
+    r.quad(last, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, last.height, last.width, 0, 0xffffffff);
+    r.setBlend("normal");
+    draw.reset();
+    draw.setColour(0);
+    draw.setAlpha(PAUSE_DARK * e);
+    draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
+    draw.setAlpha(1);
+  };
+
   let shown = false;
   const render = () => {
     // il canvas si mostra col primo fotogramma (index.html: prima e' nascosto)
     if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
     r.beginFrame(cam, clear);
     r.gpuBegin(); // §6.8 G0
+    const e = pauseEase(); // §9.112
     if (!pause.paused) {
-      if (blur) freeBlur();
+      if (blur && (e <= 0 || blur.fresh !== false)) freeBlur();
       renderScene();
+      if (blur) pauseVeil(blur, e); // la pausa che si chiude: lo sfondo sfuma via
       drawCursor();
       r.flush();
       r.gpuEnd();
@@ -731,12 +759,12 @@ async function main() {
     r.setProjection(0, 0, cam.cssW, cam.cssH);
     r.setBlend("normal");
     const last = B.t[3];
-    r.quad(last, 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, last.height, last.width, 0, 0xffffffff);
-    draw.reset();
-    draw.setColour(0);
-    draw.setAlpha(0.4);
-    draw.rectangle(0, 0, cam.cssW, cam.cssH, false);
-    draw.setAlpha(1);
+    // [§9.112] la scena nitida sotto, finche' lo sfocato non la copre tutta
+    if (e < 1) {
+      r.setBlend("replace"); // l'alpha delle superfici e' azzerato dalla nebbia: niente sfondo che traspare
+      r.quad(B.t[0], 0, 0, cam.cssW, 0, cam.cssW, cam.cssH, 0, cam.cssH, 0, B.t[0].height, B.t[0].width, 0, 0xffffffff);
+    }
+    pauseVeil(B, e);
     draw.setGlass(settings.glass ? last : null); // §7.14: il pannello di vetro sullo sfondo gia' sfocato
     pause.drawPanel(draw, cam.cssW, cam.cssH, input);
     draw.setGlass(null);

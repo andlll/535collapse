@@ -8770,3 +8770,26 @@ Misurato su un tratto di prato non scoperto sotto la minimappa (lvl06,
 1920 x 1080): il dettaglio del mondo (media dei bordi) da 20,3 a 11,6 col
 puntatore, la luminosita' uguale (152 / 149). Foto all'autore a inizio,
 meta' e fine del passaggio. Passano `minimap`, `hover`, `ui`, `soak`.
+
+### 9.112 Lo sfondo della pausa arriva in 0,3 s
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608), dopo
+§9.111. Il menu di pausa sfocava e scuriva gia' tutto lo schermo (§7.12,
+come NIMBUS: la scena ferma ridotta a meta' e sfocata, sotto un velo nero
+al 40%), ma di colpo. Ora (app.js `pauseEase`, `pauseVeil`) in 0,3 s, con
+una curva morbida: la scena ferma nitida, sopra quella sfocata che compare e
+il velo che sale; chiudendo la pausa lo stesso all'indietro, sopra il gioco
+che riparte. A tempo vero (il gioco e' fermo). Il pannello del menu compare
+e sparisce subito.
+
+La scena ferma nitida va disegnata ignorando la sua alpha (fusione
+"replace", gia' usata per lo stesso motivo in §6.8: la sottrazione di nebbia
+e notte azzera l'alpha delle superfici; con la fusione normale nei primi
+fotogrammi traspariva lo sfondo chiaro della pagina, la scena usciva quasi
+bianca), e lo sfocato sopra con una trasparenza costante che ignora anche
+lei l'alpha della superficie: fusione nuova "mix" (gl.js setBlend, con
+gl.blendColor).
+
+Verificato con foto a 0, 100, 200 e 400 ms dall'apertura e a 0, 150 e 400
+ms dalla chiusura (mandate all'autore). Passano `ui`, `saves`, `hover`,
+`minimap`, `soak` e le prove unitarie.
