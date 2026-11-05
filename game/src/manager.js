@@ -11,6 +11,7 @@ import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLi
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall } from "./minimap.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -140,9 +141,12 @@ export class Manager {
   mouse(input, mx, my) {
     const g = this.g;
     if (input.mousePressed[0]) {
-      g.multi = 1;
-      g.startx = mx;
-      g.starty = my;
+      // [§9.109] sulla minimappa niente rettangolo di selezione
+      if (!this.overMinimap()) {
+        g.multi = 1;
+        g.startx = mx;
+        g.starty = my;
+      }
       if (g.minim === 1) {
         if (this.minimViewHover) { g.minim = 0; }
         if (this.minimPlusHover) g.sz--;
@@ -152,6 +156,36 @@ export class Manager {
       }
     }
     if (input.mouseReleased[0]) g.multi = 0;
+  }
+
+  // [§9.109] il puntatore e' sulla minimappa (la mappa o i suoi pulsanti; a
+  // minimappa chiusa il pulsante che la apre)? Dagli hover del passo
+  // (step)
+  overMinimap() {
+    return this.g.minim === 1
+      ? !!(this.minimHover || this.minimViewHover || this.minimPlusHover || this.minimMinusHover)
+      : !!this.minimViewHoverBis;
+  }
+
+  // [§9.109, richiesta dell'autore] I clic sulla minimappa: il sinistro (e
+  // trascinando) porta la view su quel punto, il destro manda le unita'
+  // selezionate li' (order: il punto di room, che app.js da' al mondo come
+  // posizione del puntatore). Prima i clic passavano al mondo sotto la
+  // minimappa sullo schermo: il destro mandava le unita' in quel punto, il
+  // sinistro deselezionava. null se il puntatore non e' sulla minimappa (ne'
+  // la si sta trascinando): i clic vanno al mondo.
+  minimapInput(input, cam, roomW, roomH) {
+    const g = this.g, sz = g.sz, oy = cam.cssH - 20 - roomH / sz;
+    const at = () => [Math.max(0, Math.min(roomW, (input.x - 20) * sz)), Math.max(0, Math.min(roomH, (input.y - oy) * sz))];
+    const onMap = g.minim === 1 && !!this.minimHover;
+    if (onMap && input.mousePressed[0]) this.mmDrag = true;
+    if (this.mmDrag) {
+      const [x, y] = at();
+      cam.x = x - cam.w / 2; cam.y = y - cam.h / 2; cam.clamp();
+      if (!input.mouseDown[0]) this.mmDrag = false;
+    }
+    const order = onMap && input.mouseReleased[1] ? at() : null;
+    return this.overMinimap() || this.mmDrag || input.mouseReleased[0] && onMap ? { order } : null;
   }
 
   // Ordine di un passo GMS (STUDIO.md §1.3): alarm, poi tastiera e mouse,
@@ -441,37 +475,49 @@ export class Manager {
     d.sprite("ico_plus_small", 0, 50 + mw, H + 35 - mh);
     d.sprite("ico_minus_small", 0, 50 + mw, H + 75 - mh);
     d.setAlpha(1);
-    // rettangolo della view [C: altezza calcolata con view_hport, non
-    // view_hview: a zoom > 1 il riquadro e' piu' basso della view vera]
-    d.roundrectColourExt(ox + cam.x / sz, oy + cam.y / sz, ox + cam.x / sz + cam.w / sz,
-                         oy + cam.y / sz + cam.cssH / sz, 80, 80, c.black, c.black, true);
-    // Stesso ordine dei with(...) dell'originale: ogni famiglia sopra la
-    // precedente. Le risorse e i nemici solo se visibili (nebbia).
-    const groups = [
-      ["ally_unit", false, (x, y) => d.circleColour(x, y, 50 / sz, c.red, c.maroon, false)],
-      ["ally_build", false, (x, y) => d.circleColour(x, y, 100 / sz, c.red, c.maroon, false)],
-      [["mura_vert", "porta_vert", "mura_vert_fond"], false, (x, y) => d.lineColour(x, y, x, y - 250 / sz, c.red, c.red)],
-      [["mura_ori", "porta_ori", "mura_ori_fond"], false, (x, y) => d.lineColour(x - 200 / sz, y, x + 200 / sz, y, c.red, c.red)],
-      ["enemy_unit", true, (x, y) => d.circleColour(x, y, 50 / sz, c.aqua, c.blue, false)],
-      ["enemy_build", true, (x, y) => d.circleColour(x, y, 100 / sz, c.aqua, c.blue, false)],
-      [["albero"], true, (x, y) => d.triangleColour(x - 60 / sz, y + 60 / sz, x + 60 / sz, y + 60 / sz, x, y - 60 / sz, c.green, c.green, c.green, false)],
-      [["miniera_oro"], true, (x, y) => d.circleColour(x, y, 100 / sz, c.yellow, c.olive, false)],
-      [["pietra_grande"], true, (x, y) => d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false)],
-      [["castelloruin"], true, (x, y) => d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false)],
-      [["torreruin"], true, (x, y) => d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false)],
-      [["chiesaruin"], true, (x, y) => d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false)],
-      [["pietr_piccolo"], true, (x, y) => d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false)],
-      [["campo"], false, (x, y) => d.circleColour(x, y, 100 / sz, c.red, c.green, false)],
+    // [§9.109, richieste dell'autore] il terreno (fiumi, montagne), alberi e
+    // risorse, poi edifici e unita' con le loro icone (minimap.js); prima
+    // l'ordine dei with(...) dell'originale, alberi sopra le unita'
+    const P = (i) => [ox + i.x / sz, oy + i.y / sz];
+    drawWater(d, world, ox, oy, sz);
+    drawMountains(d, world, ox, oy, sz);
+    const res = [
+      ["albero", (x, y) => { d.setAlpha(MM.treeAlpha); d.triangleColour(x - 60 / sz, y + 60 / sz, x + 60 / sz, y + 60 / sz, x, y - 60 / sz, MM.tree, MM.tree, MM.tree, false); }],
+      ["miniera_oro", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.yellow, c.olive, false); }],
+      ["pietra_grande", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false); }],
+      ["castelloruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 100 / sz, c.gray, c.dkgray, false); }],
+      ["torreruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
+      ["chiesaruin", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
+      ["pietr_piccolo", (x, y) => { d.setAlpha(1); d.circleColour(x, y, 75 / sz, c.gray, c.dkgray, false); }],
     ];
-    for (const [who, needVisible, fn] of groups) {
-      for (const i of world.instances) {
-        const match = Array.isArray(who) ? who.includes(i.object) : (i.object === who || i.parents.includes(who));
-        if (!match || (needVisible && !i.visible)) continue;
-        // [§9.101] le torri del livello 6 non ancora recuperate: grigie, come le rovine
-        if (i.locked) { if (who === "ally_build") d.circleColour(ox + i.x / sz, oy + i.y / sz, 75 / sz, c.gray, c.dkgray, false); continue; }
-        fn(ox + i.x / sz, oy + i.y / sz);
+    for (const [name, fn] of res) for (const i of world.all(name)) if (i.visible) fn(...P(i));
+    d.setAlpha(1);
+    // mura e porte: linee, come nell'originale [C]
+    const wall = (i, col) => {
+      const [x, y] = P(i);
+      if (/_vert/.test(i.object)) d.lineColour(x, y, x, y - 250 / sz, col, col);
+      else d.lineColour(x - 200 / sz, y, x + 200 / sz, y, col, col);
+    };
+    // gli edifici, poi le unita'; i nemici solo se visibili (nebbia)
+    for (const [who, col, needVisible] of [["ally_build", MM.ally, false], ["enemy_build", MM.enemy, true],
+                                           ["ally_unit", MM.ally, false], ["enemy_unit", MM.enemy, true]]) {
+      for (const i of world.all(who)) {
+        if (needVisible && !i.visible) continue;
+        if (isWall(i.object)) { wall(i, col); continue; }
+        // [§9.101] le torri del livello 6 non ancora recuperate: grigie
+        const [x, y] = P(i);
+        if (drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col)) continue;
+        d.setAlpha(1);
+        d.circleColour(x, y, (who.endsWith("build") ? 100 : 50) / sz, col, col, false);
       }
     }
+    d.setAlpha(1);
+    // rettangolo della view [§9.109: l'originale lo faceva alto
+    // view_hport/sz, non view_hview/sz: con lo zoom piu' basso della view
+    // vera, il 74% a zoom 1,35]; angoli poco arrotondati (con raggio 80 era
+    // quasi sempre un ovale)
+    d.roundrectColourExt(ox + cam.x / sz, oy + cam.y / sz, ox + (cam.x + cam.w) / sz, oy + (cam.y + cam.h) / sz,
+                         10, 10, c.black, c.black, true);
     // [§9.108] gli allarmi, sopra tutto (attackalarm.js)
     drawAlarms(d, g, world._stepNo, ox, oy, sz);
   }

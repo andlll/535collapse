@@ -128,6 +128,7 @@ jobs:
           node game/test/browser/hintgap.mjs
           node game/test/browser/hover.mjs
           node game/test/browser/alarms.mjs
+          node game/test/browser/minimap.mjs
           node game/test/browser/zoom.mjs
           node game/test/browser/ambience.mjs
           node game/test/browser/rivers.mjs

@@ -13,7 +13,7 @@
 //   edificio alleato (incendio, arieti, catapulte, frecce incendiarie);
 // - il primo colpo entro ZONE_R px da una zona dello stesso tipo la tiene
 //   viva (`last`), senza un allarme nuovo; se no nasce una zona nuova, e se
-//   il colpo e' fuori dalla view con gli anelli che si allargano (RING),
+//   il colpo e' fuori dalla view con gli anelli arancioni che si allargano,
 //   dentro la view senza (la battaglia la si vede gia');
 // - la zona resta (l'icona, che pulsa piano) finche' per QUIET passi non
 //   arrivano colpi, poi sfuma in FADE passi;
@@ -34,7 +34,10 @@ export const ALARM = {
   ring: { n: 3, every: 22, life: 70, r: [5, 38] }, // anelli: quanti, ogni quanti passi, vita, raggio (px dello schermo)
   blink: 10 * 60,  // passi in cui il pulsante della minimappa chiusa lampeggia, dopo un allarme nuovo
   icon: { battle: ["ico_battle", 0.36], fire: ["ico_fiamma", 0.36] }, // sprite e scala (~16 px)
-  colour: { battle: 0x0000ff, fire: 0x2080ff }, // BGR: rosso, arancio
+  // [§9.109, richiesta dell'autore] gli anelli arancioni come le due icone
+  // (135, 73, 0), un po' piu' chiari per vedersi anche sul buio; prima rossi
+  // (battaglie) e arancio (fuoco)
+  colour: { battle: 0x1470d2, fire: 0x1470d2 }, // BGR di (210, 112, 20)
 };
 
 const state = (g) => g.alarms || (g.alarms = { zones: [], seq: 0 });

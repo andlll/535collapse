@@ -411,7 +411,30 @@ def derived_sprites():
         fi = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
         fi.alpha_composite(s, (pad, pad))
         out.append((name, "ambiente", fi, (fi.width // 2, pad + s.height - 1)))
+    # [§9.109, richiesta dell'autore] le icone di edifici e unita' per la
+    # minimappa: le sagome delle icone dell'interfaccia (grigio scuro al 70%)
+    # bianche e piene, ritagliate e larghe al piu' MM_SIDE px; il colore
+    # (alleati, nemici) lo da' la minimappa (una tinta moltiplicativa puo'
+    # solo scurire)
+    for n in MM_ICONS:
+        im = img(n)
+        a = im.getchannel("A")
+        top = max(a.getextrema()[1], 1)
+        a = a.point(lambda v: min(255, round(v * 255 / top)))
+        im = Image.new("RGBA", im.size, (255, 255, 255, 255))
+        im.putalpha(a)
+        im = im.crop(a.getbbox())
+        k = MM_SIDE / max(im.width, im.height)
+        im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+        out.append(("mm_" + n[4:], "gui", im, (im.width // 2, im.height // 2)))
     return out
+
+
+# [§9.109] le icone dell'interfaccia che la minimappa usa (mm_<nome>)
+MM_ICONS = ["ico_casa", "ico_caserma", "ico_stalla", "ico_castello", "ico_chiesa", "ico_magazzino", "ico_barn",
+            "ico_torre", "ico_centro", "ico_corn", "ico_omino", "ico_guerriero", "ico_picchiere", "ico_arciere",
+            "ico_cavaliere", "ico_catapulta", "ico_ariete"]
+MM_SIDE = 32
 
 
 # [§9.75] gli sprite delle mura e delle porte del giocatore che hanno una

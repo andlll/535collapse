@@ -35,6 +35,8 @@ const res = await page.evaluate(() => {
     risorse: [g.food, g.wood, g.gold].join("/"), centro: c ? [c.x, c.y] : null, eco: w.number("enemy_eco"),
     lavoratori: w.number("enemy_omino"), nord: north.map((b) => b.object).sort().join(","), sud: south.length,
     obiettivi: w.number("objective_button"), dialogo: w.number("dialogo_4_0"), hold: g.en.hold,
+    // [§9.109] la fattoria della base sud nascosta dalla nebbia (prima i campi si vedevano subito)
+    campi: [...w.all("enemy_campo")].filter((c) => c.visible || (c.crop_rows || []).some((ps) => ps.autoDraw)).length,
   };
   for (const d of [...w.all("dialogo_4_0")]) w.destroy(d);
   // il giocatore non deve perdere nel frattempo: unita' alleate immortali
@@ -73,7 +75,7 @@ const res = await page.evaluate(() => {
 console.log(JSON.stringify(res));
 const P = res.partenza;
 const ok = P.risorse === "300/300/150" && P.centro && P.eco === 1 && P.lavoratori >= 4 && P.nord === "enemy_caserma,enemy_stalla"
-  && P.sud === 3 && P.obiettivi === 1 && P.dialogo === 1 && P.hold === 1
+  && P.sud === 3 && P.obiettivi === 1 && P.dialogo === 1 && P.hold === 1 && P.campi === 0
   && res.ondata1 >= 2 && res.trattenuti
   && res.ponte.fase === 1 && res.ponte.dialogo === 1 && res.ponte.hold === 0 && res.ponte.ponte === 1
   && res.ponte.rinforzi === 8 && res.difesa >= 10

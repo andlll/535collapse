@@ -917,14 +917,19 @@ export const LV5 = {
 const LV5_ENEMY = { mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori",
                     porta_vert: "enemy_porta_vert", campo_fond: "enemy_campo" };
 export function lvl05Setup(w) {
+  // [§9.109] prima via tutti, poi i nemici: creati uno alla volta, ogni
+  // campo nemico vedeva i cantieri di campo vicini non ancora sostituiti
+  // (edifici del giocatore) e si rivelava subito (7 campi su 8 visibili dalla
+  // partenza, oltre la nebbia)
+  const made = [];
   for (const [from, to] of Object.entries(LV5_ENEMY)) {
     for (const i of [...w.all(from)]) {
       if (i.x < LV5.east) continue;
-      const { x, y } = i;
+      made.push([to, i.x, i.y]);
       w.destroy(i);
-      w.create(to, x, y);
     }
   }
+  for (const [to, x, y] of made) w.create(to, x, y);
   // [§9.76] le torri fuori dalle mura non sono della regia economica (un
   // alleato vicino non chiama la difesa della citta'). [§9.102] Tirano
   // (prima, di vedetta, no: watch)

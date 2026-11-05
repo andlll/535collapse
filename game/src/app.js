@@ -500,10 +500,20 @@ async function main() {
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
     manager.mouse(input, mx, my);
+    // [§9.109] i clic sulla minimappa non vanno al mondo sotto di lei; il
+    // destro e' un ordine verso il punto della mappa (manager.js)
+    const mm = manager.minimapInput(input, cam, room.width, room.height);
+    if (mm) {
+      input.mousePressed = [false, false, false];
+      input.mouseReleased = [false, !!mm.order, false];
+    }
     manager.step(input, cam, room.width, room.height);
     if (victoryAt > 0 && --victoryAt === 0 && !world.exists("victory_manager")) { g.victory = 1; world.create("victory_manager", 0, 0); }
     world.input = input;
-    world.step(input, mx, my);
+    const inside = input.inside;
+    if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
+    world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
+    input.inside = inside;
     recountIdle(world); // §6.1 n.80
     alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
     settleOverlaps(world, path); // §9.62
@@ -519,7 +529,10 @@ async function main() {
       settings.diagnostics = diag.visible;
       saveSettings(settings);
     }
-    if (cam.follow && (input.inside || input.edgeHold)) {
+    // [§9.109] sulla minimappa (o trascinandola) lo schermo non scorre: e' a
+    // 20 px dai bordi, dentro la fascia che fa scorrere
+    const onMinimap = manager.mmDrag || (manager.overMinimap() && !input.edgeHold);
+    if (cam.follow && (input.inside || input.edgeHold) && !onMinimap) {
       const [mx, my] = cam.toRoom(input.x, input.y); // mouser Step: x=mouse_x, y=mouse_y
       cam.followPoint(mx, my);
     } else {

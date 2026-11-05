@@ -8611,3 +8611,83 @@ px), durata (30 s), grandezza di anelli e icone.
 
 Passano anche: prove unitarie, `soak` (tutte le room), `saves` (match,
 lvl04), `ui`, `hintgap`, `burn`.
+
+### 9.109 La minimappa: clic, riquadro della view, icone, fiumi, colori
+
+Discussione con l'autore (5 novembre 2026, stessa PR, versione 0.2608)
+dopo una revisione della minimappa. Decisioni, punto per punto:
+
+1. **Fondo**: resta trasparente come nell'originale (0,19, col puntatore
+   sopra 0,69): piu' coprente prenderebbe troppo spazio.
+2. **Riquadro della view**: alto view_hview/sz, non view_hport/sz
+   (l'originale [C]: con lo zoom il riquadro era piu' basso della view
+   vera, il 74% allo zoom di partenza 1,35); angoli col raggio 10 (era 80:
+   quasi sempre un ovale).
+3. **I clic non passano piu' al mondo.** Prima il clic destro sulla
+   minimappa mandava le unita' selezionate al punto del mondo che stava
+   *sotto* la minimappa sullo schermo, il sinistro deselezionava, e anche i
+   pulsanti "+", "-" e "occhio" deselezionavano (provato nel browser). Ora
+   (manager.js `minimapInput`, app.js) sopra la minimappa e i suoi pulsanti
+   il mondo non riceve clic ne' hover, niente rettangolo di selezione, e lo
+   schermo non scorre (la minimappa e' dentro la fascia dei bordi che lo fa
+   scorrere).
+4. **Icone**: edifici e unita' con le icone dell'interfaccia (mm_*:
+   tools/05_atlas.py le rifa' bianche e piene, ritagliate, 32 px; la
+   minimappa le colora). Gli edifici larghi quanto la loro impronta in
+   scala (fra 7 e 22 px), le unita' 7 px; cantieri al 45%, le torri chiuse
+   del livello 6 grigie, mura e porte linee (anche quelle nemiche, prima
+   pallini). Gli oggetti senza icona restano pallini.
+5. **Colori**: i tuoi rosso caldo (226, 74, 46; era 255, 0, 0), i nemici blu
+   (46, 112, 232); gli anelli degli allarmi (§9.108) arancioni come le due
+   icone (210, 112, 20: il loro colore un po' piu' chiaro, per vedersi
+   anche sul buio), per battaglie e fuoco.
+6. **Alberi**: verde piu' tenue e meno saturo (112, 146, 104) al 60%.
+7. **Fiumi** in azzurro (120, 182, 226) larghi quanto il fiume: dalla mappa
+   dell'acqua della room (effects.js waterMap, fiumi dipinti e a linee, senza
+   le parti sotto i ponti), corse orizzontali di pixel della minimappa
+   rifatte solo se cambia la scala. **Montagne**: provata una catena di cime
+   stilizzate (grande quanto il disegno della montagna: le tele degli sprite,
+   fino a 2342 x 1461, sono in gran parte vuote, si usa il trim); l'autore
+   non e' convinto e disegnera' lui lo sprite. Spente intanto (minimap.js
+   `MM.mountains`); il riquadro del disegno di ogni montagna e' gia' calcolato.
+8. **Nebbia di guerra sulla minimappa**: da ragionare (l'autore teme che
+   diventi troppo coprente, come per il punto 1).
+9. **Clic sinistro** sulla minimappa (e trascinando): la view si centra su
+   quel punto. 10. **Clic destro**: le unita' selezionate vanno li' (l'ordine
+   di movimento di sempre, col punto della mappa; non raccolta ne' attacco).
+
+Prova `minimap.mjs` (nuova, anche nella CI), con eventi veri del mouse:
+destro verso il punto della mappa (4200, 3500: arrivato a meno di 1 px
+come meta), sinistro che centra la view (selezione intatta, niente
+rettangolo), trascinamento, il pulsante "-" (la scala cambia, il soldato
+resta selezionato), il riquadro alto quanto la view vera e col raggio 10.
+Foto della minimappa all'autore in quattro livelli, col puntatore sopra e
+senza.
+
+**Campi nemici visibili dalla partenza** (segnalazione dell'autore, guardando
+la minimappa: "campi di grano blu, si vedono gia' anche se sono edifici
+nemici"). Due cause:
+- `enemy_campo` (economy.js) usava il comportamento del campo del
+  giocatore, che e' sempre visibile: nessun edificio nemico si vede finche'
+  un alleato non gli e' vicino (enemybuild.js revealBuilding), il campo
+  si'. Ora nasce nascosto e si rivela come gli altri; le sue righe di
+  spighe (sistemi di particelle a parte) si disegnano solo se il campo e'
+  visibile. Nel livello 4 la fattoria della base sud ora si scopre
+  arrivandoci.
+- nel livello 5 la regia (levels.js lvl05Setup) sostituiva i cantieri di
+  campo della mappa (del giocatore) con campi nemici uno alla volta: ogni
+  campo nuovo vedeva i cantieri vicini non ancora sostituiti (edifici del
+  giocatore entro 200 px) e si rivelava. 7 campi su 8 visibili dalla
+  partenza; ora prima si tolgono tutti, poi si creano: 0 su 8.
+Gli altri edifici nemici di lvl04, lvl05, lvl06 e match all'inizio sono
+tutti nascosti (controllati uno per uno). Prove: `lvl04.mjs` e `lvl05.mjs`
+("campi": nessun campo nemico ne' spiga visibile alla partenza).
+
+Da guardare con l'autore: le unita' a 7 px in gruppo fanno una macchia di
+icone, e l'icona del guerriero (le spade incrociate) e' la stessa forma
+dell'allarme di battaglia; il rosso caldo dei tuoi e l'arancio degli anelli
+sono vicini.
+
+Passano: prove unitarie, `minimap`, `alarms`, `ui`, `hintgap`, `zoom`,
+`rally`, `attackorder`, `movement`, `lvl04`, `lvl05`, `economy`, `soak`
+(tutte le room), `saves` (match, lvl05, lvl06).

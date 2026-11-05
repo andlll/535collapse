@@ -37,6 +37,7 @@ import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
 import { sightK, seenNear } from "./fog.js";
+import { revealBuilding } from "./enemybuild.js";
 
 export const ECO = {
   default: {
@@ -235,12 +236,29 @@ export function enemyOmino(p) {
 
 // il campo nemico: il campo (buildings.js) dei lavoratori nemici; i fanti
 // del giocatore, col clic destro, ci danno fuoco come agli edifici nemici
+// [§9.109, segnalazione dell'autore: "i campi nemici si vedono gia'
+// all'inizio"] Il campo nemico usava il comportamento di quello del
+// giocatore, che e' sempre visibile: si vedeva da subito, nel mondo e nella
+// minimappa, anche oltre la nebbia. Ora nasce nascosto e si rivela come gli
+// altri edifici nemici (enemybuild.js revealBuilding: un alleato vicino,
+// colpito, castello o torre, nessuna nebbia); le righe di spighe (sistemi di
+// particelle a parte, effects.js cropRows) si disegnano solo se il campo e'
+// visibile.
+const showCrops = (i) => { for (const ps of i.crop_rows || []) ps.autoDraw = i.visible !== false; };
 export function enemyCampo(p) {
   const base = campo(p);
   return {
     ...base,
+    create(i, w) {
+      base.create(i, w);
+      i.visible = false;
+      revealBuilding(i, w);
+      showCrops(i);
+    },
     step(i, w) {
       if (i.life <= 0) lostBuilding(w, i); // §9.45
+      revealBuilding(i, w);
+      showCrops(i);
       base.step(i, w);
     },
     rightReleased: fireOrder,

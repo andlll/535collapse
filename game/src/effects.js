@@ -105,7 +105,7 @@ const ANELLO2 = partType({
 // (una volta: sono ferme). null se nella room non c'e' acqua.
 // [§9.36] owner: per ogni cella il pezzo di fiume che la disegna (fra due
 // sovrapposti quello disegnato dopo, depth piu' bassa), in pieces.
-function waterMap(w) {
+export function waterMap(w) {
   if (w._water !== undefined) return w._water;
   const C = 8, gw = Math.ceil(w.roomW / C), gh = Math.ceil(w.roomH / C);
   let grid = null, owner = null;
