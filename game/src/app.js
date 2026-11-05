@@ -20,7 +20,7 @@ import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js
 import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
-import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup } from "./levels.js";
+import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup, objectiveMarks } from "./levels.js";
 import { sliced, neutral, splitGroups, createNeutral } from "./scenario.js";
 import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_DRAW, leafType } from "./ambience.js";
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
@@ -830,6 +830,7 @@ async function main() {
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
+                    objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
                     setRivers(list, roads = [], bridges = [], patches = []) {

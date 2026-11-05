@@ -8,6 +8,8 @@
 //   trascina    tenendo premuto e muovendo, la view segue il puntatore
 //   pulsanti    "-" della minimappa: la scala cambia, il soldato resta
 //               selezionato
+//   raccolta    (§9.114) col centro selezionato il clic destro sulla
+//               minimappa porta li' il punto di raccolta
 //   morbido     (§9.113) lo zoom della minimappa passa per valori intermedi
 //               fino alla meta; la scala resta fra 12 e 60
 //   riquadro    la view nella minimappa e' alta quanto la view vera (con lo
@@ -76,6 +78,27 @@ await page.mouse.move(...minus); await step(2);
 await page.mouse.click(...minus); await step(2);
 const r4 = await page.evaluate(() => ({ sz: window.__game.g.sz, sel: window.__u.selected }));
 res.pulsanti = { sz: [geo.sz, r4.sz], sel: r4.sel, ok: r4.sz === geo.sz + 1 && r4.sel === 1 };
+
+// [§9.114] il punto di raccolta: col centro selezionato, il clic destro
+// sulla minimappa lo porta li' (come nel mondo)
+const D = pt(0.5, 0.3);
+await page.evaluate(() => {
+  const G = window.__game, w = G.world;
+  for (const a of w.all("ally_unit")) a.selected = 0;
+  G.g.sel = 0; G.g.milsel = 0;
+  const c = w.all("centro").next().value; c.selected = 1; window.__c = c;
+  G.advance(2);
+});
+await page.mouse.move(...D); await step(2);
+await page.mouse.click(...D, { button: "right" }); await step(2);
+const rf = await page.evaluate(() => { const c = window.__c; return [c.flagx, c.flagy, c.selected]; });
+// il punto atteso con la scala del momento (la prova dei pulsanti l'ha cambiata)
+const [dx, dy] = await page.evaluate(([px, py]) => {
+  const G = window.__game, sz = G.manager.mmScale(), oy = G.cam.cssH - 20 - G.world.roomH / sz;
+  return [(px - 20) * sz, (py - oy) * sz];
+}, D);
+res.raccolta = { bandierina: rf.slice(0, 2).map(Math.round), meta: [Math.round(dx), Math.round(dy)], ok: rf[2] === 1 && Math.hypot(rf[0] - dx, rf[1] - dy) < 2 * geo.sz };
+await page.evaluate(() => { window.__c.selected = 0; const u = window.__u; u.selected = 1; window.__game.g.sel = 1; window.__game.g.milsel = 1; window.__game.advance(2); });
 
 // [§9.113] zoom morbido: dopo uno scatto la scala disegnata passa per valori
 // intermedi, senza tornare indietro, fino alla meta; e i limiti (12-60)

@@ -8815,3 +8815,36 @@ mondo (§9.83), non a scatti.
 Prova `minimap.mjs`, "morbido": 6 scatti di colpo, da 31 a 25 con 16 valori
 intermedi, senza tornare indietro; 1 e 500 diventano 12 e 60. Passano
 anche `hintgap`, `ui`, `alarms`, `soak` e le prove unitarie.
+
+### 9.114 Minimappa: selezione, punto di raccolta, obiettivi
+
+Proposte accettate dall'autore (5 novembre 2026, stessa PR, versione 0.2608):
+1. **Selezione**: le tue unita' e i tuoi edifici selezionati hanno un anello
+   bianco sottile attorno al puntino o all'icona (minimap.js
+   `drawSelected`): col clic destro sulla minimappa (§9.109) si vede chi si
+   sta mandando.
+2. **Punto di raccolta**: dell'edificio selezionato, una linea bianca
+   sottile dall'edificio e un piccolo stendardo (`drawRally`). Il clic
+   destro sulla minimappa lo sposta li', come nel mondo (provato: col
+   centro selezionato la bandierina va nel punto della mappa indicato).
+3. **Obiettivi in corso** (levels.js `objectiveMarks`, minimap.js
+   `drawObjectives`): un rombo bianco che pulsa piano, col bordino scuro;
+   piu' tenue se facoltativo. Un luogo fisso sempre, un edificio nemico solo
+   se gia' visto (la minimappa non rivela basi non scoperte); niente per gli
+   obiettivi senza un luogo (sopravvivere, le pattuglie, la fortezza):
+   - livello 1: i cancelli a nord (4836, 331) finche' non li si raggiunge;
+   - livello 3: il villaggio, poi il monastero, e caserme e stalle nemiche
+     quando si sa da dove vengono le ondate;
+   - livello 4: il ponte finche' non e' riparato, l'accampamento a nord-est
+     (facoltativo), poi il centro nemico;
+   - livello 5: la porta ovest della citta' nell'inseguimento, le rovine per
+     la pietra, poi il centro nemico;
+   - livello 6: il ponte di destra quando arriva la colonna.
+   Prima i segnalini erano anelli come la selezione e si confondevano (foto):
+   ora rombi.
+
+Passano `minimap`, `alarms`, `ui`, `hintgap`, `lvl04`, `soak` e le prove unitarie.
+Prove: `minimap.mjs`, "raccolta" (la bandierina col clic destro sulla
+minimappa); i segnalini controllati livello per livello (window.__game
+`objectives()`); foto del livello 4 col centro e tre soldati selezionati,
+la bandierina e il ponte da riparare.

@@ -11,7 +11,8 @@ import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLi
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
-import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz } from "./minimap.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawSelected, drawRally, drawObjectives } from "./minimap.js";
+import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
@@ -556,11 +557,22 @@ export class Manager {
         // [§9.110, decisione dell'autore] le unita' puntini (come
         // nell'originale, 50/sz), gli edifici icone
         const unit = who.endsWith("unit");
+        // [§9.114] i tuoi selezionati con un anello bianco
+        const sel = who.startsWith("ally") && i.selected === 1;
         // [§9.101] le torri del livello 6 non ancora recuperate: grigie
-        if (!unit && drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col)) continue;
+        const px = unit ? 0 : drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col);
+        if (px) { if (sel) drawSelected(d, x, y, px * 0.55); continue; }
+        const r = unit ? Math.max(MM.unit, 50 / sz) : 100 / sz;
         d.setAlpha(1);
-        d.circleColour(x, y, unit ? Math.max(MM.unit, 50 / sz) : 100 / sz, col, col, false);
+        d.circleColour(x, y, r, col, col, false);
+        if (sel) drawSelected(d, x, y, r);
       }
+    }
+    // [§9.114] il punto di raccolta degli edifici selezionati (centro: flagx
+    // null finche' non c'e'; caserme e stalle: 0)
+    for (const b of world.all("ally_build")) {
+      if (b.selected !== 1 || !b.flagx || !b.flagy) continue;
+      drawRally(d, ...P(b), ox + b.flagx / sz, oy + b.flagy / sz);
     }
     d.setAlpha(1);
     // rettangolo della view [§9.109: l'originale lo faceva alto
@@ -571,6 +583,8 @@ export class Manager {
     const vl = ox + cam.x / sz, vt = oy + cam.y / sz, vr = ox + (cam.x + cam.w) / sz, vb = oy + (cam.y + cam.h) / sz;
     d.setAlpha(1);
     d.roundRectRadii(vl, vt, vr, vb, viewRadii(vl, vt, vr, vb, ox, oy, ox + mw, oy + mh, R), c.black, true);
+    // [§9.114] i segnalini degli obiettivi in corso (levels.js)
+    drawObjectives(d, objectiveMarks(world), ox, oy, sz, world._stepNo);
     // [§9.108] gli allarmi, sopra tutto (attackalarm.js)
     drawAlarms(d, g, world._stepNo, ox, oy, sz);
   }

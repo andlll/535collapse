@@ -217,7 +217,7 @@ export function drawIcon(d, w, i, x, y, sz, colour) {
   const s = px / 32; // MM_SIDE in tools/05_atlas.py
   d.setAlpha(1);
   d.spriteExt(spr, 0, x, y, s, s, 0, colour, isSite(i.object) ? MM.site : 1);
-  return true;
+  return px; // [§9.114] la larghezza: l'anello della selezione
 }
 
 // [§9.110, richiesta dell'autore] Il riquadro della view: angoli poco
@@ -228,4 +228,45 @@ const VIEW_R = 5;
 export function viewRadii(l, t, r, b, PL, PT, PR, PB, R) {
   const one = (dx, dy) => Math.max(VIEW_R, R - Math.max(dx, dy));
   return [one(l - PL, t - PT), one(PR - r, t - PT), one(PR - r, PB - b), one(l - PL, PB - b)];
+}
+
+// [§9.114] Le unita' e gli edifici selezionati: un anello bianco attorno al
+// puntino o all'icona (r: il loro raggio)
+export function drawSelected(d, x, y, r) {
+  d.setAlpha(0.95);
+  d.circleColour(x, y, r + 1.6, 0xffffff, 0xffffff, true);
+  d.setAlpha(1);
+}
+
+// [§9.114] Il punto di raccolta dell'edificio selezionato (la bandierina del
+// mondo, §8.x): una linea sottile dall'edificio e un piccolo stendardo
+export function drawRally(d, x0, y0, x1, y1) {
+  d.setAlpha(0.75);
+  d.lineColour(x0, y0, x1, y1, 0xffffff, 0xffffff);
+  d.setAlpha(1);
+  d.lineColour(x1, y1, x1, y1 - 7, 0xffffff, 0xffffff);
+  d.triangleColour(x1, y1 - 7, x1 + 5, y1 - 5.5, x1, y1 - 4, 0xffffff, 0xffffff, 0xffffff, false);
+}
+
+// [§9.114] I segnalini degli obiettivi (levels.js objectiveMarks): un rombo
+// bianco che pulsa piano, con un bordino scuro (si stacca anche sul fondo
+// chiaro) e un rombo pieno in mezzo; piu' tenue se facoltativo. Diverso
+// dagli allarmi (icone arancioni) e dalla selezione (un anello fermo).
+export function drawObjectives(d, marks, ox, oy, sz, t) {
+  const W = 0xffffff, K = 0x000000;
+  const diamond = (x, y, r, col, a) => {
+    d.setAlpha(a);
+    d.triangleColour(x - r, y, x, y - r, x + r, y, col, col, col, false);
+    d.triangleColour(x - r, y, x, y + r, x + r, y, col, col, col, false);
+  };
+  for (const m of marks) {
+    const x = ox + m.x / sz, y = oy + m.y / sz, a = m.optional ? 0.55 : 1;
+    const r = 7 + 1.5 * (0.5 + 0.5 * Math.sin(t * 0.08));
+    diamond(x, y, r + 1.2, K, 0.45 * a);
+    diamond(x, y, r, W, 0.95 * a);
+    diamond(x, y, r - 1.6, K, 0.55 * a);
+    diamond(x, y, r - 2.4, W, 0.25 * a);
+    diamond(x, y, 2.6, W, a);
+  }
+  d.setAlpha(1);
 }
