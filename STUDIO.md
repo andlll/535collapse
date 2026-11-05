@@ -8793,3 +8793,25 @@ gl.blendColor).
 Verificato con foto a 0, 100, 200 e 400 ms dall'apertura e a 0, 150 e 400
 ms dalla chiusura (mandate all'autore). Passano `ui`, `saves`, `hover`,
 `minimap`, `soak` e le prove unitarie.
+
+### 9.113 Lo zoom della minimappa morbido; la scala fra 12 e 60
+
+Richiesta dell'autore (5 novembre 2026, stessa PR, versione 0.2608): lo zoom
+della minimappa ("+" e "-" accanto, Ctrl+Z e Ctrl+X) fluido come quello del
+mondo (§9.83), non a scatti.
+- global.sz (px di room per px della minimappa) resta la scala scelta, di 1
+  a scatto come nell'originale; quella disegnata (manager.js `mmSz`,
+  `mmScale`) la insegue del 25% della distanza a passo e si ferma esatta
+  sotto lo 0,2%: ~16 passi (un quarto di secondo) per uno scatto, e piu'
+  scatti di fila si sommano alla meta. Disegno, clic sulla minimappa e
+  hover dei suoi pulsanti usano la scala disegnata.
+- Acqua e parte scoperta (§9.110) si calcolano alla scala scelta e durante
+  il passaggio si disegnano ingrandite (minimap.js drawRuns, `k`): niente
+  ricalcolo delle coperture a ogni fotogramma.
+- [Correzione] la scala non aveva limiti [C]: col "+" arrivava a 0 e sotto
+  (divisioni per zero, minimappa enorme o capovolta). Ora fra 12 e 60
+  (`MM.szRange`; 30 di partenza), anche per i salvataggi di prima.
+
+Prova `minimap.mjs`, "morbido": 6 scatti di colpo, da 31 a 25 con 16 valori
+intermedi, senza tornare indietro; 1 e 500 diventano 12 e 60. Passano
+anche `hintgap`, `ui`, `alarms`, `soak` e le prove unitarie.

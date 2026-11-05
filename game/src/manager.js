@@ -11,7 +11,7 @@ import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLi
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
-import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii } from "./minimap.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz } from "./minimap.js";
 import { fogActive } from "./fog.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
@@ -76,11 +76,11 @@ export class Manager {
     const tenths = (s, n) => (n > 0 ? Math.floor(s * 10 + 1e-6) + n : Math.ceil(s * 10 - 1e-6) + n) / 10;
     const goal = cam.zoomGoal;
     if (P(88)) {
-      if (g.sele === 1) g.sz++;
+      if (g.sele === 1) g.sz = clampSz(g.sz + 1); // §9.113: fra i limiti
       else if (goal < ZOOM_MAX && this.room !== "menu") cam.zoomTo(tenths(goal, 1), 0, 0);
     }
     if (P(90)) {
-      if (g.sele === 1) g.sz--;
+      if (g.sele === 1) g.sz = clampSz(g.sz - 1);
       else if (goal > ZOOM_MIN && this.room !== "menu") cam.zoomTo(tenths(goal, -1), 0, 0);
     }
     if ((input.wheelStep || input.wheelFine) && this.room !== "menu") {
@@ -150,14 +150,17 @@ export class Manager {
       }
       if (g.minim === 1) {
         if (this.minimViewHover) { g.minim = 0; }
-        if (this.minimPlusHover) g.sz--;
-        if (this.minimMinusHover) g.sz++;
+        if (this.minimPlusHover) g.sz = clampSz(g.sz - 1);
+        if (this.minimMinusHover) g.sz = clampSz(g.sz + 1);
       } else if (this.minimViewHoverBis) {
         g.minim = 1;
       }
     }
     if (input.mouseReleased[0]) g.multi = 0;
   }
+
+  // [§9.113] la scala della minimappa disegnata (zoom morbido)
+  mmScale() { return this.mmSz ?? this.g.sz; }
 
   // [§9.109] il puntatore e' sulla minimappa (la mappa o i suoi pulsanti; a
   // minimappa chiusa il pulsante che la apre)? Dagli hover del passo
@@ -176,7 +179,7 @@ export class Manager {
   // sinistro deselezionava. null se il puntatore non e' sulla minimappa (ne'
   // la si sta trascinando): i clic vanno al mondo.
   minimapInput(input, cam, roomW, roomH) {
-    const g = this.g, sz = g.sz, oy = cam.cssH - 20 - roomH / sz;
+    const g = this.g, sz = this.mmScale(), oy = cam.cssH - 20 - roomH / sz;
     const at = () => [Math.max(0, Math.min(roomW, (input.x - 20) * sz)), Math.max(0, Math.min(roomH, (input.y - oy) * sz))];
     const onMap = g.minim === 1 && !!this.minimHover;
     if (onMap && input.mousePressed[0]) this.mmDrag = true;
@@ -243,7 +246,14 @@ export class Manager {
     // (x scaleview); qui si confronta direttamente in coordinate GUI, che e'
     // la stessa cosa.
     const px = input.x, py = input.y, H = cam.cssH;
-    const mw = roomW / g.sz, mh = roomH / g.sz;
+    // [§9.113] zoom morbido della minimappa: la scala disegnata insegue
+    // quella scelta (global.sz), come lo zoom del mondo (§9.83)
+    g.sz = clampSz(g.sz);
+    const t = g.sz, s0 = this.mmSz ?? t;
+    let s = s0 + (t - s0) * MM.szEase;
+    if (Math.abs(t - s) < 0.002 * t) s = t;
+    this.mmSz = s;
+    const mw = roomW / s, mh = roomH / s;
     if (g.minim === 1) {
       this.minimHover = +(px > 20 && px < 20 + mw && py > H - 20 - mh && py < H - 20);
       const bx = px > 35 + mw && px < 65 + mw;
@@ -459,7 +469,7 @@ export class Manager {
   // Minimappa [C, manager Draw_GUI azione 1]: 1 px = global.sz px di room,
   // in basso a sinistra; un simbolo per famiglia di oggetti.
   drawMinimap(d, cam, world, H) {
-    const g = this.g, sz = g.sz;
+    const g = this.g, sz = this.mmScale(); // §9.113: la scala disegnata
     const mw = world.roomW / sz, mh = world.roomH / sz;
     const ox = 20, oy = H - 20 - mh;
     const R = Math.min(40, mw / 2, mh / 2); // il raggio degli angoli (80 / 2, come roundrectColourExt)
@@ -484,7 +494,7 @@ export class Manager {
     d.glassBlend = d.glassFrost = undefined;
     const ex = (glassOn ? MM.exploredGlass : MM.explored) * e;
     if (ex > 0.001) {
-      if (fogOn) drawExplored(d, world, ox, oy, sz, R, ex);
+      if (fogOn) drawExplored(d, world, ox, oy, sz, ex, g.sz);
       else { // senza nebbia: tutta, bianco semplice (non un altro vetro)
         const g0 = d.glass;
         d.glass = null;
@@ -510,7 +520,7 @@ export class Manager {
     // risorse, poi edifici e unita' con le loro icone (minimap.js); prima
     // l'ordine dei with(...) dell'originale, alberi sopra le unita'
     const P = (i) => [ox + i.x / sz, oy + i.y / sz];
-    drawWater(d, world, ox, oy, sz, R);
+    drawWater(d, world, ox, oy, sz, g.sz);
     drawMountains(d, world, ox, oy, sz);
     // [§9.110, richiesta dell'autore] le risorse con le loro icone (miniera,
     // pietra, rovina), coi colori di prima (giallo l'oro, grigio la pietra);

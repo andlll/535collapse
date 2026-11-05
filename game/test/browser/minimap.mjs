@@ -8,6 +8,8 @@
 //   trascina    tenendo premuto e muovendo, la view segue il puntatore
 //   pulsanti    "-" della minimappa: la scala cambia, il soldato resta
 //               selezionato
+//   morbido     (§9.113) lo zoom della minimappa passa per valori intermedi
+//               fino alla meta; la scala resta fra 12 e 60
 //   riquadro    la view nella minimappa e' alta quanto la view vera (con lo
 //               zoom: prima view_hport/sz)
 // Esce con codice 1 se qualcosa non torna.
@@ -74,6 +76,23 @@ await page.mouse.move(...minus); await step(2);
 await page.mouse.click(...minus); await step(2);
 const r4 = await page.evaluate(() => ({ sz: window.__game.g.sz, sel: window.__u.selected }));
 res.pulsanti = { sz: [geo.sz, r4.sz], sel: r4.sel, ok: r4.sz === geo.sz + 1 && r4.sel === 1 };
+
+// [§9.113] zoom morbido: dopo uno scatto la scala disegnata passa per valori
+// intermedi, senza tornare indietro, fino alla meta; e i limiti (12-60)
+res.morbido = await page.evaluate(() => {
+  const G = window.__game, M = G.manager, g = G.g;
+  for (let k = 0; k < 30; k++) G.advance(1);
+  const from = M.mmScale();
+  g.sz = Math.round(from) - 6;
+  const seen = [];
+  for (let k = 0; k < 40; k++) { G.advance(1); seen.push(M.mmScale()); }
+  const mid = seen.filter((v) => v < from - 0.01 && v > g.sz + 0.01).length;
+  const mono = seen.every((v, k) => k === 0 || v <= seen[k - 1]);
+  g.sz = 1; G.advance(1); const lo = g.sz;
+  g.sz = 500; G.advance(1); const hi = g.sz;
+  g.sz = 30; for (let k = 0; k < 40; k++) G.advance(1);
+  return { da: from, a: seen.at(-1), intermedi: mid, limiti: [lo, hi], ok: seen.at(-1) === Math.round(from) - 6 && mid >= 4 && mono && lo === 12 && hi === 60 };
+});
 
 // il riquadro della view: alto quanto la view vera
 res.riquadro = await page.evaluate(() => {

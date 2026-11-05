@@ -45,7 +45,14 @@ export const MM = {
   // vetro a 0,69 (brina 0,3, bianco 0,69 x 0,65: 61% verso il bianco)
   exploredGlass: 0.52,
   hoverTime: 0.3, // s: il passaggio col puntatore (sfocatura e parte scoperta)
+  // [§9.113, richiesta dell'autore] la scala (global.sz: px di room per px
+  // della minimappa) fra questi limiti (l'originale non ne aveva: col "+"
+  // arrivava a 0 e sotto), e lo zoom morbido come quello del mondo (§9.83):
+  // la scala disegnata insegue quella scelta di szEase della distanza a passo
+  szRange: [12, 60],
+  szEase: 0.25,
 };
+export const clampSz = (s) => Math.max(MM.szRange[0], Math.min(MM.szRange[1], s));
 
 // nome dell'oggetto -> icona (mm_<nome>)
 const ICONS = [
@@ -98,11 +105,13 @@ function runsOf(cov, mw, mh, R) {
   return runs;
 }
 
-function drawRuns(d, runs, ox, oy, col, alpha) {
+// k: [§9.113] le corse calcolate alla scala scelta, disegnate durante lo
+// zoom morbido ingrandite di k (niente ricalcolo a ogni fotogramma)
+function drawRuns(d, runs, ox, oy, col, alpha, k = 1) {
   d.setColour(col);
   for (const [x, y, n, a] of runs) {
     d.setAlpha(alpha * a);
-    d.rectangle(ox + x, oy + y, ox + x + n - 1, oy + y, false); // (rectangle comprende l'ultimo pixel [I])
+    d.rectangle(ox + x * k, oy + y * k, ox + (x + n) * k - 1, oy + (y + 1) * k - 1, false); // (rectangle comprende l'ultimo pixel [I])
   }
   d.setAlpha(1);
 }
@@ -127,30 +136,34 @@ const dims = (w, sz) => [Math.ceil(w.roomW / sz), Math.ceil(w.roomH / sz)];
 // l'acqua: dalla mappa dell'acqua (fiumi dipinti e a linee), rifatta solo se
 // cambiano la scala o il raggio
 const WATER = new WeakMap();
-export function drawWater(d, w, ox, oy, sz, R) {
+// il raggio degli angoli della minimappa alla scala sz (come drawMinimap)
+const radiusAt = (w, sz) => Math.min(40, w.roomW / sz / 2, w.roomH / sz / 2);
+
+// sz: la scala disegnata; szT: quella scelta, a cui si calcolano le corse
+export function drawWater(d, w, ox, oy, sz, szT = sz) {
   let c = WATER.get(w);
-  if (!c || c.sz !== sz || c.R !== R) {
-    const wm = waterMap(w), [mw, mh] = dims(w, sz);
-    const runs = wm ? runsOf(coverage(wm.gw, wm.gh, wm.C, sz, mw, mh, (k) => wm.grid[k]), mw, mh, R) : [];
-    WATER.set(w, (c = { sz, R, runs }));
+  if (!c || c.sz !== szT) {
+    const wm = waterMap(w), [mw, mh] = dims(w, szT);
+    const runs = wm ? runsOf(coverage(wm.gw, wm.gh, wm.C, szT, mw, mh, (k) => wm.grid[k]), mw, mh, radiusAt(w, szT)) : [];
+    WATER.set(w, (c = { sz: szT, runs }));
   }
-  if (c.runs.length) drawRuns(d, c.runs, ox, oy, MM.water, MM.waterAlpha);
+  if (c.runs.length) drawRuns(d, c.runs, ox, oy, MM.water, MM.waterAlpha, szT / sz);
 }
 
 // [§9.110, proposta dell'autore] la nebbia di guerra sulla minimappa: senza
 // puntatore niente cambia; col puntatore sopra diventa piu' opaca solo la
 // parte scoperta (fog.explored), rifatta ogni EXPLORED_EVERY passi
 const EXPLORED = new WeakMap(), EXPLORED_EVERY = 30;
-export function drawExplored(d, w, ox, oy, sz, R, alpha = MM.explored) {
+export function drawExplored(d, w, ox, oy, sz, alpha = MM.explored, szT = sz) {
   const F = w.fog;
   if (!F) return false;
   let c = EXPLORED.get(w);
-  if (!c || c.sz !== sz || c.R !== R || w._stepNo - c.at >= EXPLORED_EVERY || w._stepNo < c.at) {
-    const [mw, mh] = dims(w, sz);
-    const runs = runsOf(coverage(F.gw, F.gh, F.cell, sz, mw, mh, (k) => F.explored[k] / 255), mw, mh, R);
-    EXPLORED.set(w, (c = { sz, R, at: w._stepNo, runs }));
+  if (!c || c.sz !== szT || w._stepNo - c.at >= EXPLORED_EVERY || w._stepNo < c.at) {
+    const [mw, mh] = dims(w, szT);
+    const runs = runsOf(coverage(F.gw, F.gh, F.cell, szT, mw, mh, (k) => F.explored[k] / 255), mw, mh, radiusAt(w, szT));
+    EXPLORED.set(w, (c = { sz: szT, at: w._stepNo, runs }));
   }
-  drawRuns(d, c.runs, ox, oy, 0xffffff, alpha);
+  drawRuns(d, c.runs, ox, oy, 0xffffff, alpha, szT / sz);
   return true;
 }
 
