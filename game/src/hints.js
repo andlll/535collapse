@@ -62,6 +62,8 @@ const T = {
   hint_night: ["Night", "At night visibility is reduced. Enemies will attack only when they are closer as their visibility is reduced as well."],
   // [§9.14, richiesta dell'autore] livello 2: niente centro, niente civili nuovi
   hint_lavoratori: ["Precious workers", "You have no town hall here: you cannot train new workers. Protect them, every worker you lose is lost for good!"],
+  // [§9.108, richiesta dell'autore] la prima volta che c'e' un allarme (attackalarm.js)
+  hint_allarme: ["Attack alarms", "Crossed swords on the minimap: your units are under attack. A flame: one of your buildings is burning or under siege. A ring marks a new attack out of sight. Press J to go to the latest alarm, again for the previous one."],
 };
 
 const fixed = (x, y) => ({ kind: "fixed", pos: () => [x, y] });
@@ -159,6 +161,8 @@ export const HINTS = {
   hint_multi_2: { anchor: vicino("ally_militare"), arm: 10, click: "pressed" },
   hint_night: { anchor: { kind: "fixed", follow: true, pos: underButtons } }, // §9.81
   hint_lavoratori: { anchor: { kind: "fixed", follow: true, pos: underButtons } },
+  // [§9.108] accanto alla minimappa, coi due simboli nel titolo
+  hint_allarme: { anchor: { kind: "fixed", follow: true, pos: minimapHintPos }, icons: [["ico_battle", 0.5], ["ico_fiamma", 0.5]] },
 };
 
 // --------------------------------------------------------------- dialoghi
@@ -364,7 +368,7 @@ function keepClear(w, i) {
 }
 
 // Il disegno comune [C, Draw_GUI di hint_legna e dialogo_1_0]
-function drawWindow(d, i, titleX, portrait) {
+function drawWindow(d, i, titleX, portrait, icons = null) {
   d.setAlpha(i.hover === 0 ? 0.69 : 0.99);
   d.roundrectColourExt(i.posx, i.posy, i.posx + 380, i.posy + i.testo_h + 68, 60, 60, c.white, c.white, false);
   d.setFont("GUI_1");
@@ -380,6 +384,8 @@ function drawWindow(d, i, titleX, portrait) {
   d.setValign("middle");
   d.setAlpha(1);
   if (portrait) d.sprite(portrait, 0, i.posx, i.posy);
+  // [§9.108] i simboli di cui parla il suggerimento, in alto a destra
+  if (icons) icons.forEach(([spr, s], k) => d.spriteExt(spr, 0, i.posx + 380 - 36 - 34 * (icons.length - 1 - k), i.posy + 26, s, s, 0, c.white, 1));
 }
 
 export function hint(name) {
@@ -428,7 +434,7 @@ export function hint(name) {
     // come coordinate dello schermo).
     drawGUI(i, w, d) {
       if (w.g.hint !== 1) return;
-      drawWindow(d, i, 20, null);
+      drawWindow(d, i, 20, null, H.icons);
     },
   };
 }

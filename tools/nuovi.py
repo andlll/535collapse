@@ -264,13 +264,23 @@ def slice_image(im, x0, x1):
 def derived():
     """[(nome, gruppo, immagine, origine)] degli sprite derivati (nuovi.json
     "derivati"): uno sprite nuovo rimpicciolito a `lato` px di larghezza,
-    ritagliato sull'alpha, con l'origine al centro."""
+    ritagliato sull'alpha, con l'origine al centro. [§9.108] Con `alto` al
+    posto di `lato` si fissa l'altezza; con `colore` [r, g, b] il disegno
+    prende quel colore pieno (l'alpha resta), come le icone dell'originale."""
     out = []
     for name, d in load().get("derivati", {}).items():
         im = image(d["da"])
         im = im.crop(im.getchannel("A").getbbox())
-        w = d["lato"]
-        im = im.resize((w, max(1, round(im.height * w / im.width))), Image.LANCZOS)
+        if d.get("alto"):
+            h = d["alto"]
+            im = im.resize((max(1, round(im.width * h / im.height)), h), Image.LANCZOS)
+        else:
+            w = d["lato"]
+            im = im.resize((w, max(1, round(im.height * w / im.width))), Image.LANCZOS)
+        if d.get("colore"):
+            a = im.getchannel("A")
+            im = Image.new("RGBA", im.size, tuple(d["colore"]) + (255,))
+            im.putalpha(a)
         if d.get("alpha") is not None:  # [§9.42] come le icone dell'originale (alpha 179/255)
             im.putalpha(im.getchannel("A").point(lambda v: round(v * d["alpha"])))
         out.append((name, d.get("gruppo", "gui"), im, (im.width // 2, im.height // 2)))

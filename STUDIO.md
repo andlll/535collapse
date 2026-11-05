@@ -8539,3 +8539,75 @@ Passano: prove unitarie, `hover`, `ambience`, `lvl04`, `lvl06`, `saves`
 (tutte le room), `soak` (tutte le room), `zoom`, `hintgap`, `ui`, `melee`,
 `rally`, `garrison`, `enemyarmy`, `enemydefense`, `economy`, `enemydepots`,
 `lvl05`, `resources`, `burn`, `rivers`.
+
+### 9.108 Allarmi d'attacco sulla minimappa
+
+Richiesta dell'autore (5 novembre 2026, stessa PR di §9.107, versione
+0.2608): segnali sulla minimappa per gli attacchi nemici, soprattutto il
+primo in una zona ("altrimenti diventa un bordello"), ben visibili.
+
+**Cosa c'era nell'originale** [C]: `scr_atk_signal` (colpo di guerriero,
+picchiere o cavaliere nemico, freccia nemica su un'unita' alleata), solo
+fuori dalla view e non entro 500 px da un segnale attivo, creava
+`atk_signal`; la minimappa (manager Draw_GUI) lo disegnava come
+`ico_battle` per 1,25 s, entrando rimpicciolito e sfumando (scala
+0,3/fade). `flm_signal` (un segnale d'incendio, 1 s) non lo creava nessuno:
+lasciato a meta'. Nel porting il disegno si era perso (il commento diceva
+"non disegna nulla") e il picchiere non lo chiamava. E anche ripristinato:
+in una mischia lunga un segnale nuovo ogni 1,25 s, troppo breve per
+notarlo, niente per gli edifici, niente a minimappa chiusa.
+
+**Decisioni dell'autore** (dopo la proposta): l'anello subito e l'icona che
+resta finche' dura la battaglia; lo stesso per incendi e armi d'assedio
+sugli edifici, con l'icona della fiamma; un tasto per andare all'allarme
+(H era gia' dei suggerimenti, decisione: **J**); il simbolo nel tutorial la
+prima volta; niente suoni per ora.
+
+**Com'e' fatto** (attackalarm.js, numeri in `ALARM`):
+- *zone*: un punto e un tipo, "battle" (ico_battle) quando un'unita'
+  alleata perde vita, "fire" (ico_fiamma) quando la perde un edificio
+  alleato (fuoco, arieti, catapulte, frecce incendiarie). Il colpo si
+  riconosce dalla vita che cala, guardata a ogni passo (`alLife`
+  sull'istanza): copre ogni attacco senza agganciare ogni punto del codice.
+  Non contano la demolizione col tasto Canc (selezionato, vita 0), le torri
+  chiuse del livello 6 e i primi 2 s della partita (le vite di partenza
+  messe dalle regie). Sostituisce `scr_atk_signal` (atk_signal resta
+  registrato per i salvataggi di prima);
+- un colpo entro 800 px da una zona dello stesso tipo la tiene viva, senza
+  un allarme nuovo; se no nasce una zona: fuori dalla view con **3 anelli**
+  che si allargano (rossi per le battaglie, arancio per il fuoco: da 5 a 38
+  px, uno ogni 22 passi, 70 passi ciascuno), dentro la view senza anelli
+  (la si vede gia'), ma con l'icona;
+- l'**icona** entra rimpicciolendosi come atk_signal, poi pulsa piano finche'
+  per 30 s non arrivano colpi; poi sfuma in 1 s. Disegnata sopra tutto il
+  resto della minimappa;
+- *minimappa chiusa*: per 10 s dopo un allarme nuovo il suo pulsante
+  lampeggia di rosso;
+- **J** porta la view sulla zona piu' recente; di nuovo entro 5 s, sulla
+  precedente (manager.js);
+- la prima volta il suggerimento **hint_allarme** ("Allarmi", accanto alla
+  minimappa, coi due simboli in alto a destra della finestra: hints.js
+  `icons`), tradotto nelle sei lingue; se un altro suggerimento e' aperto,
+  aspetta che si chiuda;
+- le zone stanno in g.alarms: si salvano con la partita.
+
+**L'icona della fiamma**: disegno dell'autore (nero su trasparente, 90 x 90
+px; nuovi/sprites/fiamma.png), resa come ico_battle (50 x 50, il disegno
+alto 42 px, lo stesso colore pieno 135, 73, 0): `ico_fiamma` fra i derivati
+di nuovi.json; tools/nuovi.py ha due opzioni nuove per i derivati, `alto`
+(l'altezza al posto della larghezza) e `colore` (colore pieno, l'alpha
+resta). Foto della coppia all'autore.
+
+Prove: `alarm.test.mjs` (unitaria: zone, anelli dentro e fuori dalla view,
+fine, demolizione, inizio partita, menu, suggerimento una volta) e
+`alarms.mjs` (nuova, anche nella CI): un guerriero nemico contro un
+soldato fuori dalla view per 40 s, una sola zona con gli anelli (con
+atk_signal sarebbero stati ~32 segnali); il suggerimento una volta; una
+mischia nella view senza anelli; una casa in fiamme fuori dalla view; J sulla
+piu' recente e poi sulla precedente; tutto fermo per 31 s, le zone spariscono;
+salvate e ricaricate uguali. Foto della minimappa (anelli, icona, pulsante
+che lampeggia) all'autore. Da tarare con l'autore: raggio della zona (800
+px), durata (30 s), grandezza di anelli e icone.
+
+Passano anche: prove unitarie, `soak` (tutte le room), `saves` (match,
+lvl04), `ui`, `hintgap`, `burn`.

@@ -10,6 +10,7 @@ import { c } from "./colours.js";
 import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLife } from "./effects.js";
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
+import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -111,6 +112,18 @@ export class Manager {
     if (P(77)) g.minim = g.minim ? 0 : 1;          // M: minimappa
     if (P(79)) g.obj = g.obj ? 0 : 1;              // O: obiettivi
     if (R(72)) g.hint = g.hint === 1 ? 0 : 1;      // H (rilascio): suggerimenti
+    // [§9.108] J: la view sulla zona d'allarme piu' recente; di nuovo entro 5
+    // s, sulla precedente (attackalarm.js)
+    if (P(74) && this.world && this.room !== "menu") {
+      const zs = alarmZones(g), now = this.world._stepNo;
+      if (zs.length) {
+        this.alarmK = this.alarmAt !== undefined && now - this.alarmAt < 300 ? ((this.alarmK || 0) + 1) % zs.length : 0;
+        this.alarmAt = now;
+        const z = zs[this.alarmK];
+        cam.zoomTarget = null;
+        cam.x = z.x - cam.w / 2; cam.y = z.y - cam.h / 2; cam.clamp();
+      }
+    }
     if (R(18) || R(17)) g.sele = 0;
     if (R(86)) g.visia = 0;
   }
@@ -322,6 +335,11 @@ export class Manager {
       else {
         d.setAlpha(this.minimViewHoverBis ? 0.69 : 0.19);
         d.circleColour(20, H - 20, 15, c.white, c.white, false);
+        // [§9.108] un allarme nuovo con la minimappa chiusa: il pulsante lampeggia di rosso
+        if (alarmBlink(g, world._stepNo)) {
+          d.setAlpha(0.35 + 0.35 * Math.sin(world._stepNo * 0.2));
+          d.circleColour(20, H - 20, 15, c.red, c.red, false);
+        }
         d.setAlpha(0.6);
         d.sprite("ico_view_small", 0, 20, H - 20);
         d.setAlpha(1);
@@ -454,6 +472,8 @@ export class Manager {
         fn(ox + i.x / sz, oy + i.y / sz);
       }
     }
+    // [§9.108] gli allarmi, sopra tutto (attackalarm.js)
+    drawAlarms(d, g, world._stepNo, ox, oy, sz);
   }
 }
 

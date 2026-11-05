@@ -44,6 +44,7 @@ export function newGlobals(room) {
     // manager Create: un suggerimento per tipo, una volta sola [C]
     woodhint: 0, goldhint: 0, stonehint: 0, foodhint: 0, casahint: 0, firehint: 0, attackhint: 0,
     presidiohint: 0, nighthint: 0, resourcehint: 0, hintata: 0,
+    alarmhint: 0, alarms: { zones: [], seq: 0 }, // §9.108 (attackalarm.js)
     dialogoenemy1: 0,
     // campagna: global.unlock persistente (progress.js, caricato da app.js)
     campagna: 0, unlock: 1,

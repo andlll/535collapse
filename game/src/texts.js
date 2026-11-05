@@ -837,4 +837,12 @@ export const TEXTS = {
     pt: "Aqui você não tem um centro: não pode treinar novos trabalhadores. Proteja-os, cada trabalhador perdido é perdido para sempre!",
     de: "Hier hast du kein Rathaus: Du kannst keine neuen Arbeiter ausbilden. Beschütze sie, jeder verlorene Arbeiter ist für immer verloren!",
     fr: "Ici, tu n'as pas d'hôtel de ville : tu ne peux pas former de nouveaux ouvriers. Protège-les, chaque ouvrier perdu l'est pour toujours !" },
+  // [§9.108] il suggerimento degli allarmi d'attacco
+  "Attack alarms": { it: "Allarmi", es: "Alarmas de ataque", pt: "Alarmes de ataque", de: "Angriffsalarm", fr: "Alertes d'attaque" },
+  "Crossed swords on the minimap: your units are under attack. A flame: one of your buildings is burning or under siege. A ring marks a new attack out of sight. Press J to go to the latest alarm, again for the previous one.": {
+    it: "Spade incrociate sulla minimappa: le tue unità sono sotto attacco. Una fiamma: un tuo edificio brucia o è sotto assedio. Un anello segna un attacco nuovo fuori dalla vista. Premi J per andare all'ultimo allarme, ancora per quello prima.",
+    es: "Espadas cruzadas en el minimapa: tus unidades están bajo ataque. Una llama: uno de tus edificios arde o está bajo asedio. Un anillo marca un ataque nuevo fuera de la vista. Pulsa J para ir a la última alarma, otra vez para la anterior.",
+    pt: "Espadas cruzadas no minimapa: suas unidades estão sob ataque. Uma chama: um de seus edifícios está queimando ou sob cerco. Um anel marca um novo ataque fora da vista. Pressione J para ir ao último alarme, de novo para o anterior.",
+    de: "Gekreuzte Schwerter auf der Minikarte: Deine Einheiten werden angegriffen. Eine Flamme: Eines deiner Gebäude brennt oder wird belagert. Ein Ring zeigt einen neuen Angriff außer Sicht. Drücke J, um zum letzten Alarm zu springen, erneut für den vorherigen.",
+    fr: "Épées croisées sur la mini-carte : tes unités sont attaquées. Une flamme : un de tes bâtiments brûle ou est assiégé. Un anneau signale une nouvelle attaque hors de vue. Appuie sur J pour aller à la dernière alerte, encore pour la précédente." },
 };

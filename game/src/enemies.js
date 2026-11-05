@@ -31,19 +31,19 @@ const C = { black: 0, blue: 0xff0000, white: 0xffffff };
 const MELEE = {
   enemy_warrior: {
     life: 75, rank: 3, corpse: "enemy_warrior_corpse", icon: "ico_guerriero",
-    damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4, 50: 5 }, fleeStep0: true, atkSignal: true,
+    damage: { 75: 7, 60: 7, 125: 7, 100: 7, 55: 15, 90: 4, 50: 5 }, fleeStep0: true,
     attackIso: false, charge: false, fire: true, place: "random",
     palo: false, chaseAlarm: 15, spawnFree: true, menuMarch: true,
   },
   enemy_picchiere: {
     life: 60, rank: 3, corpse: "enemy_picchiere_corpse", icon: "ico_picchiere",
-    damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8, 50: 5 }, fleeStep0: false, atkSignal: false,
+    damage: { 75: 3, 60: 3, 125: 3, 100: 3, 55: 5, 90: 8, 50: 5 }, fleeStep0: false,
     attackIso: true, charge: false, fire: true, place: "back50",
     palo: true, chaseAlarm: 15, spawnFree: false, menuMarch: false,
   },
   enemy_cavaliere: {
     life: 90, rank: 5, corpse: "enemy_cavaliere_corpse", icon: "ico_cavaliere",
-    damage: { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3, 50: 8 }, fleeStep0: false, atkSignal: true,
+    damage: { 75: 5, 90: 5, 125: 5, 100: 5, 55: 22, 60: 3, 50: 8 }, fleeStep0: false,
     attackIso: true, charge: true, fire: false, place: "random",
     palo: false, chaseAlarm: 10, spawnFree: false, menuMarch: false,
   },
@@ -85,19 +85,10 @@ export function freeSpawnEnemy(i, w) {
 }
 
 // scr_atk_signal [C]: un segnale d'attacco se il nemico colpisce fuori
-// dalla view (non piu' di uno ogni 500 px). atk_signal non disegna nulla
-// (solo un contatore di debug in mouser): residuo (§3.10).
-export function atkSignal(i, w) {
-  const c = w.cam;
-  if (i.x >= c.x && i.x <= c.x + c.w && i.y >= c.y && i.y <= c.y + c.h) return;
-  const s = w.nearest(i.x, i.y, "atk_signal");
-  if (s) {
-    const b = w.bbox(i);
-    const d = b ? Math.hypot(Math.max(0, b[0] - s.x, s.x - b[2]), Math.max(0, b[1] - s.y, s.y - b[3])) : pointDistance(i.x, i.y, s.x, s.y);
-    if (d > 500) w.create("atk_signal", i.x, i.y);
-  } else w.create("atk_signal", i.x, i.y);
-}
-
+// dalla view (non piu' di uno ogni 500 px), che la minimappa disegnava come
+// ico_battle per 1,25 s (manager Draw_GUI). [§9.108] Al suo posto le zone
+// d'allarme di attackalarm.js (da qualunque colpo, per zona, finche' dura la
+// battaglia). atk_signal resta registrato per i salvataggi di prima.
 export function atkSignalObject() {
   return {
     create(i) { i.alarm.set(0, 75); i.alarm.set(1, 15); i.alarm.set(2, 60); i.bounce = 0; i.fade = 0; },
@@ -227,7 +218,6 @@ function enemyStrike(i, w, T) {
   if (i.step === 1) { i.step = 2; i.alarm.set(2, 13); return; }
   if (i.step !== 2) return;
   i.step = 0;
-  if (T.atkSignal) atkSignal(i, w);
   i.alarm.set(2, 13);
   const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), "ally_unit"));
   if (!v) return;
