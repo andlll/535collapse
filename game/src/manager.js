@@ -11,7 +11,7 @@ import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLi
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
-import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawSelected, drawRally, drawObjectives } from "./minimap.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawRally, drawObjectives } from "./minimap.js";
 import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
 
@@ -552,20 +552,19 @@ export class Manager {
         // del centro, invisibile: col suo nome dava al centro anche l'icona
         // del mulino) e i pezzi invisibili delle mura (oodl, oval...)
         if (!i.sprite_index) continue;
-        if (isWall(i.object)) { wall(i, col); continue; }
+        // [§9.114, decisione dell'autore] i tuoi selezionati bianchi (prima
+        // un anello bianco attorno: non convinceva); anche mura e porte
+        const sel = who.startsWith("ally") && i.selected === 1;
+        if (isWall(i.object)) { wall(i, sel ? MM.selected : col); continue; }
         const [x, y] = P(i);
         // [§9.110, decisione dell'autore] le unita' puntini (come
         // nell'originale, 50/sz), gli edifici icone
         const unit = who.endsWith("unit");
-        // [§9.114] i tuoi selezionati con un anello bianco
-        const sel = who.startsWith("ally") && i.selected === 1;
         // [§9.101] le torri del livello 6 non ancora recuperate: grigie
-        const px = unit ? 0 : drawIcon(d, world, i, x, y, sz, i.locked ? MM.grey : col);
-        if (px) { if (sel) drawSelected(d, x, y, px * 0.55); continue; }
-        const r = unit ? Math.max(MM.unit, 50 / sz) : 100 / sz;
+        const tint = sel ? MM.selected : i.locked ? MM.grey : col;
+        if (!unit && drawIcon(d, world, i, x, y, sz, tint)) continue;
         d.setAlpha(1);
-        d.circleColour(x, y, r, col, col, false);
-        if (sel) drawSelected(d, x, y, r);
+        d.circleColour(x, y, unit ? Math.max(MM.unit, 50 / sz) : 100 / sz, tint, tint, false);
       }
     }
     // [§9.114] il punto di raccolta degli edifici selezionati (centro: flagx

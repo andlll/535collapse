@@ -8819,10 +8819,10 @@ anche `hintgap`, `ui`, `alarms`, `soak` e le prove unitarie.
 ### 9.114 Minimappa: selezione, punto di raccolta, obiettivi
 
 Proposte accettate dall'autore (5 novembre 2026, stessa PR, versione 0.2608):
-1. **Selezione**: le tue unita' e i tuoi edifici selezionati hanno un anello
-   bianco sottile attorno al puntino o all'icona (minimap.js
-   `drawSelected`): col clic destro sulla minimappa (§9.109) si vede chi si
-   sta mandando.
+1. **Selezione**: le tue unita', i tuoi edifici, mura e porte selezionati
+   sono bianchi (`MM.selected`): col clic destro sulla minimappa (§9.109) si
+   vede chi si sta mandando. [Decisione dell'autore, dopo la foto] prima un
+   anello bianco attorno al puntino o all'icona: non convinceva.
 2. **Punto di raccolta**: dell'edificio selezionato, una linea bianca
    sottile dall'edificio e un piccolo stendardo (`drawRally`). Il clic
    destro sulla minimappa lo sposta li', come nel mondo (provato: col
@@ -8840,8 +8840,8 @@ Proposte accettate dall'autore (5 novembre 2026, stessa PR, versione 0.2608):
    - livello 5: la porta ovest della citta' nell'inseguimento, le rovine per
      la pietra, poi il centro nemico;
    - livello 6: il ponte di destra quando arriva la colonna.
-   Prima i segnalini erano anelli come la selezione e si confondevano (foto):
-   ora rombi.
+   I segnalini all'inizio erano anelli come la selezione di allora e si
+   confondevano (foto): ora rombi.
 
 Passano `minimap`, `alarms`, `ui`, `hintgap`, `lvl04`, `soak` e le prove unitarie.
 Prove: `minimap.mjs`, "raccolta" (la bandierina col clic destro sulla

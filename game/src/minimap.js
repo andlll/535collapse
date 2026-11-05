@@ -26,6 +26,7 @@ export const MM = {
   ally: makeColourRgb(124, 72, 36),
   enemy: makeColourRgb(46, 112, 232),
   grey: makeColourRgb(130, 130, 130),
+  selected: 0xffffff,                   // [§9.114] i tuoi selezionati, bianchi
   water: makeColourRgb(120, 182, 226), waterAlpha: 0.8,
   tree: makeColourRgb(112, 146, 104), treeAlpha: 0.6,
   rock: makeColourRgb(128, 118, 104), snow: makeColourRgb(238, 238, 232),
@@ -228,14 +229,6 @@ const VIEW_R = 5;
 export function viewRadii(l, t, r, b, PL, PT, PR, PB, R) {
   const one = (dx, dy) => Math.max(VIEW_R, R - Math.max(dx, dy));
   return [one(l - PL, t - PT), one(PR - r, t - PT), one(PR - r, PB - b), one(l - PL, PB - b)];
-}
-
-// [§9.114] Le unita' e gli edifici selezionati: un anello bianco attorno al
-// puntino o all'icona (r: il loro raggio)
-export function drawSelected(d, x, y, r) {
-  d.setAlpha(0.95);
-  d.circleColour(x, y, r + 1.6, 0xffffff, 0xffffff, true);
-  d.setAlpha(1);
 }
 
 // [§9.114] Il punto di raccolta dell'edificio selezionato (la bandierina del
