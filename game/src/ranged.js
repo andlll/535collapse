@@ -18,6 +18,7 @@ import { lostBuilding } from "./economy.js";
 import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
 import { burnTick } from "./effects.js";
+import { bloodHit } from "./blood.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
@@ -36,6 +37,7 @@ export function allyArrow(tower) {
   for (const [name, dmg] of Object.entries(ALLY_HIT)) {
     collisions[name] = (i, w, other) => {
       other.life -= dmg;
+      bloodHit(w, other, i.direction, "arrow"); // §9.117 (non sulle macchine d'assedio: blood.js)
       if (name !== "enemy_ariete" && name !== "enemy_catapulta") other.hit = 1;
       other.alarm.set(5, 47);
       if (name === "enemy_cavaliere") i.alarm.set(0, 1); else w.destroy(i);
@@ -75,6 +77,7 @@ export function enemyArrow(tower) {
     collisions[name] = (i, w, o) => {
       const io_x = i.x, io_y = i.y;
       o.life -= dmg;
+      bloodHit(w, o, i.direction, "arrow"); // §9.117
       o.hit = 1;
       o.alarm.set(5, 47);
       const away = (r) => {

@@ -535,6 +535,7 @@ export const TEXTS = {
   "GRAPHICS OPTIONS": { it: "OPZIONI GRAFICHE", es: "OPCIONES GRÁFICAS", pt: "OPÇÕES GRÁFICAS", de: "GRAFIKOPTIONEN", fr: "OPTIONS GRAPHIQUES" },
   "Rain: {state}": { it: "Pioggia: {state}", es: "Lluvia: {state}", pt: "Chuva: {state}", de: "Regen: {state}", fr: "Pluie : {state}" },
   "Grass and crops: {state}": { it: "Erba e spighe: {state}", es: "Hierba y espigas: {state}", pt: "Grama e espigas: {state}", de: "Gras und Ähren: {state}", fr: "Herbe et épis : {state}" },
+  "Blood: {state}": { it: "Sangue: {state}", es: "Sangre: {state}", pt: "Sangue: {state}", de: "Blut: {state}", fr: "Sang : {state}" }, // §9.117
   "Fire and sparks: {state}": { it: "Fiamme e scintille: {state}", es: "Llamas y chispas: {state}", pt: "Chamas e faíscas: {state}", de: "Flammen und Funken: {state}", fr: "Flammes et étincelles : {state}" },
   "Dynamic resolution: {state}": { it: "Risoluzione dinamica: {state}", es: "Resolución dinámica: {state}", pt: "Resolução dinâmica: {state}", de: "Dynamische Auflösung: {state}", fr: "Résolution dynamique : {state}" },
   "FPS limit": { it: "Limite FPS", es: "Límite de FPS", pt: "Limite de FPS", de: "FPS-Grenze", fr: "Limite de FPS" },

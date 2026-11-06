@@ -17,6 +17,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY, onFormationSlot, mayYieldTo, yieldStep, yieldClear } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { bloodHit } from "./blood.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
@@ -350,6 +351,7 @@ function enemyStrike(i, w, T) {
   v.alarm.set(5, 47);
   const dmg = T.damage[v.slife];
   if (dmg !== undefined) v.life -= dmg;
+  bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
   const away = () => {
     const d = pointDirection(io_x, io_y, v.x, v.y);
     return [v.x + lengthdirX(200, d), v.y + lengthdirY(200, d)];

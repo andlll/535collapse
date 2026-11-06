@@ -427,7 +427,7 @@ async function main() {
   // Menu di pausa (pause.js): il mondo si ferma (instance_deactivate_all
   // dell'originale), passano solo i clic sul pannello.
   const applyGraphics = () => {
-    for (const k of ["rain", "grass", "fire"]) {
+    for (const k of ["rain", "grass", "fire", "blood"]) { // blood: §9.117
       if (settings[k]) world.particles.hidden.delete(k); else world.particles.hidden.add(k);
     }
     // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000

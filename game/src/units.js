@@ -17,6 +17,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
 
@@ -1038,6 +1039,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   if (v.slife !== 125 && v.slife !== 100) v.alarm.set(5, 47);
   const dmg = table[v.slife];
   if (dmg !== undefined) v.life -= dmg;
+  bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
   if ((v.slife === 125 || v.slife === 100) && v.action === 0) {
     const dirscampa = pointDirection(io_x, io_y, v.x, v.y);
     v.action = 1; v.warwork = 4; v.step = 0;

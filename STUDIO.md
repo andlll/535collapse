@@ -9074,3 +9074,28 @@ tranne `buildstuck.mjs` "incrocio", che a volte ha 1-3 civili in ritardo su
 all'altra). Non e' di questa sezione: sui semi 1-10 `main` ha 16 ordini in
 ritardo (6 semi oltre la soglia), questa versione 13 (4 semi). **Da
 sistemare a parte** (la CI puo' cadere a caso su questa prova).
+
+### 9.117 Gocce di sangue sui colpi
+
+Proposta accettata dall'autore (6 novembre 2026, stessa PR, versione
+0.2609): gocce di sangue sui colpi alle unita', con un interruttore nelle
+opzioni grafiche; niente macchia a terra alla morte (c'e' gia' nello sprite
+del cadavere).
+- blood.js `bloodHit`, chiamato dai colpi in mischia (units.js meleeStrike,
+  alleati; enemies.js enemyStrike, nemici) e dalle frecce (ranged.js
+  allyArrow ed enemyArrow, anche quelle delle torri).
+- La goccia e' lo sprite della macchia di sangue dell'autore (`sfxsangue`, il
+  masso della catapulta, siege.js), rimpicciolito a 12-19 px, del suo rosso
+  (160, 17, 0) con la luminosita' che varia: 4-6 gocce per colpo in mischia,
+  2-3 per freccia, a 34 px dai piedi, schizzano dalla parte opposta a chi
+  colpisce (o nella direzione della freccia), un po' verso l'alto, e ricadono
+  sbiadendo in 18-28 passi.
+- Non sulle macchine d'assedio; solo unita' visibili (non nella nebbia) e
+  sullo schermo; al piu' 40 gocce per passo.
+- Categoria di particelle "blood": "Sangue: SI/NO" nelle opzioni grafiche
+  (settings.js `blood`, attivo di norma; tradotto nelle sei lingue). Per i
+  portali che chiedono di dichiarare la violenza si puo' spegnere di norma
+  nello zip (da decidere con l'autore).
+Foto all'autore: mischia di giorno (5 contro 5 e tre arcieri). Passano
+`npm test`, `saves` (match, livelli 4 e 6), `melee`, `soak` (menu, match,
+livello 5).
