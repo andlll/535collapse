@@ -81,9 +81,17 @@ function fieldTo(w, p, i, tx, ty, fallback = true) {
   }
   const sx = Math.floor(i.x / GRID), sy = Math.floor(i.y / GRID);
   if (p.fieldAt(f, sx, sy) === -1 && !p.escapeCell(f, sx, sy, 2)) {
-    i.goal_field = old;
-    if (fallback) scrMove(p, i, tx, ty);
-    return false;
+    // [§9.116] chiuso fra le celle dei compagni fermi (venti civili attorno a
+    // una pietra piccola: chi si riempiva in mezzo a loro restava fermo col
+    // carico per sempre, livello 6, tempio in rovina e pietra accanto): il
+    // campo coi soli ostacoli fissi, come verso i posti di lavoro (§9.23)
+    const f2 = p.goalField(tx, ty, en, false, true);
+    if (p.fieldAt(f2, sx, sy) === -1 && !p.escapeCell(f2, sx, sy, 2)) {
+      i.goal_field = old;
+      if (fallback) scrMove(p, i, tx, ty);
+      return false;
+    }
+    f = f2;
   }
   i.goal_field = f;
   i.flow_field = p.flowField(f);

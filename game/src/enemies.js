@@ -843,3 +843,37 @@ export function enemyArcher(p) {
     },
   };
 }
+
+// [§9.116, segnalazione dell'autore, regola per tutti i livelli] "Attaccavo
+// un magazzino nemico e il soldato nemico li' vicino non faceva niente".
+// I soldati fermi reagivano solo a un alleato entro 400 px da loro
+// (enemyAttack, meno di notte), e la difesa della regia (economy.js, §9.50)
+// muove solo i suoi soldati in attesa: un soldato della mappa a 500 px
+// guardava bruciare l'edificio. Ora ogni DEFEND_EVERY passi, per ogni
+// edificio nemico che ha perso vita dal controllo prima: l'unita' del
+// giocatore piu' vicina a lui entro DEFEND_ATT px e' l'attaccante, e i
+// soldati nemici fermi e liberi entro DEFEND_R px dall'edificio gli vanno
+// contro (poi, vicini, l'inseguimento di sempre). Non i lavoratori, le
+// macchine d'assedio, chi si ritira, chi marcia sulla strada o in colonna,
+// chi va al presidio.
+const DEFEND_EVERY = 10, DEFEND_ATT = 800, DEFEND_R = 900;
+const NO_DEFEND = new Set(["enemy_omino", "enemy_ariete", "enemy_catapulta"]);
+const canDefend = (e) => e.alive && !NO_DEFEND.has(e.object) && e.action === 0 && !e.warwork && !e.firework
+  && !e.retreat && !e.road && !e.pace && e.presidiowork !== 1;
+export function defendBuildings(w) {
+  if (w.room === "menu" || w._stepNo % DEFEND_EVERY !== 3) return;
+  let idle = null;
+  for (const b of w.all("enemy_build")) {
+    const was = b.defLife;
+    b.defLife = b.life;
+    if (was === undefined || !(b.life < was)) continue;
+    const a = w.nearest(b.x, b.y, "ally_unit");
+    if (!a || w.distanceToInstance(a, b) > DEFEND_ATT) continue;
+    idle = idle || [...w.all("enemy_unit")].filter(canDefend);
+    for (const e of idle) {
+      if (!e.alive || e.action !== 0 || Math.hypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
+      e.action = 1; e.warwork = 1; e.dirox = a.x; e.diroy = a.y;
+      if (e.alarm.get(0) < 1) e.alarm.set(0, irandomRange(12, 15));
+    }
+  }
+}

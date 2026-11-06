@@ -289,7 +289,7 @@ const RES = { wood: "albero", gold: "miniera_oro", stone: "stone_parent" };
 // ce ne sono altre.
 function targetFor(w, i, kind, wide, workers = []) {
   if (kind === "food") {
-    for (const c of w.all("enemy_campo")) if (c.foodwork === 0) return c;
+    for (const c of w.all("enemy_campo")) if (c.foodwork === 0 && !threatened(w, c.x, c.y, ecoOf(w).defendR)) return c; // §9.116
     return null;
   }
   const dep = w.nearest(i.x, i.y, "enemy_magazza");
@@ -305,8 +305,10 @@ function targetFor(w, i, kind, wide, workers = []) {
     return n * CROWD;
   };
   let best = null, bd = Infinity, far = null, fd = Infinity, avoided = null;
+  const R = ecoOf(w).defendR;
   for (const r of w.all(RES[kind])) {
     if (r.id === av) { avoided = r; continue; }
+    if (threatened(w, r.x, r.y, R)) continue; // §9.116: non dove sono i soldati del giocatore
     const di = Math.hypot(r.x - i.x, r.y - i.y);
     if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { const c = di + crowd(r); if (c < bd) { bd = c; best = r; } }
     else if (wide && di < SEARCH && di < fd) { fd = di; far = r; }
@@ -382,18 +384,21 @@ function placeCantiere(w, P, spot, en) {
 // campo nemico non ha un granaio (centro o mulino) entro FAR. Non se lo
 // stesso deposito e' gia' fra quelli persi (lo rifa' la ricostruzione).
 function depositNeed(w, workers, lost) {
-  const lostHas = (o) => lost.some((L) => L.o === o);
+  // [§9.116] un deposito perso in un punto occupato dal giocatore non si
+  // aspetta: se ne fa uno nuovo altrove
+  const R = ecoOf(w).defendR;
+  const lostHas = (o) => lost.some((L) => L.o === o && !threatened(w, L.x, L.y, R));
   const far = (x, y, dep) => { const d = w.nearest(x, y, dep); return !d || Math.hypot(d.x - x, d.y - y) > FAR; };
   if (!lostHas("enemy_magazzino")) {
     for (const o of workers) {
       const j = jobOf(o);
       if (!j || j === "food") continue;
       const [x, y] = j === "wood" ? [o.woodx, o.woody] : j === "gold" ? [o.goldx, o.goldy] : [o.stonex, o.stoney];
-      if (far(x, y, "enemy_magazza")) return { o: "enemy_magazzino", x, y, from: o };
+      if (far(x, y, "enemy_magazza") && !threatened(w, x, y, R)) return { o: "enemy_magazzino", x, y, from: o };
     }
   }
   if (!lostHas("enemy_mulino")) {
-    for (const c of w.all("enemy_campo")) if (far(c.x, c.y, "enemy_barn")) return { o: "enemy_mulino", x: c.x, y: c.y, from: c };
+    for (const c of w.all("enemy_campo")) if (far(c.x, c.y, "enemy_barn") && !threatened(w, c.x, c.y, R)) return { o: "enemy_mulino", x: c.x, y: c.y, from: c };
   }
   return null;
 }
@@ -414,6 +419,7 @@ function findSpot(w, p, P, need, workers) {
     }
     pts.sort((a, b) => Math.hypot(a.x - ref.x, a.y - ref.y) - Math.hypot(b.x - ref.x, b.y - ref.y));
     for (const pt of pts) {
+      if (threatened(w, pt.x, pt.y, ecoOf(w).defendR)) continue; // §9.116
       const ruins = site(w, pt, P);
       if (!ruins) continue;
       if (tries-- <= 0) return null;
@@ -534,6 +540,17 @@ function pull(w, workers, t, now) {
 
 const soldiers = (w) => [...w.all("enemy_unit")].filter((e) => e.object !== "enemy_omino");
 
+// [§9.116, segnalazione dell'autore] "Il nemico ricostruisce i magazzini
+// dove li ho appena distrutti, coi miei soldati ancora li'". Un punto e'
+// occupato se un'unita' del giocatore e' entro defendR px (la stessa
+// distanza a cui la base si difende, §9.50): li' niente ricostruzione,
+// depositi nuovi o lavoro finche' non se ne va (o non la cacciano i soldati
+// della regia, intruder qui sotto).
+function threatened(w, x, y, r) {
+  const a = w.nearest(x, y, "ally_unit");
+  return !!a && Math.hypot(a.x - x, a.y - y) < r;
+}
+
 // Il bersaglio di un attacco: l'edificio alleato piu' vicino alla base
 // nemica (il centro, o un edificio nemico), se no l'unita' alleata
 function attackTarget(w, from) {
@@ -591,12 +608,15 @@ export function enemyEco(p) {
           en.newDeposits = (en.newDeposits || 0) + 1;
         } else if (need) keep = P.cost;
         else if (lost.length) {
-          const L = lost[0], P2 = plan(w, L.o);
-          const ruins = canPay(en, P2.cost) ? site(w, L, P2) : null;
+          // [§9.116] il primo edificio perso il cui posto non e' occupato dal
+          // giocatore (prima: il primo, anche coi soldati del giocatore li')
+          const L = lost.find((l) => !threatened(w, l.x, l.y, E.defendR));
+          const P2 = L && plan(w, L.o);
+          const ruins = L && canPay(en, P2.cost) ? site(w, L, P2) : null;
           if (ruins) {
-            lost.shift();
+            lost.splice(lost.indexOf(L), 1);
             placeCantiere(w, P2, { x: L.x, y: L.y, ruins }, en);
-          } else keep = P2.cost; // si mette da parte per lui
+          } else if (L) keep = P2.cost; // si mette da parte per lui
         }
       }
       // al cantiere
@@ -687,6 +707,13 @@ export function enemyEco(p) {
         if (b.noEco === 1) continue;
         const a = w.nearest(b.x, b.y, "ally_unit");
         if (a && Math.hypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
+      }
+      // [§9.116] anche attorno al posto di un edificio perso da ricostruire:
+      // i soldati in attesa vanno a liberarlo
+      for (const L of lost) {
+        if (intruder) break;
+        const a = w.nearest(L.x, L.y, "ally_unit");
+        if (a && Math.hypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
       }
       // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
       // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)

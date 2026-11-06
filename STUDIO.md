@@ -115,9 +115,8 @@ sezione citata.
   porting sempre chiazza2. Raccomandazione: rimettere il caso.
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
-- [ ] La miniera del livello 2 a (2166, 449) dentro la maschera a ellisse di
-  `montagna1` (2 posti di lavoro su 10): maschera precisa o miniera spostata
-  (§9.116).
+- [x] La miniera del livello 2 a (2166, 449) dentro la maschera a ellisse di
+  `montagna1`: maschera precisa, decisa dall'autore (§9.116).
 
 **Prossima sessione: livelli della campagna disegnati in Tiled**
 (deciso con l'autore l'8 ottobre 2026; salvo bug sparuti, le prossime
@@ -8953,12 +8952,11 @@ miniera (130, 2277) con le vicine semichiuse, da 548 a 880 oro al minuto,
 fermi da 60 a 0, giri sul posto da 39772 a 212, lenti da 506 a 67 per mille;
 match oro invariato; match pietra stessa resa (504 contro 508), in coda da
 28720 passi a 0 (vanno all'altra pietra), inversioni da 2,7 a 4,2 per mille
-passi in cammino. **[Da decidere con l'autore]** la miniera a (2166, 449)
-resta a 2 posti: non ha altre miniere entro 700 px, e `montagna1` ha la
+passi in cammino. La miniera a (2166, 449)
+restava a 2 posti: non ha altre miniere entro 700 px, e `montagna1` aveva la
 maschera a ellisse dell'originale (kind 2, 1328 x 796 px), molto piu' larga
-del disegno: la miniera, in campo aperto a vederla, e' quasi tutta dentro
-l'ellisse. Raccomandazione: maschera precisa per `montagna1` (come
-`montagna4`, 5, 9, 10), o spostare la miniera.
+del disegno: la miniera, in campo aperto a vederla, era quasi tutta dentro
+l'ellisse. Vedi "Seguito" qui sotto: ora la maschera e' precisa.
 
 **6. I nemici si accavallano.** Nuova prova (18 nemici misti in ondata,
 ruolo 31, verso un punto a 1500 px): arrivati, 48-49 coppie sovrapposte, 9
@@ -9013,3 +9011,59 @@ spunta quando sono tutte recuperate. Livello 4: il campo nord-est (gia'
 
 Prove: `npm test`, la batteria della CI nel browser e `idle`, `workers`,
 `deposit`; `mining.mjs` e le prove di marcia descritte sopra.
+
+**Seguito (stessa PR, richieste dell'autore).**
+
+*Maschera precisa per `montagna1`* [decisione dell'autore]. tools/06_masks.py
+`PRECISE`: la maschera dai pixel (coltolerance 248 del GMX), al posto
+dell'ellisse; vale in tutte le room in cui c'e' la montagna (match, menu,
+livelli 2, 3, 4, 5). Miniera del livello 2 a (2166, 449): posti di lavoro
+liberi da 2 a 5 su 10 (dei 5 chiusi, 3 sono dove il corpo del civile, non
+solo i piedi, tocca il bordo disegnato della montagna, 2 la riva del
+fiume); 15 civili col magazzino a 220 px: in media al lavoro da 1,6 a 3,5.
+
+*Livello 6, miniera e tempietto in citta'* (prova come sopra, 15 civili,
+magazzino a 220-390 px, raggiungibili senza passare il fiume):
+- miniera (4980, 2272), 6 posti liberi su 10 (il resto nel fiume): 5-6 al
+  lavoro, gli altri in coda (nessun'altra miniera entro 700 px);
+- pietra grande (4640, 3820), 3 posti chiusi dal tempietto: 5-11 al lavoro,
+  nessuno in coda (gli altri vanno alla pietra piccola accanto);
+- tempio in rovina (5188, 3604): finito, i civili passano alla pietra
+  piccola accanto (4636, 3540), e chi si riempiva in mezzo ai compagni
+  restava **fermo col carico per sempre** (14 su 15 alla fine; c'era anche
+  prima di questa sezione): il campo verso il magazzino era chiuso dalle
+  celle dei compagni fermi al lavoro (-1 nella sua cella). Ora fieldTo
+  (civilians.js), con la propria cella chiusa, prova il campo coi soli
+  ostacoli fissi (come verso i posti, §9.23) prima di arrendersi: nessuno
+  piu' bloccato, campioni al lavoro da 19 a 34.
+
+*IA nemica: niente ricostruzione sotto gli occhi del giocatore*
+[segnalazione dell'autore: "ricostruisce i magazzini dove li ho appena
+distrutti, coi miei soldati ancora li'"; proposta accettata]. Un punto e'
+occupato se un'unita' del giocatore e' entro `defendR` (600 px, la distanza
+a cui la base si difende, §9.50). Economy.js `threatened`:
+- non si ricostruisce un edificio perso in un punto occupato, ne' gli si
+  mettono da parte le risorse: si passa al primo perso con il posto libero;
+- un deposito perso in un punto occupato non impedisce piu' un deposito
+  nuovo altrove (§9.46); i depositi nuovi non si mettono in punti occupati;
+- i lavoratori non vanno a risorse (ne' campi) in punti occupati, se ce ne
+  sono altre;
+- i soldati della regia in attesa vanno a liberare il posto di un edificio
+  perso (l'intruso di §9.50, che prima guardava solo gli edifici in piedi).
+Prova (livello 6, magazzino nemico distrutto con 3 soldati del giocatore
+fermi e invulnerabili sul posto, 2400 passi): prima il cantiere ripartiva
+al passo 1031 davanti a loro; ora nessun cantiere, 3 soldati nemici
+mandati, e via i soldati del giocatore il cantiere riparte in 11 passi.
+
+*IA nemica: difesa degli edifici, regola per tutti i livelli*
+[segnalazione dell'autore: "attaccavo un magazzino nemico e il soldato
+nemico li' vicino non faceva niente"]. I soldati fermi reagivano solo a un
+alleato entro 400 px da loro (meno di notte) e la difesa della regia (§9.50)
+muove solo i suoi soldati in attesa. Ora (enemies.js `defendBuildings`) ogni
+10 passi, per ogni edificio nemico che ha perso vita: l'unita' del giocatore
+piu' vicina a lui entro 800 px e' l'attaccante, e i soldati nemici fermi e
+liberi entro 900 px dall'edificio le vanno contro (non lavoratori, macchine
+d'assedio, chi si ritira, chi marcia sulla strada o in colonna, chi va al
+presidio). Prova: un guerriero nemico fermo a 550 px da una casa nemica
+attaccata da un arciere a 450 px dall'altra parte: prima fermo (0 px di
+strada), ora la raggiunge e lo attacca.

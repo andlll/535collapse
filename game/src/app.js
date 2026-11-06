@@ -17,7 +17,7 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
-import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies } from "./enemies.js";
+import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies, defendBuildings } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup, objectiveMarks } from "./levels.js";
@@ -527,6 +527,7 @@ async function main() {
     alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
     settleOverlaps(world, path); // §9.62
     settleEnemies(world, path); // §9.116
+    defendBuildings(world); // §9.116
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
     houseTorches(world); // §9.104: le fiaccole sulle case
