@@ -13,7 +13,7 @@
 
 import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
-import { fireStep, fireStop, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
+import { fireStep, fireStop, burnTick, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
 import { spawnSlices, destroySlices } from "./scenario.js";
@@ -442,7 +442,7 @@ export function built(fam, p) {
         i.alarm.set(b.smoke[0], b.smoke[1]);
         if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
       },
-      ["alarm" + b.burn[0]](i) { i.alarm.set(b.burn[0], b.burn[1]); if (i.onfire === 1) i.life -= 1; },
+      ["alarm" + b.burn[0]](i, w) { i.alarm.set(b.burn[0], b.burn[1]); burnTick(i, w); },
     } : {}),
     step(i, w) {
       const g = w.g;
@@ -533,7 +533,7 @@ export function monastery(p) {
       i.alarm.set(1, M.smoke);
       if (i.onfire === 1) { const f = w.create("nubeqq", i.x + irandomRange(-250, 250), i.y - 100); f.depth = i.depth - 2; }
     },
-    alarm2(i) { i.alarm.set(2, M.burn); if (i.onfire === 1) i.life -= 1; },
+    alarm2(i, w) { i.alarm.set(2, M.burn); burnTick(i, w); },
     step(i, w) {
       repairEnd(i, w);
       fireStep(i, w, "monastero");
@@ -706,7 +706,7 @@ export function campo(p) {
       i.alarm.set(2, 30);
       if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
     },
-    alarm3(i) { i.alarm.set(3, 5); if (i.onfire === 1) i.life -= 1; },
+    alarm3(i, w) { i.alarm.set(3, 5); burnTick(i, w); },
     destroy(i, w) { w.g.farmhover = 0; campoDestroy(i, w); },
     step(i, w) {
       if (i.life <= 0) { w.destroy(i); return; }
@@ -774,7 +774,7 @@ export function centro(p) {
       i.alarm.set(2, 30);
       if (i.onfire === 1) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
     },
-    alarm3(i) { i.alarm.set(3, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm3(i, w) { i.alarm.set(3, 70); burnTick(i, w); },
     step(i, w) {
       const g = w.g;
       // (le frecce sui nemici sono in ranged.js, centroArrows)

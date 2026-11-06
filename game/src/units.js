@@ -819,13 +819,15 @@ function meleeStep(w, p, i, sx, sy, over, t) {
 // c'e' un ostacolo (un nemico, un edificio), girando di 30 gradi alla volta
 // fino a 90, prima dalla parte scelta l'ultima volta (overSide): girando a
 // caso andava avanti e indietro. Fermo se non si puo'.
-function stepOver(w, i, tx, ty) {
+// [§9.116] anche per i nemici (fam "enemy_unit": sopra i compagni), e mai
+// dentro un fiume a linee (terrainBlocks)
+export function stepOver(w, i, tx, ty, fam = "ally_unit") {
   const dir = pointDirection(i.x, i.y, tx, ty), d = Math.min(i.autospeed, pointDistance(i.x, i.y, tx, ty));
   if (d < 0.5) return false;
   const side = i.overSide || 1;
   for (const a of [0, 30 * side, -30 * side, 60 * side, -60 * side, 90 * side, -90 * side]) {
     const nx = i.x + lengthdirX(d, dir + a), ny = i.y + lengthdirY(d, dir + a);
-    if (!w.placeFreeExcept(i, nx, ny, "ally_unit")) continue;
+    if (!w.placeFreeExcept(i, nx, ny, fam) || (w.terrainBlocks && w.terrainBlocks(i, nx, ny))) continue;
     if (a) i.overSide = Math.sign(a);
     i.direction = ((dir + a) % 360 + 360) % 360;
     w.setPos(i, nx, ny);

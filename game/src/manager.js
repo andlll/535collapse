@@ -7,7 +7,7 @@
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainStep, RAIN_PUT_OUT, rainExtinguish, rainRipples, waterLife } from "./effects.js";
+import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife } from "./effects.js";
 import { overcastStep } from "./ambience.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
@@ -17,6 +17,9 @@ import { fogActive } from "./fog.js";
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
+
+// [§9.116] durata di una pioggia, in passi (60 al secondo)
+export const RAIN_LEN = [3600, 9000];
 
 export class Manager {
   constructor(room, g) {
@@ -142,6 +145,9 @@ export class Manager {
   // selezione, pulsanti della minimappa.
   mouse(input, mx, my) {
     const g = this.g;
+    // [§9.116] nel menu niente rettangolo di selezione: unita' ed edifici
+    // sono decorativi (world.inputOnly)
+    if (this.room === "menu") { g.multi = 0; return; }
     if (input.mousePressed[0]) {
       // [§9.109] sulla minimappa niente rettangolo di selezione
       if (!this.overMinimap()) {
@@ -237,6 +243,9 @@ export class Manager {
     if (this.world) {
       overcastStep(this.world, this.rain);
       this.rain = rainStep(this.world, this.rain);
+      // [§9.116] piove abbastanza (gocce almeno a meta', come §9.92): gli
+      // incendi non fanno danno (effects.js burnTick)
+      this.world.rainDamp = !!this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT;
     }
     // [§8.13] anelli delle gocce sul fiume (§9.91: quante sono le gocce)
     if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);
@@ -294,13 +303,11 @@ export class Manager {
         else this.al.set(0, DAY_AFTER_DAWN);
         break;
       case 2: // [C] (il resto e' il ridimensionamento della finestra)
-        // la pioggia spegne gli edifici di legno alleati ogni 10 passi, con
-        // le loro fiamme (§3.17 n.56)
+        // la pioggia spegneva gli edifici di legno alleati ogni 10 passi
+        // (§3.17 n.56, §9.92). [§9.116, richiesta dell'autore] non piu': ora
+        // la pioggia toglie solo il danno dell'incendio (effects.js burnTick,
+        // w.rainDamp in step)
         this.al.set(2, 10);
-        // [§9.92, richiesta dell'autore] solo quando le gocce sono almeno a
-        // meta' (effects.js RAIN_PUT_OUT): non mentre il cielo si copre e le
-        // prime gocce cominciano a cadere, e ancora per un po' mentre calano
-        if (this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT && this.world) rainExtinguish(this.world);
         break;
       case 3: // aquila, ogni 3000 passi
         // [Correzione decisa dall'autore, §3.17 n.58] l'originale la crea a
@@ -310,7 +317,9 @@ export class Manager {
         if (this.world) this.world.create("aquila_01", irandomRange(-this.world.roomW, this.world.roomW), this.world.roomH + 10);
         break;
       case 4: // pioggia: gocce lungo il bordo alto della room
-        this.al.set(6, irandomRange(12000, 15000));
+        // [§9.116, richiesta dell'autore] piu' corta e piu' varia: da 1 a 2,5
+        // minuti (RAIN_LEN; l'originale da 12000 a 15000 passi, 3,3-4,2 min)
+        this.al.set(6, irandomRange(RAIN_LEN[0], RAIN_LEN[1]));
         if (g.raining === 0) {
           g.raining = 1;
           // [§9.91] se le gocce stanno ancora calando riprendono a salire

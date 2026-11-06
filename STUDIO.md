@@ -115,6 +115,9 @@ sezione citata.
   porting sempre chiazza2. Raccomandazione: rimettere il caso.
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
+- [ ] La miniera del livello 2 a (2166, 449) dentro la maschera a ellisse di
+  `montagna1` (2 posti di lavoro su 10): maschera precisa o miniera spostata
+  (§9.116).
 
 **Prossima sessione: livelli della campagna disegnati in Tiled**
 (deciso con l'autore l'8 ottobre 2026; salvo bug sparuti, le prossime
@@ -8895,3 +8898,118 @@ nebbia attiva:
 Senza nebbia (menu, trucco) tutto come prima. Foto all'autore: livello 6
 all'inizio (solo il fiume vicino alla base) e dopo aver scoperto una fascia
 verso ovest. Passano `minimap`, `alarms`, `soak` e le prove unitarie.
+
+### 9.116 Menu decorativo, pioggia, raccolta affollata, calca dei nemici, obiettivi facoltativi
+
+Richieste e segnalazioni dell'autore (6 novembre 2026, versione 0.2609).
+
+**1. La bandierina rossa che volava da sola nel menu.** La `flag_r` a
+(1308, 1035) della room menu e' quella del castello del tutorial (in match
+il castello e' a 1310, 1140, la bandiera 105 px sopra); nel menu il castello
+e' a 2700, 1255 e la bandiera restava sospesa nel prato. Tolta al caricamento
+(app.js `DROPPED_AT`, per room, oggetto e posizione: `data/rooms` non si
+tocca). Le altre due bandiere del menu sono sul castello.
+
+**2. Nel menu unita' ed edifici solo decorativi.** `world.inputOnly`
+(world.js): se impostato, mouse e tastiera arrivano solo alle istanze di
+quegli oggetti; nel menu solo `enemy_manager_menu` (app.js). Niente
+selezione, evidenziazione (prima il castello passava a hover=1 sotto il
+puntatore) ne' rettangolo di selezione (manager.js `mouse`). Provato col
+clic sul castello e su un'unita' e col trascinamento.
+
+**3. La pioggia non spegne piu' i fuochi.** Prima (§3.17 n.56, §9.92) ogni
+10 passi spegneva gli edifici di legno alleati. Ora toglie solo il danno
+dell'incendio prolungato (il punto di vita perso a ogni allarme del fuoco):
+`burnTick` (effects.js) al posto di `if (onfire) life -= 1` in tutti gli
+edifici, alleati e nemici; `w.rainDamp` lo calcola il manager a ogni passo
+(gocce almeno a meta', `RAIN_PUT_OUT`, come §9.92). Il colpo della torcia o
+della freccia incendiaria (siege.js) fa danno come sempre; spegne solo la
+riparazione col legno. Provato: casa in fiamme, 17 punti persi in 1200
+passi all'asciutto, 0 sotto la pioggia, fuoco ancora acceso.
+
+**4. Pioggia piu' corta e varia.** Durava da 12000 a 15000 passi (3,3-4,2
+minuti, l'originale); ora da 3600 a 9000 (1-2,5 minuti, manager.js
+`RAIN_LEN`). L'intervallo fra due piogge resta 20000-35000 passi.
+
+**5. "Tanti lavoratori su una miniera o una pietra piccola: lavorano in uno o
+due, gli altri fermi intorno".** Non e' la vicinanza fra loro: e' il numero
+di posti di lavoro (§9.21, 10 attorno a una miniera o a una pietra). Censiti
+in tutte le room i posti liberi da ostacoli: quasi ovunque 10 su 10, ma la
+miniera del livello 2 a (2166, 449) ne ha 2 (7 dentro `montagna_1`, 1 nel
+fiume), quella a (609, 2194) 3, la pietra piccola del livello 6 a (6048,
+2508) 5 (acqua). Li' chi non trovava posto restava in coda per sempre, e chi
+aveva prenotato un posto irraggiungibile ci girava attorno tenendolo
+occupato. Ora (civilians.js, `resSpot`, `toResSpot`, `overflowTo`):
+- un posto irraggiungibile (nessun campo e non in vista) si lascia e per
+  900 passi non lo prende nessuno (`badUntil`); uno a cui non ci si avvicina
+  per 180 passi (chiuso dai compagni) si lascia per 300;
+- senza un posto di lavoro libero, prima della coda si va alla risorsa dello
+  stesso tipo, conosciuta e raggiungibile, piu' vicina a questa entro 700 px
+  che ne ha uno libero; chi e' in coda ci riprova ogni 60 passi;
+- senza nessun posto (ne' di lavoro ne' d'attesa) si aspetta fermi, girati
+  verso la risorsa, invece di spingere verso il suo centro.
+`mining.mjs` (20 civili, magazzino a 150 px, 9000 passi): livello 2,
+miniera (130, 2277) con le vicine semichiuse, da 548 a 880 oro al minuto,
+fermi da 60 a 0, giri sul posto da 39772 a 212, lenti da 506 a 67 per mille;
+match oro invariato; match pietra stessa resa (504 contro 508), in coda da
+28720 passi a 0 (vanno all'altra pietra), inversioni da 2,7 a 4,2 per mille
+passi in cammino. **[Da decidere con l'autore]** la miniera a (2166, 449)
+resta a 2 posti: non ha altre miniere entro 700 px, e `montagna1` ha la
+maschera a ellisse dell'originale (kind 2, 1328 x 796 px), molto piu' larga
+del disegno: la miniera, in campo aperto a vederla, e' quasi tutta dentro
+l'ellisse. Raccomandazione: maschera precisa per `montagna1` (come
+`montagna4`, 5, 9, 10), o spostare la miniera.
+
+**6. I nemici si accavallano.** Nuova prova (18 nemici misti in ondata,
+ruolo 31, verso un punto a 1500 px): arrivati, 48-49 coppie sovrapposte, 9
+nemici ancora in cammino dopo 40 s, 13000-14000 inversioni di marcia. La
+meta e' la stessa per tutti: i primi si fermavano, gli altri sovrapposti
+andavano col campo (senza collisioni) fin sopra di loro, o col passo dritto
+spostando a caso la meta occupata. Ora (enemies.js):
+- **arrivo nella calca** (`arriveInCrowd`): chi marcia (non insegue, non va
+  a dare fuoco, non in ritirata, sulla strada, in colonna o verso un
+  presidio) a meno di 250 px dalla meta e tocca, dov'e' o un passo avanti,
+  un compagno fermo, e' arrivato li';
+- **separazione dei fermi** (`settleEnemies`, come `settleOverlaps` degli
+  alleati, §9.62): fra due nemici fermi e liberi che si toccano si sposta
+  quello con l'ordo piu' basso, a un posto libero vicino, dritto sopra i
+  compagni (`settleMove`);
+- **mischia** (`enemyUnstack`, come `unstack` degli alleati, §9.71): a
+  contatto con l'alleato ma sopra un compagno che sta gia' colpendo, non si
+  comincia a colpire: si va a un posto libero attorno all'alleato, dritti
+  sopra i compagni (`stepOver` di units.js, ora anche per i nemici e mai
+  dentro un fiume a linee); prima si andava col campo dell'ondata (verso la
+  sua meta, non il posto);
+- **precedenza** (pathing.js `mayYieldTo`): passa chi ha l'ordo piu' alto,
+  l'altro aspetta fermo come prima, ma a pari ordo (g.order x rango: possono
+  coincidere) i due si aspettavano a vicenda per sempre con l'animazione
+  bloccata: ora passa chi ha l'id piu' alto; non si aspetta chi aspetta noi;
+  in marcia, a oltre 400 px dalla meta, al piu' 180 passi di fila.
+Prova di marcia, semi 2, 3, 5: coppie sovrapposte alla fine 49/48/49 ->
+2/4/0, inversioni 13208/13700/14054 -> 5/9/3, in cammino alla fine 9 -> 0.
+Assalto (la stessa ondata contro 6 alleati invulnerabili alla meta): passi x
+coppie sovrapposte 69324/43065/53929 -> 21141/37392/30152, coppie alla fine
+31/11/13 -> 6/11/6 (restano arcieri che tirano dallo stesso punto e chi
+colpisce comunque dopo 30 passi senza posto), inversioni 5/25/3 -> 11/37/18.
+
+**7. Gli alleati.** Provate le stesse regole anche per loro (aspettare solo
+chi si muove davvero, al piu' 60 passi): in marcia l'attesa piu' lunga
+scendeva da 276 a 120 passi, ma in `crowd.mjs` "punto" le inversioni
+salivano (seme 2: da 91 a 305; seme 3: da 179 a 503, oltre la soglia).
+**[Indicazione dell'autore]** "meglio che restino fermi un istante piuttosto
+che fare cose folli": per gli alleati le regole restano quelle di prima;
+`crowd.mjs` da' gli stessi numeri di prima (semi 2, 3, 5). Restano le attese
+di qualche secondo degli arcieri in marcia sovrapposti a un compagno.
+
+**8. Obiettivi facoltativi.** [Domanda dell'autore: come indicarli; proposta
+fatta qui, da rivedere] Una riga facoltativa (4o campo `true` in
+endgame.js) comincia con "Optional:"/"Facoltativo:", sta dopo gli
+obiettivi obbligatori ed e' scritta piu' tenue (alfa 0,55 contro 0,75; i
+completati 0,4 con la spunta), come il suo rombo nella minimappa (§9.114).
+Livello 6: "Facoltativo: recupera le torri, riparale oltre il 60% (n/m)"
+(prima obbligatorio a vederlo; per vincere basta fermare la colonna), con la
+spunta quando sono tutte recuperate. Livello 4: il campo nord-est (gia'
+"Facoltativo:") ora dopo "Distruggi il municipio nemico".
+
+Prove: `npm test`, la batteria della CI nel browser e `idle`, `workers`,
+`deposit`; `mining.mjs` e le prove di marcia descritte sopra.

@@ -17,6 +17,7 @@ import { holdStill } from "./siege.js";
 import { lostBuilding } from "./economy.js";
 import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
+import { burnTick } from "./effects.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
@@ -645,7 +646,7 @@ export function enemyTower(p) {
       garrisonCreate(i); // §9.80
     },
     alarm0(i) { i.arm = 1; },
-    alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
     alarm2(i) { i.hit = 0; },
     destroy(i, w) {
       p.markInstance(i, 1);

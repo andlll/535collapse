@@ -355,13 +355,14 @@ export function fireStep(i, w, kind) {
 }
 
 // [Correzione decisa dall'autore, §3.17 n.56] la pioggia (manager Alarm_2)
-// spegneva gli edifici (onfire=0) ma lasciava le fiamme accese: qui le
-// spegne come la riparazione col legno.
-export function rainExtinguish(w) {
-  for (const b of w.all("ally_wooden")) {
-    b.onfire = 0;
-    if (b.firestarted === 1) { fireStop(b, w); b.firestarted = 0; }
-  }
+// spegneva gli edifici (onfire=0) ma lasciava le fiamme accese.
+// [§9.116, richiesta dell'autore] la pioggia non spegne piu' i fuochi: il
+// danno dell'incendio prolungato (1 punto a ogni allarme del fuoco) va a
+// zero finche' piove (w.rainDamp, manager.js: gocce almeno a RAIN_PUT_OUT),
+// per tutti gli edifici. Il colpo della torcia o della freccia incendiaria
+// (siege.js) fa danno come sempre; spento il fuoco (riparazione), finito.
+export function burnTick(i, w) {
+  if (i.onfire === 1 && !w.rainDamp) i.life -= 1;
 }
 
 // Fiamme spente: Destroy degli edifici e riparazione col legno

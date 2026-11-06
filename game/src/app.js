@@ -17,7 +17,7 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
-import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
+import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup, objectiveMarks } from "./levels.js";
@@ -156,6 +156,9 @@ async function main() {
 
   const world = new World({ objects, masks: masks.sprites, assets, g, roomW: room.width, roomH: room.height });
   world.room = roomName;
+  // [§9.116, richiesta dell'autore] nel menu unita' ed edifici sono solo
+  // decorativi: mouse e tastiera arrivano solo al gestore del menu
+  if (roomName === "menu") world.inputOnly = new Set(["enemy_manager_menu"]);
   world.cam = cam;
   world.particles = new Particles();
   world.gfx = draw; // per string_height_ext nei Create (hints.js)
@@ -333,7 +336,12 @@ async function main() {
   // [§9.36] l'animazione del fiume dell'originale: al suo posto i riflessi,
   // le increspature e la schiuma su tutta l'acqua (effects.js, waterLife)
   const DROPPED_ALL = ["fiume_animazione"];
-  const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj) && !DROPPED_ALL.includes(obj));
+  // [§9.116, richiesta dell'autore] nel menu la bandierina rossa a sinistra
+  // (1308, 1035) sventolava da sola: e' quella del castello del tutorial
+  // (match, castello a 1310, 1140), che nel menu e' altrove
+  const DROPPED_AT = { menu: [["flag_r", 1308, 1035]] };
+  const droppedAt = ([obj, x, y]) => (DROPPED_AT[roomName] || []).some(([o, dx, dy]) => o === obj && dx === x && dy === y);
+  const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
@@ -518,6 +526,7 @@ async function main() {
     recountIdle(world); // §6.1 n.80
     alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
     settleOverlaps(world, path); // §9.62
+    settleEnemies(world, path); // §9.116
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
     houseTorches(world); // §9.104: le fiaccole sulle case

@@ -32,7 +32,7 @@
 import { omino, orderWork } from "./civilians.js";
 import { campo, FAM } from "./buildings.js";
 import { fireOrder } from "./siege.js";
-import { fireStep, fireStop } from "./effects.js";
+import { fireStep, fireStop, burnTick } from "./effects.js";
 import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
@@ -443,7 +443,7 @@ export function enemyCantiere(p) {
       i.visible = false;
       i.alarm.set(1, 70);
     },
-    alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
     alarm2(i) { i.hit = 0; },
     destroy(i, w) { if (i.solid) p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {

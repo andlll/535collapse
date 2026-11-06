@@ -621,17 +621,70 @@ function resSpots(w, i, res) {
   return res.spots;
 }
 
+// [§9.116, segnalazione dell'autore] Molti civili mandati su una miniera o
+// una pietra: "lavorano in uno o due, gli altri fermi intorno". Attorno ad
+// alcune risorse quasi tutti i posti di lavoro sono chiusi (livello 2: la
+// miniera a 2166, 449 fra le montagne ne ha 2 su 10; altre 3 o 5 su 10 per
+// montagne e acqua), e chi non ne trovava uno restava in coda per sempre;
+// e un posto che da dove si e' non si raggiunge (dietro la montagna) restava
+// prenotato da chi ci girava attorno. Ora:
+// - un posto irraggiungibile (spotFieldTo nullo e non in vista) si lascia,
+//   e per SPOT_BAD passi nessuno lo prende (badUntil); uno verso cui non ci
+//   si avvicina per SPOT_GIVEUP passi (chiuso dai compagni) per SPOT_STUCK;
+// - senza un posto di lavoro libero, prima di mettersi in coda si va alla
+//   risorsa dello stesso tipo, conosciuta, piu' vicina a questa (entro
+//   OVERFLOW_R px) che ne ha uno libero e si raggiunge; chi e' in coda ci
+//   riprova ogni OVERFLOW_EVERY passi;
+// - senza nessun posto (ne' di lavoro ne' d'attesa) si aspetta fermo dove si
+//   e', girati verso la risorsa (prima: verso il suo centro, a spingere
+//   contro chi lavorava).
+const SPOT_GIVEUP = 180, SPOT_BAD = 900, SPOT_STUCK = 300, OVERFLOW_R = 700, OVERFLOW_EVERY = 60;
+const spotTaken = (i, res, s) => s.owner && s.owner !== i && s.owner.alive && wantsRes(s.owner, res);
+const spotBad = (w, s) => (s.badUntil || 0) > w._stepNo;
+function spotOpen(w, i, res, s) {
+  return !spotTaken(i, res, s) && !spotBad(w, s) && w.placeFreeExcept(i, s.x, s.y, sideOf(i).unit);
+}
+function dropSpot(w, i, bad = 0) {
+  const s = i.spotRef;
+  if (s && s.owner === i) { s.owner = null; if (bad) s.badUntil = w._stepNo + bad; }
+  i.spotRef = null; i.spotQ = false; i.spotFail = 0; i.spotFieldFor = null;
+}
+
+// Un'altra risorsa come `res` (miniera o pietra) con un posto di lavoro
+// libero, la piu' vicina a `res` entro OVERFLOW_R px; ci si dirige il civile
+// (meta, campo). false se non ce n'e'.
+function overflowTo(w, i, res) {
+  const gold = i.goldwork === 1;
+  if (!gold && i.stonework !== 1) return false;
+  const cands = [];
+  for (const r of w.all(gold ? "miniera_oro" : "stone_parent")) {
+    if (r === res || !known(i, r)) continue;
+    const d = Math.hypot(r.x - res.x, r.y - res.y);
+    if (d > OVERFLOW_R) continue;
+    const S = resSpots(w, i, r);
+    if (S && S.work.some((s) => spotOpen(w, i, r, s))) cands.push([d, r]);
+  }
+  cands.sort((a, b) => a[0] - b[0]);
+  for (const [, r] of cands) {
+    if (!fieldTo(w, w.path, i, r.x, r.y, false)) continue; // da qui non ci si arriva
+    if (gold) { i.goldx = r.x; i.goldy = r.y; } else { i.stonex = r.x; i.stoney = r.y; }
+    i.dirox = r.x; i.diroy = r.y;
+    dropSpot(w, i);
+    return true;
+  }
+  return false;
+}
+
 // Il posto di `i` attorno a `res` (prenotandolo), o null
 function resSpot(w, i, res) {
   const S = resSpots(w, i, res);
   if (!S) return null;
-  const taken = (s) => s.owner && s.owner !== i && s.owner.alive && wantsRes(s.owner, res);
   const mine = i.spotRes === res ? i.spotRef : null;
   if (mine && mine.owner === i && !i.spotQ) return mine;
   const nearest = (list) => {
     let best = null, bd = Infinity;
     for (const s of list) {
-      if (taken(s) || !w.placeFreeExcept(i, s.x, s.y, sideOf(i).unit)) continue;
+      if (!spotOpen(w, i, res, s)) continue;
       const d = pointDistance(i.x, i.y, s.x, s.y);
       if (d < bd) { bd = d; best = s; }
     }
@@ -639,11 +692,16 @@ function resSpot(w, i, res) {
   };
   const own = (s, q) => {
     if (mine && mine !== s && mine.owner === i) mine.owner = null;
-    s.owner = i; i.spotRes = res; i.spotRef = s; i.spotQ = q;
+    s.owner = i; i.spotRes = res; i.spotRef = s; i.spotQ = q; i.spotFail = 0;
     return s;
   };
   const free = nearest(S.work);
   if (free) return own(free, false);
+  // [§9.116] nessun posto di lavoro: un'altra risorsa vicina che ne ha
+  if (w._stepNo >= (i.overflowAt || 0)) {
+    i.overflowAt = w._stepNo + OVERFLOW_EVERY;
+    if (overflowTo(w, i, res)) return "moved";
+  }
   if (mine && mine.owner === i) return mine; // gia' in attesa
   const q = nearest(S.queue);
   return q ? own(q, true) : null;
@@ -651,7 +709,20 @@ function resSpot(w, i, res) {
 
 function toResSpot(w, i, res) {
   const s = resSpot(w, i, res);
-  if (!s) { toWorkSpot(w, i, res); return; } // nessun posto: come prima
+  if (s === "moved") { moveFlowField(w, w.path, i); return; } // §9.116: verso l'altra risorsa
+  if (!s) {
+    // [§9.116] nessun posto: fermo dov'e', girato verso la risorsa (gli
+    // altri gli passano sopra); prima toWorkSpot, contro chi lavorava. Se e'
+    // dentro un ostacolo o lontano, come prima
+    if (w.distanceToInstance(i, res) < 100 && w.placeFreeExcept(i, i.x, i.y, sideOf(i).unit)) {
+      i.queueWait = true;
+      i.direction = pointDirection(i.x, i.y, res.x, res.y);
+      i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1);
+      return;
+    }
+    toWorkSpot(w, i, res);
+    return;
+  }
   if (i.spotQ && pointDistance(i.x, i.y, s.x, s.y) < 3) {
     i.queueWait = true;
     i.direction = pointDirection(i.x, i.y, res.x, res.y);
@@ -674,15 +745,22 @@ function toResSpot(w, i, res) {
   if (i.spotFieldFor !== s || (!i.spotField && w._stepNo >= (i.spotFieldAt || 0))) {
     i.spotFieldFor = s; i.spotFieldAt = w._stepNo + 20;
     i.spotField = spotFieldTo(w.path, i, s);
+    // [§9.116] da qui il posto non si raggiunge (dietro una montagna, oltre
+    // l'acqua): lo si lascia, e per un po' non lo prende nessuno
+    if (!i.spotField && !seesSpot(w.path, i, s)) { dropSpot(w, i, SPOT_BAD); return; }
   }
   // dritti, ma se in 30 passi non ci si avvicina (lo spigolo di una pietra
   // irregolare contro la maschera) col campo per 60 passi
   // A meno di 48 px sempre dritti: li' il campo (calcolato con le celle dei
   // civili fermi in quel momento) faceva andare avanti e indietro di 3 px
   // accanto al posto, per sempre (idle.mjs, scenario 7)
+  // [§9.116] e se per SPOT_GIVEUP passi non ci si avvicina, il posto si lascia
   const d = pointDistance(i.x, i.y, s.x, s.y);
-  if (i.spotBestFor !== s || d < i.spotBest - 2) { i.spotBestFor = s; i.spotBest = d; i.spotN = 0; }
-  else if (++i.spotN >= 30) { i.spotN = 0; i.spotBest = d; i.spotFlowUntil = d >= 48 ? w._stepNo + 60 : 0; }
+  if (i.spotBestFor !== s || d < i.spotBest - 2) { i.spotBestFor = s; i.spotBest = d; i.spotN = 0; i.spotFail = 0; }
+  else if (++i.spotN >= 30) {
+    i.spotN = 0; i.spotBest = d; i.spotFlowUntil = d >= 48 ? w._stepNo + 60 : 0;
+    if (++i.spotFail * 30 >= SPOT_GIVEUP && !i.spotQ) { dropSpot(w, i, SPOT_STUCK); return; }
+  }
   if (i.spotField && d >= 48 && (!seesSpot(w.path, i, s) || w._stepNo < (i.spotFlowUntil || 0))) {
     // il campo del posto (tenuto a parte: tornando dal deposito il civile
     // riceve il campo verso la risorsa, e col posto gia' suo non si rifaceva)

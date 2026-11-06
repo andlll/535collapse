@@ -189,6 +189,12 @@ const LV5_GOALS = ["Drive back the enemy attack", "Chase the enemy back to their
 // [§9.102] la spunta verde degli obiettivi completati: due tratti, larga
 // CHECK_W px col margine, centrata in altezza su (x, cy)
 const CHECK_W = 32, DONE_ALPHA = 0.4, CHECK_GREEN = 0x3caa32; // BGR di (50, 170, 60)
+// [§9.116, domanda dell'autore: "gli obiettivi secondari come li
+// indichiamo?"] Un obiettivo facoltativo (4o campo della riga: true) comincia
+// con "Facoltativo:", sta dopo quelli obbligatori ed e' scritto piu' tenue
+// (OPT_ALPHA, fra il testo normale, 0.75, e quello completato), come il suo
+// rombo nella minimappa (minimap.js, piu' tenue se facoltativo)
+const OPT_ALPHA = 0.55;
 function checkMark(d, x, cy) {
   d.setAlpha(0.9);
   d.lineWidthColour(x, cy, x + 7, cy + 7, 4, CHECK_GREEN, CHECK_GREEN);
@@ -205,7 +211,7 @@ export function objectiveButton() {
       if (w.number("victory_manager") || w.number("gameover_manager")) return;
       const nobs = w.room === "match" ? 4 : 3;
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
-      // [y, testo, completato (prima: la y della barra)]
+      // [y, testo, completato (prima: la y della barra), facoltativo (§9.116)]
       const lines = [];
       // [§9.22] testi che contano solo per la larghezza del riquadro (non si
       // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
@@ -255,8 +261,9 @@ export function objectiveButton() {
         const L = g.l4 || { phase: 0, bridge: 0, north: 0 };
         lines.push([58, tr("Repair the bridge ({p}%)", { p: L.bridge }), L.phase === 1 ? 43 : 0]);
         sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
-        lines.push([88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0]);
-        if (L.phase === 1) lines.push([118, tr("Destroy the enemy town hall across the river")]);
+        // [§9.116] il facoltativo dopo gli obbligatori
+        if (L.phase === 1) lines.push([88, tr("Destroy the enemy town hall across the river")]);
+        lines.push([L.phase === 1 ? 118 : 88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0, true]);
       }
       // [§9.76] livello 5: l'obiettivo di prima (barrato) e quello di ora
       if (w.room === "lvl05") {
@@ -270,7 +277,10 @@ export function objectiveButton() {
       // torri recuperate; poi la colonna e quanti hanno passato il ponte
       if (w.room === "lvl06") {
         const L = g.l6 || { phase: 0, patrols: 3, patrolsLeft: 3, towers: 0, towersOk: 0 };
-        const towers = (y) => lines.push([y, tr("Recover the towers: repair them above 60% ({n}/{m})", { n: L.towersOk, m: L.towers })]);
+        // [§9.116, segnalazione dell'autore] le torri non servono per vincere:
+        // obiettivo facoltativo (spuntato se le si recuperano tutte)
+        const towers = (y) => lines.push([y, tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: L.towersOk, m: L.towers }),
+                                          L.towers > 0 && L.towersOk >= L.towers ? 1 : 0, true]);
         d.setFont("overdue");
         const wide = widestDigit(d), digits = (v) => wide.repeat(String(v).length);
         if (L.phase === 0) {
@@ -286,7 +296,7 @@ export function objectiveButton() {
           lines.push([88, tr("Soldiers across the bridge: {n} (defeat above {m})", { n: L.passed, m: L.max })]);
           towers(118);
         }
-        sizing.push(tr("Recover the towers: repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
+        sizing.push(tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.
@@ -316,10 +326,10 @@ export function objectiveButton() {
       // barrato (la barra nera non gli piaceva): il testo in trasparenza e una
       // spunta verde accanto, dopo l'ultima riga
       let down = 0;
-      for (const [y, str, done] of lines) {
+      for (const [y, str, done, opt] of lines) {
         const pieces = wrap(str, done);
         pieces.forEach((piece, k) => {
-          d.setAlpha(done ? DONE_ALPHA : 0.75);
+          d.setAlpha(done ? DONE_ALPHA : opt ? OPT_ALPHA : 0.75);
           d.text(x, y + down, piece);
           if (done && k === pieces.length - 1) checkMark(d, x + d.stringWidth(piece) + 10, y + down - 13);
           down += 30;

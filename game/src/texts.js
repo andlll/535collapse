@@ -808,10 +808,11 @@ export const TEXTS = {
   "The enemy column arrives in {t}": {
     it: "La colonna nemica arriva fra {t}", es: "La columna enemiga llega en {t}", pt: "A coluna inimiga chega em {t}",
     de: "Die feindliche Kolonne kommt in {t}", fr: "La colonne ennemie arrive dans {t}" },
-  "Recover the towers: repair them above 60% ({n}/{m})": {
-    it: "Recupera le torri: riparale oltre il 60% ({n}/{m})", es: "Recupera las torres: repáralas por encima del 60% ({n}/{m})",
-    pt: "Recupere as torres: repare-as acima de 60% ({n}/{m})", de: "Erobere die Türme zurück: Repariere sie über 60% ({n}/{m})",
-    fr: "Reprends les tours : répare-les au-delà de 60 % ({n}/{m})" },
+  // [§9.116] facoltativo (prima "Recover the towers: repair them above 60% ({n}/{m})")
+  "Optional: recover the towers, repair them above 60% ({n}/{m})": {
+    it: "Facoltativo: recupera le torri, riparale oltre il 60% ({n}/{m})", es: "Opcional: recupera las torres, repáralas por encima del 60% ({n}/{m})",
+    pt: "Opcional: recupere as torres, repare-as acima de 60% ({n}/{m})", de: "Optional: Erobere die Türme zurück, repariere sie über 60% ({n}/{m})",
+    fr: "Facultatif : reprends les tours, répare-les au-delà de 60 % ({n}/{m})" },
   "Stop the enemy column ({n} soldiers left)": {
     it: "Ferma la colonna nemica (soldati rimasti: {n})", es: "Detén la columna enemiga (soldados restantes: {n})",
     pt: "Detenha a coluna inimiga (soldados restantes: {n})", de: "Halte die feindliche Kolonne auf (verbleibende Soldaten: {n})",
