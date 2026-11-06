@@ -9067,3 +9067,10 @@ d'assedio, chi si ritira, chi marcia sulla strada o in colonna, chi va al
 presidio). Prova: un guerriero nemico fermo a 550 px da una casa nemica
 attaccata da un arciere a 450 px dall'altra parte: prima fermo (0 px di
 strada), ora la raggiunge e lo attacca.
+
+*Prove del seguito.* `npm test` e la batteria della CI nel browser passano
+tranne `buildstuck.mjs` "incrocio", che a volte ha 1-3 civili in ritardo su
+72 ordini anche con lo stesso seme (non deterministico da un'esecuzione
+all'altra). Non e' di questa sezione: sui semi 1-10 `main` ha 16 ordini in
+ritardo (6 semi oltre la soglia), questa versione 13 (4 semi). **Da
+sistemare a parte** (la CI puo' cadere a caso su questa prova).
