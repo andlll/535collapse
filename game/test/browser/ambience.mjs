@@ -13,8 +13,9 @@
 //   graduale    (§9.91) le gocce nascono solo a cielo del tutto coperto e
 //               arrivano al pieno in 300 passi; smesso, calano in 300 col
 //               cielo ancora coperto, poi si rasserena e il sistema si toglie;
-//               (§9.92) un edificio in fiamme si spegne solo con le gocce
-//               ad almeno meta', salendo e calando
+//               (§9.92, §9.116) la pioggia toglie il danno dell'incendio
+//               (w.rainDamp) solo con le gocce ad almeno meta', salendo e
+//               calando, e non spegne l'edificio in fiamme
 //   vento       (§9.90) nuvole a 0,8 px a passo col vento minimo e 1,5 col
 //               massimo; pioggia a 250-260 (come prima) e 235-245 gradi; l'erba ondeggia
 //               di 4 e 5,2 gradi, piegata di 0 e 1,8 gradi (§9.94: erano 6,4 e 3);
@@ -105,12 +106,13 @@ const res = await page.evaluate(() => {
   const born = () => (M.rain ? M.rain.parts.filter((q) => q.age === 1).length : 0);
   const gr = { coperto: -1, primaGoccia: -1, piena: -1 };
   let first60 = 0, full60 = 0;
-  // §9.92: un edificio di legno che brucia (onfire rimesso a 1 a ogni passo):
-  // la pioggia lo spegne solo con le gocce ad almeno meta'
+  // §9.92, §9.116: un edificio di legno che brucia: la pioggia non lo spegne,
+  // ne toglie il danno (w.rainDamp) solo con le gocce ad almeno meta'
   const wood = [...w.all("ally_wooden")].find((q) => q.alive);
   const out_ = [];
-  const fire = (s) => { if (wood.onfire === 0) out_.push([s, M.rain ? +M.rain.level.toFixed(3) : 0, G.g.raining]); wood.onfire = 1; };
-  wood.onfire = 1;
+  let spentoDallaPioggia = false;
+  const fire = (s) => { if (w.rainDamp) out_.push([s, M.rain ? +M.rain.level.toFixed(3) : 0, G.g.raining]); if (wood.onfire !== 1) spentoDallaPioggia = true; };
+  wood.onfire = 1; wood.life = Math.max(wood.life, 1e6);
   M.alarm(4);
   for (let s = 1; s <= 1000; s++) {
     run(1); fire(s);
@@ -138,12 +140,14 @@ const res = await page.evaluate(() => {
   gr.spegneDopoSereno = dopo.filter((e) => e[0] > 1000 + finite).length;
   gr.calo = finite; gr.copertoMentreCala = copertoAlloStop; gr.sereno = w.overcast;
   gr.sistemaTolto = !P.systems.some((q) => q.depth === -9000 && q.alive);
+  gr.spentoDallaPioggia = spentoDallaPioggia;
   out.graduale = gr;
   gr.ok = gr.coperto > 300 && gr.primaGoccia >= gr.coperto && gr.primaGoccia <= gr.coperto + 60 // all'inizio ~0,03 gocce a passo
     && Math.abs(gr.piena - gr.coperto - 300) <= 2 && gr.inizioSuPieno < 0.15
     && Math.abs(gr.calo - 300) <= 2 && gr.copertoMentreCala === 1 && gr.sereno === 0 && gr.sistemaTolto
     && gr.spegneDa && gr.spegneDa[0] > gr.primaGoccia && gr.spegneDa[1] >= 0.5 && gr.spegneDa[1] < 0.54
-    && gr.spegneFinoA && gr.spegneFinoA[2] === 0 && gr.spegneFinoA[1] >= 0.5 && gr.spegneFinoA[1] < 0.54 && gr.spegneDopoSereno === 0;
+    && gr.spegneFinoA && gr.spegneFinoA[2] === 0 && gr.spegneFinoA[1] >= 0.5 && gr.spegneFinoA[1] < 0.54 && gr.spegneDopoSereno === 0
+    && !gr.spentoDallaPioggia;
   // vento (§9.90): nuvole a 0,8-1,5 px a passo, pioggia piu' inclinata, erba
   // che ondeggia di piu' e si piega a ovest
   const wide = { x: -3000, y: -3000, w: w.roomW + 6000, h: w.roomH + 6000 };
