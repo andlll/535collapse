@@ -418,7 +418,7 @@ function drawSkirmish(i, d, W, H) {
   d.setFont("GUI_1");
   d.setColour(c.black);
   d.setAlpha(m.room ? 0.85 : 0.45);
-  d.text((card.x1 + card.x2) / 2, L.nameY, m.name);
+  d.text((card.x1 + card.x2) / 2, L.nameY, tr(m.name)); // §9.129: tradotto
   d.setFont("overdue");
   d.setHalign("left");
   d.setValign("top");

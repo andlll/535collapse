@@ -9523,3 +9523,24 @@ chiusi; tutte le risorse raggiungibili dalle due basi; un cavaliere per
 valico in ciascun verso; la CPU (Normale, Equilibrato) attacca al nono
 minuto; `soak` e `saves` su sk_bardonis; prove unitarie. Foto del menu
 rifatta (il valico centrale con la via Francigena).
+
+### 9.129 I nomi delle mappe in italiano
+
+Decisione dell'autore (8 novembre 2026, stessa PR, versione 0.2609): i nomi
+delle mappe della schermaglia tornano all'italiano, piu' intuitivo dei nomi
+storici in latino, tradotti nelle altre lingue dove il nome esiste.
+| room | prima | it | en | es | pt | de | fr |
+|---|---|---|---|---|---|---|---|
+| sk_padus | Padus | Padania | Padania | Padania | Padânia | Padanien | Padanie |
+| sk_urbs | Urbs | Urbe | Urbe | Urbe | Urbe | Urbe | Urbe |
+| sk_rivo | Rivoaltus | Laguna | Lagoon | Laguna | Laguna | Lagune | Lagune |
+| sk_silva | Silva Umbra | Foresta Umbra | Umbra Forest | Bosque Umbra | Floresta Umbra | Umbra-Wald | Forêt Umbra |
+| sk_bardonis | Mons Bardonis | Appennini | Apennines | Apeninos | Apeninos | Apennin | Apennins |
+Urbe (Roma, "la citta'") non ha un corrispondente nelle altre lingue:
+resta Urbe. Il nome in SK_MAPS (game/src/skirmish.js) e' la chiave inglese
+come per gli altri testi, tradotto in texts.js; la scheda della mappa ora
+lo passa per `tr` (prima il nome era lo stesso in tutte le lingue). Le
+room, i file e le funzioni di tools/16 restano coi nomi di prima (sk_padus,
+`padus()`...: nomi interni, cambiarli toccherebbe i salvataggi).
+Controllato nella schermata della schermaglia in italiano, tedesco e
+francese; prove unitarie.

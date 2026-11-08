@@ -593,6 +593,11 @@ export const TEXTS = {
   "Campaign - Collapse": { it: "Campagna - Collapse", es: "Campaña - Collapse", pt: "Campanha - Collapse", de: "Kampagne - Collapse", fr: "Campagne - Collapse" },
   "Play the tutorial": { it: "Gioca il tutorial", es: "Jugar el tutorial", pt: "Jogar o tutorial", de: "Tutorial spielen", fr: "Jouer le tutoriel" },
   "Monte Bardone, the pass of the Via Francigena. A mountain ridge splits the two valleys: only three passes cross it.": { it: "Il Monte Bardone, il valico della via Francigena. Una cresta di montagne divide le due valli: la attraversano solo tre passi.", es: "El Monte Bardone, el paso de la Vía Francígena. Una cresta de montañas separa los dos valles: solo tres pasos la cruzan.", pt: "O Monte Bardone, a passagem da Via Francígena. Uma cordilheira separa os dois vales: só três passos a atravessam.", de: "Der Monte Bardone, der Pass der Via Francigena. Ein Gebirgskamm trennt die beiden Täler: Nur drei Pässe führen hinüber.", fr: "Le Monte Bardone, le col de la Via Francigena. Une crête de montagnes sépare les deux vallées : seuls trois cols la franchissent." },
+  // [§9.129] i nomi delle mappe della schermaglia (Urbe resta Urbe in tutte le lingue)
+  "Padania": { it: "Padania", es: "Padania", pt: "Padânia", de: "Padanien", fr: "Padanie" },
+  "Umbra Forest": { it: "Foresta Umbra", es: "Bosque Umbra", pt: "Floresta Umbra", de: "Umbra-Wald", fr: "Forêt Umbra" },
+  "Lagoon": { it: "Laguna", es: "Laguna", pt: "Laguna", de: "Lagune", fr: "Lagune" },
+  "Apennines": { it: "Appennini", es: "Apeninos", pt: "Apeninos", de: "Apennin", fr: "Apennins" },
   "Coming soon": { it: "Prossimamente", es: "Próximamente", pt: "Em breve", de: "Demnächst", fr: "Bientôt disponible" },
   "Unlock level": { it: "Sblocca livello", es: "Desbloquear nivel", pt: "Desbloquear nível", de: "Level freischalten", fr: "Débloquer le niveau" },
   "Shove the sun aside": { it: "Spingi via il sole", es: "Aparta el sol", pt: "Afaste o sol", de: "Schieb die Sonne beiseite", fr: "Écarte le soleil" },

@@ -17,25 +17,29 @@
 
 import { tr } from "./i18n.js";
 
-// Le mappe: room -> nome (storico, decisione dell'autore) e descrizione.
+// Le mappe: room -> nome e descrizione. [§9.129, decisione dell'autore] I
+// nomi in italiano (prima erano quelli storici in latino: Padus, Silva
+// Umbra, Rivoaltus, Urbs, Mons Bardonis), tradotti dove esiste il nome
+// nelle altre lingue (texts.js; Urbe resta Urbe). Il nome qui e' la
+// chiave inglese, come per gli altri testi.
 // Quelle senza room arrivano piu' avanti.
 export const SK_MAPS = [
-  { room: "sk_padus", name: "Padus", shot: [3500, 3470], // shot: la foto della mappa (tools/17_cartoline.mjs)
+  { room: "sk_padus", name: "Padania", shot: [3500, 3470], // shot: la foto della mappa (tools/17_cartoline.mjs)
     // mist: dove nasce la nebbia (sk_nebbia; il gemello ruotato si aggiunge da se')
     mist: [[700, 4850], [2350, 3950]],
     desc: "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country." },
   // [§9.124] la Foresta Umbra: il bosco dappertutto, radure e strade
-  { room: "sk_silva", name: "Silva Umbra", shot: [2350, 2620], mist: [[3300, 3600], [2350, 2600], [1300, 4400]],
+  { room: "sk_silva", name: "Umbra Forest", shot: [2350, 2620], mist: [[3300, 3600], [2350, 2600], [1300, 4400]],
     desc: "The ancient forest of the Gargano. Only narrow roads cross it, from glade to glade: gold and stone lie hidden among the trees." },
   // [§9.125] Rialto, la laguna: canali, isole e i ponti dell'autore
-  { room: "sk_rivo", name: "Rivoaltus", shot: [2250, 2950], tiers: ["citta"],
+  { room: "sk_rivo", name: "Lagoon", shot: [2250, 2950], tiers: ["citta"],
     mist: [[1200, 4300], [3000, 1300], [2250, 2000], [5600, 600]],
     desc: "The islands of the lagoon. Canals everywhere and few bridges: whoever holds the crossings holds the lagoon." },
   // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
-  { room: "sk_urbs", name: "Urbs", shot: [3500, 3420], tiers: ["citta"],
+  { room: "sk_urbs", name: "Urbe", shot: [3500, 3420], tiers: ["citta"],
     desc: "Rome in ruins. The old city is the only quarry left: all the stone lies among its temples and towers. Whoever holds the centre can build." },
   // [§9.127] il Monte Bardone (la Cisa) sulla via Francigena: la cresta e i tre valichi
-  { room: "sk_bardonis", name: "Mons Bardonis", shot: [3500, 3450],
+  { room: "sk_bardonis", name: "Apennines", shot: [3500, 3450],
     mist: [[3500, 3500], [1450, 3450], [2550, 3000]],
     desc: "Monte Bardone, the pass of the Via Francigena. A mountain ridge splits the two valleys: only three passes cross it." },
 ];
