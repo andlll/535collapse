@@ -9326,3 +9326,36 @@ La foto del menu: il Colosseo. Prove: la CPU da sola (Normale,
 Equilibrato) costruisce la base, porta in casa la pietra della citta' (fino
 a 330), attacca al nono minuto; `soak` e `saves` su sk_urbs (aggiunta alla
 CI), `--check`, prove unitarie.
+
+### 9.124 Silva Umbra: il bosco dappertutto, radure e strade
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): il
+bosco quasi ovunque, solo strade senza alberi a collegare; le risorse sparse
+fra i boschi; niente montagne; fiumi al massimo sul bordo, stretti, senza
+ponti, per decorazione.
+**La mappa** (sk_silva, 7000 x 7000; tools/16 `silva`):
+- il bosco: alberi su una griglia sfalsata (passo 130 x 78, un po' a caso;
+  tools/16 `forest_fill`) dappertutto tranne radure, strade, ruscelli e
+  attorno alle risorse: 2836 alberi (Padus ne ha 590);
+- le radure, per parte: la base (1000 x 800 px, lo spazio per costruire,
+  anche per la CPU), cinque radure di risorse (tre d'oro, una di pietra
+  piccola, una di pietra grande), e al centro, contesa, una miniera e una
+  pietra grande per parte; oro e pietra piccola anche nella base;
+- le strade (strada2, larghe 90, con ~110 px di bosco tolto per lato: un
+  corridoio di ~300 px): base-centro, base-radure, radure fra loro, e una
+  strada di fianco che lega le radure di un lato a quelle dell'altro;
+- due ruscelli larghi 70 lungo il bordo sinistro e destro (tools/16
+  `edge_river`: fiumi interi col gemello, che non passano dal centro),
+  lontani dalle strade, senza ponti;
+- fiori ed erba solo nelle radure; la nebbia (§9.122) al centro e in due
+  radure.
+La foto del menu: una radura con la miniera, i fiori e la nebbia.
+**Costo**: soak 4000 passi in 14,1 s (Urbs 9,3, Padus 10,8; rendering
+software), salvataggio 6,1 MB. Prove: la CPU da sola (Normale, Equilibrato)
+costruisce nella radura (3 campi, 4 case, 2 caserme, 2 stalle, una torre,
+una chiesa), attacca lungo le strade e al decimo minuto distrugge il centro
+di un giocatore fermo; `soak` e `saves` su sk_silva (aggiunta alla CI),
+`--check`, prove unitarie.
+Nota per le mappe nuove: tools/07_scene.py vuole gia' la foto della mappa
+(nuovi.json la elenca): se ne mette una provvisoria, si genera la scena,
+poi si fa quella vera con tools/17 e si rifa' l'atlas.

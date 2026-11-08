@@ -24,7 +24,9 @@ export const SK_MAPS = [
     // mist: dove nasce la nebbia (sk_nebbia; il gemello ruotato si aggiunge da se')
     mist: [[700, 4850], [2350, 3950]],
     desc: "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country." },
-  { room: null, name: "Silva Umbra", desc: "Coming soon" },
+  // [§9.124] la Foresta Umbra: il bosco dappertutto, radure e strade
+  { room: "sk_silva", name: "Silva Umbra", shot: [2350, 2620], mist: [[3300, 3600], [2350, 2600], [1300, 4400]],
+    desc: "The ancient forest of the Gargano. Only narrow roads cross it, from glade to glade: gold and stone lie hidden among the trees." },
   { room: null, name: "Rivoaltus", desc: "Coming soon" },
   // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
   { room: "sk_urbs", name: "Urbs", shot: [3500, 3420], tiers: ["citta"],

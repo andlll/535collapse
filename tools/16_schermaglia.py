@@ -86,6 +86,7 @@ class HalfMap:
         self.rng = random.Random(seed)
         self.objs, self.rivers, self.bridges, self.roads = [], [], [], []
         self.painted = []  # [§9.122] ponti dipinti dall'autore: (nome, x, y)
+        self.edge_rivers = []  # [§9.124] fiumi sul bordo (interi, col gemello)
         self.center = []   # [§9.123] oggetti col centro della maschera al centro della mappa (gemelli di se stessi)
         self.patches = []  # [§9.123] macchie d'altro sfondo (lastricato): (punti, sfondo, sfumatura), gia' intere
         self.off = mask_offsets()
@@ -119,6 +120,31 @@ class HalfMap:
         """half: dal bordo della mappa fino al centro (l'ultimo punto)."""
         assert tuple(half[-1]) == (self.cx, self.cy), "la meta' del fiume finisce al centro"
         self.rivers.append((half, width))
+
+    def edge_river(self, pts, width=70):
+        """[§9.124] Un fiume che non passa dal centro (sul bordo, decorativo):
+        la polilinea intera e la gemella ruotata."""
+        self.edge_rivers.append((pts, width))
+
+    def forest_fill(self, sx=120, sy=72, jitter=0.3, keep=None):
+        """[§9.124] Alberi dappertutto su una griglia sfalsata (passo sx, sy),
+        nella meta' della base A (i gemelli dall'altra parte), dove keep(x, y)
+        lo permette; (x, y) e' il centro della maschera dell'albero."""
+        n = 0
+        dx0, dy0 = self.off.get("albero", (0, 0))
+        y, row = sy / 2, 0
+        while y < self.h:
+            x = sx / 2 + (sx / 2 if row % 2 else 0)
+            while x < self.w:
+                px = x + self.rng.uniform(-sx * jitter, sx * jitter)
+                py = y + self.rng.uniform(-sy * jitter, sy * jitter)
+                if 40 < px < self.w - 40 and 40 < py < self.h - 40 and self.half(px, py) and (keep is None or keep(px, py)):
+                    self.obj("albero", round(px - dx0), round(py - dy0))
+                    n += 1
+                x += sx
+            y += sy
+            row += 1
+        return n
 
     def bridge(self, x, y, angle, length=300, width=110):
         """Un ponte (rettangolo) centrato in (x, y), lungo `length` nella
@@ -207,6 +233,9 @@ class HalfMap:
         for half, wdt in self.rivers:
             twin = [self.rot(*p) for p in reversed(half[:-1])]
             rivers.append(([tuple(p) for p in half] + twin, wdt))
+        for pts, wdt in self.edge_rivers:
+            rivers.append(([tuple(p) for p in pts], wdt))
+            rivers.append(([self.rot(*p) for p in pts], wdt))
         bridges = []
         for b in self.bridges:
             x, y, a, L, W = b
@@ -352,6 +381,74 @@ def padus():
     return M
 
 
+def silva():
+    """[§9.124] Silva Umbra (la Foresta Umbra del Gargano): il bosco quasi
+    dappertutto (decisione dell'autore), solo radure e strade senza alberi:
+    le basi, una radura al centro, cinque radure di risorse per parte (oro e
+    pietra sparsi fra i boschi), collegate da strade secondarie con un
+    corridoio libero di ~300 px. Niente montagne ne' ponti; due ruscelli
+    stretti sul bordo, solo per decorazione, lontani dalle strade."""
+    M = HalfMap("sk_silva", 7000, 7000, "green1", seed=37)
+    C = (M.cx, M.cy)
+    # le radure: (x, y, rx, ry) nella meta' A (il centro e' simmetrico da se')
+    glades = [(1250, 1300, 1000, 800),     # la base
+              (3500, 3500, 760, 560),      # il centro
+              (2700, 900, 420, 320), (800, 2800, 380, 330), (2350, 2600, 420, 330),
+              (4300, 1300, 420, 330), (1300, 4400, 420, 330)]
+    def in_glade(x, y, pad=0):
+        for gx, gy, rx, ry in glades:
+            for cx, cy in ((gx, gy), M.rot(gx, gy)):
+                if ((x - cx) / (rx + pad)) ** 2 + ((y - cy) / (ry + pad)) ** 2 <= 1:
+                    return True
+        return False
+    # le strade (strada2, larghe 90): base-centro, base-radure, radure fra loro
+    W = 90
+    for pts in ([(1550, 1650), (2350, 2600), (3000, 3150), (3200, 3300)],
+                [(1750, 1050), (2300, 850), (2700, 900)],
+                [(2700, 900), (3500, 1050), (4300, 1300)],
+                [(4300, 1300), (4150, 2200), (3800, 2950)],
+                [(1000, 1750), (850, 2300), (800, 2800)],
+                [(800, 2800), (950, 3600), (1300, 4400)],
+                [(1300, 4400), (2200, 4100), (2950, 3800)],
+                [(800, 2800), (1600, 2700), (2350, 2600)],
+                [(4300, 1300), (5000, 1900), (5700, 2600)]):
+        M.road(pts, "strada2", W)
+    # i ruscelli sul bordo (stretti, senza ponti)
+    M.edge_river([(-60, 3900), (180, 4400), (110, 5000), (260, 5600), (140, 6200), (300, 7060)], 70)
+    # la base A e le risorse
+    M.obj("centro", 1200, 1250)
+    M.obj("miniera_oro", 1900, 900)
+    M.obj("pietr_piccolo", 600, 1800)
+    M.obj("miniera_oro", 2800, 820)        # radure di risorse
+    M.obj("pietr_piccolo", 700, 2950)
+    M.obj("miniera_oro", 2250, 2450)
+    M.obj("pietra_grande", 4400, 1200)
+    M.obj("miniera_oro", 1400, 4500)
+    M.obj("miniera_oro", 3150, 3300)       # il centro, conteso
+    M.obj("pietra_grande", 3700, 3050)
+    # il bosco: dappertutto tranne radure, strade, ruscelli e attorno alle risorse
+    def keep(x, y):
+        if in_glade(x, y) or M.near_lines(x, y, 110):
+            return False
+        return M.free(x, y, 30, lines=110, ignore=("albero",))
+    M.forest_fill(130, 78, keep=keep)
+    # qualche albero dentro le radure grandi (non nella base), e decorazioni
+    for name, n, r, lines in (("fiori_prato", 4, 120, 100), ("fiori_papaveri", 3, 120, 100), ("fiori_gialli_erba", 3, 120, 100),
+                              ("burst_erba1", 6, 150, 100), ("erba_1", 14, 60, 80), ("fiorame1", 10, 60, 80)):
+        k = 0
+        for _ in range(300):
+            if k >= n:
+                break
+            before = len(M.objs)
+            M.scatter(name, 1, (150, 150, 6850, 6850), r, lines=lines)
+            if len(M.objs) > before:
+                if in_glade(M.objs[-1][1], M.objs[-1][2], -60):
+                    k += 1
+                else:
+                    M.objs.pop()
+    return M
+
+
 HOUSES = ["ocr_%02d" % n for n in (1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 21, 22, 23, 24, 25, 31, 32, 33, 34, 35, 41, 42, 43, 44, 45)]
 
 
@@ -446,7 +543,7 @@ def urbs():
     return M
 
 
-MAPS = {"padus": padus, "urbs": urbs}
+MAPS = {"padus": padus, "urbs": urbs, "silva": silva}
 
 
 # ------------------------------------------------------------ controllo
