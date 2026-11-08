@@ -9449,7 +9449,7 @@ bordo (si stringono alla sorgente). Nebbia sui valichi.
   lasciavano buchi a scalini. Per il muro le montagne con la maschera precisa
   (1, 4, 5, 9); la 6, la 7, la 8 e la 3 come contrafforti. Non la 2: ha la
   maschera a ellisse su tutto il rettangolo, mentre la roccia disegnata no.
-  Controllato su una griglia di 25 px con le maschere: col valichi chiusi
+  Controllato su una griglia di 25 px con le maschere: coi valichi chiusi
   le due valli sono separate, coi valichi aperti si passa da ciascuno.
 - I valichi sono equidistanti dalle due basi (stanno sul confine fra le due
   meta'), quindi le montagne non ruotate (che non sono simmetriche) li
