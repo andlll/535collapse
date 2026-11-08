@@ -9284,3 +9284,45 @@ Costi: con le decorazioni Padus costa come il livello 5 (soak: 4000 passi
 in 10,4 s col rendering software, prima 2,3), e il salvataggio passa da 0,5
 a 8 MB (quasi tutto particelle d'erba e fiori; il livello 6: 3,9). Passano
 `npm test`, `soak` (menu, sk_padus), `saves` (sk_padus), `--check`.
+
+### 9.123 Urbs: la citta' romana al centro, la pietra solo nelle rovine
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): una
+citta' romana come quella del livello 1 al centro, le rovine di pietra solo
+li', le macchie di lastricato come nel livello 6; fiumi e montagne a scelta.
+Scelte del porting (all'autore):
+- **Risorse**: la pietra solo nella citta' (ha senso: nel Medioevo Roma era la
+  cava di se stessa, Colosseo e Fori smontati per secoli), l'oro, il legno e
+  il cibo fuori, vicino alle basi e sui fianchi. Si va al centro per la
+  pietra, ma senza si vive.
+- **Niente fiume** (Padus e' gia' la mappa del fiume; il Tevere che
+  attraversa la citta' la taglierebbe in due allo stesso modo); **due colli**
+  per parte (montagna_7, montagna_8) ai fianchi della citta': due o tre
+  strade verso il centro.
+**La mappa** (sk_urbs, 7000 x 7000; tools/16 `urbs`):
+- il lastricato: una macchia di city2 attorno al centro (anello irregolare
+  di 40 punti, simmetrico da se': meta' a caso e meta' ruotata, tools/16
+  `patch_ring`), e un tratto di strada lastricata per parte (`patch`);
+- il Colosseo (ocr_teatro) col centro della maschera al centro della mappa
+  (`center_obj`: gemello di se stesso), basilica e tempio per parte,
+  colonne, statue e fontane del foro;
+- le rovine di pietra (stone_parent): per parte due castelloruin, due
+  chiesaruin, due torreruin, tutte raggiungibili dalle due basi (provato:
+  da 3 a 4 lati liberi per rovina, posti di lavoro da 8 a 24 liberi);
+- gli isolati: le case della citta' (ocr_01...45) su una griglia sulle due
+  direzioni delle file del livello 1 (passo (150, -40) e (45, 95)), una
+  strada ogni 5 case e ogni 3 file, qualche casa crollata (piazzette), solo
+  fra il foro e il bordo della citta'; le case si toccano fra loro (come nel
+  livello 1) ma stanno lontane da rovine, monumenti e strade. 126 case;
+- fuori: per parte la base, una miniera vicino e una sul fianco, cinque
+  boschi, trenta alberi sparsi, erba, grano, fiori; strade dalla base alla
+  citta' (la marcata) e di lato.
+tools/16: `center_obj`, `patch_ring`, `patch` (le macchie nel livello
+macchie, e nel controllo della simmetria), lo spazio libero misurato fra i
+centri delle maschere (anche gli oggetti sparsi: Padus ne ha avuto qualcuno
+spostato, sempre simmetrica). Il gioco carica anche l'atlas della citta'
+(SK_MAPS `tiers`).
+La foto del menu: il Colosseo. Prove: la CPU da sola (Normale,
+Equilibrato) costruisce la base, porta in casa la pietra della citta' (fino
+a 330), attacca al nono minuto; `soak` e `saves` su sk_urbs (aggiunta alla
+CI), `--check`, prove unitarie.

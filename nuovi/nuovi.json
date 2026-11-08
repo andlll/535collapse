@@ -979,6 +979,11 @@
       "origin": "centro",
       "gruppo": "campagna",
       "nota": "la foto di Padus nella schermata della schermaglia (§9.121): generata da tools/17_cartoline.mjs"
+    },
+    "sk_urbs_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Urbs nella schermata della schermaglia (§9.123): generata da tools/17_cartoline.mjs"
     }
   },
   "objects": {

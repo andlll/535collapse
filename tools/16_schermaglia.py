@@ -48,7 +48,11 @@ REGIA = {"manager"}
 DECOR_OBJ = {"burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_papaveri", "fiori_papaveri_erba",
              "fiori_gialli_erba", "fiori_prato", "erba_1", "prato1", "fiorame1", "traccia01", "traccia02",
              "traccia03", "traccia04", "graa11", "graa12", "graa13", "graa14", "graa15"}
-SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40}
+SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40,
+           # [§9.123] la citta' (i centri delle maschere: mezza larghezza piu' un po')
+           "ocr_teatro": 380, "ocr_basilica": 460, "ocr_tempio": 320, "castelloruin": 340, "chiesaruin": 270,
+           "torreruin": 170, "o_colonna": 50, "o_fontana": 70, "o_statua1": 60, "o_statua2": 55, "o_statua3": 60,
+           "o_statua4": 55, "montagna_7": 330, "montagna_8": 470, **{"ocr_%02d" % n: 70 for n in range(1, 46)}}
 
 
 def kit11():
@@ -82,6 +86,8 @@ class HalfMap:
         self.rng = random.Random(seed)
         self.objs, self.rivers, self.bridges, self.roads = [], [], [], []
         self.painted = []  # [§9.122] ponti dipinti dall'autore: (nome, x, y)
+        self.center = []   # [§9.123] oggetti col centro della maschera al centro della mappa (gemelli di se stessi)
+        self.patches = []  # [§9.123] macchie d'altro sfondo (lastricato): (punti, sfondo, sfumatura), gia' intere
         self.off = mask_offsets()
 
     def rot(self, x, y):
@@ -126,13 +132,40 @@ class HalfMap:
         si ruota, il piano percorribile cade nello stesso punto del fiume."""
         self.painted.append((name, x, y))
 
-    def free(self, x, y, r, lines=120):
+    def center_obj(self, name, sprite=None):
+        """[§9.123] Un oggetto col centro della maschera esattamente al centro
+        della mappa: e' il gemello di se stesso."""
+        dx, dy = self.off.get(name, (0, 0))
+        self.center.append((name, round(self.cx - dx, 3), round(self.cy - dy, 3), sprite))
+
+    def patch_ring(self, r, ry=None, wobble=0.12, n=24, bg="city2", feather=60):
+        """[§9.123] Una macchia d'altro sfondo attorno al centro della mappa,
+        un anello irregolare di raggi r (x) e ry (y): la meta' dei punti a caso,
+        l'altra meta' ruotata (la macchia e' simmetrica da se')."""
+        ry = ry or r
+        half = []
+        for k in range(n // 2):
+            a = math.pi * k / (n // 2)
+            q = 1 + self.rng.uniform(-wobble, wobble)
+            half.append((self.cx + math.cos(a) * r * q, self.cy + math.sin(a) * ry * q))
+        self.patches.append(([(round(x), round(y)) for x, y in half + [self.rot(x, y) for x, y in half]], bg, feather))
+
+    def patch(self, pts, bg="city2", feather=40):
+        """[§9.123] Una macchia (poligono) e la sua gemella ruotata."""
+        self.patches.append(([(round(x), round(y)) for x, y in pts], bg, feather))
+        self.patches.append(([tuple(round(v) for v in self.rot(x, y)) for x, y in pts], bg, feather))
+
+    def free(self, x, y, r, lines=120, ignore=()):
         """(x, y) lontano r px dagli oggetti solidi gia' messi (e dai loro
         gemelli) e lines px da fiumi e strade?"""
-        for name, ox, oy, _ in self.objs:
-            if name in DECOR_OBJ:
+        # [§9.123] le distanze fra i centri delle maschere (x, y: il centro
+        # della maschera del nuovo oggetto)
+        for name, ox, oy, _ in self.objs + self.center:
+            if name in DECOR_OBJ or name in ignore:
                 continue
-            for px, py in ((ox, oy), self.rot(ox, oy)):
+            dx, dy = self.off.get(name, (0, 0))
+            mx, my = ox + dx, oy + dy
+            for px, py in ((mx, my), self.rot(mx, my)):
                 if math.hypot(px - x, py - y) < r + SOLID_R.get(name, 60):
                     return False
         return not self.near_lines(x, y, lines)
@@ -148,7 +181,8 @@ class HalfMap:
             x, y = round(self.rng.uniform(x0, x1)), round(self.rng.uniform(y0, y1))
             if not self.half(x, y) or not self.free(x, y, r, lines):
                 continue
-            self.obj(name, x, y, sprite)
+            dx, dy = self.off.get(name, (0, 0))
+            self.obj(name, round(x - dx), round(y - dy), sprite)  # (x, y): il centro della maschera
             k += 1
         return k
 
@@ -163,7 +197,7 @@ class HalfMap:
 
     # ------------------------------------------------------- gemelli
     def full(self):
-        objs = []
+        objs = list(self.center)  # [§9.123] gemelli di se stessi
         for name, x, y, spr in self.objs:
             objs.append((name, x, y, spr))
             dx, dy = self.off.get(name, (0, 0))
@@ -234,6 +268,15 @@ class HalfMap:
                     ET.SubElement(pe, "property", {"name": k, "type": "float", "value": tk.num(v)})
             ET.SubElement(o, "polyline", {"points": " ".join("%s,%s" % (tk.num(x - x0), tk.num(y - y0)) for x, y in pts)})
 
+        # [§9.123] le macchie d'altro sfondo (lastricato): poligoni nel livello macchie
+        for pts, bg, feather in self.patches:
+            x0, y0 = pts[0]
+            o = ET.SubElement(layer[tk.PATCH_LAYER], "object", {"id": str(nid), "type": tk.PATCH_TYPE, "x": tk.num(x0), "y": tk.num(y0)})
+            nid += 1
+            pe = ET.SubElement(o, "properties")
+            ET.SubElement(pe, "property", {"name": "sfondo", "value": bg})
+            ET.SubElement(pe, "property", {"name": "sfumatura", "type": "float", "value": tk.num(feather)})
+            ET.SubElement(o, "polygon", {"points": " ".join("%s,%s" % (tk.num(x - x0), tk.num(y - y0)) for x, y in pts)})
         for pts, wdt in rivers:
             line(layer[tk.RIVER_LAYER], "fiume", pts, {"larghezza": wdt})
         for pts, kind, wdt in roads:
@@ -309,7 +352,101 @@ def padus():
     return M
 
 
-MAPS = {"padus": padus}
+HOUSES = ["ocr_%02d" % n for n in (1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 21, 22, 23, 24, 25, 31, 32, 33, 34, 35, 41, 42, 43, 44, 45)]
+
+
+def urbs():
+    """[§9.123] Urbs (Roma): al centro la citta' romana in rovina, come quella
+    del livello 1 (isolati di case con le strade in mezzo, il lastricato), col
+    Colosseo al centro e il foro attorno; tutta la pietra e' qui, nelle
+    rovine (decisione dell'autore: nel Medioevo Roma era la cava di se
+    stessa). Fuori, per ciascuno: oro e boschi vicino alla base, un'altra
+    miniera sul fianco, due colli (montagne piccole) che lasciano due o tre
+    strade verso il centro. Niente fiume: la mappa del fiume e' Padus."""
+    M = HalfMap("sk_urbs", 7000, 7000, "green1", seed=23)
+    C = (M.cx, M.cy)
+    R_CITY, R_FORUM = 1900, 420
+    # il lastricato: la citta' (un anello irregolare) e le strade che entrano
+    M.patch_ring(R_CITY + 120, (R_CITY + 120) * 0.85, wobble=0.06, n=40, feather=90)
+    M.patch([(1900, 2350), (2150, 2150), (2550, 2550), (2350, 2750)], feather=40)
+    # il Colosseo al centro, il foro attorno
+    M.center_obj("ocr_teatro")
+    # le rovine di pietra (stone_parent), nel foro e piu' in la'
+    M.obj("castelloruin", 2950, 3080)
+    M.obj("chiesaruin", 3650, 2850)
+    M.obj("torreruin", 2700, 3650)
+    M.obj("torreruin", 3200, 2600)
+    M.obj("chiesaruin", 2250, 3300)
+    M.obj("castelloruin", 3900, 2250)
+    # i monumenti e le cose del foro
+    M.obj("ocr_basilica", 2500, 2650)
+    M.obj("ocr_tempio", 4200, 2850)
+    for name, x, y in (("o_colonna", 3050, 3500), ("o_colonna", 3150, 3550), ("o_colonna", 3250, 3600),
+                       ("o_statua1", 3400, 2950), ("o_fontana", 2700, 3250), ("o_statua3", 3500, 3150),
+                       ("o_colonna", 2350, 2950), ("o_statua2", 2900, 2400), ("o_fontana", 3600, 2500)):
+        M.obj(name, x, y)
+    # gli isolati: case su due direzioni (come le file del livello 1), con le
+    # strade fra un isolato e l'altro; solo nella citta', fuori dal foro e
+    # liberi da rovine e monumenti
+    u, v = (150, -40), (45, 95)
+    for i in range(-14, 15):
+        for j in range(-22, 23):
+            if i % 5 == 4 or j % 3 == 2:   # le strade
+                continue
+            x = M.cx + i * u[0] + j * v[0]
+            y = M.cy + i * u[1] + j * v[1]
+            d = math.hypot(x - M.cx, (y - M.cy) / 0.85)
+            # (le case si toccano, come nel livello 1: si tengono lontane solo
+            # da rovine, monumenti e strade)
+            if d > R_CITY - 80 or d < R_FORUM + 380 or not M.half(x, y) or not M.free(x, y, 10, lines=140, ignore=HOUSES):
+                continue
+            if M.rng.random() < 0.06:       # qualche casa crollata: piazzette
+                continue
+            name = M.rng.choice(HOUSES)
+            dx, dy = M.off.get(name, (0, 0))
+            M.obj(name, round(x - dx), round(y - dy))
+    # la base A e le sue risorse (niente pietra: e' tutta in citta')
+    M.obj("centro", 1150, 1200)
+    M.obj("miniera_oro", 1850, 800)
+    M.obj("miniera_oro", 900, 3300)        # sul fianco, verso il colle
+    # i colli: lasciano una strada diretta e due di lato
+    M.obj("montagna_8", 650, 4300)
+    M.obj("montagna_7", 3300, 650)
+    # strade: dalla base a una porta della citta' (la marcata) e di lato
+    M.road([(1350, 1400), (1800, 1900), (2050, 2250)], "strada1")
+    M.road([(1050, 1450), (1000, 2300), (1500, 3050), (1930, 3350)], "strada2", 80)
+    M.road([(1450, 1150), (2300, 1200), (3000, 1600), (3350, 1950)], "strada2", 80)
+    keep = lambda x, y: not M.near_lines(x, y, 120) and math.hypot(x - 1150, y - 1200) > 520 \
+        and math.hypot(x - M.cx, (y - M.cy) / 0.85) > R_CITY + 200  # noqa: E731
+    M.forest(400, 500, 380, 260, keep=keep)
+    M.forest(2700, 450, 380, 230, keep=keep)
+    M.forest(450, 2500, 260, 420, keep=keep)
+    M.forest(1900, 4800, 300, 220, keep=keep)   # dal lato B del fianco
+    M.forest(4700, 1500, 300, 220, keep=keep)
+    out = lambda x, y: math.hypot(x - M.cx, (y - M.cy) / 0.85) > R_CITY + 200  # noqa: E731
+    for _ in range(30):                          # alberi sparsi fuori citta'
+        M.scatter("albero", 1, (150, 150, 6850, 6850), 140)
+        if M.objs[-1][0] == "albero" and not out(M.objs[-1][1], M.objs[-1][2]):
+            M.objs.pop()
+    # decorazioni fuori citta'
+    for name, n, r, lines in (("burst_erba1", 8, 200, 150), ("chiazzaparticellare", 3, 200, 150), ("burst_grano1", 3, 300, 200),
+                              ("fiori_prato", 3, 120, 100), ("fiori_papaveri", 3, 120, 100), ("fiori_gialli_erba", 2, 120, 100),
+                              ("erba_1", 16, 60, 80), ("fiorame1", 10, 60, 80)):
+        k = 0
+        for _ in range(200):
+            if k >= n:
+                break
+            before = len(M.objs)
+            M.scatter(name, 1, (150, 150, 6850, 6850), r, lines=lines)
+            if len(M.objs) > before:
+                if out(M.objs[-1][1], M.objs[-1][2]):
+                    k += 1
+                else:
+                    M.objs.pop()
+    return M
+
+
+MAPS = {"padus": padus, "urbs": urbs}
 
 
 # ------------------------------------------------------------ controllo
@@ -346,6 +483,12 @@ def check(name):
             same = lambda A, B: len(A) == len(B) and all(abs(a[0] - b[0]) <= 1 and abs(a[1] - b[1]) <= 1 for a, b in zip(A, B))  # noqa: E731
             if not any(same(twin, M) or same(list(reversed(twin)), M) for M in lines):
                 errs.append("%s: una linea senza gemella (da %s)" % (kind, L[0]))
+    cen = lambda P: (sum(p[0] for p in P) / len(P), sum(p[1] for p in P) / len(P))  # noqa: E731
+    for pt in sc.get("patches", []):
+        c = cen(pt["pts"])
+        if not any(abs(cen(o["pts"])[0] - (W - c[0])) <= 2 and abs(cen(o["pts"])[1] - (H - c[1])) <= 2 and len(o["pts"]) == len(pt["pts"])
+                   for o in sc.get("patches", [])):
+            errs.append("macchia attorno a (%g, %g) senza gemella" % c)
     for b in sc.get("bridges", []):
         c = (sum(p[0] for p in b["pts"]) / 4, sum(p[1] for p in b["pts"]) / 4)
         if not any(abs(sum(p[0] for p in o["pts"]) / 4 - (W - c[0])) <= 1 and abs(sum(p[1] for p in o["pts"]) / 4 - (H - c[1])) <= 1

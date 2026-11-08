@@ -26,7 +26,9 @@ export const SK_MAPS = [
     desc: "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country." },
   { room: null, name: "Silva Umbra", desc: "Coming soon" },
   { room: null, name: "Rivoaltus", desc: "Coming soon" },
-  { room: null, name: "Urbs", desc: "Coming soon" },
+  // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
+  { room: "sk_urbs", name: "Urbs", shot: [3500, 3420], tiers: ["citta"],
+    desc: "Rome in ruins. The old city is the only quarry left: all the stone lies among its temples and towers. Whoever holds the centre can build." },
   { room: null, name: "Mons Bardonis", desc: "Coming soon" },
 ];
 export const SK_ROOMS = SK_MAPS.filter((m) => m.room).map((m) => m.room);

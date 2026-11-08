@@ -537,6 +537,7 @@ export const TEXTS = {
   "Grass and crops: {state}": { it: "Erba e spighe: {state}", es: "Hierba y espigas: {state}", pt: "Grama e espigas: {state}", de: "Gras und Ähren: {state}", fr: "Herbe et épis : {state}" },
   // [§9.118] la schermaglia
   // [§9.121] i valori nuovi della schermaglia
+  "Rome in ruins. The old city is the only quarry left: all the stone lies among its temples and towers. Whoever holds the centre can build.": { it: "Roma in rovina. La vecchia città è l'unica cava rimasta: tutta la pietra è fra i suoi templi e le sue torri. Chi tiene il centro può costruire.", es: "Roma en ruinas. La vieja ciudad es la única cantera que queda: toda la piedra está entre sus templos y sus torres. Quien domina el centro puede construir.", pt: "Roma em ruínas. A velha cidade é a única pedreira que restou: toda a pedra está entre os seus templos e torres. Quem domina o centro pode construir.", de: "Rom in Trümmern. Die alte Stadt ist der einzige Steinbruch, der bleibt: Aller Stein liegt zwischen ihren Tempeln und Türmen. Wer das Zentrum hält, kann bauen.", fr: "Rome en ruines. La vieille ville est la seule carrière qui reste : toute la pierre se trouve parmi ses temples et ses tours. Qui tient le centre peut bâtir." },
   "Cycle": { it: "Ciclo", es: "Ciclo", pt: "Ciclo", de: "Wechsel", fr: "Cycle" },
   "Always day": { it: "Sempre giorno", es: "Siempre de día", pt: "Sempre dia", de: "Immer Tag", fr: "Toujours le jour" },
   "Always night": { it: "Sempre notte", es: "Siempre de noche", pt: "Sempre noite", de: "Immer Nacht", fr: "Toujours la nuit" },
