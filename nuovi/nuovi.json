@@ -989,6 +989,11 @@
       "origin": "centro",
       "gruppo": "campagna",
       "nota": "la foto di Silva Umbra nella schermata della schermaglia (§9.124): generata da tools/17_cartoline.mjs"
+    },
+    "sk_rivo_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Rivoaltus nella schermata della schermaglia (§9.125): generata da tools/17_cartoline.mjs"
     }
   },
   "objects": {

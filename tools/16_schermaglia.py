@@ -48,6 +48,7 @@ REGIA = {"manager"}
 DECOR_OBJ = {"burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_papaveri", "fiori_papaveri_erba",
              "fiori_gialli_erba", "fiori_prato", "erba_1", "prato1", "fiorame1", "traccia01", "traccia02",
              "traccia03", "traccia04", "graa11", "graa12", "graa13", "graa14", "graa15"}
+BRIDGE_R = 300  # [§9.125] distanza dai ponti dipinti (free)
 SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40,
            # [§9.123] la citta' (i centri delle maschere: mezza larghezza piu' un po')
            "ocr_teatro": 380, "ocr_basilica": 460, "ocr_tempio": 320, "castelloruin": 340, "chiesaruin": 270,
@@ -121,10 +122,11 @@ class HalfMap:
         assert tuple(half[-1]) == (self.cx, self.cy), "la meta' del fiume finisce al centro"
         self.rivers.append((half, width))
 
-    def edge_river(self, pts, width=70):
+    def edge_river(self, pts, width=70, end=None):
         """[§9.124] Un fiume che non passa dal centro (sul bordo, decorativo):
-        la polilinea intera e la gemella ruotata."""
-        self.edge_rivers.append((pts, width))
+        la polilinea intera e la gemella ruotata. [§9.125] end: la larghezza
+        all'ultimo punto (si stringe)."""
+        self.edge_rivers.append((pts, width if end is None else (width, end)))
 
     def forest_fill(self, sx=120, sy=72, jitter=0.3, keep=None):
         """[§9.124] Alberi dappertutto su una griglia sfalsata (passo sx, sy),
@@ -194,6 +196,11 @@ class HalfMap:
             for px, py in ((mx, my), self.rot(mx, my)):
                 if math.hypot(px - x, py - y) < r + SOLID_R.get(name, 60):
                     return False
+        # [§9.125] niente sopra o attorno ai ponti dipinti (l'erba a
+        # particelle si disegnava sul piano del ponte)
+        for _, bx, by in self.full_painted():
+            if math.hypot(bx - x, by - y) < r + BRIDGE_R:
+                return False
         return not self.near_lines(x, y, lines)
 
     def scatter(self, name, n, box, r, lines=120, sprite=None, tries=400):
@@ -260,7 +267,7 @@ class HalfMap:
     def near_lines(self, x, y, margin):
         """(x, y) vicino a un fiume o a una strada della mappa intera?"""
         _, rivers, _, roads = self.full()
-        lines = [(pts, wdt or 150) for pts, wdt in rivers] + [(pts, wdt or tk.ROAD_WIDTH) for pts, _, wdt in roads]
+        lines = [(pts, (max(wdt) if isinstance(wdt, tuple) else wdt) or 150) for pts, wdt in rivers] + [(pts, wdt or tk.ROAD_WIDTH) for pts, _, wdt in roads]
         for pts, wdt in lines:
             for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
                 vx, vy = x1 - x0, y1 - y0
@@ -307,7 +314,8 @@ class HalfMap:
             ET.SubElement(pe, "property", {"name": "sfumatura", "type": "float", "value": tk.num(feather)})
             ET.SubElement(o, "polygon", {"points": " ".join("%s,%s" % (tk.num(x - x0), tk.num(y - y0)) for x, y in pts)})
         for pts, wdt in rivers:
-            line(layer[tk.RIVER_LAYER], "fiume", pts, {"larghezza": wdt})
+            w0, w1 = wdt if isinstance(wdt, tuple) else (wdt, None)
+            line(layer[tk.RIVER_LAYER], "fiume", pts, {"larghezza": w0, **({"larghezza_fine": w1} if w1 else {})})
         for pts, kind, wdt in roads:
             line(layer[tk.ROAD_LAYER], kind, pts, {"larghezza": wdt} if wdt else {})
         for name, x, y in self.full_painted():
@@ -449,6 +457,86 @@ def silva():
     return M
 
 
+def rivoaltus():
+    """[§9.125] Rivoaltus (Rialto, la laguna): una trama di canali e circa nove
+    isole di terra. Il Canal Grande passa dal centro a -22 gradi, con due
+    canali paralleli a 2100 px; due canali verticali a x 2250 e 4750. I ponti
+    sono quelli dipinti dall'autore (decisione dell'autore): pontedx
+    specchiato sui canali a -22 gradi (come a Padus), pontedx2 (la fascia
+    percorribile va da sinistra a destra) sui canali verticali; tredici
+    ponti, uno al centro (il Rialto). Laguna aperta negli angoli fra le
+    basi. Isole con boschi, oro e pietra; le due isole al centro, contese,
+    con qualche casa e una chiesa in rovina."""
+    M = HalfMap("sk_rivo", 7000, 7000, "green1", seed=41)
+    C = (M.cx, M.cy)
+    T = math.tan(math.radians(22))
+    nx, ny = math.sin(math.radians(22)), math.cos(math.radians(22))   # la normale ai canali a -22 gradi
+
+    def gy(x, off):
+        """y del canale a -22 gradi spostato di off lungo la normale, in x"""
+        px, py = M.cx + off * nx, M.cy + off * ny
+        return py + (px - x) * T
+    OFF = 2100
+    # il Canal Grande (dal bordo al centro; il resto e' il gemello) e i due paralleli
+    M.river([(-150, round(gy(-150, 0))), (900, round(gy(900, 0)) + 40), (1800, round(gy(1800, 0)) - 30),
+             (2700, round(gy(2700, 0))), C], width=170)
+    M.edge_river([(x, round(gy(x, -OFF) + d)) for x, d in ((-150, 0), (700, 30), (1900, 0), (2900, -30), (4200, 0), (5600, 40), (7150, 0))], 170)
+    # i canali verticali
+    M.edge_river([(2250 + d, y) for y, d in ((-150, 0), (400, 0), (1300, 0), (2300, 25), (3500, 0), (4600, -25), (5800, 0), (7150, 0))], 150)
+    # la laguna aperta nell'angolo in alto a destra (e, ruotata, in basso a sinistra)
+    M.edge_river([(4950, -200), (5700, 450), (6500, 750), (7200, 900)], 900)
+    # i rii: canali laterali curvi che partono dai canali grandi e si
+    # stringono (le isole piu' frastagliate, lontano dalle strade)
+    M.edge_river([(2250, 3700), (2000, 3850), (1750, 3820), (1550, 3950)], 150, 50)
+    M.edge_river([(2250, 300), (2550, 350), (2800, 250), (3000, 330)], 140, 50)
+    M.edge_river([(-150, 2300), (200, 2420), (420, 2600), (560, 2700)], 160, 50)
+    M.edge_river([(4750, 3300), (4450, 3150), (4300, 3250)], 130, 40)
+    # i ponti
+    M.painted_bridge("pontedx specchiato", *C)
+    for x in (1200,):
+        M.painted_bridge("pontedx specchiato", x, round(gy(x, 0)))          # Canal Grande, a ovest
+    for x in (1300, 3500):
+        M.painted_bridge("pontedx specchiato", x, round(gy(x, -OFF)))       # il parallelo a nord
+    for y in (900, 2900, 5200):
+        M.painted_bridge("pontedx2", 2250, y)                                # il canale verticale
+    # le strade fra i ponti (non sull'acqua: si fermano alle rive)
+    for pts in ([(1150, 1250), (1250, 1900)], [(1300, 2380), (1250, 4180)], [(1450, 1050), (2080, 900)],
+                [(2420, 2900), (3000, 3100), (3380, 3300)], [(1450, 2200), (2080, 2850)], [(3500, 1480), (3450, 2500), (3420, 3280)],
+                [(2420, 900), (3300, 1050), (3450, 1000)]):
+        M.road(pts, "strada2", 80)
+    # la base A, sull'isola in alto a sinistra
+    M.obj("centro", 1050, 1000)
+    M.obj("miniera_oro", 1750, 580)
+    M.obj("pietr_piccolo", 420, 1500)
+    keep = lambda x, y: not M.near_lines(x, y, 120) and math.hypot(x - 1050, y - 1000) > 520  # noqa: E731
+    M.forest(400, 450, 330, 220, keep=keep)
+    # l'isola a ovest, fra il canale parallelo e il Canal Grande
+    M.obj("miniera_oro", 700, 3100)
+    M.forest(1700, 3300, 300, 260, keep=keep)
+    # l'isola in alto, a nord del canale parallelo
+    M.obj("pietra_grande", 3100, 520)
+    M.forest(4000, 450, 260, 180, keep=keep)
+    # l'isola centrale (contesa): case, una chiesa in rovina, oro
+    M.obj("chiesaruin", 2900, 2450)
+    M.obj("miniera_oro", 4000, 2350)
+    houses = ["ocr_%02d" % n for n in (11, 12, 13, 14, 15, 21, 22, 23, 24, 25)]
+    for x, y in ((3650, 2700), (3800, 2650), (3600, 2850), (2700, 2750), (2850, 2830), (4200, 2700)):
+        name = M.rng.choice(houses)
+        if M.free(x, y, 40, lines=140):
+            dx, dy = M.off.get(name, (0, 0))
+            M.obj(name, round(x - dx), round(y - dy))
+    # l'isola a sud-ovest, oltre il Canal Grande
+    M.obj("miniera_oro", 1000, 5300)
+    M.forest(600, 4700, 280, 220, keep=keep)
+    # alberi sparsi, erba, fiori (la densita' delle altre mappe)
+    M.scatter("albero", 25, (150, 150, 6850, 6850), 140)
+    for name, n, r, lines in (("burst_erba1", 7, 200, 300), ("chiazzaparticellare", 3, 200, 300), ("fiori_prato", 3, 120, 160),
+                              ("fiori_papaveri", 2, 120, 160), ("fiori_gialli_erba", 3, 120, 160), ("erba_1", 14, 60, 80),
+                              ("fiorame1", 10, 60, 80)):
+        M.scatter(name, n, (150, 150, 6850, 6850), r, lines=lines)
+    return M
+
+
 HOUSES = ["ocr_%02d" % n for n in (1, 2, 3, 4, 5, 11, 12, 13, 14, 15, 21, 22, 23, 24, 25, 31, 32, 33, 34, 35, 41, 42, 43, 44, 45)]
 
 
@@ -543,7 +631,7 @@ def urbs():
     return M
 
 
-MAPS = {"padus": padus, "urbs": urbs, "silva": silva}
+MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus}
 
 
 # ------------------------------------------------------------ controllo

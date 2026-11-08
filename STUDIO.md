@@ -9359,3 +9359,38 @@ di un giocatore fermo; `soak` e `saves` su sk_silva (aggiunta alla CI),
 Nota per le mappe nuove: tools/07_scene.py vuole gia' la foto della mappa
 (nuovi.json la elenca): se ne mette una provvisoria, si genera la scena,
 poi si fa quella vera con tools/17 e si rifa' l'atlas.
+
+### 9.125 Rivoaltus: la laguna, canali, isole e i ponti dell'autore
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): la
+mappa lagunare coi ponti dipinti dell'autore, le decorazioni come nelle
+altre, la densita' delle isole a scelta del porting.
+**La mappa** (sk_rivo, 7000 x 7000; tools/16 `rivoaltus`):
+- **canali**: il Canal Grande dal centro a -22 gradi e due paralleli a 2100
+  px (larghi 170), due canali verticali a x 2250 e 4750 (larghi 150), con
+  qualche curva lontano dai ponti; **rii**: quattro canali laterali curvi
+  che si stringono (da 130-160 a 40-50 px; tools/16 `edge_river` con la
+  larghezza finale, `larghezza_fine` come in Tiled); **laguna aperta** negli
+  angoli fra le basi (larga 900). Circa nove isole di terra, frastagliate:
+  la densita' media (scelta del porting), abbastanza acqua da essere una
+  laguna, isole grandi abbastanza per le basi e per combattere.
+  (Specchi d'acqua corti e larghi provati e tolti: vengono squadrati.)
+- **ponti**: tredici, dell'autore: `pontedx specchiato` sui canali a -22
+  gradi (il piano li attraversa come a Padus), `pontedx2` sui canali
+  verticali (la sua fascia percorribile va da sinistra a destra, ~360 px);
+  il Rialto al centro, gemello di se stesso. Provati tutti: un cavaliere per
+  ponte, da una riva all'altra.
+- **isole**: la base (oro e pietra piccola, un bosco), l'isola a ovest
+  (oro, bosco), l'isola in alto (pietra grande, bosco), l'isola a sud-ovest
+  (oro, bosco), e le due isole al centro, contese: oro, una chiesa in rovina
+  (pietra) e qualche casa di citta'. Tutte le risorse si raggiungono dalle
+  due basi; strade fra i ponti, che si fermano alle rive.
+- nebbia sui canali; decorazioni come nelle altre mappe.
+**Le decorazioni lontano dai ponti dipinti** (tools/16 `free`, BRIDGE_R
+300 px): una macchia d'erba a particelle disegnava i fili d'erba sul piano
+del ponte. Vale per tutte le mappe: Padus ne ha avute un paio spostate (e la
+foto rifatta). Le macchie d'erba a Rivoaltus stanno anche a 300 px dall'acqua.
+La foto del menu: il canale verticale col ponte ad archi (pontedx2), le case
+e il bosco. Prove: la CPU (Normale, Equilibrato) costruisce sull'isola della
+base, attacca al nono minuto passando dai ponti; soak 4000 passi in 8,4 s;
+`saves` (5,5 MB) e `soak` su sk_rivo (aggiunta alla CI), `--check`.

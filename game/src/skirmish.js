@@ -27,7 +27,10 @@ export const SK_MAPS = [
   // [§9.124] la Foresta Umbra: il bosco dappertutto, radure e strade
   { room: "sk_silva", name: "Silva Umbra", shot: [2350, 2620], mist: [[3300, 3600], [2350, 2600], [1300, 4400]],
     desc: "The ancient forest of the Gargano. Only narrow roads cross it, from glade to glade: gold and stone lie hidden among the trees." },
-  { room: null, name: "Rivoaltus", desc: "Coming soon" },
+  // [§9.125] Rialto, la laguna: canali, isole e i ponti dell'autore
+  { room: "sk_rivo", name: "Rivoaltus", shot: [2250, 2950], tiers: ["citta"],
+    mist: [[1200, 4300], [3000, 1300], [2250, 2000], [5600, 600]],
+    desc: "The islands of the lagoon. Canals everywhere and few bridges: whoever holds the crossings holds the lagoon." },
   // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
   { room: "sk_urbs", name: "Urbs", shot: [3500, 3420], tiers: ["citta"],
     desc: "Rome in ruins. The old city is the only quarry left: all the stone lies among its temples and towers. Whoever holds the centre can build." },
