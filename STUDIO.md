@@ -9516,7 +9516,7 @@ basso con una). Restano sei alberi non tagliabili sparsi (cover_cuts, per
 quel che avanza), al posto dei 158 in fila. Le montagne piccole non hanno
 gemello (come gli alberi): `--check` le accetta se stanno su un lato
 tagliato.
-I valichi (larghi ~425, 425 e 375 px secondo la griglia con le maschere):
+I valichi (larghi ~375 px quello centrale, ~425 quelli di lato, secondo la griglia con le maschere):
 il valico di sinistra ora e' a x 1220.
 Prove: `--check` (simmetriche tutte); le due valli separate coi valichi
 chiusi; tutte le risorse raggiungibili dalle due basi; un cavaliere per
