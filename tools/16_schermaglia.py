@@ -122,6 +122,72 @@ class HalfMap:
         assert tuple(half[-1]) == (self.cx, self.cy), "la meta' del fiume finisce al centro"
         self.rivers.append((half, width))
 
+    def meander(self, pts, amp=150, wl=1500, jag=16, step=60, calm_r=300, fix_end=False):
+        """[§9.126, richiesta dell'autore] Un percorso naturale, non da canale:
+        la polilinea si infittisce (un punto ogni `step` px) e ogni punto si
+        sposta di lato di una somma di onde a caso (anse di ampiezza amp e
+        lunghezza wl, piu' una frastagliatura jag a onde corte). Vicino ai
+        ponti dipinti (gia' messi) lo spostamento va a zero entro calm_r px:
+        li' il fiume resta dritto, con l'inclinazione del ponte. fix_end:
+        l'ultimo punto non si muove (la meta' di un fiume che finisce al
+        centro)."""
+        dense = []
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            n = max(1, int(math.hypot(x1 - x0, y1 - y0) / step))
+            dense += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(n)]
+        dense.append(tuple(pts[-1]))
+        ph = [self.rng.uniform(0, 2 * math.pi) for _ in range(4)]
+        calm = [(x, y) for _, x, y in self.full_painted()]
+        out, sacc = [], 0.0
+        for k, (x, y) in enumerate(dense):
+            if k:
+                sacc += math.hypot(x - dense[k - 1][0], y - dense[k - 1][1])
+            a, b = dense[max(0, k - 1)], dense[min(len(dense) - 1, k + 1)]
+            tx, ty = b[0] - a[0], b[1] - a[1]
+            L = math.hypot(tx, ty) or 1
+            nx, ny = -ty / L, tx / L
+            o = amp * (0.65 * math.sin(2 * math.pi * sacc / wl + ph[0]) + 0.35 * math.sin(2 * math.pi * sacc / (wl * 0.43) + ph[1]))
+            # (onde corte di 420 e 300 px: piu' corte curvavano piu' stretto di
+            # mezza larghezza del fiume e la riva interna si ripiegava a "V")
+            o += jag * (0.6 * math.sin(2 * math.pi * sacc / 420 + ph[2]) + 0.4 * math.sin(2 * math.pi * sacc / 300 + ph[3]))
+            f = 1.0
+            for cx, cy in calm:
+                d = math.hypot(x - cx, y - cy)
+                f = min(f, max(0.0, min(1.0, (d - calm_r * 0.6) / (calm_r * 0.8))))
+            if fix_end and k == len(dense) - 1:
+                f = 0.0
+            if fix_end and k >= len(dense) - 4:   # all'arrivo al centro si smorza
+                f *= (len(dense) - 1 - k) / 4
+            out.append((x + nx * o * f, y + ny * o * f, f))
+        # [§9.126] levigatura: curve morbide, niente spigoli dove un'ansa
+        # incontra una curva stretta del percorso di base (tre passate
+        # 1-2-1; fermi gli estremi e i tratti dritti dei ponti)
+        pts2 = [(x, y) for x, y, _ in out]
+        for _ in range(3):
+            nxt = list(pts2)
+            for k in range(1, len(pts2) - 1):
+                if out[k][2] < 0.05:
+                    continue
+                nxt[k] = ((pts2[k - 1][0] + 2 * pts2[k][0] + pts2[k + 1][0]) / 4, (pts2[k - 1][1] + 2 * pts2[k][1] + pts2[k + 1][1]) / 4)
+            pts2 = nxt
+        return [(round(x), round(y)) for x, y in pts2]
+
+    def cut(self, pts, gaps):
+        """[§9.126] Le strisce di terra: la polilinea (gia' infittita) spezzata
+        dove passa entro r px da un punto (x, y, r) di gaps; i pezzi sotto i
+        tre punti si scartano."""
+        pieces, cur = [], []
+        for x, y in pts:
+            if any(math.hypot(x - gx, y - gy) < r for gx, gy, r in gaps):
+                if len(cur) >= 3:
+                    pieces.append(cur)
+                cur = []
+            else:
+                cur.append((x, y))
+        if len(cur) >= 3:
+            pieces.append(cur)
+        return pieces
+
     def edge_river(self, pts, width=70, end=None):
         """[§9.124] Un fiume che non passa dal centro (sul bordo, decorativo):
         la polilinea intera e la gemella ruotata. [§9.125] end: la larghezza
@@ -350,10 +416,11 @@ def padus():
     M = HalfMap("sk_padus", 7000, 7000, "green1", seed=11)
     C = (M.cx, M.cy)
     # il fiume: vicino ai ponti inclinato come il ponte dipinto (~-22 gradi)
-    M.river([(-100, 5300), (500, 5050), (950, 4760), (1250, 4720), (1800, 4490), (2100, 4050),
-             (2550, 3950), (2950, 3760), (3250, 3600), C], width=170)
     M.painted_bridge("pontedx specchiato", *C)
     M.painted_bridge("pontedx specchiato", 1525, 4605)
+    # [§9.126] il Po con le anse (dritto solo ai ponti)
+    M.river(M.meander([(-100, 5300), (500, 5050), (950, 4760), (1250, 4720), (1800, 4490), (2100, 4050),
+                       (2550, 3950), (2950, 3760), (3250, 3600), C], amp=190, wl=1700, fix_end=True), width=170)
     # strade: dalla base al ponte centrale (la marcata), al ponte di lato, alle
     # risorse di casa e lungo la riva fra i due ponti
     M.road([(1350, 1560), (1650, 2250), (2350, 2900), (3050, 3330), (3420, 3440)], "strada1")
@@ -422,7 +489,7 @@ def silva():
                 [(4300, 1300), (5000, 1900), (5700, 2600)]):
         M.road(pts, "strada2", W)
     # i ruscelli sul bordo (stretti, senza ponti)
-    M.edge_river([(-60, 3900), (180, 4400), (110, 5000), (260, 5600), (140, 6200), (300, 7060)], 70)
+    M.edge_river(M.meander([(-60, 3900), (180, 4400), (110, 5000), (260, 5600), (140, 6200), (300, 7060)], amp=60, wl=800, jag=12), 70)
     # la base A e le risorse
     M.obj("centro", 1200, 1250)
     M.obj("miniera_oro", 1900, 900)
@@ -463,9 +530,10 @@ def rivoaltus():
     canali paralleli a 2100 px; due canali verticali a x 2250 e 4750. I ponti
     sono quelli dipinti dall'autore (decisione dell'autore): pontedx
     specchiato sui canali a -22 gradi (come a Padus), pontedx2 (la fascia
-    percorribile va da sinistra a destra) sui canali verticali; tredici
-    ponti, uno al centro (il Rialto). Laguna aperta negli angoli fra le
-    basi. Isole con boschi, oro e pietra; le due isole al centro, contese,
+    percorribile va da sinistra a destra) sui canali verticali; sette
+    ponti, uno al centro (il Rialto), e sei strisce di terra (istmi, §9.126)
+    dove il canale si interrompe. Canali dal percorso irregolare (§9.126).
+    Laguna aperta negli angoli fra le basi. Isole con boschi, oro e pietra; le due isole al centro, contese,
     con qualche casa e una chiesa in rovina."""
     M = HalfMap("sk_rivo", 7000, 7000, "green1", seed=41)
     C = (M.cx, M.cy)
@@ -477,32 +545,39 @@ def rivoaltus():
         px, py = M.cx + off * nx, M.cy + off * ny
         return py + (px - x) * T
     OFF = 2100
-    # il Canal Grande (dal bordo al centro; il resto e' il gemello) e i due paralleli
-    M.river([(-150, round(gy(-150, 0))), (900, round(gy(900, 0)) + 40), (1800, round(gy(1800, 0)) - 30),
-             (2700, round(gy(2700, 0))), C], width=170)
-    M.edge_river([(x, round(gy(x, -OFF) + d)) for x, d in ((-150, 0), (700, 30), (1900, 0), (2900, -30), (4200, 0), (5600, 40), (7150, 0))], 170)
-    # i canali verticali
-    M.edge_river([(2250 + d, y) for y, d in ((-150, 0), (400, 0), (1300, 0), (2300, 25), (3500, 0), (4600, -25), (5800, 0), (7150, 0))], 150)
-    # la laguna aperta nell'angolo in alto a destra (e, ruotata, in basso a sinistra)
-    M.edge_river([(4950, -200), (5700, 450), (6500, 750), (7200, 900)], 900)
-    # i rii: canali laterali curvi che partono dai canali grandi e si
-    # stringono (le isole piu' frastagliate, lontano dalle strade)
-    M.edge_river([(2250, 3700), (2000, 3850), (1750, 3820), (1550, 3950)], 150, 50)
-    M.edge_river([(2250, 300), (2550, 350), (2800, 250), (3000, 330)], 140, 50)
-    M.edge_river([(-150, 2300), (200, 2420), (420, 2600), (560, 2700)], 160, 50)
-    M.edge_river([(4750, 3300), (4450, 3150), (4300, 3250)], 130, 40)
-    # i ponti
+    # i ponti (prima dei canali: vicino ai ponti i canali restano dritti)
     M.painted_bridge("pontedx specchiato", *C)
-    for x in (1200,):
-        M.painted_bridge("pontedx specchiato", x, round(gy(x, 0)))          # Canal Grande, a ovest
-    for x in (1300, 3500):
-        M.painted_bridge("pontedx specchiato", x, round(gy(x, -OFF)))       # il parallelo a nord
-    for y in (900, 2900, 5200):
-        M.painted_bridge("pontedx2", 2250, y)                                # il canale verticale
-    # le strade fra i ponti (non sull'acqua: si fermano alle rive)
-    for pts in ([(1150, 1250), (1250, 1900)], [(1300, 2380), (1250, 4180)], [(1450, 1050), (2080, 900)],
-                [(2420, 2900), (3000, 3100), (3380, 3300)], [(1450, 2200), (2080, 2850)], [(3500, 1480), (3450, 2500), (3420, 3280)],
-                [(2420, 900), (3300, 1050), (3450, 1000)]):
+    M.painted_bridge("pontedx specchiato", 1200, round(gy(1200, 0)))     # Canal Grande, a ovest
+    M.painted_bridge("pontedx specchiato", 1300, round(gy(1300, -OFF)))  # il parallelo a nord
+    M.painted_bridge("pontedx2", 2250, 2900)                             # il canale verticale
+    # [§9.126, richiesta dell'autore] le strisce di terra al posto di altri
+    # ponti: il canale si interrompe (istmo) sul canale verticale in alto e in
+    # basso e sul parallelo a nord, al centro
+    ISTMI = [(2250, 900, 230), (2250, 5200, 230), (3500, round(gy(3500, -OFF)), 240)]
+    # il Canal Grande (dal bordo al centro; il resto e' il gemello) e i due
+    # paralleli, coi percorsi irregolari (§9.126: non canali artificiali)
+    M.river(M.meander([(-150, round(gy(-150, 0))), (900, round(gy(900, 0))), (1800, round(gy(1800, 0))),
+                       (2700, round(gy(2700, 0))), C], amp=110, wl=1300, fix_end=True), width=170)
+    par = M.meander([(x, round(gy(x, -OFF))) for x in (-150, 1900, 4200, 7150)], amp=120, wl=1400)
+    for piece in M.cut(par, ISTMI):
+        M.edge_river(piece, 170)
+    # i canali verticali
+    ver = M.meander([(2250, y) for y in (-150, 2300, 4600, 7150)], amp=110, wl=1300)
+    for piece in M.cut(ver, ISTMI):
+        M.edge_river(piece, 150)
+    # la laguna aperta nell'angolo in alto a destra (e, ruotata, in basso a sinistra)
+    M.edge_river(M.meander([(4950, -200), (5700, 450), (6500, 750), (7200, 900)], amp=110, wl=1600, jag=0, step=220), 900)  # larga: punti radi, niente frastagliatura fine (artefatti)
+    # i rii: canali laterali che si stringono
+    for pts, w0, w1 in (([(2250, 3700), (2000, 3850), (1750, 3820), (1550, 3950)], 150, 50),
+                        ([(2250, 300), (2550, 350), (2800, 250), (3000, 330)], 140, 50),
+                        ([(-150, 2300), (200, 2420), (420, 2600), (560, 2700)], 160, 50),
+                        ([(4750, 3300), (4450, 3150), (4300, 3250)], 130, 40)):
+        M.edge_river(M.meander(pts, amp=35, wl=500, jag=10), w0, w1)
+    # le strade fra i ponti e sugli istmi (non sull'acqua)
+    for pts in ([(1150, 1250), (1250, 1900)], [(1300, 2380), (1250, 4180)],
+                [(1450, 1050), (2250, 900), (3300, 1050), (3480, 1150), (3500, 1480), (3450, 2500), (3420, 3280)],
+                [(2420, 2900), (3000, 3100), (3380, 3300)], [(1450, 2200), (2080, 2850)],
+                [(1350, 4700), (2250, 5200), (3100, 5450)]):
         M.road(pts, "strada2", 80)
     # la base A, sull'isola in alto a sinistra
     M.obj("centro", 1050, 1000)

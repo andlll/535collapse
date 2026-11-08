@@ -9394,3 +9394,35 @@ La foto del menu: il canale verticale col ponte ad archi (pontedx2), le case
 e il bosco. Prove: la CPU (Normale, Equilibrato) costruisce sull'isola della
 base, attacca al nono minuto passando dai ponti; soak 4000 passi in 8,4 s;
 `saves` (5,5 MB) e `soak` su sk_rivo (aggiunta alla CI), `--check`.
+
+### 9.126 Fiumi irregolari e strisce di terra fra le isole
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): i
+fiumi hanno una forma troppo regolare, sembrano canali artificiali; meglio
+percorsi non dritti, un po' frastagliati, e in qualche punto, al posto dei
+ponti, strisce di terra fra le isole.
+**Il percorso** (tools/16 `meander`): la linea data si infittisce ogni 60 px
+e ogni punto si sposta lungo la normale di due onde lunghe (le anse:
+ampiezza `amp`, lunghezza `wl` e una seconda a 0,43 wl) piu' due corte (la
+riva frastagliata: `jag`, onde di 420 e 300 px), con fasi dal seme della
+mappa; poi tre passate di media 1-2-1. Vicino ai ponti dipinti lo
+spostamento va a zero (entro ~300 px): il fiume resta dritto e inclinato
+come il ponte, che continua ad attraversarlo. Con `fix_end` gli ultimi punti
+restano fermi (il mezzo fiume che arriva al centro, col gemello ruotato).
+Le onde corte a 170/260 px, con i punti ogni 80, facevano uno spigolo a V
+nella riva del Po: tolto con onde piu' lunghe, passo piu' fitto e la media.
+La laguna larga (900 px) solo con le anse, a passo largo (le onde corte su
+un nastro cosi' largo fanno un pettine).
+- **Padus**: il Po con anse ampie (amp 190, wl 1700).
+- **Silva Umbra**: i ruscelli sul bordo piu' tortuosi (amp 60, wl 800).
+- **Rivoaltus**: canali e rii irregolari; **sei strisce di terra** (tools/16
+  `cut`: il canale si interrompe entro un raggio, ~230-240 px): sul canale
+  verticale in alto e in basso e sul parallelo a nord al centro, con i loro
+  gemelli. I ponti passano da tredici a sette (il Rialto, due sul Canal
+  Grande, due sul parallelo, due pontedx2 sui canali verticali); le strade
+  passano sugli istmi.
+- Urbs non ha fiumi.
+Prove: `--check` (simmetriche tutte e quattro); a Rivoaltus tutte le
+risorse raggiungibili dalle due basi e i sette ponti attraversati da un
+cavaliere; `soak` e `saves` su sk_padus, sk_silva, sk_rivo; prove unitarie.
+Rifatte le foto delle tre mappe (tools/17) e l'atlas.
