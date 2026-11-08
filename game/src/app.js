@@ -49,7 +49,7 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
-import { SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager } from "./skirmish.js";
+import { SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
@@ -314,6 +314,8 @@ async function main() {
   world.register("victory_manager", victoryManager());
   world.register("gameover_manager", gameoverManager());
   world.register("sk_manager", skManager()); // §9.118
+  world.register("sk_nebbia", skNebbia()); // §9.122
+  world.register("sk_nube", skNube());
   world.register("objective_button", objectiveButton());
   for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
   world.register("aquila_01", aquila());

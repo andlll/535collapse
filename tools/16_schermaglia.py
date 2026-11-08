@@ -43,6 +43,12 @@ MAPS_DIR = os.path.join(REPO_DIR, "mappe")
 SCEN_DIR = os.path.join(REPO_DIR, "scenari")
 MASKS = os.path.join(REPO_DIR, "game", "assets", "masks.json")
 REGIA = {"manager"}
+# [§9.122] le decorazioni (non solide, non contano per lo spazio libero) e
+# il raggio d'ingombro degli oggetti solidi (free)
+DECOR_OBJ = {"burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_papaveri", "fiori_papaveri_erba",
+             "fiori_gialli_erba", "fiori_prato", "erba_1", "prato1", "fiorame1", "traccia01", "traccia02",
+             "traccia03", "traccia04", "graa11", "graa12", "graa13", "graa14", "graa15"}
+SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40}
 
 
 def kit11():
@@ -75,6 +81,7 @@ class HalfMap:
         self.cx, self.cy = w / 2, h / 2
         self.rng = random.Random(seed)
         self.objs, self.rivers, self.bridges, self.roads = [], [], [], []
+        self.painted = []  # [§9.122] ponti dipinti dall'autore: (nome, x, y)
         self.off = mask_offsets()
 
     def rot(self, x, y):
@@ -112,6 +119,45 @@ class HalfMap:
         direzione `angle` (gradi, a schermo: y in basso)."""
         self.bridges.append((x, y, angle, length, width))
 
+    def painted_bridge(self, name, x, y):
+        """[§9.122] Un ponte dipinto dall'autore (tk.PAINTED_BRIDGES: pontedx,
+        pontedx2; "specchiato" nel nome lo specchia), (x, y) al centro del
+        piano. Il gemello e' lo stesso ponte nel punto ruotato: l'immagine non
+        si ruota, il piano percorribile cade nello stesso punto del fiume."""
+        self.painted.append((name, x, y))
+
+    def free(self, x, y, r, lines=120):
+        """(x, y) lontano r px dagli oggetti solidi gia' messi (e dai loro
+        gemelli) e lines px da fiumi e strade?"""
+        for name, ox, oy, _ in self.objs:
+            if name in DECOR_OBJ:
+                continue
+            for px, py in ((ox, oy), self.rot(ox, oy)):
+                if math.hypot(px - x, py - y) < r + SOLID_R.get(name, 60):
+                    return False
+        return not self.near_lines(x, y, lines)
+
+    def scatter(self, name, n, box, r, lines=120, sprite=None, tries=400):
+        """n oggetti `name` a caso nel rettangolo box (x0, y0, x1, y1) della
+        mezza mappa, liberi (free); restituisce quanti ne ha messi."""
+        x0, y0, x1, y1 = box
+        k = 0
+        for _ in range(tries):
+            if k >= n:
+                break
+            x, y = round(self.rng.uniform(x0, x1)), round(self.rng.uniform(y0, y1))
+            if not self.half(x, y) or not self.free(x, y, r, lines):
+                continue
+            self.obj(name, x, y, sprite)
+            k += 1
+        return k
+
+    def half(self, x, y):
+        """Il punto e' nella meta' della base A (sopra la diagonale che va
+        dall'angolo in basso a sinistra a quello in alto a destra)? Cosi' un
+        oggetto e il suo gemello non si sovrappongono."""
+        return (x - self.cx) + (y - self.cy) < -150
+
     def road(self, pts, kind="strada1", width=None):
         self.roads.append((pts, kind, width))
 
@@ -139,6 +185,14 @@ class HalfMap:
             roads.append((pts, kind, wdt))
             roads.append(([self.rot(*p) for p in pts], kind, wdt))
         return objs, rivers, bridges, roads
+
+    def full_painted(self):
+        out = []
+        for name, x, y in self.painted:
+            out.append((name, x, y))
+            if (x, y) != (self.cx, self.cy):
+                out.append((name, *self.rot(x, y)))
+        return out
 
     def near_lines(self, x, y, margin):
         """(x, y) vicino a un fiume o a una strada della mappa intera?"""
@@ -184,6 +238,10 @@ class HalfMap:
             line(layer[tk.RIVER_LAYER], "fiume", pts, {"larghezza": wdt})
         for pts, kind, wdt in roads:
             line(layer[tk.ROAD_LAYER], kind, pts, {"larghezza": wdt} if wdt else {})
+        for name, x, y in self.full_painted():
+            o = ET.SubElement(layer[tk.RIVER_LAYER], "object", {"id": str(nid), "name": name, "x": tk.num(x), "y": tk.num(y)})
+            ET.SubElement(o, "point")
+            nid += 1
         for x, y, a, L, W in bridges:
             t = math.radians(a)
             ux, uy, vx, vy = math.cos(t), math.sin(t), -math.sin(t), math.cos(t)
@@ -204,24 +262,31 @@ def padus():
     due basi da sud-ovest a nord-est, tre ponti (uno al centro). Per
     ciascuno: oro e pietra piccola vicino alla base, boschi dietro e di
     lato, un'altra miniera vicino al ponte di lato, la pietra grande vicino
-    al ponte centrale. La mappa per cominciare: economia e cavalleria."""
+    al ponte centrale. La mappa per cominciare: economia e cavalleria.
+    [§9.122, richiesta dell'autore] I ponti dipinti dall'autore (pontedx
+    specchiato: il piano attraversa un fiume inclinato di ~22 gradi, come il
+    Po vicino ai ponti), piu' strade, alberi sparsi, prati, fiori, macchie
+    d'erba e di grano, sentieri."""
     M = HalfMap("sk_padus", 7000, 7000, "green1", seed=11)
     C = (M.cx, M.cy)
-    M.river([(-100, 5300), (500, 5050), (950, 4700), (1300, 4750), (1750, 4450), (2100, 4050),
-             (2550, 3950), (2950, 3750), (3250, 3600), C], width=170)
-    # ponti: al centro (perpendicolare al fiume) e a sud-ovest (col gemello)
-    ang_c = math.degrees(math.atan2(3400 - 3600, 3750 - 3250)) + 90
-    M.bridge(*C, ang_c, 330, 120)
-    ang_l = math.degrees(math.atan2(4450 - 4750, 1750 - 1300)) + 90
-    M.bridge(1525, 4600, ang_l, 330, 120)
-    # strade: dalla base al ponte centrale (la marcata) e al ponte di lato
-    M.road([(1350, 1560), (1650, 2250), (2350, 2900), (3050, 3330), C], "strada1")
-    M.road([(1150, 1650), (1150, 2600), (1300, 3600), (1525, 4600)], "strada2", 90)
+    # il fiume: vicino ai ponti inclinato come il ponte dipinto (~-22 gradi)
+    M.river([(-100, 5300), (500, 5050), (950, 4760), (1250, 4720), (1800, 4490), (2100, 4050),
+             (2550, 3950), (2950, 3760), (3250, 3600), C], width=170)
+    M.painted_bridge("pontedx specchiato", *C)
+    M.painted_bridge("pontedx specchiato", 1525, 4605)
+    # strade: dalla base al ponte centrale (la marcata), al ponte di lato, alle
+    # risorse di casa e lungo la riva fra i due ponti
+    M.road([(1350, 1560), (1650, 2250), (2350, 2900), (3050, 3330), (3420, 3440)], "strada1")
+    M.road([(1150, 1650), (1150, 2600), (1300, 3600), (1450, 4380)], "strada2", 90)
+    M.road([(1500, 1450), (1800, 1250), (1900, 1130)], "strada2", 70)
+    M.road([(1100, 1600), (850, 1800), (780, 1880)], "strada2", 70)
+    M.road([(1580, 4370), (2000, 3900), (2600, 3700), (3000, 3520), (3300, 3420)], "strada2", 80)
+    M.road([(1650, 2250), (2300, 2050), (3000, 1700)], "strada2", 70)
     # la base A e le sue risorse
     M.obj("centro", 1300, 1350)
     M.obj("miniera_oro", 1950, 1000)
     M.obj("pietr_piccolo", 700, 1950)
-    M.obj("miniera_oro", 2300, 3350)       # vicino al ponte di lato
+    M.obj("miniera_oro", 2300, 3300)       # vicino al ponte di lato
     M.obj("pietra_grande", 3900, 2900)     # vicino al ponte centrale
     keep = lambda x, y: not M.near_lines(x, y, 120) and math.hypot(x - 1300, y - 1350) > 520  # noqa: E731
     M.forest(550, 650, 450, 300, keep=keep)     # dietro la base
@@ -229,6 +294,18 @@ def padus():
     M.forest(600, 2850, 250, 380, keep=keep)    # verso il fiume
     M.forest(3300, 1700, 320, 230, keep=keep)   # in mezzo
     M.forest(2700, 4700, 280, 200, keep=lambda x, y: not M.near_lines(x, y, 120))  # oltre il fiume, dal lato B
+    # alberi sparsi, a uno o due
+    M.scatter("albero", 40, (150, 150, 6850, 6850), 140)
+    # prati, fiori, erba, grano, sentieri (decorazioni: non solide)
+    # (niente prato1: in gioco e' un anello bianco, sembra un recinto)
+    M.scatter("burst_erba1", 9, (300, 300, 6700, 6700), 200, lines=150)
+    M.scatter("chiazzaparticellare", 4, (300, 300, 6700, 6700), 200, lines=150)
+    M.scatter("burst_grano1", 3, (300, 300, 6700, 6700), 300, lines=200)
+    for f in ("fiori_prato", "fiori_papaveri", "fiori_gialli_erba", "fiori_papaveri_erba"):
+        M.scatter(f, 3, (200, 200, 6800, 6800), 120, lines=100)
+    M.scatter("erba_1", 18, (150, 150, 6850, 6850), 60, lines=80)
+    M.scatter("fiorame1", 14, (150, 150, 6850, 6850), 60, lines=80)
+    M.scatter("traccia02", 2, (800, 800, 6200, 6200), 500, lines=350)
     return M
 
 
@@ -256,7 +333,9 @@ def check(name):
         tx, ty = W - x, H - y
         j = next((j for j, (o2, x2, y2) in enumerate(pts) if not used[j] and j != k and o2 == o
                   and abs(x2 - tx) <= 1 and abs(y2 - ty) <= 1), None)
-        if j is None:
+        if j is None and abs(x - tx) <= 1 and abs(y - ty) <= 1:
+            used[k] = True  # al centro della mappa: gemello di se stesso (il ponte centrale)
+        elif j is None:
             errs.append("%s (%g, %g) senza gemello" % (o, x, y))
         else:
             used[k] = used[j] = True

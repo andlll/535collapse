@@ -3,18 +3,30 @@
 // pioggia, la vista centrata nel punto `shot` della mappa (skirmish.js
 // SK_MAPS) con la vista piu' larga, un ritaglio 3:2 al centro dello schermo
 // (lontano dall'interfaccia e dal puntatore).
-// Scrive nuovi/sprites/<room>_cartolina.png; poi tools/05_atlas.py la mette
+// Scrive nuovi/sprites/<room>_cartolina.png, con gli angoli arrotondati
+// (Pillow, come i tool in Python); poi tools/05_atlas.py la mette
 // nell'atlas (gruppo campagna, quello del menu).
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
 //   node tools/17_cartoline.mjs [room ...]
 // Playwright come le prove nel browser (PLAYWRIGHT_MODULE se non e' nel progetto).
+import { execFileSync } from "node:child_process";
 import { SK_MAPS } from "../game/src/skirmish.js";
 const mod = process.env.PLAYWRIGHT_MODULE || "playwright";
 const { chromium } = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const rooms = process.argv.slice(2).length ? process.argv.slice(2) : SK_MAPS.filter((m) => m.room).map((m) => m.room);
-const W = 720, H = 480;
+const W = 720, H = 480, RADIUS = 46;
+const ROUND = `
+import sys
+from PIL import Image, ImageDraw
+p, r = sys.argv[1], int(sys.argv[2])
+im = Image.open(p).convert("RGBA")
+m = Image.new("L", (im.width * 4, im.height * 4), 0)
+ImageDraw.Draw(m).rounded_rectangle([0, 0, m.width - 1, m.height - 1], radius=r * 4, fill=255)
+im.putalpha(m.resize(im.size, Image.LANCZOS))
+im.save(p)
+`;
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 for (const room of rooms) {
   const m = SK_MAPS.find((q) => q.room === room);
@@ -53,6 +65,10 @@ for (const room of rooms) {
   console.log(await page.evaluate(() => { const c = window.__game.cam; return "scala " + c.scaleview + ", vista " + Math.round(c.w) + " x " + Math.round(c.h); }));
   const out = new URL(`../nuovi/sprites/${room}_cartolina.png`, import.meta.url).pathname;
   await page.screenshot({ path: out, clip: { x: (VW - W) / 2, y: (VH - H) / 2, width: W, height: H } });
+  // [§9.122, richiesta dell'autore] gli angoli arrotondati come il riquadro
+  // che la contiene (menu.js: roundrect 50, ~25 px a schermo; la foto si
+  // disegna a ~0,53): ~46 px nella foto
+  execFileSync("python3", ["-c", ROUND, out, String(RADIUS)]);
   console.log(out);
   await page.close();
 }

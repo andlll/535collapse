@@ -1525,6 +1525,22 @@
       "kit": false,
       "nota": "la regia della schermaglia: tregua, tetto, vittoria e sconfitta (§9.118, skirmish.js)"
     },
+    "sk_nebbia": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la nebbia della schermaglia: fa nascere poche nuvole tenui (sk_nube) attorno a se' (§9.122, skirmish.js)"
+    },
+    "sk_nube": {
+      "sprite": "fog1",
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "una nuvola di nebbia della schermaglia (§9.122): tenue, scivola piano a destra; non e' fog01 (che cambia l'inseguimento dei nemici)"
+    },
     "enemy_cantiere": {
       "sprite": "cas_f1",
       "mask": "cas_mask",

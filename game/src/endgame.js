@@ -217,7 +217,7 @@ export function objectiveButton() {
       if (g.obj !== 1) return;
       // [§9.27] non sopra le schermate di vittoria e di sconfitta
       if (w.number("victory_manager") || w.number("gameover_manager")) return;
-      const nobs = w.room === "match" || isSkirmish(w.room) ? 4 : 3; // §9.118: anche la schermaglia
+      let nobs = w.room === "match" ? 4 : 3;
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
       // [y, testo, completato (prima: la y della barra), facoltativo (§9.116)]
       const lines = [];
@@ -322,6 +322,7 @@ export function objectiveButton() {
           lines.push([y, tr("Score: you {a}, the enemy {b}", { a: skirmishScore(w, "player"), b: skirmishScore(w, "cpu") })]);
         }
         lines.push([mins ? y + 30 : y, tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) })]);
+        nobs = lines.length; // §9.122: il riquadro alto quanto le righe
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.

@@ -9250,3 +9250,37 @@ Disegno dell'autore (8 novembre 2026, stessa PR, versione 0.2609).
 Provato: frecce avanti e indietro, la mappa in arrivo che spegne "Inizia",
 le scelte salvate; una partita con sempre notte (notte per 30000 passi) e
 pioggia frequente (la prima a 50 s, due in 8 minuti). Foto all'autore.
+
+### 9.122 Padus decorata: ponti dipinti, strade, alberi, fiori, nebbia
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): le
+decorazioni le mette il porting; i ponti dell'autore; un po' di nebbia; la
+foto della mappa con gli angoli come il riquadro.
+- **Ponti dipinti** (tools/16 `painted_bridge`, punti col nome come in
+  Tiled, §9.100): tre `pontedx specchiato` al posto dei rettangoli. Il piano
+  del ponte attraversa un fiume inclinato di ~22 gradi: il Po al centro lo e'
+  gia' (-21,8), vicino ai ponti di lato il fiume e' stato raddrizzato a -22,7.
+  L'immagine non si ruota col gemello (la stessa specchiata nel punto
+  ruotato); il ponte al centro e' gemello di se stesso (il controllo lo
+  ammette). Provato: tre cavalieri attraversano i tre ponti.
+- **Strade**: dalla base alle risorse di casa, lungo la riva fra il ponte di
+  lato e quello centrale, verso il bosco di mezzo (strada2).
+- **Decorazioni** (tools/16 `scatter`: a caso nella meta' della base A,
+  lontano da oggetti solidi, fiumi e strade; col gemello): 20 alberi sparsi
+  per parte, macchie d'erba (burst_erba1) e di particelle, due di grano, i
+  quattro tipi di fiori, ciuffi d'erba e di fiori. `prato1` provato e tolto:
+  in gioco e' un anello bianco, sembra un recinto.
+- **Nebbia** (skirmish.js `sk_nebbia`, `sk_nube`; oggetti nuovi in
+  nuovi.json): dove dice la mappa (SK_MAPS mist, col gemello ruotato), 5
+  nuvole (lo sprite fog1 del menu) a opacita' 0,5, che scivolano a destra a
+  0,5 px a passo, svaniscono dopo 6000 passi e rinascono ogni 2400. Non e'
+  fog01 del menu: la sua presenza cambia l'inseguimento dei nemici [C].
+  Padus: lungo il Po.
+- **La foto** (tools/17): sul ponte centrale; angoli arrotondati (Pillow,
+  raggio 46 px nella foto, ~25 a schermo come il riquadro).
+- **Obiettivi**: nella schermaglia il riquadro e' alto quanto le righe (prima
+  quattro righe fisse, una vuota).
+Costi: con le decorazioni Padus costa come il livello 5 (soak: 4000 passi
+in 10,4 s col rendering software, prima 2,3), e il salvataggio passa da 0,5
+a 8 MB (quasi tutto particelle d'erba e fiori; il livello 6: 3,9). Passano
+`npm test`, `soak` (menu, sk_padus), `saves` (sk_padus), `--check`.

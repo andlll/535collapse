@@ -20,7 +20,9 @@ import { tr } from "./i18n.js";
 // Le mappe: room -> nome (storico, decisione dell'autore) e descrizione.
 // Quelle senza room arrivano piu' avanti.
 export const SK_MAPS = [
-  { room: "sk_padus", name: "Padus", shot: [1300, 1190], // shot: la foto della mappa (tools/17_cartoline.mjs)
+  { room: "sk_padus", name: "Padus", shot: [3500, 3470], // shot: la foto della mappa (tools/17_cartoline.mjs)
+    // mist: dove nasce la nebbia (sk_nebbia; il gemello ruotato si aggiunge da se')
+    mist: [[700, 4850], [2350, 3950]],
     desc: "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country." },
   { room: null, name: "Silva Umbra", desc: "Coming soon" },
   { room: null, name: "Rivoaltus", desc: "Coming soon" },
@@ -117,6 +119,12 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
   if (params.truce > 0) g.en.hold = 1;
   world.create("sk_manager", 0, 0);
+  // [§9.122] un po' di nebbia (anche sul lato B, ruotata)
+  const map = SK_MAPS.find((m) => m.room === world.room);
+  for (const [x, y] of (map && map.mist) || []) {
+    world.create("sk_nebbia", x, y);
+    world.create("sk_nebbia", world.roomW - x, world.roomH - y);
+  }
   world.create("objective_button", 0, 0);
   g.obj = 1;
   // nebbia
@@ -232,4 +240,41 @@ export function skirmishEco(sk) {
            buildOrder: S.buildOrder, troops: S.troops, raid: !!S.raid, houses: true, popMax: sk.pop,
            mix: { wood: 3, gold: 2, food: 3, stone: 1 }, rebuild: true, newDeposits: 3, stoneWork: true, armyEco: false,
            anyTroop: true, defendR: 700 };
+}
+
+// [§9.122, richiesta dell'autore] Un po' di nebbia sulla mappa: sk_nebbia
+// fa nascere MIST.n nuvole (lo sprite della nebbia del menu, fog1) sparse
+// attorno a se' e di nuovo ogni MIST.every passi; ogni nuvola compare
+// piano fino a MIST.alpha, scivola a destra di MIST.speed px a passo e dopo
+// MIST.life passi svanisce. Non e' fog01 del menu: la sua presenza cambia
+// l'inseguimento dei nemici [C, enemies.js].
+export const MIST = { n: 5, every: 2400, alpha: 0.5, speed: 0.5, life: 6000, spread: [900, 300], fade: 0.005 };
+export function skNebbia() {
+  const spawn = (i, w) => {
+    for (let k = 0; k < MIST.n; k++) {
+      const x = i.x + (Math.random() - 0.5) * 2 * MIST.spread[0], y = i.y + (Math.random() - 0.5) * 2 * MIST.spread[1];
+      w.create("sk_nube", Math.round(x), Math.round(y));
+    }
+    i.alarm.set(0, MIST.every);
+  };
+  return { create(i, w) { i.sprite_index = null; spawn(i, w); }, alarm0: spawn };
+}
+export function skNube() {
+  return {
+    create(i) {
+      i.depth = -i.y - 100;
+      i.alfa = 0; i.out = 0;
+      i.direction = 0; i.speed = MIST.speed;
+      i.alarm.set(0, MIST.life);
+      i.image_xscale = i.image_yscale = 0.8 + Math.random() * 0.6;
+    },
+    alarm0(i) { i.out = 1; },
+    step(i, w) {
+      if (i.out) { i.alfa -= MIST.fade; if (i.alfa <= 0) w.destroy(i); }
+      else if (i.alfa < MIST.alpha) i.alfa = Math.min(MIST.alpha, i.alfa + MIST.fade);
+    },
+    draw(i, w, d) {
+      d.spriteExt("fog1", 0, i.x, i.y, i.image_xscale, i.image_yscale, 0, 0xffffff, i.alfa);
+    },
+  };
 }
