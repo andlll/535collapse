@@ -129,7 +129,9 @@ function skLayout(W, H) {
   const ox1 = x0 + 60 + LW, ox2 = x0 + PW - 30;
   const rowH = Math.max(30, Math.min(44, (PH - 90 - 100) / keys.length - 6));
   keys.forEach((key, k) => rows.push({ kind: "opt", key, x1: ox1, y1: y0 + 90 + k * (rowH + 6), x2: ox2, y2: y0 + 90 + k * (rowH + 6) + rowH }));
-  rows.push({ kind: "back", x1: ox1, y1: y0 + PH - 75, x2: ox1 + 240, y2: y0 + PH - 25 });
+  // [§9.120, richiesta dell'autore] "Indietro": il cerchio in alto a destra
+  // della campagna (la x e la y del centro e il raggio in circle)
+  rows.push({ kind: "back", circle: [W - 50, 50, 30] });
   rows.push({ kind: "start", x1: ox2 - 300, y1: y0 + PH - 75, x2: ox2, y2: y0 + PH - 25 });
   return { panel: [x0, y0, x0 + PW, y0 + PH], rows, descX: x0 + 30, descY: y0 + 90 + SK_MAPS.length * (mapH + mapGap) + 16, descW: LW };
 }
@@ -198,7 +200,8 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) {
         skLayout(W, H).rows.forEach((r, k) => {
           if (r.kind === "map" && !SK_MAPS[r.k].room) return;
-          if (inRect(mx, my, r.x1, r.y1, r.x2, r.y2)) i.skrow = k;
+          const on = r.circle ? Math.hypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
+          if (on) i.skrow = k;
         });
       }
       i.loadrow = -1;
@@ -358,23 +361,43 @@ function drawFullButton(d, x, y, r, hover, on) {
   d.setAlpha(1);
 }
 
-// [§9.118] la schermata della schermaglia, nello stile del caricamento
+// [§9.118] la schermata della schermaglia.
+// [§9.120, richiesta dell'autore] senza il riquadro bianco di sfondo, come il
+// menu di pausa: titolo e descrizione in nero con un alone bianco
+// (glowText, come pause.js _glowLabel); "Indietro" e' il cerchio in alto a
+// destra della campagna
+function glowText(d, x, y, str, wrapW = 0) {
+  d.setColour(c.white);
+  for (const [r, a] of [[5, 0.04], [4, 0.06], [3, 0.09], [2, 0.13], [1, 0.2]]) {
+    d.setAlpha(a);
+    for (let n = 0; n < 16; n++) {
+      const t = (n / 16) * Math.PI * 2, gx = x + Math.cos(t) * r, gy = y + Math.sin(t) * r;
+      if (wrapW) d.textExt(gx, gy, str, 30, wrapW); else d.text(gx, gy, str);
+    }
+  }
+  d.setColour(c.black);
+  d.setAlpha(0.85);
+  if (wrapW) d.textExt(x, y, str, 30, wrapW); else d.text(x, y, str);
+}
 function drawSkirmish(i, d, W, H) {
-  const L = skLayout(W, H), [x1, y1, x2, y2] = L.panel;
-  d.setAlpha(0.69);
-  d.roundrectColourExt(x1, y1, x2, y2, 60, 60, c.white, c.white, false);
+  const L = skLayout(W, H), [x1, y1, x2] = L.panel;
   d.setHalign("center");
   d.setValign("middle");
-  d.setColour(c.black);
   d.setFont("gui_sblocco");
-  d.setAlpha(0.8);
-  d.text((x1 + x2) / 2, y1 + 45, tr("Skirmish"));
+  glowText(d, (x1 + x2) / 2, y1 + 45, tr("Skirmish"));
   d.setFont("overdue");
   L.rows.forEach((r, k) => {
+    if (r.circle) {
+      const [cx, cy, rad] = r.circle;
+      d.setAlpha(i.skrow === k ? 0.99 : 0.69);
+      d.circleColour(cx, cy, rad, c.white, c.white, false);
+      d.setAlpha(1);
+      d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
+      return;
+    }
     let label, on = true, chosen = false;
     if (r.kind === "map") { const m = SK_MAPS[r.k]; label = m.name; on = !!m.room; chosen = m.room === i.sk.map; }
     if (r.kind === "opt") label = tr(SK_OPTIONS[r.key].label) + ": " + optionLabel(r.key, i.sk[r.key]);
-    if (r.kind === "back") label = tr("Back");
     if (r.kind === "start") label = tr("Start");
     d.setAlpha(!on ? 0.3 : i.skrow === k || chosen ? 0.99 : 0.69);
     d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
@@ -386,9 +409,9 @@ function drawSkirmish(i, d, W, H) {
   if (m) {
     d.setHalign("left");
     d.setValign("top");
-    d.setAlpha(0.75);
-    d.textExt(L.descX + 8, L.descY, tr(m.desc), 30, L.descW - 16);
+    glowText(d, L.descX + 8, L.descY, tr(m.desc), L.descW - 16);
   }
+  d.setAlpha(1);
   d.setHalign("left");
   d.setValign("middle");
 }

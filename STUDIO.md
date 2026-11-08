@@ -9197,3 +9197,14 @@ uscire. Solo dove il browser lo permette, come prima. La colonna torna a
 quattro pulsanti (tutorial, campagna, schermaglia, carica). Provato: il
 cerchio si accende sotto il puntatore e il clic entra nello schermo intero.
 Foto all'autore.
+
+### 9.120 La schermata della schermaglia senza riquadro
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): come
+nel menu di pausa, niente riquadro bianco di sfondo; titolo e descrizione
+della mappa in nero con un alone bianco (menu.js `glowText`, lo stesso di
+pause.js `_glowLabel`), i pulsanti di vetro sopra la battaglia del menu.
+"Indietro" non e' piu' un pulsante in fondo: e' il cerchio in alto a destra
+della campagna (raggio 30, a 50 px dagli angoli, ico_indietro). Esc torna
+indietro come prima. Provato: il cerchio si accende sotto il puntatore, il
+clic torna alla schermata iniziale. Foto all'autore.
