@@ -67,16 +67,20 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // "Load game" (prima in alto a destra) e "Full screen" (prima in alto a
 // sinistra, solo dove il browser lo permette). L'ultimo finisce a 100 px
 // dal fondo, dove finiva "Campaign - Collapse". [x1, y1, x2, y2] per chiave.
+// [§9.119, richiesta dell'autore] "Full screen" non piu' nella colonna (con
+// la schermaglia c'era "traffico"): un pulsante tondo in alto a destra col
+// simbolo, come quelli della campagna (indietro, lucchetto). full: [x, y, r].
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
+const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
 function titleButtons(W, H) {
   const keys = ["tutorial", "campaign", "skirmish", "load"]; // skirmish: §9.118
-  if (fullscreenAvailable()) keys.push("full");
   const top = H - 100 - keys.length * BTN_H - (keys.length - 1) * BTN_GAP;
   const out = { top };
   keys.forEach((k, n) => {
     const y = top + n * (BTN_H + BTN_GAP);
     out[k] = [W / 2 - BTN_W / 2, y, W / 2 + BTN_W / 2, y + BTN_H];
   });
+  out.full = fullscreenAvailable() ? [W - FULL_BTN[0], FULL_BTN[1], FULL_BTN[2]] : null;
   return out;
 }
 // [Fase 4] il pannello delle partite salvate
@@ -185,7 +189,7 @@ export function enemyManagerMenu() {
         i.hover = +inRect(mx, my, ...b.tutorial);
         i.campagnahover = +inRect(mx, my, ...b.campaign);
         i.loadhover = +inRect(mx, my, ...b.load);
-        i.fullhover = +(!!b.full && inRect(mx, my, ...b.full));
+        i.fullhover = +(!!b.full && Math.hypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
         i.skhover = +inRect(mx, my, ...b.skirmish);
       } else {
         i.hover = i.campagnahover = i.loadhover = i.fullhover = i.skhover = 0;
@@ -301,8 +305,7 @@ function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
   const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
                ["skirmish", i.skhover, tr("Skirmish")], // §9.118
-               ["load", i.loadhover, tr("Load game")],
-               ["full", i.fullhover, tr(isFullscreen() ? "Exit full screen" : "Full screen")]];
+               ["load", i.loadhover, tr("Load game")]];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("GUI_1");
@@ -315,6 +318,7 @@ function drawTitle(i, d, W, H) {
     d.setAlpha(0.75);
     d.text(W / 2, (y1 + y2) / 2, label);
   }
+  if (b.full) drawFullButton(d, ...b.full, i.fullhover, isFullscreen()); // §9.119
   d.setFont("overdue");
   // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75];
   // [richiesta dell'autore] l'anno della firma e' 2026 (l'originale: 2025)
@@ -334,6 +338,24 @@ function drawTitle(i, d, W, H) {
   const lg = d.a.sprites.logo_dustveil;
   const s = lg ? Math.min(1, (b.top - 2 * LOGO_MARGIN) / lg.height, W / 2 / lg.width) : 1;
   d.spriteExt("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2), s, s, 0, c.white, 1);
+}
+
+// [§9.119] Il pulsante tondo dello schermo intero: il cerchio di vetro dei
+// pulsanti della campagna e il simbolo di sempre, quattro angoli verso
+// l'esterno (entra) o verso il centro (esci)
+function drawFullButton(d, x, y, r, hover, on) {
+  d.setAlpha(hover ? 0.99 : 0.69);
+  d.circleColour(x, y, r, c.white, c.white, false);
+  d.setAlpha(0.75);
+  const S = 11, L = 7, IN = 4;
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      const [px, py, dir] = on ? [x + sx * IN, y + sy * IN, 1] : [x + sx * S, y + sy * S, -1];
+      d.lineWidthColour(px, py, px + dir * sx * L, py, 3, c.black, c.black);
+      d.lineWidthColour(px, py, px, py + dir * sy * L, 3, c.black, c.black);
+    }
+  }
+  d.setAlpha(1);
 }
 
 // [§9.118] la schermata della schermaglia, nello stile del caricamento

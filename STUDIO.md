@@ -9184,3 +9184,16 @@ e le prove unitarie.
 sceglie le truppe contro quelle del giocatore, difende i lavoratori); il
 bilanciamento con partite CPU contro CPU a parti scambiate (serve una CPU
 anche dal lato del giocatore); le statistiche a fine partita.
+
+### 9.119 Lo schermo intero: un pulsante tondo in alto a destra
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): con
+"Schermaglia" la colonna della schermata iniziale si affollava. "Schermo
+intero" esce dalla colonna e diventa un pulsante tondo in alto a destra
+(menu.js `drawFullButton`): lo stesso cerchio di vetro dei pulsanti della
+campagna (indietro e lucchetto, raggio 30, a 50 px dagli angoli) col simbolo
+di sempre, quattro angoli verso l'esterno per entrare e verso il centro per
+uscire. Solo dove il browser lo permette, come prima. La colonna torna a
+quattro pulsanti (tutorial, campagna, schermaglia, carica). Provato: il
+cerchio si accende sotto il puntatore e il clic entra nello schermo intero.
+Foto all'autore.
