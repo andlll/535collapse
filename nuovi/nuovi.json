@@ -974,6 +974,11 @@
         92
       ],
       "gruppo": "terreno"
+    },
+    "sk_padus_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Padus nella schermata della schermaglia (§9.121): generata da tools/17_cartoline.mjs"
     }
   },
   "objects": {

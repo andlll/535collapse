@@ -536,6 +536,11 @@ export const TEXTS = {
   "Rain: {state}": { it: "Pioggia: {state}", es: "Lluvia: {state}", pt: "Chuva: {state}", de: "Regen: {state}", fr: "Pluie : {state}" },
   "Grass and crops: {state}": { it: "Erba e spighe: {state}", es: "Hierba y espigas: {state}", pt: "Grama e espigas: {state}", de: "Gras und Ähren: {state}", fr: "Herbe et épis : {state}" },
   // [§9.118] la schermaglia
+  // [§9.121] i valori nuovi della schermaglia
+  "Cycle": { it: "Ciclo", es: "Ciclo", pt: "Ciclo", de: "Wechsel", fr: "Cycle" },
+  "Always day": { it: "Sempre giorno", es: "Siempre de día", pt: "Sempre dia", de: "Immer Tag", fr: "Toujours le jour" },
+  "Always night": { it: "Sempre notte", es: "Siempre de noche", pt: "Sempre noite", de: "Immer Nacht", fr: "Toujours la nuit" },
+  "Frequent": { it: "Frequente", es: "Frecuente", pt: "Frequente", de: "Häufig", fr: "Fréquente" },
   "Skirmish": { it: "Schermaglia", es: "Escaramuza", pt: "Escaramuça", de: "Gefecht", fr: "Escarmouche" },
   "Start": { it: "Inizia", es: "Empezar", pt: "Começar", de: "Starten", fr: "Commencer" },
   "Destroy the enemy town hall": { it: "Distruggi il municipio nemico", es: "Destruye el ayuntamiento enemigo", pt: "Destrua a prefeitura inimiga", de: "Zerstöre das feindliche Rathaus", fr: "Détruis l'hôtel de ville ennemi" },

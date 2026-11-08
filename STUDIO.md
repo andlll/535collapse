@@ -9208,3 +9208,45 @@ pause.js `_glowLabel`), i pulsanti di vetro sopra la battaglia del menu.
 della campagna (raggio 30, a 50 px dagli angoli, ico_indietro). Esc torna
 indietro come prima. Provato: il cerchio si accende sotto il puntatore, il
 clic torna alla schermata iniziale. Foto all'autore.
+
+### 9.121 La schermata della schermaglia dal disegno dell'autore
+
+Disegno dell'autore (8 novembre 2026, stessa PR, versione 0.2609).
+- **A sinistra un riquadro solo**: la foto della mappa, sotto il nome fra
+  due frecce (si scorrono le cinque mappe; quelle non ancora fatte spengono
+  "Inizia"), sotto la descrizione in corsivo. I font del gioco non hanno il
+  corsivo: draw.js `slant`, i quadrilateri delle lettere inclinati attorno
+  alla linea di base (0,2).
+- **La foto** (tools/17_cartoline.mjs, Node e Playwright, col gioco in
+  esecuzione): la mappa vera senza nebbia, di giorno, senza pioggia ne'
+  unita', alla vista piu' larga (zoom 1,7), centrata nel punto `shot` della
+  mappa (skirmish.js SK_MAPS), ritaglio 720 x 480 al centro di uno schermo
+  1600 x 900 (fuori l'interfaccia e il bagliore del puntatore); scrive
+  nuovi/sprites/<room>_cartolina.png (versionato, gruppo campagna). Padus:
+  il centro della base nord-ovest col bosco e la miniera. Provvisoria: va
+  rifatta quando la mappa avra' le decorazioni.
+- **A destra i parametri in una griglia 3 x 3** di riquadri: titolo in alto,
+  l'icona del valore fra due frecce, il nome del valore in basso; la meta'
+  sinistra del riquadro torna al valore prima, la destra va a quello dopo.
+  La posizione di partenza esce dalla schermata (sempre a caso; resta fra i
+  parametri). "Giorno e notte" ha tre valori (ciclo, sempre giorno, sempre
+  notte, come nel disegno), la pioggia tre (normale, frequente: fra una
+  pioggia e l'altra un terzo, 6000-12000 passi invece di 20000-35000, la
+  prima a 3000; mai).
+- **Icone** (provvisorie, da rifare con l'autore): difficolta' = da una a
+  quattro spade (ico_attacco, decisione dell'autore); risorse = i quattro
+  simboli delle risorse, piu' grandi a ogni livello (decisione
+  dell'autore); stile = bilancia (linee), spade incrociate, scudo, oro,
+  cavallo, "?"; vittoria = rovina, centro, campana; popolazione = le
+  persone (ico_multi) piu' grandi; tregua = la bandiera coi minuti, o le
+  spade incrociate se non c'e'; nebbia = onde (piu' tenui se esplorata,
+  l'occhio se nessuna); giorno e notte = sole, falce di luna, tutti e due.
+  `ico_bandiera` e `ico_campana` non erano nell'atlas (nessun GML le usa):
+  tools/05_atlas.py `PORTING_SPRITES`.
+- **La pioggia nel riquadro della pioggia** (richiesta dell'autore): il
+  sistema di particelle della partita (le gocce di effects.js, piu' lente,
+  piu' scure e corte quanto il riquadro), un sistema del menu: una goccia a
+  passo con "Normale", tre con "Frequente", niente con "NO".
+Provato: frecce avanti e indietro, la mappa in arrivo che spegne "Inizia",
+le scelte salvate; una partita con sempre notte (notte per 30000 passi) e
+pioggia frequente (la prima a 50 s, due in 8 minuti). Foto all'autore.

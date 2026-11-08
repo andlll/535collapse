@@ -34,6 +34,7 @@ import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
+import { Particles, partType } from "./particles.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
@@ -115,31 +116,43 @@ function loadRows(W, H) {
   return rows;
 }
 
-// [§9.118] La schermata della schermaglia: a sinistra le mappe (con la
-// descrizione di quella scelta), a destra i parametri (un clic passa al
-// valore dopo), in fondo "Indietro" e "Inizia". I parametri si ricordano
-// (skirmish.js, localStorage).
+// [§9.118] La schermata della schermaglia. [§9.121, disegno dell'autore]
+// A sinistra un riquadro solo: la foto della mappa, sotto il nome con le
+// frecce per scorrere le mappe, sotto la descrizione in corsivo. A destra i
+// parametri in una griglia 3 x 3 di riquadri: in alto il titolo, al centro
+// l'icona del valore attuale fra due frecce, in basso il nome del valore.
+// La meta' sinistra di un riquadro torna al valore prima, la destra passa a
+// quello dopo. "Indietro" e' il cerchio in alto a destra (§9.120), "Inizia"
+// in basso a destra.
+const SK_KEYS = () => Object.keys(SK_OPTIONS);
 function skLayout(W, H) {
-  const PW = Math.min(1180, W - 40), PH = Math.min(700, H - 30);
-  const x0 = W / 2 - PW / 2, y0 = H / 2 - PH / 2;
-  const LW = Math.min(400, PW * 0.36);
-  const mapH = 46, mapGap = 8;
-  const rows = SK_MAPS.map((m, k) => ({ kind: "map", k, x1: x0 + 30, y1: y0 + 90 + k * (mapH + mapGap), x2: x0 + 30 + LW, y2: y0 + 90 + k * (mapH + mapGap) + mapH }));
-  const keys = Object.keys(SK_OPTIONS);
-  const ox1 = x0 + 60 + LW, ox2 = x0 + PW - 30;
-  const rowH = Math.max(30, Math.min(44, (PH - 90 - 100) / keys.length - 6));
-  keys.forEach((key, k) => rows.push({ kind: "opt", key, x1: ox1, y1: y0 + 90 + k * (rowH + 6), x2: ox2, y2: y0 + 90 + k * (rowH + 6) + rowH }));
-  // [§9.120, richiesta dell'autore] "Indietro": il cerchio in alto a destra
-  // della campagna (la x e la y del centro e il raggio in circle)
+  const top = 110, bottom = H - 40, gap = 18;
+  const lx1 = Math.max(30, W * 0.05), LW = Math.min(440, W * 0.33);
+  const rows = [];
+  const card = { x1: lx1, y1: top, x2: lx1 + LW, y2: bottom };
+  const photoW = LW - 40, photoH = Math.round(photoW * 2 / 3);
+  const photo = [lx1 + 20, top + 20, lx1 + 20 + photoW, top + 20 + photoH];
+  const nameY = photo[3] + 40;
+  rows.push({ kind: "map", dir: -1, circle: [lx1 + 45, nameY, 22] });
+  rows.push({ kind: "map", dir: 1, circle: [lx1 + LW - 45, nameY, 22] });
+  const gx1 = card.x2 + 40, gx2 = W - 40;
+  const cw = (gx2 - gx1 - 2 * gap) / 3, ch = Math.min(200, (H - top - 120 - 2 * gap) / 3);
+  SK_KEYS().forEach((key, k) => {
+    const cx = gx1 + (k % 3) * (cw + gap), cy = top + Math.floor(k / 3) * (ch + gap);
+    rows.push({ kind: "opt", key, dir: -1, x1: cx, y1: cy, x2: cx + cw / 2, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
+    rows.push({ kind: "opt", key, dir: 1, x1: cx + cw / 2, y1: cy, x2: cx + cw, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
+  });
   rows.push({ kind: "back", circle: [W - 50, 50, 30] });
-  rows.push({ kind: "start", x1: ox2 - 300, y1: y0 + PH - 75, x2: ox2, y2: y0 + PH - 25 });
-  return { panel: [x0, y0, x0 + PW, y0 + PH], rows, descX: x0 + 30, descY: y0 + 90 + SK_MAPS.length * (mapH + mapGap) + 16, descW: LW };
+  rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
+  return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
-// il prossimo valore di un parametro
-function nextValue(key, v) {
+// il valore dopo (dir 1) o prima (dir -1) di un parametro
+function stepValue(key, v, dir) {
   const vs = SK_OPTIONS[key].values, k = vs.indexOf(v);
-  return vs[(k + 1) % vs.length];
+  return vs[((k < 0 ? 0 : k) + dir + vs.length) % vs.length];
 }
+// la mappa mostrata (anche quelle "in arrivo"): indice in SK_MAPS
+const shownMap = (i) => (i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
 
 export function enemyManagerMenu() {
   return {
@@ -198,11 +211,13 @@ export function enemyManagerMenu() {
       }
       i.skrow = -1;
       if (g.campagna === 0 && i.skmenu === 1) {
-        skLayout(W, H).rows.forEach((r, k) => {
-          if (r.kind === "map" && !SK_MAPS[r.k].room) return;
+        const L = skLayout(W, H);
+        L.rows.forEach((r, k) => {
+          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
           const on = r.circle ? Math.hypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
         });
+        skRainStep(i, L); // §9.121: la pioggia nel riquadro della pioggia
       }
       i.loadrow = -1;
       if (g.campagna === 0 && i.loadmenu === 1) {
@@ -253,13 +268,16 @@ export function enemyManagerMenu() {
         const r = skLayout(w.cam.cssW, w.cam.cssH).rows[i.skrow];
         if (!r) return;
         if (r.kind === "back") { i.skmenu = 0; return; }
-        if (r.kind === "map") i.sk.map = SK_MAPS[r.k].room;
-        if (r.kind === "opt") i.sk[r.key] = nextValue(r.key, i.sk[r.key]);
+        if (r.kind === "map") {
+          i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
+          if (SK_MAPS[i.skMap].room) i.sk.map = SK_MAPS[i.skMap].room;
+        }
+        if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
         saveSkirmish(i.sk);
         if (r.kind === "start") w.gotoRoom(i.sk.map);
         return;
       }
-      if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); return; }
+      if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); i.skMap = null; return; }
       if (g.campagna === 0 && i.loadhover === 1) { i.loadmenu = 1; i.loadhover = 0; return; }
       if (g.campagna === 0 && i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
       if (g.campagna === 0) {
@@ -380,14 +398,42 @@ function glowText(d, x, y, str, wrapW = 0) {
   if (wrapW) d.textExt(x, y, str, 30, wrapW); else d.text(x, y, str);
 }
 function drawSkirmish(i, d, W, H) {
-  const L = skLayout(W, H), [x1, y1, x2] = L.panel;
+  const L = skLayout(W, H), { card, photo } = L, m = SK_MAPS[shownMap(i)];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("gui_sblocco");
-  glowText(d, (x1 + x2) / 2, y1 + 45, tr("Skirmish"));
+  glowText(d, W / 2, 55, tr("Skirmish"));
+  // la mappa: riquadro, foto, nome con le frecce, descrizione in corsivo
+  d.setAlpha(0.69);
+  d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
+  const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
+  const spr = m.room && d.a.sprites[m.room + "_cartolina"];
+  if (spr) {
+    const k = Math.min(pw / spr.width, ph / spr.height);
+    d.spriteExt(m.room + "_cartolina", 0, (photo[0] + photo[2]) / 2, (photo[1] + photo[3]) / 2, k, k, 0, c.white, 1);
+  } else {
+    d.setAlpha(0.35);
+    d.roundrectColourExt(photo[0], photo[1], photo[2], photo[3], 30, 30, c.gray, c.gray, false);
+  }
+  d.setFont("GUI_1");
+  d.setColour(c.black);
+  d.setAlpha(m.room ? 0.85 : 0.45);
+  d.text((card.x1 + card.x2) / 2, L.nameY, m.name);
   d.setFont("overdue");
+  d.setHalign("left");
+  d.setValign("top");
+  d.slant = 0.2;
+  d.setAlpha(m.room ? 0.8 : 0.45);
+  d.textExt(card.x1 + 24, L.descY, tr(m.desc), 30, card.x2 - card.x1 - 48);
+  d.slant = 0;
+  d.setHalign("center");
+  d.setValign("middle");
+  // i parametri: un riquadro per due righe (le due meta')
+  const seen = new Set();
+  const rainOnTop = () => { if (i.skRainPs) i.skRain.draw(i.skRainPs, d.r, d.a, { x: 0, y: 0, w: W, h: H }); };
   L.rows.forEach((r, k) => {
-    if (r.circle) {
+    if (r.kind === "map") { arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
+    if (r.kind === "back") {
       const [cx, cy, rad] = r.circle;
       d.setAlpha(i.skrow === k ? 0.99 : 0.69);
       d.circleColour(cx, cy, rad, c.white, c.white, false);
@@ -395,25 +441,143 @@ function drawSkirmish(i, d, W, H) {
       d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
       return;
     }
-    let label, on = true, chosen = false;
-    if (r.kind === "map") { const m = SK_MAPS[r.k]; label = m.name; on = !!m.room; chosen = m.room === i.sk.map; }
-    if (r.kind === "opt") label = tr(SK_OPTIONS[r.key].label) + ": " + optionLabel(r.key, i.sk[r.key]);
-    if (r.kind === "start") label = tr("Start");
-    d.setAlpha(!on ? 0.3 : i.skrow === k || chosen ? 0.99 : 0.69);
-    d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+    if (r.kind === "start") {
+      const on = !!m.room;
+      d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
+      d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+      d.setFont("GUI_1");
+      d.setColour(c.black);
+      d.setAlpha(on ? 0.8 : 0.35);
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr("Start"));
+      return;
+    }
+    if (seen.has(r.key)) return;
+    seen.add(r.key);
+    const [x1, y1, x2, y2] = r.card, cx = (x1 + x2) / 2, hov = i.skrow === k || i.skrow === k + 1;
+    d.setAlpha(hov ? 0.9 : 0.69);
+    d.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
+    d.setFont("overdue");
     d.setColour(c.black);
-    d.setAlpha(on ? (chosen ? 0.9 : 0.75) : 0.35);
-    d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, label);
+    d.setAlpha(0.8);
+    d.text(cx, y1 + 26, tr(SK_OPTIONS[r.key].label));
+    const iy = (y1 + y2) / 2 + 2;
+    drawOptIcon(d, r.key, i.sk[r.key], cx, iy, i);
+    arrow(d, x1 + 24, iy, 14, -1, i.skrow === k);
+    arrow(d, x2 - 24, iy, 14, 1, i.skrow === k + 1);
+    d.setFont("overdue");
+    d.setColour(c.black);
+    d.setAlpha(0.8);
+    d.text(cx, y2 - 24, optionLabel(r.key, i.sk[r.key]));
+    if (r.key === "rain") rainOnTop();
   });
-  const m = SK_MAPS.find((q) => q.room === i.sk.map);
-  if (m) {
-    d.setHalign("left");
-    d.setValign("top");
-    glowText(d, L.descX + 8, L.descY, tr(m.desc), L.descW - 16);
-  }
   d.setAlpha(1);
   d.setHalign("left");
   d.setValign("middle");
+}
+
+// una freccia (triangolo di linee) a sinistra (dir -1) o a destra (dir 1)
+function arrow(d, x, y, r, dir, hover) {
+  const a = hover ? 0.95 : 0.55, k = r * 0.45;
+  d.setAlpha(a);
+  d.lineWidthColour(x + dir * k, y, x - dir * k, y - k * 1.3, 4, c.black, c.black);
+  d.lineWidthColour(x + dir * k, y, x - dir * k, y + k * 1.3, 4, c.black, c.black);
+  d.setAlpha(1);
+}
+
+// [§9.121] Le icone dei valori (provvisorie, da rifare a mano a mano con
+// l'autore): le icone del gioco dove ce n'e' una adatta, se no linee.
+// Difficolta': spade, una in piu' a ogni livello (decisione dell'autore);
+// risorse: i quattro simboli delle risorse, piu' grandi a ogni livello
+// (decisione dell'autore); la pioggia la disegnano le particelle
+// (skRainStep), qui niente.
+const DARK = 0x3c3c3c;
+function icon(d, name, x, y, s = 1, a = 0.85) { d.spriteExt(name, 0, x, y, s, s, 0, c.white, a); }
+function drawOptIcon(d, key, v, x, y, i) {
+  d.setAlpha(1);
+  if (key === "difficulty") {
+    const n = { easy: 1, normal: 2, hard: 3, rigged: 4 }[v] || 1;
+    for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
+  } else if (key === "style") {
+    if (v === "balanced") scales(d, x, y);
+    else if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
+    else icon(d, { aggressive: "ico_battle", defensive: "ico_difesa", economic: "ico_gold", raider: "ico_cavaliere" }[v], x, y,
+      { aggressive: 1, defensive: 0.75, economic: 2, raider: 0.75 }[v]);
+  } else if (key === "victory") {
+    icon(d, v === "conquest" ? "ico_ruin" : v === "townhall" ? "ico_centro" : "ico_campana", x, y, 0.75);
+  } else if (key === "resources") {
+    const s = { low: 0.8, normal: 1, high: 1.2 }[v] || 1;
+    ["ico_food", "ico_wood", "ico_gold", "ico_stone"].forEach((n, k) => icon(d, n, x + (k - 1.5) * 34 * s, y, s));
+  } else if (key === "pop") {
+    icon(d, "ico_multi", x, y, { 50: 0.55, 75: 0.72, 99: 0.9 }[v] || 0.7);
+  } else if (key === "truce") {
+    icon(d, v ? "ico_bandiera" : "ico_battle", x, y, v ? 0.75 : 1);
+    if (v) { d.setFont("overdue"); d.setColour(DARK); d.setAlpha(0.9); d.text(x + 26, y + 18, String(v)); }
+  } else if (key === "fog") {
+    if (v === "none") icon(d, "ico_view_small", x, y, 1.6);
+    else for (let k = 0; k < 3; k++) wave(d, x, y - 14 + k * 14, v === "explored" ? 0.35 : 0.85);
+  } else if (key === "daynight") {
+    if (v === "day") sun(d, x, y, 1);
+    else if (v === "night") moon(d, x, y, 1);
+    else { sun(d, x - 16, y, 0.75); moon(d, x + 18, y, 0.75); }
+  }
+}
+function scales(d, x, y) {
+  const L = (a, b, e, f, wd = 3) => d.lineWidthColour(a, b, e, f, wd, DARK, DARK);
+  d.setAlpha(0.85);
+  L(x, y - 22, x, y + 18); L(x - 12, y + 18, x + 12, y + 18, 4); L(x - 24, y - 16, x + 24, y - 16);
+  for (const sx of [-1, 1]) {
+    L(x + sx * 24, y - 16, x + sx * 32, y + 2, 2); L(x + sx * 24, y - 16, x + sx * 16, y + 2, 2);
+    L(x + sx * 34, y + 2, x + sx * 14, y + 2, 3);
+  }
+}
+function sun(d, x, y, s) {
+  d.setAlpha(0.85);
+  d.circleColour(x, y, 9 * s, DARK, DARK, false);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    d.lineWidthColour(x + Math.cos(a) * 13 * s, y + Math.sin(a) * 13 * s, x + Math.cos(a) * 19 * s, y + Math.sin(a) * 19 * s, 3, DARK, DARK);
+  }
+}
+function moon(d, x, y, s) {
+  d.setAlpha(0.85);
+  let px = null, py = null;
+  for (let k = 0; k <= 16; k++) { // una C spessa: la falce
+    const a = (40 + (280 * k) / 16) * Math.PI / 180;
+    const qx = x + Math.cos(a) * 13 * s, qy = y - Math.sin(a) * 13 * s;
+    if (px !== null) d.lineWidthColour(px, py, qx, qy, 7 * s, DARK, DARK);
+    px = qx; py = qy;
+  }
+}
+function wave(d, x, y, a) {
+  d.setAlpha(a);
+  let px = null, py = null;
+  for (let k = 0; k <= 20; k++) {
+    const qx = x - 34 + (68 * k) / 20, qy = y + Math.sin((k / 20) * Math.PI * 3) * 4;
+    if (px !== null) d.lineWidthColour(px, py, qx, qy, 3, DARK, DARK);
+    px = qx; py = qy;
+  }
+}
+
+// [§9.121, richiesta dell'autore] La pioggia nel riquadro della pioggia,
+// col sistema di particelle della partita (le gocce, effects.js GOCCIA, piu'
+// lente e scure, tagliate all'altezza del riquadro): niente con "NO", di
+// piu' con "Frequente". Le particelle sono del menu (skRain), non del mondo.
+let SK_DROP = null;
+function skRainStep(i, L) {
+  const r = L.rows.find((q) => q.kind === "opt" && q.key === "rain");
+  if (!r) return;
+  const [x1, y1, x2, y2] = r.card;
+  if (!i.skRain) { i.skRain = new Particles(); i.skRainPs = i.skRain.systemCreate(0, "rain"); }
+  const fall = y2 - y1 - 85, speed = 7;
+  if (!SK_DROP || SK_DROP.fall !== fall) {
+    SK_DROP = partType({ shape: "line", orientation: [160, 170, 0, 0, true], size: [0.18, 0.28, 0, 0], scale: [1, 2.5],
+      colour: { rgb: [70, 95, 95, 120, 120, 150] }, alpha: [0.75], speed: [speed, speed + 1.5, 0, 0], direction: [250, 258, 0, 0],
+      life: [Math.floor(fall / (speed + 1.5)), Math.floor(fall / speed)] });
+    SK_DROP.fall = fall;
+  }
+  const n = { normal: 1, frequent: 3, off: 0 }[i.sk.rain] || 0;
+  for (let k = 0; k < n; k++) i.skRain.create(i.skRainPs, x1 + 55 + Math.random() * (x2 - x1 - 90), y1 + 44, SK_DROP, 1); // fra le frecce
+  i.skRain.step();
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu

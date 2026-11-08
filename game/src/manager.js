@@ -9,6 +9,7 @@ import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
 import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife } from "./effects.js";
 import { overcastStep } from "./ambience.js";
+import { rainGap } from "./skirmish.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
 import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawRally, drawObjectives } from "./minimap.js";
@@ -328,7 +329,7 @@ export class Manager {
         break;
       case 6: // fine pioggia
         this.stopRain();
-        this.al.set(4, irandomRange(20000, 35000));
+        this.al.set(4, irandomRange(...rainGap(g))); // §9.121: nella schermaglia anche "frequente"
         break;
       case 8: // orologio (si ferma a partita persa: gameover_manager)
         if (!g.gameover) g.seconds += 1;

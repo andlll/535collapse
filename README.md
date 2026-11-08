@@ -57,7 +57,9 @@ fiumi, delle strade e dei ponti disegnati come linee in Tiled (`nuovi/fiumi/`, �
 acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (dopo
 `tools/01`) solo se cambiano i dipinti da cui vengono. Le mappe della schermaglia
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
-(poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria).
+(poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della
+schermaglia (`nuovi/sprites/sk_*_cartolina.png`, §9.121) la fa `node tools/17_cartoline.mjs` col gioco
+in esecuzione (e poi `tools/05`).
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
 `?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room. Sono giocabili il menu

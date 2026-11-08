@@ -20,7 +20,7 @@ import { tr } from "./i18n.js";
 // Le mappe: room -> nome (storico, decisione dell'autore) e descrizione.
 // Quelle senza room arrivano piu' avanti.
 export const SK_MAPS = [
-  { room: "sk_padus", name: "Padus",
+  { room: "sk_padus", name: "Padus", shot: [1300, 1190], // shot: la foto della mappa (tools/17_cartoline.mjs)
     desc: "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country." },
   { room: null, name: "Silva Umbra", desc: "Coming soon" },
   { room: null, name: "Rivoaltus", desc: "Coming soon" },
@@ -46,12 +46,16 @@ export const SK_OPTIONS = {
   pop: { label: "Population limit", values: [50, 75, 99], names: { 50: "50", 75: "75", 99: "99" } },
   truce: { label: "Truce", values: [0, 5, 10], names: { 0: "OFF", 5: "5 min", 10: "10 min" } },
   fog: { label: "Fog", values: ["normal", "explored", "none"], names: { normal: "Normal", explored: "Explored", none: "None" } },
-  daynight: { label: "Day and night", values: [true, false], names: { true: "ON", false: "OFF" } },
-  rain: { label: "Rain", values: [true, false], names: { true: "ON", false: "OFF" } },
-  start: { label: "Starting position", values: ["random", "A", "B"], names: { random: "Random", A: "North-west", B: "South-east" } },
+  // [§9.121, richiesta dell'autore] tre valori: il ciclo, sempre giorno,
+  // sempre notte; la pioggia normale, frequente o mai
+  daynight: { label: "Day and night", values: ["cycle", "day", "night"], names: { cycle: "Cycle", day: "Always day", night: "Always night" } },
+  rain: { label: "Rain", values: ["normal", "frequent", "off"], names: { normal: "Normal", frequent: "Frequent", off: "OFF" } },
 };
+// [§9.121, richiesta dell'autore] la posizione di partenza esce dalla
+// schermata per ora: sempre a caso (resta fra i parametri, start)
+const HIDDEN = { start: ["random", "A", "B"] };
 export const SK_DEFAULTS = { map: "sk_padus", difficulty: "normal", style: "balanced", victory: "conquest", resources: "normal",
-                             pop: 75, truce: 0, fog: "normal", daynight: true, rain: true, start: "random" };
+                             pop: 75, truce: 0, fog: "normal", daynight: "cycle", rain: "normal", start: "random" };
 const KEY = "535.skirmish";
 
 export function loadSkirmish() {
@@ -61,7 +65,8 @@ export function loadSkirmish() {
       const out = { ...SK_DEFAULTS };
       for (const k of Object.keys(SK_DEFAULTS)) {
         if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
-        if (SK_OPTIONS[k].values.includes(s[k])) out[k] = s[k];
+        const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
+        if (vs && vs.includes(s[k])) out[k] = s[k];
       }
       return out;
     }
@@ -118,10 +123,17 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
   if (params.fog === "none") g.fogville = 0;
   if (params.fog === "explored") fog.explored.fill(255);
   // giorno e notte, pioggia (manager.js, allarmi 0/1 e 4)
-  if (!params.daynight) { manager.al.set(0, -1); manager.al.set(1, -1); g.night = 0; }
-  if (!params.rain) manager.al.set(4, -1);
+  if (params.daynight === "day") { manager.al.set(0, -1); manager.al.set(1, -1); g.night = 0; }
+  if (params.daynight === "night") { manager.al.set(0, -1); manager.al.set(1, -1); g.night = 1; }
+  if (params.rain === "off") manager.al.set(4, -1);
+  if (params.rain === "frequent") manager.al.set(4, RAIN_EVERY.frequent[0] / 2);
   // (la vista sulla propria base: app.js, dopo la prima misura della finestra)
 }
+
+// [§9.121] l'intervallo fra due piogge (manager.js allarme 6): l'originale
+// da 20000 a 35000 passi; "frequente" un terzo
+export const RAIN_EVERY = { normal: [20000, 35000], frequent: [6000, 12000] };
+export const rainGap = (g) => RAIN_EVERY[g.sk && g.sk.rain === "frequent" ? "frequent" : "normal"];
 
 // Il tetto di popolazione scelto (manager.js lo tiene a 99)
 export function skirmishPopcap(g) {

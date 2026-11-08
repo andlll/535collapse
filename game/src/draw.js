@@ -48,6 +48,7 @@ export class Draw {
     this.colour = 0xffffff;
     this.font = null;
     this.halign = "left";
+    this.slant = 0; // §9.121: corsivo finto (textExt)
     this.valign = "top";
   }
 
@@ -515,7 +516,10 @@ export class Draw {
         const [gx, gy, gw, gh, shift, off, yoff = 0] = g;
         if (gw > 0 && gh > 0) {
           const x0 = xx + off * scale, y0 = yr + yoff * scale, x1 = x0 + gw * scale, y1 = y0 + gh * scale;
-          this.r.quad(fr.tex, x0, y0, x1, y0, x1, y1, x0, y1,
+          // [§9.121] corsivo finto (slant): il quadrilatero inclinato attorno
+          // alla linea di base (i font del gioco non hanno il corsivo)
+          const st = this.slant ? this.slant * (yr + lh * 0.75 - y0) : 0, sb = this.slant ? this.slant * (yr + lh * 0.75 - y1) : 0;
+          this.r.quad(fr.tex, x0 + st, y0, x1 + st, y0, x1 + sb, y1, x0 + sb, y1,
                       ou + gx, ov + gy, ou + gx + gw, ov + gy + gh, col);
         }
         xx += shift * scale;
