@@ -1222,6 +1222,17 @@ def check(name):
     return errs
 
 
+def tile_free(tmx):
+    """[§9.130] Il .tmx senza larghezza e altezza degli oggetti tile: vengono
+    dalle immagini del kit di Tiled (tools/11), e quelle delle macchie di
+    fiori le disegna Pillow (ridimensiona e ruota i fiori), col ritaglio che
+    cambia di un paio di pixel fra versioni di Pillow (fiori_papaveri: 308 px
+    con la 12.3, 310 con la 13.0 della CI). Non entrano nello scenario: il
+    confronto guarda il resto."""
+    import re
+    return re.sub(r'(<object [^>]*gid="\d+"[^>]*?) width="[^"]*" height="[^"]*"', r"\1", tmx)
+
+
 def main():
     args = sys.argv[1:]
     names = [a for a in args if not a.startswith("--")] or list(MAPS)
@@ -1231,7 +1242,7 @@ def main():
             path = os.path.join(MAPS_DIR, "sk_%s.tmx" % n)
             tmp = path + ".nuova"
             MAPS[n]().write(tmp)
-            same = open(tmp, "rb").read() == open(path, "rb").read()
+            same = tile_free(open(tmp, encoding="utf-8").read()) == tile_free(open(path, encoding="utf-8").read())
             os.remove(tmp)
             errs = check(n)
             if not same:

@@ -9544,3 +9544,19 @@ room, i file e le funzioni di tools/16 restano coi nomi di prima (sk_padus,
 `padus()`...: nomi interni, cambiarli toccherebbe i salvataggi).
 Controllato nella schermata della schermaglia in italiano, tedesco e
 francese; prove unitarie.
+
+### 9.130 CI: il controllo delle mappe della schermaglia e le versioni di Pillow
+
+Nella PR andlll/535collapse#19 la CI falliva su `tools/16_schermaglia.py
+--check`: tutte e cinque le mappe "non e' quella che scrive tools/16",
+mentre in locale passava. Riprodotto in un clone pulito coi passi della CI
+(Python 3.11, Pillow installato da pip: 13.0): l'unica differenza era la
+larghezza e altezza degli oggetti tile di fiori_papaveri nei .tmx (348 x 308
+con il Pillow 12.3 di qui, 348 x 310 con il 13.0). Sono le misure
+dell'immagine del kit di Tiled (tools/11 `decor_image`: Pillow ridimensiona
+e ruota i fiori, poi la ritaglia sull'alfa) e cambiano di un paio di pixel
+con la versione di Pillow; nello scenario non entrano (il controllo degli
+scenari nella CI passava). Il confronto di `--check` ora ignora larghezza e
+altezza degli oggetti tile (`tile_free`) e guarda tutto il resto: passa qui
+e nel clone pulito come nella CI, e un oggetto spostato di 1 px lo fa
+ancora fallire.
