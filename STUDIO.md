@@ -9479,3 +9479,47 @@ Equilibrato) costruisce nella sua valle e attacca al nono minuto passando
 dai valichi; `soak` e `saves` (5,7 MB) su sk_bardonis (aggiunta alla CI);
 prove unitarie. La foto del menu: il valico centrale con la via
 Francigena. Con questa le cinque mappe della schermaglia ci sono tutte.
+
+### 9.128 Mons Bardonis: strade attorno alle montagne, montagne piccole sui tagli
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): le
+strade sono poche e troppo dritte, devono girare attorno alle montagne e
+devono essercene di piu'; gli alberi attorno alle montagne sono troppo
+regolari: dove servono, meglio una seconda montagna piccola sopra.
+**Le strade** (tools/16 `road_auto`): A* su una griglia di 40 px della mappa
+intera (montagne, oggetti solidi e ruscelli, gemelli compresi), a piu' di
+150 px dalla roccia e un po' oltre dove c'e' posto. Il percorso della griglia
+(solo 0, 45 e 90 gradi) si riduce a un punto ogni ~160 px, poi le anse:
+ogni punto si sposta di lato (due seni, fino a 170 px) quanto lascia la
+roccia, e mai vicino agli estremi; infine tre passate di Chaikin. Sulle
+strade che ci sono gia' il costo e' 0,75: dove la nuova ci corre sopra non
+si ridisegna, parte o arriva li' (l'incrocio). (Con 0,35 la strada per il
+valico di sinistra faceva il giro dalla via Francigena e dal valico
+centrale.) Ora per parte: la via Francigena al valico centrale, la strada
+lungo la valle alla miniera in fondo, quella al valico di sinistra e oltre
+nella valle dell'altro (con il valico come tappa), alla pietra e alla
+miniera di sinistra, alla pietra grande, una a mezza valle fra i due
+valichi, una verso il ruscello e una che entra dal bordo in alto: venti
+tratti in tutto, coi gemelli.
+**Le montagne piccole sui tagli** (tools/16 `cover_mountains`): per ogni
+montagna della mappa intera con un lato tagliato in vista, fino a tre
+montagne piccole (3, 6, 7, 8) fra le posizioni attorno al lato: quella che
+ne copre di piu' e sporge meno dalla roccia che c'e' gia', mai dentro i
+valichi o sulle risorse. Deve stare davanti (l'origine piu' in basso): una
+montagna dietro che riempie oltre il lato lascia una cucitura dritta, roccia
+su roccia, che si vede (provato e tolto). Per questo il lato in alto della
+1 non si copre con una montagna (quella davanti sta piu' in basso): la 1
+non c'e' piu'. La cresta ora e' tutta con la 9 (nessun lato tagliato; la 5
+aveva il lato sinistro sul valico centrale, dove una montagna piccola lo
+chiudeva), in alto la 4 con due montagne piccole davanti (il gemello in
+basso con una). Restano sei alberi non tagliabili sparsi (cover_cuts, per
+quel che avanza), al posto dei 158 in fila. Le montagne piccole non hanno
+gemello (come gli alberi): `--check` le accetta se stanno su un lato
+tagliato.
+I valichi (larghi ~425, 425 e 375 px secondo la griglia con le maschere):
+il valico di sinistra ora e' a x 1220.
+Prove: `--check` (simmetriche tutte); le due valli separate coi valichi
+chiusi; tutte le risorse raggiungibili dalle due basi; un cavaliere per
+valico in ciascun verso; la CPU (Normale, Equilibrato) attacca al nono
+minuto; `soak` e `saves` su sk_bardonis; prove unitarie. Foto del menu
+rifatta (il valico centrale con la via Francigena).

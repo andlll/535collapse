@@ -14,10 +14,11 @@ script aggiunge i gemelli:
 - oggetti (edifici, risorse, alberi): il gemello nella posizione ruotata;
 - fiumi: la meta' dal bordo al centro della mappa, poi la stessa ruotata;
 - ponti e strade: il gemello ruotato (un ponte al centro e' gia' simmetrico);
-- [§9.127] gli alberi non tagliabili che coprono i lati tagliati dritti degli
-  sprite delle montagne (cover_cuts) non hanno gemello: lo sprite non si
-  ruota, il lato tagliato del gemello sta dalla stessa parte dello sprite.
-  Il controllo vuole solo che stiano su un lato tagliato.
+- [§9.127, §9.128] le montagne piccole e gli alberi non tagliabili che
+  coprono i lati tagliati dritti degli sprite delle montagne
+  (cover_mountains, cover_cuts) non hanno gemello: lo sprite non si ruota,
+  il lato tagliato del gemello sta dalla stessa parte dello sprite. Il
+  controllo vuole solo che stiano su un lato tagliato.
 Le due basi sono due centri (`centro`): il gioco, all'avvio, fa nemico
 quello della CPU (game/src/skirmish.js) secondo la partenza scelta.
 
@@ -140,8 +141,10 @@ class HalfMap:
         self.obj("montagna_%d" % n, round(cx - w / 2), round(cy - h / 2))
 
     def mountains(self):
-        """Le montagne della mappa intera: (nome, x, y) in alto a sinistra."""
-        return [(n, x, y) for n, x, y, _ in self.full(covers=False)[0] if n.startswith("montagna_")]
+        """Le montagne della mappa intera: (nome, x, y) in alto a sinistra
+        (con quelle piccole che coprono i tagli, §9.128)."""
+        return [(n, x, y) for n, x, y, _ in self.full(covers=False)[0] + getattr(self, "cover_mts", [])
+                if n.startswith("montagna_")]
 
     def rock_at(self, x, y, mts=None, front_of=None):
         """(x, y) cade su un pixel pieno di una montagna? front_of=y0: solo
@@ -162,6 +165,15 @@ class HalfMap:
                           for r in ((pad, pad / 2) if pad else ()) for k in range(8)]
         return any(self.rock_at(px, py, mts) for px, py in pts)
 
+    def cut_hidden(self, px, py, side, host, mts):
+        """[§9.128] Il punto (px, py) del lato tagliato `side` della montagna
+        host = (nome, x, y) e' nascosto da una montagna disegnata davanti
+        che ci ha la roccia (anche 8 px dentro)? (Una montagna dietro che
+        riempie oltre il lato non basta: la cucitura dritta si vede.)"""
+        ix, iy = {"bottom": (0, -8), "top": (0, 8), "left": (8, 0), "right": (-8, 0)}[side]
+        hy = host[2]
+        return self.rock_at(px, py, mts, front_of=hy) and self.rock_at(px + ix, py + iy, mts, front_of=hy)
+
     def cover_cuts(self):
         """[§9.127] Gli alberi non tagliabili sui lati tagliati delle montagne
         della mappa INTERA (non gemelli: lo sprite non si ruota, il lato
@@ -180,9 +192,9 @@ class HalfMap:
                     px, py = mx + x0 + (x1 - x0) * t, my + y0 + (y1 - y0) * t
                     if not (0 <= px <= self.w and 0 <= py <= self.h):
                         continue
-                    # nascosto da una montagna davanti (anche appena dentro)
-                    inward = {"bottom": (0, -6), "top": (0, 6), "left": (6, 0), "right": (-6, 0)}[side]
-                    if self.rock_at(px, py, mts, front_of=my) and self.rock_at(px + inward[0], py + inward[1], mts, front_of=my):
+                    # nascosto da una montagna davanti (anche appena dentro),
+                    # o riempito oltre il lato da una dietro (§9.128)
+                    if self.cut_hidden(px, py, side, (n, mx, my), mts):
                         continue
                     # un boschetto, non una siepe: posti a caso attorno al
                     # punto, e altre file sempre piu' rade (fuori dal lato in
@@ -196,6 +208,251 @@ class HalfMap:
                             e = 55 * row + self.rng.uniform(-12, 12)
                             self.covers.append((COVER, round(px + ox + out[0] * e + self.rng.uniform(-28, 28)),
                                                 round(py + oy + out[1] * e + self.rng.uniform(-22, 22)), None))
+
+    def rock_grid(self, G, mts=None):
+        """[§9.128] La roccia su una griglia di G px: (colonne, righe, byte)."""
+        nx, ny = math.ceil(self.w / G), math.ceil(self.h / G)
+        occ = bytearray(nx * ny)
+        for n, mx, my in (mts if mts is not None else self.mountains()):
+            w, h, A = self.alpha(n)
+            for gy in range(max(0, int(my // G)), min(ny, int((my + h) // G) + 1)):
+                py = int(gy * G + G / 2 - my)
+                if not 0 <= py < h:
+                    continue
+                for gx in range(max(0, int(mx // G)), min(nx, int((mx + w) // G) + 1)):
+                    px = int(gx * G + G / 2 - mx)
+                    if 0 <= px < w and A[py * w + px] > 40:
+                        occ[gy * nx + gx] = 1
+        return nx, ny, occ
+
+    def cover_mountains(self, pieces=(3, 6, 7, 8), max_n=3, avoid=()):
+        """[§9.128, richiesta dell'autore] Sui lati tagliati dritti degli
+        sprite delle montagne (MOUNTAIN_CUTS) rimasti in vista, una seconda
+        montagna piccola sopra (disegnata davanti: l'origine piu' in basso),
+        al posto delle file di alberi (troppo regolari). Per ogni montagna
+        della mappa intera, gemelli compresi (lo sprite non si ruota: il lato
+        tagliato del gemello e' dalla stessa parte), fino a max_n montagne
+        piccole scelte fra `pieces` e le posizioni attorno al lato: quella che
+        copre piu' punti del lato e sporge meno dalla roccia che c'e' gia'.
+        avoid: cerchi (x, y, r) dove non deve arrivare la roccia (valichi,
+        risorse, basi). Restano gli alberi (cover_cuts) solo per quel che
+        avanza."""
+        self.cover_mts = []
+        G = 40
+        samples = {}
+        for pn in pieces:
+            w, h, A = self.alpha("montagna_%d" % pn)
+            samples[pn] = [(x, y) for y in range(G // 2, h, G) for x in range(G // 2, w, G) if A[y * w + x] > 40]
+        for hn, hx, hy in [m for m in self.mountains() if m[0] in MOUNTAIN_CUTS]:
+            pts = []
+            for x0, y0, x1, y1, side in MOUNTAIN_CUTS[hn]:
+                k = max(1, round(math.hypot(x1 - x0, y1 - y0) / 30))
+                ix, iy = {"bottom": (0, -8), "top": (0, 8), "left": (8, 0), "right": (-8, 0)}[side]
+                for i in range(k + 1):
+                    px, py = hx + x0 + (x1 - x0) * i / k, hy + y0 + (y1 - y0) * i / k
+                    if 0 <= px <= self.w and 0 <= py <= self.h:
+                        pts.append((px, py, px + ix, py + iy, side))
+            for _ in range(max_n):
+                mts = self.mountains()
+                pts = [p for p in pts if not self.cut_hidden(p[0], p[1], p[4], (hn, hx, hy), mts)]
+                if not pts:
+                    break
+                nx, ny, occ = self.rock_grid(G, mts)
+                cx, cy = sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)
+                best = None
+                for pn in pieces:
+                    w, h, A = self.alpha("montagna_%d" % pn)
+
+                    def solid(x, y, tx, ty):
+                        px, py = int(x - tx), int(y - ty)
+                        return 0 <= px < w and 0 <= py < h and A[py * w + px] > 40
+                    for ox in range(-480, 481, 40):
+                        for oy in range(-360, 361, 40):
+                            tx, ty = round(cx + ox - w / 2), round(cy + oy - h / 2)
+                            if ty <= hy:
+                                continue          # dietro: non copre
+                            cov = sum(1 for p in pts if solid(p[0], p[1], tx, ty) and solid(p[2], p[3], tx, ty))
+                            if not cov or (best and cov < best[0] * 0.5):
+                                continue
+                            prot, bad = 0, False
+                            for sx, sy in samples[pn]:
+                                X, Y = tx + sx, ty + sy
+                                if any(math.hypot(X - ax, Y - ay) < ar for ax, ay, ar in avoid):
+                                    bad = True
+                                    break
+                                gx, gy = int(X // G), int(Y // G)
+                                if 0 <= gx < nx and 0 <= gy < ny and not occ[gy * nx + gx]:
+                                    prot += 1
+                            if bad:
+                                continue
+                            score = cov - prot * 0.02
+                            if not best or score > best[1]:
+                                best = (cov, score, pn, tx, ty)
+                if not best or best[1] <= 0:
+                    break
+                self.cover_mts.append(("montagna_%d" % best[2], best[3], best[4], None))
+
+    def road_auto(self, a, b, kind="strada2", width=80, margin=150, wiggle=0.8, share=0.75, amp=170, wl=1300):
+        """[§9.128, richiesta dell'autore] Una strada da a a b che gira attorno
+        alle montagne: A* su una griglia di 40 px (la mappa intera: montagne,
+        oggetti solidi e fiumi, gemelli compresi), lontano almeno `margin` px
+        dalla roccia e un po' di piu' dove puo'; un campo di costo ondulato
+        (seno su seno, dal seme della mappa) la fa curvare anche in piano.
+        Sulle strade che ci sono gia' costa meno (share): dove ci corre
+        sopra non si ridisegna, la strada nuova parte o arriva li'
+        (l'incrocio). Poi lisciata (Chaikin). Aggiunge i tratti nuovi
+        (col gemello) e li restituisce."""
+        import heapq
+        G = 40
+        nx, ny, occ = self.rock_grid(G, getattr(self, "rock", None) or self.mountains())
+        N = nx * ny
+        # distanza dalla roccia (in celle, 8 vicini)
+        INF = 10 ** 6
+        dist = [INF] * N
+        q = [k for k in range(N) if occ[k]]
+        for k in q:
+            dist[k] = 0
+        head = 0
+        while head < len(q):
+            k = q[head]
+            head += 1
+            x, y = k % nx, k // nx
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    X, Y = x + dx, y + dy
+                    if 0 <= X < nx and 0 <= Y < ny and dist[Y * nx + X] > dist[k] + 1:
+                        dist[Y * nx + X] = dist[k] + 1
+                        q.append(Y * nx + X)
+        blocked = bytearray(N)
+        mc = math.ceil(margin / G)
+        for k in range(N):
+            if dist[k] < mc:
+                blocked[k] = 1
+        objs, rivers, _, roads = self.full()
+        for name, ox, oy, _ in objs:
+            if name.startswith("montagna_") or name in DECOR_OBJ or name == COVER or name == "albero":
+                continue
+            dx, dy = self.off.get(name, (0, 0))
+            r = SOLID_R.get(name, 60) + 40
+            for gy in range(max(0, int((oy + dy - r) // G)), min(ny, int((oy + dy + r) // G) + 1)):
+                for gx in range(max(0, int((ox + dx - r) // G)), min(nx, int((ox + dx + r) // G) + 1)):
+                    if math.hypot(gx * G + G / 2 - ox - dx, gy * G + G / 2 - oy - dy) < r:
+                        blocked[gy * nx + gx] = 1
+
+        def mark(pts, rad, arr):
+            rr = math.ceil(rad / G)
+            for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+                L = math.hypot(x1 - x0, y1 - y0)
+                for i in range(int(L // (G / 2)) + 1):
+                    t = i * (G / 2) / L if L else 0
+                    x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+                    for gy in range(int(y // G) - rr, int(y // G) + rr + 1):
+                        for gx in range(int(x // G) - rr, int(x // G) + rr + 1):
+                            if 0 <= gx < nx and 0 <= gy < ny and math.hypot(gx * G + G / 2 - x, gy * G + G / 2 - y) <= rad:
+                                arr[gy * nx + gx] = 1
+        for pts, wdt in rivers:
+            mark(pts, (max(wdt) if isinstance(wdt, tuple) else wdt) / 2 + 50, blocked)
+        onroad = bytearray(N)
+        for pts, _, wdt in roads:
+            mark(pts, (wdt or tk.ROAD_WIDTH) / 2, onroad)
+        ph = [self.rng.uniform(0, 2 * math.pi) for _ in range(4)]
+
+        def cost(k):
+            if onroad[k]:
+                return share
+            x, y = (k % nx) * G, (k // nx) * G
+            n = 0.5 + 0.25 * (math.sin(x / 650 + ph[0]) * math.sin(y / 800 + ph[1]) + math.sin((x + y) / 1100 + ph[2]))
+            return 1 + wiggle * n + max(0, 6 - dist[k]) * 0.25
+
+        def cell(p):
+            return min(ny - 1, max(0, int(p[1] // G))) * nx + min(nx - 1, max(0, int(p[0] // G)))
+        s, t = cell(a), cell(b)
+        blocked[s] = blocked[t] = 0
+        tx, ty = t % nx, t // nx
+        g = {s: 0.0}
+        prev = {}
+        open_ = [(0.0, s)]
+        while open_:
+            f, k = heapq.heappop(open_)
+            if k == t:
+                break
+            if f > g[k] + share * math.hypot(k % nx - tx, k // nx - ty) + 1e-9:
+                continue
+            x, y = k % nx, k // nx
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    if not dx and not dy:
+                        continue
+                    X, Y = x + dx, y + dy
+                    if not (0 <= X < nx and 0 <= Y < ny):
+                        continue
+                    n = Y * nx + X
+                    if blocked[n]:
+                        continue
+                    ng = g[k] + cost(n) * (1.4142 if dx and dy else 1)
+                    if ng < g.get(n, 1e18):
+                        g[n] = ng
+                        prev[n] = k
+                        heapq.heappush(open_, (ng + share * math.hypot(X - tx, Y - ty), n))
+        assert t in prev or s == t, "nessuna strada da %s a %s" % (a, b)
+        path = [t]
+        while path[-1] != s:
+            path.append(prev[path[-1]])
+        path.reverse()
+        # i tratti fuori dalle strade che ci sono gia' (con l'incrocio)
+        out, cur = [], []
+        for i, k in enumerate(path):
+            if onroad[k] and 0 < i < len(path) - 1:
+                if cur:
+                    cur.append(k)
+                    out.append(cur)
+                    cur = []
+                continue
+            if not cur and i > 0:
+                cur.append(path[i - 1])
+            cur.append(k)
+        if cur:
+            out.append(cur)
+        made = []
+        for seg in out:
+            if len(seg) < 6:
+                continue
+            pts = [((k % nx) * G + G / 2, (k // nx) * G + G / 2) for k in seg]
+            if seg[0] == s:
+                pts[0] = tuple(a)
+            if seg[-1] == t:
+                pts[-1] = tuple(b)
+            # un punto ogni ~160 px (la griglia fa solo 0/45/90 gradi), poi
+            # le anse: spostati di lato quanto lascia la roccia, mai agli
+            # estremi (gli incroci)
+            pts = pts[:1] + pts[4:-2:4] + pts[-1:]
+            acc = [0.0]
+            for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+                acc.append(acc[-1] + math.hypot(x1 - x0, y1 - y0))
+            tot = acc[-1] or 1
+            p0, p1 = self.rng.uniform(0, 6.3), self.rng.uniform(0, 6.3)
+            bent = [pts[0]]
+            for i in range(1, len(pts) - 1):
+                (xa, ya), (xb, yb) = pts[i - 1], pts[i + 1]
+                L = math.hypot(xb - xa, yb - ya) or 1
+                nxv, nyv = -(yb - ya) / L, (xb - xa) / L
+                x, y = pts[i]
+                room = dist[cell((x, y))] * G - margin * 0.6
+                f = min(1, acc[i] / 500, (tot - acc[i]) / 500)
+                o = min(amp, max(0, room)) * f * (0.7 * math.sin(2 * math.pi * acc[i] / wl + p0) + 0.3 * math.sin(2 * math.pi * acc[i] / (wl * 0.45) + p1))
+                bent.append((x + nxv * o, y + nyv * o))
+            pts = bent + [pts[-1]]
+            for _ in range(3):                              # Chaikin, estremi fermi
+                q2 = [pts[0]]
+                for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+                    q2 += [(0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1), (0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1)]
+                q2.append(pts[-1])
+                pts = q2
+            pts = pts[:1] + pts[3:-1:3] + pts[-1:]
+            pts = [pts[0]] + [(round(x), round(y)) for x, y in pts[1:-1]] + [pts[-1]]
+            self.road(pts, kind, width)
+            made.append(pts)
+        return made
 
     # ---------------------------------------------------- mezza mappa
     def obj(self, name, x, y, sprite=None):
@@ -410,6 +667,7 @@ class HalfMap:
             tx, ty = self.rot(x + dx, y + dy)
             objs.append((name, round(tx - dx, 3), round(ty - dy, 3), spr))
         if covers:
+            objs += getattr(self, "cover_mts", [])  # [§9.128] gia' per la mappa intera
             objs += getattr(self, "covers", [])  # [§9.127] gia' per la mappa intera
         rivers = []
         for half, wdt in self.rivers:
@@ -824,32 +1082,26 @@ def bardonis():
     oro, pietra e boschi nella valle, una torre in rovina (pietra) davanti al
     valico lontano. La cresta e' orizzontale: gli sprite delle montagne sono
     larghi, in diagonale lasciavano buchi a scalini. Gli sprite hanno qualche
-    lato tagliato dritto: dove resta in vista lo coprono gli alberi non
-    tagliabili (cover_cuts), come ha fatto l'autore nel tutorial e nel
-    livello 3. Ruscelli stretti ai margini, solo per decorazione."""
+    lato tagliato dritto: dove resta in vista ci va sopra una montagna
+    piccola (cover_mountains, §9.128), e per quel che avanza un albero non
+    tagliabile (cover_cuts). Le strade le traccia road_auto attorno alle
+    montagne (§9.128). Ruscelli stretti ai margini, solo per decorazione."""
     M = HalfMap("sk_bardonis", 7000, 7000, "green1", seed=53)
     C = (M.cx, M.cy)
-    # la cresta, meta' sinistra (il gemello fa la destra): le montagne con la
-    # maschera precisa (1, 4, 5, 9) fanno il muro, la 6, la 7 e la 8 (piccole,
-    # maschera a ellisse) sono i contrafforti
-    for n, x, y in ((1, 410, 3420), (5, 2550, 3560), (8, 2550, 2980), (7, 3000, 4020), (6, 650, 2900),
-                    (3, 1900, 2950), (8, 2250, 4000), (3, 300, 4100)):
+    # la cresta, meta' sinistra (il gemello fa la destra): la 9 (maschera
+    # precisa) fa il muro, la 3 e la 6 (piccole, maschera a ellisse) sono i
+    # contrafforti
+    # [§9.128] la cresta tutta con la 9, che non ha lati tagliati: quelli
+    # della 5 davano sul valico centrale (dove non ci sta una montagna
+    # piccola sopra), quello della 1 e' in alto (nessuna montagna davanti lo
+    # copre: sta piu' in basso)
+    for n, x, y in ((9, 100, 3450), (9, 2400, 3500), (6, 650, 2900), (3, 300, 4100)):
         M.mountain(n, x, y)
     # negli angoli e ai bordi della valle A (i gemelli in quella B)
-    M.mountain(1, 2650, 200)        # in alto (i lati tagliati fuori dalla mappa)
+    M.mountain(4, 2650, 230)        # in alto (i lati tagliati: una montagna piccola davanti)
     M.mountain(9, 6450, 380)        # l'angolo in alto a destra
     M.mountain(7, 4400, 300)
     M.mountain(6, 200, 600)
-    M.rock = M.mountains()
-    # la via Francigena: dalla base al valico centrale (il gemello va all'altra)
-    M.road([(1450, 1450), (2350, 2250), (3050, 2950), C], "strada1")
-    # al valico di sinistra e oltre, nella valle dell'altro; e lungo la valle
-    # fino a dove arriva la strada del valico di destra (il gemello)
-    M.road([(1000, 1500), (1150, 2450), (1450, 3450), (1750, 4400), (2300, 5000)], "strada2", 80)
-    M.road([(1550, 1150), (3000, 1350), (4700, 2000)], "strada2", 80)
-    # i ruscelli ai margini, dalla montagna al bordo (si stringono alla sorgente)
-    M.edge_river(M.meander([(7060, 2500), (6850, 2000), (6700, 1500), (6520, 950)], amp=45, wl=650, jag=8), 70, 30)
-    M.edge_river(M.meander([(-60, 2300), (120, 2650), (330, 2900)], amp=35, wl=550, jag=8), 60, 28)
     # la base A e le risorse
     M.obj("centro", 1200, 1200)
     M.obj("miniera_oro", 1900, 850)
@@ -858,6 +1110,31 @@ def bardonis():
     M.obj("pietra_grande", 2400, 2450)     # ai piedi della cresta, verso il valico
     M.obj("miniera_oro", 600, 2500)        # davanti al valico di sinistra
     M.obj("torreruin", 5450, 2700)         # davanti al valico di destra
+    # [§9.128, richiesta dell'autore] sui lati tagliati in vista una seconda
+    # montagna piccola (non piu' le file di alberi); niente roccia nei valichi
+    # ne' sulle risorse
+    PASSES = [C, (1220, 3450), (5780, 3550)]
+    avoid = [(x, y, 240) for x, y in PASSES]
+    for name, x, y, _ in M.full()[0]:
+        if not name.startswith("montagna_"):
+            dx, dy = M.off.get(name, (0, 0))
+            avoid.append((x + dx, y + dy, SOLID_R.get(name, 60) + 80))
+    M.cover_mountains(avoid=avoid)
+    M.rock = M.mountains()
+    # i ruscelli ai margini, dalla montagna al bordo (si stringono alla sorgente)
+    M.edge_river(M.meander([(7060, 2500), (6850, 2000), (6700, 1500), (6520, 950)], amp=45, wl=650, jag=8), 70, 30)
+    M.edge_river(M.meander([(-60, 2300), (120, 2650), (330, 2900)], amp=35, wl=550, jag=8), 60, 28)
+    # [§9.128, richiesta dell'autore] le strade girano attorno alle montagne
+    # (road_auto) e sono di piu'; dove una corre su un'altra parte l'incrocio
+    M.road_auto((1500, 1550), C, "strada1", None)               # la via Francigena (il gemello va all'altra base)
+    M.road_auto((1600, 1350), (4150, 1350))                     # lungo la valle, alla miniera in fondo
+    M.road_auto((1300, 1650), PASSES[1])                        # al valico di sinistra
+    M.road_auto(PASSES[1], (2550, 5650))                        # e oltre, nella valle dell'altro
+    M.road_auto((1050, 1600), (800, 2300), width=70)            # alla pietra e alla miniera di sinistra
+    M.road_auto((2600, 2350), (1500, 1550), width=70)           # alla pietra grande
+    M.road_auto((1350, 2850), (5700, 2900), width=70)           # ai piedi della cresta, da un valico all'altro
+    M.road_auto((4150, 1350), (6200, 1700), width=70)           # verso il ruscello
+    M.road_auto((3500, 10), (3300, 1300), width=70)             # dal bordo in alto
     keep = lambda x, y: not M.near_lines(x, y, 120) and math.hypot(x - 1200, y - 1200) > 560 \
         and not M.on_rock(x, y, 60, M.rock)  # noqa: E731
     M.forest(400, 450, 300, 260, keep=keep)
@@ -893,11 +1170,11 @@ def check(name):
         for x0, y0, x1, y1, side in MOUNTAIN_CUTS.get(i["object"], ()):
             cuts.append((i["x"] + x0, i["y"] + y0, i["x"] + x1, i["y"] + y1))
 
-    def near_cut(x, y):
+    def near_cut(x, y, R=260):
         for x0, y0, x1, y1 in cuts:
             vx, vy = x1 - x0, y1 - y0
             t = max(0, min(1, ((x - x0) * vx + (y - y0) * vy) / (vx * vx + vy * vy or 1)))
-            if math.hypot(x - x0 - t * vx, y - y0 - t * vy) < 260:
+            if math.hypot(x - x0 - t * vx, y - y0 - t * vy) < R:
                 return True
         return False
     for i in sc["instances"]:
@@ -918,6 +1195,8 @@ def check(name):
                   and abs(x2 - tx) <= 1 and abs(y2 - ty) <= 1), None)
         if j is None and abs(x - tx) <= 1 and abs(y - ty) <= 1:
             used[k] = True  # al centro della mappa: gemello di se stesso (il ponte centrale)
+        elif j is None and o in ("montagna_3", "montagna_6", "montagna_7", "montagna_8") and near_cut(x, y, 600):
+            used[k] = True  # [§9.128] una montagna piccola sopra un lato tagliato (cover_mountains)
         elif j is None:
             errs.append("%s (%g, %g) senza gemello" % (o, x, y))
         else:
