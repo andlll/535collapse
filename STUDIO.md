@@ -9426,3 +9426,56 @@ Prove: `--check` (simmetriche tutte e quattro); a Rivoaltus tutte le
 risorse raggiungibili dalle due basi e i sette ponti attraversati da un
 cavaliere; `soak` e `saves` su sk_padus, sk_silva, sk_rivo; prove unitarie.
 Rifatte le foto delle tre mappe (tools/17) e l'atlas.
+
+### 9.127 Mons Bardonis: la cresta, i tre valichi e gli alberi sui tagli
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609):
+l'ultima mappa, con gli sprite delle montagne che ci sono, incrociati in modo
+che non si vedano gli spigoli tagliati dritti degli sprite, magari coperti
+da alberi non tagliabili o da altre decorazioni come nel tutorial e nel
+livello 3; qualche ruscello decorativo ai margini.
+**La mappa** (sk_bardonis, 7000 x 7000; tools/16 `bardonis`): il Monte
+Bardone, il valico della Cisa sulla via Francigena. Una cresta di montagne
+attraversa la mappa da un bordo all'altro fra le due basi, con tre valichi
+larghi 450-550 px: al centro la via Francigena (strada marcata, il valico fa
+una S fra le due montagne), e due di lato, equidistanti dalle due basi.
+Ogni base ha la sua valle (la A in alto): oro e pietra piccola vicino al
+centro, una miniera in fondo alla valle, una davanti al valico vicino, la
+pietra grande ai piedi della cresta, una torre in rovina (pietra) davanti al
+valico lontano, boschi. Montagne negli angoli e ai bordi delle valli; due
+ruscelli stretti per parte che escono da sotto una montagna e vanno al
+bordo (si stringono alla sorgente). Nebbia sui valichi.
+- **La cresta orizzontale**: in diagonale gli sprite (larghi e bassi)
+  lasciavano buchi a scalini. Per il muro le montagne con la maschera precisa
+  (1, 4, 5, 9); la 6, la 7, la 8 e la 3 come contrafforti. Non la 2: ha la
+  maschera a ellisse su tutto il rettangolo, mentre la roccia disegnata no.
+  Controllato su una griglia di 25 px con le maschere: col valichi chiusi
+  le due valli sono separate, coi valichi aperti si passa da ciascuno.
+- I valichi sono equidistanti dalle due basi (stanno sul confine fra le due
+  meta'), quindi le montagne non ruotate (che non sono simmetriche) li
+  restringono in modo diverso ma ugualmente per i due giocatori.
+**Gli spigoli tagliati** (tools/16 `cover_cuts`): gli sprite 1, 2, 4 e 5
+hanno lati tagliati dritti (misurati sull'alfa: la 1 in alto a destra, la 2
+in basso, la 4 e la 5 a sinistra e in basso). Lo script prende ogni
+montagna della mappa intera e lungo ogni lato tagliato mette un albero non
+tagliabile (albero_fake) ogni ~58 px, salvo dove il lato e' fuori dalla
+mappa o sotto una montagna disegnata davanti (depth -y: quella con l'origine
+piu' in basso). Un boschetto, non una siepe: posti a caso, e file in piu'
+sempre piu' rade. La chioma sta fra 24 e 144 px sopra il tronco, larga
++-55: sotto un lato in basso il tronco va fuori (60 px sotto), per gli
+altri lati i tronchi stanno sulla roccia, dove non intralciano. (Prima
+stavano anche fuori, nel valico di sinistra: un cavaliere si incastrava fra
+i tronchi.) Questi alberi non hanno gemello (lo sprite del gemello non si
+ruota, il suo lato tagliato e' dalla stessa parte): `--check` li accetta se
+stanno su un lato tagliato. Dove si puo' i lati tagliati vanno fuori dalla
+mappa (la montagna in alto) o sotto un'altra montagna.
+**Le decorazioni non sulla roccia**: `free` scarta i punti sulla roccia
+(alfa degli sprite delle montagne), con un margine di r + 100 px per le
+macchie d'erba e di fiori (le particelle si allargano: una disegnava l'erba
+sulla montagna).
+Prove: `--check` (simmetrica); tutte le risorse raggiungibili dalle due
+basi; un cavaliere per valico in ciascun verso; la CPU (Normale,
+Equilibrato) costruisce nella sua valle e attacca al nono minuto passando
+dai valichi; `soak` e `saves` (5,7 MB) su sk_bardonis (aggiunta alla CI);
+prove unitarie. La foto del menu: il valico centrale con la via
+Francigena. Con questa le cinque mappe della schermaglia ci sono tutte.

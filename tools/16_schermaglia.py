@@ -13,7 +13,11 @@ Si descrive mezza mappa (la parte della base A, in alto a sinistra) e lo
 script aggiunge i gemelli:
 - oggetti (edifici, risorse, alberi): il gemello nella posizione ruotata;
 - fiumi: la meta' dal bordo al centro della mappa, poi la stessa ruotata;
-- ponti e strade: il gemello ruotato (un ponte al centro e' gia' simmetrico).
+- ponti e strade: il gemello ruotato (un ponte al centro e' gia' simmetrico);
+- [§9.127] gli alberi non tagliabili che coprono i lati tagliati dritti degli
+  sprite delle montagne (cover_cuts) non hanno gemello: lo sprite non si
+  ruota, il lato tagliato del gemello sta dalla stessa parte dello sprite.
+  Il controllo vuole solo che stiano su un lato tagliato.
 Le due basi sono due centri (`centro`): il gioco, all'avvio, fa nemico
 quello della CPU (game/src/skirmish.js) secondo la partenza scelta.
 
@@ -55,6 +59,26 @@ SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_gran
            "torreruin": 170, "o_colonna": 50, "o_fontana": 70, "o_statua1": 60, "o_statua2": 55, "o_statua3": 60,
            "o_statua4": 55, "montagna_7": 330, "montagna_8": 470, **{"ocr_%02d" % n: 70 for n in range(1, 46)}}
 
+# [§9.127] Mons Bardonis: i lati tagliati dritti degli sprite delle montagne
+# (coordinate dello sprite, origine in alto a sinistra), da coprire con gli
+# alberi non tagliabili (albero_fake) dove restano in vista, come ha fatto
+# l'autore nel tutorial e nel livello 3. Misurati sull'alfa dei PNG: le
+# altre montagne hanno il contorno intero (o solo i fili del tratto).
+MOUNTAIN_CUTS = {
+    "montagna_1": [(1071, 0, 1492, 0, "top"), (1492, 0, 1492, 204, "right")],
+    "montagna_2": [(535, 824, 1345, 824, "bottom")],
+    "montagna_4": [(401, 824, 862, 824, "bottom"), (0, 166, 0, 435, "left")],
+    "montagna_5": [(0, 824, 937, 824, "bottom"), (0, 359, 0, 824, "left")],
+}
+COVER = "albero_fake"  # [§9.127] fuori dal controllo dei gemelli: vedi check
+# dal punto del lato tagliato al tronco dell'albero (la chioma di alb1..8 sta
+# fra -144 e -24 px in alto dal tronco, larga +-55 px)
+# I tronchi stanno sulla roccia (verso l'interno) dove la chioma copre lo
+# stesso il lato: solo sotto un lato tagliato in basso devono stare fuori, e
+# solo li' il boschetto si allarga fuori dalla montagna (un tronco nel valico
+# fermava un cavaliere).
+COVER_STEP, COVER_OFF = 58, {"bottom": (0, 60), "top": (0, 85), "left": (30, 85), "right": (-30, 85)}
+
 
 def kit11():
     spec = importlib.util.spec_from_file_location("kit11", os.path.join(os.path.dirname(__file__), "11_tiled_kit.py"))
@@ -94,6 +118,84 @@ class HalfMap:
 
     def rot(self, x, y):
         return self.w - x, self.h - y
+
+    # ------------------------------------------------ [§9.127] montagne
+    _alpha = {}
+
+    @classmethod
+    def alpha(cls, obj):
+        """(w, h, byte dell'alfa) dello sprite della montagna `obj`."""
+        if obj not in cls._alpha:
+            from PIL import Image
+            from _paths import GMX_DIR
+            spr = "montagna" + obj.split("_")[1]
+            a = Image.open(os.path.join(GMX_DIR, "sprites", "images", spr + "_0.png")).convert("RGBA").getchannel("A")
+            cls._alpha[obj] = (a.width, a.height, a.tobytes())
+        return cls._alpha[obj]
+
+    def mountain(self, n, cx, cy):
+        """montagna_n con il centro dello SPRITE in (cx, cy) (l'origine e' in
+        alto a sinistra)."""
+        w, h, _ = self.alpha("montagna_%d" % n)
+        self.obj("montagna_%d" % n, round(cx - w / 2), round(cy - h / 2))
+
+    def mountains(self):
+        """Le montagne della mappa intera: (nome, x, y) in alto a sinistra."""
+        return [(n, x, y) for n, x, y, _ in self.full(covers=False)[0] if n.startswith("montagna_")]
+
+    def rock_at(self, x, y, mts=None, front_of=None):
+        """(x, y) cade su un pixel pieno di una montagna? front_of=y0: solo
+        quelle disegnate davanti a una montagna con l'origine a y0 (depth -y)."""
+        for n, mx, my in (mts if mts is not None else self.mountains()):
+            if front_of is not None and my <= front_of:
+                continue
+            w, h, A = self.alpha(n)
+            px, py = int(x - mx), int(y - my)
+            if 0 <= px < w and 0 <= py < h and A[py * w + px] > 40:
+                return True
+        return False
+
+    def on_rock(self, x, y, pad=0, mts=None):
+        """Roccia in (x, y) o entro pad px (otto punti a pad e a pad/2)?"""
+        mts = mts if mts is not None else self.mountains()
+        pts = [(x, y)] + [(x + r * math.cos(k * math.pi / 4), y + r * math.sin(k * math.pi / 4))
+                          for r in ((pad, pad / 2) if pad else ()) for k in range(8)]
+        return any(self.rock_at(px, py, mts) for px, py in pts)
+
+    def cover_cuts(self):
+        """[§9.127] Gli alberi non tagliabili sui lati tagliati delle montagne
+        della mappa INTERA (non gemelli: lo sprite non si ruota, il lato
+        tagliato del gemello sta dalla stessa parte dello sprite). Un tratto
+        e' gia' nascosto se e' fuori dalla mappa o sotto una montagna
+        disegnata davanti."""
+        mts = self.mountains()
+        self.covers = []
+        for n, mx, my in mts:
+            for x0, y0, x1, y1, side in MOUNTAIN_CUTS.get(n, ()):
+                L = math.hypot(x1 - x0, y1 - y0)
+                k = max(1, round((L + 40) / COVER_STEP))
+                ox, oy = COVER_OFF[side]
+                for i in range(k + 1):
+                    t = -20 / L + (L + 40) / L * i / k
+                    px, py = mx + x0 + (x1 - x0) * t, my + y0 + (y1 - y0) * t
+                    if not (0 <= px <= self.w and 0 <= py <= self.h):
+                        continue
+                    # nascosto da una montagna davanti (anche appena dentro)
+                    inward = {"bottom": (0, -6), "top": (0, 6), "left": (6, 0), "right": (-6, 0)}[side]
+                    if self.rock_at(px, py, mts, front_of=my) and self.rock_at(px + inward[0], py + inward[1], mts, front_of=my):
+                        continue
+                    # un boschetto, non una siepe: posti a caso attorno al
+                    # punto, e altre file sempre piu' rade (fuori dal lato in
+                    # basso, sulla roccia per gli altri)
+                    out = {"bottom": (0, 1), "top": (0, 1), "left": (1, 0), "right": (-1, 0)}[side]
+                    jx, jy = (self.rng.uniform(-18, 18), self.rng.uniform(-10, 16)) if side in ("bottom", "top") \
+                        else (self.rng.uniform(-8, 8), self.rng.uniform(-14, 14))
+                    self.covers.append((COVER, round(px + ox + jx), round(py + oy + jy), None))
+                    for row, prob in ((1, 0.6), (2, 0.3)):
+                        if self.rng.random() < prob:
+                            e = 55 * row + self.rng.uniform(-12, 12)
+                            self.covers.append((COVER, round(px + ox + out[0] * e + self.rng.uniform(-28, 28)),
+                                                round(py + oy + out[1] * e + self.rng.uniform(-22, 22)), None))
 
     # ---------------------------------------------------- mezza mappa
     def obj(self, name, x, y, sprite=None):
@@ -249,7 +351,7 @@ class HalfMap:
         self.patches.append(([(round(x), round(y)) for x, y in pts], bg, feather))
         self.patches.append(([tuple(round(v) for v in self.rot(x, y)) for x, y in pts], bg, feather))
 
-    def free(self, x, y, r, lines=120, ignore=()):
+    def free(self, x, y, r, lines=120, ignore=(), rock_pad=None):
         """(x, y) lontano r px dagli oggetti solidi gia' messi (e dai loro
         gemelli) e lines px da fiumi e strade?"""
         # [§9.123] le distanze fra i centri delle maschere (x, y: il centro
@@ -267,6 +369,10 @@ class HalfMap:
         for _, bx, by in self.full_painted():
             if math.hypot(bx - x, by - y) < r + BRIDGE_R:
                 return False
+        # [§9.127] niente sulla roccia delle montagne (self.rock: le montagne
+        # della mappa intera, se la mappa le vuole controllate)
+        if getattr(self, "rock", None) and self.on_rock(x, y, rock_pad or max(40, r * 0.6), self.rock):
+            return False
         return not self.near_lines(x, y, lines)
 
     def scatter(self, name, n, box, r, lines=120, sprite=None, tries=400):
@@ -278,7 +384,8 @@ class HalfMap:
             if k >= n:
                 break
             x, y = round(self.rng.uniform(x0, x1)), round(self.rng.uniform(y0, y1))
-            if not self.half(x, y) or not self.free(x, y, r, lines):
+            # [§9.127] le macchie d'erba e di fiori si allargano oltre r
+            if not self.half(x, y) or not self.free(x, y, r, lines, rock_pad=r + 100 if name in DECOR_OBJ else None):
                 continue
             dx, dy = self.off.get(name, (0, 0))
             self.obj(name, round(x - dx), round(y - dy), sprite)  # (x, y): il centro della maschera
@@ -295,13 +402,15 @@ class HalfMap:
         self.roads.append((pts, kind, width))
 
     # ------------------------------------------------------- gemelli
-    def full(self):
+    def full(self, covers=True):
         objs = list(self.center)  # [§9.123] gemelli di se stessi
         for name, x, y, spr in self.objs:
             objs.append((name, x, y, spr))
             dx, dy = self.off.get(name, (0, 0))
             tx, ty = self.rot(x + dx, y + dy)
             objs.append((name, round(tx - dx, 3), round(ty - dy, 3), spr))
+        if covers:
+            objs += getattr(self, "covers", [])  # [§9.127] gia' per la mappa intera
         rivers = []
         for half, wdt in self.rivers:
             twin = [self.rot(*p) for p in reversed(half[:-1])]
@@ -706,7 +815,66 @@ def urbs():
     return M
 
 
-MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus}
+def bardonis():
+    """[§9.127] Mons Bardonis (il Monte Bardone, il passo della Cisa sulla via
+    Francigena): una cresta di montagne attraversa la mappa da un bordo
+    all'altro fra le due basi, con tre valichi: al centro la via Francigena
+    (la strada marcata) e due di lato; ogni base ha la sua valle (la base A
+    quella in alto). Montagne anche negli angoli e ai bordi; per ciascuno:
+    oro, pietra e boschi nella valle, una torre in rovina (pietra) davanti al
+    valico lontano. La cresta e' orizzontale: gli sprite delle montagne sono
+    larghi, in diagonale lasciavano buchi a scalini. Gli sprite hanno qualche
+    lato tagliato dritto: dove resta in vista lo coprono gli alberi non
+    tagliabili (cover_cuts), come ha fatto l'autore nel tutorial e nel
+    livello 3. Ruscelli stretti ai margini, solo per decorazione."""
+    M = HalfMap("sk_bardonis", 7000, 7000, "green1", seed=53)
+    C = (M.cx, M.cy)
+    # la cresta, meta' sinistra (il gemello fa la destra): le montagne con la
+    # maschera precisa (1, 4, 5, 9) fanno il muro, la 6, la 7 e la 8 (piccole,
+    # maschera a ellisse) sono i contrafforti
+    for n, x, y in ((1, 410, 3420), (5, 2550, 3560), (8, 2550, 2980), (7, 3000, 4020), (6, 650, 2900),
+                    (3, 1900, 2950), (8, 2250, 4000), (3, 300, 4100)):
+        M.mountain(n, x, y)
+    # negli angoli e ai bordi della valle A (i gemelli in quella B)
+    M.mountain(1, 2650, 200)        # in alto (i lati tagliati fuori dalla mappa)
+    M.mountain(9, 6450, 380)        # l'angolo in alto a destra
+    M.mountain(7, 4400, 300)
+    M.mountain(6, 200, 600)
+    M.rock = M.mountains()
+    # la via Francigena: dalla base al valico centrale (il gemello va all'altra)
+    M.road([(1450, 1450), (2350, 2250), (3050, 2950), C], "strada1")
+    # al valico di sinistra e oltre, nella valle dell'altro; e lungo la valle
+    # fino a dove arriva la strada del valico di destra (il gemello)
+    M.road([(1000, 1500), (1150, 2450), (1450, 3450), (1750, 4400), (2300, 5000)], "strada2", 80)
+    M.road([(1550, 1150), (3000, 1350), (4700, 2000)], "strada2", 80)
+    # i ruscelli ai margini, dalla montagna al bordo (si stringono alla sorgente)
+    M.edge_river(M.meander([(7060, 2500), (6850, 2000), (6700, 1500), (6520, 950)], amp=45, wl=650, jag=8), 70, 30)
+    M.edge_river(M.meander([(-60, 2300), (120, 2650), (330, 2900)], amp=35, wl=550, jag=8), 60, 28)
+    # la base A e le risorse
+    M.obj("centro", 1200, 1200)
+    M.obj("miniera_oro", 1900, 850)
+    M.obj("pietr_piccolo", 650, 1800)
+    M.obj("miniera_oro", 4300, 1150)       # in fondo alla valle
+    M.obj("pietra_grande", 2400, 2450)     # ai piedi della cresta, verso il valico
+    M.obj("miniera_oro", 600, 2500)        # davanti al valico di sinistra
+    M.obj("torreruin", 5450, 2700)         # davanti al valico di destra
+    keep = lambda x, y: not M.near_lines(x, y, 120) and math.hypot(x - 1200, y - 1200) > 560 \
+        and not M.on_rock(x, y, 60, M.rock)  # noqa: E731
+    M.forest(400, 450, 300, 260, keep=keep)
+    M.forest(2700, 1150, 420, 220, keep=keep)
+    M.forest(3900, 2600, 380, 260, keep=keep)
+    M.forest(5300, 1300, 330, 230, keep=keep)
+    for _ in range(40):                          # alberi sparsi
+        M.scatter("albero", 1, (150, 150, 6850, 6850), 140)
+    for name, n, r, lines in (("burst_erba1", 8, 200, 150), ("chiazzaparticellare", 3, 200, 150),
+                              ("fiori_prato", 3, 120, 100), ("fiori_papaveri", 2, 120, 100), ("fiori_gialli_erba", 3, 120, 100),
+                              ("erba_1", 16, 60, 80), ("fiorame1", 10, 60, 80)):
+        M.scatter(name, n, (150, 150, 6850, 6850), r, lines=lines)
+    M.cover_cuts()
+    return M
+
+
+MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus, "bardonis": bardonis}
 
 
 # ------------------------------------------------------------ controllo
@@ -718,8 +886,26 @@ def check(name):
     off = mask_offsets()
     errs = []
     pts = []
+    # [§9.127] gli alberi che coprono i lati tagliati delle montagne non hanno
+    # gemello (lo sprite non si ruota): basta che stiano su un lato tagliato
+    cuts = []
+    for i in sc["instances"]:
+        for x0, y0, x1, y1, side in MOUNTAIN_CUTS.get(i["object"], ()):
+            cuts.append((i["x"] + x0, i["y"] + y0, i["x"] + x1, i["y"] + y1))
+
+    def near_cut(x, y):
+        for x0, y0, x1, y1 in cuts:
+            vx, vy = x1 - x0, y1 - y0
+            t = max(0, min(1, ((x - x0) * vx + (y - y0) * vy) / (vx * vx + vy * vy or 1)))
+            if math.hypot(x - x0 - t * vx, y - y0 - t * vy) < 260:
+                return True
+        return False
     for i in sc["instances"]:
         if i["object"] in REGIA:
+            continue
+        if i["object"] == COVER:
+            if not near_cut(i["x"], i["y"]):
+                errs.append("%s (%g, %g) lontano dai lati tagliati delle montagne" % (COVER, i["x"], i["y"]))
             continue
         dx, dy = off.get(i["object"], (0, 0))
         pts.append((i["object"], i["x"] + dx, i["y"] + dy))

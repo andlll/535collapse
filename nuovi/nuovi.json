@@ -994,6 +994,11 @@
       "origin": "centro",
       "gruppo": "campagna",
       "nota": "la foto di Rivoaltus nella schermata della schermaglia (§9.125): generata da tools/17_cartoline.mjs"
+    },
+    "sk_bardonis_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Mons Bardonis nella schermata della schermaglia (§9.127): generata da tools/17_cartoline.mjs"
     }
   },
   "objects": {

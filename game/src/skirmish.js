@@ -34,7 +34,10 @@ export const SK_MAPS = [
   // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
   { room: "sk_urbs", name: "Urbs", shot: [3500, 3420], tiers: ["citta"],
     desc: "Rome in ruins. The old city is the only quarry left: all the stone lies among its temples and towers. Whoever holds the centre can build." },
-  { room: null, name: "Mons Bardonis", desc: "Coming soon" },
+  // [§9.127] il Monte Bardone (la Cisa) sulla via Francigena: la cresta e i tre valichi
+  { room: "sk_bardonis", name: "Mons Bardonis", shot: [3500, 3450],
+    mist: [[3500, 3500], [1450, 3450], [2550, 3000]],
+    desc: "Monte Bardone, the pass of the Via Francigena. A mountain ridge splits the two valleys: only three passes cross it." },
 ];
 export const SK_ROOMS = SK_MAPS.filter((m) => m.room).map((m) => m.room);
 export const isSkirmish = (room) => SK_ROOMS.includes(room);
