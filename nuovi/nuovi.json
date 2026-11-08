@@ -974,6 +974,31 @@
         92
       ],
       "gruppo": "terreno"
+    },
+    "sk_padus_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Padus nella schermata della schermaglia (§9.121): generata da tools/17_cartoline.mjs"
+    },
+    "sk_urbs_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Urbs nella schermata della schermaglia (§9.123): generata da tools/17_cartoline.mjs"
+    },
+    "sk_silva_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Silva Umbra nella schermata della schermaglia (§9.124): generata da tools/17_cartoline.mjs"
+    },
+    "sk_rivo_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Rivoaltus nella schermata della schermaglia (§9.125): generata da tools/17_cartoline.mjs"
+    },
+    "sk_bardonis_cartolina": {
+      "origin": "centro",
+      "gruppo": "campagna",
+      "nota": "la foto di Mons Bardonis nella schermata della schermaglia (§9.127): generata da tools/17_cartoline.mjs"
     }
   },
   "objects": {
@@ -1511,6 +1536,30 @@
       "depth": 0,
       "kit": false,
       "nota": "la regia economica del nemico (§9.44, economy.js)"
+    },
+    "sk_manager": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia della schermaglia: tregua, tetto, vittoria e sconfitta (§9.118, skirmish.js)"
+    },
+    "sk_nebbia": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la nebbia della schermaglia: fa nascere poche nuvole tenui (sk_nube) attorno a se' (§9.122, skirmish.js)"
+    },
+    "sk_nube": {
+      "sprite": "fog1",
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "una nuvola di nebbia della schermaglia (§9.122): tenue, scivola piano a destra; non e' fog01 (che cambia l'inseguimento dei nemici)"
     },
     "enemy_cantiere": {
       "sprite": "cas_f1",

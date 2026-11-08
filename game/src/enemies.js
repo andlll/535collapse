@@ -15,12 +15,13 @@ import { hintOnce, dialogOpen } from "./hints.js";
 import { sightK, seenNear } from "./fog.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY, onFormationSlot } from "./pathing.js";
-import { meleeSpot, FIRE } from "./melee.js";
+import { GRID, mpPotentialStep, moveFlowField, destinationBack, makeWay, waiting, waitHere, canReach, nearestReachable, chaseStuck, stuckWait, WAIT_RETRY, onFormationSlot, mayYieldTo, yieldStep, yieldClear } from "./pathing.js";
+import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { bloodHit } from "./blood.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
-import { phaseOf, swingOn, swingVictim, unitRing } from "./units.js";
+import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
@@ -153,16 +154,141 @@ function pushThrough(w, p, i) {
   w.setPos(i, nx, ny);
 }
 
+// [§9.116, segnalazione dell'autore] "I nemici si accavallano e si
+// incasinano". Un'ondata (ruolo 31) o un gruppo mandato a un punto ha per
+// meta lo stesso punto per tutti: arrivati, i primi si fermavano li' e gli
+// altri, sovrapposti, col campo (senza collisioni) andavano fin sopra di
+// loro, o spingevano col passo dritto spostando a caso la meta occupata;
+// alla fine decine di coppie una sull'altra e nemici che andavano avanti e
+// indietro per sempre (marcia di 18 nemici: 48 coppie sovrapposte, 9 ancora
+// in cammino dopo 40 s). Ora, come gli alleati (che pero' hanno ognuno la
+// sua casella):
+// - arrivo nella calca: chi marcia (non insegue, non va a dare fuoco, non
+//   sulla strada o in colonna) a meno di ARRIVE_NEAR px dalla meta e tocca,
+//   dov'e' o un passo avanti, un compagno gia' fermo, e' arrivato li';
+// - i nemici fermi uno sull'altro si separano (settleEnemies, come
+//   settleOverlaps degli alleati): si sposta quello con l'ordo piu' basso, a
+//   un posto libero vicino, dritto sopra i compagni (settleMove).
+const ARRIVE_NEAR = 250;
+const marching = (i) => !i.firework && (i.warwork === 0 || i.warwork === 4) && !i.retreat && !i.road && !i.pace
+  && i.presidiowork !== 1 && !onFormationSlot(i) && !i.settleTo;
+function touchesResting(w, i, x, y) {
+  const bb = w.bbox(i);
+  if (!bb) return false;
+  const dx = x - i.x, dy = y - i.y, box = [bb[0] + Math.min(0, dx), bb[1] + Math.min(0, dy), bb[2] + Math.max(0, dx), bb[3] + Math.max(0, dy)];
+  for (const o of w._nearList(box)) {
+    if (o === i || !o.alive || o.action !== 0 || !w.is(o, "enemy_unit") || !w.overlap(i, x, y, o)) continue;
+    return true;
+  }
+  return false;
+}
+function arriveInCrowd(i, w) {
+  if (!marching(i)) return false;
+  const d = pointDistance(i.x, i.y, i.dirox, i.diroy);
+  if (d > ARRIVE_NEAR) return false;
+  const dir = pointDirection(i.x, i.y, i.dirox, i.diroy), a = Math.min(6, d);
+  if (!touchesResting(w, i, i.x, i.y) && !touchesResting(w, i, i.x + lengthdirX(a, dir), i.y + lengthdirY(a, dir))) return false;
+  i.action = 0; i.speed = 0; i.step = 0;
+  if (i.role === 31) i.role = 32;
+  if (i.warwork === 4) i.warwork = 0;
+  yieldClear(i);
+  return true;
+}
+// verso il posto della separazione: dritto, sopra i compagni (non dentro
+// edifici, alberi o alleati); arrivati, o senza strada, fermi
+function settleMove(i, w) {
+  const t = i.settleTo;
+  if (!t) return false;
+  if (i.warwork !== 0 || i.firework || i.dirox !== t[0] || i.diroy !== t[1]) { i.settleTo = null; return false; }
+  const d = pointDistance(i.x, i.y, t[0], t[1]);
+  const dir = pointDirection(i.x, i.y, t[0], t[1]), st = Math.min(i.autospeed || 3, d);
+  const nx = i.x + lengthdirX(st, dir), ny = i.y + lengthdirY(st, dir);
+  if (d < 1 || !w.placeFreeExcept(i, nx, ny, "enemy_unit")) {
+    i.settleTo = null; i.action = 0; i.speed = 0; i.step = 0;
+    return true;
+  }
+  i.direction = dir;
+  w.setPos(i, nx, ny);
+  return true;
+}
+
+// [§9.116] I nemici fermi e liberi (niente combattimento, fuoco, ritirata,
+// presidio; non le macchine d'assedio ne' i lavoratori) che si toccano: ogni
+// SETTLE_EVERY passi quello con l'ordo piu' basso va al posto libero piu'
+// vicino (anelli da SETTLE_STEP px fino a SETTLE_MAX, prima dalla parte
+// opposta all'altro); per SETTLE_WAIT passi non si sposta di nuovo.
+const SETTLE_EVERY = 10, SETTLE_STEP = 16, SETTLE_MAX = 128, SETTLE_WAIT = 120;
+const NOT_SETTLED = new Set(["enemy_ariete", "enemy_catapulta", "enemy_omino"]);
+const enemyAtRest = (u) => u.alive && !NOT_SETTLED.has(u.object) && u.action === 0 && !u.warwork && !u.firework
+  && !u.retreat && u.presidiowork !== 1;
+export function settleEnemies(w, p) {
+  if (w._stepNo % SETTLE_EVERY !== 5) return;
+  const rest = [...w.all("enemy_unit")].filter(enemyAtRest);
+  const moved = new Set();
+  for (const u of rest) {
+    if (moved.has(u) || (u.settleUntil || 0) > w._stepNo) continue;
+    for (const o of rest) {
+      if (o === u || moved.has(o) || !w.overlap(u, u.x, u.y, o)) continue;
+      const lower = (o.ordo ?? 0) < (u.ordo ?? 0) || ((o.ordo ?? 0) === (u.ordo ?? 0) && o.id < u.id) ? o : u;
+      const other = lower === u ? o : u;
+      if ((lower.settleUntil || 0) > w._stepNo) continue;
+      lower.settleUntil = w._stepNo + SETTLE_WAIT;
+      const s = enemySettleSpot(w, p, lower, other);
+      if (!s) continue;
+      lower.settleTo = s;
+      lower.dirox = s[0]; lower.diroy = s[1];
+      if (lower.alarm.get(0) < 1) lower.alarm.set(0, 5);
+      lower.action = 1;
+      moved.add(lower);
+      break;
+    }
+  }
+}
+function enemySettleSpot(w, p, u, o) {
+  const away = pointDirection(o.x, o.y, u.x, u.y);
+  for (let r = SETTLE_STEP; r <= SETTLE_MAX; r += SETTLE_STEP) {
+    for (let k = 0; k < 16; k++) {
+      const a = away + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 22.5;
+      const x = Math.round(u.x + lengthdirX(r, a)), y = Math.round(u.y + lengthdirY(r, a));
+      const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
+      if (!p.inside(gx, gy) || p.solid[gy * p.gw + gx] || !w.placeFree(u, x, y)) continue;
+      if (w.terrainBlocks && w.terrainBlocks(u, x, y)) continue; // §9.97
+      let clear = true;
+      for (let s = 8; s < r && clear; s += 8) {
+        if (!w.placeFreeExcept(u, u.x + lengthdirX(s, a), u.y + lengthdirY(s, a), "enemy_unit")) clear = false;
+      }
+      if (clear) return [x, y];
+    }
+  }
+  return null;
+}
+
 function enemyMove(i, w, p) {
   if (i.action !== 1) return;
+  if (settleMove(i, w)) return; // §9.116
+  if (arriveInCrowd(i, w)) return; // §9.116
+  // [§9.116] in mischia (verso il posto attorno all'alleato, meleeSpot),
+  // sovrapposto solo a compagni: dritto verso il posto, sopra di loro, come
+  // gli alleati (units.js, flowMovement "over"). Prima: col campo dell'ondata
+  // (la meta dell'ondata, non il posto) o fermo ad aspettare, e i nemici
+  // arrivavano a combattere uno sopra l'altro
+  if (i.warwork === 1 && !i.firework && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1]
+      && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFree(i, i.x, i.y) && w.placeFreeExcept(i, i.x, i.y, "enemy_unit")) {
+    yieldClear(i);
+    if (!stepOver(w, i, i.dirox, i.diroy, "enemy_unit")) { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
+    return;
+  }
   // [§9.57] sulla strada del livello 4 (i.road, levels.js) sempre col campo,
   // se non insegue un alleato
   if (((pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || (i.road && !i.warwork)) && i.role === 31) || !w.placeFree(i, i.x, i.y)) {
     const otro = w.instancePlace(i, i.x, i.y, "enemy_unit");
     if (otro) {
-      if (otro.ordo < i.ordo || otro.action !== 1) pushThrough(w, p, i);
-      else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
-    } else pushThrough(w, p, i);
+      // [§9.116] passa chi ha l'ordo piu' alto, l'altro aspetta fermo
+      // (pathing.js mayYieldTo: spareggio, niente attese a vicenda, in
+      // marcia al piu' YIELD_MAX passi)
+      if (!mayYieldTo(w, i, otro)) pushThrough(w, p, i);
+      else yieldStep(w, i, otro);
+    } else { yieldClear(i); pushThrough(w, p, i); }
   } else if (i.firework !== 1 && !p.clearSolid(i.x, i.y, i.dirox, i.diroy)) {
     chaseField(w, p, i); // §9.82 (non chi va a dare fuoco: il suo posto e' sull'orbita attorno all'edificio, meleeSpot)
   } else {
@@ -225,6 +351,7 @@ function enemyStrike(i, w, T) {
   v.alarm.set(5, 47);
   const dmg = T.damage[v.slife];
   if (dmg !== undefined) v.life -= dmg;
+  bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
   const away = () => {
     const d = pointDirection(io_x, io_y, v.x, v.y);
     return [v.x + lengthdirX(200, d), v.y + lengthdirY(200, d)];
@@ -243,6 +370,31 @@ function enemyStrike(i, w, T) {
   }
 }
 
+// [§9.116, come gli alleati, units.js unstack (§9.71)] A contatto con
+// l'alleato ma sovrapposto a un compagno che sta gia' colpendo li': non si
+// comincia a colpire (ne' si continua, fra un colpo e l'altro, se dei due
+// si ha l'ordo piu' basso), si va a un posto libero attorno all'alleato
+// (enemyMove, sopra i compagni). Dopo UNSTACK_MAX passi cosi' (nessun
+// posto) si colpisce comunque. Prima i nemici combattevano uno sopra
+// l'altro.
+const UNSTACK_MAX = 30;
+const SIEGE_E = new Set(["enemy_ariete", "enemy_catapulta"]);
+function enemyUnstack(w, i, t) {
+  if (i.action === 2 && i.step !== 0) return false; // colpo in corso: lo finisce
+  const o = w.instancePlace(i, i.x, i.y, "enemy_unit");
+  const give = o && !SIEGE_E.has(o.object) && o.action === 2
+    && (i.action !== 2 || (i.ordo ?? 0) < (o.ordo ?? 0) || ((i.ordo ?? 0) === (o.ordo ?? 0) && i.id < o.id));
+  if (!give) { i.unstackN = 0; return false; }
+  i.unstackN = (i.unstackN || 0) + 1;
+  if (i.unstackN > UNSTACK_MAX) return false;
+  const s = meleeSpot(w, i, t, "ally_unit", MELEE_UNSTACK);
+  if (!s || !i.meleeSpot) return false; // nessun posto libero: colpisce da qui
+  if (i.action !== 1) i.alarm.set(0, 12);
+  i.action = 1; i.warwork = 1; i.swing = 0; i.speed = 0;
+  [i.dirox, i.diroy] = s;
+  return true;
+}
+
 // Step, "attacco" [C]
 const NO_SLOT = 30; // §9.71: passi senza un posto libero attorno al bersaglio prima di fermarsi
 function enemyAttack(i, w, T) {
@@ -250,6 +402,7 @@ function enemyAttack(i, w, T) {
   const k = iso(i.direction), night = w.g.night;
   const nearest = () => w.nearest(i.x, i.y, "ally_unit");
   const n0 = nearest();
+  if (w.distanceToInstance(i, n0) < (T.attackIso ? 10 * k : 10) && enemyUnstack(w, i, n0)) return "exit"; // §9.116
   if (w.distanceToInstance(i, n0) < (T.attackIso ? 10 * k : 10)) {
     if (i.warwork === 2 && i.alarm.get(2) < 1) {
       if (T.charge) i.chargespeed = 0;
@@ -691,4 +844,38 @@ export function enemyArcher(p) {
       d.sprite("ico_arciere", 0, 325, 70);
     },
   };
+}
+
+// [§9.116, segnalazione dell'autore, regola per tutti i livelli] "Attaccavo
+// un magazzino nemico e il soldato nemico li' vicino non faceva niente".
+// I soldati fermi reagivano solo a un alleato entro 400 px da loro
+// (enemyAttack, meno di notte), e la difesa della regia (economy.js, §9.50)
+// muove solo i suoi soldati in attesa: un soldato della mappa a 500 px
+// guardava bruciare l'edificio. Ora ogni DEFEND_EVERY passi, per ogni
+// edificio nemico che ha perso vita dal controllo prima: l'unita' del
+// giocatore piu' vicina a lui entro DEFEND_ATT px e' l'attaccante, e i
+// soldati nemici fermi e liberi entro DEFEND_R px dall'edificio gli vanno
+// contro (poi, vicini, l'inseguimento di sempre). Non i lavoratori, le
+// macchine d'assedio, chi si ritira, chi marcia sulla strada o in colonna,
+// chi va al presidio.
+const DEFEND_EVERY = 10, DEFEND_ATT = 800, DEFEND_R = 900;
+const NO_DEFEND = new Set(["enemy_omino", "enemy_ariete", "enemy_catapulta"]);
+const canDefend = (e) => e.alive && !NO_DEFEND.has(e.object) && e.action === 0 && !e.warwork && !e.firework
+  && !e.retreat && !e.road && !e.pace && e.presidiowork !== 1;
+export function defendBuildings(w) {
+  if (w.room === "menu" || w._stepNo % DEFEND_EVERY !== 3) return;
+  let idle = null;
+  for (const b of w.all("enemy_build")) {
+    const was = b.defLife;
+    b.defLife = b.life;
+    if (was === undefined || !(b.life < was)) continue;
+    const a = w.nearest(b.x, b.y, "ally_unit");
+    if (!a || w.distanceToInstance(a, b) > DEFEND_ATT) continue;
+    idle = idle || [...w.all("enemy_unit")].filter(canDefend);
+    for (const e of idle) {
+      if (!e.alive || e.action !== 0 || Math.hypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
+      e.action = 1; e.warwork = 1; e.dirox = a.x; e.diroy = a.y;
+      if (e.alarm.get(0) < 1) e.alarm.set(0, irandomRange(12, 15));
+    }
+  }
 }

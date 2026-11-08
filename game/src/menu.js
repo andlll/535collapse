@@ -33,6 +33,8 @@ import { slotInfo, SAVE_ROOMS } from "./save.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
 import { irandomRange } from "./gm.js";
+import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
+import { Particles, partType } from "./particles.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
@@ -66,16 +68,20 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // "Load game" (prima in alto a destra) e "Full screen" (prima in alto a
 // sinistra, solo dove il browser lo permette). L'ultimo finisce a 100 px
 // dal fondo, dove finiva "Campaign - Collapse". [x1, y1, x2, y2] per chiave.
+// [§9.119, richiesta dell'autore] "Full screen" non piu' nella colonna (con
+// la schermaglia c'era "traffico"): un pulsante tondo in alto a destra col
+// simbolo, come quelli della campagna (indietro, lucchetto). full: [x, y, r].
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
+const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
 function titleButtons(W, H) {
-  const keys = ["tutorial", "campaign", "load"];
-  if (fullscreenAvailable()) keys.push("full");
+  const keys = ["tutorial", "campaign", "skirmish", "load"]; // skirmish: §9.118
   const top = H - 100 - keys.length * BTN_H - (keys.length - 1) * BTN_GAP;
   const out = { top };
   keys.forEach((k, n) => {
     const y = top + n * (BTN_H + BTN_GAP);
     out[k] = [W / 2 - BTN_W / 2, y, W / 2 + BTN_W / 2, y + BTN_H];
   });
+  out.full = fullscreenAvailable() ? [W - FULL_BTN[0], FULL_BTN[1], FULL_BTN[2]] : null;
   return out;
 }
 // [Fase 4] il pannello delle partite salvate
@@ -110,6 +116,44 @@ function loadRows(W, H) {
   return rows;
 }
 
+// [§9.118] La schermata della schermaglia. [§9.121, disegno dell'autore]
+// A sinistra un riquadro solo: la foto della mappa, sotto il nome con le
+// frecce per scorrere le mappe, sotto la descrizione in corsivo. A destra i
+// parametri in una griglia 3 x 3 di riquadri: in alto il titolo, al centro
+// l'icona del valore attuale fra due frecce, in basso il nome del valore.
+// La meta' sinistra di un riquadro torna al valore prima, la destra passa a
+// quello dopo. "Indietro" e' il cerchio in alto a destra (§9.120), "Inizia"
+// in basso a destra.
+const SK_KEYS = () => Object.keys(SK_OPTIONS);
+function skLayout(W, H) {
+  const top = 110, bottom = H - 40, gap = 18;
+  const lx1 = Math.max(30, W * 0.05), LW = Math.min(440, W * 0.33);
+  const rows = [];
+  const card = { x1: lx1, y1: top, x2: lx1 + LW, y2: bottom };
+  const photoW = LW - 40, photoH = Math.round(photoW * 2 / 3);
+  const photo = [lx1 + 20, top + 20, lx1 + 20 + photoW, top + 20 + photoH];
+  const nameY = photo[3] + 40;
+  rows.push({ kind: "map", dir: -1, circle: [lx1 + 45, nameY, 22] });
+  rows.push({ kind: "map", dir: 1, circle: [lx1 + LW - 45, nameY, 22] });
+  const gx1 = card.x2 + 40, gx2 = W - 40;
+  const cw = (gx2 - gx1 - 2 * gap) / 3, ch = Math.min(200, (H - top - 120 - 2 * gap) / 3);
+  SK_KEYS().forEach((key, k) => {
+    const cx = gx1 + (k % 3) * (cw + gap), cy = top + Math.floor(k / 3) * (ch + gap);
+    rows.push({ kind: "opt", key, dir: -1, x1: cx, y1: cy, x2: cx + cw / 2, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
+    rows.push({ kind: "opt", key, dir: 1, x1: cx + cw / 2, y1: cy, x2: cx + cw, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
+  });
+  rows.push({ kind: "back", circle: [W - 50, 50, 30] });
+  rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
+  return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
+}
+// il valore dopo (dir 1) o prima (dir -1) di un parametro
+function stepValue(key, v, dir) {
+  const vs = SK_OPTIONS[key].values, k = vs.indexOf(v);
+  return vs[((k < 0 ? 0 : k) + dir + vs.length) % vs.length];
+}
+// la mappa mostrata (anche quelle "in arrivo"): indice in SK_MAPS
+const shownMap = (i) => (i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
+
 export function enemyManagerMenu() {
   return {
     create(i, w) {
@@ -129,7 +173,8 @@ export function enemyManagerMenu() {
       if (g.campagna !== 1) g.campagna = 0;
       Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
                          comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
-                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0 });
+                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0,
+                         skmenu: 0, skhover: 0, skrow: -1, sk: null }); // §9.118
     },
     // Alarm_0 [C]: le unita' ferme vanno contro il nemico piu' vicino
     alarm0(i, w) {
@@ -154,14 +199,25 @@ export function enemyManagerMenu() {
     stepEnd(i, w) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH, mx = w.input.x, my = w.input.y;
       g.sele = -1; // nel menu le unita' non si selezionano
-      if (g.campagna === 0 && i.loadmenu === 0) {
+      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0) {
         const b = titleButtons(W, H);
         i.hover = +inRect(mx, my, ...b.tutorial);
         i.campagnahover = +inRect(mx, my, ...b.campaign);
         i.loadhover = +inRect(mx, my, ...b.load);
-        i.fullhover = +(!!b.full && inRect(mx, my, ...b.full));
+        i.fullhover = +(!!b.full && Math.hypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
+        i.skhover = +inRect(mx, my, ...b.skirmish);
       } else {
-        i.hover = i.campagnahover = i.loadhover = i.fullhover = 0;
+        i.hover = i.campagnahover = i.loadhover = i.fullhover = i.skhover = 0;
+      }
+      i.skrow = -1;
+      if (g.campagna === 0 && i.skmenu === 1) {
+        const L = skLayout(W, H);
+        L.rows.forEach((r, k) => {
+          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
+          const on = r.circle ? Math.hypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
+          if (on) i.skrow = k;
+        });
+        skRainStep(i, L); // §9.121: la pioggia nel riquadro della pioggia
       }
       i.loadrow = -1;
       if (g.campagna === 0 && i.loadmenu === 1) {
@@ -195,6 +251,7 @@ export function enemyManagerMenu() {
     },
     keyPress27(i, w) {
       if (i.loadmenu === 1) { i.loadmenu = 0; return; }
+      if (i.skmenu === 1) { i.skmenu = 0; return; } // §9.118
       if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0;
     },
     globalLeftReleased(i, w) {
@@ -207,6 +264,20 @@ export function enemyManagerMenu() {
         if (r.action === "file" && w.hooks.loadFile) w.hooks.loadFile();
         return;
       }
+      if (g.campagna === 0 && i.skmenu === 1) { // §9.118
+        const r = skLayout(w.cam.cssW, w.cam.cssH).rows[i.skrow];
+        if (!r) return;
+        if (r.kind === "back") { i.skmenu = 0; return; }
+        if (r.kind === "map") {
+          i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
+          if (SK_MAPS[i.skMap].room) i.sk.map = SK_MAPS[i.skMap].room;
+        }
+        if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
+        saveSkirmish(i.sk);
+        if (r.kind === "start") w.gotoRoom(i.sk.map);
+        return;
+      }
+      if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); i.skMap = null; return; }
       if (g.campagna === 0 && i.loadhover === 1) { i.loadmenu = 1; i.loadhover = 0; return; }
       if (g.campagna === 0 && i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
       if (g.campagna === 0) {
@@ -237,7 +308,8 @@ export function enemyManagerMenu() {
     drawGUI(i, w, d) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH;
       d.setBlend("normal");
-      if (g.campagna === 0 && i.loadmenu === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.skmenu === 1) drawSkirmish(i, d, W, H); // §9.118
       if (g.campagna === 0 && i.loadmenu === 1) drawLoad(i, d, W, H);
       if (g.campagna === 1) drawCampaign(i, g, d, W, H);
       d.setAlpha(1);
@@ -248,13 +320,13 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2608";
+const VERSION = "0.2609";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
   const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
-               ["load", i.loadhover, tr("Load game")],
-               ["full", i.fullhover, tr(isFullscreen() ? "Exit full screen" : "Full screen")]];
+               ["skirmish", i.skhover, tr("Skirmish")], // §9.118
+               ["load", i.loadhover, tr("Load game")]];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("GUI_1");
@@ -267,6 +339,7 @@ function drawTitle(i, d, W, H) {
     d.setAlpha(0.75);
     d.text(W / 2, (y1 + y2) / 2, label);
   }
+  if (b.full) drawFullButton(d, ...b.full, i.fullhover, isFullscreen()); // §9.119
   d.setFont("overdue");
   // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75];
   // [richiesta dell'autore] l'anno della firma e' 2026 (l'originale: 2025)
@@ -286,6 +359,225 @@ function drawTitle(i, d, W, H) {
   const lg = d.a.sprites.logo_dustveil;
   const s = lg ? Math.min(1, (b.top - 2 * LOGO_MARGIN) / lg.height, W / 2 / lg.width) : 1;
   d.spriteExt("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2), s, s, 0, c.white, 1);
+}
+
+// [§9.119] Il pulsante tondo dello schermo intero: il cerchio di vetro dei
+// pulsanti della campagna e il simbolo di sempre, quattro angoli verso
+// l'esterno (entra) o verso il centro (esci)
+function drawFullButton(d, x, y, r, hover, on) {
+  d.setAlpha(hover ? 0.99 : 0.69);
+  d.circleColour(x, y, r, c.white, c.white, false);
+  d.setAlpha(0.75);
+  const S = 11, L = 7, IN = 4;
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      const [px, py, dir] = on ? [x + sx * IN, y + sy * IN, 1] : [x + sx * S, y + sy * S, -1];
+      d.lineWidthColour(px, py, px + dir * sx * L, py, 3, c.black, c.black);
+      d.lineWidthColour(px, py, px, py + dir * sy * L, 3, c.black, c.black);
+    }
+  }
+  d.setAlpha(1);
+}
+
+// [§9.118] la schermata della schermaglia.
+// [§9.120, richiesta dell'autore] senza il riquadro bianco di sfondo, come il
+// menu di pausa: titolo e descrizione in nero con un alone bianco
+// (glowText, come pause.js _glowLabel); "Indietro" e' il cerchio in alto a
+// destra della campagna
+function glowText(d, x, y, str, wrapW = 0) {
+  d.setColour(c.white);
+  for (const [r, a] of [[5, 0.04], [4, 0.06], [3, 0.09], [2, 0.13], [1, 0.2]]) {
+    d.setAlpha(a);
+    for (let n = 0; n < 16; n++) {
+      const t = (n / 16) * Math.PI * 2, gx = x + Math.cos(t) * r, gy = y + Math.sin(t) * r;
+      if (wrapW) d.textExt(gx, gy, str, 30, wrapW); else d.text(gx, gy, str);
+    }
+  }
+  d.setColour(c.black);
+  d.setAlpha(0.85);
+  if (wrapW) d.textExt(x, y, str, 30, wrapW); else d.text(x, y, str);
+}
+function drawSkirmish(i, d, W, H) {
+  const L = skLayout(W, H), { card, photo } = L, m = SK_MAPS[shownMap(i)];
+  d.setHalign("center");
+  d.setValign("middle");
+  d.setFont("gui_sblocco");
+  glowText(d, W / 2, 55, tr("Skirmish"));
+  // la mappa: riquadro, foto, nome con le frecce, descrizione in corsivo
+  d.setAlpha(0.69);
+  d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
+  const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
+  const spr = m.room && d.a.sprites[m.room + "_cartolina"];
+  if (spr) {
+    const k = Math.min(pw / spr.width, ph / spr.height);
+    d.spriteExt(m.room + "_cartolina", 0, (photo[0] + photo[2]) / 2, (photo[1] + photo[3]) / 2, k, k, 0, c.white, 1);
+  } else {
+    d.setAlpha(0.35);
+    d.roundrectColourExt(photo[0], photo[1], photo[2], photo[3], 30, 30, c.gray, c.gray, false);
+  }
+  d.setFont("GUI_1");
+  d.setColour(c.black);
+  d.setAlpha(m.room ? 0.85 : 0.45);
+  d.text((card.x1 + card.x2) / 2, L.nameY, tr(m.name)); // §9.129: tradotto
+  d.setFont("overdue");
+  d.setHalign("left");
+  d.setValign("top");
+  d.slant = 0.2;
+  d.setAlpha(m.room ? 0.8 : 0.45);
+  d.textExt(card.x1 + 24, L.descY, tr(m.desc), 30, card.x2 - card.x1 - 48);
+  d.slant = 0;
+  d.setHalign("center");
+  d.setValign("middle");
+  // i parametri: un riquadro per due righe (le due meta')
+  const seen = new Set();
+  const rainOnTop = () => { if (i.skRainPs) i.skRain.draw(i.skRainPs, d.r, d.a, { x: 0, y: 0, w: W, h: H }); };
+  L.rows.forEach((r, k) => {
+    if (r.kind === "map") { arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
+    if (r.kind === "back") {
+      const [cx, cy, rad] = r.circle;
+      d.setAlpha(i.skrow === k ? 0.99 : 0.69);
+      d.circleColour(cx, cy, rad, c.white, c.white, false);
+      d.setAlpha(1);
+      d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
+      return;
+    }
+    if (r.kind === "start") {
+      const on = !!m.room;
+      d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
+      d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+      d.setFont("GUI_1");
+      d.setColour(c.black);
+      d.setAlpha(on ? 0.8 : 0.35);
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr("Start"));
+      return;
+    }
+    if (seen.has(r.key)) return;
+    seen.add(r.key);
+    const [x1, y1, x2, y2] = r.card, cx = (x1 + x2) / 2, hov = i.skrow === k || i.skrow === k + 1;
+    d.setAlpha(hov ? 0.9 : 0.69);
+    d.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
+    d.setFont("overdue");
+    d.setColour(c.black);
+    d.setAlpha(0.8);
+    d.text(cx, y1 + 26, tr(SK_OPTIONS[r.key].label));
+    const iy = (y1 + y2) / 2 + 2;
+    drawOptIcon(d, r.key, i.sk[r.key], cx, iy, i);
+    arrow(d, x1 + 24, iy, 14, -1, i.skrow === k);
+    arrow(d, x2 - 24, iy, 14, 1, i.skrow === k + 1);
+    d.setFont("overdue");
+    d.setColour(c.black);
+    d.setAlpha(0.8);
+    d.text(cx, y2 - 24, optionLabel(r.key, i.sk[r.key]));
+    if (r.key === "rain") rainOnTop();
+  });
+  d.setAlpha(1);
+  d.setHalign("left");
+  d.setValign("middle");
+}
+
+// una freccia (triangolo di linee) a sinistra (dir -1) o a destra (dir 1)
+function arrow(d, x, y, r, dir, hover) {
+  const a = hover ? 0.95 : 0.55, k = r * 0.45;
+  d.setAlpha(a);
+  d.lineWidthColour(x + dir * k, y, x - dir * k, y - k * 1.3, 4, c.black, c.black);
+  d.lineWidthColour(x + dir * k, y, x - dir * k, y + k * 1.3, 4, c.black, c.black);
+  d.setAlpha(1);
+}
+
+// [§9.121] Le icone dei valori (provvisorie, da rifare a mano a mano con
+// l'autore): le icone del gioco dove ce n'e' una adatta, se no linee.
+// Difficolta': spade, una in piu' a ogni livello (decisione dell'autore);
+// risorse: i quattro simboli delle risorse, piu' grandi a ogni livello
+// (decisione dell'autore); la pioggia la disegnano le particelle
+// (skRainStep), qui niente.
+const DARK = 0x3c3c3c;
+function icon(d, name, x, y, s = 1, a = 0.85) { d.spriteExt(name, 0, x, y, s, s, 0, c.white, a); }
+function drawOptIcon(d, key, v, x, y, i) {
+  d.setAlpha(1);
+  if (key === "difficulty") {
+    const n = { easy: 1, normal: 2, hard: 3, rigged: 4 }[v] || 1;
+    for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
+  } else if (key === "style") {
+    if (v === "balanced") scales(d, x, y);
+    else if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
+    else icon(d, { aggressive: "ico_battle", defensive: "ico_difesa", economic: "ico_gold", raider: "ico_cavaliere" }[v], x, y,
+      { aggressive: 1, defensive: 0.75, economic: 2, raider: 0.75 }[v]);
+  } else if (key === "victory") {
+    icon(d, v === "conquest" ? "ico_ruin" : v === "townhall" ? "ico_centro" : "ico_campana", x, y, 0.75);
+  } else if (key === "resources") {
+    const s = { low: 0.8, normal: 1, high: 1.2 }[v] || 1;
+    ["ico_food", "ico_wood", "ico_gold", "ico_stone"].forEach((n, k) => icon(d, n, x + (k - 1.5) * 34 * s, y, s));
+  } else if (key === "pop") {
+    icon(d, "ico_multi", x, y, { 50: 0.55, 75: 0.72, 99: 0.9 }[v] || 0.7);
+  } else if (key === "truce") {
+    icon(d, v ? "ico_bandiera" : "ico_battle", x, y, v ? 0.75 : 1);
+    if (v) { d.setFont("overdue"); d.setColour(DARK); d.setAlpha(0.9); d.text(x + 26, y + 18, String(v)); }
+  } else if (key === "fog") {
+    if (v === "none") icon(d, "ico_view_small", x, y, 1.6);
+    else for (let k = 0; k < 3; k++) wave(d, x, y - 14 + k * 14, v === "explored" ? 0.35 : 0.85);
+  } else if (key === "daynight") {
+    if (v === "day") sun(d, x, y, 1);
+    else if (v === "night") moon(d, x, y, 1);
+    else { sun(d, x - 16, y, 0.75); moon(d, x + 18, y, 0.75); }
+  }
+}
+function scales(d, x, y) {
+  const L = (a, b, e, f, wd = 3) => d.lineWidthColour(a, b, e, f, wd, DARK, DARK);
+  d.setAlpha(0.85);
+  L(x, y - 22, x, y + 18); L(x - 12, y + 18, x + 12, y + 18, 4); L(x - 24, y - 16, x + 24, y - 16);
+  for (const sx of [-1, 1]) {
+    L(x + sx * 24, y - 16, x + sx * 32, y + 2, 2); L(x + sx * 24, y - 16, x + sx * 16, y + 2, 2);
+    L(x + sx * 34, y + 2, x + sx * 14, y + 2, 3);
+  }
+}
+function sun(d, x, y, s) {
+  d.setAlpha(0.85);
+  d.circleColour(x, y, 9 * s, DARK, DARK, false);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    d.lineWidthColour(x + Math.cos(a) * 13 * s, y + Math.sin(a) * 13 * s, x + Math.cos(a) * 19 * s, y + Math.sin(a) * 19 * s, 3, DARK, DARK);
+  }
+}
+function moon(d, x, y, s) {
+  d.setAlpha(0.85);
+  let px = null, py = null;
+  for (let k = 0; k <= 16; k++) { // una C spessa: la falce
+    const a = (40 + (280 * k) / 16) * Math.PI / 180;
+    const qx = x + Math.cos(a) * 13 * s, qy = y - Math.sin(a) * 13 * s;
+    if (px !== null) d.lineWidthColour(px, py, qx, qy, 7 * s, DARK, DARK);
+    px = qx; py = qy;
+  }
+}
+function wave(d, x, y, a) {
+  d.setAlpha(a);
+  let px = null, py = null;
+  for (let k = 0; k <= 20; k++) {
+    const qx = x - 34 + (68 * k) / 20, qy = y + Math.sin((k / 20) * Math.PI * 3) * 4;
+    if (px !== null) d.lineWidthColour(px, py, qx, qy, 3, DARK, DARK);
+    px = qx; py = qy;
+  }
+}
+
+// [§9.121, richiesta dell'autore] La pioggia nel riquadro della pioggia,
+// col sistema di particelle della partita (le gocce, effects.js GOCCIA, piu'
+// lente e scure, tagliate all'altezza del riquadro): niente con "NO", di
+// piu' con "Frequente". Le particelle sono del menu (skRain), non del mondo.
+let SK_DROP = null;
+function skRainStep(i, L) {
+  const r = L.rows.find((q) => q.kind === "opt" && q.key === "rain");
+  if (!r) return;
+  const [x1, y1, x2, y2] = r.card;
+  if (!i.skRain) { i.skRain = new Particles(); i.skRainPs = i.skRain.systemCreate(0, "rain"); }
+  const fall = y2 - y1 - 85, speed = 7;
+  if (!SK_DROP || SK_DROP.fall !== fall) {
+    SK_DROP = partType({ shape: "line", orientation: [160, 170, 0, 0, true], size: [0.18, 0.28, 0, 0], scale: [1, 2.5],
+      colour: { rgb: [70, 95, 95, 120, 120, 150] }, alpha: [0.75], speed: [speed, speed + 1.5, 0, 0], direction: [250, 258, 0, 0],
+      life: [Math.floor(fall / (speed + 1.5)), Math.floor(fall / speed)] });
+    SK_DROP.fall = fall;
+  }
+  const n = { normal: 1, frequent: 3, off: 0 }[i.sk.rain] || 0;
+  for (let k = 0; k < n; k++) i.skRain.create(i.skRainPs, x1 + 55 + Math.random() * (x2 - x1 - 90), y1 + 44, SK_DROP, 1); // fra le frecce
+  i.skRain.step();
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu

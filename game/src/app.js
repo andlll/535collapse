@@ -17,7 +17,7 @@ import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
 import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
 import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
-import { enemyMelee, enemyArcher, atkSignalObject } from "./enemies.js";
+import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies, defendBuildings } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
 import { enemyManager, enemyManagerLv2, enemyManagerLv3, enemyManagerLv4, enemyManagerLv5, enemyManagerLv6, lockedTower, levelStep, lvl05Setup, objectiveMarks } from "./levels.js";
@@ -49,16 +49,18 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
+import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"]; // lvl06: §9.100
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"],
+                ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])) }; // §9.118, §9.123: tiers
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -156,6 +158,9 @@ async function main() {
 
   const world = new World({ objects, masks: masks.sprites, assets, g, roomW: room.width, roomH: room.height });
   world.room = roomName;
+  // [§9.116, richiesta dell'autore] nel menu unita' ed edifici sono solo
+  // decorativi: mouse e tastiera arrivano solo al gestore del menu
+  if (roomName === "menu") world.inputOnly = new Set(["enemy_manager_menu"]);
   world.cam = cam;
   world.particles = new Particles();
   world.gfx = draw; // per string_height_ext nei Create (hints.js)
@@ -308,6 +313,9 @@ async function main() {
   for (const n of DIALOG_NAMES) world.register(n, dialog(n));
   world.register("victory_manager", victoryManager());
   world.register("gameover_manager", gameoverManager());
+  world.register("sk_manager", skManager()); // §9.118
+  world.register("sk_nebbia", skNebbia()); // §9.122
+  world.register("sk_nube", skNube());
   world.register("objective_button", objectiveButton());
   for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
   world.register("aquila_01", aquila());
@@ -333,7 +341,16 @@ async function main() {
   // [§9.36] l'animazione del fiume dell'originale: al suo posto i riflessi,
   // le increspature e la schiuma su tutta l'acqua (effects.js, waterLife)
   const DROPPED_ALL = ["fiume_animazione"];
-  const all = room.instances.filter(([obj]) => !(DROPPED[roomName] || []).includes(obj) && !DROPPED_ALL.includes(obj));
+  // [§9.116, richiesta dell'autore] nel menu la bandierina rossa a sinistra
+  // (1308, 1035) sventolava da sola: e' quella del castello del tutorial
+  // (match, castello a 1310, 1140), che nel menu e' altrove
+  const DROPPED_AT = { menu: [["flag_r", 1308, 1035]] };
+  const droppedAt = ([obj, x, y]) => (DROPPED_AT[roomName] || []).some(([o, dx, dy]) => o === obj && dx === x && dy === y);
+  const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
+  // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
+  // partita salvata: lo stato arriva gia' fatto)
+  const skParams = isSkirmish(roomName) && !params.get("load") ? loadSkirmish() : null;
+  const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
@@ -372,6 +389,7 @@ async function main() {
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
+    if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
@@ -413,13 +431,15 @@ async function main() {
   window.addEventListener("resize", resize);
   for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => { pause.dirty = true; });
   resize();
+  // [§9.118] schermaglia: la vista sulla propria base, a misura nota
+  if (skStarts) { cam.x = skStarts.player[0] - cam.w / 2; cam.y = skStarts.player[1] - cam.h / 2; cam.clamp(); }
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
   // mouse, Step, poi la view segue il puntatore.
   // Menu di pausa (pause.js): il mondo si ferma (instance_deactivate_all
   // dell'originale), passano solo i clic sul pannello.
   const applyGraphics = () => {
-    for (const k of ["rain", "grass", "fire"]) {
+    for (const k of ["rain", "grass", "fire", "blood"]) { // blood: §9.117
       if (settings[k]) world.particles.hidden.delete(k); else world.particles.hidden.add(k);
     }
     // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000
@@ -518,6 +538,8 @@ async function main() {
     recountIdle(world); // §6.1 n.80
     alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
     settleOverlaps(world, path); // §9.62
+    settleEnemies(world, path); // §9.116
+    defendBuildings(world); // §9.116
     settleSiege(world); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
     houseTorches(world); // §9.104: le fiaccole sulle case

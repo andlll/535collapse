@@ -68,6 +68,10 @@ export class World {
     this._epoch = 0;
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
+    // [§9.116] se impostato (il menu: app.js), solo le istanze di questi
+    // oggetti ricevono gli eventi di mouse e tastiera: le altre (unita',
+    // edifici) sono decorative, non si selezionano ne' si evidenziano
+    this.inputOnly = null;
     this.particles = null; // particles.js (app.js)
   }
 
@@ -722,12 +726,14 @@ export class World {
     this.input.mousePressed[button] = false;
   }
 
+  _takesInput(i) { return !this.inputOnly || this.inputOnly.has(i.object); }
+
   // Eventi di tastiera: Keyboard (tasto tenuto, ogni passo), KeyPress,
   // KeyRelease; gestori "keyboard27", "keyPress81", "keyRelease46".
   _keyEvents(input) {
     if (!input.down.size && !input.pressed.size && !input.released.size) return;
     for (const i of this.instances) {
-      if (!i.alive) continue;
+      if (!i.alive || !this._takesInput(i)) continue;
       for (const k of input.down) this.fire(i, "keyboard" + k);
       for (const k of input.pressed) this.fire(i, "keyPress" + k);
       for (const k of input.released) this.fire(i, "keyRelease" + k);
@@ -744,7 +750,7 @@ export class World {
   // GlobalRightReleased decida cosa fare (src/objects/albero, ally_omino).
   _mouseEvents(input, mx, my) {
     const [pL, pR] = input.mousePressed, [rL, rR] = input.mouseReleased;
-    const live = this.instances.filter((i) => i.alive);
+    const live = this.instances.filter((i) => i.alive && this._takesInput(i));
     const over = new Map();
     // [§9.29] un comportamento puo' dire lui dove e' il puntatore
     // (pointOver: il complesso del monastero, complex.js)

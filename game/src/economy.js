@@ -32,12 +32,13 @@
 import { omino, orderWork } from "./civilians.js";
 import { campo, FAM } from "./buildings.js";
 import { fireOrder } from "./siege.js";
-import { fireStep, fireStop } from "./effects.js";
+import { fireStep, fireStop, burnTick } from "./effects.js";
 import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
 import { sightK, seenNear } from "./fog.js";
 import { revealBuilding } from "./enemybuild.js";
+import { skirmishEco } from "./skirmish.js";
 
 export const ECO = {
   default: {
@@ -119,7 +120,16 @@ const STUCK_D = 24;
 const AVOID = 1800;      // §9.57: passi in cui il bloccato non torna alla stessa risorsa
 const CROWD = 300;       // §9.57: px in piu' per ogni compagno gia' sulla stessa risorsa (legno, pietra)
 
-export const ecoOf = (w) => ({ ...ECO.default, ...(ECO[w.room] || {}) });
+// [§9.118] nella schermaglia anche i numeri della difficolta' e dello stile
+// scelti (skirmish.js), una volta per partita
+const SK_ECO = new WeakMap();
+export const ecoOf = (w) => {
+  const sk = w.g.sk;
+  if (!sk) return { ...ECO.default, ...(ECO[w.room] || {}) };
+  let e = SK_ECO.get(sk);
+  if (!e) { e = { ...ECO.default, ...skirmishEco(sk) }; SK_ECO.set(sk, e); }
+  return e;
+};
 
 const canPay = (en, cost, keep = {}) => Object.entries(cost).every(([r, v]) => en[r] - (keep[r] || 0) >= v);
 const pay = (en, cost) => { for (const [r, v] of Object.entries(cost)) en[r] -= v; };
@@ -289,7 +299,7 @@ const RES = { wood: "albero", gold: "miniera_oro", stone: "stone_parent" };
 // ce ne sono altre.
 function targetFor(w, i, kind, wide, workers = []) {
   if (kind === "food") {
-    for (const c of w.all("enemy_campo")) if (c.foodwork === 0) return c;
+    for (const c of w.all("enemy_campo")) if (c.foodwork === 0 && !threatened(w, c.x, c.y, ecoOf(w).defendR)) return c; // §9.116
     return null;
   }
   const dep = w.nearest(i.x, i.y, "enemy_magazza");
@@ -305,8 +315,10 @@ function targetFor(w, i, kind, wide, workers = []) {
     return n * CROWD;
   };
   let best = null, bd = Infinity, far = null, fd = Infinity, avoided = null;
+  const R = ecoOf(w).defendR;
   for (const r of w.all(RES[kind])) {
     if (r.id === av) { avoided = r; continue; }
+    if (threatened(w, r.x, r.y, R)) continue; // §9.116: non dove sono i soldati del giocatore
     const di = Math.hypot(r.x - i.x, r.y - i.y);
     if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { const c = di + crowd(r); if (c < bd) { bd = c; best = r; } }
     else if (wide && di < SEARCH && di < fd) { fd = di; far = r; }
@@ -382,18 +394,21 @@ function placeCantiere(w, P, spot, en) {
 // campo nemico non ha un granaio (centro o mulino) entro FAR. Non se lo
 // stesso deposito e' gia' fra quelli persi (lo rifa' la ricostruzione).
 function depositNeed(w, workers, lost) {
-  const lostHas = (o) => lost.some((L) => L.o === o);
+  // [§9.116] un deposito perso in un punto occupato dal giocatore non si
+  // aspetta: se ne fa uno nuovo altrove
+  const R = ecoOf(w).defendR;
+  const lostHas = (o) => lost.some((L) => L.o === o && !threatened(w, L.x, L.y, R));
   const far = (x, y, dep) => { const d = w.nearest(x, y, dep); return !d || Math.hypot(d.x - x, d.y - y) > FAR; };
   if (!lostHas("enemy_magazzino")) {
     for (const o of workers) {
       const j = jobOf(o);
       if (!j || j === "food") continue;
       const [x, y] = j === "wood" ? [o.woodx, o.woody] : j === "gold" ? [o.goldx, o.goldy] : [o.stonex, o.stoney];
-      if (far(x, y, "enemy_magazza")) return { o: "enemy_magazzino", x, y, from: o };
+      if (far(x, y, "enemy_magazza") && !threatened(w, x, y, R)) return { o: "enemy_magazzino", x, y, from: o };
     }
   }
   if (!lostHas("enemy_mulino")) {
-    for (const c of w.all("enemy_campo")) if (far(c.x, c.y, "enemy_barn")) return { o: "enemy_mulino", x: c.x, y: c.y, from: c };
+    for (const c of w.all("enemy_campo")) if (far(c.x, c.y, "enemy_barn") && !threatened(w, c.x, c.y, R)) return { o: "enemy_mulino", x: c.x, y: c.y, from: c };
   }
   return null;
 }
@@ -414,6 +429,7 @@ function findSpot(w, p, P, need, workers) {
     }
     pts.sort((a, b) => Math.hypot(a.x - ref.x, a.y - ref.y) - Math.hypot(b.x - ref.x, b.y - ref.y));
     for (const pt of pts) {
+      if (threatened(w, pt.x, pt.y, ecoOf(w).defendR)) continue; // §9.116
       const ruins = site(w, pt, P);
       if (!ruins) continue;
       if (tries-- <= 0) return null;
@@ -443,7 +459,7 @@ export function enemyCantiere(p) {
       i.visible = false;
       i.alarm.set(1, 70);
     },
-    alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
     alarm2(i) { i.hit = 0; },
     destroy(i, w) { if (i.solid) p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {
@@ -534,10 +550,86 @@ function pull(w, workers, t, now) {
 
 const soldiers = (w) => [...w.all("enemy_unit")].filter((e) => e.object !== "enemy_omino");
 
+// [§9.116, segnalazione dell'autore] "Il nemico ricostruisce i magazzini
+// dove li ho appena distrutti, coi miei soldati ancora li'". Un punto e'
+// occupato se un'unita' del giocatore e' entro defendR px (la stessa
+// distanza a cui la base si difende, §9.50): li' niente ricostruzione,
+// depositi nuovi o lavoro finche' non se ne va (o non la cacciano i soldati
+// della regia, intruder qui sotto).
+function threatened(w, x, y, r) {
+  const a = w.nearest(x, y, "ally_unit");
+  return !!a && Math.hypot(a.x - x, a.y - y) < r;
+}
+
 // Il bersaglio di un attacco: l'edificio alleato piu' vicino alla base
 // nemica (il centro, o un edificio nemico), se no l'unita' alleata
 function attackTarget(w, from) {
   return w.nearest(from.x, from.y, "ally_build") || w.nearest(from.x, from.y, "ally_unit");
+}
+
+// [§9.118] Il tetto di popolazione della CPU nella schermaglia
+function popCap(w, E) {
+  return Math.min(E.popMax || 99, 10 * (w.number("enemy_centro") + w.number("enemy_house")));
+}
+// Il prossimo edificio da fare: una casa se si e' a meno di 3 dal tetto (e
+// il tetto non e' gia' il massimo), se no il primo dell'ordine dello stile
+// che non c'e' ancora (contando quelli gia' fatti e i cantieri).
+function nextBuild(w, E, nWorkers, home) {
+  const have = (o) => w.number(o) + [...w.all("enemy_cantiere")].filter((f) => f.target === o).length;
+  const pop = nWorkers + soldiers(w).length, cap = popCap(w, E);
+  if (E.houses && pop + 3 >= cap && cap < (E.popMax || 99) && ![...w.all("enemy_cantiere")].some((f) => f.target === "enemy_house")) return "enemy_house";
+  const seen = {};
+  for (const o of E.buildOrder) {
+    seen[o] = (seen[o] || 0) + 1;
+    if (have(o) < seen[o]) return o;
+  }
+  return null;
+}
+// Il posto di un edificio nuovo attorno alla base (home): su anelli da 260
+// a 1100 px, libero (site) e lontano dal fiume, a BASE_GAP px da altri
+// edifici e dalle risorse (non chiude miniere e boschi), non dove ci sono
+// soldati del giocatore, raggiungibile. I campi vicini al centro (dove si
+// porta il cibo); le torri dalla parte del giocatore; il resto prima piu'
+// vicino a casa.
+const BASE_GAP = 40;
+function baseSpot(w, p, P, home, o) {
+  const f = { object: "enemy_cantiere", parents: ["enemy_fondamenta", "enemy_build", "enemy"], mask_index: P.mask, sprite_index: P.sprite,
+              image_xscale: 1, image_yscale: 1, image_angle: 0, image_index: 0 };
+  const foe = w.nearest(home.x, home.y, "ally_build") || w.nearest(home.x, home.y, "ally_unit");
+  const wk = w.nearest(home.x, home.y, "enemy_omino");
+  const pts = [];
+  for (let r = o === "enemy_campo" ? 220 : 280; r <= 1100; r += 70) {
+    for (let k = 0; k < 20; k++) {
+      const a = (k / 20) * Math.PI * 2 + r * 0.01;
+      const x = Math.round(home.x + r * Math.cos(a)), y = Math.round(home.y + r * 0.75 * Math.sin(a));
+      if (x < 150 || y < 150 || x > w.roomW - 150 || y > w.roomH - 150) continue;
+      const toFoe = foe ? Math.hypot(x - foe.x, y - foe.y) : 0;
+      pts.push({ x, y, cost: o === "enemy_torre" && foe ? toFoe * 0.6 + r : r });
+    }
+  }
+  pts.sort((a, b) => a.cost - b.cost);
+  let tries = 6;
+  for (const pt of pts) {
+    if (threatened(w, pt.x, pt.y, ecoOf(w).defendR)) continue;
+    const ruins = site(w, pt, P);
+    if (!ruins) continue;
+    Object.assign(f, { x: pt.x, y: pt.y });
+    if (w.terrainBlocks && w.terrainBlocks(f, pt.x, pt.y)) continue;
+    const bb = w.bbox(f);
+    if (!bb) continue;
+    const big = [bb[0] - BASE_GAP, bb[1] - BASE_GAP, bb[2] + BASE_GAP, bb[3] + BASE_GAP];
+    const near = w._eachNear(big, (q) => (q.alive && (w.is(q, "enemy_build") || w.is(q, "miniera_oro") || w.is(q, "stone_parent")
+      || w.is(q, "enemy_fondamenta")) && (() => { const b = w.bbox(q); return b && b[0] < big[2] && b[2] > big[0] && b[1] < big[3] && b[3] > big[1]; })() ? q : null));
+    if (near) continue;
+    if (tries-- <= 0) return null;
+    if (wk) {
+      const fld = p.goalField(pt.x, pt.y, true);
+      const gx = Math.floor(wk.x / 32), gy = Math.floor(wk.y / 32);
+      if (p.fieldAt(fld, gx, gy) === -1 && !p.escapeCell(fld, gx, gy, 2)) continue;
+    }
+    return { ...pt, ruins };
+  }
+  return null;
 }
 
 export function enemyEco(p) {
@@ -591,12 +683,26 @@ export function enemyEco(p) {
           en.newDeposits = (en.newDeposits || 0) + 1;
         } else if (need) keep = P.cost;
         else if (lost.length) {
-          const L = lost[0], P2 = plan(w, L.o);
-          const ruins = canPay(en, P2.cost) ? site(w, L, P2) : null;
+          // [§9.116] il primo edificio perso il cui posto non e' occupato dal
+          // giocatore (prima: il primo, anche coi soldati del giocatore li')
+          const L = lost.find((l) => !threatened(w, l.x, l.y, E.defendR));
+          const P2 = L && plan(w, L.o);
+          const ruins = L && canPay(en, P2.cost) ? site(w, L, P2) : null;
           if (ruins) {
-            lost.shift();
+            lost.splice(lost.indexOf(L), 1);
             placeCantiere(w, P2, { x: L.x, y: L.y, ruins }, en);
-          } else keep = P2.cost; // si mette da parte per lui
+          } else if (L) keep = P2.cost; // si mette da parte per lui
+        }
+        // [§9.118] schermaglia: gli edifici nuovi della CPU (case quando
+        // servono, poi l'ordine dello stile), uno alla volta
+        if (E.buildOrder && home && !w.exists("enemy_fondamenta") && !Object.keys(keep).length) {
+          const o = nextBuild(w, E, workers.length, home);
+          if (o) {
+            const P3 = plan(w, o);
+            const s3 = canPay(en, P3.cost) ? baseSpot(w, p, P3, home, o) : null;
+            if (s3) placeCantiere(w, P3, s3, en);
+            else keep = P3.cost;
+          }
         }
       }
       // al cantiere
@@ -640,13 +746,17 @@ export function enemyEco(p) {
       // nuovi lavoratori dal centro, pagando il cibo
       const c = w.all("enemy_centro").next().value;
       let n = workers.length;
+      // [§9.118] il tetto di popolazione della CPU, come quello del
+      // giocatore: 10 per centro e per casa, fino al tetto scelto
+      const cap = E.houses ? popCap(w, E) : Infinity;
+      const army0 = soldiers(w).length;
       if (c) {
         if (c.prodUntil && now >= c.prodUntil) {
           c.prodUntil = 0;
           w.create("enemy_omino", c.x, c.y);
           n++;
         }
-        if (!c.prodUntil && n < E.workers && canPay(en, { food: E.workerCost }, keep)) {
+        if (!c.prodUntil && n < E.workers && n + army0 < cap && canPay(en, { food: E.workerCost }, keep)) {
           en.food -= E.workerCost;
           c.prodUntil = now + E.workerTime;
         }
@@ -655,7 +765,7 @@ export function enemyEco(p) {
       // senza centro) e sotto il tetto
       // §9.107: i rinforzi che restano a casa (stay) fuori dal tetto
       let army = (E.armyEco ? soldiers(w).filter((e) => e.eco === 1) : soldiers(w)).filter((e) => !e.stay).length; // §9.76: armyEco
-      const enough = n >= E.workers || !c;
+      const enough = n >= (E.soldiersAt ?? E.workers) || !c;
       for (const b of [...w.all("enemy_caserma"), ...w.all("enemy_stalla")]) {
         if (b.noEco === 1) continue; // §9.52: un'altra base (la regia del livello)
         if (b.prodUntil && now >= b.prodUntil) {
@@ -665,7 +775,7 @@ export function enemyEco(p) {
           freeSpawnEnemy(u, w);
         }
         if (b.prodUntil) { army++; continue; }
-        if (!enough || army >= E.army) continue;
+        if (!enough || army >= E.army || n + army >= cap) continue;
         let obj = b.object === "enemy_stalla" ? "enemy_cavaliere" : E.troops[(b.prodK || 0) % E.troops.length];
         if (!canPay(en, unitCost(obj), keep) && E.anyTroop) { // §9.107: un'altra truppa, se si puo' pagare
           obj = [...E.troops.slice((b.prodK || 0) % E.troops.length), ...E.troops].find((o) => canPay(en, unitCost(o), keep)) || obj;
@@ -687,6 +797,13 @@ export function enemyEco(p) {
         if (b.noEco === 1) continue;
         const a = w.nearest(b.x, b.y, "ally_unit");
         if (a && Math.hypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
+      }
+      // [§9.116] anche attorno al posto di un edificio perso da ricostruire:
+      // i soldati in attesa vanno a liberarlo
+      for (const L of lost) {
+        if (intruder) break;
+        const a = w.nearest(L.x, L.y, "ally_unit");
+        if (a && Math.hypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
       }
       // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
       // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
@@ -726,7 +843,8 @@ export function enemyEco(p) {
       }
       const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army - E.guard);
       const ready = !en.hold && now - (en.since || 0) >= E.firstAttack && now >= (en.nextAttack || 0); // hold: §9.52
-      const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need ? attackTarget(w, home) : null;
+      const t = home && !intruder && E.attackAt > 0 && ready && waiting.length >= need
+        ? (E.raid && w.nearest(home.x, home.y, "ally_omino")) || attackTarget(w, home) : null; // §9.118: il predone punta ai lavoratori
       if (t) {
         const ff = p.flowField(p.goalField(t.x, t.y, true, false, true)); // §9.82: fixed
         for (const e of waiting) {

@@ -9,7 +9,7 @@ import { hintOnce, dialogOpen } from "./hints.js";
 import { sightK, seenNear } from "./fog.js";
 import { irandomRange, pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireOrder } from "./siege.js";
-import { fireStep, fireStop } from "./effects.js";
+import { fireStep, fireStop, burnTick } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
 import { towerTarget, towerArrow } from "./archery.js";
 import { lostBuilding } from "./economy.js";
@@ -128,7 +128,7 @@ export function enemyBuilding(kind, p) {
         f.depth = i.depth - 2;
       }
     },
-    alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
     alarm2(i) { i.hit = 0; },
     // [§9.43] la chiesa nemica: ogni 180 passi +3 vita alle unita' nemiche
     // ferite entro 800 px (distanza ridotta in verticale), come la chiesa
@@ -203,7 +203,7 @@ export function oBox(kind, p) {
       i.alarm.set(0, 30);
       if (i.onfire === 1 && i.visible === true) { const f = w.create("nubeqq", i.x, i.y); f.depth = i.depth - 2; }
     },
-    alarm1(i) { i.alarm.set(1, 70); if (i.onfire === 1) i.life -= 1; },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
     alarm2(i) { i.hit = 0; },
     destroy(i, w) { p.markInstance(i, 1); fireStop(i, w); },
     step(i, w) {

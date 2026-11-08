@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Particles, partType } from "../src/particles.js";
-import { fireStep, fireStop, rainExtinguish, FIRE } from "../src/effects.js";
+import { fireStep, fireStop, burnTick, FIRE } from "../src/effects.js";
 
 test("burst: N particelle dentro la regione, per ogni forma", () => {
   const P = new Particles();
@@ -106,16 +106,17 @@ test("fuoco degli edifici: due sistemi, x visible, vita delle fiamme davanti coi
   assert.equal(FIRE.campo.front, null);
 });
 
-test("la pioggia spegne gli edifici e le loro fiamme (n.56 corretto)", () => {
-  const P = new Particles();
-  const casa = { object: "casa", parents: ["ally_wooden"], alive: true, x: 0, y: 0, visible: true,
-                 onfire: 1, firestarted: 0, life: 100 };
-  const w = { particles: P, *all(n) { if (n === "ally_wooden") yield casa; } };
-  fireStep(casa, w, "casa");
-  assert.equal(P.systems.length, 2);
-  rainExtinguish(w);
-  assert.equal(casa.onfire, 0);
-  assert.equal(casa.firestarted, 0);
-  assert.equal(casa.fire_ps, null);
-  assert.ok(P.systems.every((ps) => !ps.alive));
+test("la pioggia non spegne i fuochi ma toglie il danno dell'incendio (§9.116)", () => {
+  const casa = { onfire: 1, life: 100 };
+  const w = { rainDamp: false };
+  burnTick(casa, w);
+  assert.equal(casa.life, 99);
+  w.rainDamp = true;
+  burnTick(casa, w);
+  assert.equal(casa.life, 99); // niente danno sotto la pioggia
+  assert.equal(casa.onfire, 1); // ma il fuoco resta acceso
+  w.rainDamp = false;
+  casa.onfire = 0;
+  burnTick(casa, w);
+  assert.equal(casa.life, 99);
 });

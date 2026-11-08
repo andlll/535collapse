@@ -105,7 +105,7 @@ export class PauseMenu {
       case "language": this.actions.language(b.value); this.dirty = true; break;
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
-      case "rain": case "grass": case "fire": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
+      case "rain": case "grass": case "fire": case "blood": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -197,6 +197,7 @@ export class PauseMenu {
         [tr("Rain: {state}", { state: onOff(s.rain) }), "rain"],
         [tr("Grass and crops: {state}", { state: onOff(s.grass) }), "grass"],
         [tr("Fire and sparks: {state}", { state: onOff(s.fire) }), "fire"],
+        [tr("Blood: {state}", { state: onOff(s.blood) }), "blood"], // §9.117
         [tr("Quality: {level}", { level: tr({ high: "High", medium: "Medium", low: "Low" }[s.quality] || "High") }), "quality"],
         [tr("Dynamic resolution: {state}", { state: onOff(s.dynamicResolution) }), "dynamicResolution"],
         [tr("Glass interface: {state}", { state: onOff(s.glass) }), "glass"],

@@ -100,6 +100,9 @@ def group_of(s):
     raise SystemExit("sprite %s in una cartella senza gruppo: %r" % (s["name"], s["folder"]))
 
 
+PORTING_SPRITES = {"ico_bandiera", "ico_campana"}
+
+
 def used_as_texture(sprites, objects):
     """Sprite che possono essere disegnati: sprite di un oggetto o nominati nel codice."""
     names = {s["name"] for s in sprites}
@@ -476,6 +479,9 @@ def main():
     # [§9.43] anche gli sprite del progetto che usano gli oggetti nuovi
     # (nuovi.json: gli edifici nemici con gli sprite *_b mai usati)
     used |= {o["sprite"] for o in nuovi.load()["objects"].values() if o.get("sprite")} & {s["name"] for s in sprites}
+    # [§9.121] sprite del progetto che usa solo il porting (le icone della
+    # schermata della schermaglia, menu.js)
+    used |= PORTING_SPRITES & {s["name"] for s in sprites}
     os.makedirs(os.path.join(OUT, "atlas"), exist_ok=True)
     for old in glob.glob(os.path.join(OUT, "atlas", "*")):
         os.remove(old)

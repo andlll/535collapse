@@ -39,6 +39,12 @@ import nuovi  # noqa: E402
 
 OUT = os.path.join(REPO_DIR, "game", "assets", "masks.json")
 
+# [§9.116, decisione dell'autore] sprite con la maschera a ellisse
+# dell'originale molto piu' larga del disegno, che diventano precise (dai
+# pixel, con la coltolerance del GMX, bbox dei pixel pieni): montagna1 (la
+# montagna del livello 2 che chiudeva quasi tutta la miniera a 2166, 449)
+PRECISE = {"montagna1"}
+
 
 def solid(img, tol):
     a = img.convert("RGBA").getchannel("A")
@@ -110,7 +116,10 @@ def main():
                 auto = bb if auto is None else (min(auto[0], bb[0]), min(auto[1], bb[1]),
                                                 max(auto[2], bb[2]), max(auto[3], bb[3]))
         auto = [auto[0], auto[1], auto[2] - 1, auto[3] - 1] if auto else [0, 0, 0, 0]
-        if s["bboxmode"] == 0:
+        colkind = 0 if s["name"] in PRECISE else s["colkind"]
+        if s["name"] in PRECISE:
+            bbox = auto
+        elif s["bboxmode"] == 0:
             if auto != s["bbox"]:
                 mismatches.append((s["name"], s["bbox"], auto))
             bbox = s["bbox"]  # quello del GMX fa fede: e' cio' che usava il gioco
@@ -118,9 +127,9 @@ def main():
             bbox = [0, 0, s["width"] - 1, s["height"] - 1]
         else:
             bbox = s["bbox"]
-        e = {"kind": s["colkind"], "bbox": bbox, "origin": [s["origin_x"], s["origin_y"]],
+        e = {"kind": colkind, "bbox": bbox, "origin": [s["origin_x"], s["origin_y"]],
              "size": [s["width"], s["height"]]}
-        if s["colkind"] == 0:
+        if colkind == 0:
             e["sepmasks"] = s["sepmasks"]
             e["frames"] = [rle(m, bbox) for m in masks]
         if s["name"].startswith("fiume"):

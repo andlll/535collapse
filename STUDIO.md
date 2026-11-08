@@ -115,6 +115,8 @@ sezione citata.
   porting sempre chiazza2. Raccomandazione: rimettere il caso.
 - [ ] Attivare GitHub Pages (Settings → Pages → Source: "GitHub
   Actions"): senza, il passo di pubblicazione su `main` fallisce (§5.1).
+- [x] La miniera del livello 2 a (2166, 449) dentro la maschera a ellisse di
+  `montagna1`: maschera precisa, decisa dall'autore (§9.116).
 
 **Prossima sessione: livelli della campagna disegnati in Tiled**
 (deciso con l'autore l'8 ottobre 2026; salvo bug sparuti, le prossime
@@ -8895,3 +8897,666 @@ nebbia attiva:
 Senza nebbia (menu, trucco) tutto come prima. Foto all'autore: livello 6
 all'inizio (solo il fiume vicino alla base) e dopo aver scoperto una fascia
 verso ovest. Passano `minimap`, `alarms`, `soak` e le prove unitarie.
+
+### 9.116 Menu decorativo, pioggia, raccolta affollata, calca dei nemici, obiettivi facoltativi
+
+Richieste e segnalazioni dell'autore (6 novembre 2026, versione 0.2609).
+
+**1. La bandierina rossa che volava da sola nel menu.** La `flag_r` a
+(1308, 1035) della room menu e' quella del castello del tutorial (in match
+il castello e' a 1310, 1140, la bandiera 105 px sopra); nel menu il castello
+e' a 2700, 1255 e la bandiera restava sospesa nel prato. Tolta al caricamento
+(app.js `DROPPED_AT`, per room, oggetto e posizione: `data/rooms` non si
+tocca). Le altre due bandiere del menu sono sul castello.
+
+**2. Nel menu unita' ed edifici solo decorativi.** `world.inputOnly`
+(world.js): se impostato, mouse e tastiera arrivano solo alle istanze di
+quegli oggetti; nel menu solo `enemy_manager_menu` (app.js). Niente
+selezione, evidenziazione (prima il castello passava a hover=1 sotto il
+puntatore) ne' rettangolo di selezione (manager.js `mouse`). Provato col
+clic sul castello e su un'unita' e col trascinamento.
+
+**3. La pioggia non spegne piu' i fuochi.** Prima (§3.17 n.56, §9.92) ogni
+10 passi spegneva gli edifici di legno alleati. Ora toglie solo il danno
+dell'incendio prolungato (il punto di vita perso a ogni allarme del fuoco):
+`burnTick` (effects.js) al posto di `if (onfire) life -= 1` in tutti gli
+edifici, alleati e nemici; `w.rainDamp` lo calcola il manager a ogni passo
+(gocce almeno a meta', `RAIN_PUT_OUT`, come §9.92). Il colpo della torcia o
+della freccia incendiaria (siege.js) fa danno come sempre; spegne solo la
+riparazione col legno. Provato: casa in fiamme, 17 punti persi in 1200
+passi all'asciutto, 0 sotto la pioggia, fuoco ancora acceso.
+
+**4. Pioggia piu' corta e varia.** Durava da 12000 a 15000 passi (3,3-4,2
+minuti, l'originale); ora da 3600 a 9000 (1-2,5 minuti, manager.js
+`RAIN_LEN`). L'intervallo fra due piogge resta 20000-35000 passi.
+
+**5. "Tanti lavoratori su una miniera o una pietra piccola: lavorano in uno o
+due, gli altri fermi intorno".** Non e' la vicinanza fra loro: e' il numero
+di posti di lavoro (§9.21, 10 attorno a una miniera o a una pietra). Censiti
+in tutte le room i posti liberi da ostacoli: quasi ovunque 10 su 10, ma la
+miniera del livello 2 a (2166, 449) ne ha 2 (7 dentro `montagna_1`, 1 nel
+fiume), quella a (609, 2194) 3, la pietra piccola del livello 6 a (6048,
+2508) 5 (acqua). Li' chi non trovava posto restava in coda per sempre, e chi
+aveva prenotato un posto irraggiungibile ci girava attorno tenendolo
+occupato. Ora (civilians.js, `resSpot`, `toResSpot`, `overflowTo`):
+- un posto irraggiungibile (nessun campo e non in vista) si lascia e per
+  900 passi non lo prende nessuno (`badUntil`); uno a cui non ci si avvicina
+  per 180 passi (chiuso dai compagni) si lascia per 300;
+- senza un posto di lavoro libero, prima della coda si va alla risorsa dello
+  stesso tipo, conosciuta e raggiungibile, piu' vicina a questa entro 700 px
+  che ne ha uno libero; chi e' in coda ci riprova ogni 60 passi;
+- senza nessun posto (ne' di lavoro ne' d'attesa) si aspetta fermi, girati
+  verso la risorsa, invece di spingere verso il suo centro.
+`mining.mjs` (20 civili, magazzino a 150 px, 9000 passi): livello 2,
+miniera (130, 2277) con le vicine semichiuse, da 548 a 880 oro al minuto,
+fermi da 60 a 0, giri sul posto da 39772 a 212, lenti da 506 a 67 per mille;
+match oro invariato; match pietra stessa resa (504 contro 508), in coda da
+28720 passi a 0 (vanno all'altra pietra), inversioni da 2,7 a 4,2 per mille
+passi in cammino. La miniera a (2166, 449)
+restava a 2 posti: non ha altre miniere entro 700 px, e `montagna1` aveva la
+maschera a ellisse dell'originale (kind 2, 1328 x 796 px), molto piu' larga
+del disegno: la miniera, in campo aperto a vederla, era quasi tutta dentro
+l'ellisse. Vedi "Seguito" qui sotto: ora la maschera e' precisa.
+
+**6. I nemici si accavallano.** Nuova prova (18 nemici misti in ondata,
+ruolo 31, verso un punto a 1500 px): arrivati, 48-49 coppie sovrapposte, 9
+nemici ancora in cammino dopo 40 s, 13000-14000 inversioni di marcia. La
+meta e' la stessa per tutti: i primi si fermavano, gli altri sovrapposti
+andavano col campo (senza collisioni) fin sopra di loro, o col passo dritto
+spostando a caso la meta occupata. Ora (enemies.js):
+- **arrivo nella calca** (`arriveInCrowd`): chi marcia (non insegue, non va
+  a dare fuoco, non in ritirata, sulla strada, in colonna o verso un
+  presidio) a meno di 250 px dalla meta e tocca, dov'e' o un passo avanti,
+  un compagno fermo, e' arrivato li';
+- **separazione dei fermi** (`settleEnemies`, come `settleOverlaps` degli
+  alleati, §9.62): fra due nemici fermi e liberi che si toccano si sposta
+  quello con l'ordo piu' basso, a un posto libero vicino, dritto sopra i
+  compagni (`settleMove`);
+- **mischia** (`enemyUnstack`, come `unstack` degli alleati, §9.71): a
+  contatto con l'alleato ma sopra un compagno che sta gia' colpendo, non si
+  comincia a colpire: si va a un posto libero attorno all'alleato, dritti
+  sopra i compagni (`stepOver` di units.js, ora anche per i nemici e mai
+  dentro un fiume a linee); prima si andava col campo dell'ondata (verso la
+  sua meta, non il posto);
+- **precedenza** (pathing.js `mayYieldTo`): passa chi ha l'ordo piu' alto,
+  l'altro aspetta fermo come prima, ma a pari ordo (g.order x rango: possono
+  coincidere) i due si aspettavano a vicenda per sempre con l'animazione
+  bloccata: ora passa chi ha l'id piu' alto; non si aspetta chi aspetta noi;
+  in marcia, a oltre 400 px dalla meta, al piu' 180 passi di fila.
+Prova di marcia, semi 2, 3, 5: coppie sovrapposte alla fine 49/48/49 ->
+2/4/0, inversioni 13208/13700/14054 -> 5/9/3, in cammino alla fine 9 -> 0.
+Assalto (la stessa ondata contro 6 alleati invulnerabili alla meta): passi x
+coppie sovrapposte 69324/43065/53929 -> 21141/37392/30152, coppie alla fine
+31/11/13 -> 6/11/6 (restano arcieri che tirano dallo stesso punto e chi
+colpisce comunque dopo 30 passi senza posto), inversioni 5/25/3 -> 11/37/18.
+
+**7. Gli alleati.** Provate le stesse regole anche per loro (aspettare solo
+chi si muove davvero, al piu' 60 passi): in marcia l'attesa piu' lunga
+scendeva da 276 a 120 passi, ma in `crowd.mjs` "punto" le inversioni
+salivano (seme 2: da 91 a 305; seme 3: da 179 a 503, oltre la soglia).
+**[Indicazione dell'autore]** "meglio che restino fermi un istante piuttosto
+che fare cose folli": per gli alleati le regole restano quelle di prima;
+`crowd.mjs` da' gli stessi numeri di prima (semi 2, 3, 5). Restano le attese
+di qualche secondo degli arcieri in marcia sovrapposti a un compagno.
+
+**8. Obiettivi facoltativi.** [Domanda dell'autore: come indicarli; proposta
+fatta qui, da rivedere] Una riga facoltativa (4o campo `true` in
+endgame.js) comincia con "Optional:"/"Facoltativo:", sta dopo gli
+obiettivi obbligatori ed e' scritta piu' tenue (alfa 0,55 contro 0,75; i
+completati 0,4 con la spunta), come il suo rombo nella minimappa (§9.114).
+Livello 6: "Facoltativo: recupera le torri, riparale oltre il 60% (n/m)"
+(prima obbligatorio a vederlo; per vincere basta fermare la colonna), con la
+spunta quando sono tutte recuperate. Livello 4: il campo nord-est (gia'
+"Facoltativo:") ora dopo "Distruggi il municipio nemico".
+
+Prove: `npm test`, la batteria della CI nel browser e `idle`, `workers`,
+`deposit`; `mining.mjs` e le prove di marcia descritte sopra.
+
+**Seguito (stessa PR, richieste dell'autore).**
+
+*Maschera precisa per `montagna1`* [decisione dell'autore]. tools/06_masks.py
+`PRECISE`: la maschera dai pixel (coltolerance 248 del GMX), al posto
+dell'ellisse; vale in tutte le room in cui c'e' la montagna (match, menu,
+livelli 2, 3, 4, 5). Miniera del livello 2 a (2166, 449): posti di lavoro
+liberi da 2 a 5 su 10 (dei 5 chiusi, 3 sono dove il corpo del civile, non
+solo i piedi, tocca il bordo disegnato della montagna, 2 la riva del
+fiume); 15 civili col magazzino a 220 px: in media al lavoro da 1,6 a 3,5.
+
+*Livello 6, miniera e tempietto in citta'* (prova come sopra, 15 civili,
+magazzino a 220-390 px, raggiungibili senza passare il fiume):
+- miniera (4980, 2272), 6 posti liberi su 10 (il resto nel fiume): 5-6 al
+  lavoro, gli altri in coda (nessun'altra miniera entro 700 px);
+- pietra grande (4640, 3820), 3 posti chiusi dal tempietto: 5-11 al lavoro,
+  nessuno in coda (gli altri vanno alla pietra piccola accanto);
+- tempio in rovina (5188, 3604): finito, i civili passano alla pietra
+  piccola accanto (4636, 3540), e chi si riempiva in mezzo ai compagni
+  restava **fermo col carico per sempre** (14 su 15 alla fine; c'era anche
+  prima di questa sezione): il campo verso il magazzino era chiuso dalle
+  celle dei compagni fermi al lavoro (-1 nella sua cella). Ora fieldTo
+  (civilians.js), con la propria cella chiusa, prova il campo coi soli
+  ostacoli fissi (come verso i posti, §9.23) prima di arrendersi: nessuno
+  piu' bloccato, campioni al lavoro da 19 a 34.
+
+*IA nemica: niente ricostruzione sotto gli occhi del giocatore*
+[segnalazione dell'autore: "ricostruisce i magazzini dove li ho appena
+distrutti, coi miei soldati ancora li'"; proposta accettata]. Un punto e'
+occupato se un'unita' del giocatore e' entro `defendR` (600 px, la distanza
+a cui la base si difende, §9.50). Economy.js `threatened`:
+- non si ricostruisce un edificio perso in un punto occupato, ne' gli si
+  mettono da parte le risorse: si passa al primo perso con il posto libero;
+- un deposito perso in un punto occupato non impedisce piu' un deposito
+  nuovo altrove (§9.46); i depositi nuovi non si mettono in punti occupati;
+- i lavoratori non vanno a risorse (ne' campi) in punti occupati, se ce ne
+  sono altre;
+- i soldati della regia in attesa vanno a liberare il posto di un edificio
+  perso (l'intruso di §9.50, che prima guardava solo gli edifici in piedi).
+Prova (livello 6, magazzino nemico distrutto con 3 soldati del giocatore
+fermi e invulnerabili sul posto, 2400 passi): prima il cantiere ripartiva
+al passo 1031 davanti a loro; ora nessun cantiere, 3 soldati nemici
+mandati, e via i soldati del giocatore il cantiere riparte in 11 passi.
+
+*IA nemica: difesa degli edifici, regola per tutti i livelli*
+[segnalazione dell'autore: "attaccavo un magazzino nemico e il soldato
+nemico li' vicino non faceva niente"]. I soldati fermi reagivano solo a un
+alleato entro 400 px da loro (meno di notte) e la difesa della regia (§9.50)
+muove solo i suoi soldati in attesa. Ora (enemies.js `defendBuildings`) ogni
+10 passi, per ogni edificio nemico che ha perso vita: l'unita' del giocatore
+piu' vicina a lui entro 800 px e' l'attaccante, e i soldati nemici fermi e
+liberi entro 900 px dall'edificio le vanno contro (non lavoratori, macchine
+d'assedio, chi si ritira, chi marcia sulla strada o in colonna, chi va al
+presidio). Prova: un guerriero nemico fermo a 550 px da una casa nemica
+attaccata da un arciere a 450 px dall'altra parte: prima fermo (0 px di
+strada), ora la raggiunge e lo attacca.
+
+*Prove del seguito.* `npm test` e la batteria della CI nel browser passano
+tranne `buildstuck.mjs` "incrocio", che a volte ha 1-3 civili in ritardo su
+72 ordini anche con lo stesso seme (non deterministico da un'esecuzione
+all'altra). Non e' di questa sezione: sui semi 1-10 `main` ha 16 ordini in
+ritardo (6 semi oltre la soglia), questa versione 13 (4 semi). **Da
+sistemare a parte** (la CI puo' cadere a caso su questa prova).
+
+### 9.117 Gocce di sangue sui colpi
+
+Proposta accettata dall'autore (6 novembre 2026, stessa PR, versione
+0.2609): gocce di sangue sui colpi alle unita', con un interruttore nelle
+opzioni grafiche; niente macchia a terra alla morte (c'e' gia' nello sprite
+del cadavere).
+- blood.js `bloodHit`, chiamato dai colpi in mischia (units.js meleeStrike,
+  alleati; enemies.js enemyStrike, nemici) e dalle frecce (ranged.js
+  allyArrow ed enemyArrow, anche quelle delle torri).
+- La goccia e' lo sprite della macchia di sangue dell'autore (`sfxsangue`, il
+  masso della catapulta, siege.js), rimpicciolito a 12-19 px, del suo rosso
+  (160, 17, 0) con la luminosita' che varia: 4-6 gocce per colpo in mischia,
+  2-3 per freccia, a 34 px dai piedi, schizzano dalla parte opposta a chi
+  colpisce (o nella direzione della freccia), un po' verso l'alto, e ricadono
+  sbiadendo in 18-28 passi.
+- Non sulle macchine d'assedio; solo unita' visibili (non nella nebbia) e
+  sullo schermo; al piu' 40 gocce per passo.
+- Categoria di particelle "blood": "Sangue: SI/NO" nelle opzioni grafiche
+  (settings.js `blood`, attivo di norma; tradotto nelle sei lingue). Per i
+  portali che chiedono di dichiarare la violenza si puo' spegnere di norma
+  nello zip (da decidere con l'autore).
+Foto all'autore: mischia di giorno (5 contro 5 e tre arcieri). Passano
+`npm test`, `saves` (match, livelli 4 e 6), `melee`, `soak` (menu, match,
+livello 5).
+
+### 9.118 La schermaglia (prima parte): Padus, la schermata, la CPU che costruisce
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): una
+modalita' "schermaglia" 1 contro 1, giocatore contro CPU, su mappe
+simmetriche, con parametri; 4-5 mappe all'uscita, coi nomi storici
+dell'Italia altomedievale. Decisioni dell'autore:
+- simmetria: non delle immagini, delle posizioni rispetto al nemico;
+  rotazione di 180 gradi, basi in angoli opposti;
+- partenza: il centro e 2-3 lavoratori (qui 3), niente altro;
+- la CPU ha le stesse possibilita' del giocatore; la difficolta' piu' alta si
+  chiama "Truccata" (Rigged): si vede che la CPU parte avvantaggiata;
+- disponibile da subito, col pulsante "Schermaglia" sotto la campagna;
+- le mappe: Padus (il Po), Silva Umbra (la Foresta Umbra), Rivoaltus
+  (Rialto, la laguna), Urbs (Roma), Mons Bardonis (il Monte Bardone, il
+  valico della Via Francigena). Nomi usati in quel periodo, in latino.
+- grandezza: le mappe di oggi vanno da 3200 x 8000 (livello 2) a 9000 x 4000
+  (livello 5), il tutorial 7000 x 7000. Un soldato fa ~200 px al secondo, un
+  civile ~150-180: Padus e' 7000 x 7000, coi centri a ~6200 px in linea
+  d'aria (circa 35-40 s di marcia per un soldato, di piu' per i ponti).
+
+**Le mappe simmetriche** (tools/16_schermaglia.py): si descrive mezza mappa
+(la base A in alto a sinistra) e lo script aggiunge i gemelli ruotati attorno
+al centro: degli oggetti si ruota il centro della maschera di collisione (non
+l'origine dello sprite, perche' l'ingombro sia lo stesso), dei fiumi la meta'
+dal bordo al centro, ponti e strade col gemello. Scrive mappe/sk_<nome>.tmx
+col kit di Tiled (si apre e si guarda come gli altri livelli); lo scenario lo
+fa tools/12 come sempre. `--check` (nella CI): ogni istanza dello scenario ha
+il gemello entro 1 px, fiumi, strade e ponti sono simmetrici, e il .tmx e'
+quello che lo script scriverebbe. I due centri sono nella mappa: all'avvio
+quello della CPU diventa `enemy_centro` (skirmish.js skirmishPrepare).
+
+**Padus** (sk_padus, 7000 x 7000): il Po da sud-ovest a nord-est fra le
+basi, largo 170 px, tre ponti (al centro e due di lato); per parte oro e
+pietra piccola vicino alla base, cinque boschi, un'altra miniera vicino al
+ponte di lato e la pietra grande vicino al ponte centrale; strade dalla base
+ai ponti. 528 alberi, 4 miniere, 2 pietre piccole, 2 grandi.
+
+**La schermata** (menu.js): mappe a sinistra (quelle non ancora fatte
+spente), la descrizione, i parametri a destra (un clic passa al valore
+dopo), "Indietro" e "Inizia". I parametri si ricordano (localStorage
+`535.skirmish`) e viaggiano con la partita (global.sk, anche nei
+salvataggi): difficolta' (Facile, Normale, Difficile, Truccata), stile
+della CPU (Equilibrato, Aggressivo, Difensivo, Economico, Predone, A caso),
+vittoria (Conquista, Municipio, Punteggio a 20/40/60 minuti), risorse
+iniziali, limite di popolazione (50/75/99), tregua (no, 5, 10 minuti),
+nebbia (normale, esplorata, nessuna), giorno e notte, pioggia, posizione di
+partenza (a caso, nord-ovest, sud-est). Tradotti nelle sei lingue.
+
+**La partita** (skirmish.js): risorse iniziali uguali per i due (Truccata:
+la CPU il doppio, e ogni consegna vale una volta e mezza, civilians.js
+carriedValue); 3 lavoratori per parte; sk_manager ogni mezzo secondo:
+tetto di popolazione scelto, fine della tregua (global.en.hold), vittoria e
+sconfitta. Conquista: vince chi distrugge tutti gli edifici dell'altro (il
+centro distrutto non fa perdere, buildings.js; il "mulino" invisibile del
+centro non conta); Municipio: il centro; Punteggio: allo scadere il
+valore di edifici, unita' e risorse (a pari punteggio vince la CPU),
+prima come Conquista. Gli obiettivi in alto a destra: la condizione, la
+tregua che scade, tempo e punteggi, difficolta' e stile del nemico.
+
+**La CPU** (economy.js con skirmishEco): la regia economica di sempre
+(lavoratori, depositi nuovi, ricostruzione, soldati, difesa, ondate) con i
+numeri della difficolta' e dello stile, piu' tre cose nuove:
+- il tetto di popolazione come il giocatore: 10 per centro e per casa,
+  fino al tetto scelto;
+- costruisce edifici nuovi (prima solo depositi e ricostruzioni): una casa
+  quando e' a meno di 3 dal tetto, se no l'ordine dello stile (campi,
+  caserme, stalle, torri, chiesa, fortezza), un cantiere alla volta;
+- il posto (baseSpot): su anelli attorno al centro, libero, non sul fiume,
+  a 40 px da altri edifici e dalle risorse, non dove ci sono soldati del
+  giocatore, raggiungibile; i campi vicini al centro, le torri dalla parte
+  del giocatore.
+Il predone manda le ondate verso i lavoratori del giocatore.
+Prova (Padus, Normale, Equilibrato, giocatore fermo): al 5o minuto 16
+lavoratori, 3 campi, una casa, 4 magazzini (ora al piu' 3 nuovi), una
+caserma; al 7o 11 soldati, 2 caserme, una stalla, una torre; all'8o 20
+soldati e 3 case; prima ondata al 9o minuto, centro del giocatore distrutto
+al 10o. Vittoria provata con Conquista, Municipio e Punteggio, con la
+tregua di 5 minuti. Passano `soak` e `saves` su sk_padus (aggiunta alla CI)
+e le prove unitarie.
+
+**Prossimi passi**: le altre quattro mappe; la CPU che si adatta (esplora,
+sceglie le truppe contro quelle del giocatore, difende i lavoratori); il
+bilanciamento con partite CPU contro CPU a parti scambiate (serve una CPU
+anche dal lato del giocatore); le statistiche a fine partita.
+
+### 9.119 Lo schermo intero: un pulsante tondo in alto a destra
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): con
+"Schermaglia" la colonna della schermata iniziale si affollava. "Schermo
+intero" esce dalla colonna e diventa un pulsante tondo in alto a destra
+(menu.js `drawFullButton`): lo stesso cerchio di vetro dei pulsanti della
+campagna (indietro e lucchetto, raggio 30, a 50 px dagli angoli) col simbolo
+di sempre, quattro angoli verso l'esterno per entrare e verso il centro per
+uscire. Solo dove il browser lo permette, come prima. La colonna torna a
+quattro pulsanti (tutorial, campagna, schermaglia, carica). Provato: il
+cerchio si accende sotto il puntatore e il clic entra nello schermo intero.
+Foto all'autore.
+
+### 9.120 La schermata della schermaglia senza riquadro
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): come
+nel menu di pausa, niente riquadro bianco di sfondo; titolo e descrizione
+della mappa in nero con un alone bianco (menu.js `glowText`, lo stesso di
+pause.js `_glowLabel`), i pulsanti di vetro sopra la battaglia del menu.
+"Indietro" non e' piu' un pulsante in fondo: e' il cerchio in alto a destra
+della campagna (raggio 30, a 50 px dagli angoli, ico_indietro). Esc torna
+indietro come prima. Provato: il cerchio si accende sotto il puntatore, il
+clic torna alla schermata iniziale. Foto all'autore.
+
+### 9.121 La schermata della schermaglia dal disegno dell'autore
+
+Disegno dell'autore (8 novembre 2026, stessa PR, versione 0.2609).
+- **A sinistra un riquadro solo**: la foto della mappa, sotto il nome fra
+  due frecce (si scorrono le cinque mappe; quelle non ancora fatte spengono
+  "Inizia"), sotto la descrizione in corsivo. I font del gioco non hanno il
+  corsivo: draw.js `slant`, i quadrilateri delle lettere inclinati attorno
+  alla linea di base (0,2).
+- **La foto** (tools/17_cartoline.mjs, Node e Playwright, col gioco in
+  esecuzione): la mappa vera senza nebbia, di giorno, senza pioggia ne'
+  unita', alla vista piu' larga (zoom 1,7), centrata nel punto `shot` della
+  mappa (skirmish.js SK_MAPS), ritaglio 720 x 480 al centro di uno schermo
+  1600 x 900 (fuori l'interfaccia e il bagliore del puntatore); scrive
+  nuovi/sprites/<room>_cartolina.png (versionato, gruppo campagna). Padus:
+  il centro della base nord-ovest col bosco e la miniera. Provvisoria: va
+  rifatta quando la mappa avra' le decorazioni.
+- **A destra i parametri in una griglia 3 x 3** di riquadri: titolo in alto,
+  l'icona del valore fra due frecce, il nome del valore in basso; la meta'
+  sinistra del riquadro torna al valore prima, la destra va a quello dopo.
+  La posizione di partenza esce dalla schermata (sempre a caso; resta fra i
+  parametri). "Giorno e notte" ha tre valori (ciclo, sempre giorno, sempre
+  notte, come nel disegno), la pioggia tre (normale, frequente: fra una
+  pioggia e l'altra un terzo, 6000-12000 passi invece di 20000-35000, la
+  prima a 3000; mai).
+- **Icone** (provvisorie, da rifare con l'autore): difficolta' = da una a
+  quattro spade (ico_attacco, decisione dell'autore); risorse = i quattro
+  simboli delle risorse, piu' grandi a ogni livello (decisione
+  dell'autore); stile = bilancia (linee), spade incrociate, scudo, oro,
+  cavallo, "?"; vittoria = rovina, centro, campana; popolazione = le
+  persone (ico_multi) piu' grandi; tregua = la bandiera coi minuti, o le
+  spade incrociate se non c'e'; nebbia = onde (piu' tenui se esplorata,
+  l'occhio se nessuna); giorno e notte = sole, falce di luna, tutti e due.
+  `ico_bandiera` e `ico_campana` non erano nell'atlas (nessun GML le usa):
+  tools/05_atlas.py `PORTING_SPRITES`.
+- **La pioggia nel riquadro della pioggia** (richiesta dell'autore): il
+  sistema di particelle della partita (le gocce di effects.js, piu' lente,
+  piu' scure e corte quanto il riquadro), un sistema del menu: una goccia a
+  passo con "Normale", tre con "Frequente", niente con "NO".
+Provato: frecce avanti e indietro, la mappa in arrivo che spegne "Inizia",
+le scelte salvate; una partita con sempre notte (notte per 30000 passi) e
+pioggia frequente (la prima a 50 s, due in 8 minuti). Foto all'autore.
+
+### 9.122 Padus decorata: ponti dipinti, strade, alberi, fiori, nebbia
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): le
+decorazioni le mette il porting; i ponti dell'autore; un po' di nebbia; la
+foto della mappa con gli angoli come il riquadro.
+- **Ponti dipinti** (tools/16 `painted_bridge`, punti col nome come in
+  Tiled, §9.100): tre `pontedx specchiato` al posto dei rettangoli. Il piano
+  del ponte attraversa un fiume inclinato di ~22 gradi: il Po al centro lo e'
+  gia' (-21,8), vicino ai ponti di lato il fiume e' stato raddrizzato a -22,7.
+  L'immagine non si ruota col gemello (la stessa specchiata nel punto
+  ruotato); il ponte al centro e' gemello di se stesso (il controllo lo
+  ammette). Provato: tre cavalieri attraversano i tre ponti.
+- **Strade**: dalla base alle risorse di casa, lungo la riva fra il ponte di
+  lato e quello centrale, verso il bosco di mezzo (strada2).
+- **Decorazioni** (tools/16 `scatter`: a caso nella meta' della base A,
+  lontano da oggetti solidi, fiumi e strade; col gemello): 20 alberi sparsi
+  per parte, macchie d'erba (burst_erba1) e di particelle, due di grano, i
+  quattro tipi di fiori, ciuffi d'erba e di fiori. `prato1` provato e tolto:
+  in gioco e' un anello bianco, sembra un recinto.
+- **Nebbia** (skirmish.js `sk_nebbia`, `sk_nube`; oggetti nuovi in
+  nuovi.json): dove dice la mappa (SK_MAPS mist, col gemello ruotato), 5
+  nuvole (lo sprite fog1 del menu) a opacita' 0,5, che scivolano a destra a
+  0,5 px a passo, svaniscono dopo 6000 passi e rinascono ogni 2400. Non e'
+  fog01 del menu: la sua presenza cambia l'inseguimento dei nemici [C].
+  Padus: lungo il Po.
+- **La foto** (tools/17): sul ponte centrale; angoli arrotondati (Pillow,
+  raggio 46 px nella foto, ~25 a schermo come il riquadro).
+- **Obiettivi**: nella schermaglia il riquadro e' alto quanto le righe (prima
+  quattro righe fisse, una vuota).
+Costi: con le decorazioni Padus costa come il livello 5 (soak: 4000 passi
+in 10,4 s col rendering software, prima 2,3), e il salvataggio passa da 0,5
+a 8 MB (quasi tutto particelle d'erba e fiori; il livello 6: 3,9). Passano
+`npm test`, `soak` (menu, sk_padus), `saves` (sk_padus), `--check`.
+
+### 9.123 Urbs: la citta' romana al centro, la pietra solo nelle rovine
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): una
+citta' romana come quella del livello 1 al centro, le rovine di pietra solo
+li', le macchie di lastricato come nel livello 6; fiumi e montagne a scelta.
+Scelte del porting (all'autore):
+- **Risorse**: la pietra solo nella citta' (ha senso: nel Medioevo Roma era la
+  cava di se stessa, Colosseo e Fori smontati per secoli), l'oro, il legno e
+  il cibo fuori, vicino alle basi e sui fianchi. Si va al centro per la
+  pietra, ma senza si vive.
+- **Niente fiume** (Padus e' gia' la mappa del fiume; il Tevere che
+  attraversa la citta' la taglierebbe in due allo stesso modo); **due colli**
+  per parte (montagna_7, montagna_8) ai fianchi della citta': due o tre
+  strade verso il centro.
+**La mappa** (sk_urbs, 7000 x 7000; tools/16 `urbs`):
+- il lastricato: una macchia di city2 attorno al centro (anello irregolare
+  di 40 punti, simmetrico da se': meta' a caso e meta' ruotata, tools/16
+  `patch_ring`), e un tratto di strada lastricata per parte (`patch`);
+- il Colosseo (ocr_teatro) col centro della maschera al centro della mappa
+  (`center_obj`: gemello di se stesso), basilica e tempio per parte,
+  colonne, statue e fontane del foro;
+- le rovine di pietra (stone_parent): per parte due castelloruin, due
+  chiesaruin, due torreruin, tutte raggiungibili dalle due basi (provato:
+  da 3 a 4 lati liberi per rovina, posti di lavoro da 8 a 24 liberi);
+- gli isolati: le case della citta' (ocr_01...45) su una griglia sulle due
+  direzioni delle file del livello 1 (passo (150, -40) e (45, 95)), una
+  strada ogni 5 case e ogni 3 file, qualche casa crollata (piazzette), solo
+  fra il foro e il bordo della citta'; le case si toccano fra loro (come nel
+  livello 1) ma stanno lontane da rovine, monumenti e strade. 126 case;
+- fuori: per parte la base, una miniera vicino e una sul fianco, cinque
+  boschi, trenta alberi sparsi, erba, grano, fiori; strade dalla base alla
+  citta' (la marcata) e di lato.
+tools/16: `center_obj`, `patch_ring`, `patch` (le macchie nel livello
+macchie, e nel controllo della simmetria), lo spazio libero misurato fra i
+centri delle maschere (anche gli oggetti sparsi: Padus ne ha avuto qualcuno
+spostato, sempre simmetrica). Il gioco carica anche l'atlas della citta'
+(SK_MAPS `tiers`).
+La foto del menu: il Colosseo. Prove: la CPU da sola (Normale,
+Equilibrato) costruisce la base, porta in casa la pietra della citta' (fino
+a 330), attacca al nono minuto; `soak` e `saves` su sk_urbs (aggiunta alla
+CI), `--check`, prove unitarie.
+
+### 9.124 Silva Umbra: il bosco dappertutto, radure e strade
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): il
+bosco quasi ovunque, solo strade senza alberi a collegare; le risorse sparse
+fra i boschi; niente montagne; fiumi al massimo sul bordo, stretti, senza
+ponti, per decorazione.
+**La mappa** (sk_silva, 7000 x 7000; tools/16 `silva`):
+- il bosco: alberi su una griglia sfalsata (passo 130 x 78, un po' a caso;
+  tools/16 `forest_fill`) dappertutto tranne radure, strade, ruscelli e
+  attorno alle risorse: 2836 alberi (Padus ne ha 590);
+- le radure, per parte: la base (1000 x 800 px, lo spazio per costruire,
+  anche per la CPU), cinque radure di risorse (tre d'oro, una di pietra
+  piccola, una di pietra grande), e al centro, contesa, una miniera e una
+  pietra grande per parte; oro e pietra piccola anche nella base;
+- le strade (strada2, larghe 90, con ~110 px di bosco tolto per lato: un
+  corridoio di ~300 px): base-centro, base-radure, radure fra loro, e una
+  strada di fianco che lega le radure di un lato a quelle dell'altro;
+- due ruscelli larghi 70 lungo il bordo sinistro e destro (tools/16
+  `edge_river`: fiumi interi col gemello, che non passano dal centro),
+  lontani dalle strade, senza ponti;
+- fiori ed erba solo nelle radure; la nebbia (§9.122) al centro e in due
+  radure.
+La foto del menu: una radura con la miniera, i fiori e la nebbia.
+**Costo**: soak 4000 passi in 14,1 s (Urbs 9,3, Padus 10,8; rendering
+software), salvataggio 6,1 MB. Prove: la CPU da sola (Normale, Equilibrato)
+costruisce nella radura (3 campi, 4 case, 2 caserme, 2 stalle, una torre,
+una chiesa), attacca lungo le strade e al decimo minuto distrugge il centro
+di un giocatore fermo; `soak` e `saves` su sk_silva (aggiunta alla CI),
+`--check`, prove unitarie.
+Nota per le mappe nuove: tools/07_scene.py vuole gia' la foto della mappa
+(nuovi.json la elenca): se ne mette una provvisoria, si genera la scena,
+poi si fa quella vera con tools/17 e si rifa' l'atlas.
+
+### 9.125 Rivoaltus: la laguna, canali, isole e i ponti dell'autore
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): la
+mappa lagunare coi ponti dipinti dell'autore, le decorazioni come nelle
+altre, la densita' delle isole a scelta del porting.
+**La mappa** (sk_rivo, 7000 x 7000; tools/16 `rivoaltus`):
+- **canali**: il Canal Grande dal centro a -22 gradi e due paralleli a 2100
+  px (larghi 170), due canali verticali a x 2250 e 4750 (larghi 150), con
+  qualche curva lontano dai ponti; **rii**: quattro canali laterali curvi
+  che si stringono (da 130-160 a 40-50 px; tools/16 `edge_river` con la
+  larghezza finale, `larghezza_fine` come in Tiled); **laguna aperta** negli
+  angoli fra le basi (larga 900). Circa nove isole di terra, frastagliate:
+  la densita' media (scelta del porting), abbastanza acqua da essere una
+  laguna, isole grandi abbastanza per le basi e per combattere.
+  (Specchi d'acqua corti e larghi provati e tolti: vengono squadrati.)
+- **ponti**: tredici, dell'autore: `pontedx specchiato` sui canali a -22
+  gradi (il piano li attraversa come a Padus), `pontedx2` sui canali
+  verticali (la sua fascia percorribile va da sinistra a destra, ~360 px);
+  il Rialto al centro, gemello di se stesso. Provati tutti: un cavaliere per
+  ponte, da una riva all'altra.
+- **isole**: la base (oro e pietra piccola, un bosco), l'isola a ovest
+  (oro, bosco), l'isola in alto (pietra grande, bosco), l'isola a sud-ovest
+  (oro, bosco), e le due isole al centro, contese: oro, una chiesa in rovina
+  (pietra) e qualche casa di citta'. Tutte le risorse si raggiungono dalle
+  due basi; strade fra i ponti, che si fermano alle rive.
+- nebbia sui canali; decorazioni come nelle altre mappe.
+**Le decorazioni lontano dai ponti dipinti** (tools/16 `free`, BRIDGE_R
+300 px): una macchia d'erba a particelle disegnava i fili d'erba sul piano
+del ponte. Vale per tutte le mappe: Padus ne ha avute un paio spostate (e la
+foto rifatta). Le macchie d'erba a Rivoaltus stanno anche a 300 px dall'acqua.
+La foto del menu: il canale verticale col ponte ad archi (pontedx2), le case
+e il bosco. Prove: la CPU (Normale, Equilibrato) costruisce sull'isola della
+base, attacca al nono minuto passando dai ponti; soak 4000 passi in 8,4 s;
+`saves` (5,5 MB) e `soak` su sk_rivo (aggiunta alla CI), `--check`.
+
+### 9.126 Fiumi irregolari e strisce di terra fra le isole
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): i
+fiumi hanno una forma troppo regolare, sembrano canali artificiali; meglio
+percorsi non dritti, un po' frastagliati, e in qualche punto, al posto dei
+ponti, strisce di terra fra le isole.
+**Il percorso** (tools/16 `meander`): la linea data si infittisce ogni 60 px
+e ogni punto si sposta lungo la normale di due onde lunghe (le anse:
+ampiezza `amp`, lunghezza `wl` e una seconda a 0,43 wl) piu' due corte (la
+riva frastagliata: `jag`, onde di 420 e 300 px), con fasi dal seme della
+mappa; poi tre passate di media 1-2-1. Vicino ai ponti dipinti lo
+spostamento va a zero (entro ~300 px): il fiume resta dritto e inclinato
+come il ponte, che continua ad attraversarlo. Con `fix_end` gli ultimi punti
+restano fermi (il mezzo fiume che arriva al centro, col gemello ruotato).
+Le onde corte a 170/260 px, con i punti ogni 80, facevano uno spigolo a V
+nella riva del Po: tolto con onde piu' lunghe, passo piu' fitto e la media.
+La laguna larga (900 px) solo con le anse, a passo largo (le onde corte su
+un nastro cosi' largo fanno un pettine).
+- **Padus**: il Po con anse ampie (amp 190, wl 1700).
+- **Silva Umbra**: i ruscelli sul bordo piu' tortuosi (amp 60, wl 800).
+- **Rivoaltus**: canali e rii irregolari; **sei strisce di terra** (tools/16
+  `cut`: il canale si interrompe entro un raggio, ~230-240 px): sul canale
+  verticale in alto e in basso e sul parallelo a nord al centro, con i loro
+  gemelli. I ponti passano da tredici a sette (il Rialto, due sul Canal
+  Grande, due sul parallelo, due pontedx2 sui canali verticali); le strade
+  passano sugli istmi.
+- Urbs non ha fiumi.
+Prove: `--check` (simmetriche tutte e quattro); a Rivoaltus tutte le
+risorse raggiungibili dalle due basi e i sette ponti attraversati da un
+cavaliere; `soak` e `saves` su sk_padus, sk_silva, sk_rivo; prove unitarie.
+Rifatte le foto delle tre mappe (tools/17) e l'atlas.
+
+### 9.127 Mons Bardonis: la cresta, i tre valichi e gli alberi sui tagli
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609):
+l'ultima mappa, con gli sprite delle montagne che ci sono, incrociati in modo
+che non si vedano gli spigoli tagliati dritti degli sprite, magari coperti
+da alberi non tagliabili o da altre decorazioni come nel tutorial e nel
+livello 3; qualche ruscello decorativo ai margini.
+**La mappa** (sk_bardonis, 7000 x 7000; tools/16 `bardonis`): il Monte
+Bardone, il valico della Cisa sulla via Francigena. Una cresta di montagne
+attraversa la mappa da un bordo all'altro fra le due basi, con tre valichi
+larghi 450-550 px: al centro la via Francigena (strada marcata, il valico fa
+una S fra le due montagne), e due di lato, equidistanti dalle due basi.
+Ogni base ha la sua valle (la A in alto): oro e pietra piccola vicino al
+centro, una miniera in fondo alla valle, una davanti al valico vicino, la
+pietra grande ai piedi della cresta, una torre in rovina (pietra) davanti al
+valico lontano, boschi. Montagne negli angoli e ai bordi delle valli; due
+ruscelli stretti per parte che escono da sotto una montagna e vanno al
+bordo (si stringono alla sorgente). Nebbia sui valichi.
+- **La cresta orizzontale**: in diagonale gli sprite (larghi e bassi)
+  lasciavano buchi a scalini. Per il muro le montagne con la maschera precisa
+  (1, 4, 5, 9); la 6, la 7, la 8 e la 3 come contrafforti. Non la 2: ha la
+  maschera a ellisse su tutto il rettangolo, mentre la roccia disegnata no.
+  Controllato su una griglia di 25 px con le maschere: coi valichi chiusi
+  le due valli sono separate, coi valichi aperti si passa da ciascuno.
+- I valichi sono equidistanti dalle due basi (stanno sul confine fra le due
+  meta'), quindi le montagne non ruotate (che non sono simmetriche) li
+  restringono in modo diverso ma ugualmente per i due giocatori.
+**Gli spigoli tagliati** (tools/16 `cover_cuts`): gli sprite 1, 2, 4 e 5
+hanno lati tagliati dritti (misurati sull'alfa: la 1 in alto a destra, la 2
+in basso, la 4 e la 5 a sinistra e in basso). Lo script prende ogni
+montagna della mappa intera e lungo ogni lato tagliato mette un albero non
+tagliabile (albero_fake) ogni ~58 px, salvo dove il lato e' fuori dalla
+mappa o sotto una montagna disegnata davanti (depth -y: quella con l'origine
+piu' in basso). Un boschetto, non una siepe: posti a caso, e file in piu'
+sempre piu' rade. La chioma sta fra 24 e 144 px sopra il tronco, larga
++-55: sotto un lato in basso il tronco va fuori (60 px sotto), per gli
+altri lati i tronchi stanno sulla roccia, dove non intralciano. (Prima
+stavano anche fuori, nel valico di sinistra: un cavaliere si incastrava fra
+i tronchi.) Questi alberi non hanno gemello (lo sprite del gemello non si
+ruota, il suo lato tagliato e' dalla stessa parte): `--check` li accetta se
+stanno su un lato tagliato. Dove si puo' i lati tagliati vanno fuori dalla
+mappa (la montagna in alto) o sotto un'altra montagna.
+**Le decorazioni non sulla roccia**: `free` scarta i punti sulla roccia
+(alfa degli sprite delle montagne), con un margine di r + 100 px per le
+macchie d'erba e di fiori (le particelle si allargano: una disegnava l'erba
+sulla montagna).
+Prove: `--check` (simmetrica); tutte le risorse raggiungibili dalle due
+basi; un cavaliere per valico in ciascun verso; la CPU (Normale,
+Equilibrato) costruisce nella sua valle e attacca al nono minuto passando
+dai valichi; `soak` e `saves` (5,7 MB) su sk_bardonis (aggiunta alla CI);
+prove unitarie. La foto del menu: il valico centrale con la via
+Francigena. Con questa le cinque mappe della schermaglia ci sono tutte.
+
+### 9.128 Mons Bardonis: strade attorno alle montagne, montagne piccole sui tagli
+
+Indicazioni dell'autore (8 novembre 2026, stessa PR, versione 0.2609): le
+strade sono poche e troppo dritte, devono girare attorno alle montagne e
+devono essercene di piu'; gli alberi attorno alle montagne sono troppo
+regolari: dove servono, meglio una seconda montagna piccola sopra.
+**Le strade** (tools/16 `road_auto`): A* su una griglia di 40 px della mappa
+intera (montagne, oggetti solidi e ruscelli, gemelli compresi), a piu' di
+150 px dalla roccia e un po' oltre dove c'e' posto. Il percorso della griglia
+(solo 0, 45 e 90 gradi) si riduce a un punto ogni ~160 px, poi le anse:
+ogni punto si sposta di lato (due seni, fino a 170 px) quanto lascia la
+roccia, e mai vicino agli estremi; infine tre passate di Chaikin. Sulle
+strade che ci sono gia' il costo e' 0,75: dove la nuova ci corre sopra non
+si ridisegna, parte o arriva li' (l'incrocio). (Con 0,35 la strada per il
+valico di sinistra faceva il giro dalla via Francigena e dal valico
+centrale.) Ora per parte: la via Francigena al valico centrale, la strada
+lungo la valle alla miniera in fondo, quella al valico di sinistra e oltre
+nella valle dell'altro (con il valico come tappa), alla pietra e alla
+miniera di sinistra, alla pietra grande, una a mezza valle fra i due
+valichi, una verso il ruscello e una che entra dal bordo in alto: venti
+tratti in tutto, coi gemelli.
+**Le montagne piccole sui tagli** (tools/16 `cover_mountains`): per ogni
+montagna della mappa intera con un lato tagliato in vista, fino a tre
+montagne piccole (3, 6, 7, 8) fra le posizioni attorno al lato: quella che
+ne copre di piu' e sporge meno dalla roccia che c'e' gia', mai dentro i
+valichi o sulle risorse. Deve stare davanti (l'origine piu' in basso): una
+montagna dietro che riempie oltre il lato lascia una cucitura dritta, roccia
+su roccia, che si vede (provato e tolto). Per questo il lato in alto della
+1 non si copre con una montagna (quella davanti sta piu' in basso): la 1
+non c'e' piu'. La cresta ora e' tutta con la 9 (nessun lato tagliato; la 5
+aveva il lato sinistro sul valico centrale, dove una montagna piccola lo
+chiudeva), in alto la 4 con due montagne piccole davanti (il gemello in
+basso con una). Restano sei alberi non tagliabili sparsi (cover_cuts, per
+quel che avanza), al posto dei 158 in fila. Le montagne piccole non hanno
+gemello (come gli alberi): `--check` le accetta se stanno su un lato
+tagliato.
+I valichi (larghi ~375 px quello centrale, ~425 quelli di lato, secondo la griglia con le maschere):
+il valico di sinistra ora e' a x 1220.
+Prove: `--check` (simmetriche tutte); le due valli separate coi valichi
+chiusi; tutte le risorse raggiungibili dalle due basi; un cavaliere per
+valico in ciascun verso; la CPU (Normale, Equilibrato) attacca al nono
+minuto; `soak` e `saves` su sk_bardonis; prove unitarie. Foto del menu
+rifatta (il valico centrale con la via Francigena).
+
+### 9.129 I nomi delle mappe in italiano
+
+Decisione dell'autore (8 novembre 2026, stessa PR, versione 0.2609): i nomi
+delle mappe della schermaglia tornano all'italiano, piu' intuitivo dei nomi
+storici in latino, tradotti nelle altre lingue dove il nome esiste.
+| room | prima | it | en | es | pt | de | fr |
+|---|---|---|---|---|---|---|---|
+| sk_padus | Padus | Padania | Padania | Padania | Padânia | Padanien | Padanie |
+| sk_urbs | Urbs | Urbe | Urbe | Urbe | Urbe | Urbe | Urbe |
+| sk_rivo | Rivoaltus | Laguna | Lagoon | Laguna | Laguna | Lagune | Lagune |
+| sk_silva | Silva Umbra | Foresta Umbra | Umbra Forest | Bosque Umbra | Floresta Umbra | Umbra-Wald | Forêt Umbra |
+| sk_bardonis | Mons Bardonis | Appennini | Apennines | Apeninos | Apeninos | Apennin | Apennins |
+Urbe (Roma, "la citta'") non ha un corrispondente nelle altre lingue:
+resta Urbe. Il nome in SK_MAPS (game/src/skirmish.js) e' la chiave inglese
+come per gli altri testi, tradotto in texts.js; la scheda della mappa ora
+lo passa per `tr` (prima il nome era lo stesso in tutte le lingue). Le
+room, i file e le funzioni di tools/16 restano coi nomi di prima (sk_padus,
+`padus()`...: nomi interni, cambiarli toccherebbe i salvataggi).
+Controllato nella schermata della schermaglia in italiano, tedesco e
+francese; prove unitarie.
+
+### 9.130 CI: il controllo delle mappe della schermaglia e le versioni di Pillow
+
+Nella PR andlll/535collapse#19 la CI falliva su `tools/16_schermaglia.py
+--check`: tutte e cinque le mappe "non e' quella che scrive tools/16",
+mentre in locale passava. Riprodotto in un clone pulito coi passi della CI
+(Python 3.11, Pillow installato da pip: 13.0): l'unica differenza era la
+larghezza e altezza degli oggetti tile di fiori_papaveri nei .tmx (348 x 308
+con il Pillow 12.3 di qui, 348 x 310 con il 13.0). Sono le misure
+dell'immagine del kit di Tiled (tools/11 `decor_image`: Pillow ridimensiona
+e ruota i fiori, poi la ritaglia sull'alfa) e cambiano di un paio di pixel
+con la versione di Pillow; nello scenario non entrano (il controllo degli
+scenari nella CI passava). Il confronto di `--check` ora ignora larghezza e
+altezza degli oggetti tile (`tile_free`) e guarda tutto il resto: passa qui
+e nel clone pulito come nella CI, e un oggetto spostato di 1 px lo fa
+ancora fallire.

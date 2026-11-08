@@ -25,6 +25,7 @@
 // Il checksum (FNV-1a con un sale fisso, come NIMBUS) non e' una protezione
 // vera: il gioco e' tutto nel browser. Scoraggia la modifica a mano di un
 // numero nel file; un file modificato si scarta come non valido.
+import { SK_ROOMS } from "./skirmish.js"; // §9.118
 
 export const SAVE_VERSION = 1;
 const GAME = "535";
@@ -289,7 +290,7 @@ export async function gunzipBase64(b64) {
 
 // uno slot per room: "535.save.match", "535.save.lvl01", ...
 const slotKey = (room) => "535.save." + room;
-export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"];
+export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // SK_ROOMS: §9.118
 
 const DB_NAME = "535-saves", BODY = "slots", HEAD = "info";
 let dbOpen = null;

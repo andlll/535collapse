@@ -1233,3 +1233,30 @@ export function moveStalled(w, p, i) {
   }
   return true;
 }
+
+// [§9.116, segnalazione dell'autore] La precedenza fra nemici sovrapposti
+// in cammino: passa chi ha l'ordo piu' alto, l'altro aspetta fermo (come
+// prima). Ma due con lo stesso ordo (g.order * rango: un guerriero e un
+// cavaliere possono coincidere) si aspettavano a vicenda per sempre, con
+// l'animazione bloccata: a pari ordo passa chi ha l'id piu' alto. E non si
+// aspetta chi sta aspettando noi. In marcia, a oltre YIELD_NEAR px dalla
+// meta, al piu' YIELD_MAX passi di fila (3 s): poi si passa anche noi
+// finche' non ci si separa (yieldN torna a 0 senza nessuno addosso,
+// yieldClear). Vicino alla meta nessun limite: li' passare sopra chi aspetta
+// fa solo ammassare. [Indicazione dell'autore] meglio fermi un istante che
+// inversioni e sovrapposizioni: per gli alleati le regole restano quelle di
+// prima (provato anche per loro: in crowd.mjs "punto" fino al triplo delle
+// inversioni di marcia).
+export const YIELD_MAX = 180, YIELD_NEAR = 400;
+export function mayYieldTo(w, i, o) {
+  if (o.action !== 1 || (o.yieldId === i.id && o.yieldAt >= w._stepNo - 1)) return false;
+  if ((o.ordo ?? 0) < (i.ordo ?? 0) || ((o.ordo ?? 0) === (i.ordo ?? 0) && o.id < i.id)) return false;
+  if (pointDistance(i.x, i.y, i.dirox, i.diroy) <= YIELD_NEAR) return true;
+  return (i.yieldN || 0) < YIELD_MAX;
+}
+// fermo per la precedenza (senza il passo dell'animazione)
+export function yieldStep(w, i, o) {
+  i.yieldId = o.id; i.yieldAt = w._stepNo; i.yieldN = (i.yieldN || 0) + 1;
+  i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1);
+}
+export function yieldClear(i) { i.yieldN = 0; }

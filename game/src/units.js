@@ -17,6 +17,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
 
@@ -819,13 +820,15 @@ function meleeStep(w, p, i, sx, sy, over, t) {
 // c'e' un ostacolo (un nemico, un edificio), girando di 30 gradi alla volta
 // fino a 90, prima dalla parte scelta l'ultima volta (overSide): girando a
 // caso andava avanti e indietro. Fermo se non si puo'.
-function stepOver(w, i, tx, ty) {
+// [§9.116] anche per i nemici (fam "enemy_unit": sopra i compagni), e mai
+// dentro un fiume a linee (terrainBlocks)
+export function stepOver(w, i, tx, ty, fam = "ally_unit") {
   const dir = pointDirection(i.x, i.y, tx, ty), d = Math.min(i.autospeed, pointDistance(i.x, i.y, tx, ty));
   if (d < 0.5) return false;
   const side = i.overSide || 1;
   for (const a of [0, 30 * side, -30 * side, 60 * side, -60 * side, 90 * side, -90 * side]) {
     const nx = i.x + lengthdirX(d, dir + a), ny = i.y + lengthdirY(d, dir + a);
-    if (!w.placeFreeExcept(i, nx, ny, "ally_unit")) continue;
+    if (!w.placeFreeExcept(i, nx, ny, fam) || (w.terrainBlocks && w.terrainBlocks(i, nx, ny))) continue;
     if (a) i.overSide = Math.sign(a);
     i.direction = ((dir + a) % 360 + 360) % 360;
     w.setPos(i, nx, ny);
@@ -1036,6 +1039,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   if (v.slife !== 125 && v.slife !== 100) v.alarm.set(5, 47);
   const dmg = table[v.slife];
   if (dmg !== undefined) v.life -= dmg;
+  bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
   if ((v.slife === 125 || v.slife === 100) && v.action === 0) {
     const dirscampa = pointDirection(io_x, io_y, v.x, v.y);
     v.action = 1; v.warwork = 4; v.step = 0;
