@@ -5,6 +5,7 @@ import { c } from "./colours.js";
 import { saveUnlock } from "./progress.js";
 import { tr } from "./i18n.js";
 import { PRODUCERS } from "./production.js";
+import { isSkirmish, SK_OPTIONS, elapsed, skirmishScore } from "./skirmish.js";
 
 // victory_manager [C]: lo schermo sbianca (alpha +0,08 a passo fino a 0,9),
 // poi "VICTORY", il punteggio in match o il codice del livello successivo
@@ -50,6 +51,7 @@ export function victoryManager() {
       if (i.clicloc !== 1) return;
       w.destroy(i);
       const g = w.g;
+      if (isSkirmish(w.room)) { w.gotoRoom("menu"); return; } // §9.118: la schermaglia finisce
       const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6, lvl06: 7 }[w.room];
       if (next) {
         g.campagna = 1;
@@ -78,6 +80,10 @@ export function victoryManager() {
       if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
       if (w.room === "lvl05") d.text(vw / 2, vh / 2 - 100, tr("The invaders' city has fallen: the land is ours")); // §9.76
       if (w.room === "lvl06") d.text(vw / 2, vh / 2 - 100, tr("The column has been stopped: the city will rise again")); // §9.101
+      if (isSkirmish(w.room)) { // §9.118
+        const g = w.g;
+        d.text(vw / 2, vh / 2 - 100, g.skScore ? tr("Score: you {a}, the enemy {b}", { a: g.skScore[0], b: g.skScore[1] }) : tr("The enemy has been defeated"));
+      }
       const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4", lvl05: "8 0 6 5 3",
                      lvl06: "0 7 3 6 0" }[w.room];
       if (code) {
@@ -120,14 +126,16 @@ export function gameoverManager() {
       if (i.fogalpha < 1) return;
       d.setColour(c.white);
       d.setHalign("center");
-      const lines = [g.nomovesLost ? tr("You have no units left and cannot train new ones.")
+      const lines = [g.skLost === "score" ? tr("Score: you {a}, the enemy {b}", { a: g.skScore[0], b: g.skScore[1] }) // §9.118
+        : g.skLost === "buildings" ? tr("All your buildings were destroyed.")
+        : g.nomovesLost ? tr("You have no units left and cannot train new ones.")
         : w.room === "lvl03" ? tr("The monastery has fallen.")
         : w.room === "lvl06" && g.l6 && g.l6.lost ? tr("The enemy column broke through the eastern bridge.") // §9.101
         : tr("Your town hall was destroyed.")];
       if (w.room === "match" || w.room === "lvl03") {
         lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       }
-      lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte }));
+      if (!isSkirmish(w.room)) lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte })); // §9.118
       lines.forEach((t, k) => d.text(vw / 2, vh / 2 - 200 + k * 100, t));
     },
   };
@@ -209,7 +217,7 @@ export function objectiveButton() {
       if (g.obj !== 1) return;
       // [§9.27] non sopra le schermate di vittoria e di sconfitta
       if (w.number("victory_manager") || w.number("gameover_manager")) return;
-      const nobs = w.room === "match" ? 4 : 3;
+      const nobs = w.room === "match" || isSkirmish(w.room) ? 4 : 3; // §9.118: anche la schermaglia
       const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
       // [y, testo, completato (prima: la y della barra), facoltativo (§9.116)]
       const lines = [];
@@ -297,6 +305,23 @@ export function objectiveButton() {
           towers(118);
         }
         sizing.push(tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
+      }
+      // [§9.118] schermaglia: la condizione di vittoria, la tregua, il tempo
+      // e (a punteggio) il punteggio dei due
+      if (isSkirmish(w.room) && g.sk) {
+        const S = g.sk, t = elapsed(g);
+        const goal = { conquest: "Destroy all the enemy buildings", townhall: "Destroy the enemy town hall" }[S.victory]
+          || "Have the higher score when time runs out";
+        lines.push([58, tr(goal)]);
+        let y = 88;
+        const hms = (sec) => Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+        if (S.truce > 0 && t < S.truce * 60) { lines.push([y, tr("Truce: {t}", { t: hms(S.truce * 60 - t) })]); y += 30; }
+        const mins = { score20: 20, score40: 40, score60: 60 }[S.victory];
+        if (mins) {
+          lines.push([y, tr("Time left: {t}", { t: hms(Math.max(0, mins * 60 - t)) })]); y += 30;
+          lines.push([y, tr("Score: you {a}, the enemy {b}", { a: skirmishScore(w, "player"), b: skirmishScore(w, "cpu") })]);
+        }
+        lines.push([mins ? y + 30 : y, tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) })]);
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.

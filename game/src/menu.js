@@ -33,6 +33,7 @@ import { slotInfo, SAVE_ROOMS } from "./save.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
 import { irandomRange } from "./gm.js";
+import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
@@ -68,7 +69,7 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // dal fondo, dove finiva "Campaign - Collapse". [x1, y1, x2, y2] per chiave.
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
 function titleButtons(W, H) {
-  const keys = ["tutorial", "campaign", "load"];
+  const keys = ["tutorial", "campaign", "skirmish", "load"]; // skirmish: §9.118
   if (fullscreenAvailable()) keys.push("full");
   const top = H - 100 - keys.length * BTN_H - (keys.length - 1) * BTN_GAP;
   const out = { top };
@@ -110,6 +111,30 @@ function loadRows(W, H) {
   return rows;
 }
 
+// [§9.118] La schermata della schermaglia: a sinistra le mappe (con la
+// descrizione di quella scelta), a destra i parametri (un clic passa al
+// valore dopo), in fondo "Indietro" e "Inizia". I parametri si ricordano
+// (skirmish.js, localStorage).
+function skLayout(W, H) {
+  const PW = Math.min(1180, W - 40), PH = Math.min(700, H - 30);
+  const x0 = W / 2 - PW / 2, y0 = H / 2 - PH / 2;
+  const LW = Math.min(400, PW * 0.36);
+  const mapH = 46, mapGap = 8;
+  const rows = SK_MAPS.map((m, k) => ({ kind: "map", k, x1: x0 + 30, y1: y0 + 90 + k * (mapH + mapGap), x2: x0 + 30 + LW, y2: y0 + 90 + k * (mapH + mapGap) + mapH }));
+  const keys = Object.keys(SK_OPTIONS);
+  const ox1 = x0 + 60 + LW, ox2 = x0 + PW - 30;
+  const rowH = Math.max(30, Math.min(44, (PH - 90 - 100) / keys.length - 6));
+  keys.forEach((key, k) => rows.push({ kind: "opt", key, x1: ox1, y1: y0 + 90 + k * (rowH + 6), x2: ox2, y2: y0 + 90 + k * (rowH + 6) + rowH }));
+  rows.push({ kind: "back", x1: ox1, y1: y0 + PH - 75, x2: ox1 + 240, y2: y0 + PH - 25 });
+  rows.push({ kind: "start", x1: ox2 - 300, y1: y0 + PH - 75, x2: ox2, y2: y0 + PH - 25 });
+  return { panel: [x0, y0, x0 + PW, y0 + PH], rows, descX: x0 + 30, descY: y0 + 90 + SK_MAPS.length * (mapH + mapGap) + 16, descW: LW };
+}
+// il prossimo valore di un parametro
+function nextValue(key, v) {
+  const vs = SK_OPTIONS[key].values, k = vs.indexOf(v);
+  return vs[(k + 1) % vs.length];
+}
+
 export function enemyManagerMenu() {
   return {
     create(i, w) {
@@ -129,7 +154,8 @@ export function enemyManagerMenu() {
       if (g.campagna !== 1) g.campagna = 0;
       Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
                          comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
-                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0 });
+                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0,
+                         skmenu: 0, skhover: 0, skrow: -1, sk: null }); // §9.118
     },
     // Alarm_0 [C]: le unita' ferme vanno contro il nemico piu' vicino
     alarm0(i, w) {
@@ -154,14 +180,22 @@ export function enemyManagerMenu() {
     stepEnd(i, w) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH, mx = w.input.x, my = w.input.y;
       g.sele = -1; // nel menu le unita' non si selezionano
-      if (g.campagna === 0 && i.loadmenu === 0) {
+      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0) {
         const b = titleButtons(W, H);
         i.hover = +inRect(mx, my, ...b.tutorial);
         i.campagnahover = +inRect(mx, my, ...b.campaign);
         i.loadhover = +inRect(mx, my, ...b.load);
         i.fullhover = +(!!b.full && inRect(mx, my, ...b.full));
+        i.skhover = +inRect(mx, my, ...b.skirmish);
       } else {
-        i.hover = i.campagnahover = i.loadhover = i.fullhover = 0;
+        i.hover = i.campagnahover = i.loadhover = i.fullhover = i.skhover = 0;
+      }
+      i.skrow = -1;
+      if (g.campagna === 0 && i.skmenu === 1) {
+        skLayout(W, H).rows.forEach((r, k) => {
+          if (r.kind === "map" && !SK_MAPS[r.k].room) return;
+          if (inRect(mx, my, r.x1, r.y1, r.x2, r.y2)) i.skrow = k;
+        });
       }
       i.loadrow = -1;
       if (g.campagna === 0 && i.loadmenu === 1) {
@@ -195,6 +229,7 @@ export function enemyManagerMenu() {
     },
     keyPress27(i, w) {
       if (i.loadmenu === 1) { i.loadmenu = 0; return; }
+      if (i.skmenu === 1) { i.skmenu = 0; return; } // §9.118
       if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0;
     },
     globalLeftReleased(i, w) {
@@ -207,6 +242,17 @@ export function enemyManagerMenu() {
         if (r.action === "file" && w.hooks.loadFile) w.hooks.loadFile();
         return;
       }
+      if (g.campagna === 0 && i.skmenu === 1) { // §9.118
+        const r = skLayout(w.cam.cssW, w.cam.cssH).rows[i.skrow];
+        if (!r) return;
+        if (r.kind === "back") { i.skmenu = 0; return; }
+        if (r.kind === "map") i.sk.map = SK_MAPS[r.k].room;
+        if (r.kind === "opt") i.sk[r.key] = nextValue(r.key, i.sk[r.key]);
+        saveSkirmish(i.sk);
+        if (r.kind === "start") w.gotoRoom(i.sk.map);
+        return;
+      }
+      if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); return; }
       if (g.campagna === 0 && i.loadhover === 1) { i.loadmenu = 1; i.loadhover = 0; return; }
       if (g.campagna === 0 && i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
       if (g.campagna === 0) {
@@ -237,7 +283,8 @@ export function enemyManagerMenu() {
     drawGUI(i, w, d) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH;
       d.setBlend("normal");
-      if (g.campagna === 0 && i.loadmenu === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0) drawTitle(i, d, W, H);
+      if (g.campagna === 0 && i.skmenu === 1) drawSkirmish(i, d, W, H); // §9.118
       if (g.campagna === 0 && i.loadmenu === 1) drawLoad(i, d, W, H);
       if (g.campagna === 1) drawCampaign(i, g, d, W, H);
       d.setAlpha(1);
@@ -253,6 +300,7 @@ const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
   const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
+               ["skirmish", i.skhover, tr("Skirmish")], // §9.118
                ["load", i.loadhover, tr("Load game")],
                ["full", i.fullhover, tr(isFullscreen() ? "Exit full screen" : "Full screen")]];
   d.setHalign("center");
@@ -286,6 +334,41 @@ function drawTitle(i, d, W, H) {
   const lg = d.a.sprites.logo_dustveil;
   const s = lg ? Math.min(1, (b.top - 2 * LOGO_MARGIN) / lg.height, W / 2 / lg.width) : 1;
   d.spriteExt("logo_dustveil", 0, W / 2, Math.min(350, b.top / 2), s, s, 0, c.white, 1);
+}
+
+// [§9.118] la schermata della schermaglia, nello stile del caricamento
+function drawSkirmish(i, d, W, H) {
+  const L = skLayout(W, H), [x1, y1, x2, y2] = L.panel;
+  d.setAlpha(0.69);
+  d.roundrectColourExt(x1, y1, x2, y2, 60, 60, c.white, c.white, false);
+  d.setHalign("center");
+  d.setValign("middle");
+  d.setColour(c.black);
+  d.setFont("gui_sblocco");
+  d.setAlpha(0.8);
+  d.text((x1 + x2) / 2, y1 + 45, tr("Skirmish"));
+  d.setFont("overdue");
+  L.rows.forEach((r, k) => {
+    let label, on = true, chosen = false;
+    if (r.kind === "map") { const m = SK_MAPS[r.k]; label = m.name; on = !!m.room; chosen = m.room === i.sk.map; }
+    if (r.kind === "opt") label = tr(SK_OPTIONS[r.key].label) + ": " + optionLabel(r.key, i.sk[r.key]);
+    if (r.kind === "back") label = tr("Back");
+    if (r.kind === "start") label = tr("Start");
+    d.setAlpha(!on ? 0.3 : i.skrow === k || chosen ? 0.99 : 0.69);
+    d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+    d.setColour(c.black);
+    d.setAlpha(on ? (chosen ? 0.9 : 0.75) : 0.35);
+    d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, label);
+  });
+  const m = SK_MAPS.find((q) => q.room === i.sk.map);
+  if (m) {
+    d.setHalign("left");
+    d.setValign("top");
+    d.setAlpha(0.75);
+    d.textExt(L.descX + 8, L.descY, tr(m.desc), 30, L.descW - 16);
+  }
+  d.setHalign("left");
+  d.setValign("middle");
 }
 
 // [Fase 4] le partite salvate, nello stile dei pulsanti del menu

@@ -786,11 +786,14 @@ export function centro(p) {
         // [Correzione decisa dall'autore §1.6 n.3] -10, quanto ha dato
         g.popcap -= 10;
         // [§9.11] nel livello 3 si perde solo col monastero
-        if (w.room !== "lvl03") g.gameover = 1;
+        // [§9.118] nella schermaglia solo con la vittoria "Municipio" (le
+        // altre le decide sk_manager, skirmish.js)
+        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall");
+        if (lose) g.gameover = 1;
         const flag = w.nearest(i.x, i.y - 100, "flag_r");
         if (flag) w.destroy(flag);
         w.create("ccruin", i.x, i.y);
-        if (w.room !== "lvl03") w.create("gameover_manager", 0, 0);
+        if (lose) w.create("gameover_manager", 0, 0);
         w.destroy(i);
         return;
       }

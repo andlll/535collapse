@@ -49,16 +49,18 @@ import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
+import { SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager } from "./skirmish.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06"]; // lvl06: §9.100
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"] };
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"],
+                ...Object.fromEntries(SK_ROOMS.map((r) => [r, ["core", "gioco"]])) }; // §9.118
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -311,6 +313,7 @@ async function main() {
   for (const n of DIALOG_NAMES) world.register(n, dialog(n));
   world.register("victory_manager", victoryManager());
   world.register("gameover_manager", gameoverManager());
+  world.register("sk_manager", skManager()); // §9.118
   world.register("objective_button", objectiveButton());
   for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
   world.register("aquila_01", aquila());
@@ -342,6 +345,10 @@ async function main() {
   const DROPPED_AT = { menu: [["flag_r", 1308, 1035]] };
   const droppedAt = ([obj, x, y]) => (DROPPED_AT[roomName] || []).some(([o, dx, dy]) => o === obj && dx === x && dy === y);
   const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
+  // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
+  // partita salvata: lo stato arriva gia' fatto)
+  const skParams = isSkirmish(roomName) && !params.get("load") ? loadSkirmish() : null;
+  const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
@@ -380,6 +387,7 @@ async function main() {
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
+    if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
@@ -421,6 +429,8 @@ async function main() {
   window.addEventListener("resize", resize);
   for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => { pause.dirty = true; });
   resize();
+  // [§9.118] schermaglia: la vista sulla propria base, a misura nota
+  if (skStarts) { cam.x = skStarts.player[0] - cam.w / 2; cam.y = skStarts.player[1] - cam.h / 2; cam.clamp(); }
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
   // mouse, Step, poi la view segue il puntatore.

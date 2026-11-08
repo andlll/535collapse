@@ -9099,3 +9099,88 @@ del cadavere).
 Foto all'autore: mischia di giorno (5 contro 5 e tre arcieri). Passano
 `npm test`, `saves` (match, livelli 4 e 6), `melee`, `soak` (menu, match,
 livello 5).
+
+### 9.118 La schermaglia (prima parte): Padus, la schermata, la CPU che costruisce
+
+Richiesta dell'autore (8 novembre 2026, stessa PR, versione 0.2609): una
+modalita' "schermaglia" 1 contro 1, giocatore contro CPU, su mappe
+simmetriche, con parametri; 4-5 mappe all'uscita, coi nomi storici
+dell'Italia altomedievale. Decisioni dell'autore:
+- simmetria: non delle immagini, delle posizioni rispetto al nemico;
+  rotazione di 180 gradi, basi in angoli opposti;
+- partenza: il centro e 2-3 lavoratori (qui 3), niente altro;
+- la CPU ha le stesse possibilita' del giocatore; la difficolta' piu' alta si
+  chiama "Truccata" (Rigged): si vede che la CPU parte avvantaggiata;
+- disponibile da subito, col pulsante "Schermaglia" sotto la campagna;
+- le mappe: Padus (il Po), Silva Umbra (la Foresta Umbra), Rivoaltus
+  (Rialto, la laguna), Urbs (Roma), Mons Bardonis (il Monte Bardone, il
+  valico della Via Francigena). Nomi usati in quel periodo, in latino.
+- grandezza: le mappe di oggi vanno da 3200 x 8000 (livello 2) a 9000 x 4000
+  (livello 5), il tutorial 7000 x 7000. Un soldato fa ~200 px al secondo, un
+  civile ~150-180: Padus e' 7000 x 7000, coi centri a ~6200 px in linea
+  d'aria (circa 35-40 s di marcia per un soldato, di piu' per i ponti).
+
+**Le mappe simmetriche** (tools/16_schermaglia.py): si descrive mezza mappa
+(la base A in alto a sinistra) e lo script aggiunge i gemelli ruotati attorno
+al centro: degli oggetti si ruota il centro della maschera di collisione (non
+l'origine dello sprite, perche' l'ingombro sia lo stesso), dei fiumi la meta'
+dal bordo al centro, ponti e strade col gemello. Scrive mappe/sk_<nome>.tmx
+col kit di Tiled (si apre e si guarda come gli altri livelli); lo scenario lo
+fa tools/12 come sempre. `--check` (nella CI): ogni istanza dello scenario ha
+il gemello entro 1 px, fiumi, strade e ponti sono simmetrici, e il .tmx e'
+quello che lo script scriverebbe. I due centri sono nella mappa: all'avvio
+quello della CPU diventa `enemy_centro` (skirmish.js skirmishPrepare).
+
+**Padus** (sk_padus, 7000 x 7000): il Po da sud-ovest a nord-est fra le
+basi, largo 170 px, tre ponti (al centro e due di lato); per parte oro e
+pietra piccola vicino alla base, cinque boschi, un'altra miniera vicino al
+ponte di lato e la pietra grande vicino al ponte centrale; strade dalla base
+ai ponti. 528 alberi, 4 miniere, 2 pietre piccole, 2 grandi.
+
+**La schermata** (menu.js): mappe a sinistra (quelle non ancora fatte
+spente), la descrizione, i parametri a destra (un clic passa al valore
+dopo), "Indietro" e "Inizia". I parametri si ricordano (localStorage
+`535.skirmish`) e viaggiano con la partita (global.sk, anche nei
+salvataggi): difficolta' (Facile, Normale, Difficile, Truccata), stile
+della CPU (Equilibrato, Aggressivo, Difensivo, Economico, Predone, A caso),
+vittoria (Conquista, Municipio, Punteggio a 20/40/60 minuti), risorse
+iniziali, limite di popolazione (50/75/99), tregua (no, 5, 10 minuti),
+nebbia (normale, esplorata, nessuna), giorno e notte, pioggia, posizione di
+partenza (a caso, nord-ovest, sud-est). Tradotti nelle sei lingue.
+
+**La partita** (skirmish.js): risorse iniziali uguali per i due (Truccata:
+la CPU il doppio, e ogni consegna vale una volta e mezza, civilians.js
+carriedValue); 3 lavoratori per parte; sk_manager ogni mezzo secondo:
+tetto di popolazione scelto, fine della tregua (global.en.hold), vittoria e
+sconfitta. Conquista: vince chi distrugge tutti gli edifici dell'altro (il
+centro distrutto non fa perdere, buildings.js; il "mulino" invisibile del
+centro non conta); Municipio: il centro; Punteggio: allo scadere il
+valore di edifici, unita' e risorse (a pari punteggio vince la CPU),
+prima come Conquista. Gli obiettivi in alto a destra: la condizione, la
+tregua che scade, tempo e punteggi, difficolta' e stile del nemico.
+
+**La CPU** (economy.js con skirmishEco): la regia economica di sempre
+(lavoratori, depositi nuovi, ricostruzione, soldati, difesa, ondate) con i
+numeri della difficolta' e dello stile, piu' tre cose nuove:
+- il tetto di popolazione come il giocatore: 10 per centro e per casa,
+  fino al tetto scelto;
+- costruisce edifici nuovi (prima solo depositi e ricostruzioni): una casa
+  quando e' a meno di 3 dal tetto, se no l'ordine dello stile (campi,
+  caserme, stalle, torri, chiesa, fortezza), un cantiere alla volta;
+- il posto (baseSpot): su anelli attorno al centro, libero, non sul fiume,
+  a 40 px da altri edifici e dalle risorse, non dove ci sono soldati del
+  giocatore, raggiungibile; i campi vicini al centro, le torri dalla parte
+  del giocatore.
+Il predone manda le ondate verso i lavoratori del giocatore.
+Prova (Padus, Normale, Equilibrato, giocatore fermo): al 5o minuto 16
+lavoratori, 3 campi, una casa, 4 magazzini (ora al piu' 3 nuovi), una
+caserma; al 7o 11 soldati, 2 caserme, una stalla, una torre; all'8o 20
+soldati e 3 case; prima ondata al 9o minuto, centro del giocatore distrutto
+al 10o. Vittoria provata con Conquista, Municipio e Punteggio, con la
+tregua di 5 minuti. Passano `soak` e `saves` su sk_padus (aggiunta alla CI)
+e le prove unitarie.
+
+**Prossimi passi**: le altre quattro mappe; la CPU che si adatta (esplora,
+sceglie le truppe contro quelle del giocatore, difende i lavoratori); il
+bilanciamento con partite CPU contro CPU a parti scambiate (serve una CPU
+anche dal lato del giocatore); le statistiche a fine partita.

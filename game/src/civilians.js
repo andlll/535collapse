@@ -34,6 +34,8 @@ export const SIDES = {
 };
 export const sideOf = (i) => (i.object === "enemy_omino" ? SIDES.enemy : SIDES.ally);
 export const poolOf = (w, i) => (i.object === "enemy_omino" ? w.g.en : w.g);
+// [§9.118] la schermaglia "truccata": la CPU riceve mult volte quello che porta
+const carriedValue = (pool, v) => (pool.mult && pool.mult !== 1 ? Math.round(v * pool.mult) : v);
 const CLICKERS = ["casa_clicker", "magazzino_clicker", "barn_clicker", "campo_clicker", "chiesa_clicker",
                   "torre_clicker", "caserma_clicker", "stalla_clicker", "castello_clicker", "mura_clicker"];
 
@@ -1006,7 +1008,7 @@ function depositStep(i, w, p, stop) {
     } else { i.action = 0; i.woodwork = 0; i.step = 0; i.speed = 0; g.idle += 1; }
   }
   if (w.distanceToObject(i, S.magazza) < 10) {
-    g.wood += i.wood;
+    g.wood += carriedValue(g, i.wood); // §9.118
     i.wood = 0;
     if (i.woodwork === 2) {
       const t = resAt(w, i, "albero", i.woodx, i.woody); // §9.68: il proprio albero
@@ -1028,7 +1030,7 @@ function depositStep(i, w, p, stop) {
     } else { stop(i, w); i.woodwork = 0; }
   }
   if (w.distanceToObject(i, S.magazza) < 10) {
-    g.gold += i.gold;
+    g.gold += carriedValue(g, i.gold); // §9.118
     i.gold = 0;
     // §9.68: la propria miniera, o la scoperta piu' vicina a lei (§9.44: il
     // nemico non ha la nebbia)
@@ -1053,7 +1055,7 @@ function depositStep(i, w, p, stop) {
     } else { stop(i, w); i.goldwork = 0; }
   }
   if (w.distanceToObject(i, S.magazza) < 10) {
-    g.stone += i.stone;
+    g.stone += carriedValue(g, i.stone); // §9.118
     i.stone = 0;
     const st = i.stonework === 2 ? resAt(w, i, "stone_parent", i.stonex, i.stoney) : null; // §9.68
     if (i.stonework === 2) {
@@ -1514,7 +1516,7 @@ function fieldsStep(i, w, p) {
   }
   // vicino al granaio: scarica e torna a cercare un campo libero
   if ((i.foodwork === 2 || i.food > 0) && i.action !== 4 && w.distanceToObject(i, S.barn) < 10) {
-    g.food += i.food;
+    g.food += carriedValue(g, i.food); // §9.118
     i.food = 0;
     i.alarm.set(0, 13);
     if (i.foodwork === 2) i.foodwork = 6;

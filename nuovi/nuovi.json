@@ -1512,6 +1512,14 @@
       "kit": false,
       "nota": "la regia economica del nemico (§9.44, economy.js)"
     },
+    "sk_manager": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia della schermaglia: tregua, tetto, vittoria e sconfitta (§9.118, skirmish.js)"
+    },
     "enemy_cantiere": {
       "sprite": "cas_f1",
       "mask": "cas_mask",
