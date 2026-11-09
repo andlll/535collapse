@@ -9664,3 +9664,24 @@ largo 56, neri al 70% come le altre icone del menu), al posto di
 ico_view_small (30 px, disegnata a 1,6) e ico_gold (27 px, disegnata a 2),
 che ingrandite si vedevano sgranate. Disegnati a 0,8 e 0,9: grandi come
 prima (~51 e ~50 px). Le risorse iniziali tengono le loro icone piccole.
+
+### 9.134 La partita su file: ".dvgame"
+
+Decisione dell'autore (9 novembre 2026, stessa PR, versione 0.2610): formati
+propri per i file del gioco, ".dvgame" per le partite e (quando ci saranno
+le mappe da passarsi) ".dvmap" per le mappe. Il gioco resta solo web: niente
+icona dei file ne' apertura col doppio clic (servirebbe il gioco installato,
+come app o versione desktop), solo l'estensione, che vale subito per tutti.
+**Il file** (save.js `saveFile`): `dustveil-<room>-<data>.dvgame`, lo stesso
+JSON firmato di prima compresso con gzip (CompressionStream; senza, in
+chiaro con la stessa estensione), tipo application/octet-stream (con
+application/json qualche browser aggiunge ".json" al nome). Una partita su
+Padania: 7,7 MB di JSON, 1,9 MB di file.
+**Il caricamento** (`openFile`, `fileText`): accetta ".dvgame" e ".json";
+se i primi due byte sono quelli del gzip (1f 8b) decomprime, se no legge il
+testo: i file ".json" salvati prima si aprono ancora. Un gzip rovinato e'
+"file non valido" come prima. Lo usano il menu di pausa e "Carica da file"
+del menu principale.
+Prova (Chromium): salvataggio dal menu di pausa su Padania (nome, gzip),
+caricamento del ".dvgame" e di un ".json" in chiaro: la partita si riapre;
+prove unitarie.

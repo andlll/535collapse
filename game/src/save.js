@@ -423,16 +423,24 @@ export async function takePending() {
 
 // ---------------------------------------------------------------- file
 
+// [§9.134, decisione dell'autore] La partita salvata su file e' un
+// ".dvgame" (Dust Veil): lo stesso JSON firmato, compresso con gzip (una
+// partita della schermaglia sono ~6 MB di JSON). Senza CompressionStream
+// resta in chiaro, con la stessa estensione. Il caricamento accetta i due
+// casi (i primi due byte del gzip) e anche i ".json" di prima.
+export const SAVE_EXT = ".dvgame";
 function fileName(room) {
   const d = new Date();
   const p = (n) => String(n).padStart(2, "0");
-  return `535-${room}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+  return `dustveil-${room}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${SAVE_EXT}`;
 }
 
 // Download del file (funziona in tutti i browser; il dialog "Salva con
-// nome" di Chrome/Edge non serve qui: un file per salvataggio).
-export function saveFile(data) {
-  const blob = new Blob([JSON.stringify(sign(data))], { type: "application/json" });
+// nome" di Chrome/Edge non serve qui: un file per salvataggio). Il tipo
+// generico: con application/json alcuni browser aggiungono ".json" al nome.
+export async function saveFile(data) {
+  const json = JSON.stringify(sign(data));
+  const blob = new Blob([(await gzipBytes(json)) || json], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -443,20 +451,27 @@ export function saveFile(data) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// il testo del file: gzip (1f 8b all'inizio) o JSON in chiaro
+export async function fileText(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  return buf[0] === 0x1f && buf[1] === 0x8b ? gunzipBytes(buf) : new TextDecoder().decode(buf);
+}
+
 // <input type=file> fuori schermo; null se annullato o non valido
 // (`invalid: true` se e' stato scelto un file che non e' un salvataggio)
 export function openFile() {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json";
+    input.accept = SAVE_EXT + ",.json";
     input.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
     document.body.appendChild(input);
     input.onchange = async () => {
       const file = input.files && input.files[0];
       input.remove();
       if (!file) { resolve(null); return; }
-      const data = parseSave(await file.text());
+      let data = null;
+      try { data = parseSave(await fileText(file)); } catch (e) { /* gzip rovinato: non valido */ }
       resolve(data ? { data } : { invalid: true });
     };
     input.click();

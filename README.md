@@ -78,7 +78,7 @@ lasciando nitida l'interfaccia (e, in Media e Bassa, l'erba piu' rada);
 "Glass interface" rende i pannelli di vetro sfocato. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
 salvataggi (uno slot per room nel browser, in IndexedDB, salvataggio automatico ogni 5
-minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu
+minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" anche nel menu
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 

@@ -482,7 +482,8 @@ async function main() {
       // resta della campagna, se lo era
       loadSlot: (name) => { location.search = "?room=" + name + (name === roomName ? campaignParam() : "") + "&load=slot"; },
       saveFile: () => {
-        try { saveFile(capture()); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
+        const fail = (e) => { console.error(e); toast(tr("Saving failed"), "warning"); };
+        try { saveFile(capture()).catch(fail); } catch (e) { fail(e); } // §9.134: compresso, asincrono
       },
       fullscreen: () => toggleFullscreen(),
       loadFile: async () => {
