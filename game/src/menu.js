@@ -512,7 +512,9 @@ function arrow(d, x, y, r, dir, hover) {
 // [§9.131] I disegni dell'autore: la mano con la bilancia (Equilibrato), la
 // colomba (tregua), la nuvola (visibilita'), la luna; le spade incrociate
 // nere della caserma (ico_caserma) al posto di quelle marroni (ico_battle),
-// l'unico sprite marrone fra quelli neri.
+// l'unico sprite marrone fra quelli neri. [§9.133] Anche l'occhio
+// (visibilita' Totale) e i lingotti (Economico): disegni dell'autore a
+// risoluzione maggiore, al posto delle icone piccole del gioco ingrandite.
 // Difficolta': spade, una in piu' a ogni livello (decisione dell'autore);
 // risorse: i quattro simboli delle risorse, piu' grandi a ogni livello
 // (decisione dell'autore); la pioggia la disegnano le particelle
@@ -526,8 +528,8 @@ function drawOptIcon(d, key, v, x, y, i) {
     for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
   } else if (key === "style") {
     if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
-    else icon(d, { balanced: "ico_sk_equilibrio", aggressive: "ico_caserma", defensive: "ico_difesa", economic: "ico_gold",
-                   raider: "ico_cavaliere" }[v], x, y, { balanced: 0.85, aggressive: 0.8, defensive: 0.75, economic: 2, raider: 0.75 }[v]);
+    else icon(d, { balanced: "ico_sk_equilibrio", aggressive: "ico_caserma", defensive: "ico_difesa", economic: "ico_sk_oro",
+                   raider: "ico_cavaliere" }[v], x, y, { balanced: 0.85, aggressive: 0.8, defensive: 0.75, economic: 0.9, raider: 0.75 }[v]);
   } else if (key === "victory") {
     icon(d, v === "conquest" ? "ico_ruin" : v === "townhall" ? "ico_centro" : "ico_campana", x, y, 0.75);
   } else if (key === "resources") {
@@ -539,7 +541,7 @@ function drawOptIcon(d, key, v, x, y, i) {
     icon(d, v ? "ico_sk_colomba" : "ico_caserma", x, y, 0.8);
     if (v) { d.setFont("overdue"); d.setColour(DARK); d.setAlpha(0.9); d.text(x + 40, y + 18, String(v)); }
   } else if (key === "fog") {
-    if (v === "none") icon(d, "ico_view_small", x, y, 1.6);
+    if (v === "none") icon(d, "ico_sk_occhio", x, y, 0.8); // §9.133: il disegno dell'autore
     else icon(d, "ico_sk_visibilita", x, y, 0.85, v === "explored" ? 0.4 : 0.85);
   } else if (key === "daynight") {
     if (v === "day") sun(d, x, y, 1);

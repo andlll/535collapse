@@ -9653,3 +9653,14 @@ del giocatore su Padania; tolti i lavoratori, arciere e cavaliere si fermano
 subito e in 400 passi non si spostano (stesso sprite), guerriero e picchiere
 vanno a incendiare il centro. `soak` 3000 passi su menu, match, lvl01,
 lvl02, lvl05 e sk_padus, `melee.mjs`, prove unitarie: senza errori.
+
+### 9.133 Menu della schermaglia: l'occhio e i lingotti
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): per la
+visibilita' Totale e per lo stile Economico della CPU i suoi disegni a
+risoluzione maggiore (nuovi/sprites `sk_occhio.png`, 100 x 100, e
+`sk_oro.png`, 64 x 64; derivati `ico_sk_occhio`, largo 64, e `ico_sk_oro`,
+largo 56, neri al 70% come le altre icone del menu), al posto di
+ico_view_small (30 px, disegnata a 1,6) e ico_gold (27 px, disegnata a 2),
+che ingrandite si vedevano sgranate. Disegnati a 0,8 e 0,9: grandi come
+prima (~51 e ~50 px). Le risorse iniziali tengono le loro icone piccole.

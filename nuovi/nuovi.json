@@ -1726,6 +1726,20 @@
       "gruppo": "gui",
       "alpha": 0.7,
       "nota": "[§9.131] lo stile Equilibrato della CPU (la mano con la bilancia): icona della schermata della schermaglia (§9.131): disegno caricato dall'autore (nero), al 70% come le icone dell'originale"
+    },
+    "ico_sk_occhio": {
+      "da": "sk_occhio",
+      "lato": 64,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.133] la visibilita' Totale (l'occhio), al posto di ico_view_small ingrandita: icona della schermata della schermaglia: disegno caricato dall'autore (nero, a risoluzione maggiore), al 70% come le icone dell'originale"
+    },
+    "ico_sk_oro": {
+      "da": "sk_oro",
+      "lato": 56,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.133] lo stile Economico della CPU (i lingotti), al posto di ico_gold ingrandita: icona della schermata della schermaglia: disegno caricato dall'autore (nero, a risoluzione maggiore), al 70% come le icone dell'originale"
     }
   }
 }
