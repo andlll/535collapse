@@ -427,7 +427,8 @@ export async function takePending() {
 // ".dvgame" (Dust Veil): lo stesso JSON firmato, compresso con gzip (una
 // partita della schermaglia sono ~6 MB di JSON). Senza CompressionStream
 // resta in chiaro, con la stessa estensione. Il caricamento accetta i due
-// casi (i primi due byte del gzip) e anche i ".json" di prima.
+// casi (i primi due byte del gzip) e anche i ".json" di prima. [§9.135]
+// In piu' i byte mescolati (packFile), cosi' che non si apra come archivio.
 export const SAVE_EXT = ".dvgame";
 function fileName(room) {
   const d = new Date();
@@ -440,7 +441,8 @@ function fileName(room) {
 // generico: con application/json alcuni browser aggiungono ".json" al nome.
 export async function saveFile(data) {
   const json = JSON.stringify(sign(data));
-  const blob = new Blob([(await gzipBytes(json)) || json], { type: "application/octet-stream" });
+  const bytes = (await gzipBytes(json)) || new TextEncoder().encode(json);
+  const blob = new Blob([packFile(bytes)], { type: "application/octet-stream" }); // §9.135
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -451,11 +453,39 @@ export async function saveFile(data) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// il testo del file: gzip (1f 8b all'inizio) o JSON in chiaro
-export async function fileText(file) {
-  const buf = new Uint8Array(await file.arrayBuffer());
-  return buf[0] === 0x1f && buf[1] === 0x8b ? gunzipBytes(buf) : new TextDecoder().decode(buf);
+// [§9.135, richiesta dell'autore] Il ".dvgame" non si apre ne' col blocco
+// note ne' come archivio: dopo il gzip i byte si mescolano (XOR con una
+// sequenza pseudocasuale da una chiave fissa), con l'intestazione "DVG1".
+// Non e' crittografia vera (la chiave e' nel gioco, come il sale del
+// checksum): scoraggia chi vuole cambiare un numero; il checksum scarta
+// comunque un file modificato.
+const DVG_MAGIC = [0x44, 0x56, 0x47, 0x31]; // "DVG1"
+const DVG_KEY = "dust-veil-collapse-9f3c";
+export function scramble(buf) {
+  let h = 0x811c9dc5;
+  for (let k = 0; k < DVG_KEY.length; k++) { h ^= DVG_KEY.charCodeAt(k); h = Math.imul(h, 0x01000193); }
+  let x = h >>> 0 || 1;
+  const out = new Uint8Array(buf.length);
+  for (let k = 0; k < buf.length; k++) {
+    x ^= x << 13; x ^= x >>> 17; x ^= x << 5; // xorshift32
+    out[k] = buf[k] ^ (x & 0xff);
+  }
+  return out;
 }
+export function packFile(bytes) {
+  const out = new Uint8Array(4 + bytes.length);
+  out.set(DVG_MAGIC, 0);
+  out.set(scramble(bytes), 4);
+  return out;
+}
+const isGzip = (b) => b[0] === 0x1f && b[1] === 0x8b;
+// il testo del file: ".dvgame" mescolato (DVG1), gzip (1f 8b all'inizio) o
+// JSON in chiaro (i ".json" di prima)
+export async function bytesText(buf) {
+  if (DVG_MAGIC.every((v, k) => buf[k] === v)) buf = scramble(buf.subarray(4));
+  return isGzip(buf) ? gunzipBytes(buf) : new TextDecoder().decode(buf);
+}
+export async function fileText(file) { return bytesText(new Uint8Array(await file.arrayBuffer())); }
 
 // <input type=file> fuori schermo; null se annullato o non valido
 // (`invalid: true` se e' stato scelto un file che non e' un salvataggio)

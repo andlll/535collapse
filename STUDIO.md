@@ -9685,3 +9685,24 @@ del menu principale.
 Prova (Chromium): salvataggio dal menu di pausa su Padania (nome, gzip),
 caricamento del ".dvgame" e di un ".json" in chiaro: la partita si riapre;
 prove unitarie.
+
+### 9.135 Il ".dvgame" non si apre a mano
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): una
+chiave perche' non si alterino i dati col blocco note. C'era gia' il
+checksum (FNV-1a con un sale, Fase 4: un numero cambiato scarta il file), e
+dal §9.134 il file e' compresso: illeggibile nel blocco note, ma un gzip
+normale, che 7-Zip apre al volo mostrando il JSON. Ora (save.js `packFile`,
+`scramble`, `bytesText`) dopo il gzip i byte si mescolano (XOR con la
+sequenza di un xorshift32 seminato da una chiave fissa) e il file comincia
+con "DVG1": non e' piu' un archivio ne' contiene testo leggibile. Il
+caricamento riconosce l'intestazione e rimette a posto i byte; legge ancora
+il gzip semplice (i ".dvgame" del §9.134, mai usciti) e i ".json" in chiaro.
+Non e' crittografia vera: in un gioco tutto nel browser la chiave sta nel
+codice, come il sale del checksum. Scoraggia chi vuole cambiare un numero;
+per modificare una partita bisogna leggere il codice del gioco. Se un giorno
+ci saranno classifiche online, i punteggi andranno controllati da un server.
+Prove: prova unitaria nuova (intestazione, niente gzip ne' testo leggibile,
+andata e ritorno, i tre formati, un byte cambiato scartato); nel browser
+salvataggio su Padania (1,9 MB, "DVG1", `gzip -t`: "not in gzip format") e
+caricamento del ".dvgame" e di un ".json" di prima.
