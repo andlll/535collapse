@@ -9706,3 +9706,18 @@ Prove: prova unitaria nuova (intestazione, niente gzip ne' testo leggibile,
 andata e ritorno, i tre formati, un byte cambiato scartato); nel browser
 salvataggio su Padania (1,9 MB, "DVG1", `gzip -t`: "not in gzip format") e
 caricamento del ".dvgame" e di un ".json" di prima.
+
+### 9.136 La descrizione della mappa: giustificata, senza corsivo
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): nella
+schermata della schermaglia la descrizione della mappa giustificata, e senza
+il corsivo, che compariva solo li'. Il corsivo era finto (draw.js `slant`,
+§9.121: i glifi inclinati): tolto dal motore, non lo usava nessun altro.
+**Giustificato** (draw.js `justify`, come opzione di textExt: con una
+larghezza e allineato a sinistra): ogni riga andata a capo si allarga fino
+alla larghezza del riquadro distribuendo lo spazio in piu' fra le parole;
+l'ultima riga di ogni paragrafo e una riga di una parola sola restano
+allineate a sinistra. Gli a capo sono gli stessi di prima (l'altezza della
+descrizione, §9.131, non cambia); con lo spazio in piu' le lettere si
+posano sul pixel intero. Controllato in italiano (Foresta Umbra,
+1920 x 1080), tedesco (Urbe, 1280 x 720) e francese (Appennini, 1366 x 768).

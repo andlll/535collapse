@@ -118,7 +118,7 @@ function loadRows(W, H) {
 
 // [§9.118] La schermata della schermaglia. [§9.121, disegno dell'autore]
 // A sinistra un riquadro solo: la foto della mappa, sotto il nome con le
-// frecce per scorrere le mappe, sotto la descrizione in corsivo. A destra i
+// frecce per scorrere le mappe, sotto la descrizione (giustificata, §9.136). A destra i
 // parametri in una griglia 3 x 3 di riquadri: in alto il titolo, al centro
 // l'icona del valore attuale fra due frecce, in basso il nome del valore.
 // La meta' sinistra di un riquadro torna al valore prima, la destra passa a
@@ -425,7 +425,7 @@ function drawSkirmish(i, d, W, H) {
   d.setValign("middle");
   d.setFont("gui_sblocco");
   glowText(d, W / 2, 55, tr("Skirmish"));
-  // la mappa: riquadro, foto, nome con le frecce, descrizione in corsivo
+  // la mappa: riquadro, foto, nome con le frecce, descrizione
   d.setAlpha(0.69);
   d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
   const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
@@ -444,10 +444,12 @@ function drawSkirmish(i, d, W, H) {
   d.setFont("overdue");
   d.setHalign("left");
   d.setValign("top");
-  d.slant = 0.2;
+  // [§9.136, richiesta dell'autore] giustificata e dritta (il corsivo finto
+  // c'era solo qui)
+  d.justify = true;
   d.setAlpha(m.room ? 0.8 : 0.45);
   d.textExt(card.x1 + 24, L.descY, tr(m.desc), 30, card.x2 - card.x1 - 48);
-  d.slant = 0;
+  d.justify = false;
   d.setHalign("center");
   d.setValign("middle");
   // i parametri: un riquadro per due righe (le due meta')
