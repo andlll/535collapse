@@ -395,10 +395,21 @@ function enemyUnstack(w, i, t) {
   return true;
 }
 
+// [§9.132, richiesta dell'autore] Non resta nessuna unita' del giocatore:
+// chi la inseguiva, la colpiva o andava a un posto da cui tirarle si ferma
+// dov'e', in attesa di nuovi ordini (la regia, economy.js, o gli edifici da
+// incendiare). Prima restava in cammino verso l'ultimo posto dell'inseguito
+// e, se li' non si arrivava, scattava avanti e indietro sul posto.
+function noTargetLeft(i) {
+  if (i.firework || i.action === 6 || i.retreat || i.presidiowork === 1) return;
+  if (i.warwork !== 1 && i.warwork !== 2 && i.action !== 2 && i.repos !== 1) return;
+  Object.assign(i, { action: 0, warwork: 0, speed: 0, step: 0, swing: 0, repos: 0, meleeGo: null, dirox: i.x, diroy: i.y });
+}
+
 // Step, "attacco" [C]
 const NO_SLOT = 30; // §9.71: passi senza un posto libero attorno al bersaglio prima di fermarsi
 function enemyAttack(i, w, T) {
-  if (!w.exists("ally_unit")) return null;
+  if (!w.exists("ally_unit")) { noTargetLeft(i); return null; } // §9.132
   const k = iso(i.direction), night = w.g.night;
   const nearest = () => w.nearest(i.x, i.y, "ally_unit");
   const n0 = nearest();
@@ -726,7 +737,7 @@ export function enemyArcher(p) {
     i.action = 1; i.warwork = 1; i.repos = 1; i.dirox = spot[0]; i.diroy = spot[1];
   };
   const attack = (i, w) => {
-    if (!w.exists("ally_unit")) return;
+    if (!w.exists("ally_unit")) { noTargetLeft(i); return; } // §9.132
     const k = iso(i.direction), night = w.g.night;
     const n0 = w.nearest(i.x, i.y, "ally_unit");
     const fs = fogSight(w, i); // §9.80

@@ -9634,3 +9634,22 @@ dopo la prima ondata: prima della modifica 149 posizioni su 235 entro 600 px
 dal centro senza unita' del giocatore entro 500 px e nessuna a caccia; dopo,
 0 attorno al centro e 235 su 1040 a meno di 500 px da un'unita' del
 giocatore (Predone: 1 e 295 su 732).
+
+### 9.132 Nemici senza piu' bersagli: fermi in attesa
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610), dopo il
+caso trovato nelle prove di §9.131: quando non resta nessuna unita' del
+giocatore, un nemico che ne stava inseguendo una restava in cammino verso
+l'ultimo posto dell'inseguito (warwork 1, meleeGo) e, se li' non si arrivava
+(un cavaliere contro il bordo della mappa), scattava avanti e indietro sul
+posto per sempre: l'attacco (enemyAttack, e `attack` dell'arciere) usciva
+subito senza alleati e nessuno chiudeva l'inseguimento. Ora (enemies.js
+`noTargetLeft`) chi inseguiva, colpiva o andava a un posto da cui tirare si
+ferma dov'e' (azione 0, fermo, senza animazione di cammino) in attesa di
+nuovi ordini: la regia della CPU, o gli edifici da incendiare per chi puo'.
+Non tocca chi va a dare fuoco, chi si ritira o chi va al presidio.
+Prova: arciere, cavaliere, guerriero e picchiere che inseguono i lavoratori
+del giocatore su Padania; tolti i lavoratori, arciere e cavaliere si fermano
+subito e in 400 passi non si spostano (stesso sprite), guerriero e picchiere
+vanno a incendiare il centro. `soak` 3000 passi su menu, match, lvl01,
+lvl02, lvl05 e sk_padus, `melee.mjs`, prove unitarie: senza errori.
