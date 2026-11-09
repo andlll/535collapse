@@ -54,6 +54,12 @@ DECOR_OBJ = {"burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_papave
              "fiori_gialli_erba", "fiori_prato", "erba_1", "prato1", "fiorame1", "traccia01", "traccia02",
              "traccia03", "traccia04", "graa11", "graa12", "graa13", "graa14", "graa15"}
 BRIDGE_R = 300  # [§9.125] distanza dai ponti dipinti (free)
+# [§9.131] le macchie a particelle: semiassi dell'ellisse in cui il gioco
+# sparge i fili d'erba e i fiori (game/src/effects.js DECOR_SIZE, [500, 300]
+# se non c'e'); devono restare fuori dai centri (r: SOLID_R) delle basi
+PATCH_SIZE = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticellare": (500, 300),
+              "fiori_papaveri": (200, 125), "fiori_papaveri_erba": (200, 125), "fiori_gialli_erba": (200, 125),
+              "fiori_prato": (200, 125)}
 SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40,
            # [§9.123] la citta' (i centri delle maschere: mezza larghezza piu' un po')
            "ocr_teatro": 380, "ocr_basilica": 460, "ocr_tempio": 320, "castelloruin": 340, "chiesaruin": 270,
@@ -644,10 +650,27 @@ class HalfMap:
             # [§9.127] le macchie d'erba e di fiori si allargano oltre r
             if not self.half(x, y) or not self.free(x, y, r, lines, rock_pad=r + 100 if name in DECOR_OBJ else None):
                 continue
+            if name in PATCH_SIZE and self.on_base(x, y, *PATCH_SIZE[name]):
+                continue
             dx, dy = self.off.get(name, (0, 0))
             self.obj(name, round(x - dx), round(y - dy), sprite)  # (x, y): il centro della maschera
             k += 1
         return k
+
+    def on_base(self, x, y, rx, ry):
+        """[§9.131, segnalazione dell'autore] Una macchia a particelle (semiassi
+        rx, ry) in (x, y) arriverebbe sopra un centro delle basi (o il suo
+        gemello)? Il raggio di free (r) e' molto piu' piccolo della macchia:
+        a Foresta Umbra le macchie d'erba coprivano i centri all'avvio."""
+        R = SOLID_R["centro"]
+        for name, ox, oy, _ in self.objs:
+            if name != "centro":
+                continue
+            dx, dy = self.off.get(name, (0, 0))
+            for px, py in ((ox + dx, oy + dy), self.rot(ox + dx, oy + dy)):
+                if ((x - px) / (rx + R)) ** 2 + ((y - py) / (ry + R)) ** 2 < 1:
+                    return True
+        return False
 
     def half(self, x, y):
         """Il punto e' nella meta' della base A (sopra la diagonale che va

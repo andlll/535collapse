@@ -32,7 +32,7 @@ export const SK_MAPS = [
   { room: "sk_silva", name: "Umbra Forest", shot: [2350, 2620], mist: [[3300, 3600], [2350, 2600], [1300, 4400]],
     desc: "The ancient forest of the Gargano. Only narrow roads cross it, from glade to glade: gold and stone lie hidden among the trees." },
   // [§9.125] Rialto, la laguna: canali, isole e i ponti dell'autore
-  { room: "sk_rivo", name: "Lagoon", shot: [2250, 2950], tiers: ["citta"],
+  { room: "sk_rivo", name: "Lagoon", shot: [2590, 2700], tiers: ["citta"],
     mist: [[1200, 4300], [3000, 1300], [2250, 2000], [5600, 600]],
     desc: "The islands of the lagoon. Canals everywhere and few bridges: whoever holds the crossings holds the lagoon." },
   // [§9.123] Roma: la citta' in rovina al centro, con tutta la pietra
@@ -61,7 +61,9 @@ export const SK_OPTIONS = {
                names: { low: "Low", normal: "Normal", high: "High" } },
   pop: { label: "Population limit", values: [50, 75, 99], names: { 50: "50", 75: "75", 99: "99" } },
   truce: { label: "Truce", values: [0, 5, 10], names: { 0: "OFF", 5: "5 min", 10: "10 min" } },
-  fog: { label: "Fog", values: ["normal", "explored", "none"], names: { normal: "Normal", explored: "Explored", none: "None" } },
+  // [§9.131, richiesta dell'autore] "Visibilita'" (nel gioco c'e' anche la
+  // nebbia vera, sk_nebbia): normale, esplorata, totale (senza nebbia di guerra)
+  fog: { label: "Visibility", values: ["normal", "explored", "none"], names: { normal: "Normal", explored: "Explored", none: "Full" } },
   // [§9.121, richiesta dell'autore] tre valori: il ciclo, sempre giorno,
   // sempre notte; la pioggia normale, frequente o mai
   daynight: { label: "Day and night", values: ["cycle", "day", "night"], names: { cycle: "Cycle", day: "Always day", night: "Always night" } },

@@ -1692,6 +1692,40 @@
       ],
       "gruppo": "gui",
       "nota": "[§9.115] il simbolo delle montagne nella minimappa: disegno dell'autore (linee nere, 96 x 96), bianco e ritagliato; lo colora (nocciola) e lo scala sulla montagna la minimappa"
+    },
+    "ico_sk_visibilita": {
+      "da": "sk_visibilita",
+      "lato": 64,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.131] la visibilita' (la nuvola col vento): icona della schermata della schermaglia (§9.131): disegno caricato dall'autore (nero), al 70% come le icone dell'originale"
+    },
+    "ico_sk_luna": {
+      "da": "sk_luna",
+      "alto": 44,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.131] la notte nel parametro giorno e notte: icona della schermata della schermaglia (§9.131): disegno caricato dall'autore (nero), al 70% come le icone dell'originale"
+    },
+    "ico_sk_colomba": {
+      "da": "sk_colomba",
+      "lato": 60,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.131] la tregua (la colomba): icona della schermata della schermaglia (§9.131): disegno caricato dall'autore (nero), al 70% come le icone dell'originale"
+    },
+    "ico_sk_freccia": {
+      "da": "sk_freccia",
+      "alto": 24,
+      "gruppo": "gui",
+      "nota": "[§9.131] la freccia indietro (specchiata: avanti) della schermaglia, al posto di quella a linee: disegno caricato dall'autore; l'alpha la da' il menu (hover)"
+    },
+    "ico_sk_equilibrio": {
+      "da": "sk_equilibrio",
+      "lato": 60,
+      "gruppo": "gui",
+      "alpha": 0.7,
+      "nota": "[§9.131] lo stile Equilibrato della CPU (la mano con la bilancia): icona della schermata della schermaglia (§9.131): disegno caricato dall'autore (nero), al 70% come le icone dell'originale"
     }
   }
 }

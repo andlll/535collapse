@@ -30,7 +30,7 @@
 // senza un deposito abbastanza vicino.
 
 import { omino, orderWork } from "./civilians.js";
-import { campo, FAM } from "./buildings.js";
+import { campo, FAM, lifeBar } from "./buildings.js";
 import { fireOrder } from "./siege.js";
 import { fireStep, fireStop, burnTick } from "./effects.js";
 import { PRODUCERS } from "./production.js";
@@ -274,6 +274,11 @@ export function enemyCampo(p) {
     rightReleased: fireOrder,
     mouseEnter(i) { i.hover = 1; },
     mouseLeave(i) { i.hover = 0; },
+    // [§9.131, richiesta dell'autore] la barra della vita blu come quella
+    // degli altri edifici nemici (il campo del giocatore la ha verde)
+    drawEnd(i, w, dr) {
+      if (i.visible !== false && (i.selected === 1 || i.hover === 1 || i.hit === 1)) lifeBar(dr, i, 0xff0000);
+    },
   };
 }
 
@@ -566,6 +571,15 @@ function threatened(w, x, y, r) {
 function attackTarget(w, from) {
   return w.nearest(from.x, from.y, "ally_build") || w.nearest(from.x, from.y, "ally_unit");
 }
+// [§9.131, richiesta dell'autore] Nella schermaglia arcieri e cavalieri non
+// danno fuoco agli edifici: mandati contro il centro del giocatore gli si
+// ammassavano attorno, e con la meta dentro l'edificio (spostata a caso a
+// ogni passo, enemies.js) giravano su se stessi. Vanno invece a caccia
+// delle unita' del giocatore (lavoratori, soldati, macchine d'assedio): la
+// piu' vicina al bersaglio dell'ondata, o a loro una volta arrivati.
+const HUNTERS = new Set(["enemy_arciere", "enemy_cavaliere"]);
+const hunts = (w, e) => !!w.g.sk && HUNTERS.has(e.object);
+const huntTarget = (w, from) => w.nearest(from.x, from.y, "ally_unit");
 
 // [§9.118] Il tetto di popolazione della CPU nella schermaglia
 function popCap(w, E) {
@@ -847,8 +861,12 @@ export function enemyEco(p) {
         ? (E.raid && w.nearest(home.x, home.y, "ally_omino")) || attackTarget(w, home) : null; // §9.118: il predone punta ai lavoratori
       if (t) {
         const ff = p.flowField(p.goalField(t.x, t.y, true, false, true)); // §9.82: fixed
+        // §9.131: arcieri e cavalieri verso l'unita' del giocatore piu' vicina al bersaglio
+        const prey = waiting.some((e) => hunts(w, e)) ? huntTarget(w, t) : null;
+        const hff = prey && prey !== t ? p.flowField(p.goalField(prey.x, prey.y, true, false, true)) : ff;
         for (const e of waiting) {
-          e.action = 1; e.flow_field = ff; e.dirox = t.x; e.diroy = t.y; e.role = 31;
+          const q = prey && hunts(w, e) ? prey : t;
+          e.action = 1; e.flow_field = q === t ? ff : hff; e.dirox = q.x; e.diroy = q.y; e.role = 31;
           e.alarm.set(0, irandomRange(12, 15));
         }
         en.wave = (en.wave || 0) + 1;
@@ -856,7 +874,7 @@ export function enemyEco(p) {
       }
       for (const e of army2) {
         if (e.role !== 32 || e.action !== 0 || e.defending) continue;
-        const t2 = attackTarget(w, e);
+        const t2 = hunts(w, e) ? huntTarget(w, e) : attackTarget(w, e); // §9.131
         if (!t2) continue;
         e.action = 1; e.dirox = t2.x; e.diroy = t2.y;
         e.alarm.set(0, irandomRange(12, 15));

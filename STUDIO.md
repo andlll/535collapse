@@ -9560,3 +9560,77 @@ scenari nella CI passava). Il confronto di `--check` ora ignora larghezza e
 altezza degli oggetti tile (`tile_free`) e guarda tutto il resto: passa qui
 e nel clone pulito come nella CI, e un oggetto spostato di 1 px lo fa
 ancora fallire.
+
+### 9.131 Schermaglia: barra dei campi nemici, arcieri e cavalieri a caccia, macchie lontane dalle basi, icone e riquadro del menu
+
+Richieste dell'autore (9 novembre 2026, PR nuova, versione 0.2610):
+- **La barra della vita dei campi nemici blu** (era verde, quella del campo
+  del giocatore): enemy_campo (economy.js) ha il suo Draw_End con
+  `lifeBar(..., 0xff0000)` (BGR: il blu degli altri edifici nemici), solo se
+  il campo e' visibile.
+- **Arcieri e cavalieri della CPU a caccia di unita'** (solo nella
+  schermaglia): non danno fuoco agli edifici (il cavaliere ha `fire: false`,
+  l'arciere non ha l'Alarm_4), ma l'ondata li mandava contro l'edificio del
+  giocatore piu' vicino alla base (di solito il centro) e, arrivati (ruolo
+  32), di nuovo contro l'edificio piu' vicino: si ammassavano attorno al
+  centro e, con la meta dentro l'edificio (spostata a caso a ogni passo da
+  `placeEmpty`/`placeFree`), giravano su se stessi. Ora (economy.js `hunts`,
+  `huntTarget`) nell'ondata vanno verso l'unita' del giocatore piu' vicina al
+  bersaglio dell'ondata (col loro flow field), e da fermi verso l'unita' del
+  giocatore piu' vicina a loro (lavoratori, soldati, macchine d'assedio); i
+  fanti continuano a dare fuoco. Senza unita' del giocatore restano fermi.
+  Nella campagna non cambia niente.
+- **Foresta Umbra: le macchie a particelle lontane dai centri**. Il raggio di
+  `free` per burst_erba1 era 150 px, ma il gioco sparge i fili d'erba in
+  un'ellisse di 500 x 300 px (effects.js): quattro macchie per base
+  coprivano il centro all'avvio. Ora tools/16 (`on_base`, PATCH_SIZE) scarta
+  le macchie (erba, grano, fiori) la cui ellisse, allargata del raggio del
+  centro (330), contiene un centro delle basi. Vale per tutte le mappe:
+  cambiano anche Padania (una macchia di fiori a 447 px) e Urbe (una macchia
+  d'erba al limite; per l'ordine del generatore casuale altre decorazioni
+  cambiano tipo, non posto). Foto di Foresta Umbra rifatta (due decorazioni
+  vicine al punto della foto sono cambiate).
+- **Icone del menu della schermaglia** (disegni dell'autore, nuovi/sprites
+  `sk_*.png`, derivati `ico_sk_*` in nuovi.json, neri al 70% come le icone
+  dell'originale): la mano con la bilancia per lo stile Equilibrato (al posto
+  della bilancia a linee), la colomba per la tregua (al posto della
+  bandiera), la nuvola col vento per la visibilita' (al posto delle onde;
+  Esplorata piu' tenue), la luna per Sempre notte e Ciclo (al posto della
+  falce a linee; il sole resta a linee), la freccia indietro (specchiata per
+  avanti) al posto del triangolo di linee, sulle mappe e sui parametri. Le
+  spade incrociate marroni (ico_battle: stile Aggressivo, tregua NO) sono
+  ora quelle nere della caserma (ico_caserma).
+- **"Nebbia" diventa "Visibilita'"** (nel gioco c'e' anche la nebbia vera,
+  sk_nebbia, §9.122): Normale, Esplorata, Totale (prima "Nessuno": senza
+  nebbia di guerra si vede tutto). Esplorada in spagnolo e portoghese
+  (visibilidad/visibilidade, femminili).
+- **Il riquadro della mappa finisce al bordo basso della terza fila** dei
+  parametri (prima arrivava fino a "Inizia"). La descrizione deve starci in
+  tutte le lingue: drawSkirmish misura la piu' lunga nella lingua attuale
+  (righe da 30 px, larghezza del riquadro) e skLayout rimpicciolisce la foto
+  (3:2, centrata, almeno 120 px d'altezza) quanto serve. Su uno schermo basso
+  (1024 x 600) dove nemmeno cosi' ci sta, il riquadro scende quanto serve
+  (fino a 40 px dal fondo). Controllato con Urbe (la descrizione piu' lunga)
+  in sei lingue a 1024 x 600, 1280 x 720, 1366 x 768 e 1920 x 1080: a 1280 x
+  720 la foto resta intera in inglese e italiano, piu' piccola in tedesco,
+  francese, spagnolo e portoghese.
+- **Con la visibilita' Esplorata o Totale le risorse si vedono da subito**
+  (richiesta arrivata durante il lavoro): alberi, miniere, pietre e rovine si
+  rivelavano solo con un'unita' o un edificio del giocatore vicino (gli alberi
+  anche senza nebbia di guerra, le altre no); ora `reveal` (civilians.js) le
+  rende visibili se `g.sk.fog` non e' "normal". Provato su Padania: con
+  Normale 18 alberi su 598 e una miniera su 4 visibili all'avvio, con
+  Esplorata e Totale tutti.
+- **La foto della Laguna** (troppo simile a quella di Padania: un ponte su un
+  corso d'acqua in un prato): ora l'isola contesa a nord-ovest del Rialto, col
+  rio, il ponte ad archi (pontedx2), le case e la chiesa in rovina (shot
+  2590, 2700).
+Prove: prove unitarie; `tools/16 --check` (simmetriche tutte e cinque);
+`soak` 4000 passi su menu, sk_silva, sk_urbs, sk_padus e `saves` su sk_silva,
+senza errori; le due basi di Foresta Umbra fotografate all'avvio (nessuna
+macchia sui centri). Arcieri e cavalieri: partita su Padania (Difficile,
+Equilibrato, lavoratori del giocatore a 1800 px dal centro), 80 campioni
+dopo la prima ondata: prima della modifica 149 posizioni su 235 entro 600 px
+dal centro senza unita' del giocatore entro 500 px e nessuna a caccia; dopo,
+0 attorno al centro e 235 su 1040 a meno di 500 px da un'unita' del
+giocatore (Predone: 1 e 295 su 732).

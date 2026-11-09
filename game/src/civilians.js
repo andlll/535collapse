@@ -1602,8 +1602,12 @@ function ominoPanel(i, w, d) {
 // Visibilita' delle risorse [C, Step di albero (600 px, o nebbia spenta),
 // miniera e pietre (400 px)]: si rivelano quando un'unita' o un edificio
 // alleato e' vicino, e restano visibili.
+// [§9.131, richiesta dell'autore] Nella schermaglia con la visibilita'
+// Esplorata o Totale tutte le risorse (alberi, miniere, pietre, rovine) si
+// vedono da subito: prima solo gli alberi e solo con Totale (fogville 0).
 function reveal(i, w, dist, fogAware) {
   if (i.visible) return;
+  if (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") { i.visible = true; return; }
   // §6.3 N3: nearWithin da' lo stesso risultato di
   // distance_to_object(instance_nearest(...)) < dist, senza rifare la
   // ricerca quando gli alleati sono lontani per certo

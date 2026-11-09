@@ -575,8 +575,9 @@ export const TEXTS = {
   "Truce": { it: "Tregua", es: "Tregua", pt: "Trégua", de: "Waffenruhe", fr: "Trêve" },
   "5 min": { it: "5 min", es: "5 min", pt: "5 min", de: "5 Min.", fr: "5 min" },
   "10 min": { it: "10 min", es: "10 min", pt: "10 min", de: "10 Min.", fr: "10 min" },
-  "Fog": { it: "Nebbia", es: "Niebla", pt: "Névoa", de: "Nebel", fr: "Brouillard" },
-  "Explored": { it: "Esplorata", es: "Explorado", pt: "Explorado", de: "Erkundet", fr: "Explorée" },
+  "Visibility": { it: "Visibilità", es: "Visibilidad", pt: "Visibilidade", de: "Sichtbarkeit", fr: "Visibilité" }, // §9.131 (era "Fog")
+  "Explored": { it: "Esplorata", es: "Explorada", pt: "Explorada", de: "Erkundet", fr: "Explorée" },
+  "Full": { it: "Totale", es: "Total", pt: "Total", de: "Vollständig", fr: "Totale" },
   "Day and night": { it: "Giorno e notte", es: "Día y noche", pt: "Dia e noite", de: "Tag und Nacht", fr: "Jour et nuit" },
   "Rain": { it: "Pioggia", es: "Lluvia", pt: "Chuva", de: "Regen", fr: "Pluie" },
   "Starting position": { it: "Posizione di partenza", es: "Posición inicial", pt: "Posição inicial", de: "Startposition", fr: "Position de départ" },
