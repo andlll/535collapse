@@ -9769,3 +9769,29 @@ uno scartato per i 45 ms), quelli della CPU lontani dalla vista zittiti;
 con "Effetti sonori: NO" nessun suono. Menu di pausa e opzioni grafiche a
 1024 x 600 (tedesco) e 1280 x 720. Lo zip per i portali contiene l'audio;
 `soak` su menu, match, sk_padus; prove unitarie. L'ascolto vero e' dell'autore.
+
+### 9.138 Il colpo di piccone su oro e pietra
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione per miniere e pietra (`nuovi/audio/miniere_pietra.wav`,
+10,5 s, mono, 96 kHz, 24 bit) lo stesso lavoro del legno (§9.137).
+**I colpi**: diciotto, ogni 0,55-0,75 s (attacchi da 162 a 10191 ms), picchi
+da -20 a -12 dB, ognuno scende di 60 dB in ~135 ms; prima di ogni attacco
+-62 dB o meno, rumore di fondo -94 dB. (Il primo rilevamento, con la soglia
+del legno sul rumore di fondo, prendeva le code: qui il fondo e' molto piu'
+basso; ora gli attacchi sono le salite di 15 dB oltre -45 dB.) Tutti e
+diciotto come varianti: tagli di 250 ms da 4 ms prima dell'attacco,
+dissolvenza di 2 e 100 ms, picco a -3 dBFS.
+**tools/18**: l'MP3 arriva a 48 kHz, le registrazioni a 96 si ricampionano
+(`-ar 48000`). `piccone_1..18.mp3`, 3,7 KB l'uno; tutto l'audio 79 KB.
+**Il volume**: a parita' di picco i due suoni hanno lo stesso volume
+percepito (RMS nei primi 100 ms dopo l'attacco: -23,7 dB il legno, -23,8 il
+piccone), quindi lo stesso `gain` 0,55.
+**Nel gioco** (civilians.js `workTick`): oro (miniera_oro) e pietra
+(stone_parent: pietre e rovine), nello stesso istante delle schegge e della
+polvere (§9.107), con le stesse regole del legno (non i lavoratori nemici
+nascosti nella nebbia).
+Prova (Chromium, Padania, vista sulla risorsa, 15 s): tre lavoratori alla
+miniera d'oro 35 colpi suonati, 16 varianti diverse; alla pietra 30 colpi,
+15 varianti; mai la stessa variante due volte di fila. Prove unitarie.
+`nuovi/audio/audio.json` riscritto con i tagli su una riga per suono.

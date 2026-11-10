@@ -10,6 +10,13 @@
       "dissolvenza_ms": [2, 80],
       "gain": 0.55,
       "nota": "il colpo d'ascia del boscaiolo (civilians.js workTick): i quattro colpi della registrazione, uno per variante (attacchi a 193, 522, 853 e 1201 ms; coda sopra il rumore di fondo per 50-80 ms, rumore di fondo a -71 dB)"
+    },
+    "piccone": {
+      "da": "miniere_pietra.wav",
+      "tagli": [[158, 408], [809, 1059], [1553, 1803], [2152, 2402], [2757, 3007], [3355, 3605], [3956, 4206], [4586, 4836], [5154, 5404], [5722, 5972], [6278, 6528], [6838, 7088], [7405, 7655], [7975, 8225], [8520, 8770], [9069, 9319], [9635, 9885], [10187, 10437]],
+      "dissolvenza_ms": [2, 100],
+      "gain": 0.55,
+      "nota": "il colpo di piccone su oro e pietra (civilians.js workTick): i diciotto colpi della registrazione dell'autore, uno per variante (ognuno scende di 60 dB in ~135 ms; prima di ogni attacco -62 dB o meno; rumore di fondo -94 dB)"
     }
   }
 }

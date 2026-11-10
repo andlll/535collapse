@@ -1250,10 +1250,12 @@ function workTick(i, w) {
       i.gold += 1;
       const t = w.nearest(ax, ay, "miniera_oro");
       if (t) { t.gold -= 1; if (t.gold === 0) w.destroy(t); }
+      if (t && i.visible !== false) audio.play("piccone", ax, ay); // §9.138: il colpo di piccone
     } else {
       i.stone += 1;
       const t = w.nearest(ax, ay, "stone_parent");
       if (t) { t.stone -= 1; if (t.stone === 0) w.destroy(t); }
+      if (t && i.visible !== false) audio.play("piccone", ax, ay); // §9.138
     }
     // [§9.107] il colpo di piccone: schegge e polvere (ambience.js workChips)
     if (a !== 2) { i.workHit = w._stepNo; i.workKind = a === 3 ? "gold" : "stone"; i.workX = ax; i.workY = ay; }

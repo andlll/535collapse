@@ -72,7 +72,8 @@ def main():
                    "-c:a", "pcm_f32le", tmp)
             gain = target - peak_db(tmp)
             out = "%s_%d.mp3" % (name, k)
-            ffmpeg("-i", tmp, "-af", "volume=%.2fdB" % gain, "-ac", "1", "-c:a", "libmp3lame", "-b:a", "96k",
+            # (MP3 arriva a 48 kHz: le registrazioni a 96 si ricampionano)
+            ffmpeg("-i", tmp, "-af", "volume=%.2fdB" % gain, "-ac", "1", "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "96k",
                    os.path.join(OUT, out))
             os.remove(tmp)
             size = os.path.getsize(os.path.join(OUT, out))
