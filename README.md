@@ -42,6 +42,7 @@ python3 tools/03_survey.py      # censimento + controllo di coerenza (--png: mis
 python3 tools/05_atlas.py       # atlas WebP per gruppo -> game/assets/ (~2 minuti)
 python3 tools/06_masks.py       # maschere di collisione -> game/assets/masks.json
 python3 tools/07_scene.py       # room -> game/assets/rooms/
+python3 tools/18_audio.py       # effetti sonori -> game/assets/audio/ (serve ffmpeg)
 cd game && npm install && npm run build   # bundle -> game/dist/
 python3 -m http.server 8000 --directory game
 ```
@@ -59,7 +60,9 @@ acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (do
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
 (poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della
 schermaglia (`nuovi/sprites/sk_*_cartolina.png`, §9.121) la fa `node tools/17_cartoline.mjs` col gioco
-in esecuzione (e poi `tools/05`).
+in esecuzione (e poi `tools/05`). Gli effetti sonori (`nuovi/audio/`: i file d'origine, i tagli
+delle varianti in `audio.json`, fonti e licenze in `CREDITI.md`, §9.137) li fa
+`python3 tools/18_audio.py` (serve ffmpeg) -> `game/assets/audio/`.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
 `?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room. Sono giocabili il menu
@@ -78,7 +81,7 @@ lasciando nitida l'interfaccia (e, in Media e Bassa, l'erba piu' rada);
 "Glass interface" rende i pannelli di vetro sfocato. Esc (o il pulsante in alto a destra) apre il menu di
 pausa: opzioni grafiche, schermo intero, lingua (EN, IT, ES, PT, DE, FR),
 salvataggi (uno slot per room nel browser, in IndexedDB, salvataggio automatico ogni 5
-minuti, file `.json` da scaricare e riaprire; "Load game" anche nel menu
+minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" anche nel menu
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 

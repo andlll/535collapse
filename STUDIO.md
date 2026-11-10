@@ -25,6 +25,16 @@ servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
 `UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
 
+**Audio, da fare** (§9.137-§9.145): l'autore riesporta da Ableton le tre
+parti del primo loop (archi, field, drone) come loop veri, con "Render as
+Loop" e senza dissolvenze (ora partono da zero e/o finiscono in calo: a ogni
+giro un rientro, un respiro, un colpo grave; §9.143-§9.144), possibilmente
+in WAV; si rimettono al loro posto con tools/18 (stessi nomi in
+nuovi/audio, tagli a tutta la durata). Da decidere con l'autore: il ritmo
+del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
+di field di notte (ora 0), la soglia del drone (50 di popolazione), la
+musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -9560,3 +9570,468 @@ scenari nella CI passava). Il confronto di `--check` ora ignora larghezza e
 altezza degli oggetti tile (`tile_free`) e guarda tutto il resto: passa qui
 e nel clone pulito come nella CI, e un oggetto spostato di 1 px lo fa
 ancora fallire.
+
+### 9.131 Schermaglia: barra dei campi nemici, arcieri e cavalieri a caccia, macchie lontane dalle basi, icone e riquadro del menu
+
+Richieste dell'autore (9 novembre 2026, PR nuova, versione 0.2610):
+- **La barra della vita dei campi nemici blu** (era verde, quella del campo
+  del giocatore): enemy_campo (economy.js) ha il suo Draw_End con
+  `lifeBar(..., 0xff0000)` (BGR: il blu degli altri edifici nemici), solo se
+  il campo e' visibile.
+- **Arcieri e cavalieri della CPU a caccia di unita'** (solo nella
+  schermaglia): non danno fuoco agli edifici (il cavaliere ha `fire: false`,
+  l'arciere non ha l'Alarm_4), ma l'ondata li mandava contro l'edificio del
+  giocatore piu' vicino alla base (di solito il centro) e, arrivati (ruolo
+  32), di nuovo contro l'edificio piu' vicino: si ammassavano attorno al
+  centro e, con la meta dentro l'edificio (spostata a caso a ogni passo da
+  `placeEmpty`/`placeFree`), giravano su se stessi. Ora (economy.js `hunts`,
+  `huntTarget`) nell'ondata vanno verso l'unita' del giocatore piu' vicina al
+  bersaglio dell'ondata (col loro flow field), e da fermi verso l'unita' del
+  giocatore piu' vicina a loro (lavoratori, soldati, macchine d'assedio); i
+  fanti continuano a dare fuoco. Senza unita' del giocatore restano fermi.
+  Nella campagna non cambia niente.
+- **Foresta Umbra: le macchie a particelle lontane dai centri**. Il raggio di
+  `free` per burst_erba1 era 150 px, ma il gioco sparge i fili d'erba in
+  un'ellisse di 500 x 300 px (effects.js): quattro macchie per base
+  coprivano il centro all'avvio. Ora tools/16 (`on_base`, PATCH_SIZE) scarta
+  le macchie (erba, grano, fiori) la cui ellisse, allargata del raggio del
+  centro (330), contiene un centro delle basi. Vale per tutte le mappe:
+  cambiano anche Padania (una macchia di fiori a 447 px) e Urbe (una macchia
+  d'erba al limite; per l'ordine del generatore casuale altre decorazioni
+  cambiano tipo, non posto). Foto di Foresta Umbra rifatta (due decorazioni
+  vicine al punto della foto sono cambiate).
+- **Icone del menu della schermaglia** (disegni dell'autore, nuovi/sprites
+  `sk_*.png`, derivati `ico_sk_*` in nuovi.json, neri al 70% come le icone
+  dell'originale): la mano con la bilancia per lo stile Equilibrato (al posto
+  della bilancia a linee), la colomba per la tregua (al posto della
+  bandiera), la nuvola col vento per la visibilita' (al posto delle onde;
+  Esplorata piu' tenue), la luna per Sempre notte e Ciclo (al posto della
+  falce a linee; il sole resta a linee), la freccia indietro (specchiata per
+  avanti) al posto del triangolo di linee, sulle mappe e sui parametri. Le
+  spade incrociate marroni (ico_battle: stile Aggressivo, tregua NO) sono
+  ora quelle nere della caserma (ico_caserma).
+- **"Nebbia" diventa "Visibilita'"** (nel gioco c'e' anche la nebbia vera,
+  sk_nebbia, §9.122): Normale, Esplorata, Totale (prima "Nessuno": senza
+  nebbia di guerra si vede tutto). Esplorada in spagnolo e portoghese
+  (visibilidad/visibilidade, femminili).
+- **Il riquadro della mappa finisce al bordo basso della terza fila** dei
+  parametri (prima arrivava fino a "Inizia"). La descrizione deve starci in
+  tutte le lingue: drawSkirmish misura la piu' lunga nella lingua attuale
+  (righe da 30 px, larghezza del riquadro) e skLayout rimpicciolisce la foto
+  (3:2, centrata, almeno 120 px d'altezza) quanto serve. Su uno schermo basso
+  (1024 x 600) dove nemmeno cosi' ci sta, il riquadro scende quanto serve
+  (fino a 40 px dal fondo). Controllato con Urbe (la descrizione piu' lunga)
+  in sei lingue a 1024 x 600, 1280 x 720, 1366 x 768 e 1920 x 1080: a 1280 x
+  720 la foto resta intera in inglese e italiano, piu' piccola in tedesco,
+  francese, spagnolo e portoghese.
+- **Con la visibilita' Esplorata o Totale le risorse si vedono da subito**
+  (richiesta arrivata durante il lavoro): alberi, miniere, pietre e rovine si
+  rivelavano solo con un'unita' o un edificio del giocatore vicino (gli alberi
+  anche senza nebbia di guerra, le altre no); ora `reveal` (civilians.js) le
+  rende visibili se `g.sk.fog` non e' "normal". Provato su Padania: con
+  Normale 18 alberi su 598 e una miniera su 4 visibili all'avvio, con
+  Esplorata e Totale tutti.
+- **La foto della Laguna** (troppo simile a quella di Padania: un ponte su un
+  corso d'acqua in un prato): ora l'isola contesa a nord-ovest del Rialto, col
+  rio, il ponte ad archi (pontedx2), le case e la chiesa in rovina (shot
+  2590, 2700).
+Prove: prove unitarie; `tools/16 --check` (simmetriche tutte e cinque);
+`soak` 4000 passi su menu, sk_silva, sk_urbs, sk_padus e `saves` su sk_silva,
+senza errori; le due basi di Foresta Umbra fotografate all'avvio (nessuna
+macchia sui centri). Arcieri e cavalieri: partita su Padania (Difficile,
+Equilibrato, lavoratori del giocatore a 1800 px dal centro), 80 campioni
+dopo la prima ondata: prima della modifica 149 posizioni su 235 entro 600 px
+dal centro senza unita' del giocatore entro 500 px e nessuna a caccia; dopo,
+0 attorno al centro e 235 su 1040 a meno di 500 px da un'unita' del
+giocatore (Predone: 1 e 295 su 732).
+
+### 9.132 Nemici senza piu' bersagli: fermi in attesa
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610), dopo il
+caso trovato nelle prove di §9.131: quando non resta nessuna unita' del
+giocatore, un nemico che ne stava inseguendo una restava in cammino verso
+l'ultimo posto dell'inseguito (warwork 1, meleeGo) e, se li' non si arrivava
+(un cavaliere contro il bordo della mappa), scattava avanti e indietro sul
+posto per sempre: l'attacco (enemyAttack, e `attack` dell'arciere) usciva
+subito senza alleati e nessuno chiudeva l'inseguimento. Ora (enemies.js
+`noTargetLeft`) chi inseguiva, colpiva o andava a un posto da cui tirare si
+ferma dov'e' (azione 0, fermo, senza animazione di cammino) in attesa di
+nuovi ordini: la regia della CPU, o gli edifici da incendiare per chi puo'.
+Non tocca chi va a dare fuoco, chi si ritira o chi va al presidio.
+Prova: arciere, cavaliere, guerriero e picchiere che inseguono i lavoratori
+del giocatore su Padania; tolti i lavoratori, arciere e cavaliere si fermano
+subito e in 400 passi non si spostano (stesso sprite), guerriero e picchiere
+vanno a incendiare il centro. `soak` 3000 passi su menu, match, lvl01,
+lvl02, lvl05 e sk_padus, `melee.mjs`, prove unitarie: senza errori.
+
+### 9.133 Menu della schermaglia: l'occhio e i lingotti
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): per la
+visibilita' Totale e per lo stile Economico della CPU i suoi disegni a
+risoluzione maggiore (nuovi/sprites `sk_occhio.png`, 100 x 100, e
+`sk_oro.png`, 64 x 64; derivati `ico_sk_occhio`, largo 64, e `ico_sk_oro`,
+largo 56, neri al 70% come le altre icone del menu), al posto di
+ico_view_small (30 px, disegnata a 1,6) e ico_gold (27 px, disegnata a 2),
+che ingrandite si vedevano sgranate. Disegnati a 0,8 e 0,9: grandi come
+prima (~51 e ~50 px). Le risorse iniziali tengono le loro icone piccole.
+
+### 9.134 La partita su file: ".dvgame"
+
+Decisione dell'autore (9 novembre 2026, stessa PR, versione 0.2610): formati
+propri per i file del gioco, ".dvgame" per le partite e (quando ci saranno
+le mappe da passarsi) ".dvmap" per le mappe. Il gioco resta solo web: niente
+icona dei file ne' apertura col doppio clic (servirebbe il gioco installato,
+come app o versione desktop), solo l'estensione, che vale subito per tutti.
+**Il file** (save.js `saveFile`): `dustveil-<room>-<data>.dvgame`, lo stesso
+JSON firmato di prima compresso con gzip (CompressionStream; senza, in
+chiaro con la stessa estensione), tipo application/octet-stream (con
+application/json qualche browser aggiunge ".json" al nome). Una partita su
+Padania: 7,7 MB di JSON, 1,9 MB di file.
+**Il caricamento** (`openFile`, `fileText`): accetta ".dvgame" e ".json";
+se i primi due byte sono quelli del gzip (1f 8b) decomprime, se no legge il
+testo: i file ".json" salvati prima si aprono ancora. Un gzip rovinato e'
+"file non valido" come prima. Lo usano il menu di pausa e "Carica da file"
+del menu principale.
+Prova (Chromium): salvataggio dal menu di pausa su Padania (nome, gzip),
+caricamento del ".dvgame" e di un ".json" in chiaro: la partita si riapre;
+prove unitarie.
+
+### 9.135 Il ".dvgame" non si apre a mano
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): una
+chiave perche' non si alterino i dati col blocco note. C'era gia' il
+checksum (FNV-1a con un sale, Fase 4: un numero cambiato scarta il file), e
+dal §9.134 il file e' compresso: illeggibile nel blocco note, ma un gzip
+normale, che 7-Zip apre al volo mostrando il JSON. Ora (save.js `packFile`,
+`scramble`, `bytesText`) dopo il gzip i byte si mescolano (XOR con la
+sequenza di un xorshift32 seminato da una chiave fissa) e il file comincia
+con "DVG1": non e' piu' un archivio ne' contiene testo leggibile. Il
+caricamento riconosce l'intestazione e rimette a posto i byte; legge ancora
+il gzip semplice (i ".dvgame" del §9.134, mai usciti) e i ".json" in chiaro.
+Non e' crittografia vera: in un gioco tutto nel browser la chiave sta nel
+codice, come il sale del checksum. Scoraggia chi vuole cambiare un numero;
+per modificare una partita bisogna leggere il codice del gioco. Se un giorno
+ci saranno classifiche online, i punteggi andranno controllati da un server.
+Prove: prova unitaria nuova (intestazione, niente gzip ne' testo leggibile,
+andata e ritorno, i tre formati, un byte cambiato scartato); nel browser
+salvataggio su Padania (1,9 MB, "DVG1", `gzip -t`: "not in gzip format") e
+caricamento del ".dvgame" e di un ".json" di prima.
+
+### 9.136 La descrizione della mappa: giustificata, senza corsivo
+
+Richiesta dell'autore (9 novembre 2026, stessa PR, versione 0.2610): nella
+schermata della schermaglia la descrizione della mappa giustificata, e senza
+il corsivo, che compariva solo li'. Il corsivo era finto (draw.js `slant`,
+§9.121: i glifi inclinati): tolto dal motore, non lo usava nessun altro.
+**Giustificato** (draw.js `justify`, come opzione di textExt: con una
+larghezza e allineato a sinistra): ogni riga andata a capo si allarga fino
+alla larghezza del riquadro distribuendo lo spazio in piu' fra le parole;
+l'ultima riga di ogni paragrafo e una riga di una parola sola restano
+allineate a sinistra. Gli a capo sono gli stessi di prima (l'altezza della
+descrizione, §9.131, non cambia); con lo spazio in piu' le lettere si
+posano sul pixel intero. Controllato in italiano (Foresta Umbra,
+1920 x 1080), tedesco (Urbe, 1280 x 720) e francese (Appennini, 1366 x 768).
+
+### 9.137 Gli effetti sonori: il motore audio e il colpo d'ascia
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+registrazione "Knocking on wood" (Freesound 594389, Elandre01, CC0: uso
+commerciale libero, senza obblighi) isolare i colpi e usarli come varianti
+del taglio della legna. Il gioco originale non ha suoni e il motore non
+aveva l'audio: questa e' la prima parte.
+**I file** (`nuovi/audio/`): l'originale (1,5 s, 48 kHz, 24 bit, due canali
+identici), `audio.json` (per ogni suono il file d'origine, i tagli delle
+varianti in ms, le dissolvenze, il volume nel gioco) e `CREDITI.md` (fonte,
+autore e licenza di ogni file: le licenze devono permettere l'uso
+commerciale). Nella registrazione quattro colpi, attacchi a 193, 522, 853 e
+1201 ms, coda sopra il rumore di fondo (-71 dB) per 50-80 ms: tagli di 200
+ms da 4 ms prima dell'attacco, dissolvenza di 2 ms in entrata e 80 ms in
+uscita.
+**tools/18_audio.py** (solo ffmpeg, anche nella CI dopo tools/05-07): taglio,
+mono, dissolvenze, picco di ogni variante a -3 dBFS (le varianti suonano
+uguali di volume; il volume nel gioco e' `gain`), MP3 mono a 96 kbit/s (lo
+leggono tutti i browser) -> `game/assets/audio/legno_1..4.mp3` (3 KB
+l'uno) e `audio.json`. Chromium li decodifica a 200 ms esatti (il ritardo
+dell'encoder MP3 viene tolto).
+**game/src/audio.js** (`audio`, Web Audio):
+- i suoni si scaricano all'avvio; l'AudioContext nasce al primo clic o
+  tasto (il browser non lascia partire l'audio prima): fino ad allora, e
+  nelle prove senza gesti, play() non fa niente;
+- `play(nome, x, y)`: una variante a caso (non la stessa di prima), altezza
+  +-7% e volume +-15% a caso; volume pieno dentro la vista, che cala fino a
+  zero a 700 px dal bordo; un po' a destra o a sinistra secondo la x nella
+  vista;
+- al massimo 4 suoni uguali insieme e non due dello stesso nome a meno di
+  45 ms.
+**Il colpo d'ascia** (civilians.js `workTick`, lo stesso istante dello
+scossone dell'albero, §9.105): per i boscaioli del giocatore e della CPU,
+non per quelli nemici nascosti nella nebbia. `gain` 0,55: da regolare a
+orecchio quando ci saranno gli altri suoni.
+**"Effetti sonori: SI'/NO"** nel menu di pausa (settings.sfx, si ricorda).
+Con una riga in piu' a 1024 x 600 l'ultimo pulsante usciva dallo schermo
+(e le opzioni grafiche, dieci righe, uscivano gia'): ora su uno schermo
+basso pulsanti e spazi si stringono (fino a 30 e 4 px); a 720 px e oltre
+non cambia niente.
+Prove (Chromium): prima del clic nessun AudioContext; dopo, attivo e le
+quattro varianti decodificate; tre boscaioli del giocatore su Padania con
+la vista sull'albero: 45 colpi suonati in 25 s (uno ogni ~0,65 s ciascuno,
+uno scartato per i 45 ms), quelli della CPU lontani dalla vista zittiti;
+con "Effetti sonori: NO" nessun suono. Menu di pausa e opzioni grafiche a
+1024 x 600 (tedesco) e 1280 x 720. Lo zip per i portali contiene l'audio;
+`soak` su menu, match, sk_padus; prove unitarie. L'ascolto vero e' dell'autore.
+
+### 9.138 Il colpo di piccone su oro e pietra
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione per miniere e pietra (`nuovi/audio/miniere_pietra.wav`,
+10,5 s, mono, 96 kHz, 24 bit) lo stesso lavoro del legno (§9.137).
+**I colpi**: diciotto, ogni 0,55-0,75 s (attacchi da 162 a 10191 ms), picchi
+da -20 a -12 dB, ognuno scende di 60 dB in ~135 ms; prima di ogni attacco
+-62 dB o meno, rumore di fondo -94 dB. (Il primo rilevamento, con la soglia
+del legno sul rumore di fondo, prendeva le code: qui il fondo e' molto piu'
+basso; ora gli attacchi sono le salite di 15 dB oltre -45 dB.) Tutti e
+diciotto come varianti: tagli di 250 ms da 4 ms prima dell'attacco,
+dissolvenza di 2 e 100 ms, picco a -3 dBFS.
+**tools/18**: l'MP3 arriva a 48 kHz, le registrazioni a 96 si ricampionano
+(`-ar 48000`). `piccone_1..18.mp3`, 3,7 KB l'uno; tutto l'audio 79 KB.
+**Il volume**: a parita' di picco i due suoni hanno lo stesso volume
+percepito (RMS nei primi 100 ms dopo l'attacco: -23,7 dB il legno, -23,8 il
+piccone), quindi lo stesso `gain` 0,55.
+**Nel gioco** (civilians.js `workTick`): oro (miniera_oro) e pietra
+(stone_parent: pietre e rovine), nello stesso istante delle schegge e della
+polvere (§9.107), con le stesse regole del legno (non i lavoratori nemici
+nascosti nella nebbia).
+Prova (Chromium, Padania, vista sulla risorsa, 15 s): tre lavoratori alla
+miniera d'oro 35 colpi suonati, 16 varianti diverse; alla pietra 30 colpi,
+15 varianti; mai la stessa variante due volte di fila. Prove unitarie.
+`nuovi/audio/audio.json` riscritto con i tagli su una riga per suono.
+
+### 9.139 Spade e archi
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalle
+sue registrazioni i colpi di spada per gli attacchi di soldati e cavalieri,
+e tre archi ("da pulire") per arcieri, torri ecc.
+**Le spade** (`nuovi/audio/spade.wav`, 5,25 s, mono, 48 kHz): sei colpi
+(attacchi a 497, 1298, 2137, 2990, 3908, 4726 ms), molto deboli (picchi da
+-46 a -41 dBFS: alzati di 28-33 dB), energia fra 1,2 e 10 kHz, una lunga
+coda metallica (-30 dB dopo 140-500 ms). Il rumore di fondo (-92 dB) e' per
+meta' rimbombo sotto gli 80 Hz: passa-alto a 250 Hz (24 dB/ottava), che le
+spade non toccano (niente sotto i 600 Hz). Tagli di 500 ms, la coda sfumata
+negli ultimi 300.
+**Gli archi** (`arco1..3.wav`, 44,1 kHz, i due canali uguali): un colpo per
+file, ma dal 90 al 96% dell'energia era sotto i 100 Hz: il colpo d'aria sul
+microfono (o l'urto), non la corda. Provati tre passa-alto: a 100 Hz e 24
+dB/ottava ne restava il 26-49%; a 150 Hz e 48 dB/ottava niente, col picco
+quasi uguale (la parte che si sente e' il corpo e la corda, 200-1200 Hz, e lo
+schiocco fino a 10 kHz); a 250 Hz se ne andava anche un po' di corpo. Scelto
+150 Hz, 48 dB/ottava. Tagliati via i due clic a 1,37 e 1,45 s di arco1 e il
+silenzio digitale coi due residui dopo 0,5 s di arco2. Tagli di 350 ms, la
+coda sfumata negli ultimi 150.
+**tools/18**: un taglio puo' venire da un altro file (terzo elemento:
+`[inizio, fine, "file"]`, le tre varianti dell'arco da tre file) e ogni suono
+puo' avere un `filtro` (filtri di ffmpeg) prima delle dissolvenze.
+**I volumi**: a parita' di picco le spade, con la coda, suonano 6 dB piu'
+forti (RMS nei primi 100 ms -17,6 dB contro -23,6 di ascia e piccone):
+`gain` 0,28; gli archi filtrati come ascia e piccone, 0,55. Tutto l'audio
+133 KB.
+**Nel gioco**:
+- `spada`: il colpo in mischia che arriva, nello stesso istante del sangue
+  (§9.117), sul bersaglio. Per giocatore e CPU: soldati, picchieri e
+  cavalieri (units.js meleeStrike, enemies.js enemyStrike).
+- `arco`: la freccia che parte (ranged.js allyArrow ed enemyArrow, create):
+  arcieri, torri, castelli e centri, del giocatore e della CPU. La CPU tira
+  sempre a un'unita' del giocatore a portata: si sente anche se chi tira e'
+  nella nebbia, come si vede la freccia che arriva.
+- La battaglia di sfondo del menu principale e' muta (`audio.world`): dopo
+  il primo clic nel menu si sarebbero sentite spade e frecce.
+Prova (Chromium, Padania, tre guerrieri e due arcieri del giocatore contro
+tre guerrieri e un arciere della CPU, vista sulla mischia, 12 s): 22 colpi
+di spada e 18 frecce suonati (gli altri fermati dal tetto di 4 voci e dai 45
+ms); nel menu, dopo il clic, 226 colpi della battaglia di sfondo e nessuno
+suonato. Prove unitarie.
+
+### 9.140 Il martello: costruzione e riparazione
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione (`nuovi/audio/martello.wav`, 0,3 s, mono, 48 kHz) i colpi
+di martello di chi costruisce o ripara.
+**Il colpo**: uno solo (attacco a 37 ms, -50 dB dopo 70 ms). Come negli
+archi il 97% dell'energia era sotto i 120 Hz (un tonfo), e prima del colpo
+un brusio grave a -47 dB; una nota fissa a ~630 Hz che lo spettrogramma
+mostrava per tutto il file e' a -87 dB, trascurabile. Passa-alto a 150 Hz a
+48 dB/ottava come per l'arco: brusio a -77 dB, restano un po' di corpo
+(120-250 Hz) e il tac (2-8 kHz). Taglio di 250 ms, sfumato negli ultimi 120.
+**Una variante sola**: `altezza` per suono (audio.json, nel manifest `pitch`,
+game/src/audio.js): il martello varia di +-12% invece di +-7%. Gain 0,75:
+filtrato suona 2,7 dB piu' piano di ascia e piccone. Con piu' colpi
+registrati le varianti si aggiungono in `tagli`.
+**Nel gioco** (civilians.js `otherWorkTick`): la costruzione (azione 6:
+cantieri, il ponte del livello 4, i cantieri della CPU) e la riparazione
+(azione 7: edifici, mura, il monastero) aggiungono vita a ogni fase (13
+passi); il colpo una volta per ciclo (39 passi, ~0,65 s, come l'ascia), alla
+fine, e solo se il lavoro e' andato avanti (non senza il legno o la pietra);
+non dei lavoratori nemici nascosti nella nebbia. Non la semina dei campi.
+Prova (Chromium, Padania, tre lavoratori, vista sul lavoro, 10 s): una casa
+costruita con 17 colpi suonati (uno ogni ~0,25 s in tutto); il centro
+riparato da meta' vita con 28 colpi; senza legno ne' pietra nessun colpo.
+Prove unitarie.
+
+### 9.141 La pioggia: un loop che entra ed esce con le gocce
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione della pioggia (`nuovi/audio/pioggia.wav`, 61 s, stereo,
+44,1 kHz) un loop piu' breve, che entri ed esca con una dissolvenza e resti
+piano finche' piove.
+**La registrazione**: molto bassa (livello medio -64 dB, gocce isolate fino
+a +30 dB sopra la media), stereo largo (correlazione fra i canali 0,19),
+energia fra 600 Hz e 10 kHz; niente rimbombo ne' toni da togliere (il piu'
+forte, 36 Hz, +8 dB in una banda quasi vuota): solo un passa-alto a 60 Hz.
+**Il tratto**: su finestre di 8, 10 e 12 s, quella con meno gocce che
+spiccano (oltre +22 dB), il picco piu' basso e il livello piu' costante: da
+51 a 59 s (5 gocce, livello costante entro 0,25 dB su mezzo secondo). In un
+giro breve una goccia forte si riconoscerebbe a ogni ripetizione.
+**tools/18, i loop** (`loop` in audio.json): il tratto e gli `incrocio_ms`
+(1,5 s) che lo seguono, dissolti a potenza costante (qsin) sull'inizio:
+l'ultimo campione continua nel primo. Due ingressi dallo stesso file, ognuno
+dal suo punto: con un ingresso solo diviso in due (asplit) il mixer si
+fermava dopo pochi millisecondi (il file da 1 KB della prima prova).
+`stereo` tiene i due canali (MP3 a 128 kbit/s). Il volume sul livello medio
+(`rms_db` -26 dBFS) e non sul picco, e un limitatore a `limite_db` -12 dBFS
+(14 dB sopra la media) smussa le gocce piu' forti, che si fondono col resto.
+Risultato: 8,000 s esatti (anche decodificato da Chromium), livello -27 dBFS
+costante entro 0,4 dB ogni mezzo secondo; alla giunzione il salto fra
+l'ultimo e il primo campione e' come quello fra due campioni vicini; 129 KB.
+**Nel gioco** (game/src/audio.js `ambient`): un suono continuo, senza
+posizione, al volume livello x gain (0,2: piano, ~11 dB sotto gli effetti).
+Il manager lo chiama a ogni passo col livello delle gocce (`rain.level`,
+manager.js), che sale e scende in 5 s: il suono entra ed esce con loro, piu'
+una costante di tempo di 1 s; parte da un punto a caso del giro; qualche
+secondo dopo che il livello e' tornato a 0 il loop si ferma. Con "Effetti
+sonori: NO" si spegne subito, anche a gioco in pausa.
+Prova (Chromium, Padania): all'inizio della pioggia il volume resta a zero
+finche' non cadono le gocce (prima il cielo si copre), poi sale con loro;
+alla fine scende a zero in ~4 s e il loop si ferma; di nuovo la pioggia e
+"Effetti sonori: NO" in pausa: fermo subito. Prove unitarie.
+
+### 9.142 La pioggia cosi' com'e' registrata
+
+Correzione dell'autore (10 novembre 2026, stessa PR, versione 0.2610) dopo
+l'ascolto di §9.141: "manca il rumore di fondo e in generale e' molto
+forte, limitati a tagliare e comprimere l'originale". Tolti il passa-alto,
+il limitatore sulle gocce e il volume portato a -26 dBFS (35 dB in piu',
+poi gain 0,2: in tutto ~21 dB sopra la registrazione). Ora il loop e' il
+tratto da 51 a 59 s cosi' com'e': solo tagliato, con la fine dissolta in
+1,5 s sull'inizio (non cambia il suono: senza, il giro scatterebbe a ogni
+ripetizione) e convertito in MP3. tools/18: `volume_originale` (nessun
+guadagno) e `kbit` per suono. A 128 kbit/s l'MP3 di un fruscio cosi' basso
+perdeva 8 dB sopra i 16 kHz: 256 kbit/s senza il taglio degli acuti
+(`-cutoff 20000`), bande uguali all'originale entro 0,1 dB (sopra i 16 kHz
+-1,3 dB); 252 KB (tutto l'audio 389 KB). Livello -61 dBFS come l'originale,
+8,000 s, giunzione senza salti. Nel gioco gain 1: il volume della
+registrazione, che entra ed esce con le gocce come prima.
+Prova (Chromium): il loop decodificato a 8,000 s, stereo; il volume segue
+le gocce fino a 1 e alla fine scende a zero; prove unitarie.
+
+### 9.143 La musica: il primo loop a parti (archi e field recording)
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): i
+loop musicali a parti, mixati nel gioco. Prima la traccia unita (`535_loop1`,
+3:30, MP3), poi le parti: gli archi (`loop1_archi.mp3`, 42 s, MP3 320 kbit/s)
+e il field recording (`loop1_field.wav`, 92 s, WAV 16 bit), tutti a 44,1 kHz
+stereo; il drone arrivera'. Il mix: il field al volume della traccia unita
+la mattina, che scende verso la notte e riparte la mattina; gli archi circa
+costanti ("ci ragioniamo"); il drone da zero, piu' alto quanta piu'
+popolazione ha il giocatore.
+**La traccia unita**: livello costante (medio -28 dBFS, picco -12,8); senza
+un battito netto (il BPM non esce dagli attacchi). Per bande: la fascia a ~2
+kHz e la linea a ~3 kHz si ripetono ogni ~42 s (e ~84); melodia e gravi con
+un passo di 1,25 s. Gli archi vi ritornano a 0, 42, 84, 126, 168 s (il file
+da 42 s ripetuto); il field non si ritrova al campione (un altro tratto o
+un'altra versione). **I livelli**: le forme d'onda non coincidono col file
+(correlazione 0,08, nel mix suonati o elaborati un po' diversi): confrontati
+gli spettri medi a quarti d'ottava sopra i 566 Hz, la traccia unita e' archi
+a +0,0 dB e field a -0,75 (errore medio 0,5 dB): i file sono gia' al livello
+del mix, gain 1. Sotto i 400 Hz la traccia unita ha molta energia che non e'
+di archi ne' field: il drone, grave.
+**Le parti** (tools/18, "musica"; solo tagliate e convertite, §9.142):
+- archi: l'MP3 non ha l'intestazione col riempimento dell'encoder (si
+  decodifica in 1608 blocchi interi, 216 campioni, 4,9 ms, oltre i 42 s),
+  tutti nel silenzio iniziale (il primo suono a 294 ms): tagliati, il giro
+  torna a 42,000 s (altrimenti 5 ms di troppo a ogni giro). Ricodificato a
+  320 kbit/s (1,7 MB).
+- field: 92,000 s cosi' com'e', MP3 a 256 kbit/s senza taglio degli acuti
+  (bande uguali all'originale, sopra i 16 kHz -4 dB; a 160 kbit/s -11): 2,9
+  MB.
+tools/18: `loop` con `incrocio_ms` 0 (solo il taglio, al campione: ms coi
+decimali), la frequenza dell'originale (si ricampiona solo oltre i 48 kHz),
+la durata decodificata stampata per i loop.
+**Da sapere** (lasciato com'e', da decidere con l'autore): gli archi
+partono dal silenzio e salgono in ~2,5 s mentre alla fine suonano pieni
+(-36 dB): a ogni giro rientrano (succede anche nella traccia unita, dove gli
+altri suoni lo coprono); il field ha una dissolvenza in entrata (~2 s) e una
+in uscita (~2,5 s): a ogni giro (92 s) un respiro. Esportati con "Render as
+Loop" di Ableton (le code riportate all'inizio) e senza dissolvenze girano
+pieni.
+**Il motore** (game/src/audio.js `music`): le parti partono nello stesso
+istante e girano ognuna sul suo giro (si sfasano come nella traccia unita);
+una parte decodificata dopo entra al punto giusto del suo giro; il volume di
+ognuna segue quello dato dal gioco in ~2,5 s; un volume generale della
+musica a parte dagli effetti. "Musica: SI'/NO" nel menu di pausa
+(settings.music). Nel menu principale niente musica, per ora.
+**Il mix** (game/src/music.js, dal manager ogni 10 passi): archi 1; field 1
+all'alba, giu' in linea col giorno (il primo 6000 passi, poi 4000: il
+manager ora tiene `dayLen`, anche nei salvataggi) fino a 0 al tramonto,
+zitto di notte, risale con l'alba (global.night da 1 a 0); niente ciclo
+("sempre giorno") 1, "sempre notte" e livello 1 zitto; drone popolazione /
+50, fino a 1. I numeri sono in MUSIC (music.js), da regolare a orecchio.
+Prove: music.test.mjs (nuova: il field nelle fasi del giorno, il drone, gli
+archi); nel browser (Padania) i loop decodificati a 42 e 92 s esatti; field
+0,9 a inizio partita, 0,46 a meta' giorno, 0 di notte, 0,9 dopo l'alba,
+archi a 1; "Musica: NO" ferma, "SI'" riparte; nel menu niente. Prove
+unitarie.
+
+### 9.144 La musica: il drone
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): la
+terza parte del primo loop, il drone (`nuovi/audio/loop1_drone.wav`, 214 s,
+WAV 16 bit, 32 kHz, stereo), che parte da zero e sale con la popolazione.
+**Il file**: livello medio -29 dBFS, il 93% dell'energia sotto i 200 Hz: e'
+la parte grave della traccia unita (§9.143), dove entra a 0 dB: archi a 0,
+field a -0,75 e drone a 0 ricostruiscono la traccia unita con 0,4 dB di
+errore medio su tutte le bande. Tutte e tre le parti sono al livello del mix.
+**Solo tagliato e convertito**: 214,000 s, MP3 a 96 kbit/s e 32 kHz (per un
+suono cosi' grave le bande sono le stesse che a 128 e 160 kbit/s), 2,6 MB.
+Le tre parti 6,9 MB, tutto l'audio 7,3 MB.
+**Da sapere** (lasciato com'e', come archi e field): il drone sale da -70 a
+-28 dB nel primo secondo e mezzo e scende da -30 a -39 negli ultimi 0,6 s;
+alla giunzione il salto fra l'ultimo e il primo campione e' 20 volte quello
+tipico: a ogni giro (3:34) un calo e probabilmente un colpo grave. Esportato
+con "Render as Loop" e senza dissolvenze girerebbe pieno.
+**Nel gioco**: music.js lo aveva gia' (popolazione / 50, fino a 1).
+Prova (Chromium, Padania): decodificato a 214 s, stereo; volume 0,06 con 3
+di popolazione, 0,49 con 25, 0,99 con 50, 1 con 80, 0,02 tornati a 0.
+
+### 9.145 La musica in tutti i livelli; le parti da riesportare
+
+Decisione dell'autore (10 novembre 2026, stessa PR, versione 0.2610): per
+ora le tre parti restano come sono; vanno riesportate come loop (annotato
+in "Cose da fare", in cima). Domanda: la musica e' in tutti i livelli? Si':
+la guida il manager (music.js, §9.143), che c'e' in ogni room; solo il menu
+principale e' muto (audio.musicRoom). Controllato nel browser, dopo un clic
+e 9 s, volumi (archi, field, drone):
+| room | notte | popolazione | archi | field | drone |
+|---|---|---|---|---|---|
+| menu | 0 | 14 | - | - | - |
+| match | 0 | 5 | 0,98 | 0,91 | 0,10 |
+| lvl01 | 1 | 8 | 0,98 | 0 | 0,16 |
+| lvl02 | 0 | 28 | 0,98 | 0,90 | 0,55 |
+| lvl03 | 0 | 21 | 0,98 | 0,91 | 0,41 |
+| lvl04 | 0 | 10 | 0,98 | 0,91 | 0,19 |
+| lvl05 | 0 | 61 | 0,98 | 0,90 | 0,97 |
+| lvl06 | 0 | 36 | 0,98 | 0,91 | 0,70 |
+| sk_rivo | 0 | 3 | 0,98 | 0,90 | 0,06 |
+(gli archi a 0,98: stanno ancora salendo dall'entrata in dissolvenza.) Il
+livello 1 e' sempre di notte: li' il field non si sente mai. La musica e'
+la stessa ovunque (un solo loop); con altri loop si potra' sceglierne uno
+per livello.
+

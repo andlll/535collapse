@@ -575,14 +575,17 @@ export const TEXTS = {
   "Truce": { it: "Tregua", es: "Tregua", pt: "Trégua", de: "Waffenruhe", fr: "Trêve" },
   "5 min": { it: "5 min", es: "5 min", pt: "5 min", de: "5 Min.", fr: "5 min" },
   "10 min": { it: "10 min", es: "10 min", pt: "10 min", de: "10 Min.", fr: "10 min" },
-  "Fog": { it: "Nebbia", es: "Niebla", pt: "Névoa", de: "Nebel", fr: "Brouillard" },
-  "Explored": { it: "Esplorata", es: "Explorado", pt: "Explorado", de: "Erkundet", fr: "Explorée" },
+  "Visibility": { it: "Visibilità", es: "Visibilidad", pt: "Visibilidade", de: "Sichtbarkeit", fr: "Visibilité" }, // §9.131 (era "Fog")
+  "Explored": { it: "Esplorata", es: "Explorada", pt: "Explorada", de: "Erkundet", fr: "Explorée" },
+  "Full": { it: "Totale", es: "Total", pt: "Total", de: "Vollständig", fr: "Totale" },
   "Day and night": { it: "Giorno e notte", es: "Día y noche", pt: "Dia e noite", de: "Tag und Nacht", fr: "Jour et nuit" },
   "Rain": { it: "Pioggia", es: "Lluvia", pt: "Chuva", de: "Regen", fr: "Pluie" },
   "Starting position": { it: "Posizione di partenza", es: "Posición inicial", pt: "Posição inicial", de: "Startposition", fr: "Position de départ" },
   "North-west": { it: "Nord-ovest", es: "Noroeste", pt: "Noroeste", de: "Nordwesten", fr: "Nord-ouest" },
   "South-east": { it: "Sud-est", es: "Sudeste", pt: "Sudeste", de: "Südosten", fr: "Sud-est" },
   "The great plain of the Po. The river splits the two lands: three bridges, open fields, cavalry country.": { it: "La grande pianura del Po. Il fiume divide le due terre: tre ponti, campi aperti, terra di cavalieri.", es: "La gran llanura del Po. El río divide las dos tierras: tres puentes, campos abiertos, tierra de caballería.", pt: "A grande planície do Pó. O rio divide as duas terras: três pontes, campos abertos, terra de cavalaria.", de: "Die große Poebene. Der Fluss trennt die beiden Länder: drei Brücken, offene Felder, Land der Reiterei.", fr: "La grande plaine du Pô. Le fleuve sépare les deux terres : trois ponts, des champs ouverts, un pays de cavaliers." },
+  "Music: {state}": { it: "Musica: {state}", es: "Música: {state}", pt: "Música: {state}", de: "Musik: {state}", fr: "Musique : {state}" }, // §9.143
+  "Sound effects: {state}": { it: "Effetti sonori: {state}", es: "Efectos de sonido: {state}", pt: "Efeitos sonoros: {state}", de: "Soundeffekte: {state}", fr: "Effets sonores : {state}" }, // §9.137
   "Blood: {state}": { it: "Sangue: {state}", es: "Sangre: {state}", pt: "Sangue: {state}", de: "Blut: {state}", fr: "Sang : {state}" }, // §9.117
   "Fire and sparks: {state}": { it: "Fiamme e scintille: {state}", es: "Llamas y chispas: {state}", pt: "Chamas e faíscas: {state}", de: "Flammen und Funken: {state}", fr: "Flammes et étincelles : {state}" },
   "Dynamic resolution: {state}": { it: "Risoluzione dinamica: {state}", es: "Resolución dinámica: {state}", pt: "Resolução dinâmica: {state}", de: "Dynamische Auflösung: {state}", fr: "Résolution dynamique : {state}" },

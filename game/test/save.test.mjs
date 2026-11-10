@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { encodeGraph, decodeGraph, packTyped, unpackTyped, sign, verify, parseSave, gzipBase64, gunzipBase64,
+         gzipBytes, packFile, bytesText, scramble,
          SAVE_VERSION } from "../src/save.js";
 import { Alarms } from "../src/alarms.js";
 
@@ -75,4 +76,27 @@ test("gzip + base64", async () => {
   const z = await gzipBase64(s);
   assert.ok(z.length < s.length / 10);
   assert.equal(await gunzipBase64(z), s);
+});
+
+// [§9.135] il file ".dvgame": gzip mescolato con l'intestazione "DVG1"; si
+// leggono anche il gzip semplice e il JSON in chiaro dei file di prima
+test("file .dvgame: mescolato, non gzip, e si rilegge; anche i formati di prima", async () => {
+  const json = JSON.stringify(sign({ game: "535", v: SAVE_VERSION, room: "match", state: { a: [1, 2, 3], s: "x".repeat(5000) } }));
+  const gz = await gzipBytes(json);
+  const file = packFile(gz);
+  assert.deepEqual([...file.subarray(0, 4)], [0x44, 0x56, 0x47, 0x31]);
+  assert.ok(!(file[4] === 0x1f && file[5] === 0x8b), "non deve sembrare un gzip");
+  assert.ok(!new TextDecoder().decode(file).includes("match"), "niente testo leggibile");
+  assert.deepEqual(scramble(scramble(gz)), gz);
+  assert.equal(await bytesText(file), json);
+  assert.equal(await bytesText(gz), json);
+  assert.equal(await bytesText(new TextEncoder().encode(json)), json);
+  assert.ok(parseSave(await bytesText(file)));
+  // senza CompressionStream: JSON mescolato
+  assert.equal(await bytesText(packFile(new TextEncoder().encode(json))), json);
+  // un byte cambiato: il gzip o il checksum lo scartano
+  const bad = file.slice(); bad[bad.length >> 1] ^= 0x10;
+  let ok = null;
+  try { ok = parseSave(await bytesText(bad)); } catch (e) { ok = null; }
+  assert.equal(ok, null);
 });

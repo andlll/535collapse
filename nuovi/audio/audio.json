@@ -1,0 +1,98 @@
+{
+  "formato": "535-audio",
+  "versione": 1,
+  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms; un terzo elemento e' un altro file d'origine, §9.139) delle varianti; `filtro`, se c'e', e' la pulizia (filtri di ffmpeg); `altezza` la variazione d'altezza a ogni colpo (se no +-0,07, §9.140). tools/18_audio.py li taglia, li filtra, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
+  "picco_db": -3,
+  "suoni": {
+    "legno": {
+      "da": "594389__elandre01__knocking-on-wood.wav",
+      "tagli": [[189, 389], [518, 718], [849, 1049], [1197, 1397]],
+      "dissolvenza_ms": [2, 80],
+      "gain": 0.55,
+      "nota": "il colpo d'ascia del boscaiolo (civilians.js workTick): i quattro colpi della registrazione, uno per variante (attacchi a 193, 522, 853 e 1201 ms; coda sopra il rumore di fondo per 50-80 ms, rumore di fondo a -71 dB)"
+    },
+    "piccone": {
+      "da": "miniere_pietra.wav",
+      "tagli": [[158, 408], [809, 1059], [1553, 1803], [2152, 2402], [2757, 3007], [3355, 3605], [3956, 4206], [4586, 4836], [5154, 5404], [5722, 5972], [6278, 6528], [6838, 7088], [7405, 7655], [7975, 8225], [8520, 8770], [9069, 9319], [9635, 9885], [10187, 10437]],
+      "dissolvenza_ms": [2, 100],
+      "gain": 0.55,
+      "nota": "il colpo di piccone su oro e pietra (civilians.js workTick): i diciotto colpi della registrazione dell'autore, uno per variante (ognuno scende di 60 dB in ~135 ms; prima di ogni attacco -62 dB o meno; rumore di fondo -94 dB)"
+    },
+    "spada": {
+      "da": "spade.wav",
+      "tagli": [[493, 993], [1294, 1794], [2133, 2633], [2986, 3486], [3904, 4404], [4722, 5222]],
+      "filtro": "highpass=f=250:poles=2,highpass=f=250:poles=2",
+      "dissolvenza_ms": [2, 300],
+      "gain": 0.28,
+      "nota": "il colpo in mischia (soldati e cavalieri, alleati e nemici: units.js meleeStrike, enemies.js enemyStrike): i sei colpi della registrazione dell'autore, energia fra 1,2 e 10 kHz, picchi -41..-46 dB (molto deboli: +38 dB circa); il passa-alto a 250 Hz (24 dB/ottava) toglie il rimbombo del fondo (sotto gli 80 Hz), le spade non hanno niente sotto i 600 Hz; 500 ms, coda metallica sfumata negli ultimi 300. Gain 0,28: con la coda metallica, a parita' di picco, suonano 6 dB piu' forti di ascia e piccone (RMS nei primi 100 ms -17,6 contro -23,6)"
+    },
+    "arco": {
+      "da": "arco1.wav",
+      "tagli": [[312, 662], [87, 437, "arco2.wav"], [192, 542, "arco3.wav"]],
+      "filtro": "highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2",
+      "dissolvenza_ms": [2, 150],
+      "gain": 0.55,
+      "nota": "la freccia scoccata (arcieri, torri, castelli, centri, alleati e nemici: ranged.js allyArrow, enemyArrow): un colpo per file. Pulizia: il colpo d'aria sotto i 100 Hz era il 90-96% dell'energia: passa-alto a 150 Hz a 48 dB/ottava (a 100 Hz e 24 dB/ottava ne restava il 26-49%), restano corpo e corda (200-1200 Hz) e lo schiocco, col picco quasi uguale; tagliati via i due clic a 1,37 e 1,45 s di arco1 e il silenzio digitale con i residui dopo 0,5 s di arco2"
+    },
+    "martello": {
+      "da": "martello.wav",
+      "tagli": [[33, 283]],
+      "filtro": "highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2",
+      "dissolvenza_ms": [2, 120],
+      "altezza": 0.12,
+      "gain": 0.75,
+      "nota": "il colpo di martello di chi costruisce o ripara (civilians.js otherWorkTick, una volta per ciclo di 39 passi, se il lavoro va avanti): un colpo solo (attacco a 37 ms, -50 dB dopo 70 ms). Il 97% dell'energia era sotto i 120 Hz (un tonfo, come negli archi) e prima del colpo un brusio grave a -47 dB: passa-alto a 150 Hz a 48 dB/ottava come per l'arco (brusio a -77 dB; restano un po' di corpo, 120-250 Hz, e il tac, 2-8 kHz). Una variante sola: altezza +-12% invece di +-7%. Gain 0,75: filtrato suona 2,7 dB piu' piano di ascia e piccone (RMS nei primi 100 ms -26,4 contro -23,6)"
+    },
+    "pioggia": {
+      "da": "pioggia.wav",
+      "tagli": [[51000, 59000]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz) il tratto di 8 s da 51 a 59 s, cosi' com'e' (§9.142, richiesta dell'autore: niente filtro, limitatore ne' guadagno, che toglievano il fondo e la rendevano troppo forte): solo tagliato, con la fine dissolta in 1,5 s sull'inizio perche' il giro non scatti, e convertito in MP3 a 256 kbit/s senza il taglio degli acuti (bande uguali all'originale entro 0,1 dB; a 128 si perdevano 8 dB sopra i 16 kHz). Volume quello della registrazione (livello medio ~ -64 dBFS), gain 1"
+    },
+    "musica_archi": {
+      "da": "loop1_archi.mp3",
+      "tagli": [[4.89796, 42004.89796]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 320,
+      "gain": 1,
+      "nota": "la musica, primo loop: gli archi (Ableton, 42 s, MP3 320 kbit/s, 44,1 kHz). L'MP3 dell'autore non dice quanti campioni di riempimento togliere: si decodifica in 1608 blocchi interi, 216 campioni (4,9 ms) oltre i 42 s, tutti nel silenzio iniziale (il primo suono e' a 294 ms): tolti, il giro torna a 42,000 s. Volume come nella traccia unita (gli archi vi entrano a 0 dB). Costanti (game/src/music.js)"
+    },
+    "musica_field": {
+      "da": "loop1_field.wav",
+      "tagli": [[0, 92000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "la musica, primo loop: il field recording (Ableton, 92 s, WAV 16 bit, 44,1 kHz), cosi' com'e'. MP3 a 256 kbit/s senza taglio degli acuti (bande uguali all'originale; sopra i 16 kHz -4 dB, a 160 kbit/s -11). Volume come nella traccia unita (vi entra a -0,75 dB) la mattina, poi scende col giorno fino a zero di notte e riparte all'alba (game/src/music.js)"
+    },
+    "musica_drone": {
+      "da": "loop1_drone.wav",
+      "tagli": [[0, 214000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 96,
+      "gain": 1,
+      "nota": "la musica, primo loop: il drone (Ableton, 214 s, WAV 16 bit, 32 kHz), cosi' com'e'. Il 93% dell'energia sotto i 200 Hz: e' la parte grave della traccia unita, dove entra a 0 dB (con archi e field il modello ricostruisce la traccia unita con 0,4 dB di errore medio). MP3 a 96 kbit/s, 32 kHz: per un suono cosi' grave le bande sono le stesse che a 160 (2,6 MB invece di 4,3). Da zero, sale con la popolazione del giocatore (game/src/music.js)"
+    }
+  }
+}

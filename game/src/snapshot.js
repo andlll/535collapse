@@ -31,7 +31,8 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
     seeds: world.seeds || null,
     seedEmitter: world.seedEmitter || null,
     g,
-    manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain, overcast: world.overcast }, // §9.92: overcast
+    manager: { al: manager.al, fogalpha: manager.fogalpha, rain: manager.rain, overcast: world.overcast, // §9.92: overcast
+               dayLen: manager.dayLen }, // §9.143 (la musica: quanto e' avanzato il giorno)
     path: { cost: path.cost, enemyBlock: path.enemyBlock, enemyPass: path.enemyPass, solid: path.solid },
     fog: { explored: fog.explored },
     particles: { systems: P.systems, seq: P.seq },
@@ -74,6 +75,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   manager.al = s.manager.al;
   manager.fogalpha = s.manager.fogalpha;
   manager.rain = s.manager.rain;
+  if (s.manager.dayLen) manager.dayLen = s.manager.dayLen; // §9.143 (non nei salvataggi di prima: music.js se la cava)
   world.overcast = s.manager.overcast; // §9.92 (undefined nei salvataggi di prima: overcastStep lo rimette)
   manager.endlessNight();
   world.twilight = manager.twilight(); // §9.88: la visuale del crepuscolo gia' al primo disegno

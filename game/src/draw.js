@@ -48,7 +48,7 @@ export class Draw {
     this.colour = 0xffffff;
     this.font = null;
     this.halign = "left";
-    this.slant = 0; // §9.121: corsivo finto (textExt)
+    this.justify = false; // §9.136: testo giustificato (textExt, con larghezza, allineato a sinistra)
     this.valign = "top";
   }
 
@@ -501,30 +501,38 @@ export class Draw {
     if (!fr) return;
     const [ou, ov] = fr.f.rect;
     const lh = (sep === undefined || sep < 0 ? f.height : sep) * scale;
-    const lines = this._lines(str, sep, width === undefined || width < 0 ? width : width / scale);
+    const wrap = width === undefined || width < 0 ? width : width / scale;
+    // [§9.136] giustificato: ogni riga andata a capo (non l'ultima di un
+    // paragrafo, ne' una parola sola) si allarga fino a `width` distribuendo
+    // lo spazio in piu' fra le parole
+    const just = this.justify && wrap > 0 && this.halign === "left";
+    const lines = [], full = [];
+    if (just) {
+      for (const para of plain(gmString(str)).split(/#|\n/)) {
+        const ls = this._lines(para, sep, wrap);
+        ls.forEach((l, k) => { lines.push(l); full.push(k < ls.length - 1 && l.includes(" ")); });
+      }
+    } else lines.push(...this._lines(str, sep, wrap));
     const total = lines.length * lh;
     let yy = this.valign === "middle" ? y - total / 2 : this.valign === "bottom" ? y - total : y;
     const col = packColor(this.colour, this.alpha);
-    for (const line of lines) {
+    lines.forEach((line, n) => {
       const w = this._width(line, f) * scale;
       let xx = this.halign === "center" ? x - w / 2 : this.halign === "right" ? x - w : x;
       xx = Math.round(xx);
+      const gap = full[n] ? (width - w) / (line.split(" ").length - 1) : 0;
       const yr = Math.round(yy);
       for (const ch of line) {
         const g = f.glyphs[ch.charCodeAt(0)];
         if (!g) continue;
         const [gx, gy, gw, gh, shift, off, yoff = 0] = g;
         if (gw > 0 && gh > 0) {
-          const x0 = xx + off * scale, y0 = yr + yoff * scale, x1 = x0 + gw * scale, y1 = y0 + gh * scale;
-          // [§9.121] corsivo finto (slant): il quadrilatero inclinato attorno
-          // alla linea di base (i font del gioco non hanno il corsivo)
-          const st = this.slant ? this.slant * (yr + lh * 0.75 - y0) : 0, sb = this.slant ? this.slant * (yr + lh * 0.75 - y1) : 0;
-          this.r.quad(fr.tex, x0 + st, y0, x1 + st, y0, x1 + sb, y1, x0 + sb, y1,
-                      ou + gx, ov + gy, ou + gx + gw, ov + gy + gh, col);
+          const x0 = gap ? Math.round(xx + off * scale) : xx + off * scale, y0 = yr + yoff * scale, x1 = x0 + gw * scale, y1 = y0 + gh * scale;
+          this.r.quad(fr.tex, x0, y0, x1, y0, x1, y1, x0, y1, ou + gx, ov + gy, ou + gx + gw, ov + gy + gh, col);
         }
-        xx += shift * scale;
+        xx += shift * scale + (ch === " " ? gap : 0);
       }
       yy += lh;
-    }
+    });
   }
 }

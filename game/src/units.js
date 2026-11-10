@@ -11,6 +11,7 @@
 // l'opzione "variabili non inizializzate = 0" di GMS (option_variableerrors
 // False nel config): qui sono inizializzate esplicitamente a 0.
 
+import { audio } from "./audio.js"; // §9.139
 import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { ANIM } from "./animTables.js";
@@ -1040,6 +1041,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   const dmg = table[v.slife];
   if (dmg !== undefined) v.life -= dmg;
   bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
+  if (i.visible !== false || v.visible !== false) audio.play("spada", v.x, v.y); // §9.139: il colpo
   if ((v.slife === 125 || v.slife === 100) && v.action === 0) {
     const dirscampa = pointDirection(io_x, io_y, v.x, v.y);
     v.action = 1; v.warwork = 4; v.step = 0;

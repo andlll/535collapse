@@ -118,25 +118,40 @@ function loadRows(W, H) {
 
 // [§9.118] La schermata della schermaglia. [§9.121, disegno dell'autore]
 // A sinistra un riquadro solo: la foto della mappa, sotto il nome con le
-// frecce per scorrere le mappe, sotto la descrizione in corsivo. A destra i
+// frecce per scorrere le mappe, sotto la descrizione (giustificata, §9.136). A destra i
 // parametri in una griglia 3 x 3 di riquadri: in alto il titolo, al centro
 // l'icona del valore attuale fra due frecce, in basso il nome del valore.
 // La meta' sinistra di un riquadro torna al valore prima, la destra passa a
 // quello dopo. "Indietro" e' il cerchio in alto a destra (§9.120), "Inizia"
 // in basso a destra.
+// [§9.131, richiesta dell'autore] Il riquadro della mappa finisce al bordo
+// basso della terza fila dei parametri (prima arrivava fino a "Inizia"). La
+// descrizione ci deve stare in tutte le lingue: skDescH e' l'altezza della
+// piu' lunga nella lingua attuale (misurata in drawSkirmish, righe da 30 px)
+// e, se manca posto, la foto si rimpicciolisce (3:2, centrata).
 const SK_KEYS = () => Object.keys(SK_OPTIONS);
+const skCardW = (W) => Math.min(440, W * 0.33);
+let skDescH = 150, skDescKey = "";
 function skLayout(W, H) {
-  const top = 110, bottom = H - 40, gap = 18;
-  const lx1 = Math.max(30, W * 0.05), LW = Math.min(440, W * 0.33);
+  const top = 110, gap = 18;
+  const lx1 = Math.max(30, W * 0.05), LW = skCardW(W);
+  const ch = Math.min(200, (H - top - 120 - 2 * gap) / 3);
+  // (su uno schermo basso, se la foto piu' piccola, 120 px, e la descrizione
+  // non ci stanno, il riquadro scende quanto serve, fino a 40 px dal fondo)
+  const bottom = Math.max(top + 3 * ch + 2 * gap, Math.min(H - 40, top + 20 + 120 + 80 + skDescH + 30));
   const rows = [];
   const card = { x1: lx1, y1: top, x2: lx1 + LW, y2: bottom };
-  const photoW = LW - 40, photoH = Math.round(photoW * 2 / 3);
-  const photo = [lx1 + 20, top + 20, lx1 + 20 + photoW, top + 20 + photoH];
+  // 20 sopra la foto, 40 + 40 per il nome, la descrizione e 30 sotto
+  let photoW = LW - 40, photoH = Math.round(photoW * 2 / 3);
+  const room = bottom - top - 20 - 80 - skDescH - 30;
+  if (photoH > room) { photoH = Math.max(120, Math.round(room)); photoW = Math.round(photoH * 1.5); }
+  const px = lx1 + (LW - photoW) / 2;
+  const photo = [px, top + 20, px + photoW, top + 20 + photoH];
   const nameY = photo[3] + 40;
   rows.push({ kind: "map", dir: -1, circle: [lx1 + 45, nameY, 22] });
   rows.push({ kind: "map", dir: 1, circle: [lx1 + LW - 45, nameY, 22] });
   const gx1 = card.x2 + 40, gx2 = W - 40;
-  const cw = (gx2 - gx1 - 2 * gap) / 3, ch = Math.min(200, (H - top - 120 - 2 * gap) / 3);
+  const cw = (gx2 - gx1 - 2 * gap) / 3;
   SK_KEYS().forEach((key, k) => {
     const cx = gx1 + (k % 3) * (cw + gap), cy = top + Math.floor(k / 3) * (ch + gap);
     rows.push({ kind: "opt", key, dir: -1, x1: cx, y1: cy, x2: cx + cw / 2, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
@@ -320,7 +335,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2609";
+const VERSION = "0.2610";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -398,12 +413,19 @@ function glowText(d, x, y, str, wrapW = 0) {
   if (wrapW) d.textExt(x, y, str, 30, wrapW); else d.text(x, y, str);
 }
 function drawSkirmish(i, d, W, H) {
+  // §9.131: l'altezza della descrizione piu' lunga, per lingua e larghezza
+  const dw = skCardW(W) - 48, dkey = getLanguage() + ":" + dw;
+  if (dkey !== skDescKey) {
+    d.setFont("overdue");
+    const h = Math.max(0, ...SK_MAPS.map((q) => (q.desc ? d.stringHeightExt(tr(q.desc), 30, dw) : 0)));
+    if (h > 0) { skDescH = h; skDescKey = dkey; } // (0: il font non c'e' ancora)
+  }
   const L = skLayout(W, H), { card, photo } = L, m = SK_MAPS[shownMap(i)];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("gui_sblocco");
   glowText(d, W / 2, 55, tr("Skirmish"));
-  // la mappa: riquadro, foto, nome con le frecce, descrizione in corsivo
+  // la mappa: riquadro, foto, nome con le frecce, descrizione
   d.setAlpha(0.69);
   d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
   const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
@@ -422,10 +444,12 @@ function drawSkirmish(i, d, W, H) {
   d.setFont("overdue");
   d.setHalign("left");
   d.setValign("top");
-  d.slant = 0.2;
+  // [§9.136, richiesta dell'autore] giustificata e dritta (il corsivo finto
+  // c'era solo qui)
+  d.justify = true;
   d.setAlpha(m.room ? 0.8 : 0.45);
   d.textExt(card.x1 + 24, L.descY, tr(m.desc), 30, card.x2 - card.x1 - 48);
-  d.slant = 0;
+  d.justify = false;
   d.setHalign("center");
   d.setValign("middle");
   // i parametri: un riquadro per due righe (le due meta')
@@ -475,17 +499,24 @@ function drawSkirmish(i, d, W, H) {
   d.setValign("middle");
 }
 
-// una freccia (triangolo di linee) a sinistra (dir -1) o a destra (dir 1)
+// una freccia a sinistra (dir -1) o a destra (dir 1). [§9.131, richiesta
+// dell'autore] il disegno dell'autore (ico_sk_freccia, indietro), specchiato
+// per avanti, al posto del triangolo di linee: alta quanto il triangolo
+// (2,6 volte 0,45 r)
 function arrow(d, x, y, r, dir, hover) {
-  const a = hover ? 0.95 : 0.55, k = r * 0.45;
-  d.setAlpha(a);
-  d.lineWidthColour(x + dir * k, y, x - dir * k, y - k * 1.3, 4, c.black, c.black);
-  d.lineWidthColour(x + dir * k, y, x - dir * k, y + k * 1.3, 4, c.black, c.black);
+  const s = (r * 0.45 * 2.6) / 24;
+  d.spriteExt("ico_sk_freccia", 0, x, y, -dir * s, s, 0, c.white, hover ? 0.95 : 0.55);
   d.setAlpha(1);
 }
 
 // [§9.121] Le icone dei valori (provvisorie, da rifare a mano a mano con
 // l'autore): le icone del gioco dove ce n'e' una adatta, se no linee.
+// [§9.131] I disegni dell'autore: la mano con la bilancia (Equilibrato), la
+// colomba (tregua), la nuvola (visibilita'), la luna; le spade incrociate
+// nere della caserma (ico_caserma) al posto di quelle marroni (ico_battle),
+// l'unico sprite marrone fra quelli neri. [§9.133] Anche l'occhio
+// (visibilita' Totale) e i lingotti (Economico): disegni dell'autore a
+// risoluzione maggiore, al posto delle icone piccole del gioco ingrandite.
 // Difficolta': spade, una in piu' a ogni livello (decisione dell'autore);
 // risorse: i quattro simboli delle risorse, piu' grandi a ogni livello
 // (decisione dell'autore); la pioggia la disegnano le particelle
@@ -498,10 +529,9 @@ function drawOptIcon(d, key, v, x, y, i) {
     const n = { easy: 1, normal: 2, hard: 3, rigged: 4 }[v] || 1;
     for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
   } else if (key === "style") {
-    if (v === "balanced") scales(d, x, y);
-    else if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
-    else icon(d, { aggressive: "ico_battle", defensive: "ico_difesa", economic: "ico_gold", raider: "ico_cavaliere" }[v], x, y,
-      { aggressive: 1, defensive: 0.75, economic: 2, raider: 0.75 }[v]);
+    if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
+    else icon(d, { balanced: "ico_sk_equilibrio", aggressive: "ico_caserma", defensive: "ico_difesa", economic: "ico_sk_oro",
+                   raider: "ico_cavaliere" }[v], x, y, { balanced: 0.85, aggressive: 0.8, defensive: 0.75, economic: 0.9, raider: 0.75 }[v]);
   } else if (key === "victory") {
     icon(d, v === "conquest" ? "ico_ruin" : v === "townhall" ? "ico_centro" : "ico_campana", x, y, 0.75);
   } else if (key === "resources") {
@@ -510,24 +540,15 @@ function drawOptIcon(d, key, v, x, y, i) {
   } else if (key === "pop") {
     icon(d, "ico_multi", x, y, { 50: 0.55, 75: 0.72, 99: 0.9 }[v] || 0.7);
   } else if (key === "truce") {
-    icon(d, v ? "ico_bandiera" : "ico_battle", x, y, v ? 0.75 : 1);
-    if (v) { d.setFont("overdue"); d.setColour(DARK); d.setAlpha(0.9); d.text(x + 26, y + 18, String(v)); }
+    icon(d, v ? "ico_sk_colomba" : "ico_caserma", x, y, 0.8);
+    if (v) { d.setFont("overdue"); d.setColour(DARK); d.setAlpha(0.9); d.text(x + 40, y + 18, String(v)); }
   } else if (key === "fog") {
-    if (v === "none") icon(d, "ico_view_small", x, y, 1.6);
-    else for (let k = 0; k < 3; k++) wave(d, x, y - 14 + k * 14, v === "explored" ? 0.35 : 0.85);
+    if (v === "none") icon(d, "ico_sk_occhio", x, y, 0.8); // §9.133: il disegno dell'autore
+    else icon(d, "ico_sk_visibilita", x, y, 0.85, v === "explored" ? 0.4 : 0.85);
   } else if (key === "daynight") {
     if (v === "day") sun(d, x, y, 1);
     else if (v === "night") moon(d, x, y, 1);
     else { sun(d, x - 16, y, 0.75); moon(d, x + 18, y, 0.75); }
-  }
-}
-function scales(d, x, y) {
-  const L = (a, b, e, f, wd = 3) => d.lineWidthColour(a, b, e, f, wd, DARK, DARK);
-  d.setAlpha(0.85);
-  L(x, y - 22, x, y + 18); L(x - 12, y + 18, x + 12, y + 18, 4); L(x - 24, y - 16, x + 24, y - 16);
-  for (const sx of [-1, 1]) {
-    L(x + sx * 24, y - 16, x + sx * 32, y + 2, 2); L(x + sx * 24, y - 16, x + sx * 16, y + 2, 2);
-    L(x + sx * 34, y + 2, x + sx * 14, y + 2, 3);
   }
 }
 function sun(d, x, y, s) {
@@ -538,25 +559,7 @@ function sun(d, x, y, s) {
     d.lineWidthColour(x + Math.cos(a) * 13 * s, y + Math.sin(a) * 13 * s, x + Math.cos(a) * 19 * s, y + Math.sin(a) * 19 * s, 3, DARK, DARK);
   }
 }
-function moon(d, x, y, s) {
-  d.setAlpha(0.85);
-  let px = null, py = null;
-  for (let k = 0; k <= 16; k++) { // una C spessa: la falce
-    const a = (40 + (280 * k) / 16) * Math.PI / 180;
-    const qx = x + Math.cos(a) * 13 * s, qy = y - Math.sin(a) * 13 * s;
-    if (px !== null) d.lineWidthColour(px, py, qx, qy, 7 * s, DARK, DARK);
-    px = qx; py = qy;
-  }
-}
-function wave(d, x, y, a) {
-  d.setAlpha(a);
-  let px = null, py = null;
-  for (let k = 0; k <= 20; k++) {
-    const qx = x - 34 + (68 * k) / 20, qy = y + Math.sin((k / 20) * Math.PI * 3) * 4;
-    if (px !== null) d.lineWidthColour(px, py, qx, qy, 3, DARK, DARK);
-    px = qx; py = qy;
-  }
-}
+function moon(d, x, y, s) { icon(d, "ico_sk_luna", x, y, s); } // §9.131: il disegno dell'autore
 
 // [§9.121, richiesta dell'autore] La pioggia nel riquadro della pioggia,
 // col sistema di particelle della partita (le gocce, effects.js GOCCIA, piu'

@@ -8,6 +8,7 @@
 // action: 0 fermo, 1 in cammino, 2 taglia legna, 3 scava oro, 4 raccoglie
 // cibo, 5 spacca pietra, 6 costruisce, 7 ripara, 8 semina.
 
+import { audio } from "./audio.js"; // §9.137
 import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
@@ -1243,14 +1244,18 @@ function workTick(i, w) {
       i.wood += 2;
       const t = w.nearest(ax, ay, "albero");
       if (t) { t.wood -= 2; t.hitAt = w._stepNo; if (t.wood === 0) w.destroy(t); } // §9.105: lo scossone (ambience.js treeSway)
+      // [§9.137] il colpo d'ascia; non dei lavoratori nemici nascosti nella nebbia
+      if (t && i.visible !== false) audio.play("legno", ax, ay);
     } else if (a === 3) {
       i.gold += 1;
       const t = w.nearest(ax, ay, "miniera_oro");
       if (t) { t.gold -= 1; if (t.gold === 0) w.destroy(t); }
+      if (t && i.visible !== false) audio.play("piccone", ax, ay); // §9.138: il colpo di piccone
     } else {
       i.stone += 1;
       const t = w.nearest(ax, ay, "stone_parent");
       if (t) { t.stone -= 1; if (t.stone === 0) w.destroy(t); }
+      if (t && i.visible !== false) audio.play("piccone", ax, ay); // §9.138
     }
     // [§9.107] il colpo di piccone: schegge e polvere (ambience.js workChips)
     if (a !== 2) { i.workHit = w._stepNo; i.workKind = a === 3 ? "gold" : "stone"; i.workX = ax; i.workY = ay; }
@@ -1409,6 +1414,7 @@ function otherWorkTick(i, w) {
     i.alarm.set(2, 13);
     return;
   }
+  let hammer = false; // §9.140: il colpo di martello, se il lavoro va avanti
   if (i.action === 6) {
     const f = w.nearest(i.buildx, i.buildy, S.fond);
     if (f && f.fondazione === 1) {
@@ -1422,6 +1428,7 @@ function otherWorkTick(i, w) {
         g.wood -= due;
         f.life += n;
         if (f.life > f.slife) f.life = f.slife;
+        hammer = true;
       }
     }
   } else if (i.action === 7) {
@@ -1442,14 +1449,20 @@ function otherWorkTick(i, w) {
     if (b && b.pietra === 1 && g.stone > 0) {
       g.stone--; b.life++;
       if (b.life > b.slife) b.life = b.slife;
+      hammer = true;
     }
     if (b && b.legno === 1 && g.wood > 0) {
       g.wood--; b.life++;
       b.onfire = 0;
       if (b.firestarted === 1) { fireStop(b, w); b.firestarted = 0; }
       if (b.life > b.slife) b.life = b.slife;
+      hammer = true;
     }
   } else return;
+  // [§9.140] il colpo di martello (costruzione e riparazione): la vita sale a
+  // ogni fase (13 passi), il colpo una volta per ciclo (39 passi, come
+  // l'ascia), alla fine; non dei lavoratori nemici nascosti nella nebbia
+  if (hammer && i.step === 2 && i.visible !== false) audio.play("martello", i.x, i.y);
   i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
   i.alarm.set(2, 13);
 }
@@ -1602,8 +1615,12 @@ function ominoPanel(i, w, d) {
 // Visibilita' delle risorse [C, Step di albero (600 px, o nebbia spenta),
 // miniera e pietre (400 px)]: si rivelano quando un'unita' o un edificio
 // alleato e' vicino, e restano visibili.
+// [§9.131, richiesta dell'autore] Nella schermaglia con la visibilita'
+// Esplorata o Totale tutte le risorse (alberi, miniere, pietre, rovine) si
+// vedono da subito: prima solo gli alberi e solo con Totale (fogville 0).
 function reveal(i, w, dist, fogAware) {
   if (i.visible) return;
+  if (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") { i.visible = true; return; }
   // §6.3 N3: nearWithin da' lo stesso risultato di
   // distance_to_object(instance_nearest(...)) < dist, senza rifare la
   // ricerca quando gli alleati sono lontani per certo

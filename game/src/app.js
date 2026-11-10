@@ -53,6 +53,7 @@ import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishS
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
+import { audio } from "./audio.js"; // §9.137
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
 const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
@@ -65,6 +66,10 @@ const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const settings = loadSettings();
+// [§9.137] gli effetti sonori: si scaricano subito, suonano dopo il primo
+// gesto del giocatore (il browser non lascia partire l'audio prima)
+audio.load();
+for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, () => audio.unlock(), true);
 setLanguage(settings.language);
 
 // i messaggi del motore si ricordano per chiave, per tradurli di nuovo se
@@ -144,6 +149,9 @@ async function main() {
   // finestra (sopra i 32 px) mostrando la freccia.
   canvas.style.cursor = "none";
   const cam = new Camera(room.width, room.height, room.views[0]);
+  audio.cam = cam; // §9.137: il volume secondo la distanza dalla vista
+  audio.world = roomName !== "menu"; // §9.139: la battaglia di sfondo del menu e' muta
+  audio.musicRoom = roomName !== "menu"; // §9.143: la musica in partita (nel menu, da decidere)
   const input = new Input(canvas);
   input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();
@@ -445,6 +453,8 @@ async function main() {
     // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000
     // fili disegnati a ogni fotogramma, fino al 45% del disegno nel menu)
     world.particles.density.grass = GRASS_DENSITY[settings.quality] ?? 1;
+    audio.setEnabled(settings.sfx); // §9.137
+    audio.setMusicEnabled(settings.music); // §9.143
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
     resize(); // §6.8 G1: la qualita' cambia la scala del mondo
@@ -482,7 +492,8 @@ async function main() {
       // resta della campagna, se lo era
       loadSlot: (name) => { location.search = "?room=" + name + (name === roomName ? campaignParam() : "") + "&load=slot"; },
       saveFile: () => {
-        try { saveFile(capture()); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
+        const fail = (e) => { console.error(e); toast(tr("Saving failed"), "warning"); };
+        try { saveFile(capture()).catch(fail); } catch (e) { fail(e); } // §9.134: compresso, asincrono
       },
       fullscreen: () => toggleFullscreen(),
       loadFile: async () => {
@@ -852,7 +863,7 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, ready: true,
+  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
                     objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)

@@ -13,7 +13,7 @@ const VERSION = 1;
 // glass: pannelli dell'interfaccia di vetro sfocato (§7.14)
 const DEFAULTS = { fpsCap: 60, dynamicResolution: true, diagnostics: false, language: null,
                    rain: true, grass: true, fire: true, blood: true, autosave: true, lockMouse: false, quality: "high",
-                   glass: true };
+                   glass: true, sfx: true, music: true }; // sfx: effetti sonori (§9.137); music: la musica (§9.143)
 
 export function loadSettings() {
   try {
