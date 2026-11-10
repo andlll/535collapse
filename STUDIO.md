@@ -9865,3 +9865,40 @@ Prova (Chromium, Padania, tre lavoratori, vista sul lavoro, 10 s): una casa
 costruita con 17 colpi suonati (uno ogni ~0,25 s in tutto); il centro
 riparato da meta' vita con 28 colpi; senza legno ne' pietra nessun colpo.
 Prove unitarie.
+
+### 9.141 La pioggia: un loop che entra ed esce con le gocce
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione della pioggia (`nuovi/audio/pioggia.wav`, 61 s, stereo,
+44,1 kHz) un loop piu' breve, che entri ed esca con una dissolvenza e resti
+piano finche' piove.
+**La registrazione**: molto bassa (livello medio -64 dB, gocce isolate fino
+a +30 dB sopra la media), stereo largo (correlazione fra i canali 0,19),
+energia fra 600 Hz e 10 kHz; niente rimbombo ne' toni da togliere (il piu'
+forte, 36 Hz, +8 dB in una banda quasi vuota): solo un passa-alto a 60 Hz.
+**Il tratto**: su finestre di 8, 10 e 12 s, quella con meno gocce che
+spiccano (oltre +22 dB), il picco piu' basso e il livello piu' costante: da
+51 a 59 s (5 gocce, livello costante entro 0,25 dB su mezzo secondo). In un
+giro breve una goccia forte si riconoscerebbe a ogni ripetizione.
+**tools/18, i loop** (`loop` in audio.json): il tratto e gli `incrocio_ms`
+(1,5 s) che lo seguono, dissolti a potenza costante (qsin) sull'inizio:
+l'ultimo campione continua nel primo. Due ingressi dallo stesso file, ognuno
+dal suo punto: con un ingresso solo diviso in due (asplit) il mixer si
+fermava dopo pochi millisecondi (il file da 1 KB della prima prova).
+`stereo` tiene i due canali (MP3 a 128 kbit/s). Il volume sul livello medio
+(`rms_db` -26 dBFS) e non sul picco, e un limitatore a `limite_db` -12 dBFS
+(14 dB sopra la media) smussa le gocce piu' forti, che si fondono col resto.
+Risultato: 8,000 s esatti (anche decodificato da Chromium), livello -27 dBFS
+costante entro 0,4 dB ogni mezzo secondo; alla giunzione il salto fra
+l'ultimo e il primo campione e' come quello fra due campioni vicini; 129 KB.
+**Nel gioco** (game/src/audio.js `ambient`): un suono continuo, senza
+posizione, al volume livello x gain (0,2: piano, ~11 dB sotto gli effetti).
+Il manager lo chiama a ogni passo col livello delle gocce (`rain.level`,
+manager.js), che sale e scende in 5 s: il suono entra ed esce con loro, piu'
+una costante di tempo di 1 s; parte da un punto a caso del giro; qualche
+secondo dopo che il livello e' tornato a 0 il loop si ferma. Con "Effetti
+sonori: NO" si spegne subito, anche a gioco in pausa.
+Prova (Chromium, Padania): all'inizio della pioggia il volume resta a zero
+finche' non cadono le gocce (prima il cielo si copre), poi sale con loro;
+alla fine scende a zero in ~4 s e il loop si ferma; di nuovo la pioggia e
+"Effetti sonori: NO" in pausa: fermo subito. Prove unitarie.

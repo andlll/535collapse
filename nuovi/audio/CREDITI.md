@@ -12,3 +12,4 @@ crediti del gioco.
 | `spade.wav` | `spada` (il colpo in mischia) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
 | `arco1.wav`, `arco2.wav`, `arco3.wav` | `arco` (la freccia scoccata) | l'autore del gioco | registrazioni proprie, caricate il 10 novembre 2026 | dell'autore |
 | `martello.wav` | `martello` (costruzione e riparazione) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
+| `pioggia.wav` | `pioggia` (il loop della pioggia) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |

@@ -4,6 +4,7 @@
 // riguardano altri sistemi stanno con loro: ondate, presidi e controller dei
 // livelli in levels.js, nebbia e notte disegnate in fog.js e fogdraw.js.
 
+import { audio } from "./audio.js"; // §9.141
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
@@ -247,6 +248,9 @@ export class Manager {
       // [§9.116] piove abbastanza (gocce almeno a meta', come §9.92): gli
       // incendi non fanno danno (effects.js burnTick)
       this.world.rainDamp = !!this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT;
+      // [§9.141] il suono della pioggia, col livello delle gocce: entra ed
+      // esce con loro (in 5 s), piano
+      audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);
     }
     // [§8.13] anelli delle gocce sul fiume (§9.91: quante sono le gocce)
     if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);

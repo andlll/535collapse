@@ -10,13 +10,15 @@
 //   distanza dalla vista (zero a FAR px fuori dal bordo) e il suono va un po'
 //   a destra o a sinistra secondo dove succede (pan);
 // - al massimo VOICES suoni uguali insieme, e non due dello stesso nome a
-//   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante.
+//   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante;
+// - [§9.141] i suoni continui (la pioggia): ambient(nome, livello).
 const FAR = 700;      // px di mondo oltre il bordo della vista a cui il suono si spegne
 const PAN = 0.6;      // pan massimo (ai bordi della vista)
 const VOICES = 4;     // voci dello stesso suono insieme
 const MIN_GAP = 45;   // ms minimi fra due suoni dello stesso nome
 const PITCH = 0.07;   // +- velocita' di riproduzione (altezza)
 const GAIN_VAR = 0.15; // +- volume
+const FADE_TAU = 1;   // [§9.141] s: costante di tempo con cui un suono continuo segue il suo livello
 
 export class SoundBank {
   constructor(base = "assets/audio/") {
@@ -27,6 +29,7 @@ export class SoundBank {
     this.world = true;     // [§9.139] i suoni del mondo (no nella battaglia di sfondo del menu principale)
     this.volume = 1;
     this.sounds = new Map(); // nome -> { buffers: [], gain, last, playing, at }
+    this.ambients = new Map(); // [§9.141] nome -> { src, g, target, zeroAt }: i suoni continui (la pioggia)
     this.cam = null;         // la vista: { x, y, w, h }
     this._manifest = null;
   }
@@ -78,7 +81,56 @@ export class SoundBank {
     } catch (e) { this.ctx = null; }
   }
 
-  setEnabled(on) { this.enabled = !!on; }
+  // (spenti: i suoni continui si spengono subito, anche a gioco in pausa,
+  // quando il manager non li aggiorna)
+  setEnabled(on) {
+    this.enabled = !!on;
+    if (!this.enabled) for (const name of [...this.ambients.keys()]) this._stopAmbient(name);
+  }
+
+  // [§9.141] Un suono continuo (loop, audio.json "loop") al volume level
+  // (0-1) per il suo gain, senza posizione: parte la prima volta che level e'
+  // sopra 0 (da un punto a caso del giro), segue level dolcemente (FADE_TAU)
+  // e si ferma qualche secondo dopo che level e' tornato a 0. La pioggia lo
+  // chiama a ogni passo col livello delle gocce (manager.js), che sale e
+  // scende in 5 s: il suono entra ed esce con loro.
+  ambient(name, level) {
+    const ctx = this.ctx, s = this.sounds.get(name);
+    let a = this.ambients.get(name);
+    const ok = this.enabled && this.world && ctx && ctx.state === "running" && s && s.buffers.length;
+    const target = ok ? Math.max(0, Math.min(1, level || 0)) * s.gain : 0;
+    if (!a) {
+      if (target <= 0) return;
+      const src = ctx.createBufferSource();
+      src.buffer = s.buffers[0];
+      src.loop = true;
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      src.connect(g).connect(this.master);
+      src.start(0, Math.random() * src.buffer.duration);
+      a = { src, g, target: 0, zeroAt: null };
+      this.ambients.set(name, a);
+    }
+    if (Math.abs(target - a.target) > 0.0005) {
+      a.g.gain.setTargetAtTime(target, ctx.currentTime, FADE_TAU);
+      a.target = target;
+    }
+    if (target > 0) a.zeroAt = null;
+    else if (a.zeroAt === null) a.zeroAt = ctx.currentTime;
+    else if (ctx.currentTime - a.zeroAt > FADE_TAU * 6) this._stopAmbient(name);
+  }
+
+  _stopAmbient(name) {
+    const a = this.ambients.get(name);
+    if (!a) return;
+    try {
+      const t = this.ctx.currentTime;
+      a.g.gain.cancelScheduledValues(t);
+      a.g.gain.setTargetAtTime(0, t, 0.08);
+      a.src.stop(t + 0.5);
+    } catch (e) { /* gia' fermo */ }
+    this.ambients.delete(name);
+  }
 
   // Quanto si sente un punto del mondo: 1 dentro la vista, poi giu' fino a 0
   // a FAR px dal bordo; pan secondo la x nella vista

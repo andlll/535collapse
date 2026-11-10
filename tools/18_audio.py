@@ -5,7 +5,9 @@ Legge nuovi/audio/audio.json: per ogni suono il file d'origine (in
 nuovi/audio/) e i tagli delle varianti (inizio e fine in ms; un terzo
 elemento, se c'e', e' un altro file d'origine). Per ogni variante: taglio,
 mono, il filtro di pulizia (`filtro`, se c'e'), dissolvenza in entrata e in
-uscita, picco portato a
+uscita (per un loop, `loop`: la dissolvenza incrociata della fine
+sull'inizio, anche stereo; volume sul livello medio `rms_db` e limitatore a
+`limite_db`, §9.141), picco portato a
 `picco_db` (le varianti dello stesso suono hanno cosi' lo stesso volume; il
 volume nel gioco lo da' `gain`), MP3 mono a 96 kbit/s (lo leggono tutti i
 browser). Scrive game/assets/audio/<nome>_<n>.mp3 e game/assets/audio/audio.json
@@ -37,6 +39,13 @@ def ffmpeg(*args, capture=False):
     return r.stderr
 
 
+def rms_db(path):
+    """[§9.141] Il livello medio (RMS) del file in dBFS (volumedetect)."""
+    err = ffmpeg("-i", path, "-af", "volumedetect", "-f", "null", "-")
+    m = re.search(r"mean_volume:\s*(-?[\d.]+) dB", err)
+    return float(m.group(1)) if m else -20.0
+
+
 def peak_db(path):
     """Il picco del file in dBFS (volumedetect)."""
     err = ffmpeg("-i", path, "-af", "volumedetect", "-f", "null", "-")
@@ -61,24 +70,50 @@ def main():
         # prima delle dissolvenze
         filt = (s["filtro"] + ",") if s.get("filtro") else ""
         files = []
+        loop = s.get("loop")
         for k, cut in enumerate(s["tagli"], 1):
             # [§9.139] un taglio puo' venire da un altro file: [inizio, fine, "file"]
             a, b = cut[0], cut[1]
             src = os.path.join(SRC, cut[2] if len(cut) > 2 else s["da"])
             dur = (b - a) / 1000
             tmp = os.path.join(OUT, "%s_%d.wav" % (name, k))
-            mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 else ""
-            # taglio, mono, filtro, dissolvenze
-            ffmpeg("-i", src, "-af",
-                   "atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,%s%s"
-                   "afade=t=in:st=0:d=%.4f,afade=t=out:st=%.4f:d=%.4f"
-                   % (a / 1000, b / 1000, mono, filt, fin / 1000, dur - fout / 1000, fout / 1000),
-                   "-c:a", "pcm_f32le", tmp)
-            gain = target - peak_db(tmp)
+            stereo = bool(loop and loop.get("stereo")) and _channels(src) == 2
+            mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 and not stereo else ""
+            if loop:
+                # [§9.141] un loop (la pioggia): il tratto [a, b] e i `incrocio_ms`
+                # dopo b, dissolti (a potenza costante, qsin) sull'inizio: l'ultimo
+                # campione del file continua nel primo, senza scatto ne' buco
+                xf = loop.get("incrocio_ms", 1000) / 1000
+                # (due ingressi dallo stesso file, ognuno dal suo punto: con
+                # un ingresso solo diviso in due il mixer si fermava subito)
+                ffmpeg("-ss", "%.4f" % (a / 1000), "-t", "%.4f" % dur, "-i", src,
+                       "-ss", "%.4f" % (b / 1000), "-t", "%.4f" % xf, "-i", src, "-filter_complex",
+                       "[0:a]%s%safade=t=in:st=0:d=%.4f:curve=qsin[m];"
+                       "[1:a]%s%safade=t=out:st=0:d=%.4f:curve=qsin,apad[t];"
+                       "[m][t]amix=inputs=2:duration=first:normalize=0"
+                       % (mono, filt, xf, mono, filt, xf),
+                       "-c:a", "pcm_f32le", tmp)
+            else:
+                # taglio, mono, filtro, dissolvenze
+                ffmpeg("-i", src, "-af",
+                       "atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,%s%s"
+                       "afade=t=in:st=0:d=%.4f,afade=t=out:st=%.4f:d=%.4f"
+                       % (a / 1000, b / 1000, mono, filt, fin / 1000, dur - fout / 1000, fout / 1000),
+                       "-c:a", "pcm_f32le", tmp)
+            # [§9.141] il volume: di solito il picco a picco_db; per un loop
+            # (rumore continuo con gocce sparse) il livello medio a `rms_db`,
+            # e i picchi oltre `limite_db` (dBFS) smussati da un limitatore
+            if s.get("rms_db") is not None:
+                gain = s["rms_db"] - rms_db(tmp)
+            else:
+                gain = target - peak_db(tmp)
+            post = "volume=%.2fdB" % gain
+            if s.get("limite_db") is not None:
+                post += ",alimiter=limit=%.4f:attack=2:release=40:level=false" % (10 ** (s["limite_db"] / 20))
             out = "%s_%d.mp3" % (name, k)
             # (MP3 arriva a 48 kHz: le registrazioni a 96 si ricampionano)
-            ffmpeg("-i", tmp, "-af", "volume=%.2fdB" % gain, "-ac", "1", "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "96k",
-                   os.path.join(OUT, out))
+            ffmpeg("-i", tmp, "-af", post, "-ac", "2" if stereo else "1", "-ar", "48000", "-c:a", "libmp3lame",
+                   "-b:a", "128k" if stereo else "96k", os.path.join(OUT, out))
             os.remove(tmp)
             size = os.path.getsize(os.path.join(OUT, out))
             total += size
@@ -87,6 +122,8 @@ def main():
         manifest["sounds"][name] = {"files": files, "gain": s.get("gain", 1)}
         if "altezza" in s:  # [§9.140] +- variazione d'altezza (velocita'); se no quella di audio.js (0,07)
             manifest["sounds"][name]["pitch"] = s["altezza"]
+        if loop:  # [§9.141] si ripete senza fine (audio.js ambient)
+            manifest["sounds"][name]["loop"] = True
     with open(os.path.join(OUT, "audio.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     print("game/assets/audio: %d suoni, %d file, %.1f KB" % (len(manifest["sounds"]),

@@ -42,6 +42,19 @@
       "altezza": 0.12,
       "gain": 0.75,
       "nota": "il colpo di martello di chi costruisce o ripara (civilians.js otherWorkTick, una volta per ciclo di 39 passi, se il lavoro va avanti): un colpo solo (attacco a 37 ms, -50 dB dopo 70 ms). Il 97% dell'energia era sotto i 120 Hz (un tonfo, come negli archi) e prima del colpo un brusio grave a -47 dB: passa-alto a 150 Hz a 48 dB/ottava come per l'arco (brusio a -77 dB; restano un po' di corpo, 120-250 Hz, e il tac, 2-8 kHz). Una variante sola: altezza +-12% invece di +-7%. Gain 0,75: filtrato suona 2,7 dB piu' piano di ascia e piccone (RMS nei primi 100 ms -26,4 contro -23,6)"
+    },
+    "pioggia": {
+      "da": "pioggia.wav",
+      "tagli": [[51000, 59000]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "filtro": "highpass=f=60:poles=2",
+      "rms_db": -26,
+      "limite_db": -12,
+      "gain": 0.2,
+      "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz, molto bassa: livello medio -64 dB) il tratto piu' uniforme di 8 s, da 51 a 59 s: livello costante (scarto 0,25 dB su mezzo secondo), solo 5 gocce isolate oltre +22 dB. 1,5 s dopo il tratto si dissolvono sull'inizio (la giunzione non si sente). Niente rimbombo ne' toni da togliere (energia fra 600 Hz e 10 kHz): solo un passa-alto a 60 Hz per un ronzio a 36 Hz. Livello medio a -26 dBFS, le gocce oltre -12 dBFS smussate (14 dB sopra la media: si fondono col resto, il giro non si riconosce). Gain 0,2: piano, ~11 dB sotto gli effetti"
     }
   }
 }
