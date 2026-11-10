@@ -9979,3 +9979,24 @@ archi); nel browser (Padania) i loop decodificati a 42 e 92 s esatti; field
 0,9 a inizio partita, 0,46 a meta' giorno, 0 di notte, 0,9 dopo l'alba,
 archi a 1; "Musica: NO" ferma, "SI'" riparte; nel menu niente. Prove
 unitarie.
+
+### 9.144 La musica: il drone
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): la
+terza parte del primo loop, il drone (`nuovi/audio/loop1_drone.wav`, 214 s,
+WAV 16 bit, 32 kHz, stereo), che parte da zero e sale con la popolazione.
+**Il file**: livello medio -29 dBFS, il 93% dell'energia sotto i 200 Hz: e'
+la parte grave della traccia unita (§9.143), dove entra a 0 dB: archi a 0,
+field a -0,75 e drone a 0 ricostruiscono la traccia unita con 0,4 dB di
+errore medio su tutte le bande. Tutte e tre le parti sono al livello del mix.
+**Solo tagliato e convertito**: 214,000 s, MP3 a 96 kbit/s e 32 kHz (per un
+suono cosi' grave le bande sono le stesse che a 128 e 160 kbit/s), 2,6 MB.
+Le tre parti 6,9 MB, tutto l'audio 7,3 MB.
+**Da sapere** (lasciato com'e', come archi e field): il drone sale da -70 a
+-28 dB nel primo secondo e mezzo e scende da -30 a -39 negli ultimi 0,6 s;
+alla giunzione il salto fra l'ultimo e il primo campione e' 20 volte quello
+tipico: a ogni giro (3:34) un calo e probabilmente un colpo grave. Esportato
+con "Render as Loop" e senza dissolvenze girerebbe pieno.
+**Nel gioco**: music.js lo aveva gia' (popolazione / 50, fino a 1).
+Prova (Chromium, Padania): decodificato a 214 s, stereo; volume 0,06 con 3
+di popolazione, 0,49 con 25, 0,99 con 50, 1 con 80, 0,02 tornati a 0.

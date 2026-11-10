@@ -80,6 +80,19 @@
       "kbit": 256,
       "gain": 1,
       "nota": "la musica, primo loop: il field recording (Ableton, 92 s, WAV 16 bit, 44,1 kHz), cosi' com'e'. MP3 a 256 kbit/s senza taglio degli acuti (bande uguali all'originale; sopra i 16 kHz -4 dB, a 160 kbit/s -11). Volume come nella traccia unita (vi entra a -0,75 dB) la mattina, poi scende col giorno fino a zero di notte e riparte all'alba (game/src/music.js)"
+    },
+    "musica_drone": {
+      "da": "loop1_drone.wav",
+      "tagli": [[0, 214000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 96,
+      "gain": 1,
+      "nota": "la musica, primo loop: il drone (Ableton, 214 s, WAV 16 bit, 32 kHz), cosi' com'e'. Il 93% dell'energia sotto i 200 Hz: e' la parte grave della traccia unita, dove entra a 0 dB (con archi e field il modello ricostruisce la traccia unita con 0,4 dB di errore medio). MP3 a 96 kbit/s, 32 kHz: per un suono cosi' grave le bande sono le stesse che a 160 (2,6 MB invece di 4,3). Da zero, sale con la popolazione del giocatore (game/src/music.js)"
     }
   }
 }
