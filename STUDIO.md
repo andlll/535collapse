@@ -9839,3 +9839,29 @@ tre guerrieri e un arciere della CPU, vista sulla mischia, 12 s): 22 colpi
 di spada e 18 frecce suonati (gli altri fermati dal tetto di 4 voci e dai 45
 ms); nel menu, dopo il clic, 226 colpi della battaglia di sfondo e nessuno
 suonato. Prove unitarie.
+
+### 9.140 Il martello: costruzione e riparazione
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+sua registrazione (`nuovi/audio/martello.wav`, 0,3 s, mono, 48 kHz) i colpi
+di martello di chi costruisce o ripara.
+**Il colpo**: uno solo (attacco a 37 ms, -50 dB dopo 70 ms). Come negli
+archi il 97% dell'energia era sotto i 120 Hz (un tonfo), e prima del colpo
+un brusio grave a -47 dB; una nota fissa a ~630 Hz che lo spettrogramma
+mostrava per tutto il file e' a -87 dB, trascurabile. Passa-alto a 150 Hz a
+48 dB/ottava come per l'arco: brusio a -77 dB, restano un po' di corpo
+(120-250 Hz) e il tac (2-8 kHz). Taglio di 250 ms, sfumato negli ultimi 120.
+**Una variante sola**: `altezza` per suono (audio.json, nel manifest `pitch`,
+game/src/audio.js): il martello varia di +-12% invece di +-7%. Gain 0,75:
+filtrato suona 2,7 dB piu' piano di ascia e piccone. Con piu' colpi
+registrati le varianti si aggiungono in `tagli`.
+**Nel gioco** (civilians.js `otherWorkTick`): la costruzione (azione 6:
+cantieri, il ponte del livello 4, i cantieri della CPU) e la riparazione
+(azione 7: edifici, mura, il monastero) aggiungono vita a ogni fase (13
+passi); il colpo una volta per ciclo (39 passi, ~0,65 s, come l'ascia), alla
+fine, e solo se il lavoro e' andato avanti (non senza il legno o la pietra);
+non dei lavoratori nemici nascosti nella nebbia. Non la semina dei campi.
+Prova (Chromium, Padania, tre lavoratori, vista sul lavoro, 10 s): una casa
+costruita con 17 colpi suonati (uno ogni ~0,25 s in tutto); il centro
+riparato da meta' vita con 28 colpi; senza legno ne' pietra nessun colpo.
+Prove unitarie.

@@ -85,6 +85,8 @@ def main():
             print("%-14s %4d-%4d ms  %+5.1f dB  %5d byte" % (out, a, b, gain, size))
             files.append(out)
         manifest["sounds"][name] = {"files": files, "gain": s.get("gain", 1)}
+        if "altezza" in s:  # [§9.140] +- variazione d'altezza (velocita'); se no quella di audio.js (0,07)
+            manifest["sounds"][name]["pitch"] = s["altezza"]
     with open(os.path.join(OUT, "audio.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     print("game/assets/audio: %d suoni, %d file, %.1f KB" % (len(manifest["sounds"]),

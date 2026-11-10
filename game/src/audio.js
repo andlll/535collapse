@@ -43,7 +43,7 @@ export class SoundBank {
         const files = await Promise.all(s.files.map(async (f) => {
           try { const q = await fetch(this.base + f); return q.ok ? await q.arrayBuffer() : null; } catch (e) { return null; }
         }));
-        this._raw.set(name, { files: files.filter(Boolean), gain: s.gain ?? 1 });
+        this._raw.set(name, { files: files.filter(Boolean), gain: s.gain ?? 1, pitch: s.pitch ?? PITCH });
       }));
       if (this.ctx) this._decode();
     } catch (e) { /* niente audio: il gioco va avanti muto */ }
@@ -53,7 +53,7 @@ export class SoundBank {
     if (!this._raw || this._decoding) return;
     this._decoding = true;
     for (const [name, s] of this._raw) {
-      const entry = { buffers: [], gain: s.gain, last: -1, playing: 0, at: -1e9 };
+      const entry = { buffers: [], gain: s.gain, pitch: s.pitch, last: -1, playing: 0, at: -1e9 };
       this.sounds.set(name, entry);
       for (const ab of s.files) {
         // decodeAudioData consuma il buffer: una copia
@@ -105,7 +105,7 @@ export class SoundBank {
     s.last = k; s.at = now; s.playing++;
     const src = ctx.createBufferSource();
     src.buffer = s.buffers[k];
-    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * PITCH;
+    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * (s.pitch ?? PITCH); // §9.140: per suono (audio.json "altezza")
     const gain = ctx.createGain();
     gain.gain.value = g * vol * s.gain * (1 + (Math.random() * 2 - 1) * GAIN_VAR);
     let node = src.connect(gain);

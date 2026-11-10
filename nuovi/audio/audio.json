@@ -1,7 +1,7 @@
 {
   "formato": "535-audio",
   "versione": 1,
-  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms; un terzo elemento e' un altro file d'origine, §9.139) delle varianti; `filtro`, se c'e', e' la pulizia (filtri di ffmpeg). tools/18_audio.py li taglia, li filtra, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
+  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms; un terzo elemento e' un altro file d'origine, §9.139) delle varianti; `filtro`, se c'e', e' la pulizia (filtri di ffmpeg); `altezza` la variazione d'altezza a ogni colpo (se no +-0,07, §9.140). tools/18_audio.py li taglia, li filtra, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
   "picco_db": -3,
   "suoni": {
     "legno": {
@@ -33,6 +33,15 @@
       "dissolvenza_ms": [2, 150],
       "gain": 0.55,
       "nota": "la freccia scoccata (arcieri, torri, castelli, centri, alleati e nemici: ranged.js allyArrow, enemyArrow): un colpo per file. Pulizia: il colpo d'aria sotto i 100 Hz era il 90-96% dell'energia: passa-alto a 150 Hz a 48 dB/ottava (a 100 Hz e 24 dB/ottava ne restava il 26-49%), restano corpo e corda (200-1200 Hz) e lo schiocco, col picco quasi uguale; tagliati via i due clic a 1,37 e 1,45 s di arco1 e il silenzio digitale con i residui dopo 0,5 s di arco2"
+    },
+    "martello": {
+      "da": "martello.wav",
+      "tagli": [[33, 283]],
+      "filtro": "highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2",
+      "dissolvenza_ms": [2, 120],
+      "altezza": 0.12,
+      "gain": 0.75,
+      "nota": "il colpo di martello di chi costruisce o ripara (civilians.js otherWorkTick, una volta per ciclo di 39 passi, se il lavoro va avanti): un colpo solo (attacco a 37 ms, -50 dB dopo 70 ms). Il 97% dell'energia era sotto i 120 Hz (un tonfo, come negli archi) e prima del colpo un brusio grave a -47 dB: passa-alto a 150 Hz a 48 dB/ottava come per l'arco (brusio a -77 dB; restano un po' di corpo, 120-250 Hz, e il tac, 2-8 kHz). Una variante sola: altezza +-12% invece di +-7%. Gain 0,75: filtrato suona 2,7 dB piu' piano di ascia e piccone (RMS nei primi 100 ms -26,4 contro -23,6)"
     }
   }
 }
