@@ -54,6 +54,32 @@
       "kbit": 256,
       "gain": 1,
       "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz) il tratto di 8 s da 51 a 59 s, cosi' com'e' (§9.142, richiesta dell'autore: niente filtro, limitatore ne' guadagno, che toglievano il fondo e la rendevano troppo forte): solo tagliato, con la fine dissolta in 1,5 s sull'inizio perche' il giro non scatti, e convertito in MP3 a 256 kbit/s senza il taglio degli acuti (bande uguali all'originale entro 0,1 dB; a 128 si perdevano 8 dB sopra i 16 kHz). Volume quello della registrazione (livello medio ~ -64 dBFS), gain 1"
+    },
+    "musica_archi": {
+      "da": "loop1_archi.mp3",
+      "tagli": [[4.89796, 42004.89796]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 320,
+      "gain": 1,
+      "nota": "la musica, primo loop: gli archi (Ableton, 42 s, MP3 320 kbit/s, 44,1 kHz). L'MP3 dell'autore non dice quanti campioni di riempimento togliere: si decodifica in 1608 blocchi interi, 216 campioni (4,9 ms) oltre i 42 s, tutti nel silenzio iniziale (il primo suono e' a 294 ms): tolti, il giro torna a 42,000 s. Volume come nella traccia unita (gli archi vi entrano a 0 dB). Costanti (game/src/music.js)"
+    },
+    "musica_field": {
+      "da": "loop1_field.wav",
+      "tagli": [[0, 92000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "la musica, primo loop: il field recording (Ableton, 92 s, WAV 16 bit, 44,1 kHz), cosi' com'e'. MP3 a 256 kbit/s senza taglio degli acuti (bande uguali all'originale; sopra i 16 kHz -4 dB, a 160 kbit/s -11). Volume come nella traccia unita (vi entra a -0,75 dB) la mattina, poi scende col giorno fino a zero di notte e riparte all'alba (game/src/music.js)"
     }
   }
 }

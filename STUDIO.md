@@ -9921,3 +9921,61 @@ perdeva 8 dB sopra i 16 kHz: 256 kbit/s senza il taglio degli acuti
 registrazione, che entra ed esce con le gocce come prima.
 Prova (Chromium): il loop decodificato a 8,000 s, stereo; il volume segue
 le gocce fino a 1 e alla fine scende a zero; prove unitarie.
+
+### 9.143 La musica: il primo loop a parti (archi e field recording)
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): i
+loop musicali a parti, mixati nel gioco. Prima la traccia unita (`535_loop1`,
+3:30, MP3), poi le parti: gli archi (`loop1_archi.mp3`, 42 s, MP3 320 kbit/s)
+e il field recording (`loop1_field.wav`, 92 s, WAV 16 bit), tutti a 44,1 kHz
+stereo; il drone arrivera'. Il mix: il field al volume della traccia unita
+la mattina, che scende verso la notte e riparte la mattina; gli archi circa
+costanti ("ci ragioniamo"); il drone da zero, piu' alto quanta piu'
+popolazione ha il giocatore.
+**La traccia unita**: livello costante (medio -28 dBFS, picco -12,8); senza
+un battito netto (il BPM non esce dagli attacchi). Per bande: la fascia a ~2
+kHz e la linea a ~3 kHz si ripetono ogni ~42 s (e ~84); melodia e gravi con
+un passo di 1,25 s. Gli archi vi ritornano a 0, 42, 84, 126, 168 s (il file
+da 42 s ripetuto); il field non si ritrova al campione (un altro tratto o
+un'altra versione). **I livelli**: le forme d'onda non coincidono col file
+(correlazione 0,08, nel mix suonati o elaborati un po' diversi): confrontati
+gli spettri medi a quarti d'ottava sopra i 566 Hz, la traccia unita e' archi
+a +0,0 dB e field a -0,75 (errore medio 0,5 dB): i file sono gia' al livello
+del mix, gain 1. Sotto i 400 Hz la traccia unita ha molta energia che non e'
+di archi ne' field: il drone, grave.
+**Le parti** (tools/18, "musica"; solo tagliate e convertite, §9.142):
+- archi: l'MP3 non ha l'intestazione col riempimento dell'encoder (si
+  decodifica in 1608 blocchi interi, 216 campioni, 4,9 ms, oltre i 42 s),
+  tutti nel silenzio iniziale (il primo suono a 294 ms): tagliati, il giro
+  torna a 42,000 s (altrimenti 5 ms di troppo a ogni giro). Ricodificato a
+  320 kbit/s (1,7 MB).
+- field: 92,000 s cosi' com'e', MP3 a 256 kbit/s senza taglio degli acuti
+  (bande uguali all'originale, sopra i 16 kHz -4 dB; a 160 kbit/s -11): 2,9
+  MB.
+tools/18: `loop` con `incrocio_ms` 0 (solo il taglio, al campione: ms coi
+decimali), la frequenza dell'originale (si ricampiona solo oltre i 48 kHz),
+la durata decodificata stampata per i loop.
+**Da sapere** (lasciato com'e', da decidere con l'autore): gli archi
+partono dal silenzio e salgono in ~2,5 s mentre alla fine suonano pieni
+(-36 dB): a ogni giro rientrano (succede anche nella traccia unita, dove gli
+altri suoni lo coprono); il field ha una dissolvenza in entrata (~2 s) e una
+in uscita (~2,5 s): a ogni giro (92 s) un respiro. Esportati con "Render as
+Loop" di Ableton (le code riportate all'inizio) e senza dissolvenze girano
+pieni.
+**Il motore** (game/src/audio.js `music`): le parti partono nello stesso
+istante e girano ognuna sul suo giro (si sfasano come nella traccia unita);
+una parte decodificata dopo entra al punto giusto del suo giro; il volume di
+ognuna segue quello dato dal gioco in ~2,5 s; un volume generale della
+musica a parte dagli effetti. "Musica: SI'/NO" nel menu di pausa
+(settings.music). Nel menu principale niente musica, per ora.
+**Il mix** (game/src/music.js, dal manager ogni 10 passi): archi 1; field 1
+all'alba, giu' in linea col giorno (il primo 6000 passi, poi 4000: il
+manager ora tiene `dayLen`, anche nei salvataggi) fino a 0 al tramonto,
+zitto di notte, risale con l'alba (global.night da 1 a 0); niente ciclo
+("sempre giorno") 1, "sempre notte" e livello 1 zitto; drone popolazione /
+50, fino a 1. I numeri sono in MUSIC (music.js), da regolare a orecchio.
+Prove: music.test.mjs (nuova: il field nelle fasi del giorno, il drone, gli
+archi); nel browser (Padania) i loop decodificati a 42 e 92 s esatti; field
+0,9 a inizio partita, 0,46 a meta' giorno, 0 di notte, 0,9 dopo l'alba,
+archi a 1; "Musica: NO" ferma, "SI'" riparte; nel menu niente. Prove
+unitarie.

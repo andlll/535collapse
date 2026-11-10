@@ -5,6 +5,7 @@
 // livelli in levels.js, nebbia e notte disegnate in fog.js e fogdraw.js.
 
 import { audio } from "./audio.js"; // §9.141
+import { MUSIC, musicLevels } from "./music.js"; // §9.143
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
@@ -31,6 +32,7 @@ export class Manager {
     // manager Create [C]
     this.fogalpha = 1;
     this.al.set(0, 6000);                          // timer notte
+    this.dayLen = 6000;                            // [§9.143] quanto dura il giorno (music.js: il field)
     this.al.set(4, irandomRange(12000, 15000));    // pioggia
     this.al.set(8, 60);                            // orologio
     this.al.set(2, 100);                           // pioggia che spegne i fuochi
@@ -251,6 +253,8 @@ export class Manager {
       // [§9.141] il suono della pioggia, col livello delle gocce: entra ed
       // esce con loro (in 5 s), piano
       audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);
+      // [§9.143] la musica: il volume di ogni parte secondo la partita
+      if ((this.musicTick = (this.musicTick || 0) + 1) % MUSIC.every === 1) audio.music(musicLevels(this, g));
     }
     // [§8.13] anelli delle gocce sul fiume (§9.91: quante sono le gocce)
     if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);
@@ -305,7 +309,7 @@ export class Manager {
       case 1: // passaggio notte-giorno (non nel livello 1, sempre di notte)
         if (this.room === "lvl01") break;
         if (g.night >= 0) { g.night -= 0.005; this.al.set(1, 1); }
-        else this.al.set(0, DAY_AFTER_DAWN);
+        else { this.al.set(0, DAY_AFTER_DAWN); this.dayLen = DAY_AFTER_DAWN; }
         break;
       case 2: // [C] (il resto e' il ridimensionamento della finestra)
         // la pioggia spegneva gli edifici di legno alleati ogni 10 passi

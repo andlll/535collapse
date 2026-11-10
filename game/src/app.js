@@ -151,6 +151,7 @@ async function main() {
   const cam = new Camera(room.width, room.height, room.views[0]);
   audio.cam = cam; // §9.137: il volume secondo la distanza dalla vista
   audio.world = roomName !== "menu"; // §9.139: la battaglia di sfondo del menu e' muta
+  audio.musicRoom = roomName !== "menu"; // §9.143: la musica in partita (nel menu, da decidere)
   const input = new Input(canvas);
   input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();
@@ -453,6 +454,7 @@ async function main() {
     // fili disegnati a ogni fotogramma, fino al 45% del disegno nel menu)
     world.particles.density.grass = GRASS_DENSITY[settings.quality] ?? 1;
     audio.setEnabled(settings.sfx); // §9.137
+    audio.setMusicEnabled(settings.music); // §9.143
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
     resize(); // §6.8 G1: la qualita' cambia la scala del mondo

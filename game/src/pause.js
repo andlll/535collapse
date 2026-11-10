@@ -106,7 +106,7 @@ export class PauseMenu {
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
       case "rain": case "grass": case "fire": case "blood": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
-      case "sfx": // §9.137
+      case "sfx": case "music": // §9.137, §9.143
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -240,6 +240,7 @@ export class PauseMenu {
         [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
         [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
         [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
+        [tr("Music: {state}", { state: onOff(s.music) }), "music"], // §9.143
         [tr("Sound effects: {state}", { state: onOff(s.sfx) }), "sfx"], // §9.137
       ];
       segCaption = tr("Language");

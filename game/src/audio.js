@@ -11,7 +11,8 @@
 //   a destra o a sinistra secondo dove succede (pan);
 // - al massimo VOICES suoni uguali insieme, e non due dello stesso nome a
 //   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante;
-// - [§9.141] i suoni continui (la pioggia): ambient(nome, livello).
+// - [§9.141] i suoni continui (la pioggia): ambient(nome, livello);
+// - [§9.143] la musica, a parti in loop: music({ nome: volume }).
 const FAR = 700;      // px di mondo oltre il bordo della vista a cui il suono si spegne
 const PAN = 0.6;      // pan massimo (ai bordi della vista)
 const VOICES = 4;     // voci dello stesso suono insieme
@@ -19,6 +20,7 @@ const MIN_GAP = 45;   // ms minimi fra due suoni dello stesso nome
 const PITCH = 0.07;   // +- velocita' di riproduzione (altezza)
 const GAIN_VAR = 0.15; // +- volume
 const FADE_TAU = 1;   // [§9.141] s: costante di tempo con cui un suono continuo segue il suo livello
+const MUSIC_TAU = 2.5; // [§9.143] s: con cui una parte della musica segue il suo volume
 
 export class SoundBank {
   constructor(base = "assets/audio/") {
@@ -30,6 +32,11 @@ export class SoundBank {
     this.volume = 1;
     this.sounds = new Map(); // nome -> { buffers: [], gain, last, playing, at }
     this.ambients = new Map(); // [§9.141] nome -> { src, g, target, zeroAt }: i suoni continui (la pioggia)
+    this.layers = new Map();   // [§9.143] nome -> { src, g, target }: le parti della musica che suonano
+    this.musicEnabled = true;  // settings.music (menu di pausa)
+    this.musicRoom = true;     // la musica in questa room (app.js: non nel menu principale, per ora)
+    this.musicBus = null;
+    this.musicT0 = null;       // l'istante (AudioContext) in cui sono partite tutte le parti
     this.cam = null;         // la vista: { x, y, w, h }
     this._manifest = null;
   }
@@ -118,6 +125,66 @@ export class SoundBank {
     if (target > 0) a.zeroAt = null;
     else if (a.zeroAt === null) a.zeroAt = ctx.currentTime;
     else if (ctx.currentTime - a.zeroAt > FADE_TAU * 6) this._stopAmbient(name);
+  }
+
+  // [§9.143] La musica: le parti in loop (audio.json "music"), ognuna lunga
+  // quanto vuole (gli archi 42 s, il field 92), che partono tutte nello
+  // stesso istante (musicT0) e girano ognuna sul suo giro: si sfasano come
+  // nella traccia unita dell'autore. Una parte decodificata dopo entra al
+  // punto giusto del suo giro, come se fosse partita con le altre. Il gioco
+  // da' il volume di ciascuna, 0-1 (per il suo gain), con music({ nome:
+  // volume }) (music.js, dal manager); il volume lo segue in MUSIC_TAU s. La
+  // musica ha un suo volume generale (musicBus), fuori dagli effetti.
+  music(levels) {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== "running") return;
+    if (!this.musicEnabled || !this.musicRoom) { this._stopMusic(); return; }
+    if (!this.musicBus) {
+      this.musicBus = ctx.createGain();
+      this.musicBus.connect(ctx.destination);
+    }
+    if (this.musicT0 === null) this.musicT0 = ctx.currentTime + 0.05;
+    for (const [name, level] of Object.entries(levels)) {
+      const s = this.sounds.get(name);
+      if (!s || !s.buffers.length) continue; // non ancora decodificata (o non c'e')
+      let L = this.layers.get(name);
+      if (!L) {
+        const src = ctx.createBufferSource();
+        src.buffer = s.buffers[0];
+        src.loop = true;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        src.connect(g).connect(this.musicBus);
+        const d = src.buffer.duration, t = Math.max(ctx.currentTime, this.musicT0);
+        src.start(t, (((t - this.musicT0) % d) + d) % d);
+        L = { src, g, target: 0 };
+        this.layers.set(name, L);
+      }
+      const target = Math.max(0, Math.min(1, level || 0)) * s.gain;
+      if (Math.abs(target - L.target) > 0.002) {
+        L.g.gain.setTargetAtTime(target, ctx.currentTime, MUSIC_TAU);
+        L.target = target;
+      }
+    }
+  }
+
+  setMusicEnabled(on) {
+    this.musicEnabled = !!on;
+    if (!this.musicEnabled) this._stopMusic();
+  }
+
+  _stopMusic() {
+    if (!this.layers.size) return;
+    const t = this.ctx.currentTime;
+    for (const L of this.layers.values()) {
+      try {
+        L.g.gain.cancelScheduledValues(t);
+        L.g.gain.setTargetAtTime(0, t, 0.15);
+        L.src.stop(t + 1);
+      } catch (e) { /* gia' ferma */ }
+    }
+    this.layers.clear();
+    this.musicT0 = null;
   }
 
   _stopAmbient(name) {

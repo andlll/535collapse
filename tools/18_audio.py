@@ -79,7 +79,12 @@ def main():
             tmp = os.path.join(OUT, "%s_%d.wav" % (name, k))
             stereo = bool(loop and loop.get("stereo")) and _channels(src) == 2
             mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 and not stereo else ""
-            if loop:
+            if loop and not loop.get("incrocio_ms", 1000):
+                # [§9.143] un loop gia' pronto (le parti della musica, esportate
+                # da Ableton): solo il taglio, al campione (ms con decimali)
+                ffmpeg("-i", src, "-af", "atrim=start=%.6f:end=%.6f,asetpts=PTS-STARTPTS%s"
+                       % (a / 1000, b / 1000, ("," + mono[:-1]) if mono else ""), "-c:a", "pcm_f32le", tmp)
+            elif loop:
                 # [§9.141] un loop (la pioggia): il tratto [a, b] e i `incrocio_ms`
                 # dopo b, dissolti (a potenza costante, qsin) sull'inizio: l'ultimo
                 # campione del file continua nel primo, senza scatto ne' buco
@@ -117,22 +122,43 @@ def main():
             # [§9.142] `kbit` per suono (la pioggia, bassa e frusciante, a 256
             # e senza il taglio degli acuti: a 128 perdeva 8 dB sopra i 16 kHz)
             kb = s.get("kbit", 128 if stereo else 96)
-            ffmpeg("-i", tmp, "-af", post, "-ac", "2" if stereo else "1", "-ar", "48000", "-c:a", "libmp3lame",
+            # [§9.143] la frequenza dell'originale (44,1 o 48 kHz); oltre i 48 (le
+            # registrazioni a 96) si ricampiona, l'MP3 non ci arriva
+            rate = min(48000, _rate(src))
+            ffmpeg("-i", tmp, "-af", post, "-ac", "2" if stereo else "1", "-ar", str(rate), "-c:a", "libmp3lame",
                    "-b:a", "%dk" % kb, *(["-cutoff", "20000"] if s.get("kbit") else []), os.path.join(OUT, out))
             os.remove(tmp)
             size = os.path.getsize(os.path.join(OUT, out))
             total += size
             print("%-14s %4d-%4d ms  %+5.1f dB  %5d byte" % (out, a, b, gain, size))
+            if loop:  # la durata decodificata, che deve essere quella del taglio
+                print("   durata %.4f s (taglio %.4f s)" % (_duration(os.path.join(OUT, out)), dur))
             files.append(out)
         manifest["sounds"][name] = {"files": files, "gain": s.get("gain", 1)}
         if "altezza" in s:  # [§9.140] +- variazione d'altezza (velocita'); se no quella di audio.js (0,07)
             manifest["sounds"][name]["pitch"] = s["altezza"]
         if loop:  # [§9.141] si ripete senza fine (audio.js ambient)
             manifest["sounds"][name]["loop"] = True
+        if s.get("musica"):  # [§9.143] una parte della musica (audio.js music)
+            manifest["sounds"][name]["music"] = True
     with open(os.path.join(OUT, "audio.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     print("game/assets/audio: %d suoni, %d file, %.1f KB" % (len(manifest["sounds"]),
           sum(len(v["files"]) for v in manifest["sounds"].values()), total / 1024))
+
+
+def _rate(path):
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate",
+                        "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip()
+    return int(r or 48000)
+
+
+def _duration(path):
+    """La durata decodificata (i campioni che escono da ffmpeg)."""
+    r = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "f32le", "-ac", "1", "-"], capture_output=True)
+    rate = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate",
+                           "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip()
+    return len(r.stdout) / 4 / int(rate or 48000)
 
 
 def _channels(path):

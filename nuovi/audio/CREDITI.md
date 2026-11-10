@@ -13,3 +13,4 @@ crediti del gioco.
 | `arco1.wav`, `arco2.wav`, `arco3.wav` | `arco` (la freccia scoccata) | l'autore del gioco | registrazioni proprie, caricate il 10 novembre 2026 | dell'autore |
 | `martello.wav` | `martello` (costruzione e riparazione) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
 | `pioggia.wav` | `pioggia` (il loop della pioggia) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
+| `loop1_archi.mp3`, `loop1_field.wav` | `musica_archi`, `musica_field` (la musica, primo loop) | l'autore del gioco | composizione e registrazioni proprie (Ableton), caricate il 10 novembre 2026 | dell'autore |
