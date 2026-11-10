@@ -25,6 +25,16 @@ servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
 `UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
 
+**Audio, da fare** (§9.137-§9.145): l'autore riesporta da Ableton le tre
+parti del primo loop (archi, field, drone) come loop veri, con "Render as
+Loop" e senza dissolvenze (ora partono da zero e/o finiscono in calo: a ogni
+giro un rientro, un respiro, un colpo grave; §9.143-§9.144), possibilmente
+in WAV; si rimettono al loro posto con tools/18 (stessi nomi in
+nuovi/audio, tagli a tutta la durata). Da decidere con l'autore: il ritmo
+del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
+di field di notte (ora 0), la soglia del drone (50 di popolazione), la
+musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -10000,3 +10010,28 @@ con "Render as Loop" e senza dissolvenze girerebbe pieno.
 **Nel gioco**: music.js lo aveva gia' (popolazione / 50, fino a 1).
 Prova (Chromium, Padania): decodificato a 214 s, stereo; volume 0,06 con 3
 di popolazione, 0,49 con 25, 0,99 con 50, 1 con 80, 0,02 tornati a 0.
+
+### 9.145 La musica in tutti i livelli; le parti da riesportare
+
+Decisione dell'autore (10 novembre 2026, stessa PR, versione 0.2610): per
+ora le tre parti restano come sono; vanno riesportate come loop (annotato
+in "Cose da fare", in cima). Domanda: la musica e' in tutti i livelli? Si':
+la guida il manager (music.js, §9.143), che c'e' in ogni room; solo il menu
+principale e' muto (audio.musicRoom). Controllato nel browser, dopo un clic
+e 9 s, volumi (archi, field, drone):
+| room | notte | popolazione | archi | field | drone |
+|---|---|---|---|---|---|
+| menu | 0 | 14 | - | - | - |
+| match | 0 | 5 | 0,98 | 0,91 | 0,10 |
+| lvl01 | 1 | 8 | 0,98 | 0 | 0,16 |
+| lvl02 | 0 | 28 | 0,98 | 0,90 | 0,55 |
+| lvl03 | 0 | 21 | 0,98 | 0,91 | 0,41 |
+| lvl04 | 0 | 10 | 0,98 | 0,91 | 0,19 |
+| lvl05 | 0 | 61 | 0,98 | 0,90 | 0,97 |
+| lvl06 | 0 | 36 | 0,98 | 0,91 | 0,70 |
+| sk_rivo | 0 | 3 | 0,98 | 0,90 | 0,06 |
+(gli archi a 0,98: stanno ancora salendo dall'entrata in dissolvenza.) Il
+livello 1 e' sempre di notte: li' il field non si sente mai. La musica e'
+la stessa ovunque (un solo loop); con altri loop si potra' sceglierne uno
+per livello.
+
