@@ -4,6 +4,7 @@
 // le bandiere. Trascrizione di src/objects/<oggetto>/; nomi originali.
 // (L'arciere nemico e' in enemies.js con gli altri nemici.)
 
+import { audio } from "./audio.js"; // §9.139
 import { hintOnce } from "./hints.js";
 import { sightK, seenNear } from "./fog.js";
 import { tr } from "./i18n.js";
@@ -54,6 +55,7 @@ export function allyArrow(tower) {
         if (i.towerTarget && i.towerFrom) aimArrow(i, i.towerTarget, i.towerFrom.y - i.y, i.towerFrom);
       }
       i.speed = 27;
+      audio.play("arco", i.x, i.y); // §9.139: la freccia scoccata (arcieri, torri, castello, centro)
     },
     alarm0(i, w) { w.destroy(i); },
     step(i, w) {
@@ -108,6 +110,10 @@ export function enemyArrow(tower) {
       const a = i.towerTarget && i.towerTarget.alive ? i.towerTarget : w.nearest(i.x, i.y, "ally_unit");
       if (a) { i.direction = pointDirection(i.x, i.y, a.x, a.y); i.speed = 27; }
       if (a && i.towerTarget && i.towerFrom) aimArrow(i, a, i.towerFrom.y - i.y, i.towerFrom);
+      // §9.139: la freccia scoccata. La CPU tira sempre a un'unita' del
+      // giocatore a portata: si sente anche se chi tira e' nella nebbia, come
+      // si vede la freccia che arriva
+      if (a) audio.play("arco", i.x, i.y);
     },
     alarm0(i, w) { w.destroy(i); },
     step(i, w) {

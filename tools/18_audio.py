@@ -2,8 +2,10 @@
 """[STUDIO.md §9.137] Gli effetti sonori del gioco, dai file d'origine.
 
 Legge nuovi/audio/audio.json: per ogni suono il file d'origine (in
-nuovi/audio/) e i tagli delle varianti (inizio e fine in ms). Per ogni
-variante: taglio, mono, dissolvenza in entrata e in uscita, picco portato a
+nuovi/audio/) e i tagli delle varianti (inizio e fine in ms; un terzo
+elemento, se c'e', e' un altro file d'origine). Per ogni variante: taglio,
+mono, il filtro di pulizia (`filtro`, se c'e'), dissolvenza in entrata e in
+uscita, picco portato a
 `picco_db` (le varianti dello stesso suono hanno cosi' lo stesso volume; il
 volume nel gioco lo da' `gain`), MP3 mono a 96 kbit/s (lo leggono tutti i
 browser). Scrive game/assets/audio/<nome>_<n>.mp3 e game/assets/audio/audio.json
@@ -54,21 +56,23 @@ def main():
     manifest = {"sounds": {}}
     total = 0
     for name, s in cfg["suoni"].items():
-        src = os.path.join(SRC, s["da"])
         fin, fout = s.get("dissolvenza_ms", [2, 60])
+        # [§9.139] il filtro di pulizia (ffmpeg -af, p.es. il passa-alto),
+        # prima delle dissolvenze
+        filt = (s["filtro"] + ",") if s.get("filtro") else ""
         files = []
-        for k, (a, b) in enumerate(s["tagli"], 1):
+        for k, cut in enumerate(s["tagli"], 1):
+            # [§9.139] un taglio puo' venire da un altro file: [inizio, fine, "file"]
+            a, b = cut[0], cut[1]
+            src = os.path.join(SRC, cut[2] if len(cut) > 2 else s["da"])
             dur = (b - a) / 1000
             tmp = os.path.join(OUT, "%s_%d.wav" % (name, k))
-            # taglio, mono, dissolvenze
+            mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 else ""
+            # taglio, mono, filtro, dissolvenze
             ffmpeg("-i", src, "-af",
-                   "atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,pan=mono|c0=0.5*c0+0.5*c1,"
+                   "atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,%s%s"
                    "afade=t=in:st=0:d=%.4f,afade=t=out:st=%.4f:d=%.4f"
-                   % (a / 1000, b / 1000, fin / 1000, dur - fout / 1000, fout / 1000)
-                   if _channels(src) == 2 else
-                   "atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,"
-                   "afade=t=in:st=0:d=%.4f,afade=t=out:st=%.4f:d=%.4f"
-                   % (a / 1000, b / 1000, fin / 1000, dur - fout / 1000, fout / 1000),
+                   % (a / 1000, b / 1000, mono, filt, fin / 1000, dur - fout / 1000, fout / 1000),
                    "-c:a", "pcm_f32le", tmp)
             gain = target - peak_db(tmp)
             out = "%s_%d.mp3" % (name, k)

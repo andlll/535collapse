@@ -150,6 +150,7 @@ async function main() {
   canvas.style.cursor = "none";
   const cam = new Camera(room.width, room.height, room.views[0]);
   audio.cam = cam; // §9.137: il volume secondo la distanza dalla vista
+  audio.world = roomName !== "menu"; // §9.139: la battaglia di sfondo del menu e' muta
   const input = new Input(canvas);
   input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();

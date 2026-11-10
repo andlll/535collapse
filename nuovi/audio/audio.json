@@ -1,7 +1,7 @@
 {
   "formato": "535-audio",
   "versione": 1,
-  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms) delle varianti. tools/18_audio.py li taglia, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
+  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms; un terzo elemento e' un altro file d'origine, §9.139) delle varianti; `filtro`, se c'e', e' la pulizia (filtri di ffmpeg). tools/18_audio.py li taglia, li filtra, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
   "picco_db": -3,
   "suoni": {
     "legno": {
@@ -17,6 +17,22 @@
       "dissolvenza_ms": [2, 100],
       "gain": 0.55,
       "nota": "il colpo di piccone su oro e pietra (civilians.js workTick): i diciotto colpi della registrazione dell'autore, uno per variante (ognuno scende di 60 dB in ~135 ms; prima di ogni attacco -62 dB o meno; rumore di fondo -94 dB)"
+    },
+    "spada": {
+      "da": "spade.wav",
+      "tagli": [[493, 993], [1294, 1794], [2133, 2633], [2986, 3486], [3904, 4404], [4722, 5222]],
+      "filtro": "highpass=f=250:poles=2,highpass=f=250:poles=2",
+      "dissolvenza_ms": [2, 300],
+      "gain": 0.28,
+      "nota": "il colpo in mischia (soldati e cavalieri, alleati e nemici: units.js meleeStrike, enemies.js enemyStrike): i sei colpi della registrazione dell'autore, energia fra 1,2 e 10 kHz, picchi -41..-46 dB (molto deboli: +38 dB circa); il passa-alto a 250 Hz (24 dB/ottava) toglie il rimbombo del fondo (sotto gli 80 Hz), le spade non hanno niente sotto i 600 Hz; 500 ms, coda metallica sfumata negli ultimi 300. Gain 0,28: con la coda metallica, a parita' di picco, suonano 6 dB piu' forti di ascia e piccone (RMS nei primi 100 ms -17,6 contro -23,6)"
+    },
+    "arco": {
+      "da": "arco1.wav",
+      "tagli": [[312, 662], [87, 437, "arco2.wav"], [192, 542, "arco3.wav"]],
+      "filtro": "highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2,highpass=f=150:poles=2",
+      "dissolvenza_ms": [2, 150],
+      "gain": 0.55,
+      "nota": "la freccia scoccata (arcieri, torri, castelli, centri, alleati e nemici: ranged.js allyArrow, enemyArrow): un colpo per file. Pulizia: il colpo d'aria sotto i 100 Hz era il 90-96% dell'energia: passa-alto a 150 Hz a 48 dB/ottava (a 100 Hz e 24 dB/ottava ne restava il 26-49%), restano corpo e corda (200-1200 Hz) e lo schiocco, col picco quasi uguale; tagliati via i due clic a 1,37 e 1,45 s di arco1 e il silenzio digitale con i residui dopo 0,5 s di arco2"
     }
   }
 }

@@ -11,6 +11,7 @@
 // con mp_potential_step. Gli attaccanti delle ondate (role 30/31/32,
 // scr_attacca) arrivano col punto 4e.
 
+import { audio } from "./audio.js"; // §9.139
 import { hintOnce, dialogOpen } from "./hints.js";
 import { sightK, seenNear } from "./fog.js";
 import { ANIM } from "./animTables.js";
@@ -352,6 +353,7 @@ function enemyStrike(i, w, T) {
   const dmg = T.damage[v.slife];
   if (dmg !== undefined) v.life -= dmg;
   bloodHit(w, v, pointDirection(io_x, io_y, v.x, v.y)); // §9.117
+  audio.play("spada", v.x, v.y); // §9.139: il colpo (il bersaglio e' un'unita' del giocatore, visibile)
   const away = () => {
     const d = pointDirection(io_x, io_y, v.x, v.y);
     return [v.x + lengthdirX(200, d), v.y + lengthdirY(200, d)];

@@ -24,6 +24,7 @@ export class SoundBank {
     this.ctx = null;
     this.master = null;
     this.enabled = true;   // settings.sfx (menu di pausa)
+    this.world = true;     // [§9.139] i suoni del mondo (no nella battaglia di sfondo del menu principale)
     this.volume = 1;
     this.sounds = new Map(); // nome -> { buffers: [], gain, last, playing, at }
     this.cam = null;         // la vista: { x, y, w, h }
@@ -92,7 +93,7 @@ export class SoundBank {
 
   play(name, x, y, vol = 1) {
     const ctx = this.ctx;
-    if (!this.enabled || !ctx || ctx.state !== "running") return false;
+    if (!this.enabled || !this.world || !ctx || ctx.state !== "running") return false;
     const s = this.sounds.get(name);
     if (!s || !s.buffers.length || s.playing >= VOICES) return false;
     const now = ctx.currentTime * 1000;

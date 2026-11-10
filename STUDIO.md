@@ -9795,3 +9795,47 @@ Prova (Chromium, Padania, vista sulla risorsa, 15 s): tre lavoratori alla
 miniera d'oro 35 colpi suonati, 16 varianti diverse; alla pietra 30 colpi,
 15 varianti; mai la stessa variante due volte di fila. Prove unitarie.
 `nuovi/audio/audio.json` riscritto con i tagli su una riga per suono.
+
+### 9.139 Spade e archi
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalle
+sue registrazioni i colpi di spada per gli attacchi di soldati e cavalieri,
+e tre archi ("da pulire") per arcieri, torri ecc.
+**Le spade** (`nuovi/audio/spade.wav`, 5,25 s, mono, 48 kHz): sei colpi
+(attacchi a 497, 1298, 2137, 2990, 3908, 4726 ms), molto deboli (picchi da
+-46 a -41 dBFS: alzati di 28-33 dB), energia fra 1,2 e 10 kHz, una lunga
+coda metallica (-30 dB dopo 140-500 ms). Il rumore di fondo (-92 dB) e' per
+meta' rimbombo sotto gli 80 Hz: passa-alto a 250 Hz (24 dB/ottava), che le
+spade non toccano (niente sotto i 600 Hz). Tagli di 500 ms, la coda sfumata
+negli ultimi 300.
+**Gli archi** (`arco1..3.wav`, 44,1 kHz, i due canali uguali): un colpo per
+file, ma dal 90 al 96% dell'energia era sotto i 100 Hz: il colpo d'aria sul
+microfono (o l'urto), non la corda. Provati tre passa-alto: a 100 Hz e 24
+dB/ottava ne restava il 26-49%; a 150 Hz e 48 dB/ottava niente, col picco
+quasi uguale (la parte che si sente e' il corpo e la corda, 200-1200 Hz, e lo
+schiocco fino a 10 kHz); a 250 Hz se ne andava anche un po' di corpo. Scelto
+150 Hz, 48 dB/ottava. Tagliati via i due clic a 1,37 e 1,45 s di arco1 e il
+silenzio digitale coi due residui dopo 0,5 s di arco2. Tagli di 350 ms, la
+coda sfumata negli ultimi 150.
+**tools/18**: un taglio puo' venire da un altro file (terzo elemento:
+`[inizio, fine, "file"]`, le tre varianti dell'arco da tre file) e ogni suono
+puo' avere un `filtro` (filtri di ffmpeg) prima delle dissolvenze.
+**I volumi**: a parita' di picco le spade, con la coda, suonano 6 dB piu'
+forti (RMS nei primi 100 ms -17,6 dB contro -23,6 di ascia e piccone):
+`gain` 0,28; gli archi filtrati come ascia e piccone, 0,55. Tutto l'audio
+133 KB.
+**Nel gioco**:
+- `spada`: il colpo in mischia che arriva, nello stesso istante del sangue
+  (§9.117), sul bersaglio. Per giocatore e CPU: soldati, picchieri e
+  cavalieri (units.js meleeStrike, enemies.js enemyStrike).
+- `arco`: la freccia che parte (ranged.js allyArrow ed enemyArrow, create):
+  arcieri, torri, castelli e centri, del giocatore e della CPU. La CPU tira
+  sempre a un'unita' del giocatore a portata: si sente anche se chi tira e'
+  nella nebbia, come si vede la freccia che arriva.
+- La battaglia di sfondo del menu principale e' muta (`audio.world`): dopo
+  il primo clic nel menu si sarebbero sentite spade e frecce.
+Prova (Chromium, Padania, tre guerrieri e due arcieri del giocatore contro
+tre guerrieri e un arciere della CPU, vista sulla mischia, 12 s): 22 colpi
+di spada e 18 frecce suonati (gli altri fermati dal tetto di 4 voci e dai 45
+ms); nel menu, dopo il clic, 226 colpi della battaglia di sfondo e nessuno
+suonato. Prove unitarie.
