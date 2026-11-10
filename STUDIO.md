@@ -9721,3 +9721,51 @@ allineate a sinistra. Gli a capo sono gli stessi di prima (l'altezza della
 descrizione, §9.131, non cambia); con lo spazio in piu' le lettere si
 posano sul pixel intero. Controllato in italiano (Foresta Umbra,
 1920 x 1080), tedesco (Urbe, 1280 x 720) e francese (Appennini, 1366 x 768).
+
+### 9.137 Gli effetti sonori: il motore audio e il colpo d'ascia
+
+Richiesta dell'autore (10 novembre 2026, stessa PR, versione 0.2610): dalla
+registrazione "Knocking on wood" (Freesound 594389, Elandre01, CC0: uso
+commerciale libero, senza obblighi) isolare i colpi e usarli come varianti
+del taglio della legna. Il gioco originale non ha suoni e il motore non
+aveva l'audio: questa e' la prima parte.
+**I file** (`nuovi/audio/`): l'originale (1,5 s, 48 kHz, 24 bit, due canali
+identici), `audio.json` (per ogni suono il file d'origine, i tagli delle
+varianti in ms, le dissolvenze, il volume nel gioco) e `CREDITI.md` (fonte,
+autore e licenza di ogni file: le licenze devono permettere l'uso
+commerciale). Nella registrazione quattro colpi, attacchi a 193, 522, 853 e
+1201 ms, coda sopra il rumore di fondo (-71 dB) per 50-80 ms: tagli di 200
+ms da 4 ms prima dell'attacco, dissolvenza di 2 ms in entrata e 80 ms in
+uscita.
+**tools/18_audio.py** (solo ffmpeg, anche nella CI dopo tools/05-07): taglio,
+mono, dissolvenze, picco di ogni variante a -3 dBFS (le varianti suonano
+uguali di volume; il volume nel gioco e' `gain`), MP3 mono a 96 kbit/s (lo
+leggono tutti i browser) -> `game/assets/audio/legno_1..4.mp3` (3 KB
+l'uno) e `audio.json`. Chromium li decodifica a 200 ms esatti (il ritardo
+dell'encoder MP3 viene tolto).
+**game/src/audio.js** (`audio`, Web Audio):
+- i suoni si scaricano all'avvio; l'AudioContext nasce al primo clic o
+  tasto (il browser non lascia partire l'audio prima): fino ad allora, e
+  nelle prove senza gesti, play() non fa niente;
+- `play(nome, x, y)`: una variante a caso (non la stessa di prima), altezza
+  +-7% e volume +-15% a caso; volume pieno dentro la vista, che cala fino a
+  zero a 700 px dal bordo; un po' a destra o a sinistra secondo la x nella
+  vista;
+- al massimo 4 suoni uguali insieme e non due dello stesso nome a meno di
+  45 ms.
+**Il colpo d'ascia** (civilians.js `workTick`, lo stesso istante dello
+scossone dell'albero, §9.105): per i boscaioli del giocatore e della CPU,
+non per quelli nemici nascosti nella nebbia. `gain` 0,55: da regolare a
+orecchio quando ci saranno gli altri suoni.
+**"Effetti sonori: SI'/NO"** nel menu di pausa (settings.sfx, si ricorda).
+Con una riga in piu' a 1024 x 600 l'ultimo pulsante usciva dallo schermo
+(e le opzioni grafiche, dieci righe, uscivano gia'): ora su uno schermo
+basso pulsanti e spazi si stringono (fino a 30 e 4 px); a 720 px e oltre
+non cambia niente.
+Prove (Chromium): prima del clic nessun AudioContext; dopo, attivo e le
+quattro varianti decodificate; tre boscaioli del giocatore su Padania con
+la vista sull'albero: 45 colpi suonati in 25 s (uno ogni ~0,65 s ciascuno,
+uno scartato per i 45 ms), quelli della CPU lontani dalla vista zittiti;
+con "Effetti sonori: NO" nessun suono. Menu di pausa e opzioni grafiche a
+1024 x 600 (tedesco) e 1280 x 720. Lo zip per i portali contiene l'audio;
+`soak` su menu, match, sk_padus; prove unitarie. L'ascolto vero e' dell'autore.

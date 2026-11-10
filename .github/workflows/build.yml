@@ -52,6 +52,12 @@ jobs:
           python3 tools/06_masks.py
           python3 tools/07_scene.py
 
+      # [STUDIO.md §9.137] gli effetti sonori dai file d'origine (nuovi/audio)
+      - name: Effetti sonori (tools/18)
+        run: |
+          command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+          python3 tools/18_audio.py
+
       # STUDIO.md §9: il kit per Tiled (artefatto da scaricare) e il collaudo:
       # le room dell'autore convertite in mappe di Tiled e rilette devono
       # ridare le stesse istanze

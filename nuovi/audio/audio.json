@@ -1,0 +1,15 @@
+{
+  "formato": "535-audio",
+  "versione": 1,
+  "descrizione": "Gli effetti sonori del gioco (STUDIO.md §9.137): per ogni suono il file d'origine in nuovi/audio/ e i tagli (inizio e fine in ms) delle varianti. tools/18_audio.py li taglia, aggiunge le dissolvenze, porta il picco di ogni variante a picco_db e scrive game/assets/audio/<nome>_<n>.mp3 e audio.json; gain e' il volume del suono nel gioco (game/src/audio.js). Licenze e autori in CREDITI.md.",
+  "picco_db": -3,
+  "suoni": {
+    "legno": {
+      "da": "594389__elandre01__knocking-on-wood.wav",
+      "tagli": [[189, 389], [518, 718], [849, 1049], [1197, 1397]],
+      "dissolvenza_ms": [2, 80],
+      "gain": 0.55,
+      "nota": "il colpo d'ascia del boscaiolo (civilians.js workTick): i quattro colpi della registrazione, uno per variante (attacchi a 193, 522, 853 e 1201 ms; coda sopra il rumore di fondo per 50-80 ms, rumore di fondo a -71 dB)"
+    }
+  }
+}

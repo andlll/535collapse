@@ -106,6 +106,7 @@ export class PauseMenu {
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
       case "rain": case "grass": case "fire": case "blood": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
+      case "sfx": // §9.137
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -239,6 +240,7 @@ export class PauseMenu {
         [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
         [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
         [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
+        [tr("Sound effects: {state}", { state: onOff(s.sfx) }), "sfx"], // §9.137
       ];
       segCaption = tr("Language");
       const cur = getLanguage();
@@ -254,21 +256,27 @@ export class PauseMenu {
     const titleW = TITLE_SCALE * d.stringWidth(title);
     const panelW = Math.min(Math.max(340, longest + 90, titleW + 60), W - 40);
     const rows = before.length + after.length;
-    const panelH = 84 + rows * (BTN_H + BTN_GAP) + (segs ? CAPTION_H + SEG_H + BTN_GAP : 0) + 18;
+    // [§9.137] su uno schermo basso pulsanti e spazi si stringono (fino a 30
+    // e 4 px) perche' tutto stia nella finestra: a 600 px le opzioni grafiche
+    // (dieci righe) e la pausa con gli effetti sonori uscivano in basso
+    const fixed = 84 + (segs ? CAPTION_H + SEG_H : 0) + 18;
+    const pitch = Math.min(BTN_H + BTN_GAP, (H - 20 - fixed) / (rows + (segs ? 1 : 0)));
+    const bh = Math.max(30, Math.min(BTN_H, Math.round(pitch * 0.78))), gap = Math.max(4, Math.floor(pitch - bh));
+    const panelH = fixed + rows * (bh + gap) + (segs ? gap : 0);
     const px = (W - panelW) / 2, py = Math.max(10, (H - panelH) / 2);
     // [Richiesta dell'autore] niente pannello attorno a titolo e pulsanti:
     // il titolo e le didascalie con un alone bianco (_glowLabel)
     this._glowLabel(d, px + panelW / 2, py + 40, title, "gui_sblocco");
     const btnW = panelW - 60, bx = px + 30;
     let by = py + 84;
-    for (const [label, action, off, value] of before) { this._button(d, bx, by, btnW, BTN_H, label, action, input, off, value); by += BTN_H + BTN_GAP; }
+    for (const [label, action, off, value] of before) { this._button(d, bx, by, btnW, bh, label, action, input, off, value); by += bh + gap; }
     if (segs) {
       this._glowLabel(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
       by += CAPTION_H;
       this._segments(d, bx, by, btnW, segs, segAction, input);
-      by += SEG_H + BTN_GAP;
+      by += SEG_H + gap;
     }
-    for (const [label, action] of after) { this._button(d, bx, by, btnW, BTN_H, label, action, input); by += BTN_H + BTN_GAP; }
+    for (const [label, action] of after) { this._button(d, bx, by, btnW, bh, label, action, input); by += bh + gap; }
     d.setAlpha(1);
     d.setColour(c.white);
     d.setHalign("left");

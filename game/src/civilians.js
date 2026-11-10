@@ -8,6 +8,7 @@
 // action: 0 fermo, 1 in cammino, 2 taglia legna, 3 scava oro, 4 raccoglie
 // cibo, 5 spacca pietra, 6 costruisce, 7 ripara, 8 semina.
 
+import { audio } from "./audio.js"; // §9.137
 import { hintOnce } from "./hints.js";
 import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
@@ -1243,6 +1244,8 @@ function workTick(i, w) {
       i.wood += 2;
       const t = w.nearest(ax, ay, "albero");
       if (t) { t.wood -= 2; t.hitAt = w._stepNo; if (t.wood === 0) w.destroy(t); } // §9.105: lo scossone (ambience.js treeSway)
+      // [§9.137] il colpo d'ascia; non dei lavoratori nemici nascosti nella nebbia
+      if (t && i.visible !== false) audio.play("legno", ax, ay);
     } else if (a === 3) {
       i.gold += 1;
       const t = w.nearest(ax, ay, "miniera_oro");
