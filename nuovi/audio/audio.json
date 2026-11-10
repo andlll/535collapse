@@ -50,11 +50,10 @@
         "incrocio_ms": 1500,
         "stereo": true
       },
-      "filtro": "highpass=f=60:poles=2",
-      "rms_db": -26,
-      "limite_db": -12,
-      "gain": 0.2,
-      "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz, molto bassa: livello medio -64 dB) il tratto piu' uniforme di 8 s, da 51 a 59 s: livello costante (scarto 0,25 dB su mezzo secondo), solo 5 gocce isolate oltre +22 dB. 1,5 s dopo il tratto si dissolvono sull'inizio (la giunzione non si sente). Niente rimbombo ne' toni da togliere (energia fra 600 Hz e 10 kHz): solo un passa-alto a 60 Hz per un ronzio a 36 Hz. Livello medio a -26 dBFS, le gocce oltre -12 dBFS smussate (14 dB sopra la media: si fondono col resto, il giro non si riconosce). Gain 0,2: piano, ~11 dB sotto gli effetti"
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz) il tratto di 8 s da 51 a 59 s, cosi' com'e' (§9.142, richiesta dell'autore: niente filtro, limitatore ne' guadagno, che toglievano il fondo e la rendevano troppo forte): solo tagliato, con la fine dissolta in 1,5 s sull'inizio perche' il giro non scatti, e convertito in MP3 a 256 kbit/s senza il taglio degli acuti (bande uguali all'originale entro 0,1 dB; a 128 si perdevano 8 dB sopra i 16 kHz). Volume quello della registrazione (livello medio ~ -64 dBFS), gain 1"
     }
   }
 }

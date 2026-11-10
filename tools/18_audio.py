@@ -7,7 +7,7 @@ elemento, se c'e', e' un altro file d'origine). Per ogni variante: taglio,
 mono, il filtro di pulizia (`filtro`, se c'e'), dissolvenza in entrata e in
 uscita (per un loop, `loop`: la dissolvenza incrociata della fine
 sull'inizio, anche stereo; volume sul livello medio `rms_db` e limitatore a
-`limite_db`, §9.141), picco portato a
+`limite_db`, §9.141, o `volume_originale`, §9.142), picco portato a
 `picco_db` (le varianti dello stesso suono hanno cosi' lo stesso volume; il
 volume nel gioco lo da' `gain`), MP3 mono a 96 kbit/s (lo leggono tutti i
 browser). Scrive game/assets/audio/<nome>_<n>.mp3 e game/assets/audio/audio.json
@@ -103,17 +103,22 @@ def main():
             # [§9.141] il volume: di solito il picco a picco_db; per un loop
             # (rumore continuo con gocce sparse) il livello medio a `rms_db`,
             # e i picchi oltre `limite_db` (dBFS) smussati da un limitatore
-            if s.get("rms_db") is not None:
+            if s.get("volume_originale"):  # [§9.142] come e' registrato: niente guadagno
+                gain = 0.0
+            elif s.get("rms_db") is not None:
                 gain = s["rms_db"] - rms_db(tmp)
             else:
                 gain = target - peak_db(tmp)
-            post = "volume=%.2fdB" % gain
+            post = "volume=%.2fdB" % gain if gain else "anull"
             if s.get("limite_db") is not None:
                 post += ",alimiter=limit=%.4f:attack=2:release=40:level=false" % (10 ** (s["limite_db"] / 20))
             out = "%s_%d.mp3" % (name, k)
             # (MP3 arriva a 48 kHz: le registrazioni a 96 si ricampionano)
+            # [§9.142] `kbit` per suono (la pioggia, bassa e frusciante, a 256
+            # e senza il taglio degli acuti: a 128 perdeva 8 dB sopra i 16 kHz)
+            kb = s.get("kbit", 128 if stereo else 96)
             ffmpeg("-i", tmp, "-af", post, "-ac", "2" if stereo else "1", "-ar", "48000", "-c:a", "libmp3lame",
-                   "-b:a", "128k" if stereo else "96k", os.path.join(OUT, out))
+                   "-b:a", "%dk" % kb, *(["-cutoff", "20000"] if s.get("kbit") else []), os.path.join(OUT, out))
             os.remove(tmp)
             size = os.path.getsize(os.path.join(OUT, out))
             total += size

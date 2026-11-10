@@ -9902,3 +9902,22 @@ Prova (Chromium, Padania): all'inizio della pioggia il volume resta a zero
 finche' non cadono le gocce (prima il cielo si copre), poi sale con loro;
 alla fine scende a zero in ~4 s e il loop si ferma; di nuovo la pioggia e
 "Effetti sonori: NO" in pausa: fermo subito. Prove unitarie.
+
+### 9.142 La pioggia cosi' com'e' registrata
+
+Correzione dell'autore (10 novembre 2026, stessa PR, versione 0.2610) dopo
+l'ascolto di §9.141: "manca il rumore di fondo e in generale e' molto
+forte, limitati a tagliare e comprimere l'originale". Tolti il passa-alto,
+il limitatore sulle gocce e il volume portato a -26 dBFS (35 dB in piu',
+poi gain 0,2: in tutto ~21 dB sopra la registrazione). Ora il loop e' il
+tratto da 51 a 59 s cosi' com'e': solo tagliato, con la fine dissolta in
+1,5 s sull'inizio (non cambia il suono: senza, il giro scatterebbe a ogni
+ripetizione) e convertito in MP3. tools/18: `volume_originale` (nessun
+guadagno) e `kbit` per suono. A 128 kbit/s l'MP3 di un fruscio cosi' basso
+perdeva 8 dB sopra i 16 kHz: 256 kbit/s senza il taglio degli acuti
+(`-cutoff 20000`), bande uguali all'originale entro 0,1 dB (sopra i 16 kHz
+-1,3 dB); 252 KB (tutto l'audio 389 KB). Livello -61 dBFS come l'originale,
+8,000 s, giunzione senza salti. Nel gioco gain 1: il volume della
+registrazione, che entra ed esce con le gocce come prima.
+Prova (Chromium): il loop decodificato a 8,000 s, stereo; il volume segue
+le gocce fino a 1 e alla fine scende a zero; prove unitarie.
