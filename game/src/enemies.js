@@ -22,6 +22,7 @@ import { bloodHit } from "./blood.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
+import { lmStep } from "./lastmile.js";
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -273,6 +274,13 @@ function enemyMove(i, w, p) {
   // gli alleati (units.js, flowMovement "over"). Prima: col campo dell'ondata
   // (la meta dell'ondata, non il posto) o fermo ad aspettare, e i nemici
   // arrivavano a combattere uno sopra l'altro
+  // [§9.147] vicino alla meta l'ultimo tratto (lastmile.js); non le ondate
+  // (ruolo 31: a 400 px sono arrivate), ne' sulla strada o in colonna, ne' in
+  // mischia (inseguendo un alleato: come per gli alleati, units.js)
+  if (i.role !== 31 && !(i.road && !i.warwork) && !i.pace && i.warwork !== 1 && i.warwork !== 2) {
+    const r = lmStep(w, p, i, i.dirox, i.diroy);
+    if (r) { if (r === "moved") yieldClear(i); return; }
+  }
   if (i.warwork === 1 && !i.firework && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1]
       && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFree(i, i.x, i.y) && w.placeFreeExcept(i, i.x, i.y, "enemy_unit")) {
     yieldClear(i);

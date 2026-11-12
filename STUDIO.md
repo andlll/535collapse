@@ -35,12 +35,13 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
-**Movimento, da decidere** (§9.146): mp_potential_step sostituito da un passo
-con memoria (niente inversioni ne' giri sul posto). Resta da ripensare
-l'ultimo tratto: un solo modo di muoversi dal punto in cui l'unita' vede la
-sua meta all'arrivo (un campo piccolo e fine attorno a lei), al posto del
-passo dritto, del fondo del flow field e di stepOver, che oggi si danno il
-cambio e fanno ancora avanti e indietro (crowd.mjs "punto", "mischia").
+**Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
+con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
+per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
+d'assedio e i civili (spostamenti e cantieri). Da fare: la mischia (provata
+col campo fine per le due parti: peggio, §9.147), i posti di lavoro dei
+civili (risorse, depositi); da decidere con l'autore la taratura di
+lvl06.mjs (un seme solo, al limite anche col codice di prima, §9.147).
 
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
@@ -10154,3 +10155,102 @@ e un solo modo di arrivare (la casella o, se occupata da chi e' gia'
 arrivato, il punto libero piu' vicino del campo piccolo). Al posto del passo
 dritto, del fondo del campo e di stepOver; il flow field grande resta per il
 viaggio.
+
+### 9.147 L'ultimo tratto: un campo fine attorno all'unita'
+
+Richiesta dell'autore (12 novembre 2026, stessa PR, versione 0.2611): passare
+al nuovo ultimo tratto proposto in §9.146. Poi, durante il lavoro,
+[indicazione dell'autore] le prove di combattimento vanno fatte con il
+sistema nuovo per **tutte e due** le parti: vincere uno scontro contro una
+parte che si muove male non dice che il sistema e' migliore. Le prove con
+una parte sola sono servite solo a capire dove guardare; i giudizi sotto
+sono tutti con le due parti sullo stesso sistema, e su misure di movimento
+(inversioni, sovrapposizioni, tremolio, arrivo), non su chi vince.
+
+**Il modulo** (`game/src/lastmile.js`). Vicino alla meta (400 px; chi c'e'
+gia' ci resta fino a 550, se no al confine il campo comune, verso la cella
+del capo, e l'ultimo tratto, verso la propria casella, tiravano da parti
+opposte un passo per uno: in `movement.mjs` 359 inversioni cosi'):
+- un campo per unita' (Dijkstra dalla meta) su celle da 16 px, nella
+  finestra che contiene unita' e meta piu' 160 px (al piu' 72 x 72 celle);
+- ostacoli fissi guardati con la maschera vera dell'unita' messa al centro
+  della cella (edifici, alberi, mura, acqua; le porte secondo la parte, con
+  le griglie enemyBlock / enemyPass), in una cache per forma della maschera
+  e per parte, rifatta quando cambiano gli ostacoli (solidVer); le unita'
+  dell'altra parte chiuse; quelle della propria parte si attraversano ma
+  costano (2 per cella se camminano, 8 se ferme: con 40 si facevano giri di
+  centinaia di px attorno alla formazione, settle.mjs);
+- rifatto ogni 10 passi, quando la meta cambia cella o quando il passo e'
+  bloccato; l'unita' punta al punto piu' lontano del percorso (fino a 8
+  celle) che vede in linea retta e fa un passo con le collisioni vere (sopra
+  i compagni si passa); passo chiuso: scarti fino a 75 gradi senza invertire
+  la marcia, se no ferma; ferma 15 passi di fila, o meta non raggiungibile
+  nella finestra: per 30 passi il modo di prima;
+- gia' sovrapposti a un ostacolo (appena usciti da un edificio): un passo va
+  se non tocca niente di nuovo, cosi' se ne esce seguendo il campo (prima
+  restavano dentro la caserma: rally.mjs);
+- la faccia dello sprite cambia solo se la direzione esce dal suo settore di
+  45 gradi di oltre 10 gradi (girando di pochi gradi al passo sul confine lo
+  sprite saltava avanti e indietro).
+
+**Chi lo usa.** Ordini di movimento e chi va a dare fuoco (fanti, cavalieri,
+arcieri), i nemici che non inseguono (non le ondate in marcia, la strada
+del livello 4, la colonna del livello 6), le macchine d'assedio (siegeMove:
+in `movement.mjs` la catapulta faceva 74 inversioni passando fra campo e
+passo dritto, ora 0), i civili nello spostamento semplice e verso il posto
+sul bordo del cantiere o dell'edificio da riparare (al posto di aroundTarget,
+§9.102, che tornava al campo; dopo il controllo dei progressi di
+edgeRescue, che fa cominciare il lavoro da dove si e').
+
+**Non la mischia.** Provato con il campo fine per le due parti: inversioni
+40/33/74 -> 64/115/91, nemici sovrapposti fra loro 0 -> 4306/535/587
+("nemici"). La logica della mischia (posti attorno al bersaglio, melee.js;
+uscita dalla sovrapposizione; attesa senza posto) e' tarata sul passo dritto
+e su stepOver; da ripensare insieme a quella, a parte.
+
+**Due regole vecchie corrette lungo la strada.**
+- `moveStalled` (§9.71) scambiava per bloccato chi dava la precedenza a un
+  compagno e lo fermava con pause che raddoppiano (1, 2, 4 s), anche dopo
+  che l'altro se n'era andato: in marcia code di unita' ferme. Ora chi sta
+  dando la precedenza non viene giudicato.
+- Gli arcieri in marcia sovrapposti si aspettavano a vicenda (i fanti no,
+  §9.38): ora non si aspetta chi aspetta noi.
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima = §9.146):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| punto | inversioni | 179 / 244 / 316 | 8 / 6 / 6 |
+| punto | passi x coppie sovrapposte | 8993 / 14254 / 10685 | 4635 / 4985 / 4478 |
+| punto | coppie sovrapposte alla fine | 2 / 2 / 1 | 0 / 0 / 0 |
+| fuoco | inversioni | 54 / 32 / 49 | 37 / 29 / 21 |
+| circondato, riva | passi x coppie sovrapposte | 2920 / 2417 / 2303, 2668 / 2121 / 2140 | 2150 / 2384 / 2120, 1889 / 1685 / 1919 |
+| riva | inversioni | 5 / 10 / 2 | 22 / 5 / 11 |
+| movement | inversioni | 135 / 99 | 21 / 43 |
+| movement | sprite che torna alla faccia di prima | 189 / 213 | 74 / 99 |
+| movement | in cammino / fuori casella a fine ordine | 1, 3 / 0, 2 | 0, 0 / 0, 0 |
+| movement | coppie sovrapposte alla fine | 1 / 5 | 0 / 0 |
+| rally | inversioni (caserma, stalla, centro) | 7 / 1 / 0 | 61 / 33 / 0 |
+
+Attacco, nemici e mischia restano come prima (non usano l'ultimo tratto; i
+numeri cambiano di poco). In `rally` le inversioni in piu' sono singole,
+all'ingresso nell'ultimo tratto (il campo comune porta verso la cella del
+capo, l'ultimo tratto verso il posto), al piu' 4 per unita' (soglia 20);
+in ritardo, bloccati, lontani: 0 come prima.
+
+`crowd.mjs`: "punto" al piu' 100 inversioni (col codice di prima 179).
+
+**lvl06.mjs, la taratura** (la colonna contro le 15 torri piu' vicine al
+percorso: ne passano al piu' 5). Con l'ultimo tratto, sotto carico, al seme
+della prova ne passavano 6. Misurato su 6 semi: prima 6/6/6/4/4/5 (media
+5,2), ora 4/3/6/6/5/6 (5,0); la colonna non usa l'ultimo tratto (lo usano
+solo i lavoratori nemici), e anche col codice di prima la prova supera la
+soglia in tre semi su sei: e' il seme fisso che decide. [Proposta
+dell'autore] due torri in piu': con 17 prima 6/6/5/6/4/1, ora 4/6/9/7/6/6,
+cioe' il caso pesa piu' delle due torri; non cambiato. Da sola la prova
+passa (5); sotto carico lo stesso seme ha dato 6, quindi il risultato
+dipende anche dal tempo reale (il ciclo del gioco della pagina, da
+verificare). Da decidere con l'autore: una taratura su piu' semi (la media,
+piu' lenta in CI) o una soglia diversa.
+
+Le altre prove della CI nel browser, soak e salvataggi compresi, passano.

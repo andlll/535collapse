@@ -21,6 +21,7 @@
 
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { riverCells, riverIn } from "./rivers.js";
+import { lmStep } from "./lastmile.js";
 
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
@@ -769,6 +770,10 @@ export function siegeMove(w, p, i) {
   // fra la fascia e la sua cella piu' vicina). Sovrapposta a un albero o a un
   // edificio (il campo non ha collisioni) mp_potential_step non la muoveva
   // piu': si va col campo finche' non si stacca.
+  // [§9.147] vicino alla meta l'ultimo tratto (lastmile.js): col passo
+  // dritto e il campo che si davano il cambio (sovrapposta a un soldato,
+  // in vista o no) la macchina andava avanti e indietro
+  if (lmStep(w, p, i, i.dirox, i.diroy)) return;
   const near = pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && w.placeFree(i, i.x, i.y)
     && (v === -1 || p.flowAt(f, sx, sy) === -1 || p.clearLine(f, i.x, i.y, i.dirox, i.diroy));
   if (!f || near) {
@@ -1235,7 +1240,12 @@ export function moveStalled(w, p, i) {
     return true;
   }
   const d = pointDistance(i.x, i.y, i.dirox, i.diroy);
-  if (!c || c.dx !== i.dirox || c.dy !== i.diroy || now - c.last > 2) {
+  // [§9.147] chi sta dando la precedenza a un compagno (fermo sopra di lui,
+  // units.js yieldTo, ranged.js) aspetta, non e' bloccato: la pausa lo
+  // teneva fermo anche dopo che l'altro se n'era andato (fino a 4 s, poi
+  // di nuovo), e in marcia si formavano code di unita' ferme
+  const yielding = (i.yieldAt ?? -9) >= now - 1;
+  if (!c || yielding || c.dx !== i.dirox || c.dy !== i.diroy || now - c.last > 2) {
     const n = c && c.dx === i.dirox && c.dy === i.diroy ? c.n : 0;
     i.mv = { dx: i.dirox, dy: i.diroy, x: i.x, y: i.y, d, at: now, last: now, n };
     return false;

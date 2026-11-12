@@ -15,6 +15,7 @@ import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget,
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
+import { lmStep, lmReady } from "./lastmile.js";
 import { lostBuilding } from "./economy.js";
 import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
@@ -209,20 +210,26 @@ export function allyArcher(p) {
       // da vicino se in linea retta c'e' un ostacolo (prima: dritto, e con
       // un edificio in mezzo camminava sul posto)
       const garr = i.presidiowork === 1 && !seesTarget(w, p, i, w.nearest(i.dirox, i.diroy, "ally_build"));
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr) {
+      // [§9.147] vicino alla meta l'ultimo tratto (gli ordini di movimento:
+      // non verso un presidio ne' all'attacco)
+      const lm = moveOrder && lmReady(w, i, i.dirox, i.diroy, 500);
+      if (!lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr)) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
-          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
-          else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
+          // [§9.147] non si aspetta chi sta aspettando noi (come i fanti,
+          // units.js noYield): due arcieri sovrapposti si aspettavano a vicenda
+          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1
+              || (otro.yieldId === i.id && otro.yieldAt >= w._stepNo - 1)) moveFlowField(w, p, i); // §8.11: assedio
+          else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); i.yieldId = otro.id; i.yieldAt = w._stepNo; } // §9.147: moveStalled
         } else moveFlowField(w, p, i);
       } else {
         if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) {
-          mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+          if (!lmStep(w, p, i, i.dirox, i.diroy, 500)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
           arriveIfBlocked(i); // §6.1 n.89
         }
         if (i.presidiowork === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
         const n = w.nearest(i.x, i.y, "enemy_unit");
-        if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
+        if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction) ) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
     }
     // [Richiesta dell'autore] niente piu' ricalcolo del campo quando la

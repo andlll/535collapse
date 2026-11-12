@@ -18,6 +18,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { lmStep, lmReady } from "./lastmile.js";
 import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
@@ -739,7 +740,13 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
     // suo attorno al bersaglio, sopra gli alleati (stepOver)
     const over = i.warwork === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFreeForSlot(i, i.x, i.y)
       && w.placeFreeExcept(i, i.x, i.y, "ally_unit");
-    if (!over && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)))) {
+    // [§9.147] vicino alla meta l'ultimo tratto (lastmile.js), anche
+    // sovrapposti e senza vista sulla meta: il campo fine ci gira attorno.
+    // Non in mischia: li' i posti attorno al bersaglio (melee.js) e il passo
+    // sopra i compagni restano come prima (con l'ultimo tratto, che non
+    // spinge contro i nemici, gli alleati arrivavano a colpire piu' tardi)
+    const lm = (moveOrder || i.firework === 1) && lmReady(w, i, i.dirox, i.diroy);
+    if (!over && !lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1 || noYield(w, i, otro)) moveFlowField(w, p, i); // §8.11: assedio
@@ -756,11 +763,11 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
         } else i.autospeed = speed * iso(i.direction);
       }
       if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) {
-        mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        if (!lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
         arriveIfBlocked(i); // §6.1 n.89
       }
       // a dare fuoco: verso il proprio posto (qui sopra)
-      if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.firework === 1 && i.targetid && !lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
       // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
       // verso il suo centro (melee.js)
       const ring = over ? MELEE_UNSTACK : null;
