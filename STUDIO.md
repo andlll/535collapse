@@ -40,8 +40,8 @@ con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
 per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
 d'assedio e i civili (spostamenti e cantieri). Da fare: la mischia (provata
 col campo fine per le due parti: peggio, §9.147), i posti di lavoro dei
-civili (risorse, depositi); da decidere con l'autore la taratura di
-lvl06.mjs (un seme solo, al limite anche col codice di prima, §9.147).
+civili (risorse, depositi). La taratura di lvl06.mjs resta com'e'
+(decisione dell'autore, §9.147).
 
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
@@ -10250,7 +10250,7 @@ dell'autore] due torri in piu': con 17 prima 6/6/5/6/4/1, ora 4/6/9/7/6/6,
 cioe' il caso pesa piu' delle due torri; non cambiato. Da sola la prova
 passa (5); sotto carico lo stesso seme ha dato 6, quindi il risultato
 dipende anche dal tempo reale (il ciclo del gioco della pagina, da
-verificare). Da decidere con l'autore: una taratura su piu' semi (la media,
-piu' lenta in CI) o una soglia diversa.
+verificare). Decisione dell'autore (12 novembre 2026): il livello 6 va bene
+cosi', la prova resta com'e'.
 
 Le altre prove della CI nel browser, soak e salvataggi compresi, passano.
