@@ -1071,18 +1071,19 @@ export function arriveIfBlocked(inst) {
 // mp_potential_step(xg, yg, passo, checkall) con le impostazioni
 // mp_potential_settings(30, 3, 3, true) di tutte le unita' [C].
 // [I] L'algoritmo interno di GameMaker non e' documentato: questa e'
-// un'approssimazione con lo stesso contratto. Si prova la direzione del
-// bersaglio, poi a destra e a sinistra di 3 gradi alla volta fino a 180; una
-// direzione va bene se sono liberi sia il passo sia il punto 3 passi avanti;
-// la direzione dell'istanza ruota al massimo di 30 gradi per passo (§9.20:
-// se cosi' il passo e' chiuso, si va subito per la direzione libera); se
-// nessuna direzione e' libera l'istanza ruota sul posto. Restituisce true
-// all'arrivo.
+// un'approssimazione con lo stesso contratto. Restituisce true all'arrivo.
+// [§9.146, domanda dell'autore] Prima: la direzione del bersaglio, poi a
+// destra e a sinistra di 3 gradi alla volta fino a 180, senza memoria; se
+// nessuna era libera l'istanza ruotava sul posto. Fra altre unita' sceglieva
+// a ogni passo un lato diverso e spesso una direzione all'indietro: avanti e
+// indietro, a destra e a sinistra (misurato: nei nemici in mischia quasi
+// tutte le inversioni di marcia, negli ordini di gruppo degli alleati piu'
+// della meta'). Ora: mai oltre 90 gradi dalla meta, il lato si tiene, niente
+// inversioni (fermi al piu' SIDE_HOLD passi), niente giri sul posto.
+const SIDE_HOLD = 20; // passi fermi prima di accettare un'inversione
 export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAllies = false) {
-  const MAXROT = 30, ROT = 3, AHEAD = 3;
+  const MAXROT = 30, AHEAD = 3;
   if (step <= 0) return false;
-  // §8.11 verso la casella della formazione, §9.21 (overAllies) verso il
-  // posto prenotato attorno a una risorsa: sopra gli alleati si passa
   const slot = overAllies || (!checkall && onFormationSlot(inst) && xg === inst.dirox && yg === inst.diroy);
   const free = (x, y) => (checkall ? w.placeEmpty(inst, x, y)
     : slot ? w.placeFreeExcept(inst, x, y, sideUnit(inst)) : w.placeFree(inst, x, y)); // §9.57
@@ -1094,29 +1095,55 @@ export function mpPotentialStep(w, inst, xg, yg, step, checkall = false, overAll
     return false;
   }
   const goalDir = pointDirection(inst.x, inst.y, xg, yg);
-  for (let k = 0; k <= 180 / ROT; k++) {
-    for (const s of k === 0 ? [1] : [1, -1]) {
-      const d = goalDir + s * k * ROT;
-      if (!free(inst.x + lengthdirX(step, d), inst.y + lengthdirY(step, d))) continue;
-      if (!free(inst.x + lengthdirX(step * AHEAD, d), inst.y + lengthdirY(step * AHEAD, d))) continue;
-      // ruota verso d di al massimo MAXROT
-      let diff = ((d - inst.direction) % 360 + 540) % 360 - 180;
-      diff = Math.max(-MAXROT, Math.min(MAXROT, diff));
-      const nd = (inst.direction + diff + 360) % 360;
-      const nx = inst.x + lengthdirX(step, nd), ny = inst.y + lengthdirY(step, nd);
-      if (free(nx, ny)) { inst.direction = nd; w.setPos(inst, nx, ny); }
-      else {
-        // [§9.20] la direzione girata di 30 gradi e' chiusa ma quella libera
-        // no: si va per quella. Prima l'unita' girava di 30 gradi a passo
-        // senza muoversi finche' non era allineata (fino a 6 passi): a
-        // contatto con altre unita' girava su se stessa di continuo
-        inst.direction = (d % 360 + 360) % 360;
-        w.setPos(inst, inst.x + lengthdirX(step, d), inst.y + lengthdirY(step, d));
-      }
-      return false;
+  // una direzione va se sono liberi il passo e il punto 3 passi avanti
+  // (provato guardando avanti solo gli ostacoli fissi: in mischia si
+  // arrivava addosso agli altri e si combatteva peggio)
+  const ok = (d) => free(inst.x + lengthdirX(step, d), inst.y + lengthdirY(step, d))
+    && free(inst.x + lengthdirX(step * AHEAD, d), inst.y + lengthdirY(step * AHEAD, d));
+  // Le direzioni entro 90 gradi dalla meta (mai indietro), in ordine di
+  // scarto; a pari scarto prima il lato dell'ultima volta (la prima volta
+  // quello lontano dal centro di chi sbarra il passo). Non si prende una
+  // direzione a oltre 90 gradi dal passo di prima (un'inversione di marcia:
+  // fra altre unita' l'originale scartava a destra e a sinistra, avanti e
+  // indietro): meglio fermi, al piu' SIDE_HOLD passi, poi anche quella.
+  let side = inst.mpSide || 0;
+  if (!side) {
+    const o = w.instancePlace(inst, inst.x + lengthdirX(step * 2, goalDir), inst.y + lengthdirY(step * 2, goalDir), null, true);
+    side = o && lengthdirX(1, goalDir) * (o.y - inst.y) - lengthdirY(1, goalDir) * (o.x - inst.x) > 0 ? 1 : -1;
+  }
+  // Gia' sovrapposti a qualcuno (nessun passo e' libero finche' non ci si
+  // stacca): tutte le direzioni fino a 180 gradi e nessun vincolo, come
+  // nell'originale; aspettando si restava uno sopra l'altro
+  const inside = !free(inst.x, inst.y);
+  const last = !inside && inst.mpLastAt >= w._stepNo - 3 && (inst.mpHold || 0) < SIDE_HOLD ? inst.mpLastDir : null;
+  const turn = (d) => Math.abs(((d - last) % 360 + 540) % 360 - 180);
+  let d = null, dev = 0;
+  for (let a = 0; a <= (inside ? 180 : 90) && d === null; a += 15) {
+    for (const s of a === 0 ? [1] : [side, -side]) {
+      const c = goalDir + s * a;
+      if ((last === null || turn(c) <= 90) && ok(c)) { d = c; dev = a; if (a) inst.mpSide = s; break; }
     }
   }
-  inst.direction = (inst.direction + MAXROT) % 360; // ruota sul posto
+  if (d === null) {
+    // [Richiesta dell'autore: meglio fermi un istante] nessuna direzione:
+    // fermi, senza girare sul posto ne' tornare indietro; chi chiama decide
+    // quando rinunciare (arriveIfBlocked, moveStalled, chaseStuck)
+    inst.mpHold = (inst.mpHold || 0) + 1;
+    if (inst.mpHold > SIDE_HOLD * 2) { inst.mpSide = 0; inst.mpHold = 0; }
+    return false;
+  }
+  inst.mpHold = 0;
+  if (dev === 0 && side && ++inst.mpClear >= 8) inst.mpSide = 0;
+  if (dev) inst.mpClear = 0;
+  inst.mpLastDir = d; inst.mpLastAt = w._stepNo;
+  let diff = ((d - inst.direction) % 360 + 540) % 360 - 180;
+  diff = Math.max(-MAXROT, Math.min(MAXROT, diff));
+  const nd = (inst.direction + diff + 360) % 360;
+  const nx = inst.x + lengthdirX(step, nd), ny = inst.y + lengthdirY(step, nd);
+  if (Math.abs(diff) < MAXROT || !free(nx, ny)) {
+    inst.direction = (d % 360 + 360) % 360;
+    w.setPos(inst, inst.x + lengthdirX(step, d), inst.y + lengthdirY(step, d));
+  } else { inst.direction = nd; w.setPos(inst, nx, ny); }
   return false;
 }
 

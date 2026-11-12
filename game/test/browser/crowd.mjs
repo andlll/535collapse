@@ -26,7 +26,9 @@
 //           fine (parte a ~700 px; l'anello ha raggi 110 x 80)
 // Prima del §9.71 (seme 3): attacco long 91, fuoco endOv 4, circondato
 // jitter 34 e rev 2734, riva moving 14, endOv 78 e rev 15792, nemici
-// jitter 73, mischia long 28, punto moving 9, endOv 40 e rev 9524. Esce con codice 1 se un caso supera le soglie (LIMITS).
+// jitter 73, mischia long 28, punto moving 9, endOv 40 e rev 9524. Prima
+// del §9.146 (il passo nuovo, semi 3 / 7 / 11): nemici rev 425 / 389 / 408.
+// Esce con codice 1 se un caso supera le soglie (LIMITS).
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
 //   node game/test/browser/crowd.mjs [room] [seme] [casi, separati da virgole]
@@ -41,7 +43,7 @@ const LIMITS = {
   fuoco: { endOv: 0 },
   circondato: { jitter: 2, rev: 100 },
   riva: { jitter: 2, rev: 100, moving: 0, endOv: 3, farthest: 330 },
-  nemici: { jitter: 25 },
+  nemici: { jitter: 25, rev: 150 },
   mischia: { long: 10 },
   punto: { moving: 0, endOv: 3, jitter: 5, rev: 500 },
 };

@@ -35,6 +35,13 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
+**Movimento, da decidere** (§9.146): mp_potential_step sostituito da un passo
+con memoria (niente inversioni ne' giri sul posto). Resta da ripensare
+l'ultimo tratto: un solo modo di muoversi dal punto in cui l'unita' vede la
+sua meta all'arrivo (un campo piccolo e fine attorno a lei), al posto del
+passo dritto, del fondo del flow field e di stepOver, che oggi si danno il
+cambio e fanno ancora avanti e indietro (crowd.mjs "punto", "mischia").
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -10035,3 +10042,115 @@ livello 1 e' sempre di notte: li' il field non si sente mai. La musica e'
 la stessa ovunque (un solo loop); con altri loop si potra' sceglierne uno
 per livello.
 
+
+### 9.146 Gli inceppamenti e mp_potential_step: misura e un passo nuovo
+
+Domanda dell'autore (12 novembre 2026, versione 0.2611): gran parte degli
+"inceppamenti" che si vedono in gioco (alleati e nemici) possono venire da
+`mp_potential_step`? Si puo' sostituirlo, o ripensare l'ultimo tratto del
+pathfinding?
+
+**Misura.** Per attribuire ogni inversione di marcia al meccanismo che ha
+mosso l'unita' in quel passo, contatori provvisori (non versionati) in
+`mpPotentialStep` (dritto, scarto fino a 45, 90, oltre 90 gradi, giro sul
+posto), `moveFlowField` (percorso, fondo del campo con separazione, uscita da
+una cella chiusa) e `stepOver`; poi `crowd.mjs` (seme 3) e `movement.mjs`
+(semi 1 e 2: otto ordini di gruppo, cinque incroci, uno scontro). Col codice
+di prima:
+
+| prova | inversioni | da mp_potential_step | dal flow field | da stepOver |
+|---|---|---|---|---|
+| movement, seme 1 | 305 | 168 (55%) | 124 | 13 |
+| movement, seme 2 | 236 | 141 (60%) | 95 | 0 |
+| crowd "nemici" | 425 (+196 giri sul posto) | 425 (100%) | 0 | 0 |
+| crowd "fuoco" | 33 | 24 | 4 | 0 |
+| crowd "attacco" | 104 | 31 | 2 | 71 |
+| crowd "mischia" | 107 | 33 | 44 | 30 |
+| crowd "punto" | 179 | 0 | 178 | 0 |
+
+Quindi **si', in buona parte**: nei nemici quasi tutto, negli ordini di
+gruppo degli alleati piu' della meta' (pur muovendo con uno scarto dalla
+meta solo l'1,7% dei passi in cammino: quando scarta, inverte). Il motivo:
+senza memoria, a ogni passo provava prima un lato e poi l'altro, fino a
+180 gradi, e chi era stretto fra altre unita' andava a +90 gradi, poi a -90,
+poi indietro (le coppie di passi "scarto < 45 -> scarto > 90" e viceversa
+sono le piu' frequenti); senza nessuna direzione libera girava sul posto.
+Ma **non tutto**: l'altra grossa fonte e' il fondo del flow field. Chi vi
+arriva sovrapposto a un altro si separa (verso la sua meta o via
+dall'altro), esce dalla cella, e il campo lo riporta dentro: in "punto" 134
+inversioni su 179 sono questo ping-pong fra i due rami di `moveFlowField`; e
+in mischia `stepOver` (§9.71) e i cambi fra campo e passo dritto.
+
+**Ora** (pathing.js `mpPotentialStep`, stesso contratto e stessi chiamanti):
+- direzioni solo entro 90 gradi dalla meta, a passi di 15 gradi, in ordine
+  di scarto; a pari scarto prima il lato dell'ultima volta (la prima volta
+  quello lontano dal centro di chi sbarra il passo), tenuto finche' la
+  strada dritta non resta libera per 8 passi;
+- nessuna direzione a oltre 90 gradi dal passo di prima (un'inversione):
+  meglio fermi, al piu' SIDE_HOLD = 20 passi, poi anche quella;
+- nessuna direzione: fermi, senza girare sul posto (decidono i chiamanti
+  quando rinunciare: arriveIfBlocked, moveStalled, chaseStuck);
+- gia' sovrapposti a qualcuno (nessun passo e' libero finche' non ci si
+  stacca): come prima, tutte le direzioni fino a 180 gradi.
+
+**Provato e tolto.**
+- Guardare 3 passi avanti solo gli ostacoli fissi (le unita' si muovono):
+  in mischia si arrivava addosso agli altri e si combatteva peggio (18
+  contro 18, semi 7 e 11: alleati tutti morti, prima vincevano).
+- Il lato tenuto per 20 passi anche con l'altro libero: idem, in mischia.
+- Al fondo del campo, tenere la direzione di separazione e restare fermi
+  appena staccati: "punto" da 179 a 43 inversioni al seme 3, ma tremolio
+  7 e 6 ai semi 7 e 11 (soglia 5), e con una finestra di 3 passi invece di
+  1 peggio di prima. Fragile: e' parte del ripensamento (sotto).
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima -> ora):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| nemici | inversioni | 425 / 389 / 408 | 58 / 48 / 28 |
+| nemici | finestre di tremolio | 10 / 17 / 14 | 2 / 0 / 0 |
+| mischia | inversioni | 107 / 177 / 185 | 40 / 33 / 74 |
+| mischia | coppie sovrapposte >= 3 s | 6 / 7 / 6 | 0 / 2 / 3 |
+| mischia | passi x coppie sovrapposte | 4591 / 4566 / 4159 | 872 / 1251 / 3512 |
+| mischia | alleati vivi alla fine | 9 / 6 / 7 | 10 / 7 / 8 |
+| attacco | inversioni | 104 / 109 / 99 | 74 / 87 / 41 |
+| attacco | coppie sovrapposte >= 3 s | 4 / 1 / 5 | 6 / 11 / 6 |
+| fuoco | inversioni | 33 / 96 / 81 | 54 / 32 / 49 |
+| circondato, riva | finestre di tremolio | 1 / 1 / 1 | 0 / 0 / 0 |
+| movement | inversioni | 305 / 236 | 135 / 99 |
+| movement | giri sul posto | 6 / 4 | 4 / 6 |
+| movement | sprite che torna alla faccia di prima | 299 / 248 | 189 / 213 |
+| movement, scontro | nemici rimasti, alleati vivi | 5 e 12 / 7 e 11 | 6 e 10 / 8 e 10 |
+
+"punto" e' uguale (va col solo flow field). In "attacco" le coppie
+sovrapposte a lungo sono alleati che colpiscono o che cercano un posto con
+`stepOver`, non passi di mp_potential_step: col passo nuovo ai soli alleati
+3 / 1 / 3, ai soli nemici 9 / 3 / 4, a tutti 6 / 11 / 6 (lo scontro cambia
+forma; il seme 3 della CI resta sotto la soglia di 10).
+
+`crowd.mjs`: soglia nuova per i nemici, al piu' 150 inversioni (col codice
+di prima 425). `lvl05.mjs`, la sortita: "tornati" erano quelli entro 150 px
+dal posto, ma la ritirata arriva a 120 px e poi i nemici fermi sovrapposti
+si separano fino a 128 px (settleEnemies, §9.116): col passo nuovo la
+partita prende un'altra strada fin dalla battaglia d'apertura e due nemici,
+arrivati a 118-120 px, venivano spostati a 163-173 px. Ora entro 250 px
+(120 + 128); col codice di prima la prova passa lo stesso. Le altre prove
+della CI nel browser, soak e salvataggi compresi, passano.
+
+**Resta, e il ripensamento proposto.** Gli inceppamenti che restano vengono
+dal fatto che l'ultimo tratto ha quattro modi di muoversi, con regole di
+collisione diverse, e l'unita' salta dall'uno all'altro: il flow field (senza
+collisioni, verso la cella del capo o della meta, non verso la casella di
+ognuno), il fondo del campo (separazione senza collisioni), il passo dritto
+(mp_potential_step, tutte le collisioni) e stepOver (sopra i compagni). Le
+soglie che scelgono il modo (400 px, "sovrapposto", "in vista") fanno
+oscillare fra modi che tirano in direzioni diverse. Proposta: un solo
+"ultimo tratto" per unita', dal punto in cui vede la propria meta (o a una
+o due celle dal fondo del campo) fino all'arrivo, con un campo piccolo e
+fine (celle da 8-16 px, una finestra di ~20 x 20 celle attorno all'unita')
+verso la sua casella, in cui gli ostacoli fissi e le unita' ferme sono
+chiusi e quelle in cammino costano di piu', ricalcolato ogni qualche passo;
+e un solo modo di arrivare (la casella o, se occupata da chi e' gia'
+arrivato, il punto libero piu' vicino del campo piccolo). Al posto del passo
+dritto, del fondo del campo e di stepOver; il flow field grande resta per il
+viaggio.
