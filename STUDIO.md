@@ -10439,5 +10439,27 @@ posto copre il Po; senza, il fiume e' pulito; lo stesso sul canale di
 Rivoaltus.
 
 Nel livello 6 (la mappa dell'autore, non generata) 2 macchie toccano
-l'acqua al 70% dell'ellisse, 4 all'ellisse intera: non toccate, da decidere
-con l'autore.
+l'acqua al 70% dell'ellisse, 4 all'ellisse intera: spostate su richiesta
+dell'autore (§9.151).
+
+### 9.151 Le macchie del livello 6 fuori dai fiumi; l'avviso in Tiled
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611):
+spostare anche le macchie del livello 6 che finiscono nei fiumi.
+
+**Spostate** in `mappe/lvl06.tmx` (e rifatto `scenari/lvl06.json`), ognuna
+nel punto asciutto piu' vicino (lo stesso criterio di §9.150: ellisse
+intera, 20 px dalla riva), cosi' resta nello stesso angolo di paesaggio:
+due macchie di grano (180 px a destra; 160 px in giu'), due d'erba (40 px)
+e una di fiori di papavero, che arrivava a meno di 20 px dall'acqua (20 px).
+Si sono mossi solo questi 5 oggetti; il resto della mappa e dello scenario
+e' uguale. Screenshot (la macchia vecchia rimessa al suo posto): prima il
+grano entrava nel fiume, dopo comincia oltre la riva.
+
+**L'avviso** (tools/12_tiled_import.py): importando una mappa, una macchia a
+particelle che arriva nell'acqua di un fiume da' un avviso ("la macchia
+arriva nell'acqua di un fiume, spostala", con le coordinate), per le mappe
+che l'autore disegnera'. Con la mappa del livello 6 di prima: i 4 avvisi
+delle macchie bagnate; con quella nuova nessuno. Il controllo (`patch_wet`)
+e le misure delle macchie (`PATCH_SIZE`) stanno ora in tools/tiledkit.py,
+comuni a tools/12 e tools/16 (le schermaglie restano identiche).

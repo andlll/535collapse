@@ -57,9 +57,7 @@ BRIDGE_R = 300  # [§9.125] distanza dai ponti dipinti (free)
 # [§9.131] le macchie a particelle: semiassi dell'ellisse in cui il gioco
 # sparge i fili d'erba e i fiori (game/src/effects.js DECOR_SIZE, [500, 300]
 # se non c'e'); devono restare fuori dai centri (r: SOLID_R) delle basi
-PATCH_SIZE = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticellare": (500, 300),
-              "fiori_papaveri": (200, 125), "fiori_papaveri_erba": (200, 125), "fiori_gialli_erba": (200, 125),
-              "fiori_prato": (200, 125)}
+PATCH_SIZE = tk.PATCH_SIZE  # [§9.150] in tiledkit (anche tools/12 li usa)
 SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40,
            # [§9.123] la citta' (i centri delle maschere: mezza larghezza piu' un po')
            "ocr_teatro": 380, "ocr_basilica": 460, "ocr_tempio": 320, "castelloruin": 340, "chiesaruin": 270,
@@ -1191,25 +1189,7 @@ MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus, "bardon
 
 # ------------------------------------------------------------ controllo
 
-def patch_wet(x, y, rx, ry, rivers, margin=0):
-    """[§9.150] L'ellisse (x, y, rx, ry) di una macchia a particelle tocca
-    l'acqua di uno dei fiumi [(punti, larghezza)]? Il centro e 16 punti del
-    bordo, a meno di meta' larghezza + margin px dalla linea, sul terreno
-    "steso" (y / 0,62) come le rive del gioco (game/src/rivers.js)."""
-    iso = 0.62
-    pts = [(x, y)] + [(x + rx * math.cos(a * math.pi / 8), y + ry * math.sin(a * math.pi / 8)) for a in range(16)]
-    for line, wdt in rivers:
-        half = wdt / 2 + margin
-        for (x0, y0), (x1, y1) in zip(line, line[1:]):
-            y0, y1 = y0 / iso, y1 / iso
-            vx, vy = x1 - x0, y1 - y0
-            L2 = vx * vx + vy * vy or 1
-            for px, py in pts:
-                qy = py / iso
-                t = max(0, min(1, ((px - x0) * vx + (qy - y0) * vy) / L2))
-                if math.hypot(px - (x0 + t * vx), qy - (y0 + t * vy)) < half:
-                    return True
-    return False
+patch_wet = tk.patch_wet  # [§9.150] in tiledkit
 
 
 def check(name):
