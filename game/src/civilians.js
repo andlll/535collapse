@@ -14,6 +14,7 @@ import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
+import { lmStep, lmReady } from "./lastmile.js";
 import { phaseOf, walkCycle, firstSelected } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
@@ -514,6 +515,22 @@ function ominoStep(i, w, p, stop) {
 // che la cella si liberasse.
 const WORK = { sep: 30, extras: [0, 8] };
 const EDGE = { sep: 30, extras: [0] }; // §9.64: solo a contatto (cantiere, riparazione)
+// [§9.147] Al cantiere o all'edificio da riparare, da vicino: l'ultimo tratto
+// (lastmile.js) verso il proprio posto sul bordo (meleeSpot, come toEdgeSpot).
+// Prima qui si passava fra il campo comune (che finisce nella cella libera
+// piu' vicina all'edificio), il passo dritto e il salvataggio di edgeRescue:
+// in buildstuck.mjs un civile restava a 190 px dal cantiere, avanti e
+// indietro di pochi px in fondo al campo. Falso se non si puo' (lontano, o
+// il posto non si raggiunge da qui): come prima.
+function edgeLastMile(w, p, i, t) {
+  if (!lmReady(w, i, t.x, t.y)) return false;
+  const s = meleeSpot(w, i, t, null, EDGE);
+  if (!s) return false;
+  // (non aroundTarget, §9.102: col campo verso l'edificio quando la linea
+  // verso il posto lo attraversa; il campo fine ci gira attorno da solo)
+  return !!lmStep(w, p, i, s[0], s[1]);
+}
+
 function toEdgeSpot(w, i, t) {
   if (!t) return;
   const s = meleeSpot(w, i, t, null, EDGE);
@@ -905,6 +922,7 @@ function ominoMove(i, w, p) {
       : i.repairwork === 1 && !complexOf(i.repT) ? n(S.build, i.repx, i.repy) : null;
     const blocked = !!bldT && !seesTarget(w, p, i, bldT);
     if (bldT && !far && edgeRescue(w, p, i, bldT)) { /* §9.102: gia' mosso col campo */ }
+    else if (bldT && !bldT.buildReach && edgeLastMile(w, p, i, bldT)) { /* §9.147 (dopo il controllo dei progressi di edgeRescue) */ }
     else if (atRes) toResSpot(w, i, res); // §9.21
     // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
     // vero (albero, edificio) in cui il campo l'ha portato
@@ -920,6 +938,10 @@ function ominoMove(i, w, p) {
       const d = i.foodwork === 2 ? n(S.barn, i.dirox, i.diroy) : n(S.magazza, i.dirox, i.diroy);
       if (d) mpPotentialStep(w, i, d.x, d.y, i.autospeed, false, true);
     }
+    // [§9.147] lo spostamento semplice, vicino alla meta: l'ultimo tratto
+    // (lastmile.js), anche sovrapposti o senza vista; prima qui si passava
+    // al campo comune e, staccati, al passo dritto, un passo per uno
+    else if (plain && !i.woodwork && !i.depositTo && lmReady(w, i, i.dirox, i.diroy) && lmStep(w, p, i, i.dirox, i.diroy)) arriveIfBlocked(i);
     else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i)) || blocked) {
       const otro = w.instancePlace(i, i.x, i.y, S.unit);
       if (otro) {
@@ -951,7 +973,7 @@ function ominoMove(i, w, p) {
         // [§8.19] consegna su ordine: un posto sul bordo del deposito (chi
         // ha gia' consegnato si ferma li' accanto e faceva da tappo)
         else if (i.depositTo) toWorkSpot(w, i, i.depositTo);
-        else mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        else if (!lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
         // §6.1 n.89, solo per un semplice spostamento (non verso il legno;
         // non per la consegna su ordine, §8.19: misura i progressi verso il
         // centro dell'edificio, e chi gli girava attorno per arrivare al suo

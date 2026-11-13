@@ -15,6 +15,8 @@ import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget,
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
+import { lmStep, lmReady } from "./lastmile.js";
+import { ST, huntHit } from "./stealth.js"; // §9.148
 import { lostBuilding } from "./economy.js";
 import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
@@ -37,7 +39,8 @@ export function allyArrow(tower) {
   const collisions = {};
   for (const [name, dmg] of Object.entries(ALLY_HIT)) {
     collisions[name] = (i, w, other) => {
-      other.life -= dmg;
+      if (i.hunt) huntHit(w, i, other, dmg); // §9.148: l'arciere della nebbia
+      else other.life -= dmg;
       bloodHit(w, other, i.direction, "arrow"); // §9.117 (non sulle macchine d'assedio: blood.js)
       if (name !== "enemy_ariete" && name !== "enemy_catapulta") other.hit = 1;
       other.alarm.set(5, 47);
@@ -144,6 +147,10 @@ export function counterArcher(i, w) {
 // ------------------------------------------------------- arciere alleato
 
 const ARC = "ally_arciere";
+// [§9.148] le fasi del tiro (13, 30, 13 di sempre): quelle dell'arciere della
+// nebbia secondo il modo (alarm2 usa la prima e la terza fra un tiro e l'altro)
+const PHASES = [13, 30, 13];
+const phases = (i) => (!i.hunter ? PHASES : i.shotMode === "furtivo" ? ST.stealthPhases : ST.rapidPhases);
 
 export function allyArcher(p) {
   const stopHere = (i) => {
@@ -209,20 +216,26 @@ export function allyArcher(p) {
       // da vicino se in linea retta c'e' un ostacolo (prima: dritto, e con
       // un edificio in mezzo camminava sul posto)
       const garr = i.presidiowork === 1 && !seesTarget(w, p, i, w.nearest(i.dirox, i.diroy, "ally_build"));
-      if (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr) {
+      // [§9.147] vicino alla meta l'ultimo tratto (gli ordini di movimento:
+      // non verso un presidio ne' all'attacco)
+      const lm = moveOrder && lmReady(w, i, i.dirox, i.diroy, 500);
+      if (!lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr)) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
-          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1) moveFlowField(w, p, i); // §8.11: assedio
-          else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); }
+          // [§9.147] non si aspetta chi sta aspettando noi (come i fanti,
+          // units.js noYield): due arcieri sovrapposti si aspettavano a vicenda
+          if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1
+              || (otro.yieldId === i.id && otro.yieldAt >= w._stepNo - 1)) moveFlowField(w, p, i); // §8.11: assedio
+          else { i.step = 0; i.alarm.set(0, i.alarm.get(0) + 1); i.yieldId = otro.id; i.yieldAt = w._stepNo; } // §9.147: moveStalled
         } else moveFlowField(w, p, i);
       } else {
         if ((i.warwork === 0 || i.warwork === 4) && i.presidiowork === 0) {
-          mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+          if (!lmStep(w, p, i, i.dirox, i.diroy, 500)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
           arriveIfBlocked(i); // §6.1 n.89
         }
         if (i.presidiowork === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
         const n = w.nearest(i.x, i.y, "enemy_unit");
-        if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction)) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
+        if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction) ) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
     }
     // [Richiesta dell'autore] niente piu' ricalcolo del campo quando la
@@ -243,19 +256,27 @@ export function allyArcher(p) {
       return null;
     }
     if (!(i.atktarget && i.atktarget.alive)) { i.atkorder = 0; i.atktarget = null; }
+    // [§9.148] l'arciere della nebbia col tiro furtivo tira solo al bersaglio
+    // scelto col clic destro: niente tiri ne' inseguimenti da solo
+    const stealthy = i.hunter && i.shotMode === "furtivo";
+    if (stealthy && i.atkorder === 0) {
+      if (i.warwork === 2 || (i.action === 1 && i.warwork === 1)) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i); }
+      return null;
+    }
+    const R = stealthy ? ST.stealthRange : 600;
     const k = iso(i.direction);
     let valid = false;
     valid = (i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget).visible === true;
     i.targvalid = valid ? 1 : 0;
     const t = i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget;
-    if (w.distanceToInstance(i, t) < 600 * k) {
+    if (w.distanceToInstance(i, t) < R * k) {
       // §6.4: il piu' vicino a tiro con la linea libera (o quello scelto, se
       // e' in linea); se nessuno, ci si sposta nei paraggi
-      const s = i.atkorder === 0 ? shootable(w, i, "enemy_unit", (o) => w.distanceToInstance(i, o) < 600 * k)
+      const s = i.atkorder === 0 ? shootable(w, i, "enemy_unit", (o) => w.distanceToInstance(i, o) < R * k)
         : (w.shotClear(i.x, i.y, t.x, t.y) ? t : null);
       if (!s) {
         if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i); }
-        reposition(i, w, t, 0.9 * 600 * k);
+        reposition(i, w, t, 0.9 * R * k);
         return "exit";
       }
       i.shot = s;
@@ -265,7 +286,7 @@ export function allyArcher(p) {
         p.occupy(i);
       }
       if (i.warwork === 0 || i.warwork === 1 || (i.warwork === 4 && i.repos === 1)) {
-        i.action = 2; p.occupy(i); i.warwork = 2; i.alarm.set(2, 13); i.repos = 0;
+        i.action = 2; p.occupy(i); i.warwork = 2; i.alarm.set(2, phases(i)[0]); i.repos = 0;
       }
       return "exit";
     } else if (i.warwork === 2) {
@@ -339,11 +360,12 @@ export function allyArcher(p) {
     // Alarm_2 [C]: tre fasi (13, 30, 13 passi), poi la freccia a 20 px per passo
     alarm2(i, w) {
       if (i.action !== 2) return;
-      if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
-      if (i.step === 1) { i.step = 2; i.alarm.set(2, 30); return; }
+      const P = phases(i); // §9.148
+      if (i.step === 0) { i.step = 1; i.alarm.set(2, P[0]); return; }
+      if (i.step === 1) { i.step = 2; i.alarm.set(2, P[1]); return; }
       if (i.step !== 2) return;
       i.step = 0;
-      i.alarm.set(2, 13);
+      i.alarm.set(2, P[2]);
       // §6.4: la freccia va al bersaglio scelto se e' ancora in linea; se
       // nel frattempo un edificio si e' messo in mezzo, il tiro si annulla
       const t = i.shot && i.shot.alive ? i.shot : null;
@@ -351,6 +373,12 @@ export function allyArcher(p) {
       const b = w.create("arciere_bullet", i.x, i.y - 40);
       aimArrow(b, t);
       b.speed = 20;
+      // [§9.148] la freccia dell'arciere della nebbia: il modo e da dove e'
+      // partita (il rumore porta li'); la furtiva vola piu' lontano
+      if (i.hunter) {
+        b.hunt = { mode: i.shotMode, x: i.x, y: i.y };
+        if (i.shotMode === "furtivo") b.alarm.set(0, 45);
+      }
     },
     // Alarm_3 (nato in un posto occupato): nessuno lo arma per l'arciere
     alarm5(i) { i.hit = 0; },
@@ -402,6 +430,10 @@ export function allyArcher(p) {
       if (i.selected === 1 && w.number("attacco_clicker") === 0) {
         w.create("attacco_clicker", 0, 0);
         w.create("difesa_clicker", 0, 0);
+      }
+      if (i.hunter && i.selected === 1 && w.number("tiro_furtivo_clicker") === 0) { // §9.148
+        w.create("tiro_furtivo_clicker", 0, 0);
+        w.create("tiro_rapido_clicker", 0, 0);
       }
       move(i, w);
       if (attack(i, w) === "exit") return;

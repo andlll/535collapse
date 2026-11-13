@@ -35,6 +35,22 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
+**Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
+nebbia, di giorno e pieno di nebbia. Fatto il prototipo
+(`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
+allarme e "!", tiro furtivo e rapido, il messaggero che corre alla torre e
+il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
+che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
+banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+
+**Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
+con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
+per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
+d'assedio e i civili (spostamenti e cantieri). Da fare: la mischia (provata
+col campo fine per le due parti: peggio, §9.147), i posti di lavoro dei
+civili (risorse, depositi). La taratura di lvl06.mjs resta com'e'
+(decisione dell'autore, §9.147).
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -10035,3 +10051,415 @@ livello 1 e' sempre di notte: li' il field non si sente mai. La musica e'
 la stessa ovunque (un solo loop); con altri loop si potra' sceglierne uno
 per livello.
 
+
+### 9.146 Gli inceppamenti e mp_potential_step: misura e un passo nuovo
+
+Domanda dell'autore (12 novembre 2026, versione 0.2611): gran parte degli
+"inceppamenti" che si vedono in gioco (alleati e nemici) possono venire da
+`mp_potential_step`? Si puo' sostituirlo, o ripensare l'ultimo tratto del
+pathfinding?
+
+**Misura.** Per attribuire ogni inversione di marcia al meccanismo che ha
+mosso l'unita' in quel passo, contatori provvisori (non versionati) in
+`mpPotentialStep` (dritto, scarto fino a 45, 90, oltre 90 gradi, giro sul
+posto), `moveFlowField` (percorso, fondo del campo con separazione, uscita da
+una cella chiusa) e `stepOver`; poi `crowd.mjs` (seme 3) e `movement.mjs`
+(semi 1 e 2: otto ordini di gruppo, cinque incroci, uno scontro). Col codice
+di prima:
+
+| prova | inversioni | da mp_potential_step | dal flow field | da stepOver |
+|---|---|---|---|---|
+| movement, seme 1 | 305 | 168 (55%) | 124 | 13 |
+| movement, seme 2 | 236 | 141 (60%) | 95 | 0 |
+| crowd "nemici" | 425 (+196 giri sul posto) | 425 (100%) | 0 | 0 |
+| crowd "fuoco" | 33 | 24 | 4 | 0 |
+| crowd "attacco" | 104 | 31 | 2 | 71 |
+| crowd "mischia" | 107 | 33 | 44 | 30 |
+| crowd "punto" | 179 | 0 | 178 | 0 |
+
+Quindi **si', in buona parte**: nei nemici quasi tutto, negli ordini di
+gruppo degli alleati piu' della meta' (pur muovendo con uno scarto dalla
+meta solo l'1,7% dei passi in cammino: quando scarta, inverte). Il motivo:
+senza memoria, a ogni passo provava prima un lato e poi l'altro, fino a
+180 gradi, e chi era stretto fra altre unita' andava a +90 gradi, poi a -90,
+poi indietro (le coppie di passi "scarto < 45 -> scarto > 90" e viceversa
+sono le piu' frequenti); senza nessuna direzione libera girava sul posto.
+Ma **non tutto**: l'altra grossa fonte e' il fondo del flow field. Chi vi
+arriva sovrapposto a un altro si separa (verso la sua meta o via
+dall'altro), esce dalla cella, e il campo lo riporta dentro: in "punto" 134
+inversioni su 179 sono questo ping-pong fra i due rami di `moveFlowField`; e
+in mischia `stepOver` (§9.71) e i cambi fra campo e passo dritto.
+
+**Ora** (pathing.js `mpPotentialStep`, stesso contratto e stessi chiamanti):
+- direzioni solo entro 90 gradi dalla meta, a passi di 15 gradi, in ordine
+  di scarto; a pari scarto prima il lato dell'ultima volta (la prima volta
+  quello lontano dal centro di chi sbarra il passo), tenuto finche' la
+  strada dritta non resta libera per 8 passi;
+- nessuna direzione a oltre 90 gradi dal passo di prima (un'inversione):
+  meglio fermi, al piu' SIDE_HOLD = 20 passi, poi anche quella;
+- nessuna direzione: fermi, senza girare sul posto (decidono i chiamanti
+  quando rinunciare: arriveIfBlocked, moveStalled, chaseStuck);
+- gia' sovrapposti a qualcuno (nessun passo e' libero finche' non ci si
+  stacca): come prima, tutte le direzioni fino a 180 gradi.
+
+**Provato e tolto.**
+- Guardare 3 passi avanti solo gli ostacoli fissi (le unita' si muovono):
+  in mischia si arrivava addosso agli altri e si combatteva peggio (18
+  contro 18, semi 7 e 11: alleati tutti morti, prima vincevano).
+- Il lato tenuto per 20 passi anche con l'altro libero: idem, in mischia.
+- Al fondo del campo, tenere la direzione di separazione e restare fermi
+  appena staccati: "punto" da 179 a 43 inversioni al seme 3, ma tremolio
+  7 e 6 ai semi 7 e 11 (soglia 5), e con una finestra di 3 passi invece di
+  1 peggio di prima. Fragile: e' parte del ripensamento (sotto).
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima -> ora):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| nemici | inversioni | 425 / 389 / 408 | 58 / 48 / 28 |
+| nemici | finestre di tremolio | 10 / 17 / 14 | 2 / 0 / 0 |
+| mischia | inversioni | 107 / 177 / 185 | 40 / 33 / 74 |
+| mischia | coppie sovrapposte >= 3 s | 6 / 7 / 6 | 0 / 2 / 3 |
+| mischia | passi x coppie sovrapposte | 4591 / 4566 / 4159 | 872 / 1251 / 3512 |
+| mischia | alleati vivi alla fine | 9 / 6 / 7 | 10 / 7 / 8 |
+| attacco | inversioni | 104 / 109 / 99 | 74 / 87 / 41 |
+| attacco | coppie sovrapposte >= 3 s | 4 / 1 / 5 | 6 / 11 / 6 |
+| fuoco | inversioni | 33 / 96 / 81 | 54 / 32 / 49 |
+| circondato, riva | finestre di tremolio | 1 / 1 / 1 | 0 / 0 / 0 |
+| movement | inversioni | 305 / 236 | 135 / 99 |
+| movement | giri sul posto | 6 / 4 | 4 / 6 |
+| movement | sprite che torna alla faccia di prima | 299 / 248 | 189 / 213 |
+| movement, scontro | nemici rimasti, alleati vivi | 5 e 12 / 7 e 11 | 6 e 10 / 8 e 10 |
+
+"punto" e' uguale (va col solo flow field). In "attacco" le coppie
+sovrapposte a lungo sono alleati che colpiscono o che cercano un posto con
+`stepOver`, non passi di mp_potential_step: col passo nuovo ai soli alleati
+3 / 1 / 3, ai soli nemici 9 / 3 / 4, a tutti 6 / 11 / 6 (lo scontro cambia
+forma; il seme 3 della CI resta sotto la soglia di 10).
+
+`crowd.mjs`: soglia nuova per i nemici, al piu' 150 inversioni (col codice
+di prima 425). `lvl05.mjs`, la sortita: "tornati" erano quelli entro 150 px
+dal posto, ma la ritirata arriva a 120 px e poi i nemici fermi sovrapposti
+si separano fino a 128 px (settleEnemies, §9.116): col passo nuovo la
+partita prende un'altra strada fin dalla battaglia d'apertura e due nemici,
+arrivati a 118-120 px, venivano spostati a 163-173 px. Ora entro 250 px
+(120 + 128); col codice di prima la prova passa lo stesso. Le altre prove
+della CI nel browser, soak e salvataggi compresi, passano.
+
+**Resta, e il ripensamento proposto.** Gli inceppamenti che restano vengono
+dal fatto che l'ultimo tratto ha quattro modi di muoversi, con regole di
+collisione diverse, e l'unita' salta dall'uno all'altro: il flow field (senza
+collisioni, verso la cella del capo o della meta, non verso la casella di
+ognuno), il fondo del campo (separazione senza collisioni), il passo dritto
+(mp_potential_step, tutte le collisioni) e stepOver (sopra i compagni). Le
+soglie che scelgono il modo (400 px, "sovrapposto", "in vista") fanno
+oscillare fra modi che tirano in direzioni diverse. Proposta: un solo
+"ultimo tratto" per unita', dal punto in cui vede la propria meta (o a una
+o due celle dal fondo del campo) fino all'arrivo, con un campo piccolo e
+fine (celle da 8-16 px, una finestra di ~20 x 20 celle attorno all'unita')
+verso la sua casella, in cui gli ostacoli fissi e le unita' ferme sono
+chiusi e quelle in cammino costano di piu', ricalcolato ogni qualche passo;
+e un solo modo di arrivare (la casella o, se occupata da chi e' gia'
+arrivato, il punto libero piu' vicino del campo piccolo). Al posto del passo
+dritto, del fondo del campo e di stepOver; il flow field grande resta per il
+viaggio.
+
+### 9.147 L'ultimo tratto: un campo fine attorno all'unita'
+
+Richiesta dell'autore (12 novembre 2026, stessa PR, versione 0.2611): passare
+al nuovo ultimo tratto proposto in §9.146. Poi, durante il lavoro,
+[indicazione dell'autore] le prove di combattimento vanno fatte con il
+sistema nuovo per **tutte e due** le parti: vincere uno scontro contro una
+parte che si muove male non dice che il sistema e' migliore. Le prove con
+una parte sola sono servite solo a capire dove guardare; i giudizi sotto
+sono tutti con le due parti sullo stesso sistema, e su misure di movimento
+(inversioni, sovrapposizioni, tremolio, arrivo), non su chi vince.
+
+**Il modulo** (`game/src/lastmile.js`). Vicino alla meta (400 px; chi c'e'
+gia' ci resta fino a 550, se no al confine il campo comune, verso la cella
+del capo, e l'ultimo tratto, verso la propria casella, tiravano da parti
+opposte un passo per uno: in `movement.mjs` 359 inversioni cosi'):
+- un campo per unita' (Dijkstra dalla meta) su celle da 16 px, nella
+  finestra che contiene unita' e meta piu' 160 px (al piu' 72 x 72 celle);
+- ostacoli fissi guardati con la maschera vera dell'unita' messa al centro
+  della cella (edifici, alberi, mura, acqua; le porte secondo la parte, con
+  le griglie enemyBlock / enemyPass), in una cache per forma della maschera
+  e per parte, rifatta quando cambiano gli ostacoli (solidVer); le unita'
+  dell'altra parte chiuse; quelle della propria parte si attraversano ma
+  costano (2 per cella se camminano, 8 se ferme: con 40 si facevano giri di
+  centinaia di px attorno alla formazione, settle.mjs);
+- rifatto ogni 10 passi, quando la meta cambia cella o quando il passo e'
+  bloccato; l'unita' punta al punto piu' lontano del percorso (fino a 8
+  celle) che vede in linea retta e fa un passo con le collisioni vere (sopra
+  i compagni si passa); passo chiuso: scarti fino a 75 gradi senza invertire
+  la marcia, se no ferma; ferma 15 passi di fila, o meta non raggiungibile
+  nella finestra: per 30 passi il modo di prima;
+- gia' sovrapposti a un ostacolo (appena usciti da un edificio): un passo va
+  se non tocca niente di nuovo, cosi' se ne esce seguendo il campo (prima
+  restavano dentro la caserma: rally.mjs);
+- la faccia dello sprite cambia solo se la direzione esce dal suo settore di
+  45 gradi di oltre 10 gradi (girando di pochi gradi al passo sul confine lo
+  sprite saltava avanti e indietro).
+
+**Chi lo usa.** Ordini di movimento e chi va a dare fuoco (fanti, cavalieri,
+arcieri), i nemici che non inseguono (non le ondate in marcia, la strada
+del livello 4, la colonna del livello 6), le macchine d'assedio (siegeMove:
+in `movement.mjs` la catapulta faceva 74 inversioni passando fra campo e
+passo dritto, ora 0), i civili nello spostamento semplice e verso il posto
+sul bordo del cantiere o dell'edificio da riparare (al posto di aroundTarget,
+§9.102, che tornava al campo; dopo il controllo dei progressi di
+edgeRescue, che fa cominciare il lavoro da dove si e').
+
+**Non la mischia.** Provato con il campo fine per le due parti: inversioni
+40/33/74 -> 64/115/91, nemici sovrapposti fra loro 0 -> 4306/535/587
+("nemici"). La logica della mischia (posti attorno al bersaglio, melee.js;
+uscita dalla sovrapposizione; attesa senza posto) e' tarata sul passo dritto
+e su stepOver; da ripensare insieme a quella, a parte.
+
+**Due regole vecchie corrette lungo la strada.**
+- `moveStalled` (§9.71) scambiava per bloccato chi dava la precedenza a un
+  compagno e lo fermava con pause che raddoppiano (1, 2, 4 s), anche dopo
+  che l'altro se n'era andato: in marcia code di unita' ferme. Ora chi sta
+  dando la precedenza non viene giudicato.
+- Gli arcieri in marcia sovrapposti si aspettavano a vicenda (i fanti no,
+  §9.38): ora non si aspetta chi aspetta noi.
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima = §9.146):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| punto | inversioni | 179 / 244 / 316 | 8 / 6 / 6 |
+| punto | passi x coppie sovrapposte | 8993 / 14254 / 10685 | 4635 / 4985 / 4478 |
+| punto | coppie sovrapposte alla fine | 2 / 2 / 1 | 0 / 0 / 0 |
+| fuoco | inversioni | 54 / 32 / 49 | 37 / 29 / 21 |
+| circondato, riva | passi x coppie sovrapposte | 2920 / 2417 / 2303, 2668 / 2121 / 2140 | 2150 / 2384 / 2120, 1889 / 1685 / 1919 |
+| riva | inversioni | 5 / 10 / 2 | 22 / 5 / 11 |
+| movement | inversioni | 135 / 99 | 21 / 43 |
+| movement | sprite che torna alla faccia di prima | 189 / 213 | 74 / 99 |
+| movement | in cammino / fuori casella a fine ordine | 1, 3 / 0, 2 | 0, 0 / 0, 0 |
+| movement | coppie sovrapposte alla fine | 1 / 5 | 0 / 0 |
+| rally | inversioni (caserma, stalla, centro) | 7 / 1 / 0 | 61 / 33 / 0 |
+
+Attacco, nemici e mischia restano come prima (non usano l'ultimo tratto; i
+numeri cambiano di poco). In `rally` le inversioni in piu' sono singole,
+all'ingresso nell'ultimo tratto (il campo comune porta verso la cella del
+capo, l'ultimo tratto verso il posto), al piu' 4 per unita' (soglia 20);
+in ritardo, bloccati, lontani: 0 come prima.
+
+`crowd.mjs`: "punto" al piu' 100 inversioni (col codice di prima 179).
+
+**lvl06.mjs, la taratura** (la colonna contro le 15 torri piu' vicine al
+percorso: ne passano al piu' 5). Con l'ultimo tratto, sotto carico, al seme
+della prova ne passavano 6. Misurato su 6 semi: prima 6/6/6/4/4/5 (media
+5,2), ora 4/3/6/6/5/6 (5,0); la colonna non usa l'ultimo tratto (lo usano
+solo i lavoratori nemici), e anche col codice di prima la prova supera la
+soglia in tre semi su sei: e' il seme fisso che decide. [Proposta
+dell'autore] due torri in piu': con 17 prima 6/6/5/6/4/1, ora 4/6/9/7/6/6,
+cioe' il caso pesa piu' delle due torri; non cambiato. Da sola la prova
+passa (5); sotto carico lo stesso seme ha dato 6, quindi il risultato
+dipende anche dal tempo reale (il ciclo del gioco della pagina, da
+verificare). Decisione dell'autore (12 novembre 2026): il livello 6 va bene
+cosi', la prova resta com'e'.
+
+Le altre prove della CI nel browser, soak e salvataggi compresi, passano.
+
+### 9.148 Livello 7, "Lost in the Fog": l'arciere della nebbia (prototipo)
+
+Richiesta dell'autore (12-13 novembre 2026): la regia del livello 7, "fog" o
+"Lost in the Fog", una specie di stealth con poche unita' o una sola che,
+sfruttando la nebbia, si fa strada in un ambiente ostile: boschi, un
+labirinto di mura, unita' alleate da liberare per tornare in forze e aprire
+il passaggio (sconfiggere una guarnigione, o liberare macchine d'assedio per
+distruggere un castello che chiude il passo).
+
+**Cosa c'era gia'.** Vicino a una nuvola `fog01` i nemici si accorgono del
+giocatore a meta' distanza (§9.80), di notte ancora a meta' (§9.88); le
+pattuglie su percorsi disegnati in Tiled (§9.101); torri e fortezze nemiche
+presidiate (§9.80); mura e porte nemiche (§9.75); la nebbia di guerra.
+
+**Decisioni dell'autore.**
+- Un arciere: in corpo a corpo e' l'unita' piu' debole, gli errori sono
+  micidiali. Con lo sprite di sempre, e regole sue: due modi di tiro scelti
+  con due pulsanti, piu' campo visivo.
+- I banchi di nebbia si muovono **solo in orizzontale** (in diagonale o in
+  verticale il disegno non regge); le pattuglie vanno in verticale e li
+  incrociano: il giocatore sincronizza pattuglie e nebbia.
+- Niente coni di vista disegnati: da dove guarda un nemico si capisce dallo
+  sprite. Sopra chi non e' ignaro un "!": li' il tiro furtivo non va.
+
+**Perche' l'arciere va fatto "speciale"** (misurato nel codice): un'unita'
+del giocatore vede un'ellisse di 400 x 240 px, i nemici si accorgono a
+400 px: vedeva i nemici solo quando loro vedevano lui. Una freccia ogni 56
+passi, 6 di danno (13 frecce per un guerriero). E chi era colpito da oltre
+400 px non reagiva: si poteva tirare per sempre.
+
+**Il prototipo** (`game/src/stealth.js`; `?room=match&prova=nebbia`):
+- *banchi di nebbia* (`nebbia_banco`): tre nuvole (fog1) che vanno avanti e
+  indietro fra due x a velocita' fissa; la zona coperta e' un'ellisse larga
+  quanto le nuvole (mezzi assi 520 x 150 px). Dentro, la vista dei nemici si
+  dimezza: per chi e' guardato e per chi guarda (tutti e due dentro: un
+  quarto);
+- *la vista* (solo con `g.stealth`, enemies.js): davanti, 60 gradi per
+  parte dalla direzione in cui il nemico guarda, fino alla distanza di
+  sempre; ai lati e dietro solo a meno di 90 px (lo sente). Chi e' in
+  allarme guarda tutto attorno;
+- *l'allarme*: chi vede l'arciere, chi e' colpito senza morire e chi e' a
+  meno di 300 px da un colpito "rumoroso" e' in allarme per 10 s; chi non
+  combatteva gia' va a guardare da dove e' partita la freccia (searching).
+  Sopra i nemici visibili non ignari un "!" rosso (`stealth_segni`);
+- *l'arciere della nebbia* (un `ally_arciere` con `hunter`): vede 1,5 volte
+  piu' lontano (600 x 360 px). Due pulsanti accanto ad attacco e difesa
+  (`tiro_furtivo_clicker`, `tiro_rapido_clicker`; tasti F e R; per ora le
+  lettere, in attesa delle icone):
+  - **furtivo**: tira solo al bersaglio scelto col clic destro (niente tiri
+    ne' inseguimenti da solo), da fermo, caricando 2 s, fino a 700 px; un
+    nemico ignaro muore e nessuno se ne accorge; uno in allarme prende 3
+    volte il danno (18) e il colpo fa rumore;
+  - **rapido**: come l'arciere di sempre ma una freccia ogni ~0,5 s (28
+    passi invece di 56), danno di sempre, e ogni colpo fa rumore;
+- *la prova*: nella zona piu' aperta del match, tolti tutti, l'arciere a
+  ovest, due pattuglie su percorsi verticali di 760 px (due guerrieri; un
+  picchiere e un arciere), una sentinella girata verso ovest, due banchi che
+  incrociano i percorsi (1,3 e 0,9 px a passo, in versi opposti).
+
+**Prova** (`game/test/browser/stealth.mjs`, nella CI): i banchi restano a y
+fissa e tornano indietro ai capi; le pattuglie fanno avanti e indietro
+(727-771 px); un guerriero girato a est vede un soldato a 300 px davanti, non
+a 300 px alle spalle, si' a 60 px alle spalle; col soldato nella nebbia non lo
+vede a 300 px, si' a 150; furtivo su un ignaro: morto dopo 142 passi (il
+caricamento), il vicino a 200 px non in allarme; furtivo su uno in allarme:
+75 -> 57, vicino in allarme e diretto verso l'arciere; rapido: 75 -> 69 dopo
+44 passi, il vicino in allarme verso l'arciere, quello a 600 px no.
+
+**Altre decisioni dell'autore** (13 novembre 2026):
+1. il tiro furtivo uccide **sempre** un nemico ignaro (com'e');
+2. **solo di giorno, ma pieno di nebbia** (nella prova i banchi diventano
+   quattro: 0,7 / 1,3 / 0,9 / 1,1 px a passo, due versi);
+3. **l'allarme**: un nemico **solo** che si accorge dell'arciere, se arriva
+   alla torre nemica piu' vicina, suona l'allarme e parte una pattuglia di
+   rinforzo.
+
+**Il messaggero e il rinforzo** (stealth.js `messengerFor`, `soundAlarm`,
+`stealthStep`): "solo" = nessun compagno entro 350 px; la torre al piu' a
+2500 px. Il messaggero non insegue ne' tira: corre a 130 px sotto la torre;
+a 150 px suona l'allarme e, se la torre non ne ha mandato uno negli ultimi
+30 s, nascono li' tre fanti (guerriero, picchiere, guerriero) in allarme,
+diretti al punto in cui il messaggero ha visto l'arciere; finita la ricerca
+tornano alla torre. Sul messaggero il "!" e' arancione (va fermato prima che
+arrivi); sopra la torre che ha suonato, un "!" arancione grande per 5 s. Chi
+e' in gruppo combatte come prima. Uccidere il compagno di una coppia in
+silenzio lascia l'altro solo: se poi vede l'arciere, corre alla torre.
+
+**Le torri nella nebbia** (enemygarrison.js `garrisonShoot`): con l'arciere
+dentro un banco la torre tira solo entro 300 px (600 a meta'). Nella prova
+una torre nemica, a nord-est.
+
+**Prova**, casi nuovi: il messaggero (un guerriero solo, girato verso
+l'arciere a 250 px): messaggero subito, non insegue, alla torre in 185
+passi, 3 rinforzi diretti al punto in cui era l'arciere (a 0 px); due
+nemici insieme: inseguono, nessun messaggero; la torre con l'arciere a
+~400 px: 6 frecce in 150 passi allo scoperto, 0 nella nebbia.
+
+**Da fare, in quest'ordine proposto.** Le altre meccaniche: la copertura del
+bosco (piu' alberi vicini, vista dimezzata come nella nebbia), le mura che
+nascondono (la linea fra nemico e arciere non deve passare per ostacoli
+fissi), i prigionieri da liberare (soldati e macchine d'assedio); poi in
+Tiled i banchi (polilinee orizzontali `nebbia` nel livello regia, con
+velocita' e numero di nuvole), le pattuglie e le torri; la mappa
+(dell'autore) e la regia a fasi (infiltrazione, labirinto, liberazione,
+ritorno in forze).
+
+### 9.149 Gli anelli della pioggia lontani dalle rive
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): sui
+fiumi a linee (§9.97) gli anelli delle gocce di pioggia (§8.13) scavalcano la
+riva: metterli a una certa distanza dalle rive. Prova e screenshot.
+
+**Prima.** L'anello nasceva in un punto a caso della vista se la sua cella
+da 8 px era acqua, e poi si allargava fino a ~24 x 12 px di raggio
+(dimensione 0,716 di 64 px, schiacciato come il suolo): vicino alla riva ne
+usciva. E sotto la riva lontana c'e' la sua parete, una fascia scura alta
+fino a 16 px disegnata dentro l'acqua (rivers.js WALL): li' l'anello stava
+sulla sponda.
+
+**Ora** (effects.js `ringFits`): sui fiumi a linee un anello nasce solo se,
+alla grandezza massima, 8 punti del suo bordo sono ancora acqua, e verso
+l'alto anche oltre la parete (16 px in piu'). Il grande (24 x 12) dove ci
+sta; dove ci sta solo il piccolo (11 x 6, i ruscelli stretti), solo il
+piccolo: se no sk_silva perdeva quasi tutti gli anelli (69 -> 19). Lo stesso
+per le increspature (17 x 9). I fiumi dipinti dell'autore come prima.
+
+**Misura** (prova nuova `game/test/browser/ripples.mjs`, nella CI: pioggia
+piena, la vista lungo i fiumi, seme 3; per ogni anello sul fiume, 16 punti
+del bordo alla grandezza massima):
+
+| mappa | grandi fuori dall'acqua | grandi sulla parete | piccoli fuori |
+|---|---|---|---|
+| lvl06, prima | 158 su 462 | 47 | 98 su 504 |
+| lvl06, ora | 3 su 308 | 0 | 3 su 459 |
+| sk_padus, prima / ora | 72 su 231 / 2 su 162 | 14 / 0 | |
+| sk_rivo, prima / ora | 110 su 371 / 5 su 271 | 24 / 0 | |
+| sk_silva, prima | 52 su 69 | 0 | 35 su 84 |
+| sk_silva, ora | 1 su 15 | 0 | 0 su 55 |
+
+I pochi rimasti sfiorano la riva fra gli 8 punti del controllo. Screenshot
+prima/dopo su lvl06 e sk_padus con la pioggia: prima anelli a cavallo della
+riva alta e della sua parete, e qualcuno sulla riva bassa; dopo tutti
+nell'acqua.
+
+### 9.150 Le macchie d'erba fuori dai fiumi delle schermaglie
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): nelle
+mappe delle schermaglie le macchie d'erba non devono finire nei fiumi (si
+vedeva negli screenshot di §9.149, sul Po di Padus); se serve, spostarle.
+
+**Perche'.** Le macchie a particelle (`burst_erba1`, `burst_grano1`,
+`chiazzaparticellare`, i fiori) spargono l'erba in un'ellisse attorno al
+centro, 500 x 300 px di semiassi (200 x 125 i fiori: effects.js DECOR_SIZE).
+tools/16 (`scatter`, `free`) guardava solo il centro, a 150-300 px dalle
+linee di fiumi e strade: il bordo della macchia arrivava nell'acqua. Per i
+centri delle basi c'era gia' il controllo sull'ellisse intera (`on_base`,
+§9.131), per i fiumi no.
+
+**Ora** (tools/16 `on_water`, `patch_wet`): una macchia non si mette dove il
+centro o uno dei 16 punti del bordo della sua ellisse e' a meno di meta'
+larghezza del fiume + 20 px dalla sua linea, misurato sul terreno "steso"
+(y / 0,62) come le rive del gioco; `scatter` cerca un altro posto.
+`--check` (nella CI) da' errore per una macchia nell'acqua.
+
+**Le mappe.** Prima (ellisse intera): Padus 2 macchie nel Po (piu' i loro
+gemelli), Rivoaltus 6 nella laguna; Bardonis, Silva Umbra, Urbs nessuna (non
+cambiano). Rigenerate `mappe/sk_padus.tmx`, `mappe/sk_rivo.tmx` e i loro
+scenari: a Padus si spostano solo le 4 macchie; a Rivoaltus le 6 e, a
+cascata (il generatore estrae i numeri in sequenza), i fiori e i ciuffi
+d'erba messi dopo; alberi, risorse, basi, strade e fiumi uguali. Rifatte
+anche le loro cartoline (tools/17): uguali a parte la nebbia decorativa
+(a caso) e un fiore. Screenshot: la macchia d'erba vecchia rimessa al suo
+posto copre il Po; senza, il fiume e' pulito; lo stesso sul canale di
+Rivoaltus.
+
+Nel livello 6 (la mappa dell'autore, non generata) 2 macchie toccano
+l'acqua al 70% dell'ellisse, 4 all'ellisse intera: spostate su richiesta
+dell'autore (§9.151).
+
+### 9.151 Le macchie del livello 6 fuori dai fiumi; l'avviso in Tiled
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611):
+spostare anche le macchie del livello 6 che finiscono nei fiumi.
+
+**Spostate** in `mappe/lvl06.tmx` (e rifatto `scenari/lvl06.json`), ognuna
+nel punto asciutto piu' vicino (lo stesso criterio di §9.150: ellisse
+intera, 20 px dalla riva), cosi' resta nello stesso angolo di paesaggio:
+due macchie di grano (180 px a destra; 160 px in giu'), due d'erba (40 px)
+e una di fiori di papavero, che arrivava a meno di 20 px dall'acqua (20 px).
+Si sono mossi solo questi 5 oggetti; il resto della mappa e dello scenario
+e' uguale. Screenshot (la macchia vecchia rimessa al suo posto): prima il
+grano entrava nel fiume, dopo comincia oltre la riva.
+
+**L'avviso** (tools/12_tiled_import.py): importando una mappa, una macchia a
+particelle che arriva nell'acqua di un fiume da' un avviso ("la macchia
+arriva nell'acqua di un fiume, spostala", con le coordinate), per le mappe
+che l'autore disegnera'. Con la mappa del livello 6 di prima: i 4 avvisi
+delle macchie bagnate; con quella nuova nessuno. Il controllo (`patch_wet`)
+e le misure delle macchie (`PATCH_SIZE`) stanno ora in tools/tiledkit.py,
+comuni a tools/12 e tools/16 (le schermaglie restano identiche).

@@ -1561,6 +1561,48 @@
       "kit": false,
       "nota": "una nuvola di nebbia della schermaglia (§9.122): tenue, scivola piano a destra; non e' fog01 (che cambia l'inseguimento dei nemici)"
     },
+    "nebbia_banco": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "livello 7 (§9.148, stealth.js): un banco di nebbia che va avanti e indietro in orizzontale; dentro i nemici vedono a meta'"
+    },
+    "stealth_segni": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "livello 7 (§9.148, stealth.js): il punto esclamativo sopra i nemici che non sono ignari"
+    },
+    "prova_nebbia": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la prova dello stealth del livello 7 (?room=match&prova=nebbia, §9.148, stealth.js)"
+    },
+    "tiro_furtivo_clicker": {
+      "sprite": null,
+      "mask": "puls_mask",
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "livello 7 (§9.148): il pulsante del tiro furtivo dell'arciere della nebbia"
+    },
+    "tiro_rapido_clicker": {
+      "sprite": null,
+      "mask": "puls_mask",
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "livello 7 (§9.148): il pulsante del tiro rapido dell'arciere della nebbia"
+    },
     "enemy_cantiere": {
       "sprite": "cas_f1",
       "mask": "cas_mask",

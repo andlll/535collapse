@@ -397,6 +397,12 @@ def load_map(path, kit=None):
     for key, lst in (("patches", patches), ("roads", roads), ("rivers", rivers), ("bridges", bridges), ("paths", paths)):
         if lst:
             scen[key] = [v for _, v in sorted(lst, key=lambda e: e[0])]
+    # [§9.150] le macchie a particelle (erba, grano, fiori) che arrivano
+    # nell'acqua dei fiumi: il gioco ci sparge l'erba sopra
+    wet_lines = [([tuple(p) for p in r["pts"]], max(r["width"], r.get("widthEnd", r["width"]))) for r in scen.get("rivers", [])]
+    for i in instances:
+        if i["object"] in tk.PATCH_SIZE and tk.patch_wet(i["x"], i["y"], *tk.PATCH_SIZE[i["object"]], wet_lines):
+            warn.append("%s in (%d, %d): la macchia arriva nell'acqua di un fiume, spostala" % (i["object"], i["x"], i["y"]))
     return scen, warn
 
 

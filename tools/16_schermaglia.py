@@ -57,9 +57,7 @@ BRIDGE_R = 300  # [§9.125] distanza dai ponti dipinti (free)
 # [§9.131] le macchie a particelle: semiassi dell'ellisse in cui il gioco
 # sparge i fili d'erba e i fiori (game/src/effects.js DECOR_SIZE, [500, 300]
 # se non c'e'); devono restare fuori dai centri (r: SOLID_R) delle basi
-PATCH_SIZE = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticellare": (500, 300),
-              "fiori_papaveri": (200, 125), "fiori_papaveri_erba": (200, 125), "fiori_gialli_erba": (200, 125),
-              "fiori_prato": (200, 125)}
+PATCH_SIZE = tk.PATCH_SIZE  # [§9.150] in tiledkit (anche tools/12 li usa)
 SOLID_R = {"centro": 330, "miniera_oro": 120, "pietr_piccolo": 110, "pietra_grande": 130, "albero": 40,
            # [§9.123] la citta' (i centri delle maschere: mezza larghezza piu' un po')
            "ocr_teatro": 380, "ocr_basilica": 460, "ocr_tempio": 320, "castelloruin": 340, "chiesaruin": 270,
@@ -650,7 +648,7 @@ class HalfMap:
             # [§9.127] le macchie d'erba e di fiori si allargano oltre r
             if not self.half(x, y) or not self.free(x, y, r, lines, rock_pad=r + 100 if name in DECOR_OBJ else None):
                 continue
-            if name in PATCH_SIZE and self.on_base(x, y, *PATCH_SIZE[name]):
+            if name in PATCH_SIZE and (self.on_base(x, y, *PATCH_SIZE[name]) or self.on_water(x, y, *PATCH_SIZE[name])):
                 continue
             dx, dy = self.off.get(name, (0, 0))
             self.obj(name, round(x - dx), round(y - dy), sprite)  # (x, y): il centro della maschera
@@ -671,6 +669,18 @@ class HalfMap:
                 if ((x - px) / (rx + R)) ** 2 + ((y - py) / (ry + R)) ** 2 < 1:
                     return True
         return False
+
+    def on_water(self, x, y, rx, ry, margin=20):
+        """[§9.150, richiesta dell'autore] Una macchia a particelle (semiassi
+        rx, ry) in (x, y) arriverebbe nell'acqua di un fiume (o del suo
+        gemello)? Il gioco sparge l'erba e i fiori in tutta l'ellisse; free
+        guarda solo il centro (lines px), e le macchie d'erba (500 x 300)
+        finivano nei fiumi di Padus e nella laguna di Rivoaltus. Il centro e
+        16 punti del bordo, a meno di meta' larghezza + margin px dalla linea
+        del fiume, misurati sul terreno "steso" (y / 0,62) come le rive
+        (game/src/rivers.js)."""
+        _, rivers, _, _ = self.full()
+        return patch_wet(x, y, rx, ry, [(line, max(wdt) if isinstance(wdt, tuple) else wdt or 150) for line, wdt in rivers], margin)
 
     def half(self, x, y):
         """Il punto e' nella meta' della base A (sopra la diagonale che va
@@ -1179,6 +1189,9 @@ MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus, "bardon
 
 # ------------------------------------------------------------ controllo
 
+patch_wet = tk.patch_wet  # [§9.150] in tiledkit
+
+
 def check(name):
     """Lo scenario e' simmetrico? Errori come elenco di stringhe."""
     sc = json.load(open(os.path.join(SCEN_DIR, "sk_%s.json" % name), encoding="utf-8"))
@@ -1224,6 +1237,11 @@ def check(name):
             errs.append("%s (%g, %g) senza gemello" % (o, x, y))
         else:
             used[k] = used[j] = True
+    # [§9.150] nessuna macchia a particelle nell'acqua dei fiumi
+    rivers = [([tuple(p) for p in r["pts"]], max(r["width"], r.get("widthEnd", r["width"]))) for r in sc.get("rivers", [])]
+    for i in sc["instances"]:
+        if i["object"] in PATCH_SIZE and patch_wet(i["x"], i["y"], *PATCH_SIZE[i["object"]], rivers):
+            errs.append("%s (%g, %g) nell'acqua di un fiume" % (i["object"], i["x"], i["y"]))
     for kind in ("rivers", "roads"):
         lines = [[tuple(p) for p in r["pts"]] for r in sc.get(kind, [])]
         for L in lines:

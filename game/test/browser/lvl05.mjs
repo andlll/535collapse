@@ -14,7 +14,9 @@
 //   acropoli    poi un alleato alle rovine: fase 3, dialogo
 //   sortita     (§9.102) un soldato a 280 px dalla porta ovest per 15 s: esce
 //               il presidio della citta' (almeno 4, il piu' vicino a meno di
-//               100 px da lui); andato via, tornano ai loro posti
+//               100 px da lui); andato via, tornano ai loro posti (entro
+//               250 px: la ritirata arriva a 120 px, poi i nemici fermi
+//               sovrapposti si separano fino a 128 px, §9.146)
 //   pietra      un edificio di legno danneggiato si ripara, uno di pietra
 //               no; distrutti, si ricostruisce solo quello di legno
 //   fortezza    una fortezza finita: fase 4, dialogo, l'obiettivo della citta'
@@ -94,7 +96,7 @@ const res = await page.evaluate(() => {
   const out5 = [...w.all("enemy_unit")].filter((e) => e.l5sally === 1);
   w.destroy(bait);
   step(2400);
-  const home = out5.filter((e) => e.alive && Math.hypot(e.x - e.l5post[0], e.y - e.l5post[1]) < 150);
+  const home = out5.filter((e) => e.alive && Math.hypot(e.x - e.l5post[0], e.y - e.l5post[1]) < 250);
   out.sortita = { usciti: out5.length, vicino: Math.round(closest), tornati: home.length,
                   vivi: out5.filter((e) => e.alive).length,
                   fuori: out5.filter((e) => e.alive && !home.includes(e)).map((e) => [e.object.slice(6, 9), Math.round(e.x), Math.round(e.y), e.l5post.map(Math.round), e.l5sally, !!e.retreat, e.action, e.warwork, e.role]) };

@@ -22,6 +22,7 @@
 // La torre di vedetta del livello 5 (watch) non tira e non chiama nessuno.
 import { towerTarget, towerArrow } from "./archery.js";
 import { pointDistance } from "./gm.js";
+import { stealthOn, inFog, ST } from "./stealth.js"; // §9.148
 
 export const ENEMY_GARRISON = {
   enemy_torre: { max: 2, start: 2, pos: [[20, -60], [20, -77]], exitDy: 60 },
@@ -45,6 +46,8 @@ export function garrisonShoot(i, w, every, alarm) {
   if (i.arm !== 1 || i.npresidio <= 0 || i.watch) return false;
   const a = towerTarget(w, i, "ally_unit", 600);
   if (!a) return false;
+  // [§9.148] lo stealth (livello 7): nella nebbia la torre vede a meta'
+  if (stealthOn(w) && inFog(w, a.x, a.y) && w.distanceToInstance(i, a) >= 600 * ST.fogK) return false;
   i.arm = 0;
   i.alarm.set(alarm, every);
   for (const [dx, dy] of G.pos.slice(0, i.npresidio)) towerArrow(w, "b_arciere_bullet_t", i.x + (a.x > i.x ? dx : -dx), i.y + dy, i, a);

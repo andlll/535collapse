@@ -576,12 +576,12 @@
   <object id="789" gid="112" x="4399" y="1958" width="102" height="158"/>
   <object id="790" gid="112" x="4601" y="1977" width="102" height="158"/>
   <object id="791" gid="112" x="4497" y="1895" width="102" height="158"/>
-  <object id="806" gid="60" x="2240" y="4392" width="384" height="272"/>
+  <object id="806" gid="60" x="2220" y="4395" width="384" height="272"/>
   <object id="807" gid="62" x="2336" y="4172" width="396" height="276"/>
   <object id="808" gid="59" x="1828" y="4132" width="348" height="308"/>
   <object id="809" gid="61" x="1536" y="4572" width="376" height="236"/>
-  <object id="810" gid="52" x="4496" y="1096" width="962" height="570"/>
-  <object id="811" gid="52" x="4488" y="4720" width="962" height="570"/>
+  <object id="810" gid="52" x="4676" y="1096" width="962" height="570"/>
+  <object id="811" gid="52" x="4516" y="4878" width="962" height="570"/>
   <object id="812" gid="35" x="4440" y="5880" width="170" height="288"/>
   <object id="813" gid="35" x="4576" y="5784" width="170" height="288"/>
   <object id="814" gid="35" x="4549.33" y="5880" width="170" height="288"/>
@@ -748,7 +748,7 @@
   </object>
   <object id="22" gid="2147483651" x="1364" y="2616" width="548" height="316"/>
   <object id="344" gid="52" x="745.455" y="2248.48" width="962" height="570"/>
-  <object id="345" gid="51" x="2156" y="5638" width="932" height="586"/>
+  <object id="345" gid="51" x="2194" y="5652" width="932" height="586"/>
   <object id="346" gid="61" x="3652" y="5630" width="376" height="236"/>
   <object id="347" gid="62" x="4258" y="5202" width="396" height="276"/>
   <object id="348" gid="35" x="3718" y="5038" width="170" height="288"/>
@@ -911,7 +911,7 @@
   <object id="149" gid="271" x="236.364" y="4687.88" width="172" height="298"/>
   <object id="150" gid="271" x="300" y="4742.42" width="172" height="298"/>
   <object id="151" gid="271" x="115.152" y="4727.27" width="172" height="298"/>
-  <object id="152" gid="51" x="3726" y="1778" width="932" height="586"/>
+  <object id="152" gid="51" x="3766" y="1778" width="932" height="586"/>
   <object id="153" gid="52" x="6251.52" y="2987.88" width="962" height="570"/>
   <object id="154" gid="60" x="3248.48" y="4836.36" width="384" height="272"/>
   <object id="155" gid="60" x="64" y="2696" width="384" height="272"/>
