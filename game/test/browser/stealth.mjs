@@ -14,6 +14,11 @@
 //               allarme gli toglie 18 di vita (3 volte 6) e non lo uccide
 //   rapido      un colpo rapido mette in allarme il colpito e i vicini (entro
 //               300 px), che vanno verso l'arciere; non chi e' lontano
+//   messaggero  un nemico solo che vede l'arciere non insegue: corre alla
+//               torre, e arrivato parte il rinforzo (3) verso l'arciere
+//   gruppo      due nemici insieme che lo vedono inseguono (niente messaggero)
+//   torre       la torre tira all'arciere a ~490 px; con l'arciere nella
+//               nebbia no (vede a meta': 300 px)
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -50,7 +55,9 @@ const res = await page.evaluate(() => {
   for (const u of [...w.all("ally_unit")]) if (u !== hunter) { p.free(u); w.destroy(u); }
   const far = [CX - 2000, CY - 2000];
   w.setPos(hunter, far[0], far[1]); hunter.selected = 0;
-  const parkBanks = () => { for (const b of banks) Object.assign(b, { speed0: 0 }); for (const b of banks) w.setPos(b, CX + 4000, b.y); };
+  // un banco fermo in (x, y): anche i capi, se no al passo dopo torna fra i suoi
+  const placeBank = (b, x, y) => { Object.assign(b, { speed0: 0, x0: x, x1: x }); w.setPos(b, x, y); };
+  const parkBanks = () => { banks.forEach((b, k) => placeBank(b, CX + 4000 + k * 1200, b.y)); };
   parkBanks();
   // davanti / alle spalle / vicino: un guerriero nemico girato a est
   const watch = (dx, dy, fog = false) => {
@@ -58,9 +65,10 @@ const res = await page.evaluate(() => {
     Object.assign(e, { direction: 0, defender: 0, role: 32 });
     const a = w.create("ally_warrior", CX + dx, CY + 600 + dy);
     Object.assign(a, { comp: 0, life: 1e6, slife: 1e6 });
-    if (fog) w.setPos(banks[0], a.x + 400, a.y); // il soldato dentro, il nemico fuori (rx 520)
+    if (fog) placeBank(banks[0], a.x + 400, a.y); // il soldato dentro, il nemico fuori (rx 520)
     let saw = false;
-    for (let s = 0; s < 30 && !saw; s++) { G.advance(1); e.direction = saw ? e.direction : 0; if (e.warwork === 1 || e.warwork === 2) saw = true; }
+    // si e' accorto: insegue, o e' in allarme (da solo corre alla torre)
+    for (let s = 0; s < 30 && !saw; s++) { G.advance(1); if (e.warwork === 1 || e.warwork === 2 || (e.alertUntil || 0) > w._stepNo) saw = true; }
     w.destroy(e); p.free(a); w.destroy(a); parkBanks();
     return saw;
   };
@@ -98,11 +106,51 @@ const res = await page.evaluate(() => {
   };
   out.furtivo = { ignaro: scene("furtivo", false), inAllarme: scene("furtivo", true) };
   out.rapido = scene("rapido", false);
+  // il messaggero, il gruppo, la torre
+  const T = w.all("enemy_torre").next().value;
+  const clear = () => { for (const e of [...w.all("enemy_unit")]) w.destroy(e); };
+  const ready = (x, y) => { w.setPos(hunter, x, y); Object.assign(hunter, { shotMode: "furtivo", action: 0, warwork: 0, atkorder: 0, atktarget: null, life: 1e6, selected: 0 }); };
+  {
+    clear();
+    const e = w.create("enemy_warrior", T.x - 700, T.y + 250);
+    Object.assign(e, { direction: 180, defender: 0, role: 32 });
+    ready(e.x - 250, e.y);
+    let chased = false, msgAt = -1, reinfAt = -1;
+    for (let s = 0; s < 1500 && reinfAt < 0; s++) {
+      G.advance(1);
+      if (e.warwork === 1) chased = true;
+      if (msgAt < 0 && e.messenger) msgAt = s;
+      if (w.number("enemy_unit") >= 4) reinfAt = s;
+    }
+    const R = [...w.all("enemy_unit")].filter((o) => o !== e);
+    out.messaggero = { diventa: msgAt, insegue: chased, rinforzoDopo: reinfAt, rinforzi: R.length,
+                       versoArciere: R.map((o) => Math.round(Math.hypot(o.dirox - hunter.x, o.diroy - hunter.y))), dopoArrivo: e.messenger || 0 };
+  }
+  {
+    clear();
+    const a = w.create("enemy_warrior", T.x - 700, T.y + 250), b = w.create("enemy_warrior", T.x - 700, T.y + 320);
+    for (const e of [a, b]) Object.assign(e, { direction: 180, defender: 0, role: 32 });
+    ready(a.x - 250, a.y + 30);
+    let chased = false;
+    for (let s = 0; s < 60; s++) { G.advance(1); if (a.warwork === 1 || b.warwork === 1) chased = true; }
+    out.gruppo = { insegue: chased, messaggero: !!(a.messenger || b.messenger) };
+  }
+  const towerShots = (fog) => {
+    clear(); parkBanks();
+    ready(T.x - 450, T.y + 200);
+    if (fog) placeBank(banks[0], hunter.x - 300, hunter.y);
+    T.arm = 1;
+    const seen = new Set();
+    for (let s = 0; s < 150; s++) { G.advance(1); for (const b of w.all("b_arciere_bullet_t")) seen.add(b.id); }
+    parkBanks();
+    return seen.size;
+  };
+  out.torre = { fuori: towerShots(false), nebbia: towerShots(true) };
   return out;
 });
 const r = res;
 const ok = errs.length === 0
-  && r.banchi.n === 2 && r.banchi.yFissa && r.banchi.tornati.every((t) => t === 1)
+  && r.banchi.n === 4 && r.banchi.yFissa && r.banchi.tornati.every((t) => t === 1)
   && r.banchi.estremi.every(([a, b]) => a >= 0 && b >= 0 && (a <= 2 || b <= 2))
   && r.pattuglie.length === 4 && r.pattuglie.every((d) => d > 600)
   && r.davanti.davanti300 && !r.davanti.spalle300 && r.davanti.spalle60
@@ -110,7 +158,11 @@ const ok = errs.length === 0
   && r.furtivo.ignaro.morto && r.furtivo.ignaro.colpito >= 100 && !r.furtivo.ignaro.vicinoInAllarme
   && !r.furtivo.inAllarme.morto && r.furtivo.inAllarme.vita === 75 - 18
   && !r.rapido.morto && r.rapido.vita === 75 - 6 && r.rapido.colpito < 60 && r.rapido.vicinoInAllarme && r.rapido.vicinoVaVerso !== null
-  && r.rapido.vicinoVaVerso < 40 && !r.rapido.lontanoInAllarme;
+  && r.rapido.vicinoVaVerso < 40 && !r.rapido.lontanoInAllarme
+  && r.messaggero.diventa >= 0 && r.messaggero.diventa < 30 && !r.messaggero.insegue && r.messaggero.rinforzoDopo > 0
+  && r.messaggero.rinforzi === 3 && r.messaggero.versoArciere.every((d) => d < 80) && !r.messaggero.dopoArrivo
+  && r.gruppo.insegue && !r.gruppo.messaggero
+  && r.torre.fuori > 0 && r.torre.nebbia === 0;
 for (const [k, v] of Object.entries(r)) console.log(k.padEnd(10), JSON.stringify(v));
 if (errs.length) console.log(errs.slice(0, 3));
 console.log(ok ? "ok" : "NON VA");

@@ -23,7 +23,7 @@ import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
 import { lmStep } from "./lastmile.js";
-import { stealthOn, sees, ST } from "./stealth.js"; // §9.148
+import { stealthOn, sees, ST, messengerFor } from "./stealth.js"; // §9.148
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -446,8 +446,10 @@ function enemyAttack(i, w, T) {
     if (!(w.distanceToInstance(i, n) < lim)) return false;
     // [§9.148] lo stealth (livello 7): la vista davanti, la nebbia, l'allarme
     if (stealthOn(w)) {
+      if (i.messenger) return true; // corre alla torre
       if (!sees(w, i, n, lim)) return false;
       i.alertUntil = w._stepNo + ST.alert; i.alertX = n.x; i.alertY = n.y; i.searching = 0;
+      if (messengerFor(w, i)) return true; // solo: corre alla torre, non insegue
     }
     // [§9.71, richiesta dell'autore] fermo ad aspettare: riprova dopo
     // WAIT_RETRY passi. Il piu' vicino non si raggiunge (oltre un fiume,
@@ -758,8 +760,12 @@ export function enemyArcher(p) {
     const n0 = w.nearest(i.x, i.y, "ally_unit");
     const fs = fogSight(w, i); // §9.80
     const range = 400 * (1 - 0.5 * night) * k * fs;
+    if (stealthOn(w) && i.messenger) return; // §9.148: corre alla torre
     const seen = !stealthOn(w) || sees(w, i, n0, range); // §9.148
-    if (seen && stealthOn(w)) { i.alertUntil = w._stepNo + ST.alert; i.alertX = n0.x; i.alertY = n0.y; }
+    if (seen && stealthOn(w)) {
+      i.alertUntil = w._stepNo + ST.alert; i.alertX = n0.x; i.alertY = n0.y;
+      if (messengerFor(w, i)) return; // solo: corre alla torre, non tira
+    }
     if (w.distanceToInstance(i, n0) < range && seen) {
       // §6.4: l'alleato piu' vicino a tiro con la linea libera
       const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);

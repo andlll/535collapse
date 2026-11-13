@@ -36,11 +36,12 @@ di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
-nebbia. Fatto il prototipo (`?room=match&prova=nebbia`): banchi di nebbia
-orizzontali, vista davanti, allarme e "!", tiro furtivo e rapido. Da fare:
-la copertura del bosco, le mura che nascondono, i prigionieri da liberare
-(soldati e macchine d'assedio), le torri nella nebbia, i banchi e le
-pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+nebbia, di giorno e pieno di nebbia. Fatto il prototipo
+(`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
+allarme e "!", tiro furtivo e rapido, il messaggero che corre alla torre e
+il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
+che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
+banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -10330,14 +10331,40 @@ caricamento), il vicino a 200 px non in allarme; furtivo su uno in allarme:
 75 -> 57, vicino in allarme e diretto verso l'arciere; rapido: 75 -> 69 dopo
 44 passi, il vicino in allarme verso l'arciere, quello a 600 px no.
 
+**Altre decisioni dell'autore** (13 novembre 2026):
+1. il tiro furtivo uccide **sempre** un nemico ignaro (com'e');
+2. **solo di giorno, ma pieno di nebbia** (nella prova i banchi diventano
+   quattro: 0,7 / 1,3 / 0,9 / 1,1 px a passo, due versi);
+3. **l'allarme**: un nemico **solo** che si accorge dell'arciere, se arriva
+   alla torre nemica piu' vicina, suona l'allarme e parte una pattuglia di
+   rinforzo.
+
+**Il messaggero e il rinforzo** (stealth.js `messengerFor`, `soundAlarm`,
+`stealthStep`): "solo" = nessun compagno entro 350 px; la torre al piu' a
+2500 px. Il messaggero non insegue ne' tira: corre a 130 px sotto la torre;
+a 150 px suona l'allarme e, se la torre non ne ha mandato uno negli ultimi
+30 s, nascono li' tre fanti (guerriero, picchiere, guerriero) in allarme,
+diretti al punto in cui il messaggero ha visto l'arciere; finita la ricerca
+tornano alla torre. Sul messaggero il "!" e' arancione (va fermato prima che
+arrivi); sopra la torre che ha suonato, un "!" arancione grande per 5 s. Chi
+e' in gruppo combatte come prima. Uccidere il compagno di una coppia in
+silenzio lascia l'altro solo: se poi vede l'arciere, corre alla torre.
+
+**Le torri nella nebbia** (enemygarrison.js `garrisonShoot`): con l'arciere
+dentro un banco la torre tira solo entro 300 px (600 a meta'). Nella prova
+una torre nemica, a nord-est.
+
+**Prova**, casi nuovi: il messaggero (un guerriero solo, girato verso
+l'arciere a 250 px): messaggero subito, non insegue, alla torre in 185
+passi, 3 rinforzi diretti al punto in cui era l'arciere (a 0 px); due
+nemici insieme: inseguono, nessun messaggero; la torre con l'arciere a
+~400 px: 6 frecce in 150 passi allo scoperto, 0 nella nebbia.
+
 **Da fare, in quest'ordine proposto.** Le altre meccaniche: la copertura del
 bosco (piu' alberi vicini, vista dimezzata come nella nebbia), le mura che
 nascondono (la linea fra nemico e arciere non deve passare per ostacoli
-fissi), i prigionieri da liberare (soldati e macchine d'assedio), le torri
-nemiche che risentono della nebbia; poi in Tiled i banchi (polilinee
-orizzontali `nebbia` nel livello regia, con velocita' e numero di nuvole) e
-le pattuglie; la mappa (dell'autore) e la regia a fasi (infiltrazione,
-labirinto, liberazione, ritorno in forze). Da decidere: il tiro furtivo
-uccide sempre un ignaro (ora si') o resta una piccola possibilita' di
-sbagliare; il livello di notte o di giorno; cosa succede all'allarme oltre
-al rumore (un corno che chiama i presidi vicini?).
+fissi), i prigionieri da liberare (soldati e macchine d'assedio); poi in
+Tiled i banchi (polilinee orizzontali `nebbia` nel livello regia, con
+velocita' e numero di nuvole), le pattuglie e le torri; la mappa
+(dell'autore) e la regia a fasi (infiltrazione, labirinto, liberazione,
+ritorno in forze).
