@@ -35,6 +35,13 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
+**Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
+nebbia. Fatto il prototipo (`?room=match&prova=nebbia`): banchi di nebbia
+orizzontali, vista davanti, allarme e "!", tiro furtivo e rapido. Da fare:
+la copertura del bosco, le mura che nascondono, i prigionieri da liberare
+(soldati e macchine d'assedio), le torri nella nebbia, i banchi e le
+pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
 per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
@@ -10254,3 +10261,83 @@ verificare). Decisione dell'autore (12 novembre 2026): il livello 6 va bene
 cosi', la prova resta com'e'.
 
 Le altre prove della CI nel browser, soak e salvataggi compresi, passano.
+
+### 9.148 Livello 7, "Lost in the Fog": l'arciere della nebbia (prototipo)
+
+Richiesta dell'autore (12-13 novembre 2026): la regia del livello 7, "fog" o
+"Lost in the Fog", una specie di stealth con poche unita' o una sola che,
+sfruttando la nebbia, si fa strada in un ambiente ostile: boschi, un
+labirinto di mura, unita' alleate da liberare per tornare in forze e aprire
+il passaggio (sconfiggere una guarnigione, o liberare macchine d'assedio per
+distruggere un castello che chiude il passo).
+
+**Cosa c'era gia'.** Vicino a una nuvola `fog01` i nemici si accorgono del
+giocatore a meta' distanza (§9.80), di notte ancora a meta' (§9.88); le
+pattuglie su percorsi disegnati in Tiled (§9.101); torri e fortezze nemiche
+presidiate (§9.80); mura e porte nemiche (§9.75); la nebbia di guerra.
+
+**Decisioni dell'autore.**
+- Un arciere: in corpo a corpo e' l'unita' piu' debole, gli errori sono
+  micidiali. Con lo sprite di sempre, e regole sue: due modi di tiro scelti
+  con due pulsanti, piu' campo visivo.
+- I banchi di nebbia si muovono **solo in orizzontale** (in diagonale o in
+  verticale il disegno non regge); le pattuglie vanno in verticale e li
+  incrociano: il giocatore sincronizza pattuglie e nebbia.
+- Niente coni di vista disegnati: da dove guarda un nemico si capisce dallo
+  sprite. Sopra chi non e' ignaro un "!": li' il tiro furtivo non va.
+
+**Perche' l'arciere va fatto "speciale"** (misurato nel codice): un'unita'
+del giocatore vede un'ellisse di 400 x 240 px, i nemici si accorgono a
+400 px: vedeva i nemici solo quando loro vedevano lui. Una freccia ogni 56
+passi, 6 di danno (13 frecce per un guerriero). E chi era colpito da oltre
+400 px non reagiva: si poteva tirare per sempre.
+
+**Il prototipo** (`game/src/stealth.js`; `?room=match&prova=nebbia`):
+- *banchi di nebbia* (`nebbia_banco`): tre nuvole (fog1) che vanno avanti e
+  indietro fra due x a velocita' fissa; la zona coperta e' un'ellisse larga
+  quanto le nuvole (mezzi assi 520 x 150 px). Dentro, la vista dei nemici si
+  dimezza: per chi e' guardato e per chi guarda (tutti e due dentro: un
+  quarto);
+- *la vista* (solo con `g.stealth`, enemies.js): davanti, 60 gradi per
+  parte dalla direzione in cui il nemico guarda, fino alla distanza di
+  sempre; ai lati e dietro solo a meno di 90 px (lo sente). Chi e' in
+  allarme guarda tutto attorno;
+- *l'allarme*: chi vede l'arciere, chi e' colpito senza morire e chi e' a
+  meno di 300 px da un colpito "rumoroso" e' in allarme per 10 s; chi non
+  combatteva gia' va a guardare da dove e' partita la freccia (searching).
+  Sopra i nemici visibili non ignari un "!" rosso (`stealth_segni`);
+- *l'arciere della nebbia* (un `ally_arciere` con `hunter`): vede 1,5 volte
+  piu' lontano (600 x 360 px). Due pulsanti accanto ad attacco e difesa
+  (`tiro_furtivo_clicker`, `tiro_rapido_clicker`; tasti F e R; per ora le
+  lettere, in attesa delle icone):
+  - **furtivo**: tira solo al bersaglio scelto col clic destro (niente tiri
+    ne' inseguimenti da solo), da fermo, caricando 2 s, fino a 700 px; un
+    nemico ignaro muore e nessuno se ne accorge; uno in allarme prende 3
+    volte il danno (18) e il colpo fa rumore;
+  - **rapido**: come l'arciere di sempre ma una freccia ogni ~0,5 s (28
+    passi invece di 56), danno di sempre, e ogni colpo fa rumore;
+- *la prova*: nella zona piu' aperta del match, tolti tutti, l'arciere a
+  ovest, due pattuglie su percorsi verticali di 760 px (due guerrieri; un
+  picchiere e un arciere), una sentinella girata verso ovest, due banchi che
+  incrociano i percorsi (1,3 e 0,9 px a passo, in versi opposti).
+
+**Prova** (`game/test/browser/stealth.mjs`, nella CI): i banchi restano a y
+fissa e tornano indietro ai capi; le pattuglie fanno avanti e indietro
+(727-771 px); un guerriero girato a est vede un soldato a 300 px davanti, non
+a 300 px alle spalle, si' a 60 px alle spalle; col soldato nella nebbia non lo
+vede a 300 px, si' a 150; furtivo su un ignaro: morto dopo 142 passi (il
+caricamento), il vicino a 200 px non in allarme; furtivo su uno in allarme:
+75 -> 57, vicino in allarme e diretto verso l'arciere; rapido: 75 -> 69 dopo
+44 passi, il vicino in allarme verso l'arciere, quello a 600 px no.
+
+**Da fare, in quest'ordine proposto.** Le altre meccaniche: la copertura del
+bosco (piu' alberi vicini, vista dimezzata come nella nebbia), le mura che
+nascondono (la linea fra nemico e arciere non deve passare per ostacoli
+fissi), i prigionieri da liberare (soldati e macchine d'assedio), le torri
+nemiche che risentono della nebbia; poi in Tiled i banchi (polilinee
+orizzontali `nebbia` nel livello regia, con velocita' e numero di nuvole) e
+le pattuglie; la mappa (dell'autore) e la regia a fasi (infiltrazione,
+labirinto, liberazione, ritorno in forze). Da decidere: il tiro furtivo
+uccide sempre un ignaro (ora si') o resta una piccola possibilita' di
+sbagliare; il livello di notte o di giorno; cosa succede all'allarme oltre
+al rumore (un corno che chiama i presidi vicini?).

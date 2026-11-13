@@ -30,6 +30,7 @@
 // e' stato di gioco, servira' ai salvataggi e non deve dipendere dal tetto
 // di fps.
 
+import { ST } from "./stealth.js"; // §9.148
 import { c, mergeColour } from "./colours.js";
 
 export const FOG_CELL = 16;
@@ -64,7 +65,9 @@ function shapeOf(w, i, k) {
   if (w.is(i, "mura_vert") || w.is(i, "mura_vert_fond") || w.is(i, "porta_vert")) {
     return [x, y - 125, 200 + 200 * k, 245 + 120 * k];
   }
-  return [x, y, 200 + 200 * k, 120 + 120 * k];
+  // [§9.148] l'arciere della nebbia (livello 7) vede piu' lontano
+  const h = i.hunter ? ST.sight : 1;
+  return [x, y, (200 + 200 * k) * h, (120 + 120 * k) * h];
 }
 
 // [§9.88, richiesta dell'autore] Quanto si vede (k: 1 di giorno, 0 di

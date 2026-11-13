@@ -23,6 +23,7 @@ import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
 import { lmStep } from "./lastmile.js";
+import { stealthOn, sees, ST } from "./stealth.js"; // §9.148
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 
 const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
@@ -443,6 +444,11 @@ function enemyAttack(i, w, T) {
     let n = nearest();
     const lim = range * (1 - 0.5 * night) * k;
     if (!(w.distanceToInstance(i, n) < lim)) return false;
+    // [§9.148] lo stealth (livello 7): la vista davanti, la nebbia, l'allarme
+    if (stealthOn(w)) {
+      if (!sees(w, i, n, lim)) return false;
+      i.alertUntil = w._stepNo + ST.alert; i.alertX = n.x; i.alertY = n.y; i.searching = 0;
+    }
     // [§9.71, richiesta dell'autore] fermo ad aspettare: riprova dopo
     // WAIT_RETRY passi. Il piu' vicino non si raggiunge (oltre un fiume,
     // dietro le mura): un altro che si raggiunge, o fermo
@@ -752,7 +758,9 @@ export function enemyArcher(p) {
     const n0 = w.nearest(i.x, i.y, "ally_unit");
     const fs = fogSight(w, i); // §9.80
     const range = 400 * (1 - 0.5 * night) * k * fs;
-    if (w.distanceToInstance(i, n0) < range) {
+    const seen = !stealthOn(w) || sees(w, i, n0, range); // §9.148
+    if (seen && stealthOn(w)) { i.alertUntil = w._stepNo + ST.alert; i.alertX = n0.x; i.alertY = n0.y; }
+    if (w.distanceToInstance(i, n0) < range && seen) {
       // §6.4: l'alleato piu' vicino a tiro con la linea libera
       const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);
       if (!s) {
@@ -773,6 +781,7 @@ export function enemyArcher(p) {
     const chase = (needStill) => {
       const n = w.nearest(i.x, i.y, "ally_unit");
       if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k * fs && (!needStill || i.action !== 1))) return;
+      if (stealthOn(w) && !sees(w, i, n, 600 * (1 - 0.5 * night) * k * fs)) return; // §9.148
       if (i.warwork === 0 || i.warwork === 1) {
         if (i.action !== 1) i.alarm.set(0, 15);
         i.action = 1; i.warwork = 1; i.dirox = n.x; i.diroy = n.y;

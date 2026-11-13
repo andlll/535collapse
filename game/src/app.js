@@ -46,6 +46,7 @@ import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
+import { fogBank, stealthMarks, shotClicker, provaNebbia } from "./stealth.js"; // §9.148
 import { captureGame, restoreGame } from "./snapshot.js";
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
@@ -330,6 +331,12 @@ async function main() {
   world.register("enemy_manager_menu", enemyManagerMenu());
   world.register("fog_controller", fogController());
   world.register("fog01", fog01());
+  // [§9.148] livello 7: banchi di nebbia, il "!", i modi di tiro, la prova
+  world.register("nebbia_banco", fogBank());
+  world.register("stealth_segni", stealthMarks());
+  world.register("tiro_furtivo_clicker", shotClicker("furtivo"));
+  world.register("tiro_rapido_clicker", shotClicker("rapido"));
+  world.register("prova_nebbia", provaNebbia());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
   world.hooks.globalRightReleased = (mx, my) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
@@ -391,7 +398,9 @@ async function main() {
     // i militari di partenza del livello 1 sono in attacco (comp 700).
     // i gestori del menu e dei nemici di match e lvl02
     if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
-    if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
+    // [§9.148] ?room=match&prova=nebbia: la prova dello stealth del livello 7
+    if (roomName === "match" && params.get("prova") === "nebbia") world.create("prova_nebbia", 0, 0);
+    else if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
