@@ -189,6 +189,29 @@ function waterSystem(w, wm, kind, cat, x, y) {
   return ps;
 }
 
+// [§9.149, richiesta dell'autore] Sui fiumi a linee (rivers.js) un anello
+// nasce solo dove ci sta tutto: a 8 punti del suo bordo, alla grandezza
+// massima (rx x ry, schiacciato come il suolo), c'e' ancora acqua; e verso
+// l'alto anche oltre la parete della riva lontana (WALL px, disegnata dentro
+// l'acqua). Prima gli anelli nati vicino alla riva la scavalcavano. Dove il
+// grande non ci sta ma il piccolo si' (i ruscelli stretti), solo il piccolo.
+// I fiumi dipinti dell'autore come prima.
+const ANELLO_R = [24, 12], ANELLO2_R = [11, 6], INCRESPATURA_R = [17, 9], BANK_WALL = 16;
+const isWater = (wm, x, y) => {
+  const cx = Math.floor(x / wm.C), cy = Math.floor(y / wm.C);
+  return cx >= 0 && cy >= 0 && cx < wm.gw && cy < wm.gh && !!wm.grid[cy * wm.gw + cx];
+};
+export function ringFits(wm, x, y, [rx, ry]) {
+  const piece = wm.pieces[wm.owner[Math.floor(y / wm.C) * wm.gw + Math.floor(x / wm.C)]];
+  if (!piece || piece.sysKey !== "fiumi") return true;
+  const d = 0.71;
+  for (const [dx, dy] of [[rx, 0], [-rx, 0], [0, ry], [d * rx, d * ry], [-d * rx, d * ry],
+                          [0, -ry - BANK_WALL], [d * rx, -d * ry - BANK_WALL], [-d * rx, -d * ry - BANK_WALL]]) {
+    if (!isWater(wm, x + dx, y + dy)) return false;
+  }
+  return true;
+}
+
 export function rainRipples(w, cam, level = 1) {
   const P_ = P(w);
   if (P_.hidden.has("rain")) return;
@@ -198,7 +221,9 @@ export function rainRipples(w, cam, level = 1) {
     const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
     const ps = waterSystem(w, wm, "ripples", "rain", x, y); // §9.36
     if (!ps) continue;
-    P_.create(ps, x, y, ANELLO, 1);
+    const big = ringFits(wm, x, y, ANELLO_R); // §9.149
+    if (!big && !ringFits(wm, x, y, ANELLO2_R)) continue;
+    if (big) P_.create(ps, x, y, ANELLO, 1);
     P_.create(ps, x, y, ANELLO2, 1);
   }
 }
@@ -273,7 +298,7 @@ export function waterLife(w, cam) {
     for (let k = 0; k < 20; k++) {
       const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
       const ps = waterSystem(w, wm, "water", "grass", x, y);
-      if (ps) { P_.create(ps, x, y, INCRESPATURA, 1); break; }
+      if (ps && ringFits(wm, x, y, INCRESPATURA_R)) { P_.create(ps, x, y, INCRESPATURA, 1); break; } // §9.149
     }
   }
 }

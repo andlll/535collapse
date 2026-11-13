@@ -10368,3 +10368,41 @@ Tiled i banchi (polilinee orizzontali `nebbia` nel livello regia, con
 velocita' e numero di nuvole), le pattuglie e le torri; la mappa
 (dell'autore) e la regia a fasi (infiltrazione, labirinto, liberazione,
 ritorno in forze).
+
+### 9.149 Gli anelli della pioggia lontani dalle rive
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): sui
+fiumi a linee (§9.97) gli anelli delle gocce di pioggia (§8.13) scavalcano la
+riva: metterli a una certa distanza dalle rive. Prova e screenshot.
+
+**Prima.** L'anello nasceva in un punto a caso della vista se la sua cella
+da 8 px era acqua, e poi si allargava fino a ~24 x 12 px di raggio
+(dimensione 0,716 di 64 px, schiacciato come il suolo): vicino alla riva ne
+usciva. E sotto la riva lontana c'e' la sua parete, una fascia scura alta
+fino a 16 px disegnata dentro l'acqua (rivers.js WALL): li' l'anello stava
+sulla sponda.
+
+**Ora** (effects.js `ringFits`): sui fiumi a linee un anello nasce solo se,
+alla grandezza massima, 8 punti del suo bordo sono ancora acqua, e verso
+l'alto anche oltre la parete (16 px in piu'). Il grande (24 x 12) dove ci
+sta; dove ci sta solo il piccolo (11 x 6, i ruscelli stretti), solo il
+piccolo: se no sk_silva perdeva quasi tutti gli anelli (69 -> 19). Lo stesso
+per le increspature (17 x 9). I fiumi dipinti dell'autore come prima.
+
+**Misura** (prova nuova `game/test/browser/ripples.mjs`, nella CI: pioggia
+piena, la vista lungo i fiumi, seme 3; per ogni anello sul fiume, 16 punti
+del bordo alla grandezza massima):
+
+| mappa | grandi fuori dall'acqua | grandi sulla parete | piccoli fuori |
+|---|---|---|---|
+| lvl06, prima | 158 su 462 | 47 | 98 su 504 |
+| lvl06, ora | 3 su 308 | 0 | 3 su 459 |
+| sk_padus, prima / ora | 72 su 231 / 2 su 162 | 14 / 0 | |
+| sk_rivo, prima / ora | 110 su 371 / 5 su 271 | 24 / 0 | |
+| sk_silva, prima | 52 su 69 | 0 | 35 su 84 |
+| sk_silva, ora | 1 su 15 | 0 | 0 su 55 |
+
+I pochi rimasti sfiorano la riva fra gli 8 punti del controllo. Screenshot
+prima/dopo su lvl06 e sk_padus con la pioggia: prima anelli a cavallo della
+riva alta e della sua parete, e qualcuno sulla riva bassa; dopo tutti
+nell'acqua.
