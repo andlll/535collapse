@@ -10406,3 +10406,38 @@ I pochi rimasti sfiorano la riva fra gli 8 punti del controllo. Screenshot
 prima/dopo su lvl06 e sk_padus con la pioggia: prima anelli a cavallo della
 riva alta e della sua parete, e qualcuno sulla riva bassa; dopo tutti
 nell'acqua.
+
+### 9.150 Le macchie d'erba fuori dai fiumi delle schermaglie
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): nelle
+mappe delle schermaglie le macchie d'erba non devono finire nei fiumi (si
+vedeva negli screenshot di §9.149, sul Po di Padus); se serve, spostarle.
+
+**Perche'.** Le macchie a particelle (`burst_erba1`, `burst_grano1`,
+`chiazzaparticellare`, i fiori) spargono l'erba in un'ellisse attorno al
+centro, 500 x 300 px di semiassi (200 x 125 i fiori: effects.js DECOR_SIZE).
+tools/16 (`scatter`, `free`) guardava solo il centro, a 150-300 px dalle
+linee di fiumi e strade: il bordo della macchia arrivava nell'acqua. Per i
+centri delle basi c'era gia' il controllo sull'ellisse intera (`on_base`,
+§9.131), per i fiumi no.
+
+**Ora** (tools/16 `on_water`, `patch_wet`): una macchia non si mette dove il
+centro o uno dei 16 punti del bordo della sua ellisse e' a meno di meta'
+larghezza del fiume + 20 px dalla sua linea, misurato sul terreno "steso"
+(y / 0,62) come le rive del gioco; `scatter` cerca un altro posto.
+`--check` (nella CI) da' errore per una macchia nell'acqua.
+
+**Le mappe.** Prima (ellisse intera): Padus 2 macchie nel Po (piu' i loro
+gemelli), Rivoaltus 6 nella laguna; Bardonis, Silva Umbra, Urbs nessuna (non
+cambiano). Rigenerate `mappe/sk_padus.tmx`, `mappe/sk_rivo.tmx` e i loro
+scenari: a Padus si spostano solo le 4 macchie; a Rivoaltus le 6 e, a
+cascata (il generatore estrae i numeri in sequenza), i fiori e i ciuffi
+d'erba messi dopo; alberi, risorse, basi, strade e fiumi uguali. Rifatte
+anche le loro cartoline (tools/17): uguali a parte la nebbia decorativa
+(a caso) e un fiore. Screenshot: la macchia d'erba vecchia rimessa al suo
+posto copre il Po; senza, il fiume e' pulito; lo stesso sul canale di
+Rivoaltus.
+
+Nel livello 6 (la mappa dell'autore, non generata) 2 macchie toccano
+l'acqua al 70% dell'ellisse, 4 all'ellisse intera: non toccate, da decidere
+con l'autore.

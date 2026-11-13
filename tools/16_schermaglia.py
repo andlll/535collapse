@@ -650,7 +650,7 @@ class HalfMap:
             # [§9.127] le macchie d'erba e di fiori si allargano oltre r
             if not self.half(x, y) or not self.free(x, y, r, lines, rock_pad=r + 100 if name in DECOR_OBJ else None):
                 continue
-            if name in PATCH_SIZE and self.on_base(x, y, *PATCH_SIZE[name]):
+            if name in PATCH_SIZE and (self.on_base(x, y, *PATCH_SIZE[name]) or self.on_water(x, y, *PATCH_SIZE[name])):
                 continue
             dx, dy = self.off.get(name, (0, 0))
             self.obj(name, round(x - dx), round(y - dy), sprite)  # (x, y): il centro della maschera
@@ -671,6 +671,18 @@ class HalfMap:
                 if ((x - px) / (rx + R)) ** 2 + ((y - py) / (ry + R)) ** 2 < 1:
                     return True
         return False
+
+    def on_water(self, x, y, rx, ry, margin=20):
+        """[§9.150, richiesta dell'autore] Una macchia a particelle (semiassi
+        rx, ry) in (x, y) arriverebbe nell'acqua di un fiume (o del suo
+        gemello)? Il gioco sparge l'erba e i fiori in tutta l'ellisse; free
+        guarda solo il centro (lines px), e le macchie d'erba (500 x 300)
+        finivano nei fiumi di Padus e nella laguna di Rivoaltus. Il centro e
+        16 punti del bordo, a meno di meta' larghezza + margin px dalla linea
+        del fiume, misurati sul terreno "steso" (y / 0,62) come le rive
+        (game/src/rivers.js)."""
+        _, rivers, _, _ = self.full()
+        return patch_wet(x, y, rx, ry, [(line, max(wdt) if isinstance(wdt, tuple) else wdt or 150) for line, wdt in rivers], margin)
 
     def half(self, x, y):
         """Il punto e' nella meta' della base A (sopra la diagonale che va
@@ -1179,6 +1191,27 @@ MAPS = {"padus": padus, "urbs": urbs, "silva": silva, "rivo": rivoaltus, "bardon
 
 # ------------------------------------------------------------ controllo
 
+def patch_wet(x, y, rx, ry, rivers, margin=0):
+    """[§9.150] L'ellisse (x, y, rx, ry) di una macchia a particelle tocca
+    l'acqua di uno dei fiumi [(punti, larghezza)]? Il centro e 16 punti del
+    bordo, a meno di meta' larghezza + margin px dalla linea, sul terreno
+    "steso" (y / 0,62) come le rive del gioco (game/src/rivers.js)."""
+    iso = 0.62
+    pts = [(x, y)] + [(x + rx * math.cos(a * math.pi / 8), y + ry * math.sin(a * math.pi / 8)) for a in range(16)]
+    for line, wdt in rivers:
+        half = wdt / 2 + margin
+        for (x0, y0), (x1, y1) in zip(line, line[1:]):
+            y0, y1 = y0 / iso, y1 / iso
+            vx, vy = x1 - x0, y1 - y0
+            L2 = vx * vx + vy * vy or 1
+            for px, py in pts:
+                qy = py / iso
+                t = max(0, min(1, ((px - x0) * vx + (qy - y0) * vy) / L2))
+                if math.hypot(px - (x0 + t * vx), qy - (y0 + t * vy)) < half:
+                    return True
+    return False
+
+
 def check(name):
     """Lo scenario e' simmetrico? Errori come elenco di stringhe."""
     sc = json.load(open(os.path.join(SCEN_DIR, "sk_%s.json" % name), encoding="utf-8"))
@@ -1224,6 +1257,11 @@ def check(name):
             errs.append("%s (%g, %g) senza gemello" % (o, x, y))
         else:
             used[k] = used[j] = True
+    # [§9.150] nessuna macchia a particelle nell'acqua dei fiumi
+    rivers = [([tuple(p) for p in r["pts"]], max(r["width"], r.get("widthEnd", r["width"]))) for r in sc.get("rivers", [])]
+    for i in sc["instances"]:
+        if i["object"] in PATCH_SIZE and patch_wet(i["x"], i["y"], *PATCH_SIZE[i["object"]], rivers):
+            errs.append("%s (%g, %g) nell'acqua di un fiume" % (i["object"], i["x"], i["y"]))
     for kind in ("rivers", "roads"):
         lines = [[tuple(p) for p in r["pts"]] for r in sc.get(kind, [])]
         for L in lines:
