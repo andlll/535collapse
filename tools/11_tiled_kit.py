@@ -347,7 +347,12 @@ def write_extension(out_dir):
     ext = os.path.join(out_dir, "extensions")
     os.makedirs(ext, exist_ok=True)
     shutil.copy(os.path.join(REPO_DIR, "tools", "tiled", "anteprima.mjs"), os.path.join(ext, "anteprima.mjs"))
-    shutil.copy(os.path.join(REPO_DIR, "game", "src", "rivers.js"), os.path.join(ext, "rivers.mjs"))
+    # [§9.152] rivers.js usa le funzioni deterministiche di dmath.js: anche
+    # quelle, come modulo .mjs, e l'import della copia punta li'
+    src = open(os.path.join(REPO_DIR, "game", "src", "rivers.js"), encoding="utf-8").read()
+    with open(os.path.join(ext, "rivers.mjs"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(src.replace('from "./dmath.js"', 'from "./dmath.mjs"'))
+    shutil.copy(os.path.join(REPO_DIR, "game", "src", "dmath.js"), os.path.join(ext, "dmath.mjs"))
 
 
 def write_project(out_dir):

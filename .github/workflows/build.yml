@@ -152,6 +152,20 @@ jobs:
           node game/test/browser/ripples.mjs
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
+      # [§9.152, multiplayer, fase 1] la stessa partita (stesso seme, nessun
+      # input) in Chromium, Firefox e WebKit: in ogni browser due pagine con
+      # viste e opzioni grafiche diverse danno le stesse impronte, e le
+      # impronte dei tre browser sono uguali fra loro
+      - name: Determinismo fra browser (Chromium, Firefox, WebKit)
+        run: |
+          (cd game && npx playwright install --with-deps firefox webkit)
+          python3 -m http.server 8124 --directory game > /dev/null 2>&1 &
+          for k in $(seq 1 30); do curl -sf http://localhost:8124/index.html > /dev/null && break; sleep 1; done
+          for b in chromium firefox webkit; do BASE=http://localhost:8124 node game/test/browser/determinism.mjs sk_padus 3000 $b | tee det_$b.txt; done
+          for b in firefox webkit; do
+            diff <(grep "impronte:" det_chromium.txt) <(grep "impronte:" det_$b.txt) || { echo "impronte diverse fra chromium e $b"; exit 1; }
+          done
+
       - uses: actions/upload-artifact@v4
         with:
           name: 535-collapse-web

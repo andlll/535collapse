@@ -9,6 +9,8 @@ import { partType } from "./particles.js";
 import { lengthdirX } from "./gm.js";
 import { windLevel } from "./ambience.js";
 import { riverCells } from "./rivers.js";
+import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
 
 const P = (w) => w.particles;
 
@@ -43,7 +45,7 @@ export function rainStart(w) {
   const em = P(w).emitterCreate(ps);
   const d = 255 - RAIN_SLANT * windLevel(w.g), lo = (d - 5) * Math.PI / 180;
   const type = { ...GOCCIA, direction: [d - 5, d + 5, 0, 0] };
-  const right = Math.max(300, Math.ceil(w.roomH * Math.abs(Math.cos(lo) / Math.sin(lo))));
+  const right = Math.max(300, Math.ceil(w.roomH * Math.abs(dcos(lo) / dsin(lo))));
   P(w).region(em, 0, w.roomW + right, -16, -16, "line", "linear");
   // [§9.91] niente flusso automatico: le gocce le fa nascere rainStep, in
   // proporzione a ps.level (em.full: quelle a passo con la pioggia piena)
@@ -79,7 +81,7 @@ export function rainStep(w, ps) {
   }
   if (em && em.full && ps.level > 0 && !P_.hidden.has(ps.cat)) {
     const r = em.full * ps.level;
-    P_.burst(ps, em, em.type, Math.floor(r) + (Math.random() < r % 1 ? 1 : 0));
+    P_.burst(ps, em, em.type, Math.floor(r) + (vrand() < r % 1 ? 1 : 0));
   }
   return ps;
 }
@@ -120,7 +122,7 @@ export function waterMap(w) {
     const raw = atob(wt.bits), sx = i.image_xscale || 1, sy = i.image_yscale || 1;
     const [ox, oy] = m.origin;
     // [§9.7] il fiume puo' essere ruotato (image_angle, come in drawSprite)
-    const t = (i.image_angle || 0) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+    const t = (i.image_angle || 0) * Math.PI / 180, c = dcos(t), s = dsin(t);
     // ogni cella della room il cui centro cade su una cella d'acqua dello sprite
     const lx0 = (0 - ox) * sx, lx1 = (m.size[0] - ox) * sx, ly0 = (0 - oy) * sy, ly1 = (m.size[1] - oy) * sy;
     const xs = [lx0 * c + ly0 * s, lx1 * c + ly0 * s, lx0 * c + ly1 * s, lx1 * c + ly1 * s];
@@ -146,8 +148,8 @@ export function waterMap(w) {
     // [§9.36] la direzione del pezzo (asse principale delle sue celle
     // d'acqua), in gradi come GameMaker (y verso l'alto)
     const [n, sx_, sy_, sxx, syy, sxy] = st;
-    const vx = sxx / n - (sx_ / n) ** 2, vy = syy / n - (sy_ / n) ** 2, cxy = sxy / n - (sx_ / n) * (sy_ / n);
-    angles.push(n ? -0.5 * Math.atan2(2 * cxy, vx - vy) * 180 / Math.PI : 0);
+    const vx = sxx / n - sq(sx_ / n), vy = syy / n - sq(sy_ / n), cxy = sxy / n - (sx_ / n) * (sy_ / n);
+    angles.push(n ? -0.5 * datan2(2 * cxy, vx - vy) * 180 / Math.PI : 0);
   }
   // [§9.97] i fiumi a linee (rivers.js): le loro celle d'acqua, un "pezzo"
   // per tratto (con la sua orientazione), sotto tutte le istanze come il
@@ -190,7 +192,7 @@ function waterSystem(w, wm, kind, cat, x, y) {
 }
 
 // [§9.149, richiesta dell'autore] Sui fiumi a linee (rivers.js) un anello
-// nasce solo dove ci sta tutto: a 8 punti del suo bordo, alla grandezza
+// nasce solo dove ci sta tutto: a 16 punti del suo bordo, alla grandezza
 // massima (rx x ry, schiacciato come il suolo), c'e' ancora acqua; e verso
 // l'alto anche oltre la parete della riva lontana (WALL px, disegnata dentro
 // l'acqua). Prima gli anelli nati vicino alla riva la scavalcavano. Dove il
@@ -204,10 +206,11 @@ const isWater = (wm, x, y) => {
 export function ringFits(wm, x, y, [rx, ry]) {
   const piece = wm.pieces[wm.owner[Math.floor(y / wm.C) * wm.gw + Math.floor(x / wm.C)]];
   if (!piece || piece.sysKey !== "fiumi") return true;
-  const d = 0.71;
-  for (const [dx, dy] of [[rx, 0], [-rx, 0], [0, ry], [d * rx, d * ry], [-d * rx, d * ry],
-                          [0, -ry - BANK_WALL], [d * rx, -d * ry - BANK_WALL], [-d * rx, -d * ry - BANK_WALL]]) {
-    if (!isWater(wm, x + dx, y + dy)) return false;
+  // 16 punti del bordo (con 8 qualche anello sfiorava la riva fra due punti:
+  // ripples.mjs ne guarda 16); quelli della meta' in alto anche oltre la parete
+  for (let a = 0; a < 16; a++) {
+    const t = (a / 16) * 2 * Math.PI, dx = dcos(t) * rx, dy = dsin(t) * ry;
+    if (!isWater(wm, x + dx, y + dy - (dy < 0 ? BANK_WALL : 0))) return false;
   }
   return true;
 }
@@ -218,7 +221,7 @@ export function rainRipples(w, cam, level = 1) {
   const wm = waterMap(w);
   if (!wm) return;
   for (let k = 0, n = Math.round(RIPPLE_TRIES * level); k < n; k++) { // §9.91: quante gocce
-    const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+    const x = cam.x + vrand() * cam.w, y = cam.y + vrand() * cam.h;
     const ps = waterSystem(w, wm, "ripples", "rain", x, y); // §9.36
     if (!ps) continue;
     const big = ringFits(wm, x, y, ANELLO_R); // §9.149
@@ -275,9 +278,9 @@ export function waterLife(w, cam) {
         for (let cx = 1; cx < gw - 1; cx++) {
           const k = cy * gw + cx;
           if (!grid[k] || (grid[k - 1] && grid[k + 1] && grid[k - gw] && grid[k + gw])) continue;
-          if (Math.random() * SCHIUMA_EVERY >= 1) continue;
+          if (vrand() * SCHIUMA_EVERY >= 1) continue;
           n++;
-          const x = (cx + Math.random()) * C, y = (cy + Math.random()) * C;
+          const x = (cx + vrand()) * C, y = (cy + vrand()) * C;
           const ps = waterSystem(w, wm, "foam", "grass", x, y);
           if (ps) P_.create(ps, x, y, SCHIUMA[n % 2], 1);
         }
@@ -285,18 +288,18 @@ export function waterLife(w, cam) {
     }
   }
   for (let k = 0; k < RIFLESSI_TRIES; k++) {
-    const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+    const x = cam.x + vrand() * cam.w, y = cam.y + vrand() * cam.h;
     const ps = waterSystem(w, wm, "water", "grass", x, y);
     if (!ps) continue;
     P_.create(ps, x, y, RIFLESSO, 1);
     // lungo il fiume, e scivola nello stesso verso
     const q = ps.parts[ps.parts.length - 1], a = waterAngle(wm, x, y);
-    q.ang = a + (Math.random() * 10 - 5);
+    q.ang = a + (vrand() * 10 - 5);
     q.dir = a;
   }
-  if (Math.random() * INCRESPATURA_EVERY < 1) {
+  if (vrand() * INCRESPATURA_EVERY < 1) {
     for (let k = 0; k < 20; k++) {
-      const x = cam.x + Math.random() * cam.w, y = cam.y + Math.random() * cam.h;
+      const x = cam.x + vrand() * cam.w, y = cam.y + vrand() * cam.h;
       const ps = waterSystem(w, wm, "water", "grass", x, y);
       if (ps && ringFits(wm, x, y, INCRESPATURA_R)) { P_.create(ps, x, y, INCRESPATURA, 1); break; } // §9.149
     }
@@ -452,7 +455,7 @@ export function fireStarterStep(i, w) {
   if (inView) {
     const a = w.nearest(i.x, i.y, "ally");
     const bb = a && w.bbox(a);
-    near = !!bb && Math.hypot(Math.max(0, bb[0] - i.x, i.x - bb[2]), Math.max(0, bb[1] - i.y, i.y - bb[3])) < 600;
+    near = !!bb && dhypot(Math.max(0, bb[0] - i.x, i.x - bb[2]), Math.max(0, bb[1] - i.y, i.y - bb[3])) < 600;
   }
   P(w).stream(i.fire_emitter, i.fire_part, near ? 3 : 0);
 }
@@ -521,7 +524,7 @@ export function decorCreate(i, w) {
   const list = [];
   for (const [t, n] of DECOR[i.object]) for (let k = 0; k < n; k++) list.push(t);
   for (let k = list.length - 1; k > 0; k--) {
-    const j = Math.floor(Math.random() * (k + 1));
+    const j = Math.floor(vrand() * (k + 1));
     [list[k], list[j]] = [list[j], list[k]];
   }
   for (const t of list) P(w).burst(ps, em, t, 1);
@@ -564,8 +567,8 @@ function cropRows(i, w) {
     if (hw < 4) continue;
     const y = i.y + dy;
     const ps = P(w).systemCreate(-y, "grass");
-    for (let x = -hw + Math.random() * 9; x < hw; x += 9 + Math.random() * 4) {
-      P(w).create(ps, i.x + x + (Math.random() * 4 - 2), y + (Math.random() * 3 - 1.5), SPIGA_RIGA, 1);
+    for (let x = -hw + vrand() * 9; x < hw; x += 9 + vrand() * 4) {
+      P(w).create(ps, i.x + x + (vrand() * 4 - 2), y + (vrand() * 3 - 1.5), SPIGA_RIGA, 1);
     }
     rows.push(ps);
   }
@@ -597,7 +600,7 @@ export function campoStep(i, w) {
       for (const q of ps.parts) {
         q.t = SPIGA_RIGA_BRUCIATA;
         q.age = 0;
-        q.life = 700 + Math.random() * 100;
+        q.life = 700 + vrand() * 100;
       }
       P(w).releaseWhenEmpty(ps);
     }

@@ -17,6 +17,7 @@ import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
 import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawRally, drawObjectives } from "./minimap.js";
 import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
+import { dsin } from "./dmath.js"; // §9.152
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -409,7 +410,7 @@ export class Manager {
         d.circleColour(20, H - 20, 15, c.white, c.white, false);
         // [§9.108] un allarme nuovo con la minimappa chiusa: il pulsante lampeggia di rosso
         if (alarmBlink(g, world._stepNo)) {
-          d.setAlpha(0.35 + 0.35 * Math.sin(world._stepNo * 0.2));
+          d.setAlpha(0.35 + 0.35 * dsin(world._stepNo * 0.2));
           d.circleColour(20, H - 20, 15, c.red, c.red, false);
         }
         d.setAlpha(0.6);

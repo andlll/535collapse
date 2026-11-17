@@ -16,6 +16,7 @@
 //   (global.sk, anche nei salvataggi).
 
 import { tr } from "./i18n.js";
+import { simRandom } from "./rng.js"; // §9.152
 
 // Le mappe: room -> nome e descrizione. [§9.129, decisione dell'autore] I
 // nomi in italiano (prima erano quelli storici in latino: Padus, Silva
@@ -112,7 +113,7 @@ const STYLES = ["balanced", "aggressive", "defensive", "economic", "raider"];
 export function skirmishPrepare(params, all) {
   const cc = all.filter((e) => e[0] === "centro").sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
   if (cc.length !== 2) return null;
-  const side = params.start === "random" ? (Math.random() < 0.5 ? "A" : "B") : params.start;
+  const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
   const [mine, cpu] = side === "A" ? cc : [cc[1], cc[0]];
   cpu[0] = "enemy_centro";
   return { side, player: [mine[1], mine[2]], cpu: [cpu[1], cpu[2]] };
@@ -120,7 +121,7 @@ export function skirmishPrepare(params, all) {
 
 // Dopo: lavoratori, risorse, regia economica della CPU, opzioni, vista
 export function skirmishStart(world, g, manager, fog, cam, params, starts) {
-  const style = params.style === "random" ? STYLES[Math.floor(Math.random() * STYLES.length)] : params.style;
+  const style = params.style === "random" ? STYLES[Math.floor(simRandom() * STYLES.length)] : params.style;
   g.sk = { ...params, style, side: starts.side, popMax: params.pop };
   Object.assign(g, START_RES[params.resources]);
   const en = START_RES[params.resources];
@@ -268,7 +269,7 @@ export const MIST = { n: 5, every: 2400, alpha: 0.5, speed: 0.5, life: 6000, spr
 export function skNebbia() {
   const spawn = (i, w) => {
     for (let k = 0; k < MIST.n; k++) {
-      const x = i.x + (Math.random() - 0.5) * 2 * MIST.spread[0], y = i.y + (Math.random() - 0.5) * 2 * MIST.spread[1];
+      const x = i.x + (simRandom() - 0.5) * 2 * MIST.spread[0], y = i.y + (simRandom() - 0.5) * 2 * MIST.spread[1];
       w.create("sk_nube", Math.round(x), Math.round(y));
     }
     i.alarm.set(0, MIST.every);
@@ -282,7 +283,7 @@ export function skNube() {
       i.alfa = 0; i.out = 0;
       i.direction = 0; i.speed = MIST.speed;
       i.alarm.set(0, MIST.life);
-      i.image_xscale = i.image_yscale = 0.8 + Math.random() * 0.6;
+      i.image_xscale = i.image_yscale = 0.8 + simRandom() * 0.6;
     },
     alarm0(i) { i.out = 1; },
     step(i, w) {

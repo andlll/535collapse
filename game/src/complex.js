@@ -14,6 +14,8 @@
 // ogni pezzo e sopra tutto quello che lo sprite disegna al di sopra di
 // essa (tetti, cortile).
 
+import { dhypot, sq } from "./dmath.js"; // §9.152
+
 const PARTS = ["monastero_muro", "monastero_casetta"];
 const NEAR = 700; // i pezzi del complesso: entro 700 px dall'origine del corpo
 
@@ -22,7 +24,7 @@ export function linkParts(w, b) {
   b.parts = [];
   for (const n of PARTS) {
     for (const o of w.all(n)) {
-      if (!o.alive || Math.hypot(o.x - b.x, o.y - b.y) > NEAR) continue;
+      if (!o.alive || dhypot(o.x - b.x, o.y - b.y) > NEAR) continue;
       o.complex = b;
       b.parts.push(o);
     }
@@ -65,9 +67,9 @@ export function complexPoint(w, x, y, b, avoid = null) {
   for (const o of pieces(b)) {
     const s = samples(w, o);
     for (let k = 0; k < s.length; k += 2) {
-      const d = (s[k] - x) ** 2 + (s[k + 1] - y) ** 2;
+      const d = sq(s[k] - x) + sq(s[k + 1] - y);
       if (d >= bd) continue;
-      if (avoid && avoid.some(([ax, ay]) => (s[k] - ax) ** 2 + (s[k + 1] - ay) ** 2 < AVOID * AVOID)) continue;
+      if (avoid && avoid.some(([ax, ay]) => sq(s[k] - ax) + sq(s[k + 1] - ay) < AVOID * AVOID)) continue;
       bd = d; bx = s[k]; by = s[k + 1];
     }
   }

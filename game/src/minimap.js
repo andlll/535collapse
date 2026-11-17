@@ -19,6 +19,7 @@
 
 import { waterMap } from "./effects.js";
 import { makeColourRgb } from "./colours.js";
+import { dhypot, dsin } from "./dmath.js"; // §9.152
 
 export const MM = {
   // [§9.110, richiesta dell'autore] i tuoi marroni (in §9.109 rosso caldo
@@ -92,7 +93,7 @@ function runsOf(cov, mw, mh, R) {
     const qx = cx < R ? R - cx : cx > mw - R ? cx - (mw - R) : 0;
     const qy = cy < R ? R - cy : cy > mh - R ? cy - (mh - R) : 0;
     if (!qx || !qy) return 1;
-    return Math.max(0, Math.min(1, R + 0.5 - Math.hypot(qx, qy)));
+    return Math.max(0, Math.min(1, R + 0.5 - dhypot(qx, qy)));
   };
   for (let y = 0; y < mh; y++) {
     let x0 = 0, a0 = 0;
@@ -275,7 +276,7 @@ export function drawObjectives(d, marks, ox, oy, sz, t) {
   };
   for (const m of marks) {
     const x = ox + m.x / sz, y = oy + m.y / sz, a = m.optional ? 0.55 : 1;
-    const r = 7 + 1.5 * (0.5 + 0.5 * Math.sin(t * 0.08));
+    const r = 7 + 1.5 * (0.5 + 0.5 * dsin(t * 0.08));
     diamond(x, y, r + 1.2, K, 0.45 * a);
     diamond(x, y, r, W, 0.95 * a);
     diamond(x, y, r - 1.6, K, 0.55 * a);

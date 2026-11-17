@@ -6,6 +6,7 @@
 // verso il basso, come in GameMaker [I].
 
 import { packColor } from "./gl.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
 export function drawSprite(r, assets, name, index, x, y, xscale = 1, yscale = 1, angle = 0,
                            colour = 0xffffff, alpha = 1) {
@@ -21,7 +22,7 @@ export function drawSprite(r, assets, name, index, x, y, xscale = 1, yscale = 1,
     r.quad(tex, x + lx0, y + ly0, x + lx1, y + ly0, x + lx1, y + ly1, x + lx0, y + ly1,
            u, v, u + w, v + h, rgba);
   } else {
-    const a = -angle * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    const a = -angle * Math.PI / 180, c = dcos(a), sn = dsin(a);
     const px = (lx, ly) => x + lx * c - ly * sn, py = (lx, ly) => y + lx * sn + ly * c;
     r.quad(tex, px(lx0, ly0), py(lx0, ly0), px(lx1, ly0), py(lx1, ly0),
            px(lx1, ly1), py(lx1, ly1), px(lx0, ly1), py(lx0, ly1), u, v, u + w, v + h, rgba);
@@ -36,7 +37,7 @@ export function spriteBounds(assets, name, x, y, xscale = 1, yscale = 1) {
   const ax = Math.abs(xscale), ay = Math.abs(yscale);
   const ox = s.origin[0] * ax, oy = s.origin[1] * ay;
   // largo per eccesso: con rotazione il rettangolo puo' girare attorno all'origine
-  const rad = Math.hypot(Math.max(ox, s.width * ax - ox), Math.max(oy, s.height * ay - oy));
+  const rad = dhypot(Math.max(ox, s.width * ax - ox), Math.max(oy, s.height * ay - oy));
   return [x - rad, y - rad, x + rad, y + rad];
 }
 

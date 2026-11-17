@@ -22,8 +22,9 @@ import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./ene
 import { showDamage } from "./damage.js";
 import { burnTick } from "./effects.js";
 import { bloodHit } from "./blood.js";
+import { dhypot, dsin } from "./dmath.js"; // §9.152
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
 
 // ---------------------------------------------------------------- frecce
@@ -515,7 +516,7 @@ function exitHover(name, i, w) {
   const inp = w.input;
   if (i.selected !== 1 || !inp || !inp.inside) return -1;
   for (let k = 0; k < i.npresidio; k++) {
-    if (Math.hypot(inp.x - (EXIT_X[name] + EXIT_DX * k), inp.y - EXIT_ROW) < EXIT_R) return k;
+    if (dhypot(inp.x - (EXIT_X[name] + EXIT_DX * k), inp.y - EXIT_ROW) < EXIT_R) return k;
   }
   return -1;
 }

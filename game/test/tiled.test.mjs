@@ -4,7 +4,7 @@
 // con le sagome del gioco (rivers.js), e rifatto non si raddoppia.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, copyFileSync } from "node:fs";
+import { mkdtempSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,7 +46,9 @@ function polyline(cls, x, y, pts, props, rotation = 0) {
 test("§9.98 anteprima di Tiled: sagome di fiumi e strade come nel gioco", async () => {
   const dir = mkdtempSync(join(tmpdir(), "anteprima-"));
   copyFileSync(join(root, "tools/tiled/anteprima.mjs"), join(dir, "anteprima.mjs"));
-  copyFileSync(join(root, "game/src/rivers.js"), join(dir, "rivers.mjs"));
+  // come tools/11 (§9.152): rivers.js importa dmath.js, copiato come .mjs
+  writeFileSync(join(dir, "rivers.mjs"), readFileSync(join(root, "game/src/rivers.js"), "utf8").replace('from "./dmath.js"', 'from "./dmath.mjs"'));
+  copyFileSync(join(root, "game/src/dmath.js"), join(dir, "dmath.mjs"));
   const { refresh, shapes } = await import(join(dir, "anteprima.mjs"));
 
   const strade = new ObjectGroup("strade"), fiumi = new ObjectGroup("fiumi"), oggetti = new ObjectGroup("oggetti");

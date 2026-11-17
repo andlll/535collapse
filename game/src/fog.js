@@ -32,6 +32,7 @@
 
 import { ST } from "./stealth.js"; // §9.148
 import { c, mergeColour } from "./colours.js";
+import { dsin, sq } from "./dmath.js"; // §9.152
 
 export const FOG_CELL = 16;
 // valore da sottrarre (0-255) per cella: vista, gia' vista, mai vista
@@ -169,7 +170,7 @@ export class FogMap {
         let v;
         if (q === 0) v = 255;
         else {
-          const gq = Math.sqrt((px / rx2) ** 2 + (py / ry2) ** 2) / q;
+          const gq = Math.sqrt(sq(px / rx2) + sq(py / ry2)) / q;
           const cov = 0.5 + ((1 - q) / gq) / C;
           v = cov >= 1 ? 255 : cov <= 0 ? 0 : Math.round(cov * 255);
         }
@@ -274,7 +275,7 @@ const BUILDING_LIGHTS = [
 
 export function nightLights(w) {
   const out = [], f = w.g.frame;
-  const flicker = (i) => 0.15 * Math.sin(i.x + f * 0.17);
+  const flicker = (i) => 0.15 * dsin(i.x + f * 0.17);
   for (const n of ["flameqq", "firestarter", "firestarter_small"]) {
     for (const i of w.all(n)) if (i.alive) out.push([i.x, i.y, 3 + flicker(i)]);
   }
@@ -291,7 +292,7 @@ export function nightLights(w) {
   if (lit > 0) {
     for (const i of w.all("fiaccola_casa")) {
       if (!i.alive || i.visible === false || !i.casa || i.casa.onfire === 1) continue;
-      out.push([i.x, i.y, (0.7 + 0.04 * Math.sin(f * 0.17 + i.id)) * lit]);
+      out.push([i.x, i.y, (0.7 + 0.04 * dsin(f * 0.17 + i.id)) * lit]);
     }
   }
   for (const i of w.all("flameqq_small")) if (i.alive) out.push([i.x, i.y, 2]);

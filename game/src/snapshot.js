@@ -16,6 +16,8 @@
 import { Alarms } from "./alarms.js";
 import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 import { ZOOM_MAX } from "./camera.js";
+import { simRngState, simRngRestore } from "./rng.js"; // §9.152
+import { isUiObject } from "./world.js"; // §9.152
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
 const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "chaseFf", "lmc", "_far", "_bb", "_tStep", "_tSum", "_trk", "edgeT"], classes: { Alarms }, roundKeys: ["parts"] };
@@ -23,8 +25,9 @@ const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerF
 export function captureGame({ world, g, manager, path, fog, cam, room }) {
   const P = world.particles;
   const state = encodeGraph({
-    instances: world.instances.filter((i) => i.alive),
+    instances: world.instances.filter((i) => i.alive && !i.fx), // §9.152: non le cosmetiche
     nextId: world.nextId,
+    fxNextId: world.fxNextId, // §9.152
     // [§7.10] il contatore dei passi: le attese scritte come "fino al passo
     // N" (reposAt, rallyTry, meleeRoute) dopo un caricamento ripartivano da 0
     stepNo: world._stepNo,
@@ -37,9 +40,48 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
     fog: { explored: fog.explored },
     particles: { systems: P.systems, seq: P.seq },
     cam: { x: cam.x, y: cam.y, scaleview: cam.scaleview },
+    rng: simRngState(), // §9.152: la sequenza della partita riprende uguale
   }, OPTS);
   return { game: "535", v: SAVE_VERSION, room, date: Date.now(), state };
 }
+
+// [§9.152, multiplayer, fase 1] L'impronta della partita: un hash (FNV-1a a
+// 32 bit, due volte con semi diversi) dello stato che due browser della
+// stessa partita in rete devono avere uguale. Fuori: quello di chi guarda
+// (particelle, nebbia di guerra, telecamera e zoom, il puntatore), le
+// istanze cosmetiche (fx) e quelle dell'interfaccia che seguono la vista
+// (pulsanti, dialoghi, suggerimenti).
+// le chiavi di global che sono dell'interfaccia di chi guarda
+export const UI_GLOBALS = ["scaleview", "sz", "sele", "multi", "startx", "starty", "enemyhover", "hover", "mouse_x", "mouse_y",
+                           "alarms", "alarmhint"]; // gli allarmi d'attacco della minimappa (attackalarm.js)
+// i campi delle istanze che tengono stato grafico (particelle di fuoco ed
+// erba, righe del grano): diversi con le opzioni grafiche di chi guarda
+const VISUAL_KEYS = ["fire_ps", "fire_emitter", "fire_part", "grass_rows", "grass_system", "grass_system_black",
+                     "grass_emitter", "crop_rows", "skRain", "skRainPs"];
+const HASH_OPTS = { ...OPTS, skipInstanceKeys: [...OPTS.skipInstanceKeys, "hover", "hov", ...VISUAL_KEYS] };
+export function stateParts({ world, g, manager, path }) {
+  const gg = {};
+  for (const k of Object.keys(g)) if (!UI_GLOBALS.includes(k)) gg[k] = g[k];
+  return {
+    instances: world.instances.filter((i) => i.alive && !i.fx && !i.ui),
+    nextId: world.nextId, stepNo: world._stepNo, g: gg,
+    manager: { al: manager.al, overcast: world.overcast, rain: manager.rain ? manager.rain.level ?? 1 : 0 },
+    path: { cost: path.cost, enemyBlock: path.enemyBlock, enemyPass: path.enemyPass, solid: path.solid },
+    rng: simRngState(),
+  };
+}
+export function stateHash(refs) {
+  const s = JSON.stringify(encodeGraph(stateParts(refs), HASH_OPTS));
+  let a = 0x811c9dc5, b = 0x01000193 ^ 0x9e3779b9;
+  for (let k = 0; k < s.length; k++) {
+    const c = s.charCodeAt(k);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = Math.imul(b ^ c, 0x5bd1e995);
+  }
+  return (a >>> 0).toString(16).padStart(8, "0") + (b >>> 0).toString(16).padStart(8, "0");
+}
+// lo stato in chiaro per trovare dove due partite divergono (le prove)
+export const stateDump = (refs) => encodeGraph(stateParts(refs), HASH_OPTS);
 
 // Rimette lo stato in un mondo appena creato (prima dei Create della room,
 // che non girano: le istanze arrivano gia' fatte).
@@ -52,13 +94,16 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
       if (!def) throw new Error("oggetto sconosciuto nel salvataggio: " + o.object);
       o.parents = def.parents;
       o.cells = null;
+      o.ui = isUiObject(o.object, def.parents); // §9.152 (anche i salvataggi di prima)
     },
   });
   for (const k of Object.keys(g)) delete g[k];
   Object.assign(g, s.g);
   world.instances = s.instances;
   world.nextId = s.nextId;
+  world.fxNextId = s.fxNextId ?? Math.min(-1, ...s.instances.map((i) => i.id - 1)); // §9.152
   world._stepNo = s.stepNo || 0;
+  simRngRestore(s.rng ?? null); // §9.152 (i salvataggi di prima: senza)
   world.byName = new Map();
   world.grid = new Map();
   for (const i of world.instances) {

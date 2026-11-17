@@ -20,6 +20,15 @@
 import { Alarms } from "./alarms.js";
 import { drawSprite, drawSway, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
+import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
+import { simRandom } from "./rng.js"; // §9.152
+
+// [§9.152] le istanze dell'interfaccia (pulsanti, dialoghi, suggerimenti):
+// seguono la vista o nascono per chi guarda; id a parte (negativi) e fuori
+// dalle ricerche della partita e dall'impronta (snapshot.js)
+const UI_PARENTS = ["clicker_parent", "clicchero", "parent_hint"];
+export const isUiObject = (name, parents = []) => UI_PARENTS.some((p) => parents.includes(p))
+  || /_clicker$|_button$|^dialogo|^hint_|^tooltip/.test(name);
 
 const CELL = 128;
 // [Richiesta dell'autore] passi della dissolvenza fra due sprite (swapSprite)
@@ -52,6 +61,11 @@ export class World {
     this.byName = new Map();
     this.behaviours = {};
     this.nextId = 100001;
+    // [§9.152] gli id delle istanze cosmetiche (opts.fx: i mattoni di un
+    // crollo, che nascono solo se il crollo e' sullo schermo): negativi e a
+    // parte, cosi' non spostano gli id della partita (che decidono i pareggi)
+    // fra due giocatori che guardano punti diversi
+    this.fxNextId = -1;
     this.grid = new Map();
     this._qstamp = 0; // contrassegno delle ricerche dei vicini (_eachNear)
     // [§6.3 N1] versione del mondo: cresce a ogni spostamento, creazione e
@@ -135,9 +149,10 @@ export class World {
     const o = this.objects[object];
     if (!o) throw new Error("oggetto sconosciuto: " + object);
     let sprite = o.sprite;
-    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor(Math.random() * o.choices.length)];
+    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor(simRandom() * o.choices.length)];
     const inst = {
-      id: this.nextId++, object, parents: o.parents, alive: true,
+      id: opts.fx || isUiObject(object, o.parents) ? this.fxNextId-- : this.nextId++, object, parents: o.parents, alive: true,
+      fx: !!opts.fx, ui: isUiObject(object, o.parents), // §9.152
       x, y, xstart: x, ystart: y, xprevious: x, yprevious: y,
       sprite_index: sprite, mask_index: o.mask, image_index: 0, image_speed: 1,
       image_xscale: opts.sx ?? 1, image_yscale: opts.sy ?? 1, image_angle: opts.rot ?? 0,
@@ -223,7 +238,7 @@ export class World {
     let best = null, bd = Infinity;
     for (const i of this._list(name)) {
       if (!i.alive) continue;
-      const d = (i.x - x) ** 2 + (i.y - y) ** 2;
+      const d = sq(i.x - x) + sq(i.y - y);
       if (d < bd) { bd = d; best = i; }
     }
     if (m) { m.ver = this._ver; m.x = x; m.y = y; m.res = best; }
@@ -262,7 +277,7 @@ export class World {
   // `from`: l'edificio da cui si tira (torri, castello, centro: §6.5); non
   // contano lui e le mura e le porte (si tira dall'alto).
   shotClear(x0, y0, x1, y1, from = null) {
-    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    const dx = x1 - x0, dy = y1 - y0, len = dhypot(dx, dy);
     if (len <= 40) return true;
     const cands = [];
     this._eachNear([Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)],
@@ -319,7 +334,7 @@ export class World {
   // (il piu' vicino al punto 30 px davanti), nemici col piu' vicino.
   faceAhead(i, name) {
     const r = Math.PI / 180;
-    const v = this.nearest(i.x + 30 * Math.cos(i.direction * r), i.y - 30 * Math.sin(i.direction * r), name);
+    const v = this.nearest(i.x + 30 * dcos(i.direction * r), i.y - 30 * dsin(i.direction * r), name);
     if (v) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   }
 
@@ -354,7 +369,7 @@ export class World {
     if (inst.image_angle % 360) {
       // [§9.7] maschera ruotata come lo sprite (drawSprite): la scatola e'
       // quella dei quattro angoli girati attorno all'origine
-      const a = -inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+      const a = -inst.image_angle * Math.PI / 180, c = dcos(a), s = dsin(a);
       const lx0 = x0 - x, lx1 = x1 - x, ly0 = y0 - y, ly1 = y1 - y;
       const ax = lx0 * c, bx = lx1 * c, ay = lx0 * s, by = lx1 * s;
       const cx = -ly0 * s, dx = -ly1 * s, cy = ly0 * c, dy = ly1 * c;
@@ -412,7 +427,7 @@ export class World {
   // la scala) e si prova il suo centro; i pixel pieni consecutivi fanno un
   // intervallo. Il caso senza rotazione resta quello esatto qui sopra.
   _spansRot(inst, m, ix, iy, y, xa, xb, out) {
-    const a = inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const a = inst.image_angle * Math.PI / 180, c = dcos(a), s = dsin(a);
     const sx = inst.image_xscale, sy = inst.image_yscale;
     const bb = m.bbox, ox = m.origin[0], oy = m.origin[1];
     const px0 = Math.floor(xa), px1 = Math.ceil(xb);
@@ -564,10 +579,13 @@ export class World {
 
   // place_meeting / instance_place: prima istanza di `name` (o qualunque,
   // o solo solide) che la maschera di inst toccherebbe in (x, y).
+  // [§9.152] senza `name` non conta l'interfaccia (pulsanti che seguono la
+  // vista) ne' gli effetti: dipendono da chi guarda (un nemico spostava a caso
+  // la meta se ci stava sopra il pulsante degli obiettivi)
   instancePlace(inst, x, y, name = null, solidOnly = false) {
     const bb = this.bbox(inst, x, y);
     if (!bb) return null;
-    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && (!name || this.is(o, name))
+    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && (name ? this.is(o, name) : !o.ui && !o.fx)
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
@@ -611,7 +629,7 @@ export class World {
   collisionRectangle(x1, y1, x2, y2, name, prec = true, notme = null, only = null) {
     const rect = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
     for (const o of only ? [only] : this._nearList(rect)) {
-      if (!o.alive || o === notme || (name && !this.is(o, name))) continue;
+      if (!o.alive || o === notme || (name ? !this.is(o, name) : (o.ui || o.fx) && o !== only)) continue; // §9.152
       const bb = this.bbox(o);
       if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
       if (!prec) return o;
@@ -634,7 +652,7 @@ export class World {
       if (!b) continue;
       const dx = Math.max(0, b[0] - a[2], a[0] - b[2]);
       const dy = Math.max(0, b[1] - a[3], a[1] - b[3]);
-      const d = Math.hypot(dx, dy);
+      const d = dhypot(dx, dy);
       if (d < best) best = d;
     }
     return best;
@@ -643,7 +661,7 @@ export class World {
   distanceToInstance(inst, o) {
     const a = DIST_A, b = DIST_B;
     if (!this._bboxInto(inst, inst.x, inst.y, a) || !o || !this._bboxInto(o, o.x, o.y, b)) return Infinity;
-    return Math.hypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
+    return dhypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
   }
 
   // --------------------------------------------------------------- passo

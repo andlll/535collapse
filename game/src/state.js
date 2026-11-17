@@ -1,4 +1,5 @@
 import { ZOOM_DEFAULT } from "./camera.js";
+import { simRandom } from "./rng.js"; // §9.152
 // Le variabili global.* dell'originale che servono ai sistemi portati
 // finora. I nomi restano quelli di GameMaker per poterli ritrovare in src/.
 // Valori iniziali da manager Create [C], salvo dove l'autore ha deciso
@@ -31,7 +32,7 @@ export function newGlobals(room) {
     // [§9.90, richiesta dell'autore] il vento della partita (0-1, a caso):
     // nuvole piu' o meno veloci, erba e fiori che ondeggiano di piu',
     // pioggia piu' inclinata (ambience.js windLevel). Solo estetico
-    wind: Math.random(),
+    wind: simRandom(),
     sz: 30,         // scala della minimappa: 1 px di minimappa = sz px di room
     minim: 1,       // minimappa visibile
     fps_show: 0,

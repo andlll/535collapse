@@ -19,6 +19,7 @@
 
 import { packColor } from "./gl.js";
 import { drawSprite } from "./sprites.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
 // segmenti per un giro di raggio r (pixel della proiezione corrente)
 const segments = (r) => Math.max(16, Math.min(96, Math.ceil((2 * Math.PI * r) / 6)));
@@ -122,7 +123,7 @@ export class Draw {
   }
 
   _line(x1, y1, x2, y2, width, c1, c2) {
-    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const dx = x2 - x1, dy = y2 - y1, len = dhypot(dx, dy) || 1;
     const nx = (-dy / len) * width / 2, ny = (dx / len) * width / 2;
     this._quad(x1 + nx, y1 + ny, x2 + nx, y2 + ny, x2 - nx, y2 - ny, x1 - nx, y1 - ny, c1, c2, c2, c1);
   }
@@ -146,7 +147,7 @@ export class Draw {
     const en = [];
     for (let i = 0; i < n; i++) {
       const [ax, ay] = P[i], [bx, by] = P[(i + 1) % n];
-      const len = Math.hypot(bx - ax, by - ay) || 1;
+      const len = dhypot(bx - ax, by - ay) || 1;
       let nx = (by - ay) / len, ny = -(bx - ax) / len;
       if (nx * ((ax + bx) / 2 - cx) + ny * ((ay + by) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
       en.push([nx, ny]);
@@ -155,7 +156,7 @@ export class Draw {
     for (let i = 0; i < n; i++) {
       const [ax, ay] = en[(i + n - 1) % n], [bx, by] = en[i];
       let nx = ax + bx, ny = ay + by;
-      const len = Math.hypot(nx, ny) || 1;
+      const len = dhypot(nx, ny) || 1;
       nx /= len; ny /= len;
       const k = Math.min(2, 1 / Math.max(0.5, nx * bx + ny * by));
       const [px, py] = P[i];
@@ -275,7 +276,7 @@ export class Draw {
     const corner = (cx, cy, a0) => {
       for (let i = 0; i <= q; i++) {
         const a = a0 + (i / q) * (Math.PI / 2);
-        pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+        pts.push([cx + dcos(a) * rx, cy + dsin(a) * ry]);
       }
     };
     corner(rgt - rx, btm - ry, 0);
@@ -299,7 +300,7 @@ export class Draw {
     const pts = [], seg = segments(Math.max(rx, ry));
     for (let i = 0; i < seg; i++) {
       const a = (i / seg) * Math.PI * 2;
-      pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+      pts.push([cx + dcos(a) * rx, cy + dsin(a) * ry]);
     }
     this._poly(cx, cy, pts, packColor(c1, this.alpha), packColor(c2, this.alpha), outline);
   }
@@ -323,7 +324,7 @@ export class Draw {
   // Linea tratteggiata: tratti di `dash` px separati da `gap`, dal primo
   // estremo.
   dashedLine(x1, y1, x2, y2, w, col, dash = 14, gap = 10, aa = false) {
-    const len = Math.hypot(x2 - x1, y2 - y1);
+    const len = dhypot(x2 - x1, y2 - y1);
     if (len < 0.5) return;
     const ux = (x2 - x1) / len, uy = (y2 - y1) / len, c = packColor(col, this.alpha);
     for (let s = 0; s < len; s += dash + gap) {
@@ -337,7 +338,7 @@ export class Draw {
   // lati e oltre i due capi una fascia di 2*AA px che va a trasparente
   // (colori premoltiplicati: trasparente = 0). 9 quad invece di 1.
   _lineAA(x1, y1, x2, y2, w, c) {
-    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const dx = x2 - x1, dy = y2 - y1, len = dhypot(dx, dy) || 1;
     const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
     const h = Math.max(0, w / 2 - AA), f = h + 2 * AA, e = 2 * AA;
     const P = (x, y, a, t) => [x + nx * a + ux * t, y + ny * a + uy * t];
@@ -369,7 +370,7 @@ export class Draw {
       const q = Math.max(2, Math.ceil(segments(Math.max(rad, 1)) / 4));
       for (let i = 0; i <= q; i++) {
         const a = a0 + (i / q) * (Math.PI / 2);
-        pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+        pts.push([cx + dcos(a) * rad, cy + dsin(a) * rad]);
       }
     };
     corner(r - rc, b - rc, rc, 0);

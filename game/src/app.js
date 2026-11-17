@@ -47,7 +47,8 @@ import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, provaNebbia } from "./stealth.js"; // §9.148
-import { captureGame, restoreGame } from "./snapshot.js";
+import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
+import { simSeed, freshSeed } from "./rng.js"; // §9.152
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
@@ -127,6 +128,12 @@ async function main() {
   }
 
   const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
+  // [§9.152, multiplayer, fase 1] il seme della partita, prima di tutto (gli
+  // alberi a caso della room, la schermaglia): ?seed=N per le prove e, poi,
+  // per la partita in rete; se no uno nuovo. Con ?nostart e senza seed (le
+  // prove nel browser, che fissano Math.random a mano) Math.random come prima
+  if (params.has("seed")) simSeed(Number(params.get("seed")) >>> 0);
+  else if (!params.has("nostart")) simSeed(freshSeed());
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
@@ -873,6 +880,7 @@ async function main() {
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+    hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
                     objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)

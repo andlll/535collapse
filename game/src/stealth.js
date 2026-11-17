@@ -33,6 +33,7 @@
 // - Di giorno, con tanta nebbia (decisione dell'autore).
 import { pointDirection, pointDistance } from "./gm.js";
 import { tr } from "./i18n.js";
+import { dcos, dsin } from "./dmath.js"; // §9.152
 
 export const ST = {
   fogK: 0.5,             // dentro un banco la vista dei nemici si dimezza
@@ -49,7 +50,7 @@ export const ST = {
   stealthAware: 3,       // danno del furtivo su chi e' in allarme, in volte quello di sempre
   aloneR: 350,           // px: nessun compagno piu' vicino, il nemico e' solo (messaggero)
   towerR: 2500,          // px: la torre a cui corre il messaggero, al piu' cosi' lontana
-  towerReach: 150,       // px dalla torre: arrivato, suona l'allarme
+  towerReach: 80,        // px dal bordo della torre: arrivato, suona l'allarme (dal centro, 150, si fermava a 167 e restava li')
   reinf: ["enemy_warrior", "enemy_picchiere", "enemy_warrior"], // la pattuglia di rinforzo
   reinfEvery: 1800,      // passi fra due rinforzi della stessa torre (30 s)
 };
@@ -87,7 +88,7 @@ export function fogBank() {
       // le nuvole del banco, un po' sfalsate e mosse; il centro piu' denso
       const n = i.clouds, t = w._stepNo;
       for (let k = 0; k < n; k++) {
-        const ox = (k - (n - 1) / 2) * ST.cloudGap, oy = Math.sin(k * 2.1 + t / 400) * 18 + ((k % 2) ? -25 : 15);
+        const ox = (k - (n - 1) / 2) * ST.cloudGap, oy = dsin(k * 2.1 + t / 400) * 18 + ((k % 2) ? -25 : 15);
         d.setAlpha(0.55);
         d.sprite("fog1", 0, i.x + ox, i.y + oy);
       }
@@ -138,12 +139,29 @@ export function messengerFor(w, e) {
   for (const o of w.all("enemy_unit")) if (o !== e && o.alive && pointDistance(o.x, o.y, e.x, e.y) < ST.aloneR) return false;
   const t = w.nearest(e.x, e.y, "enemy_torre");
   if (!t || pointDistance(e.x, e.y, t.x, t.y) > ST.towerR) return false;
-  const p = w.path, x = t.x, y = t.y + 130;
+  const p = w.path, [x, y] = towerSpot(w, e, t);
   if (e.action !== 1) e.alarm.set(0, 12);
   Object.assign(e, { messenger: t.id, action: 1, warwork: 0, role: 32, dirox: x, diroy: y, searching: 0,
                      alertUntil: w._stepNo + 1e7, flow_field: p.flowField(p.goalField(x, y, true, false, true)) });
   return true;
 }
+// un posto libero a 40 px dal bordo della torre, il piu' vicino al
+// messaggero (16 direzioni; se non ce n'e', sotto la torre). Il punto fisso
+// sotto la torre poteva essere occupato: la regola di sempre dei nemici (meta
+// occupata, spostata a caso) lo portava lontano e il messaggero si fermava li'
+function towerSpot(w, e, t) {
+  const bb = w.bbox(t);
+  if (!bb) return [t.x, t.y + 130];
+  const cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2, rx = (bb[2] - bb[0]) / 2 + 40, ry = (bb[3] - bb[1]) / 2 + 40;
+  let best = null, bd = Infinity;
+  for (let a = 0; a < 16; a++) {
+    const x = Math.round(cx + dcos((a * Math.PI) / 8) * rx), y = Math.round(cy + dsin((a * Math.PI) / 8) * ry);
+    const d = pointDistance(e.x, e.y, x, y);
+    if (d < bd && w.placeEmpty(e, x, y)) { bd = d; best = [x, y]; }
+  }
+  return best || [t.x, t.y + 130];
+}
+
 // la torre `t` suona l'allarme: il rinforzo verso (x, y)
 export function soundAlarm(w, t, x, y) {
   const now = w._stepNo;
@@ -165,7 +183,7 @@ export function stealthStep(w) {
       let t = null;
       for (const o of w.all("enemy_torre")) if (o.id === e.messenger) t = o;
       if (!t) { e.messenger = 0; e.alertUntil = now + ST.alert; continue; }
-      if (pointDistance(e.x, e.y, t.x, t.y) < ST.towerReach) {
+      if (w.distanceToInstance(e, t) < ST.towerReach) {
         soundAlarm(w, t, e.alertX ?? e.x, e.alertY ?? e.y);
         Object.assign(e, { messenger: 0, alertUntil: now + ST.alert, action: 0, warwork: 0, dirox: e.x, diroy: e.y });
       }
@@ -326,7 +344,7 @@ export function provaNebbia() {
       }));
       // la torre: nel primo posto libero vicino al punto dato
       for (let r = 0, t = null; r < 600 && !t; r += 40) for (let a = 0; a < 360 && !t; a += 45) {
-        const x = CX + PROVA.tower[0] + Math.round(Math.cos(a * Math.PI / 180) * r), y = CY + PROVA.tower[1] + Math.round(Math.sin(a * Math.PI / 180) * r);
+        const x = CX + PROVA.tower[0] + Math.round(dcos(a * Math.PI / 180) * r), y = CY + PROVA.tower[1] + Math.round(dsin(a * Math.PI / 180) * r);
         const o = w.create("enemy_torre", x, y);
         if (w.placeFree(o, x, y)) { t = o; p.markInstance(o, 1000); o.visible = true; } else w.destroy(o);
       }

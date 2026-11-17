@@ -39,6 +39,7 @@ import { irandomRange } from "./gm.js";
 import { sightK, seenNear } from "./fog.js";
 import { revealBuilding } from "./enemybuild.js";
 import { skirmishEco } from "./skirmish.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
 export const ECO = {
   default: {
@@ -171,7 +172,7 @@ function watchStuck(i, w, p) {
   const now = w._stepNo;
   if (i.action !== 1 || i.queueWait || i.fleeUntil > now) { i.prog = null; return; }
   const h = i.prog;
-  if (!h || Math.hypot(i.x - h.x, i.y - h.y) >= STUCK_D) { i.prog = { x: i.x, y: i.y, t: now }; return; }
+  if (!h || dhypot(i.x - h.x, i.y - h.y) >= STUCK_D) { i.prog = { x: i.x, y: i.y, t: now }; return; }
   if (now - h.t < STUCK_T) return;
   i.prog = null;
   const kind = jobOf(i);
@@ -324,8 +325,8 @@ function targetFor(w, i, kind, wide, workers = []) {
   for (const r of w.all(RES[kind])) {
     if (r.id === av) { avoided = r; continue; }
     if (threatened(w, r.x, r.y, R)) continue; // §9.116: non dove sono i soldati del giocatore
-    const di = Math.hypot(r.x - i.x, r.y - i.y);
-    if (dep && Math.hypot(r.x - dep.x, r.y - dep.y) <= RANGE) { const c = di + crowd(r); if (c < bd) { bd = c; best = r; } }
+    const di = dhypot(r.x - i.x, r.y - i.y);
+    if (dep && dhypot(r.x - dep.x, r.y - dep.y) <= RANGE) { const c = di + crowd(r); if (c < bd) { bd = c; best = r; } }
     else if (wide && di < SEARCH && di < fd) { fd = di; far = r; }
   }
   return best || far || avoided;
@@ -403,7 +404,7 @@ function depositNeed(w, workers, lost) {
   // aspetta: se ne fa uno nuovo altrove
   const R = ecoOf(w).defendR;
   const lostHas = (o) => lost.some((L) => L.o === o && !threatened(w, L.x, L.y, R));
-  const far = (x, y, dep) => { const d = w.nearest(x, y, dep); return !d || Math.hypot(d.x - x, d.y - y) > FAR; };
+  const far = (x, y, dep) => { const d = w.nearest(x, y, dep); return !d || dhypot(d.x - x, d.y - y) > FAR; };
   if (!lostHas("enemy_magazzino")) {
     for (const o of workers) {
       const j = jobOf(o);
@@ -429,10 +430,10 @@ function findSpot(w, p, P, need, workers) {
   for (let r = 200; r <= 600; r += 50) {
     const pts = [];
     for (let k = 0; k < 16; k++) {
-      const x = Math.round(need.x + r * Math.cos(k * Math.PI / 8)), y = Math.round(need.y + r * Math.sin(k * Math.PI / 8));
+      const x = Math.round(need.x + r * dcos(k * Math.PI / 8)), y = Math.round(need.y + r * dsin(k * Math.PI / 8));
       if (x > 100 && y > 100 && x < w.roomW - 100 && y < w.roomH - 100) pts.push({ x, y });
     }
-    pts.sort((a, b) => Math.hypot(a.x - ref.x, a.y - ref.y) - Math.hypot(b.x - ref.x, b.y - ref.y));
+    pts.sort((a, b) => dhypot(a.x - ref.x, a.y - ref.y) - dhypot(b.x - ref.x, b.y - ref.y));
     for (const pt of pts) {
       if (threatened(w, pt.x, pt.y, ecoOf(w).defendR)) continue; // §9.116
       const ruins = site(w, pt, P);
@@ -519,7 +520,7 @@ export function startFarm(w, p, c, farm) {
     if (ok(o, x0, y0)) return { x: x0, y: y0 };
     for (let r = 40; r <= 300; r += 40) {
       for (let k = 0; k < 16; k++) {
-        const x = Math.round(x0 + r * Math.cos(k * Math.PI / 8)), y = Math.round(y0 + r * 0.6 * Math.sin(k * Math.PI / 8));
+        const x = Math.round(x0 + r * dcos(k * Math.PI / 8)), y = Math.round(y0 + r * 0.6 * dsin(k * Math.PI / 8));
         if (ok(o, x, y)) return { x, y };
       }
     }
@@ -545,7 +546,7 @@ function pull(w, workers, t, now) {
     for (const o of workers) {
       if (o.fleeUntil > now || o.buildwork || o.action === 6 || o.repairwork || o.action === 7) continue;
       if (pass === 0 ? o.action !== 0 : !jobOf(o)) continue;
-      const d = Math.hypot(o.x - t.x, o.y - t.y);
+      const d = dhypot(o.x - t.x, o.y - t.y);
       if (d < bd) { bd = d; best = o; }
     }
     if (best) return best;
@@ -563,7 +564,7 @@ const soldiers = (w) => [...w.all("enemy_unit")].filter((e) => e.object !== "ene
 // della regia, intruder qui sotto).
 function threatened(w, x, y, r) {
   const a = w.nearest(x, y, "ally_unit");
-  return !!a && Math.hypot(a.x - x, a.y - y) < r;
+  return !!a && dhypot(a.x - x, a.y - y) < r;
 }
 
 // Il bersaglio di un attacco: l'edificio alleato piu' vicino alla base
@@ -615,9 +616,9 @@ function baseSpot(w, p, P, home, o) {
   for (let r = o === "enemy_campo" ? 220 : 280; r <= 1100; r += 70) {
     for (let k = 0; k < 20; k++) {
       const a = (k / 20) * Math.PI * 2 + r * 0.01;
-      const x = Math.round(home.x + r * Math.cos(a)), y = Math.round(home.y + r * 0.75 * Math.sin(a));
+      const x = Math.round(home.x + r * dcos(a)), y = Math.round(home.y + r * 0.75 * dsin(a));
       if (x < 150 || y < 150 || x > w.roomW - 150 || y > w.roomH - 150) continue;
-      const toFoe = foe ? Math.hypot(x - foe.x, y - foe.y) : 0;
+      const toFoe = foe ? dhypot(x - foe.x, y - foe.y) : 0;
       pts.push({ x, y, cost: o === "enemy_torre" && foe ? toFoe * 0.6 + r : r });
     }
   }
@@ -671,7 +672,7 @@ export function enemyEco(p) {
       const home = w.all("enemy_centro").next().value || w.all("enemy_build").next().value;
       // riparazioni finite (o senza piu' materiale, o con alleati vicini):
       // il lavoratore si ferma e torna disponibile
-      const danger = (b) => { const a = w.nearest(b.x, b.y, "ally_unit"); return !!a && Math.hypot(a.x - b.x, a.y - b.y) < E.safe; };
+      const danger = (b) => { const a = w.nearest(b.x, b.y, "ally_unit"); return !!a && dhypot(a.x - b.x, a.y - b.y) < E.safe; };
       const material = (b) => (b.legno === 1 && en.wood > 0) || (b.pietra === 1 && en.stone > 0 && E.stoneWork); // §9.76
       for (const o of workers) {
         const b = o.repB;
@@ -810,14 +811,14 @@ export function enemyEco(p) {
       for (const b of w.all("enemy_build")) {
         if (b.noEco === 1) continue;
         const a = w.nearest(b.x, b.y, "ally_unit");
-        if (a && Math.hypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
+        if (a && dhypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
       }
       // [§9.116] anche attorno al posto di un edificio perso da ricostruire:
       // i soldati in attesa vanno a liberarlo
       for (const L of lost) {
         if (intruder) break;
         const a = w.nearest(L.x, L.y, "ally_unit");
-        if (a && Math.hypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
+        if (a && dhypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
       }
       // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
       // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
@@ -852,7 +853,7 @@ export function enemyEco(p) {
       // (e mai chi ha stay: i rinforzi del livello 4, levels.js)
       let waiting = army2.filter((e) => e.role === 30 && e.action === 0 && !e.stay);
       if (E.guard > 0 && home) {
-        const d = (e) => Math.hypot(e.x - home.x, e.y - home.y);
+        const d = (e) => dhypot(e.x - home.x, e.y - home.y);
         waiting = waiting.sort((a, b) => d(a) - d(b) || a.id - b.id).slice(E.guard);
       }
       const need = Math.min(E.attackAt + (en.wave || 0) * E.attackGrow, E.army - E.guard);

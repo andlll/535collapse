@@ -22,6 +22,7 @@
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { riverCells, riverIn } from "./rivers.js";
 import { lmStep } from "./lastmile.js";
+import { dhypot, sq } from "./dmath.js"; // §9.152
 
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
@@ -384,7 +385,7 @@ export class Pathing {
     for (let k = 0; k < field.length; k++) {
       const v = field[k];
       if (v === -1) continue;
-      const x = k % gw, y = (k - x) / gw, d = (x - gx) ** 2 + (y - gy) ** 2;
+      const x = k % gw, y = (k - x) / gw, d = sq(x - gx) + sq(y - gy);
       if (d < bd || (d === bd && v < bv)) { bd = d; bv = v; best = [x, y]; }
     }
     return best;
@@ -529,7 +530,7 @@ export class Pathing {
 
   _clear(blocked, x0, y0, x1, y1, hw, hh) {
     const { gw } = this;
-    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    const dx = x1 - x0, dy = y1 - y0, len = dhypot(dx, dy);
     if (len < 1) return true;
     const nx = -dy / len, ny = dx / len;
     const half = hw * Math.abs(nx) + hh * Math.abs(ny);
@@ -930,7 +931,7 @@ export function rallyRetry(w, p, inst, move) {
 // sotto il segmento senza ostacoli (costo < 1000; i primi 16 px no: la
 // cella di chi parte e' occupata da lui).
 export function walkLine(p, x0, y0, x1, y1) {
-  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), n = Math.max(1, Math.ceil(len / 8));
+  const dx = x1 - x0, dy = y1 - y0, len = dhypot(dx, dy), n = Math.max(1, Math.ceil(len / 8));
   for (let k = 0; k <= n; k++) {
     if ((len * k) / n < 16) continue;
     const gx = Math.floor((x0 + (dx * k) / n) / GRID), gy = Math.floor((y0 + (dy * k) / n) / GRID);
@@ -969,7 +970,7 @@ export function seesTarget(w, p, inst, t) {
   const b = w.bbox(t);
   if (!b) return p.clearSolid(inst.x, inst.y, t.x, t.y);
   const nx = Math.max(b[0], Math.min(inst.x, b[2])), ny = Math.max(b[1], Math.min(inst.y, b[3]));
-  const d = Math.hypot(nx - inst.x, ny - inst.y);
+  const d = dhypot(nx - inst.x, ny - inst.y);
   if (d <= SEES_NEAR) return true;
   const k = (d - 40) / d;
   return p.clearSolid(inst.x, inst.y, inst.x + (nx - inst.x) * k, inst.y + (ny - inst.y) * k);

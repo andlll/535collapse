@@ -18,6 +18,7 @@ import { pointDirection, pointDistance, irandomRange } from "./gm.js";
 import { GRID, generateFields } from "./pathing.js";
 import { spawnSlices, destroySlices } from "./scenario.js";
 import { linkParts, complexPointOver } from "./complex.js";
+import { dsin } from "./dmath.js"; // §9.152
 
 const WHITE = 0xffffff, BLACK = 0, GREEN = 0x008000, RED = 0x0000ff;
 
@@ -522,7 +523,7 @@ export function monastery(p) {
       i.alarm.set(0, M.every);
       for (const u of w.all("ally_unit")) {
         const diri = pointDirection(u.x, u.y, i.x, i.y);
-        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(diri * Math.PI / 180))) < M.radius
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(dsin(diri * Math.PI / 180))) < M.radius
             && u.life < u.slife) {
           w.create("sfx_croce", u.x, u.y);
           u.life = Math.min(u.slife, u.life + M.heal);

@@ -19,6 +19,8 @@
 // bordo da cui e' uscito e la view continua a scorrere da quella parte
 // finche' non rientra o la finestra perde il fuoco (input.js, edgeHold).
 
+import { dhypot } from "./dmath.js"; // §9.152
+
 export const ZOOM_MIN = 1, ZOOM_MAX = 1.7;
 // [Richiesta dell'autore, §9.107] lo zoom di partenza (partite e menu) a meta'
 // fra il piu' vicino e il piu' lontano; prima era ZOOM_MIN, il piu' vicino.
@@ -132,7 +134,7 @@ export function panTo(w, cx, cy) {
   const c = w.cam;
   const x1 = Math.max(0, Math.min(cx - c.w / 2, c.roomW - c.w));
   const y1 = Math.max(0, Math.min(cy - c.h / 2, c.roomH - c.h));
-  const n = Math.round(Math.min(180, Math.max(90, Math.hypot(x1 - c.x, y1 - c.y) / 40)));
+  const n = Math.round(Math.min(180, Math.max(90, dhypot(x1 - c.x, y1 - c.y) / 40)));
   return { x0: c.x, y0: c.y, x1, y1, k: 0, n };
 }
 

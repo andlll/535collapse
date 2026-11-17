@@ -22,6 +22,7 @@
 
 import { pointDirection, pointDistance, lengthdirX, lengthdirY } from "./gm.js";
 import { canYield } from "./pathing.js";
+import { dhypot } from "./dmath.js"; // §9.152
 
 const GAP = 4, SEP = 45, STUCK = 40, SPREAD = 160, MAXC = 4;
 
@@ -236,7 +237,7 @@ function route(w, i, tx, ty) {
   blocked[S] = 0; blocked[G] = 0;
   // linea dritta libera: niente percorso
   const clear = (x0, y0, x1, y1) => {
-    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6));
+    const n = Math.max(1, Math.ceil(dhypot(x1 - x0, y1 - y0) / 6));
     for (let k = 1; k < n; k++) {
       const [cx, cy] = cellOf(x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n);
       if (cx < 0 || cy < 0 || cx >= N || cy >= N || blocked[cy * N + cx]) return false;

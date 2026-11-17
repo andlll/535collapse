@@ -15,6 +15,7 @@ import { towerTarget, towerArrow } from "./archery.js";
 import { lostBuilding } from "./economy.js";
 import { ENEMY_GARRISON, garrisonCreate, garrisonShoot, garrisonAI } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
+import { dsin } from "./dmath.js"; // §9.152
 
 const BLACK = 0, BLUE = 0xff0000, WHITE = 0xffffff;
 
@@ -138,7 +139,7 @@ export function enemyBuilding(kind, p) {
       i.alarm.set(4, 180);
       for (const u of w.all("enemy_unit")) {
         const diri = pointDirection(u.x, u.y, i.x, i.y);
-        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(degtorad(diri)))) < 800 && u.life < u.slife) {
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(dsin(degtorad(diri)))) < 800 && u.life < u.slife) {
           w.create("sfx_croce", u.x, u.y);
           u.life += 3;
           if (u.life > u.slife) u.life = u.slife;
@@ -238,7 +239,7 @@ export function church(base) {
       i.alarm.set(0, 180);
       for (const u of w.all("ally_unit")) {
         const diri = pointDirection(u.x, u.y, i.x, i.y);
-        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(degtorad(diri)))) < 800 && u.life < u.slife) {
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(dsin(degtorad(diri)))) < 800 && u.life < u.slife) {
           w.create("sfx_croce", u.x, u.y);
           u.life += 3;
           if (u.life > u.slife) u.life = u.slife;

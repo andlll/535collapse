@@ -32,6 +32,7 @@
 // restano i posti attorno al bersaglio (melee.js), il passo dritto e
 // stepOver. Ne' i posti di lavoro dei civili (risorse, cantieri, depositi).
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
+import { dhypot } from "./dmath.js"; // §9.152
 
 export const LM_RANGE = 400;
 const C = 16, MARGIN = 10, MAXC = 72, LM_RECALC = 10, LM_LOOK = 8;
@@ -181,7 +182,7 @@ const cellOf = (F, x, y) => {
 };
 // in linea retta da (ax, ay) a (bx, by) solo celle aperte
 function clear(F, ax, ay, bx, by) {
-  const len = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.ceil(len / 6));
+  const len = dhypot(bx - ax, by - ay), n = Math.max(1, Math.ceil(len / 6));
   for (let k = 1; k <= n; k++) {
     const c = cellOf(F, ax + ((bx - ax) * k) / n, ay + ((by - ay) * k) / n);
     if (c < 0 || F.blocked[c] || F.dist[c] >= INF) return false;

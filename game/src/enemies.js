@@ -25,8 +25,9 @@ import { garrisonWalk } from "./enemygarrison.js";
 import { lmStep } from "./lastmile.js";
 import { stealthOn, sees, ST, messengerFor } from "./stealth.js"; // §9.148
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
 
 // Danni di Alarm_2 per vita massima del bersaglio [C, STUDIO.md §1.4];
@@ -329,7 +330,7 @@ export function retreatTo(w, p, i, x, y, ff = null) {
 function retreatStep(i, w, p) {
   if (!i.retreat) return false;
   const [x, y] = i.retreat;
-  if (Math.hypot(i.x - x, i.y - y) < RETREAT_ARRIVE) {
+  if (dhypot(i.x - x, i.y - y) < RETREAT_ARRIVE) {
     // i soldati della regia economica tornano in attesa (ruolo 30)
     Object.assign(i, { retreat: null, action: 0, role: i.eco === 1 ? 30 : 0, speed: 0, defender: 1 });
     return false;
@@ -355,7 +356,7 @@ function enemyStrike(i, w, T) {
   if (i.step !== 2) return;
   i.step = 0;
   i.alarm.set(2, 13);
-  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), "ally_unit"));
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction)), "ally_unit"));
   if (!v) return;
   v.hit = 1;
   v.alarm.set(5, 47);
@@ -909,7 +910,7 @@ export function defendBuildings(w) {
     if (!a || w.distanceToInstance(a, b) > DEFEND_ATT) continue;
     idle = idle || [...w.all("enemy_unit")].filter(canDefend);
     for (const e of idle) {
-      if (!e.alive || e.action !== 0 || Math.hypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
+      if (!e.alive || e.action !== 0 || dhypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
       e.action = 1; e.warwork = 1; e.dirox = a.x; e.diroy = a.y;
       if (e.alarm.get(0) < 1) e.alarm.set(0, irandomRange(12, 15));
     }

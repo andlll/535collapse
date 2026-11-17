@@ -22,6 +22,7 @@ import { lmStep, lmReady } from "./lastmile.js";
 import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -31,7 +32,7 @@ export function phaseOf(direction) {
 
 // 1 - 0,36 |sin(direzione)|: le unita' vanno piu' piano in verticale
 // (prospettiva isometrica) [C, autospeed di ogni unita']
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 
 function inView(w, i) {
   const c = w.cam;
@@ -120,7 +121,7 @@ export function formation(w, p, mx, my) {
   for (const u of units) { cx += u.x; cy += u.y; }
   cx /= units.length; cy /= units.length;
   let fx = mx - cx, fy = my - cy;
-  const fl = Math.hypot(fx, fy);
+  const fl = dhypot(fx, fy);
   if (fl < 1) { fx = 0; fy = -1; } else { fx /= fl; fy /= fl; }
   const lx = -fy, ly = fx; // laterale
   // ingombro di ogni unita' (maschere: fanteria ~48x46, cavalieri ~91x41,
@@ -1039,7 +1040,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   i.step = 0;
   i.alarm.set(2, 13);
   const target = enemySide ? "ally_unit" : "enemy_unit";
-  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target));
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction)), target));
   if (!v) return;
   if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;

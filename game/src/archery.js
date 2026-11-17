@@ -5,6 +5,7 @@
 
 import { pointDirection, pointDistance } from "./gm.js";
 import { GRID, walkLine } from "./pathing.js";
+import { dcos, dsin, sq } from "./dmath.js"; // §9.152
 
 // [Richiesta dell'autore] Gli arcieri (alleati e nemici) tirano solo se fra
 // loro e il bersaglio non ci sono edifici (world.shotClear: le unita' non
@@ -23,7 +24,7 @@ export const REPOS_WAIT = 30;   // passi fra una ricerca fallita e la successiva
 export function shootable(w, i, name, inRange, from = null) {
   const c = [];
   for (const o of w.all(name)) if (inRange(o)) c.push(o);
-  c.sort((a, b) => ((a.x - i.x) ** 2 + (a.y - i.y) ** 2) - ((b.x - i.x) ** 2 + (b.y - i.y) ** 2));
+  c.sort((a, b) => (sq(a.x - i.x) + sq(a.y - i.y)) - (sq(b.x - i.x) + sq(b.y - i.y)));
   for (const o of c) if (w.shotClear(i.x, i.y, o.x, o.y, from)) return o;
   return null;
 }
@@ -37,7 +38,7 @@ export function firingSpot(w, p, i, t, range) {
   for (const r of [48, 96, 144, 192, 240]) {
     let best = null, bd = Infinity;
     for (let a = 0; a < 16; a++) {
-      const x = Math.round(i.x + Math.cos((a * Math.PI) / 8) * r), y = Math.round(i.y + Math.sin((a * Math.PI) / 8) * r);
+      const x = Math.round(i.x + dcos((a * Math.PI) / 8) * r), y = Math.round(i.y + dsin((a * Math.PI) / 8) * r);
       if (pointDistance(x, y, i.anchorX, i.anchorY) > LEASH) continue;
       const d = pointDistance(x, y, t.x, t.y);
       if (d > range || d >= bd) continue;

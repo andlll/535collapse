@@ -10463,3 +10463,121 @@ che l'autore disegnera'. Con la mappa del livello 6 di prima: i 4 avvisi
 delle macchie bagnate; con quella nuova nessuno. Il controllo (`patch_wet`)
 e le misure delle macchie (`PATCH_SIZE`) stanno ora in tools/tiledkit.py,
 comuni a tools/12 e tools/16 (le schermaglie restano identiche).
+
+### 9.152 Multiplayer, fase 1: la partita deterministica
+
+Richiesta dell'autore (15-17 novembre 2026, stessa PR, versione 0.2611): un
+multiplayer PvP con le mappe e le impostazioni della schermaglia. Decisioni:
+**1 contro 1**, partita privata **con un codice**, preferibilmente **solo
+connessione diretta** (da capire se e' fattibile), **parti simmetriche**
+(le stesse regole per i due); intanto la **fase 1**, poi le altre si
+valutano.
+
+**Il piano** (proposto e discusso): lockstep deterministico, come i grandi
+RTS: i due browser simulano la stessa partita e si scambiano solo i
+comandi; ogni tanto confrontano un'impronta dello stato. Fasi: 1)
+determinismo; 2) strato dei comandi (oggi gli ordini sono eventi delle
+istanze che leggono il mouse durante il passo: ~90 eventi d'input, ~40
+letture del mouse nei passi); 3) parti simmetriche (291 riferimenti a
+oggetti ally, 506 a enemy, ~2.500 righe solo per i nemici; la nebbia solo
+per il giocatore; `visible` che entra nelle decisioni); 4) rete e lobby.
+
+**Fase 1: cosa poteva far divergere due browser con la stessa partita.**
+- *Lo stesso Math.random per la partita e per gli effetti*: particelle,
+  pioggia, foglie, sangue, suoni consumavano numeri casuali secondo cosa
+  c'e' sullo schermo e le opzioni grafiche (gli anelli della pioggia nascono
+  solo nella vista): due giocatori che guardano punti diversi avrebbero avuto
+  partite diverse in pochi secondi.
+- *La matematica del browser*: Math.sin, cos, atan2, hypot, exp, log e `**`
+  sono "approssimati dall'implementazione": V8, SpiderMonkey e
+  JavaScriptCore possono differire nell'ultimo bit.
+- *Istanze che nascono per chi guarda* (scoperte con la prova, sotto): i
+  mattoni di un crollo nascono solo se il crollo e' sullo schermo, e l'avviso
+  d'allarme della minimappa; prendevano gli id della partita, che decidono i
+  pareggi.
+- *I pulsanti dell'interfaccia nel mondo*: seguono la vista, hanno una
+  maschera, e `placeEmpty` li contava: un nemico con la meta sotto il pulsante
+  degli obiettivi la spostava a caso di 20 px (livello 6, passo 600).
+
+**Ora.**
+- `game/src/rng.js`: `simRandom`, il generatore della partita (sfc32 col
+  seme della partita; lo stato si salva coi salvataggi: un caricamento
+  riprende la stessa sequenza), e `vrand`, quello degli effetti (libero,
+  locale, non si salva). Il seme: `?seed=N` o uno nuovo a ogni partita; con
+  `?nostart` e senza seme (le prove nel browser, che fissano Math.random a
+  mano) Math.random come prima. Math.random e' rimasto solo in rng.js.
+- `game/src/dmath.js`: `dsin`, `dcos`, `datan2`, `dhypot`, `sq` con gli
+  algoritmi di fdlibm, scritti solo con + - * / e Math.sqrt / round (esatti
+  in ogni browser): rispetto a quelli di Chrome, su 2 milioni di valori, sin
+  e cos entro 1 ulp, atan2 identico, hypot entro 2 ulp. Al posto di Math.* in
+  38 file (anche il disegno: niente da classificare); `|log a| < |log b|`
+  delle pietre delle strade riscritto senza log.
+- Istanze cosmetiche (`opts.fx`, i mattoni) e d'interfaccia (pulsanti,
+  dialoghi, suggerimenti: world.js `isUiObject`) hanno id negativi a parte e
+  le ricerche della partita (`instancePlace` e `collisionRectangle` senza
+  famiglia) non le contano. Le cosmetiche non si salvano.
+- `snapshot.js stateHash`: l'impronta della partita (FNV-1a, due volte),
+  senza quello di chi guarda (particelle, nebbia di guerra, telecamera e
+  zoom, puntatore, allarmi della minimappa, i campi grafici delle istanze:
+  particelle di fuoco ed erba, righe del grano) e senza interfaccia ed
+  effetti; `__game.hash()`, `__game.dump()` per le prove.
+- Il kit di Tiled: rivers.js importa dmath.js; tools/11 copia anche
+  dmath.mjs e corregge l'import (come la prova dell'anteprima).
+
+**Prove.**
+- `test/dmath.test.mjs`: precisione e solo operazioni esatte.
+- `test/determinism.test.mjs`: niente Math.random fuori da rng.js, niente
+  matematica non deterministica fuori da dmath.js e dal disegno (gl.js,
+  draw.js).
+- `test/browser/determinism.mjs` (nella CI): la stessa partita, stesso
+  seme, nessun input, in due pagine che fanno tutto il resto diversamente
+  (finestra 1280x720 contro 960x600, la vista ferma sulla base contro una
+  che salta per la mappa ogni 7 passi, disegno ogni 2 passi contro ogni 5,
+  erba e pioggia spente nelle opzioni della seconda), la pioggia che comincia
+  allo stesso passo; l'impronta ogni 300 passi. Se divergono, dice il primo
+  campo diverso (DIFFS=n: i primi n). Controllo: un altro seme da' un'altra
+  impronta.
+- Nella CI anche Firefox e WebKit: la stessa prova in ognuno, e le
+  impronte dei tre browser devono essere uguali fra loro.
+
+**Risultati** (Chromium, seme 12345, nessun input, le due pagine sopra):
+le impronte coincidono a ogni controllo (ogni 300 passi) in tutte le room:
+le cinque schermaglie, il tutorial e i livelli 1-6 per 6000 passi (Padus
+anche per 12.000: la CPU costruisce, produce, attacca; piove). Prima delle
+correzioni sulle istanze: livello 5 diverso al passo 300 (gli allarmi della
+minimappa), livello 6 al passo 600 (un nemico con la meta sotto il pulsante
+degli obiettivi: 8 estrazioni casuali in piu' in una pagina; trovato con una
+traccia delle chiamate al generatore).
+
+**Le altre prove** (tutta la suite della CI, con la sequenza casuale nuova:
+le partite delle prove prendono altre strade): passano tutte tranne tre,
+sistemate cosi':
+- `stealth.mjs`, il messaggero (§9.148) restava a 167 px dal centro della
+  torre (la soglia era 150 dal centro): il punto fisso sotto la torre era
+  occupato e la regola di sempre (meta occupata, spostata a caso) lo portava
+  via. Ora va a un posto libero a 40 px dal bordo, il piu' vicino, e
+  "arrivato" si misura dal bordo (80 px): alla torre in 181 passi.
+- `ripples.mjs` (§9.149): 3 anelli su 17 sfioravano la riva a sk_silva: il
+  controllo nel gioco guardava 8 punti del bordo, la prova 16. Ora anche il
+  gioco ne guarda 16: nessun anello fuori (lvl06 0 su 305, sk_silva 0 su 16).
+- `lvl06.mjs`, la taratura: 8 passati (soglia 5). Le prove nel browser
+  fissano Math.random dopo il caricamento della mappa, che usa gia' numeri a
+  caso (gli sprite degli alberi): ogni esecuzione partiva da una mappa un po'
+  diversa, e lo stesso seme dava 4 o 8 passati. Ora la taratura usa ?seed
+  (sempre uguale) e la media di tre semi: con 15 torri 6, 5, 5 (5,3), con 5
+  torri 35, 35, 35. La media "vera" e' attorno a 5, la soglia della media
+  passa a 6 (con "al piu' 5" e un seme solo falliva una volta su due anche
+  col codice di prima). Le altre prove nel browser hanno lo stesso
+  difetto (il caricamento non fissato): da sistemare, ?seed nelle loro pagine.
+
+**La connessione diretta** (domanda dell'autore): fattibile con WebRTC, ma
+"solo diretta" ha due costi. Per collegarsi i due browser devono scambiarsi
+una descrizione della connessione (qualche centinaio di caratteri): senza
+server, il primo giocatore manda un codice lungo all'altro (in chat), che ne
+rimanda uno suo; con un piccolo servizio di sola presentazione (gratuito,
+per esempio un worker) basta un codice di 6 lettere, e la partita resta
+diretta. E per attraversare i router serve un server STUN pubblico (solo per
+scoprire l'indirizzo, niente traffico di gioco); senza un server TURN (che
+inoltra il traffico, a pagamento) una parte delle reti (stimata 10-20%:
+NAT simmetrici, reti aziendali) non si collega. Da decidere con l'autore
+quando si arriva alla fase 4.

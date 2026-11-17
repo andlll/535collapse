@@ -20,8 +20,9 @@ import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 import { bridgeEnds, woodDue } from "./bridge.js";
 import { FAM, buttonAlpha, canBuild } from "./buildings.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const OM = "ally_omino";
 
 // [§9.44] La fazione del civile: l'alleato (ally_omino, del giocatore) o il
@@ -116,7 +117,7 @@ function nearestKnown(w, i, name, x, y) {
   let best = null, bd = Infinity;
   for (const r of w.all(name)) {
     if (!known(i, r)) continue;
-    const d = Math.hypot(r.x - x, r.y - y);
+    const d = dhypot(r.x - x, r.y - y);
     if (d < bd) { bd = d; best = r; }
   }
   return best;
@@ -687,7 +688,7 @@ function overflowTo(w, i, res) {
   const cands = [];
   for (const r of w.all(gold ? "miniera_oro" : "stone_parent")) {
     if (r === res || !known(i, r)) continue;
-    const d = Math.hypot(r.x - res.x, r.y - res.y);
+    const d = dhypot(r.x - res.x, r.y - res.y);
     if (d > OVERFLOW_R) continue;
     const S = resSpots(w, i, r);
     if (S && S.work.some((s) => spotOpen(w, i, r, s))) cands.push([d, r]);
@@ -855,8 +856,8 @@ function separate(w, i) {
   for (const o of w._nearList(bb)) {
     if (o === i || !o.alive || !o.solid || !w.is(o, sideOf(i).unit) || !w.overlap(i, i.x, i.y, o)) continue;
     let dx = i.x - o.x, dy = i.y - o.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = Math.cos(a); dy = Math.sin(a); } // uno sull'altro
+    const d = dhypot(dx, dy);
+    if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = dcos(a); dy = dsin(a); } // uno sull'altro
     else { dx /= d; dy /= d; }
     vx += dx; vy += dy; n++;
   }
@@ -1261,7 +1262,7 @@ function workTick(i, w) {
     if (i.step !== 2) return;
     i.step = 0;
     i.alarm.set(2, 13);
-    const ax = i.x + 30 * Math.cos(degtorad(i.direction)), ay = i.y - 30 * Math.sin(degtorad(i.direction));
+    const ax = i.x + 30 * dcos(degtorad(i.direction)), ay = i.y - 30 * dsin(degtorad(i.direction));
     if (a === 2) {
       i.wood += 2;
       const t = w.nearest(ax, ay, "albero");
@@ -1424,7 +1425,7 @@ function otherWorkTick(i, w) {
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
     // [§9.107] la falce nel grano: pagliuzze (ambience.js workChips)
     i.workHit = w._stepNo; i.workKind = "food";
-    i.workX = i.x + 20 * Math.cos(degtorad(i.direction)); i.workY = i.y - 20 * Math.sin(degtorad(i.direction));
+    i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
@@ -1494,8 +1495,8 @@ function otherWorkTick(i, w) {
 // distance_to_point [I]: dal bbox dell'istanza al punto (0 se dentro).
 function distanceToPoint(w, i, px, py) {
   const b = w.bbox(i);
-  if (!b) return Math.hypot(px - i.x, py - i.y);
-  return Math.hypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
+  if (!b) return dhypot(px - i.x, py - i.y);
+  return dhypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
 }
 
 // azione 3, "Campi di grano" [C]. foodwork: 0 niente, 1 verso il mio campo,
