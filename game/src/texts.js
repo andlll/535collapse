@@ -678,6 +678,16 @@ export const TEXTS = {
     pt: "As duas partidas não estão mais iguais (passo {n}): daqui em diante os dois jogadores podem ver coisas diferentes.",
     de: "Die beiden Spiele laufen nicht mehr gleich (Schritt {n}): Ab hier können die beiden Spieler Unterschiedliches sehen.",
     fr: "Les deux parties ne sont plus identiques (pas {n}) : à partir d'ici, les deux joueurs peuvent voir des choses différentes." },
+  "Red": { it: "Rosso", es: "Rojo", pt: "Vermelho", de: "Rot", fr: "Rouge" },
+  "Blue": { it: "Blu", es: "Azul", pt: "Azul", de: "Blau", fr: "Bleu" },
+  "Message to the other player (Enter: send, Esc: close)": {
+    it: "Messaggio all'altro giocatore (Invio: manda, Esc: chiudi)", es: "Mensaje al otro jugador (Intro: enviar, Esc: cerrar)",
+    pt: "Mensagem ao outro jogador (Enter: enviar, Esc: fechar)", de: "Nachricht an den anderen Spieler (Enter: senden, Esc: schließen)",
+    fr: "Message à l'autre joueur (Entrée : envoyer, Échap : fermer)" },
+  "Press Enter to chat with the other player.": {
+    it: "Premi Invio per scrivere all'altro giocatore.", es: "Pulsa Intro para escribir al otro jugador.",
+    pt: "Pressione Enter para escrever ao outro jogador.", de: "Drücke Enter, um dem anderen Spieler zu schreiben.",
+    fr: "Appuie sur Entrée pour écrire à l'autre joueur." },
   "Paused by the red player": { it: "Pausa del giocatore rosso", es: "Pausa del jugador rojo", pt: "Pausa do jogador vermelho",
     de: "Pause vom roten Spieler", fr: "Pause du joueur rouge" },
   "Paused by the blue player": { it: "Pausa del giocatore blu", es: "Pausa del jugador azul", pt: "Pausa do jogador azul",

@@ -11201,6 +11201,39 @@ PR): "sì, fai valere la tregua e metti in grigio quei riquadri. invece che
   (netui.js, `dock`), con la mappa scelta dalle sue frecce (il riquadro
   della mappa sotto non si disegna).
 
+**Altre richieste dell'autore** (17 novembre 2026, stessa PR): "nella
+minimappa il giocatore blu deve vedere i suoi edifici/personaggi blu e
+marroni quelli dell'altro giocatore, in modo da non fare confusione"; "una
+chat che si apre e si spedisce con invio, con i messaggi che compaiono a
+sinistra nella GUI tra il pannello risorse e la minimappa".
+- *La minimappa*: i colori erano "tuoi marroni, nemici blu" per tutti, e il
+  blu vedeva i suoi marroni. Ora dipendono da chi guarda (minimap.js
+  `sideColours`): il rosso (e il gioco in singolo) come prima, il blu i suoi
+  blu e quelli del rosso marroni. Prova in test/minimap.test.mjs; si vede
+  negli screenshot della PR.
+- *La chat* (`chat.js`): Invio apre una casella in basso nello spazio fra il
+  pannello delle risorse e la minimappa (manager.js `chatArea`; con la
+  minimappa chiusa fino al suo pulsante), Invio manda, Esc chiude (senza
+  aprire la pausa). I messaggi si disegnano li', dal basso, su un fondo
+  bianco come gli altri riquadri, col nome e nel colore di chi scrive
+  ("Rosso: ...", "Blu: ..."), al piu' 200 caratteri; si vedono 15 s e
+  svaniscono in 3 (con la casella aperta tutti quelli che ci stanno). A
+  partita cominciata un messaggio grigio: "Premi Invio per scrivere
+  all'altro giocatore." Viaggiano sul canale ({t: "C"}, lockstep.js
+  `sendChat`) ma fuori dai turni: non toccano la partita (netfake.mjs:
+  stessa impronta finale con e senza chat). I tasti battuti nella casella
+  si fermano li': un "q" scritto non mette in coda un civile (netfake.mjs lo
+  controlla: nessun tasto arrivato al gioco). Si scrive a partita
+  cominciata, anche dopo la fine, finche' c'e' il canale. Il "#" (che nei
+  testi del gioco va a capo) si mostra come uno spazio.
+  Trovato e corretto nello screenshot: riaperta, la casella compariva in
+  alto a sinistra (la sua posizione restava quella della casella di prima);
+  rtc.mjs ora la riapre e ne controlla il posto.
+  Prove: lockstep.test.mjs (la chat passa, nessun comando in coda),
+  netfake.mjs (il rosso scrive coi tasti veri, il blu riceve), rtc.mjs (il
+  blu scrive su WebRTC vero, il rosso riceve; la casella riaperta al suo
+  posto, Esc la chiude).
+
 **Scelte mie** (da rivedere con l'autore se vuole):
 - chi crea e' il rosso, chi entra il blu (la posizione sulla mappa resta a
   caso col seme, come contro la CPU);

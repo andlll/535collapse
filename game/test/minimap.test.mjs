@@ -30,3 +30,13 @@ test("riquadro della view: raggio 5, e negli angoli quello della minimappa", () 
   // in basso a destra
   assert.deepEqual(viewRadii(200, 660, 253, 700, ...P, R), [5, 5, R, 5]);
 });
+
+// [§9.156, richiesta dell'autore] nella partita a due chi gioca il blu vede
+// blu i suoi e marroni quelli del rosso; il rosso (e il gioco in singolo)
+// come sempre: i suoi marroni, gli altri blu
+test("§9.156 minimappa: i colori dalla parte di chi guarda", async () => {
+  const { MM, sideColours } = await import("../src/minimap.js");
+  assert.deepEqual(sideColours({}), [MM.ally, MM.enemy]);
+  assert.deepEqual(sideColours({ mp: { local: 1 } }), [MM.ally, MM.enemy]);
+  assert.deepEqual(sideColours({ mp: { local: 2 } }), [MM.enemy, MM.ally]);
+});

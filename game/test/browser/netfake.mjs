@@ -9,7 +9,9 @@
 //   - civili in coda ai due centri, i civili a far legna, la casa blu;
 //   - al passo ARMY_AT due piccoli eserciti si combattono al centro;
 //   - la pausa: A preme Esc (il tasto vero), tutte e due si fermano allo
-//     stesso passo; B preme Esc e riprendono tutte e due.
+//     stesso passo; B preme Esc e riprendono tutte e due;
+//   - la chat: A preme Invio, scrive e manda; B riceve il messaggio, e i
+//     tasti scritti non arrivano al gioco di A.
 // Le impronte le confrontano le pagine stesse ogni 300 passi (devono essere
 // tutte uguali), e alla fine la prova (stesso passo, stessa impronta).
 // Controlli: una pagina cambiata di nascosto -> tutte e due avvisano che le
@@ -127,8 +129,19 @@ const started = await Promise.all(pages.map((P) => P.evaluate(() => [window.__ga
 const fail = [];
 if (!started.every(([s, d]) => s === "running" && d === DELAY)) fail.push("avvio: " + JSON.stringify(started));
 
-// la partita fino alla pausa
+// la partita fino alla pausa; a meta' la chat: il rosso preme Invio, scrive
+// (anche "q", il tasto dei civili) e manda; il blu lo riceve, e i tasti
+// scritti non sono arrivati al gioco
+await advance(PAUSE_AT - 300);
+await A.keyboard.press("Enter");
+await A.keyboard.type("ciao blu, q per i civili");
+const typing = await A.evaluate(() => [!!document.getElementById("chat-input"), window.__game.input._pressed.size, window.__game.input._down.size]);
+await A.keyboard.press("Enter");
 await advance(PAUSE_AT);
+const chat = await Promise.all(pages.map((P) => P.evaluate(() => window.__game.net.chat.log.filter((m) => m.who !== null).map((m) => [m.who, m.text]))));
+const chatOk = typing[0] && typing[1] === 0 && typing[2] === 0
+  && JSON.stringify(chat[0]) === JSON.stringify([[0, "ciao blu, q per i civili"]]) && JSON.stringify(chat[1]) === JSON.stringify(chat[0]);
+if (!chatOk) fail.push("chat: " + JSON.stringify({ typing, chat }));
 // A preme Esc (il tasto vero: input.js, pause.check -> il comando "pausa")
 await A.keyboard.press("Escape");
 const pausedOk = await advance(PAUSE_AT + 40, () => state.every(([, p]) => p), 400);
@@ -193,6 +206,7 @@ console.log(`  confronti: ${fa.checks.length} (${fa.checks.map(([s, ok]) => s + 
 console.log(`  pausa al passo ${pauseSteps.join("/")}, legna ${fa.legna.join("/")}, casa blu ${fa.casaBlu}, soldati rimasti ${fa.soldati.join("/")} (di 6), civili ${fa.civili.join("/")}`);
 console.log(`  comandi eseguiti (uguali nelle due pagine): ${fa.cmds.map(([s, p, k]) => `${k}/${p}@${s}`).join(" ")}`);
 console.log(`  eventi A: ${fa.ev}`);
+console.log(`  chat: il blu ha ricevuto ${JSON.stringify(chat[1])}, tasti al gioco mentre si scriveva: ${typing[1] + typing[2]}`);
 console.log(`  controllo (pagina cambiata): ${desyncOk ? "visto da tutte e due" : "NO"}; A se ne va: ${JSON.stringify(left)}`);
 if (errs.length) fail.push("errori: " + errs.slice(0, 5).join(" | "));
 await browser.close();

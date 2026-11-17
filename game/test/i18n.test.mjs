@@ -46,7 +46,7 @@ test("menu principale tradotto (livelli e storie)", async () => {
 // pausa in rete): ogni tr("...") del codice ha la sua traduzione
 test("§9.156 partita a due: testi tradotti", async () => {
   const { readFileSync } = await import("node:fs");
-  const src = ["netgame.js", "pause.js"].map((f) => readFileSync(new URL("../src/" + f, import.meta.url), "utf8")).join("\n");
+  const src = ["netgame.js", "pause.js", "chat.js"].map((f) => readFileSync(new URL("../src/" + f, import.meta.url), "utf8")).join("\n");
   const keys = [...src.matchAll(/\btr\(\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"'));
   assert.ok(keys.length > 30);
   for (const k of keys) assert.ok(TEXTS[k], k);

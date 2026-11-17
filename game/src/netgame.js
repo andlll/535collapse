@@ -37,6 +37,7 @@ import { NetPanel, copyText, netBar } from "./netui.js";
 import { tr } from "./i18n.js";
 import { SK_MAPS, SK_ROOMS, SK_OPTIONS, cleanSkirmish, optionLabel } from "./skirmish.js";
 import { freshSeed } from "./rng.js";
+import { Chat } from "./chat.js";
 
 const KEY = "535.net"; // sessionStorage: chi crea (le opzioni) o chi entra (il codice)
 const CONNECT_WAIT = 25000; // ms: dopo la risposta, se il canale non si apre non si aprira'
@@ -169,6 +170,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   const stop = (text) => {
     if (panel) { panel.status(text, "error"); return; }
     closeWait();
+    chat.close();
     bar.lost = text;
     showBar();
     pause.net = { lost: text };
@@ -184,7 +186,9 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       switch (t) {
         case "started":
           if (panel) { panel.close(); panel = null; }
+          chat.system(tr("Press Enter to chat with the other player."));
           break;
+        case "chat": chat.receive(i.text); break;
         case "error":
           stop(i.reason === "version"
             ? tr("The other player has another version of the game ({v}): both must reload the page and use the same version.", { v: i.theirs || "?" })
@@ -215,6 +219,10 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
     },
   });
   ctl.ls = ls;
+  // [§9.156, richiesta dell'autore] la chat (chat.js): si scrive a partita
+  // cominciata, anche dopo la fine, finche' il canale c'e'
+  const chat = new Chat({ local: net.local, send: (t) => ls.sendChat(t), can: () => ls.state === "running" || ls.state === "ended" });
+  ctl.chat = chat;
   commands.on("pausa", (w, c) => ls.executePause(w._stepNo, c));
   if (link) {
     link.onopen = () => {

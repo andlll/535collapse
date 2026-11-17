@@ -14,7 +14,7 @@ import { overcastStep } from "./ambience.js";
 import { rainGap } from "./skirmish.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
 import { alarmZones, alarmBlink, drawAlarms } from "./attackalarm.js";
-import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawRally, drawObjectives } from "./minimap.js";
+import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii, clampSz, drawRally, drawObjectives, sideColours } from "./minimap.js";
 import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
 import { dsin } from "./dmath.js"; // §9.152
@@ -500,6 +500,14 @@ export class Manager {
 
   // Minimappa [C, manager Draw_GUI azione 1]: 1 px = global.sz px di room,
   // in basso a sinistra; un simbolo per famiglia di oggetti.
+  // [§9.156] lo spazio a sinistra fra il pannello delle risorse e la
+  // minimappa (o il suo pulsante, se e' chiusa): la chat della partita online
+  chatArea(cam, world) {
+    const H = cam.cssH, g = world.g || this.g;
+    const bottom = g.minim === 1 ? H - 20 - world.roomH / this.mmScale() - 14 : H - 52;
+    return { x: 20, top: 165, bottom: Math.max(205, bottom), w: Math.max(200, Math.min(380, cam.cssW * 0.3)) };
+  }
+
   drawMinimap(d, cam, world, H) {
     const g = this.g, sz = this.mmScale(); // §9.113: la scala disegnata
     const mw = world.roomW / sz, mh = world.roomH / sz;
@@ -576,8 +584,9 @@ export class Manager {
       else d.lineColour(x - 200 / sz, y, x + 200 / sz, y, col, col);
     };
     // gli edifici, poi le unita'; i nemici solo se visibili (nebbia)
-    for (const [who, col, needVisible] of [["ally_build", MM.ally, false], ["enemy_build", MM.enemy, true],
-                                           ["ally_unit", MM.ally, false], ["enemy_unit", MM.enemy, true]]) {
+    const [mine, theirs] = sideColours(world); // §9.156: il blu vede blu i suoi
+    for (const [who, col, needVisible] of [["ally_build", mine, false], ["enemy_build", theirs, true],
+                                           ["ally_unit", mine, false], ["enemy_unit", theirs, true]]) {
       for (const i of world.all(who)) {
         if (needVisible && !world.shown(i)) continue;
         // [§9.110] gli oggetti senza sprite no: cc_barn (il deposito del cibo

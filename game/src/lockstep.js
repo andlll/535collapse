@@ -40,6 +40,8 @@
 
 import { CHECK_EVERY } from "./commands.js";
 
+export const CHAT_MAX = 200; // [§9.156] caratteri di un messaggio della chat
+
 export const NET_PROTO = 1;          // la forma dei messaggi
 export const STEP_MS = 1000 / 60;    // un passo (60 al secondo in tutte le room)
 export const MIN_DELAY = 4, MAX_DELAY = 15, PINGS = 5;
@@ -168,6 +170,9 @@ export class Lockstep {
         this.resumed.add(m.at);
         if (this.pausedAt === m.at) { this.pausedAt = null; this.emit("resume", { by: this.remote, at: m.at }); }
         break;
+      case "C": // [§9.156] la chat: fuori dal lockstep
+        if (typeof m.text === "string" && m.text) this.emit("chat", { text: m.text.slice(0, CHAT_MAX) });
+        break;
       case "bye":
         if (["ended", "left", "lost", "error", "gone"].includes(this.state)) return;
         this.state = "left";
@@ -261,6 +266,13 @@ export class Lockstep {
     this.pausedAt = null;
     this.send({ t: "R", at });
     this.emit("resume", { by: this.local, at });
+    return true;
+  }
+
+  // [§9.156] un messaggio della chat all'altro (false: non si puo')
+  sendChat(text) {
+    if (!["running", "ended", "hello"].includes(this.state)) return false;
+    this.send({ t: "C", text: String(text).slice(0, CHAT_MAX) });
     return true;
   }
 

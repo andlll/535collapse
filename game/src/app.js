@@ -730,6 +730,8 @@ async function main() {
     if (world.mp) world.mp.noTruce = true;
     manager.drawGUI(draw, cam, world.worldFor(null), fpsNow);
     if (world.mp) world.mp.noTruce = false;
+    // [§9.156] la chat della partita online, fra le risorse e la minimappa
+    if (netGame) { draw.reset(); netGame.chat.draw(draw, manager.chatArea(cam, world.worldFor(null))); }
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();
@@ -966,7 +968,7 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+  window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
     // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
     commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),

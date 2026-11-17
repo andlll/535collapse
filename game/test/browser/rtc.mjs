@@ -10,7 +10,8 @@
 //      nelle due pagine (stessa room, stesso seme), la sala d'attesa sparisce;
 //   4. un comando per parte (un civile in coda), Esc in A: tutte e due in
 //      pausa allo stesso passo; Esc in B: ripartono;
-//   5. le impronte confrontate dalle pagine ogni 300 passi: tutte uguali;
+//   5. le impronte confrontate dalle pagine ogni 300 passi: tutte uguali; la
+//      chat (B scrive, A riceve);
 //   6. A torna al menu: B dice che l'altro ha lasciato la partita.
 // Senza server STUN (?stun=0: fra due pagine della stessa macchina bastano
 // gli indirizzi locali). Esce con codice 1 se qualcosa non torna.
@@ -127,6 +128,20 @@ for (const [n, r] of [["A", res[0]], ["B", res[1]]]) {
   if (r.desync) fail.push(`${n}: partite separate al passo ${r.desync.step}`);
   if (r.checks.length < Math.floor(STEPS / 300) - 1 || !r.checks.every(([, ok]) => ok)) fail.push(`${n}: confronti ${JSON.stringify(r.checks)}`);
 }
+
+// la chat su WebRTC: B preme Invio, scrive, Invio; A riceve
+await B.keyboard.press("Enter");
+await B.keyboard.type("ciao rosso!");
+await B.keyboard.press("Enter");
+await until(A, () => window.__game.net.chat.log.some((m) => m.who === 1 && m.text === "ciao rosso!"), null, 20000, "chat: il messaggio di B non arriva ad A");
+// riaperta, la casella sta sopra la minimappa (non in alto: un difetto della
+// prima versione), Esc la chiude senza aprire la pausa
+await B.keyboard.press("Enter");
+const box = await B.evaluate(() => { const e = document.getElementById("chat-input"); const r = e && e.getBoundingClientRect(); return r ? [Math.round(r.left), Math.round(r.top)] : null; });
+await B.keyboard.press("Escape");
+await sleep(500);
+const boxGone = await B.evaluate(() => !document.getElementById("chat-input") && !window.__pause.paused);
+if (!box || box[1] < 150 || !boxGone) fail.push("chat: la casella " + JSON.stringify(box) + (boxGone ? "" : ", Esc non la chiude o apre la pausa"));
 
 // 6. A torna al menu (come "Lascia la partita"): B lo sa
 await Promise.all([A.waitForNavigation({ timeout: 60000 }), A.evaluate(() => window.__game.world.gotoRoom("menu"))]);

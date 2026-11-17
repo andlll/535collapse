@@ -215,3 +215,20 @@ test("§9.156 codici: andata e ritorno, spazi, tipi, errori", async () => {
   await assert.rejects(decodeCode("ciao come stai"), (e) => e.reason === "invalid");
   await assert.rejects(decodeCode(code.slice(0, code.length - 30)), (e) => e.reason === "invalid" && e.kind === "offer");
 });
+
+test("§9.156 lockstep: la chat passa, fuori dai turni", () => {
+  const rand = rng(8), net = wire(rand, 3);
+  const A = page(0, net.a, { delay: 4 }), B = page(1, net.b, { delay: 4 });
+  assert.equal(A.ls.sendChat("presto"), false); // canale non ancora aperto
+  A.ls.opened(); B.ls.opened();
+  for (let k = 0; k < 10; k++) { net.tick(); A.step(); B.step(); }
+  assert.ok(A.ls.sendChat("ciao dal rosso " + "x".repeat(300)));
+  assert.ok(B.ls.sendChat("ciao dal blu"));
+  for (let k = 0; k < 10; k++) { net.tick(); A.step(); B.step(); }
+  const got = (P) => P.events.filter(([e]) => e === "chat").map(([, i]) => i.text);
+  assert.deepEqual(got(A), ["ciao dal blu"]);
+  assert.equal(got(B)[0].length, 200);
+  assert.ok(got(B)[0].startsWith("ciao dal rosso"));
+  // fuori dai turni: nessun comando in coda per la chat
+  assert.ok([...A.commands.queue, ...B.commands.queue].every((c) => c.k === "add"));
+});
