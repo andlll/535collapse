@@ -63,7 +63,8 @@ export const UI_GLOBALS = ["scaleview", "sz", "sele", "multi", "startx", "starty
                            "visia", "minim", "obj", "hint"];
 // [§9.154] i campi delle istanze che sono della selezione di chi guarda (il
 // selezionato, il doppio clic in corso, il gruppo di controllo)
-export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver"]; // (e il puntatore sopra l'istanza)
+export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver", // (e il puntatore sopra l'istanza)
+                               "alLife", "_fogStamp"]; // §9.155: gli allarmi della minimappa e la nebbia di chi guarda
 // i campi delle istanze che tengono stato grafico (particelle di fuoco ed
 // erba, righe del grano): diversi con le opzioni grafiche di chi guarda
 const VISUAL_KEYS = ["fire_ps", "fire_emitter", "fire_part", "grass_rows", "grass_system", "grass_system_black",

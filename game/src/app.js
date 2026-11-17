@@ -53,6 +53,8 @@ import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
+import { setupMultiplayer } from "./multiplayer.js"; // §9.155
+import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
@@ -169,6 +171,12 @@ async function main() {
   diag.toggle(settings.diagnostics || params.has("diag"));
   const clear = bgrToRGB(room.colour);
   const g = newGlobals(roomName);
+  // [§9.155, multiplayer, fase 3] la partita a due: ?pvp=1 su una mappa da
+  // schermaglia (per ora nella stessa pagina; &parte=2: si gioca il blu).
+  // La cassa del giocatore 2 c'e' prima che nascano le istanze (il suo
+  // centro alza il suo tetto di popolazione)
+  const pvp = params.get("pvp") === "1" && isSkirmish(roomName);
+  if (pvp) g.p2 = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, popcap: 0, idle: 0 };
   const manager = new Manager(roomName, g);
   const draw = new Draw(r, assets);
   draw.setFont("GUI_1");
@@ -357,12 +365,13 @@ async function main() {
   world.register("tiro_rapido_clicker", shotClicker("rapido"));
   world.register("prova_nebbia", provaNebbia());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
-  world.hooks.globalRightReleased = (mx, my) => {
+  // (w: lo specchio della parte che da' l'ordine, §9.155)
+  world.hooks.globalRightReleased = (mx, my, w = world) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
-    if (roomName !== "menu") movementGeneral(world, path, mx, my);
+    if (roomName !== "menu") movementGeneral(w, path, mx, my);
   };
-  world.hooks.afterRightReleased = (mx, my) => {
-    if (roomName !== "menu") formation(world, path, mx, my); // §6.1 n.89
+  world.hooks.afterRightReleased = (mx, my, w = world) => {
+    if (roomName !== "menu") formation(w, path, mx, my); // §6.1 n.89
   };
   // manager Create (la parte della griglia dei costi) gira dopo che tutte le
   // istanze della room esistono e prima dei loro Create (world.loadRoom).
@@ -383,7 +392,13 @@ async function main() {
   const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
-  const skParams = isSkirmish(roomName) && !params.get("load") ? loadSkirmish() : null;
+  const skParams = isSkirmish(roomName) && !params.get("load") ? { ...loadSkirmish(), pvp } : null;
+  // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
+  // sprite blu per il disegno (p2sprites.js)
+  if (pvp) {
+    setupMultiplayer(world, params.get("parte") === "2" ? 2 : 1);
+    world.p2Sprites = p2SpriteMap(assets.sprites);
+  }
   const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
@@ -552,7 +567,7 @@ async function main() {
   const commands = new Commands();
   // [§9.154, fase 2, passo 2] le azioni del giocatore (world.js act): date al
   // passo in corso, eseguite all'inizio del successivo (i tipi: world.actions)
-  world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1);
+  world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1, world.mp ? world.mp.local - 1 : 0);
   // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
   world.hooks.commands = () => commands.runDue(world);
   const hashNow = () => stateHash({ world, g, manager, path });
@@ -583,17 +598,21 @@ async function main() {
     if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
     world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
     input.inside = inside;
-    recountIdle(world); // §6.1 n.80
-    alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
-    settleOverlaps(world, path); // §9.62
+    // [§9.155] nella partita a due quello che vale per una parte gira per
+    // tutte e due, ognuna col suo specchio; l'interfaccia con quello di chi guarda
+    const sides = world.mp ? [world.mp.mirror1, world.mp.mirror2] : [world];
+    const mine = world.worldFor(null);
+    for (const w of sides) recountIdle(w); // §6.1 n.80
+    alarmsStep(mine); // §9.108: allarmi d'attacco sulla minimappa
+    for (const w of sides) settleOverlaps(w, path); // §9.62
     settleEnemies(world, path); // §9.116
     defendBuildings(world); // §9.116
-    settleSiege(world); // §9.79
+    for (const w of sides) settleSiege(w); // §9.79
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
-    houseTorches(world); // §9.104: le fiaccole sulle case
-    recountSelection(world); // §6.1 n.81
+    for (const w of sides) houseTorches(w); // §9.104: le fiaccole sulle case
+    recountSelection(mine); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
-    fog.update(world);
+    fog.update(mine);
     autosave();
     if (input.pressed.has(114)) { // F3
       diag.toggle();

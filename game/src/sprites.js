@@ -8,8 +8,14 @@
 import { packColor } from "./gl.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
+// [§9.155] gli sprite blu del giocatore 2: mentre il mondo disegna una sua
+// istanza (world.draw) ogni sprite passa da questa tabella (p2sprites.js)
+let REMAP = null;
+export function setSpriteRemap(m) { REMAP = m; }
+
 export function drawSprite(r, assets, name, index, x, y, xscale = 1, yscale = 1, angle = 0,
                            colour = 0xffffff, alpha = 1) {
+  if (REMAP && REMAP[name]) name = REMAP[name];
   const fr = assets.frame(name, index);
   if (!fr) return false;
   const { s, f, tex } = fr;
@@ -50,6 +56,7 @@ export function spriteBounds(assets, name, x, y, xscale = 1, yscale = 1) {
 // cuciture, nessuna texture in piu'. Senza scala verticale ne' rotazione
 // (gli alberi non ne hanno); se no, come drawSprite.
 export function drawSway(r, assets, name, index, x, y, xscale, yscale, top, colour = 0xffffff, alpha = 1, h = 150, rows = 6) {
+  if (REMAP && REMAP[name]) name = REMAP[name];
   const fr = assets.frame(name, index);
   if (!fr) return false;
   const { s, f, tex } = fr;

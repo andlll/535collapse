@@ -18,7 +18,7 @@
 // 128 px aggiornata quando si muovono (moved()).
 
 import { Alarms } from "./alarms.js";
-import { drawSprite, drawSway, spriteBounds } from "./sprites.js";
+import { drawSprite, drawSway, spriteBounds, setSpriteRemap } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { simRandom, vrand } from "./rng.js"; // §9.152
@@ -91,6 +91,7 @@ export class World {
     this._epoch = 0;
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
+    this.mp = null; // §9.155: la partita a due (multiplayer.js, app.js)
     this.actions = new Map(); // §9.154: i tipi di comando (action, act)
     this.action("ordine", (w, c) => w.rightOrder(c));
     this.action("canc", (w, c) => w.cancAction(c));
@@ -133,8 +134,39 @@ export class World {
 
   fire(inst, ev, ...args) {
     const h = this.handler(inst, ev);
-    if (h && inst.alive) h(inst, this, ...args);
+    if (h && inst.alive) h(inst, this.mp ? this.worldFor(inst) : this, ...args);
     return !!h;
+  }
+
+  // -------------------------------------------- multiplayer (§9.155, fase 3)
+
+  // this.mp (app.js, solo nella partita a due): { twins: i nomi che hanno
+  // un gemello, mirror1 e mirror2: gli specchi delle due parti
+  // (multiplayer.js), local: la parte di chi guarda, actor: la parte del
+  // comando che si sta eseguendo }.
+  // la parte di un'istanza: 2 le p2_*, 1 quelle del giocatore, 0 le neutre
+  // (risorse, rovine, ...) e quelle dell'interfaccia
+  sideOf(inst) {
+    if (!this.mp) return 0;
+    if (inst.object.startsWith("p2_")) return 2;
+    return this.mp.twins.has(inst.object) ? 1 : 0;
+  }
+  // il mondo con cui un'istanza vede la partita: lo specchio della sua parte;
+  // durante un comando le neutre con quello di chi lo da'; fuori, le neutre
+  // sempre con la parte 1 (uguale in tutte e due le pagine: risorse, il
+  // gestore della schermaglia) e l'interfaccia (o inst null: le funzioni
+  // dell'interfaccia di app.js) con quello di chi guarda
+  worldFor(inst) {
+    const mp = this.mp;
+    if (!mp) return this;
+    const s = inst ? this.sideOf(inst) : 0;
+    if (s) return this.sideWorld(s);
+    if (mp.actor) return this.sideWorld(mp.actor);
+    return this.sideWorld(!inst || inst.ui || inst.fx ? mp.local : 1);
+  }
+  sideWorld(side) {
+    const mp = this.mp;
+    return !mp ? this : side === 2 ? mp.mirror2 : mp.mirror1;
   }
 
   // [Richiesta dell'autore] Cambio di sprite con dissolvenza (FADE passi):
@@ -744,7 +776,7 @@ export class World {
         for (const o of this._nearList(bb)) {
           if (!i.alive) break;
           if (o === i || !o.alive || !this._hits(o, name)) continue;
-          if (this.overlap(i, i.x, i.y, o)) fn(i, this, o);
+          if (this.overlap(i, i.x, i.y, o)) fn(i, this.mp ? this.worldFor(i) : this, o);
         }
       }
     }
@@ -757,9 +789,17 @@ export class World {
     let out = this._collMaps.get(i.object);
     if (out !== undefined) return out;
     out = [];
+    // [§9.155] i nomi delle collisioni visti dalla parte dell'istanza (le
+    // frecce del giocatore 2 colpiscono il giocatore 1)
+    const side = this.sideOf(i), map = side === 2 ? this.mp.m2 : side === 1 ? this.mp.m1 : null;
     for (const n of [i.object, ...i.parents]) {
       const b = this.behaviours[n];
-      if (b && b.collisions) for (const k of Object.keys(b.collisions)) if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k]]);
+      if (b && b.collisions) {
+        for (const k0 of Object.keys(b.collisions)) {
+          const k = map && map[k0] !== undefined ? map[k0] : k0;
+          if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k0]]);
+        }
+      }
     }
     out = out.length ? out : null;
     this._collMaps.set(i.object, out);
@@ -773,7 +813,13 @@ export class World {
     this.input.mousePressed[button] = false;
   }
 
-  _takesInput(i) { return !this.inputOnly || this.inputOnly.has(i.object); }
+  // [§9.155] nella partita a due l'input lo prendono solo le istanze della
+  // parte di chi guarda (e le neutre e l'interfaccia); dentro un comando,
+  // quelle della parte che lo da'
+  _takesInput(i) {
+    if (this.mp) { const s = this.sideOf(i); if (s && s !== (this.mp.actor || this.mp.local)) return false; }
+    return !this.inputOnly || this.inputOnly.has(i.object);
+  }
 
   // Eventi di tastiera: Keyboard (tasto tenuto, ogni passo), KeyPress,
   // KeyRelease; gestori "keyboard27", "keyPress81", "keyRelease46".
@@ -874,7 +920,12 @@ export class World {
   runAction(kind, c) {
     const fn = this.actions.get(kind);
     if (!fn) throw new Error("azione sconosciuta: " + kind);
-    fn(this, c);
+    if (!this.mp) { fn(this, c); return; }
+    // [§9.155] l'azione del giocatore c.p (0 o 1): col suo specchio, e chi
+    // riceve eventi durante l'azione (risorse, interfaccia) la vede da li'
+    const mp = this.mp, prev = mp.actor;
+    mp.actor = (c.p ?? 0) + 1;
+    try { fn(this.sideWorld(mp.actor), c); } finally { mp.actor = prev; }
   }
   // le istanze della partita selezionate da chi guarda (i loro id)
   selectedIds() {
@@ -922,10 +973,10 @@ export class World {
       for (const i of live) if (i.alive && this.handler(i, "rightReleased") && isOver(i)) this.fire(i, "rightReleased");
       // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
       // suo GlobalRightReleased (scr_movement_general) gira per primo.
-      if (this.hooks.globalRightReleased) this.hooks.globalRightReleased(c.x, c.y);
+      if (this.hooks.globalRightReleased) this.hooks.globalRightReleased(c.x, c.y, this.worldFor(null));
       for (const i of live) if (i.alive) this.fire(i, "globalRightReleased");
       // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
-      if (this.hooks.afterRightReleased) this.hooks.afterRightReleased(c.x, c.y);
+      if (this.hooks.afterRightReleased) this.hooks.afterRightReleased(c.x, c.y, this.worldFor(null));
     } finally {
       this.mouse = mouse;
     }
@@ -957,10 +1008,15 @@ export class World {
     const skip = this.skipDraw;
     // [Richiesta dell'autore] "drawBelow": a terra, sopra il suolo e sotto
     // tutte le istanze (la linea verso il punto di raccolta degli edifici)
-    for (const i of list) if (i.visible) this.fire(i, "drawBelow", d);
+    // [§9.155] le istanze del giocatore 2 (p2_*) con gli sprite blu
+    // (p2sprites.js): la tabella vale mentre si disegna una di loro
+    const blue = this.p2Sprites || null;
+    const tint = (i) => setSpriteRemap(blue && i.object.startsWith("p2_") ? blue : null);
+    for (const i of list) if (i.visible) { tint(i); this.fire(i, "drawBelow", d); }
     for (const i of list) {
-      while (si < systems.length && systems[si].depth > i.depth) { r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
+      while (si < systems.length && systems[si].depth > i.depth) { setSpriteRemap(null); r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
       if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
+      tint(i);
       r.shade = shade ? shade(i.x, i.y) : 1;
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
@@ -986,12 +1042,14 @@ export class World {
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }
     r.shade = 1;
+    setSpriteRemap(null);
     while (si < systems.length) P.draw(systems[si++], r, this.assets, cam);
     let managerDone = !manager;
     for (const i of list) {
-      if (!managerDone && i.depth <= -1) { manager(); managerDone = true; }
-      if (i.visible) this.fire(i, "drawEnd", d);
+      if (!managerDone && i.depth <= -1) { setSpriteRemap(null); manager(); managerDone = true; }
+      if (i.visible) { tint(i); this.fire(i, "drawEnd", d); }
     }
+    setSpriteRemap(null);
     if (!managerDone) manager();
     this.drawn = drawn;
   }

@@ -115,7 +115,7 @@ export function skirmishPrepare(params, all) {
   if (cc.length !== 2) return null;
   const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
   const [mine, cpu] = side === "A" ? cc : [cc[1], cc[0]];
-  cpu[0] = "enemy_centro";
+  cpu[0] = params.pvp ? "p2_centro" : "enemy_centro"; // §9.155: nella partita a due il centro del giocatore 2
   return { side, player: [mine[1], mine[2]], cpu: [cpu[1], cpu[2]] };
 }
 
@@ -132,9 +132,15 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
   // nascere la sua regia, ECO startWorkers)
   const [px, py] = starts.player;
   for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
-  world.create("enemy_eco", 0, 0);
+  if (params.pvp) {
+    // [§9.155] la partita a due: il giocatore 2 come il giocatore 1, con la
+    // sua cassa (global.p2) e i suoi 3 lavoratori; niente regia della CPU
+    Object.assign(g.p2, START_RES[params.resources]);
+    const [qx, qy] = starts.cpu;
+    for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
+  } else world.create("enemy_eco", 0, 0);
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
-  if (params.truce > 0) g.en.hold = 1;
+  if (params.truce > 0 && !params.pvp) g.en.hold = 1;
   world.create("sk_manager", 0, 0);
   // [§9.122] un po' di nebbia (anche sul lato B, ruotata)
   const map = SK_MAPS.find((m) => m.room === world.room);

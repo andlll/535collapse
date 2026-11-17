@@ -41,8 +41,10 @@ determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
 coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
 selezione fuori dalla partita e le azioni come comandi; restano la campagna,
 cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
-3 parti simmetriche (§9.154 "Per la fase 3"); 4 rete e lobby (WebRTC;
-scambio dei codici e STUN/TURN da decidere, §9.152).
+3 parti simmetriche (§9.155: fatti i gemelli blu, lo specchio e la prova a
+due pagine; restano l'interfaccia del blu, la nebbia, la vittoria, il menu:
+§9.155 "Cosa resta"); 4 rete e lobby (WebRTC; scambio dei codici e
+STUN/TURN da decidere, §9.152).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -10823,3 +10825,101 @@ stessa famiglia). Attenzione a: `visible` (la nebbia di chi guarda: alcune
 decisioni della partita la leggono, p.es. chi si vede si attacca) e le
 istanze dell'interfaccia distrutte dalla partita (il cantiere delle mura
 distrugge le anteprime: in rete quelle dell'altro).
+
+### 9.155 Multiplayer, fase 3: i gemelli blu del giocatore 2 e lo specchio
+
+Richieste dell'autore (17 novembre 2026, stessa PR, versione 0.2611): "il
+secondo giocatore con dei secondi modelli blu, funzionali solo al
+multiplayer"; poi: "i gemelli blu, ma devono usare gli sprite di enemy, non
+devono essere solo un tint: uno dei due giocatori si vedra' con gli sprite
+di enemy, l'altro con quelli rossi soliti. Sono comunque oggetti distinti".
+
+**Le opzioni considerate.** (1) gemelli p2_* con la logica del giocatore
+(scelta); (2) gli stessi oggetti con un campo "parte" (ogni ricerca del
+codice da filtrare: decine di file); (3) il giocatore 2 con gli oggetti
+enemy_* (scartata dall'autore: un'altra logica, un cantiere solo).
+
+**Gli sprite blu** (`src/p2sprites.js`). I gemelli usano gli sprite del
+giocatore (stesse maschere e fotogrammi: la partita non sa di colori); al
+disegno (world.draw, sprites.js `setSpriteRemap`) ognuno passa al suo
+corrispondente blu: le famiglie d'animazione (ww -> bww, ff -> bfg, cm ->
+bcw, ow -> b_ow, ..., P2_FAMILIES), gli edifici finiti (cc_spr -> cc_b,
+barn_spr -> mub, campo2 -> campo1, rflag -> bflag, P2_EXACT), le case (c3s ->
+c3b), mura, porte e i loro danni (castello_r1 -> castello_b_r1). Restano
+quelli del giocatore cantieri e rovine (neutri: il nemico della CPU ha un
+cantiere solo) e le icone; due fotogrammi mancanti (bwa31, bpa31) prendono
+il primo della stessa direzione. I civili blu (b_ow, b_os, b_car...) erano
+nell'atlas ma la CPU non li usava (enemy_omino e' rosso). Prova:
+test/p2sprites.test.mjs (ogni animazione delle unita' e dei cadaveri del
+giocatore e ogni edificio finito ha il suo blu).
+
+**I gemelli e lo specchio** (`src/multiplayer.js`, world.js).
+- I gemelli: la famiglia del giocatore (ally_* e chi ha un genitore ally*:
+  unita', edifici, cantieri, mura, porte, cc_barn) e quello che porta la
+  parte (frecce e proiettili, cadaveri, bandiere, food_bullet): p2_<nome>
+  (ally_warrior -> p2_warrior, centro -> p2_centro), stessa definizione coi
+  genitori tradotti, lo stesso comportamento registrato.
+- Lo specchio (mirrorWorld): il codice del giocatore non si riscrive. Per
+  gli eventi di un'istanza p2_* il mondo passa uno Proxy di se stesso che
+  traduce gli argomenti stringa dei metodi (all, nearest, number, create,
+  instancePlace, positionMeeting, is, byIds, ...) con la tabella m2: i nomi
+  del giocatore -> p2_*, "enemy_*" -> il giocatore 1 (ENEMY_EQ: enemy_unit ->
+  ally_unit, enemy_centro -> centro, ...); e w.g e' la cassa del giocatore 2
+  (global.p2: food, wood, gold, stone, pop, popcap, idle; il resto di global
+  e' comune). Nella partita a due anche il giocatore 1 ha il suo specchio
+  (m1: "enemy_*" -> p2_*). I metodi girano sul mondo vero: le chiamate
+  interne non si traducono due volte.
+- Chi vede da quale parte (world.worldFor): un'istanza della parte 1 o 2 con
+  lo specchio della sua parte; durante un comando le neutre (risorse...) con
+  quello di chi lo da' (mp.actor, runAction); fuori dai comandi le neutre
+  sempre con la parte 1 (uguale in ogni pagina: risorse, sk_manager) e
+  l'interfaccia con quella di chi guarda (mp.local). Le collisioni con i
+  nomi tradotti per la parte dell'istanza (le frecce blu colpiscono i rossi).
+  L'input lo prendono solo le istanze della parte di chi guarda; dentro un
+  comando quelle della parte che lo da'.
+- I comandi portano il giocatore (p 0 o 1; app.js hooks.command: la parte di
+  chi guarda) e si eseguono col suo specchio.
+- app.js: `?pvp=1` su una mappa da schermaglia accende la partita a due
+  (`&parte=2`: si guarda dal blu); quello che app.js fa per "il giocatore" a
+  ogni passo (civili inattivi, sovrapposizioni, assedio, fiaccole) gira per
+  le due parti, la selezione, la nebbia e gli allarmi per chi guarda.
+- skirmish.js: il secondo centro e' p2_centro, il blu ha 3 civili e la sua
+  cassa con le risorse di partenza scelte, niente regia della CPU ne'
+  tregua.
+- Fuori dall'impronta anche alLife (gli allarmi della minimappa) e
+  _fogStamp (la nebbia): sono di chi guarda.
+
+**Prove.**
+- test/browser/pvp.mjs (nella CI): due pagine con lo stesso seme, una
+  guarda dal rosso e una dal blu, gli stessi comandi dei due giocatori
+  (civili in coda, legna, la casa blu); al passo 900 due piccoli eserciti
+  nascono al centro e si combattono. Impronte uguali (30/30 ogni 50 passi su
+  1500); tutti e due raccolgono, la casa blu c'e', morti da tutte e due le
+  parti; il centro blu disegnato cc_b. Controllo: un ordine blu diverso
+  cambia la partita. `EVERY=20 DIFFS=20` per cercare dove divergono.
+- test/multiplayer.test.mjs: gemelli, tabelle, lo specchio e la cassa.
+- Il gioco in singolo non cambia: col seme fisso le impronte di
+  determinism.mjs (sk_padus, lvl06, match, 3000 passi) sono le stesse di
+  prima del rifacimento (confrontate con 47f32a4 con la stessa impronta).
+
+**Cosa resta (fase 3).**
+- L'interfaccia di chi guarda dal blu: il riquadro delle risorse e della
+  popolazione (manager.js legge global, non la cassa del blu), l'obiettivo
+  ("Enemy: Normal, Balanced"), la minimappa (colori delle parti), la vista
+  di partenza sulla propria base.
+- La nebbia di guerra nella partita a due: le istanze di tipo giocatore
+  sono sempre visibili (visible: true), quindi oggi l'avversario si vede
+  anche nella nebbia. Da fare: la visibilita' dell'avversario per parte,
+  calcolata nella partita per tutte e due le parti (deterministica: la
+  partita la legge, autoAttack "valid", i civili "known"), e il disegno
+  secondo quella di chi guarda.
+- La scoperta delle risorse (reveal: le vede chi ha unita' vicine) e' solo
+  del giocatore 1: per il blu le risorse lontane dal rosso restano "non
+  viste" (i suoi civili ne cercano meno). Da fare per parte.
+- La vittoria per parte (sk_manager guarda dalla parte 1: vince il rosso o
+  perde il rosso); la schermata di fine per chi guarda.
+- Il passaggio fra le parti di cose comuni: global.order (il numero d'ordine
+  delle unita'), i suggerimenti, le porte e le mura nella griglia dei
+  percorsi (Pathing.regions con enemy: le porte del blu andrebbero
+  "nemiche" per il rosso).
+- Il menu della partita a due (fase 4, insieme alla rete).
