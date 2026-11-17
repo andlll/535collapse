@@ -11056,14 +11056,18 @@ chiaro**. Il resto l'ho deciso io (sotto, "Scelte mie": da rivedere con
 l'autore se vuole).
 
 **Come si gioca.** Menu, Schermaglia: mappa e opzioni come sempre, poi
-"Partita a due" (a sinistra di "Inizia"). Il pannello riassume la partita
-(mappa, vittoria, risorse, popolazione, visibilita', giorno e notte, pioggia:
-difficolta', stile della CPU e tregua sono della CPU) e offre:
+"Multigiocatore online" (a sinistra di "Inizia"; il nome e' dell'autore,
+sotto). Il pannello si apre al posto del riquadro della mappa: la mappa si
+sceglie con le sue frecce, le opzioni nella griglia a destra, dove
+difficolta' e stile della CPU sono in grigio (valgono solo contro la CPU); e
+offre:
 - **"Crea una partita"**: si apre la partita (il rosso) con la sala
   d'attesa: "1. Manda questo codice all'altro giocatore" (la casella col
   codice, "Copia") e "2. Incolla qui il codice di risposta" ("Collega");
 - **il codice ricevuto** da incollare (la casella sotto): appena e' valido il
-  pannello dice che partita e' ("Giocherai col blu") e "Entra" apre la stessa
+  pannello dice che partita e' ("Mappa: Padania. Giocherai col blu"; la
+  griglia mostra le opzioni del codice, tutte in grigio: e' la partita in
+  cui si entra, non si cambia) e "Entra" apre la stessa
   partita (stessa mappa, opzioni e seme di chi l'ha creata, anche se le sue
   opzioni nel menu sono altre), con il codice di risposta da rimandare.
 Nella sala d'attesa Esc non fa niente (perderebbe il codice gia' mandato):
@@ -11165,6 +11169,38 @@ parti).
   due i casi la partita si ferma col menu di pausa (senza "Riprendi") e la
   barra rossa. Dopo la fine della partita niente avvisi.
 
+**Decisioni dell'autore dopo la prima versione** (17 novembre 2026, stessa
+PR): "sì, fai valere la tregua e metti in grigio quei riquadri. invece che
+'partita a due' scriverei 'multigiocatore online' o simile".
+- *Il nome*: "Multigiocatore online" (en "Online multiplayer", es
+  "Multijugador en línea", pt "Multijogador online", de
+  "Online-Mehrspieler", fr "Multijoueur en ligne"), sul pulsante e nei
+  titoli dei pannelli.
+- *La tregua nella partita online*: per i minuti scelti nessuno dei due
+  puo' attaccare l'altro (contro la CPU invece la tregua e' solo "la CPU non
+  manda attacchi"). Come: lo specchio delle parti (multiplayer.js,
+  §9.155), durante la tregua (`mp.truce`, deciso a ogni passo dal tempo
+  della partita: skirmish.js `pvpTruce`), traduce i nomi del nemico
+  ("enemy_unit", "enemy_build", tutte le chiavi di ENEMY_EQ) in un nome che
+  non c'e': per il codice di ogni giocatore l'avversario non esiste come
+  bersaglio (attacchi automatici, ordini d'attacco col clic destro, torri,
+  castelli e centri che tirano, arieti e catapulte, fuoco), e le collisioni
+  col nemico (frecce, proiettili) sono spente (world.js `_collisions`).
+  Non per `create`, ne' per la minimappa (`mp.noTruce` mentre si disegna
+  l'interfaccia: i nemici visti si vedono anche in tregua). Il conto alla
+  rovescia c'era gia' negli obiettivi ("Tregua: 4:53"), per tutti e due.
+  Prova `test/browser/truce.mjs` (nella CI): tregua di 5 minuti, guerrieri e
+  arcieri rossi e blu a 80 px, ordini d'attacco reciproci e due blu contro il
+  centro rosso: dopo 900 passi vite e centri intatti, nessuna freccia; la
+  minimappa vede i 9 nemici; finita la tregua (qui accorciata a 0) gli
+  stessi si combattono (rossi vivi 4, blu 1).
+- *I riquadri in grigio*: col pannello aperto difficolta' e stile della CPU
+  sono piu' trasparenti, senza frecce, con l'icona velata, e non si
+  cambiano; "Inizia" e' spento. Per lasciare visibile la griglia il
+  pannello non copre piu' tutto lo schermo: sta nella colonna della mappa
+  (netui.js, `dock`), con la mappa scelta dalle sue frecce (il riquadro
+  della mappa sotto non si disegna).
+
 **Scelte mie** (da rivedere con l'autore se vuole):
 - chi crea e' il rosso, chi entra il blu (la posizione sulla mappa resta a
   caso col seme, come contro la CPU);
@@ -11173,6 +11209,7 @@ parti).
   fa niente); il menu di pausa ha "Lascia la partita" al posto di "Torna al
   menu";
 - la pausa la riprende chiunque dei due;
+- [il nome, la tregua: decisi dall'autore, sopra]
 - i server STUN: `stun.l.google.com:19302` e `stun.cloudflare.com:3478`
   (rtc.js STUN_SERVERS). Sono servizi esterni (vedono gli indirizzi dei due
   giocatori, nessun dato della partita): [decisione dell'autore, 17
@@ -11236,7 +11273,9 @@ parti).
   (e4d4250e086557c3) del canale a 6 giri: la partita non dipende dai tempi
   del canale.
 - La suite completa nel browser della CI (le 45 prove di prima piu' le due
-  nuove), in questa macchina, 4 alla volta: 47 su 47 passate.
+  nuove), in questa macchina, 4 alla volta: 47 su 47 passate. Dopo la
+  tregua e il menu nuovo: rtc, netfake, truce, pvp, PVP=2 replay e
+  determinism (sk_padus, ancora le impronte di main) di nuovo verdi.
 
 **Come riprendere** (cosa resta, in ordine di utilita'):
 1. *Provarla su due computer veri*, in due reti diverse (casa e telefono,

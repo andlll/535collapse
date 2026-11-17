@@ -784,7 +784,8 @@ export class World {
       if (!i.alive) continue;
       const map = this._collisionMap(i);
       if (!map) continue;
-      for (const [name, fn] of map) {
+      for (const [name, fn, hostile] of map) {
+        if (hostile && this.mp.truce) continue; // §9.156: la tregua della partita a due
         const bb = this.bbox(i);
         if (!bb) continue;
         for (const o of this._nearList(bb)) {
@@ -811,7 +812,8 @@ export class World {
       if (b && b.collisions) {
         for (const k0 of Object.keys(b.collisions)) {
           const k = map && map[k0] !== undefined ? map[k0] : k0;
-          if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k0]]);
+          // [§9.156] hostile: una collisione col nemico, che la tregua spegne
+          if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k0], !!map && (k0 === "enemy" || k0.startsWith("enemy_"))]);
         }
       }
     }

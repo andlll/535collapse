@@ -85,7 +85,7 @@ minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" 
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 
-**Partita a due in rete** (§9.152-§9.156): Schermaglia, "Partita a due". Chi
+**Multigiocatore online** (§9.152-§9.156): Schermaglia, "Multigiocatore online". Chi
 crea la partita (il rosso) manda all'altro il codice che compare; l'altro lo
 incolla nello stesso pannello ("Entra", il blu) e rimanda il suo codice di
 risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
@@ -143,6 +143,7 @@ node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondat
 node game/test/browser/pvp.mjs sk_padus 5 1500         # partita a due in una pagina: le due parti, stesse impronte
 node game/test/browser/netfake.mjs sk_padus 7 2400     # partita a due in rete, canale finto con ritardo e disordine (§9.156)
 node game/test/browser/rtc.mjs sk_padus 950            # partita a due con WebRTC vero fra due pagine, dal menu (§9.156)
+node game/test/browser/truce.mjs sk_padus 5            # la tregua nella partita a due: nessuno attacca, poi si combatte (§9.156)
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```

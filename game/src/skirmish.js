@@ -169,6 +169,12 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
 export const RAIN_EVERY = { normal: [20000, 35000], frequent: [6000, 12000] };
 export const rainGap = (g) => RAIN_EVERY[g.sk && g.sk.rain === "frequent" ? "frequent" : "normal"];
 
+// [§9.156, decisione dell'autore] la tregua nella partita a due: per i
+// minuti scelti nessuno dei due puo' attaccare l'altro (multiplayer.js: il
+// nemico non c'e' come bersaglio). Contro la CPU la tregua e' un'altra cosa:
+// la CPU non manda attacchi (global.en.hold), il giocatore puo'.
+export const pvpTruce = (g) => !!(g.sk && g.sk.pvp && g.sk.truce > 0 && !g.skWinner && elapsed(g) < g.sk.truce * 60);
+
 // Il tetto di popolazione scelto (manager.js lo tiene a 99)
 export function skirmishPopcap(g) {
   if (g.sk && g.popcap > g.sk.popMax) g.popcap = g.sk.popMax;

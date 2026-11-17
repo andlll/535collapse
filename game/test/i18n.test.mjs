@@ -50,5 +50,5 @@ test("§9.156 partita a due: testi tradotti", async () => {
   const keys = [...src.matchAll(/\btr\(\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"'));
   assert.ok(keys.length > 30);
   for (const k of keys) assert.ok(TEXTS[k], k);
-  assert.ok(TEXTS["Two-player game"]);
+  assert.ok(TEXTS["Online multiplayer"]);
 });

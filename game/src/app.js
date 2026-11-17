@@ -52,7 +52,7 @@ import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
-import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
+import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
 import { netParams, startNet, netMenu } from "./netgame.js"; // §9.156
 import { p2SpriteMap } from "./p2sprites.js";
@@ -450,6 +450,7 @@ async function main() {
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
     if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
+    if (world.mp) world.mp.truce = pvpTruce(g); // §9.156
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
@@ -572,9 +573,9 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
-  // [§9.156] "Partita a due" nella schermata della schermaglia (?stun=0 passa
-  // alla partita: senza server STUN, per le prove in locale)
-  world.hooks.twoPlayers = (sk) => netMenu({ sk, version: VERSION, stun: params.get("stun") !== "0" });
+  // [§9.156] "Multigiocatore online" nella schermata della schermaglia
+  // (?stun=0 passa alla partita: senza server STUN, per le prove in locale)
+  world.hooks.twoPlayers = (opts) => netMenu({ ...opts, version: VERSION, stun: params.get("stun") !== "0" });
   // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
@@ -607,6 +608,9 @@ async function main() {
       return;
     }
     if (pause.check(input, cam.cssW)) return;
+    // [§9.156] la tregua della partita a due, decisa a ogni passo dal tempo
+    // della partita (uguale nelle due pagine)
+    if (world.mp) world.mp.truce = pvpTruce(g);
     manager.alarms();
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
@@ -722,7 +726,10 @@ async function main() {
     draw.reset();
     world.drawGUI(draw);
     draw.reset();
+    // ([§9.156] la minimappa mostra i nemici anche durante la tregua)
+    if (world.mp) world.mp.noTruce = true;
     manager.drawGUI(draw, cam, world.worldFor(null), fpsNow);
+    if (world.mp) world.mp.noTruce = false;
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();

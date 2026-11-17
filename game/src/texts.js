@@ -569,13 +569,13 @@ export const TEXTS = {
   "Opponent: the blue player": { it: "Avversario: il giocatore blu", es: "Rival: el jugador azul", pt: "Adversário: o jogador azul", de: "Gegner: der blaue Spieler", fr: "Adversaire : le joueur bleu" },
   "Opponent: the red player": { it: "Avversario: il giocatore rosso", es: "Rival: el jugador rojo", pt: "Adversário: o jogador vermelho", de: "Gegner: der rote Spieler", fr: "Adversaire : le joueur rouge" },
   // [§9.156] la partita a due in rete: il menu, la sala d'attesa, gli avvisi
-  "Two-player game": { it: "Partita a due", es: "Partida a dos", pt: "Partida a dois", de: "Spiel zu zweit", fr: "Partie à deux" },
-  "Play the chosen map and options against another player, with a direct connection between your two computers. One player creates the game and sends a code to the other, who joins with it.": {
-    it: "Gioca la mappa e le opzioni scelte contro un altro giocatore, con una connessione diretta fra i vostri due computer. Uno crea la partita e manda un codice all'altro, che entra con quello.",
-    es: "Juega el mapa y las opciones elegidas contra otro jugador, con una conexión directa entre vuestros dos ordenadores. Uno crea la partida y envía un código al otro, que entra con él.",
-    pt: "Jogue o mapa e as opções escolhidas contra outro jogador, com uma conexão direta entre os seus dois computadores. Um cria a partida e envia um código ao outro, que entra com ele.",
-    de: "Spiele die gewählte Karte mit den gewählten Optionen gegen einen anderen Spieler, mit einer direkten Verbindung zwischen euren beiden Computern. Einer erstellt das Spiel und schickt dem anderen einen Code, mit dem dieser beitritt.",
-    fr: "Joue la carte et les options choisies contre un autre joueur, avec une connexion directe entre vos deux ordinateurs. L'un crée la partie et envoie un code à l'autre, qui la rejoint avec ce code." },
+  "Online multiplayer": { it: "Multigiocatore online", es: "Multijugador en línea", pt: "Multijogador online", de: "Online-Mehrspieler", fr: "Multijoueur en ligne" },
+  "Against another player, with a direct connection between your computers: create a game with this map and the options on the right, or join one with the code you received.": {
+    it: "Contro un altro giocatore, con una connessione diretta fra i vostri computer: crea una partita con questa mappa e le opzioni a destra, o entra in una col codice che hai ricevuto.",
+    es: "Contra otro jugador, con una conexión directa entre vuestros ordenadores: crea una partida con este mapa y las opciones de la derecha, o entra en una con el código que has recibido.",
+    pt: "Contra outro jogador, com uma conexão direta entre os seus computadores: crie uma partida com este mapa e as opções à direita, ou entre em uma com o código que você recebeu.",
+    de: "Gegen einen anderen Spieler, mit einer direkten Verbindung zwischen euren Computern: Erstelle ein Spiel mit dieser Karte und den Optionen rechts oder tritt mit dem erhaltenen Code einem Spiel bei.",
+    fr: "Contre un autre joueur, avec une connexion directe entre vos ordinateurs : crée une partie avec cette carte et les options à droite, ou rejoins-en une avec le code que tu as reçu." },
   "Map: {map}": { it: "Mappa: {map}", es: "Mapa: {map}", pt: "Mapa: {map}", de: "Karte: {map}", fr: "Carte : {map}" },
   "Create a game": { it: "Crea una partita", es: "Crear una partida", pt: "Criar uma partida", de: "Spiel erstellen", fr: "Créer une partie" },
   "Or paste here the code you received:": { it: "Oppure incolla qui il codice che hai ricevuto:", es: "O pega aquí el código que has recibido:",

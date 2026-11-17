@@ -159,6 +159,7 @@ jobs:
           # disordine), poi WebRTC vero fra due pagine, dal menu
           node game/test/browser/netfake.mjs sk_padus 7 2400
           node game/test/browser/rtc.mjs sk_padus 950
+          node game/test/browser/truce.mjs sk_padus 5
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
       # [§9.152, multiplayer, fase 1] la stessa partita (stesso seme, nessun

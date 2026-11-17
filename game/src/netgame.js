@@ -4,7 +4,7 @@
 //
 // IL PERCORSO (decisioni dell'autore: 1 contro 1, connessione diretta,
 // codici da incollare, senza server).
-// 1. Menu, schermaglia, "Partita a due" (netMenu): "Crea una partita" con la
+// 1. Menu, schermaglia, "Multigiocatore online" (netMenu): "Crea una partita" con la
 //    mappa e le opzioni scelte, o il codice ricevuto da incollare ("Entra").
 // 2. Chi crea apre la room (?room=sk_*&net=host&seed=N; le opzioni restano
 //    in sessionStorage): nella sala d'attesa il suo codice (l'offerta WebRTC
@@ -42,9 +42,9 @@ const KEY = "535.net"; // sessionStorage: chi crea (le opzioni) o chi entra (il 
 const CONNECT_WAIT = 25000; // ms: dopo la risposta, se il canale non si apre non si aprira'
 const WAIT_BAR = 600, WAIT_PANEL = 8000; // ms di attesa del turno dell'altro: la barra, poi il pannello
 
-// le opzioni che contano nella partita a due (difficolta', stile della CPU e
-// tregua sono della CPU)
-const SHOWN = ["victory", "resources", "pop", "fog", "daynight", "rain"];
+// le opzioni che contano nella partita a due (difficolta' e stile sono della
+// CPU; la tregua, §9.156, vale anche qui: nessuno dei due puo' attaccare)
+const SHOWN = ["victory", "resources", "pop", "truce", "fog", "daynight", "rain"];
 const mapName = (room) => tr((SK_MAPS.find((m) => m.room === room) || { name: room }).name);
 export function setupSummary(sk) {
   return tr("Map: {map}", { map: mapName(sk.map) }) + ". "
@@ -75,24 +75,34 @@ function codeProblem(e, want, version, data) {
 }
 
 // ------------------------------------------------------------- il menu
-// "Partita a due" nella schermata della schermaglia (menu.js): crea o entra
-export function netMenu({ sk, version, stun = true }) {
-  const panel = new NetPanel({ onEscape: () => panel.close() });
-  panel.title(tr("Two-player game"));
-  panel.text(tr("Play the chosen map and options against another player, with a direct connection between your two computers. One player creates the game and sends a code to the other, who joins with it."));
+// "Multigiocatore online" nella schermata della schermaglia (menu.js): crea o
+// entra. [§9.156, decisione dell'autore] Il pannello sta al posto del riquadro
+// della mappa (dock, pixel CSS): la griglia delle opzioni resta visibile e si
+// usa, con difficolta' e stile della CPU in grigio; la mappa si sceglie con
+// le frecce del pannello (onMap(dir) -> le opzioni nuove); update(sk) quando
+// cambiano le opzioni nella griglia.
+export function netMenu({ sk, version, stun = true, dock = null, onMap = null, onPreview = null, onClose = null }) {
+  let cur = sk;
+  const panel = new NetPanel({ onEscape: () => panel.close(), dock });
+  panel.onClose = onClose;
+  panel.title(tr("Online multiplayer"));
+  panel.text(tr("Against another player, with a direct connection between your computers: create a game with this map and the options on the right, or join one with the code you received."));
   if (!rtcAvailable()) {
     panel.status(tr("This browser does not support direct connections (WebRTC)."), "error");
     panel.button(panel.row(), tr("Back"), () => panel.close(), { name: "back" });
     return panel;
   }
-  panel.text(setupSummary(sk));
-  panel.button(panel.row(), tr("Create a game"), () => {
+  const pick = (dir) => { if (found) return; cur = onMap(dir); map.set(mapName(cur.map)); };
+  let found = null;
+  const map = onMap ? panel.chooser(mapName(cur.map), () => pick(-1), () => pick(1), "map") : null;
+  if (!map) panel.text(setupSummary(cur));
+  const create = panel.button(panel.row(), tr("Create a game"), () => {
     const seed = freshSeed();
-    setSession({ role: "host", sk, seed });
-    location.search = urlFor(sk.map, "host", seed, stun);
+    setSession({ role: "host", sk: cur, seed });
+    location.search = urlFor(cur.map, "host", seed, stun);
   }, { primary: true, name: "create" });
   panel.text(tr("Or paste here the code you received:"));
-  let found = null, tries = 0;
+  let tries = 0;
   const box = panel.code({ placeholder: tr("Paste the code here"), name: "join-code", onInput: (text) => check(text) });
   const info = panel.text("");
   const row = panel.row();
@@ -113,9 +123,17 @@ export function netMenu({ sk, version, stun = true }) {
     found = bad === null ? { sk: cleanSkirmish(d.data.setup.sk ? { ...d.data.setup.sk, map: d.data.setup.map } : { map: d.data.setup.map }),
                              seed: d.data.setup.seed >>> 0 } : null;
     join.disabled = !found;
-    panel.setText(info, found ? setupSummary(found.sk) + " " + tr("You will play blue.") : "");
+    // [§9.156] col pannello agganciato la griglia del menu mostra la partita
+    // del codice (onPreview); qui la mappa e il colore
+    create.disabled = !!found;
+    if (onPreview) onPreview(found ? found.sk : null);
+    if (map) map.set(mapName((found ? found.sk : cur).map));
+    const what = found ? (onPreview ? tr("Map: {map}", { map: mapName(found.sk.map) }) + ". " : setupSummary(found.sk) + " ") + tr("You will play blue.") : "";
+    panel.setText(info, what);
     panel.status(bad || "", "error");
   };
+  // le opzioni cambiate nella griglia del menu
+  panel.update = (sk2) => { cur = sk2; if (map) map.set(mapName(cur.map)); };
   return panel;
 }
 
@@ -216,7 +234,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
     // (Esc qui non fa niente: perderebbe il codice gia' mandato all'altro;
     // per uscire c'e' "Annulla")
     panel = new NetPanel();
-    panel.title(tr("Two-player game"));
+    panel.title(tr("Online multiplayer"));
     panel.text(sideText(net.local) + " " + setupSummary(net.sk));
     if (!link) {
       panel.status(tr("This browser does not support direct connections (WebRTC)."), "error");
