@@ -566,6 +566,8 @@ export const TEXTS = {
   "Truce: {t}": { it: "Tregua: {t}", es: "Tregua: {t}", pt: "Trégua: {t}", de: "Waffenruhe: {t}", fr: "Trêve : {t}" },
   "Time left: {t}": { it: "Tempo rimasto: {t}", es: "Tiempo restante: {t}", pt: "Tempo restante: {t}", de: "Verbleibende Zeit: {t}", fr: "Temps restant : {t}" },
   "Score: you {a}, the enemy {b}": { it: "Punteggio: tu {a}, il nemico {b}", es: "Puntuación: tú {a}, el enemigo {b}", pt: "Pontuação: você {a}, o inimigo {b}", de: "Punkte: du {a}, der Feind {b}", fr: "Score : toi {a}, l'ennemi {b}" },
+  "Opponent: the blue player": { it: "Avversario: il giocatore blu", es: "Rival: el jugador azul", pt: "Adversário: o jogador azul", de: "Gegner: der blaue Spieler", fr: "Adversaire : le joueur bleu" },
+  "Opponent: the red player": { it: "Avversario: il giocatore rosso", es: "Rival: el jugador rojo", pt: "Adversário: o jogador vermelho", de: "Gegner: der rote Spieler", fr: "Adversaire : le joueur rouge" },
   "Enemy: {d}, {s}": { it: "Nemico: {d}, {s}", es: "Enemigo: {d}, {s}", pt: "Inimigo: {d}, {s}", de: "Feind: {d}, {s}", fr: "Ennemi : {d}, {s}" },
   "The enemy has been defeated": { it: "Il nemico è stato sconfitto", es: "El enemigo ha sido derrotado", pt: "O inimigo foi derrotado", de: "Der Feind wurde besiegt", fr: "L'ennemi a été vaincu" },
   "All your buildings were destroyed.": { it: "Tutti i tuoi edifici sono stati distrutti.", es: "Todos tus edificios han sido destruidos.", pt: "Todos os seus edifícios foram destruídos.", de: "Alle deine Gebäude wurden zerstört.", fr: "Tous tes bâtiments ont été détruits." },

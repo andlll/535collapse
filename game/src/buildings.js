@@ -820,7 +820,8 @@ export function centro(p) {
         // [§9.11] nel livello 3 si perde solo col monastero
         // [§9.118] nella schermaglia solo con la vittoria "Municipio" (le
         // altre le decide sk_manager, skirmish.js)
-        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall");
+        // [§9.155] nella partita a due lo decide sk_manager (pvpCheck)
+        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall") && !(g.sk && g.sk.pvp);
         if (lose) g.gameover = 1;
         const flag = w.nearest(i.x, i.y - 100, "flag_r");
         if (flag) w.destroy(flag);

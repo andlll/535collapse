@@ -127,3 +127,29 @@ export function setupMultiplayer(world, local) {
   world._collMaps = null;
   return world.mp;
 }
+
+// [§9.155] La nebbia di guerra nella partita a due. Per le istanze delle due
+// parti `visible` vuol dire "la vede l'avversario": cosi' il codice del
+// giocatore, che guarda `visible` sul bersaglio (autoAttack: si attacca chi
+// si vede), vale per tutte e due le parti. Si calcola a ogni passo per
+// tutte e due, come i nemici della CPU (enemies.js visibility): unita' a
+// 150 px, edifici a 200, castelli e torri a 500, di piu' di giorno
+// (sightK), sempre se colpite o con la visibilita' "Totale". Le proprie le
+// disegna sempre chi guarda (world.draw, shown). Solo le istanze che la
+// definizione vuole visibili (le altre restano nascoste come prima).
+export function pvpVisibility(world, sightK) {
+  const mp = world.mp;
+  if (!mp) return;
+  const g = world.g;
+  for (const [side, opp] of [[1, mp.mirror2], [2, mp.mirror1]]) {
+    const n = sightK(opp);
+    const near = (i, obj, r) => opp.nearWithin(i, obj, r + r * n, 2.01 * r);
+    for (const i of world.instances) {
+      if (!i.alive || i.ui || i.fx || world.sideOf(i) !== side) continue;
+      const def = world.objects[i.object];
+      if (!def || !def.visible) continue;
+      i.visible = g.fogville === 0 || i.hit === 1 || near(i, "ally_unit", 150) || near(i, "ally_build", 200)
+        || near(i, "castello", 500) || near(i, "torre", 500);
+    }
+  }
+}

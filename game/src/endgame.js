@@ -152,6 +152,7 @@ export function noMovesCheck(w) {
   const g = w.g;
   if (w.room === "menu" || g.gameover || g.victory || w.exists("victory_manager") || w.exists("gameover_manager")) return;
   if (w.room === "lvl03" && g.l3 && g.l3.phase === 2) return;
+  if (g.sk && g.sk.pvp) return; // §9.155: nella partita a due la fine la decide sk_manager
   if (canAct(w)) { g.nomoves = 0; return; }
   g.nomoves = (g.nomoves || 0) + 1;
   if (g.nomoves < NO_MOVES) return;
@@ -321,7 +322,10 @@ export function objectiveButton() {
           lines.push([y, tr("Time left: {t}", { t: hms(Math.max(0, mins * 60 - t)) })]); y += 30;
           lines.push([y, tr("Score: you {a}, the enemy {b}", { a: skirmishScore(w, "player"), b: skirmishScore(w, "cpu") })]);
         }
-        lines.push([mins ? y + 30 : y, tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) })]);
+        // [§9.155] nella partita a due l'avversario e' l'altro giocatore
+        const foe = S.pvp ? tr(w.mp && w.mp.local === 2 ? "Opponent: the red player" : "Opponent: the blue player")
+          : tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) });
+        lines.push([mins ? y + 30 : y, foe]);
         nobs = lines.length; // §9.122: il riquadro alto quanto le righe
       }
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si

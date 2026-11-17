@@ -41,9 +41,9 @@ determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
 coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
 selezione fuori dalla partita e le azioni come comandi; restano la campagna,
 cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
-3 parti simmetriche (§9.155: fatti i gemelli blu, lo specchio e la prova a
-due pagine; restano l'interfaccia del blu, la nebbia, la vittoria, il menu:
-§9.155 "Cosa resta"); 4 rete e lobby (WebRTC; scambio dei codici e
+3 parti simmetriche (§9.155: fatti i gemelli blu, lo specchio, la prova a
+due pagine, l'interfaccia del blu, la nebbia e la fine per parte; restano
+le cose in §9.155 "Cosa resta"); 4 rete e lobby (WebRTC; scambio dei codici e
 STUN/TURN da decidere, §9.152).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
@@ -10902,24 +10902,42 @@ giocatore e ogni edificio finito ha il suo blu).
   determinism.mjs (sk_padus, lvl06, match, 3000 passi) sono le stesse di
   prima del rifacimento (confrontate con 47f32a4 con la stessa impronta).
 
+**Fatto dopo** (stesso giorno, seconda tornata):
+- L'interfaccia di chi guarda: manager.drawGUI, drawEnd e drawMouser
+  ricevono lo specchio di chi guarda (world.worldFor(null)) e usano la sua
+  cassa (world.g): il riquadro di risorse, popolazione e inattivi del blu,
+  la minimappa ("i miei edifici"). L'obiettivo nella partita a due:
+  "Avversario: il giocatore blu/rosso" (endgame.js, texts.js). La vista di
+  partenza sulla propria base. I tetti della cassa (9999, popcap 99 e
+  quello scelto) anche per il blu.
+- La nebbia di guerra (multiplayer.js pvpVisibility, a ogni passo in
+  app.js): per le istanze delle due parti visible vuol dire "la vede
+  l'avversario", calcolato per tutte e due come per i nemici della CPU
+  (unita' 150 px, edifici 200, castelli e torri 500, di piu' di giorno,
+  sempre se colpite o con la visibilita' Totale). Cosi' il codice del
+  giocatore che guarda visible sul bersaglio vale per tutte e due le parti.
+  Il disegno (world.shown) mostra sempre le istanze di chi guarda (quelle
+  che la definizione vuole visibili), dell'avversario quelle che vede.
+- Le risorse scoperte dal blu (vis2, civilians.js reveal col suo specchio);
+  i civili blu conoscono quelle (known); il disegno e la minimappa del blu le
+  usano.
+- La fine (skirmish.js pvpCheck, pvpEnd): chi vince e' un dato comune
+  (global.skWinner), deciso da sk_manager per conquista, municipio o
+  punteggio (a tempo; a pari vince il rosso, provvisorio); il rosso vede la
+  vittoria e il blu la sconfitta (o il contrario), schermate cosmetiche (fx).
+  Il centro distrutto e "nessuna mossa" (noMovesCheck) non decidono da soli
+  nella partita a due. Dopo la fine le pagine possono differire
+  (global.victory, gameover): il controllo della rete si fermera' li'.
+- pvp.mjs: anche la fine (edifici blu distrutti: vince il rosso in tutte e
+  due le pagine, il rosso vede la vittoria, il blu la sconfitta).
+
 **Cosa resta (fase 3).**
-- L'interfaccia di chi guarda dal blu: il riquadro delle risorse e della
-  popolazione (manager.js legge global, non la cassa del blu), l'obiettivo
-  ("Enemy: Normal, Balanced"), la minimappa (colori delle parti), la vista
-  di partenza sulla propria base.
-- La nebbia di guerra nella partita a due: le istanze di tipo giocatore
-  sono sempre visibili (visible: true), quindi oggi l'avversario si vede
-  anche nella nebbia. Da fare: la visibilita' dell'avversario per parte,
-  calcolata nella partita per tutte e due le parti (deterministica: la
-  partita la legge, autoAttack "valid", i civili "known"), e il disegno
-  secondo quella di chi guarda.
-- La scoperta delle risorse (reveal: le vede chi ha unita' vicine) e' solo
-  del giocatore 1: per il blu le risorse lontane dal rosso restano "non
-  viste" (i suoi civili ne cercano meno). Da fare per parte.
-- La vittoria per parte (sk_manager guarda dalla parte 1: vince il rosso o
-  perde il rosso); la schermata di fine per chi guarda.
-- Il passaggio fra le parti di cose comuni: global.order (il numero d'ordine
-  delle unita'), i suggerimenti, le porte e le mura nella griglia dei
-  percorsi (Pathing.regions con enemy: le porte del blu andrebbero
-  "nemiche" per il rosso).
+- Cose comuni da dividere per parte: global.order (il numero d'ordine
+  delle unita', comune: deterministico ma condiviso), i suggerimenti (di chi
+  guarda), le porte e le mura nella griglia dei percorsi (Pathing.regions
+  con enemy: le porte del blu andrebbero "nemiche" per il rosso e viceversa),
+  le fiaccole delle case (houseTorches legge visible).
+- Un controllo di equita': una battaglia speculare (le stesse unita' in
+  posizioni ruotate) deve finire alla pari; nella prova a 360 px il rosso
+  ha perso un guerriero in piu' (l'ordine delle istanze nel passo?).
 - Il menu della partita a due (fase 4, insieme alla rete).

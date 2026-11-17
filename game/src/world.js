@@ -164,6 +164,19 @@ export class World {
     if (mp.actor) return this.sideWorld(mp.actor);
     return this.sideWorld(!inst || inst.ui || inst.fx ? mp.local : 1);
   }
+  // [§9.155] si disegna? Fuori dalla partita a due: visible. Nella partita
+  // a due le istanze della parte di chi guarda sempre (se la definizione le
+  // vuole visibili: per loro visible e' "la vede l'avversario",
+  // multiplayer.js pvpVisibility); le risorse, per chi guarda dal blu, se le
+  // ha scoperte il blu (vis2)
+  shown(i) {
+    const mp = this.mp;
+    if (!mp) return i.visible;
+    const s = this.sideOf(i);
+    if (s && s === mp.local) { const def = this.objects[i.object]; return !!(def && def.visible) || i.visible; }
+    if (!s && mp.local === 2 && i.vis2 !== undefined) return i.vis2;
+    return i.visible;
+  }
   sideWorld(side) {
     const mp = this.mp;
     return !mp ? this : side === 2 ? mp.mirror2 : mp.mirror1;
@@ -1012,10 +1025,11 @@ export class World {
     // (p2sprites.js): la tabella vale mentre si disegna una di loro
     const blue = this.p2Sprites || null;
     const tint = (i) => setSpriteRemap(blue && i.object.startsWith("p2_") ? blue : null);
-    for (const i of list) if (i.visible) { tint(i); this.fire(i, "drawBelow", d); }
+    const shown = (i) => this.shown(i);
+    for (const i of list) if (shown(i)) { tint(i); this.fire(i, "drawBelow", d); }
     for (const i of list) {
       while (si < systems.length && systems[si].depth > i.depth) { setSpriteRemap(null); r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
-      if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
+      if (!shown(i) || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
       tint(i);
       r.shade = shade ? shade(i.x, i.y) : 1;
       if (this.fire(i, "draw", d)) continue;
@@ -1047,7 +1061,7 @@ export class World {
     let managerDone = !manager;
     for (const i of list) {
       if (!managerDone && i.depth <= -1) { setSpriteRemap(null); manager(); managerDone = true; }
-      if (i.visible) { tint(i); this.fire(i, "drawEnd", d); }
+      if (shown(i)) { tint(i); this.fire(i, "drawEnd", d); }
     }
     setSpriteRemap(null);
     if (!managerDone) manager();

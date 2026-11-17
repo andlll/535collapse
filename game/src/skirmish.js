@@ -169,6 +169,7 @@ export const rainGap = (g) => RAIN_EVERY[g.sk && g.sk.rain === "frequent" ? "fre
 // Il tetto di popolazione scelto (manager.js lo tiene a 99)
 export function skirmishPopcap(g) {
   if (g.sk && g.popcap > g.sk.popMax) g.popcap = g.sk.popMax;
+  if (g.sk && g.p2 && g.p2.popcap > g.sk.popMax) g.p2.popcap = g.sk.popMax; // §9.155: anche il blu
 }
 
 // Il punteggio per la vittoria a tempo: il valore di quello che si ha in
@@ -206,6 +207,7 @@ export function skManager() {
       const g = w.g, S = g.sk;
       if (!S || g.victory || g.gameover || w.exists("victory_manager") || w.exists("gameover_manager")) return;
       skirmishPopcap(g);
+      if (S.pvp) { pvpCheck(w, g, S); return; } // §9.155: la partita a due
       if (S.truce > 0 && g.en && g.en.hold && elapsed(g) >= S.truce * 60) g.en.hold = 0;
       const win = () => { g.victory = 1; g.skResult = "win"; w.create("victory_manager", 0, 0); };
       const lose = (why) => { g.gameover = 1; g.skLost = why; w.create("gameover_manager", 0, 0); };
@@ -226,6 +228,42 @@ export function skManager() {
       else if (myBuildings === 0) lose("buildings");
     },
   };
+}
+
+// [§9.155] La fine della partita a due. Chi vince e' un dato comune
+// (global.skWinner, 1 il rosso, 2 il blu), deciso qui (sk_manager e' neutro:
+// w e' lo specchio della parte 1) come contro la CPU: conquista (perde chi
+// resta senza edifici), municipio (chi perde il centro), punteggio (a
+// tempo: piu' alto vince, a pari il rosso: provvisorio). Cosa si vede dipende
+// da chi guarda: vittoria a chi ha vinto, sconfitta all'altro; le schermate
+// sono cosmetiche (fx: fuori dall'impronta). Da qui le due pagine possono
+// differire (global.victory e gameover): il controllo della rete si ferma
+// alla fine (fase 4).
+function pvpCheck(w, g, S) {
+  const mp = w.mp;
+  if (!mp || g.skWinner) return;
+  const built = (s) => (s === 1 ? w.number("ally_build") - w.number("cc_barn") : w.number("p2_build") - w.number("p2_cc_barn"));
+  let lost = 0, why = "buildings";
+  const mins = scoreMinutes(S.victory);
+  if (S.victory === "townhall") {
+    why = "townhall";
+    if (!w.exists("centro")) lost = 1; else if (!w.exists("p2_centro")) lost = 2;
+  } else if (mins && elapsed(g) >= mins * 60) {
+    const a = skirmishScore(mp.mirror1, "player"), b = skirmishScore(mp.mirror2, "player");
+    g.skScores = [a, b];
+    why = "score";
+    lost = a >= b ? 2 : 1;
+  } else if (built(2) === 0) lost = 2;
+  else if (built(1) === 0) lost = 1;
+  if (lost) pvpEnd(w, g, 3 - lost, why);
+}
+function pvpEnd(w, g, winner, why) {
+  g.skWinner = winner;
+  const local = w.mp.local;
+  // il punteggio dalla parte di chi guarda ("tu, l'avversario")
+  if (g.skScores) g.skScore = local === 1 ? g.skScores : [g.skScores[1], g.skScores[0]];
+  if (local === winner) { g.victory = 1; g.skResult = "win"; w.create("victory_manager", 0, 0, { fx: true }); }
+  else { g.gameover = 1; g.skLost = why === "townhall" ? "buildings" : why; w.create("gameover_manager", 0, 0, { fx: true }); }
 }
 
 // ---------------------------------------------------- la CPU (economy.js)

@@ -112,7 +112,9 @@ function fieldTo(w, p, i, tx, ty, fallback = true) {
 // destro resta quella (woodx/goldx/stonex sulla sua origine, rightClick):
 // prima il civile, a 250 px, passava all'albero piu' vicino a se', e dal
 // deposito tornava all'albero piu' vicino al deposito.
-const known = (i, r) => !sideOf(i).player || r.visible === true;
+// [§9.155] i civili blu della partita a due conoscono le risorse scoperte
+// dal blu (vis2, reveal)
+const known = (i, r) => !sideOf(i).player || (i.object.startsWith("p2_") ? r.vis2 === true : r.visible === true);
 function nearestKnown(w, i, name, x, y) {
   let best = null, bd = Infinity;
   for (const r of w.all(name)) {
@@ -1642,6 +1644,12 @@ function ominoPanel(i, w, d) {
 // Esplorata o Totale tutte le risorse (alberi, miniere, pietre, rovine) si
 // vedono da subito: prima solo gli alberi e solo con Totale (fogville 0).
 function reveal(i, w, dist, fogAware) {
+  // [§9.155] nella partita a due anche per il blu (vis2), col suo specchio
+  if (w.mp && i.vis2 !== true) {
+    const w2 = w.mp.mirror2;
+    i.vis2 = (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") || w2.nearWithin(i, "ally_unit", dist)
+      || w2.nearWithin(i, "ally_build", dist) || (fogAware && w.g.fogville === 0);
+  }
   if (i.visible) return;
   if (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") { i.visible = true; return; }
   // §6.3 N3: nearWithin da' lo stesso risultato di

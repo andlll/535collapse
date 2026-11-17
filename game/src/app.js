@@ -30,7 +30,7 @@ import { FAM, clicker, placer, buildAction, fond, built, allyBuild, campoFond, c
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
 import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker, extendAction, gateAction } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
-import { FogMap } from "./fog.js";
+import { FogMap, sightK } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { Particles } from "./particles.js";
@@ -53,7 +53,7 @@ import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
-import { setupMultiplayer } from "./multiplayer.js"; // §9.155
+import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
@@ -392,7 +392,7 @@ async function main() {
   const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
-  const skParams = isSkirmish(roomName) && !params.get("load") ? { ...loadSkirmish(), pvp } : null;
+  const skParams = isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
   // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
   // sprite blu per il disegno (p2sprites.js)
   if (pvp) {
@@ -483,7 +483,11 @@ async function main() {
   for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => { pause.dirty = true; });
   resize();
   // [§9.118] schermaglia: la vista sulla propria base, a misura nota
-  if (skStarts) { cam.x = skStarts.player[0] - cam.w / 2; cam.y = skStarts.player[1] - cam.h / 2; cam.clamp(); }
+  // ([§9.155] chi gioca blu sulla base blu)
+  if (skStarts) {
+    const [bx, by] = world.mp && world.mp.local === 2 ? skStarts.cpu : skStarts.player;
+    cam.x = bx - cam.w / 2; cam.y = by - cam.h / 2; cam.clamp();
+  }
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
   // mouse, Step, poi la view segue il puntatore.
@@ -608,6 +612,7 @@ async function main() {
     settleEnemies(world, path); // §9.116
     defendBuildings(world); // §9.116
     for (const w of sides) settleSiege(w); // §9.79
+    pvpVisibility(world, sightK); // §9.155: la nebbia di guerra della partita a due
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
     for (const w of sides) houseTorches(w); // §9.104: le fiaccole sulle case
     recountSelection(mine); // §6.1 n.81
@@ -656,10 +661,10 @@ async function main() {
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
     world.draw(r, draw, cam, () => {
-      manager.drawEnd(draw, world);
+      manager.drawEnd(draw, world.worldFor(null)); // §9.155: lo specchio di chi guarda
       fogLayer.draw();
     }, blobs.length ? (x, y) => shadeAt(blobs, x, y) : null);
-    manager.drawMouser(draw, world);
+    manager.drawMouser(draw, world.worldFor(null));
   };
 
   // la scena: mondo, poi l'interfaccia (Draw GUI)
@@ -692,7 +697,7 @@ async function main() {
     draw.reset();
     world.drawGUI(draw);
     draw.reset();
-    manager.drawGUI(draw, cam, world, fpsNow);
+    manager.drawGUI(draw, cam, world.worldFor(null), fpsNow);
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();

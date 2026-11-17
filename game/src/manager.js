@@ -238,10 +238,13 @@ export class Manager {
     g.frame++;
     if (this.world) this.world.twilight = this.twilight(); // §9.84
     // manager Step [C]: tetti alle risorse (la pietra non ha tetto) e a popcap
-    if (g.food > 9999) g.food = 9999;
-    if (g.wood > 9999) g.wood = 9999;
-    if (g.gold > 9999) g.gold = 9999;
-    if (g.popcap > 99) g.popcap = 99;
+    // [§9.155] anche la cassa del giocatore 2 (partita a due)
+    for (const c of g.p2 ? [g, g.p2] : [g]) {
+      if (c.food > 9999) c.food = 9999;
+      if (c.wood > 9999) c.wood = 9999;
+      if (c.gold > 9999) c.gold = 9999;
+      if (c.popcap > 99) c.popcap = 99;
+    }
     if (this.fogalpha > 0) this.fogalpha -= 0.02;
     // [§9.91] cielo coperto e gocce che crescono e calano piano
     if (this.world) {
@@ -398,8 +401,10 @@ export class Manager {
   }
 
   // manager Draw_GUI [C], coordinate in pixel CSS della finestra (la "port").
+  // (world: lo specchio di chi guarda nella partita a due, §9.155; world.g la
+  // sua cassa)
   drawGUI(d, cam, world, fps) {
-    const g = this.g, W = cam.cssW, H = cam.cssH;
+    const g = world.g || this.g, W = cam.cssW, H = cam.cssH;
     // [§9.27] la minimappa non sulle schermate di vittoria e di sconfitta
     const ending = world.number("victory_manager") > 0 || world.number("gameover_manager") > 0;
     if (this.room !== "menu" && !ending) {
@@ -554,14 +559,14 @@ export class Manager {
     // pietra, rovina), coi colori di prima (giallo l'oro, grigio la pietra);
     // gli alberi triangoli
     for (const i of world.all("albero")) {
-      if (!i.visible) continue;
+      if (!world.shown(i)) continue; // §9.155: per chi guarda (vis2 dal blu)
       const [x, y] = P(i);
       d.setAlpha(MM.treeAlpha);
       d.triangleColour(x - 60 / sz, y + 60 / sz, x + 60 / sz, y + 60 / sz, x, y - 60 / sz, MM.tree, MM.tree, MM.tree, false);
     }
     for (const [name, col] of [["miniera_oro", c.yellow], ["pietra_grande", c.gray], ["pietr_piccolo", c.gray],
                                ["castelloruin", c.gray], ["torreruin", c.gray], ["chiesaruin", c.gray]]) {
-      for (const i of world.all(name)) if (i.visible) drawIcon(d, world, i, ...P(i), sz, col);
+      for (const i of world.all(name)) if (world.shown(i)) drawIcon(d, world, i, ...P(i), sz, col);
     }
     d.setAlpha(1);
     // mura e porte: linee, come nell'originale [C]
@@ -574,7 +579,7 @@ export class Manager {
     for (const [who, col, needVisible] of [["ally_build", MM.ally, false], ["enemy_build", MM.enemy, true],
                                            ["ally_unit", MM.ally, false], ["enemy_unit", MM.enemy, true]]) {
       for (const i of world.all(who)) {
-        if (needVisible && !i.visible) continue;
+        if (needVisible && !world.shown(i)) continue;
         // [§9.110] gli oggetti senza sprite no: cc_barn (il deposito del cibo
         // del centro, invisibile: col suo nome dava al centro anche l'icona
         // del mulino) e i pezzi invisibili delle mura (oodl, oval...)

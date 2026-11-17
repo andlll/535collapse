@@ -12,7 +12,8 @@
 // fatto davvero le sue cose (legna per tutti e due, la casa blu, morti da
 // tutte e due le parti) e il blu si deve vedere blu (gli sprite dei nemici
 // al disegno). Controllo: un comando del giocatore 2 diverso cambia le
-// impronte.
+// impronte. Alla fine gli edifici blu distrutti: vince il rosso, in tutte e
+// due le pagine; il rosso vede la vittoria, il blu la sconfitta.
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -133,18 +134,29 @@ if (process.env.SHOT) {
   await B.evaluate(() => { const G = window.__game, c = G.world.all("p2_centro").next().value; if (c) { G.cam.x = c.x - G.cam.w / 2; G.cam.y = c.y - G.cam.h / 2 + 150; } G.loop.render(); });
   await B.screenshot({ path: process.env.SHOT });
 }
+// la fine: gli edifici blu distrutti in tutte e due le pagine; vince il
+// rosso (global.skWinner, uguale), il rosso vede la vittoria e il blu la
+// sconfitta (§9.155, pvpCheck)
+const end = await Promise.all([A, B].map((P) => P.evaluate(() => {
+  const G = window.__game, w = G.world;
+  for (const b of [...w.all("p2_build")]) w.destroy(b);
+  for (let k = 0; k < 40; k++) G.advance(1);
+  return { vince: G.g.skWinner || 0, vittoria: w.exists("victory_manager"), sconfitta: w.exists("gameover_manager") };
+})));
 await browser.close();
 
 const fought = after.cadaveri[0] + after.cadaveri[1] > 0 && (after.guerrieri[0] + after.arcieri[0] < 6) && (after.guerrieri[1] + after.arcieri[1] < 6);
 const ok = errs.length === 0 && !bad && control && hashes.length === Math.ceil(STEPS / EVERY)
   && plan.centri[1] === 1 && plan.centri[2] === 0 && !plan.eco && plan.om2.length === 3
   && after.legna[0] > 0 && after.legna[1] > 0 && after.casaBlu >= 1 && after.caseRosse === 0 && after.civili[1] >= 4 && fought
+  && end[0].vince === 1 && end[1].vince === 1 && end[0].vittoria && !end[0].sconfitta && end[1].sconfitta && !end[1].vittoria
   && look.tabella > 500 && look.civile && look.civile[1] && look.centro && look.centro[1] === "cc_b";
 console.log(room, "partita a due, passi", STEPS, "impronte uguali (rosso = blu):", bad ? "NO" : `${hashes.length}/${hashes.length}`);
 if (bad) console.log("  divergono al passo", bad.passo, "->", bad.diverso);
 console.log("  inizio", JSON.stringify({ centri: plan.centri, regiaCPU: plan.eco, civiliBlu: plan.om2.length, cassaBlu: plan.p2, casaBlu: plan.spot }));
 console.log("  fatto ", JSON.stringify(after));
 console.log("  blu   ", JSON.stringify(look));
+console.log("  fine  ", JSON.stringify({ rosso: end[0], blu: end[1] }));
 console.log("  controllo (un ordine blu diverso cambia la partita):", control ? "si'" : "NO");
 if (errs.length) console.log(errs.slice(0, 3));
 console.log(ok ? "ok" : "NON VA");
