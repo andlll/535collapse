@@ -11231,7 +11231,12 @@ parti).
 - Il gioco in singolo non cambia: col seme fisso le impronte di
   determinism.mjs (sk_padus, lvl06, match, 3000 passi) sono le stesse di
   main (2c37b62) prima del lavoro.
-- La suite completa nel browser della CI: SUITE_RISULTATO.
+- Anche netfake.mjs su sk_bardonis (seme 3: 8 confronti su 8 uguali) e su
+  sk_padus con un canale piu' lento (LAG=14 giri): la stessa impronta finale
+  (e4d4250e086557c3) del canale a 6 giri: la partita non dipende dai tempi
+  del canale.
+- La suite completa nel browser della CI (le 45 prove di prima piu' le due
+  nuove), in questa macchina, 4 alla volta: 47 su 47 passate.
 
 **Come riprendere** (cosa resta, in ordine di utilita'):
 1. *Provarla su due computer veri*, in due reti diverse (casa e telefono,
