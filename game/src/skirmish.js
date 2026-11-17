@@ -79,18 +79,21 @@ const KEY = "535.skirmish";
 
 export function loadSkirmish() {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s && typeof s === "object") {
-      const out = { ...SK_DEFAULTS };
-      for (const k of Object.keys(SK_DEFAULTS)) {
-        if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
-        const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
-        if (vs && vs.includes(s[k])) out[k] = s[k];
-      }
-      return out;
-    }
+    return cleanSkirmish(JSON.parse(localStorage.getItem(KEY) || "null"));
   } catch (e) { /* storage non disponibile: i valori di partenza */ }
   return { ...SK_DEFAULTS };
+}
+// i parametri validi di `s` (gli altri ai valori di partenza): quelli
+// salvati, e [§9.156] quelli che arrivano nel codice della partita a due
+export function cleanSkirmish(s) {
+  const out = { ...SK_DEFAULTS };
+  if (!s || typeof s !== "object") return out;
+  for (const k of Object.keys(SK_DEFAULTS)) {
+    if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
+    const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
+    if (vs && vs.includes(s[k])) out[k] = s[k];
+  }
+  return out;
 }
 export function saveSkirmish(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* solo per questa sessione */ }

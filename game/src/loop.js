@@ -10,6 +10,8 @@
 //   frame su due, senza tetto si segue lo schermo (90/120 Hz).
 // - Pagina in background (visibilitychange): ciclo fermo, niente passi
 //   recuperati al ritorno.
+// - [§9.156] step() che restituisce false (la partita in rete aspetta
+//   l'altro giocatore): niente passi in questo frame, si disegna lo stesso.
 
 const MAX_STEPS = 5;
 // [§6.1 n.88] Tolleranza dell'accumulatore: rAF a 60 Hz non arriva mai
@@ -19,6 +21,7 @@ const MAX_STEPS = 5;
 // ogni frame a 60 Hz fa un passo; in media i passi restano 60 al secondo
 // (l'accumulatore puo' scendere fino a -1,5 ms e recupera).
 const SLACK = 1.5;
+const STALL_ACC = 6;
 
 export class Loop {
   constructor({ speed = 60, step, render, onFrame }) {
@@ -64,12 +67,17 @@ export class Loop {
     this.acc += Math.min(250, now - this.last);
     this.last = now;
     let steps = 0;
+    let stalled = false;
     while (this.acc >= this.stepMs - SLACK && steps < MAX_STEPS) {
-      this.step();
+      // [§9.156] la partita in rete aspetta il turno dell'altro giocatore:
+      // il passo non c'e' stato, il tempo resta da recuperare (non oltre
+      // STALL_ACC passi: dopo un'attesa lunga si riparte, non si corre)
+      if (this.step() === false) { stalled = true; break; }
       this.acc -= this.stepMs;
       steps++;
     }
     if (steps === MAX_STEPS) this.acc = 0;
+    if (stalled) this.acc = Math.min(this.acc, STALL_ACC * this.stepMs);
     let rendered = false;
     // margine di 2 ms: rAF non arriva mai esattamente ogni 16,67 ms
     if (!this.fpsCap || now - this.lastRender >= 1000 / this.fpsCap - 2) {

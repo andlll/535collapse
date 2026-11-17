@@ -35,15 +35,18 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
-**Multiplayer 1 contro 1** (§9.152-§9.155; decisioni dell'autore: 1v1, con un
-codice, preferibilmente connessione diretta, parti simmetriche). Fasi: 1
+**Multiplayer 1 contro 1** (§9.152-§9.156; decisioni dell'autore: 1v1, con un
+codice, connessione diretta, parti simmetriche). Fasi: 1
 determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
 coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
 selezione fuori dalla partita e le azioni come comandi; restano la campagna,
 cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
 3 parti simmetriche (§9.155: fatta; gemelli blu, specchio, interfaccia,
 nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
-resta"); 4 rete e lobby (da fare: §9.155 "Come riprendere: la fase 4").
+resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
+coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
+provare su due computer in reti diverse; restano TURN, codici piu' corti,
+ritardo adattivo, riconnessione: §9.156 "Come riprendere").
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -11039,3 +11042,215 @@ Attenzione: il vantaggio di chi nasce dopo (sopra, equita'); le cose di chi
 guarda che non devono mai cambiare la partita (se una prova a due pagine
 diverge, la sonda: EVERY=20 DIFFS=20 pvp.mjs stampa il primo campo
 diverso, come per alLife, _fogStamp, leafHit).
+
+### 9.156 Multiplayer, fase 4: la partita a due in rete
+
+Richiesta dell'autore (17 novembre 2026, nuova PR, versione 0.2612): la
+fase 4, ripartendo da "Come riprendere: la fase 4" di §9.155. Decisioni
+dell'autore: **1 contro 1** con le parti simmetriche gia' fatte
+(`?pvp=1&parte=1|2`); **connessione diretta** fra i due browser (WebRTC,
+RTCDataChannel); lo scambio dei codici **senza server**: chi crea mostra un
+codice lungo, l'altro lo incolla e risponde col suo, da incollare a sua
+volta; se una rete non si collega senza TURN, per ora **un messaggio
+chiaro**. Il resto l'ho deciso io (sotto, "Scelte mie": da rivedere con
+l'autore se vuole).
+
+**Come si gioca.** Menu, Schermaglia: mappa e opzioni come sempre, poi
+"Partita a due" (a sinistra di "Inizia"). Il pannello riassume la partita
+(mappa, vittoria, risorse, popolazione, visibilita', giorno e notte, pioggia:
+difficolta', stile della CPU e tregua sono della CPU) e offre:
+- **"Crea una partita"**: si apre la partita (il rosso) con la sala
+  d'attesa: "1. Manda questo codice all'altro giocatore" (la casella col
+  codice, "Copia") e "2. Incolla qui il codice di risposta" ("Collega");
+- **il codice ricevuto** da incollare (la casella sotto): appena e' valido il
+  pannello dice che partita e' ("Giocherai col blu") e "Entra" apre la stessa
+  partita (stessa mappa, opzioni e seme di chi l'ha creata, anche se le sue
+  opzioni nel menu sono altre), con il codice di risposta da rimandare.
+Quando chi ha creato incolla la risposta, il canale si apre, le due pagine
+si salutano, si misura il tempo di andata e ritorno e la partita parte
+nelle due pagine; la sala d'attesa sparisce. I codici: ~780 caratteri
+quello di chi crea, ~600 la risposta (si possono incollare con a capo, spazi
+o virgolette della chat: si tengono solo i caratteri del codice). Gli errori
+detti: un codice tagliato o sbagliato, una risposta incollata al posto del
+codice o viceversa, una versione del gioco diversa, un browser senza WebRTC,
+le reti che non si collegano.
+
+**I file.**
+- `netcode.js`: i codici. "DV" + tipo (O offerta, A risposta) + "z"
+  (deflate, CompressionStream) o "p" (senza) + base64url di un JSON: la
+  descrizione WebRTC (SDP) con tutti gli indirizzi gia' raccolti (niente
+  "trickle": un codice per parte), la versione del gioco, e in quello di chi
+  crea la partita (mappa, opzioni, seme).
+- `rtc.js`: RtcLink (RTCPeerConnection con un canale negoziato, id 0,
+  affidabile e in ordine; offer, answer, accept; i messaggi in JSON) e
+  FakeLink (il canale finto delle prove: una coda che la prova porta
+  all'altra pagina). I server STUN (sotto). La raccolta degli indirizzi
+  finisce quando il browser la dice finita, o dopo 2,5 s con almeno un
+  indirizzo (qui la raccolta non finiva mai da sola: aspettava 5 s e oltre),
+  al piu' dopo 8 s.
+- `lockstep.js`: il protocollo (sotto), senza browser ne' mondo: si prova in
+  node.
+- `netgame.js`: la colla nella pagina: chi siamo (`netParams`, prima che la
+  room nasca: chi crea `?net=host`, chi entra `?net=join`, il seme
+  nell'indirizzo, le opzioni in sessionStorage), il menu (`netMenu`), la
+  sala d'attesa, gli eventi del lockstep come avvisi, l'attesa del turno
+  dell'altro, la pausa.
+- `netui.js`: i pannelli HTML (servono caselle di testo vere per copiare e
+  incollare) nello stile del menu e col font del gioco (domtext.js); i
+  tasti battuti nelle caselle non arrivano al gioco (input.js ascolta la
+  finestra), cosi' un Ctrl+V non diventa un tasto della partita; la barra
+  degli avvisi in alto (`#net-bar`).
+- app.js: `?net=` accende la partita a due (come `?pvp=1`) con le opzioni di
+  chi crea (`skParams`), la parte da `net.local`; il passo chiede
+  `canStep()` prima (se manca il turno dell'altro, restituisce false e il
+  ciclo aspetta) e `afterStep()` dopo; i comandi per il passo `now + D`;
+  `__game.net` e `__game.pump(n)` per le prove. loop.js: un passo che
+  restituisce false ferma i passi del fotogramma senza consumare il tempo
+  (al piu' 6 passi da recuperare: dopo un'attesa lunga si riparte, non si
+  corre). pause.js: la pausa in rete (sotto). menu.js: il pulsante;
+  `VERSION` esportata (la confrontano i codici e il saluto). skirmish.js:
+  `cleanSkirmish` (le opzioni valide di un oggetto: quelle salvate e quelle
+  che arrivano nel codice). texts.js: 37 testi nuovi nelle sei lingue.
+
+**Il lockstep** (lockstep.js; §9.152-§9.155 per determinismo, comandi,
+parti).
+- *Il ritardo dei comandi.* Un comando dato quando il mondo e' al passo N si
+  esegue al passo N + D, uguale per i due. D lo sceglie chi crea all'avvio:
+  5 andate e ritorni (ping), la mediana, `D = ceil((rtt/2 + 40 ms) /
+  16,7 ms)` fra 4 e 15 passi (67-250 ms; in locale 4, con 100 ms di andata
+  e ritorno 6).
+- *I turni.* Finito il passo N ogni pagina manda il turno N + D (i suoi
+  comandi di quel passo, anche nessuno: `{t: "T", s}`). Il passo N si gioca
+  solo col turno N dell'altro (i passi prima di D non hanno comandi per
+  costruzione); se non c'e' la pagina aspetta, e la piu' lenta detta il passo
+  a tutte e due. Dopo 0,6 s d'attesa la barra "In attesa dell'altro
+  giocatore...", dopo 8 s un pannello con "Lascia la partita"; spariscono
+  appena il turno arriva.
+- *L'ordine.* Nel passo i comandi si eseguono per (passo, giocatore,
+  numero) (commands.js runDue, gia' cosi' da §9.153): l'ordine d'arrivo non
+  conta. Ogni messaggio dice a che passo si riferisce, quindi anche il
+  disordine non conta (il canale vero e' comunque in ordine; i turni arrivati
+  prima di "start" si tengono da parte). I propri comandi si eseguono nella
+  copia passata da JSON, cioe' come li riceve l'altro (-0, NaN, campi
+  undefined uguali per tutti e due). Un turno coi comandi di un altro
+  giocatore o di un altro passo si scarta.
+- *Le impronte.* Ogni 300 passi (CHECK_EVERY) ogni pagina manda l'impronta
+  (snapshot.js stateHash, `{t: "H"}`); diverse: la barra "Le due partite non
+  sono piu' uguali (passo N): da qui i due giocatori possono vedere cose
+  diverse", lo stato completo (stateDump) in `__game.net.desyncDump` e in
+  console. Si confronta fino alla fine della partita (global.skWinner, allo
+  stesso passo nelle due pagine); dopo, vittoria e sconfitta sono di chi
+  guarda (§9.155) e le pagine vanno avanti da sole, senza turni ne' attese.
+- *La pausa* e' un comando ("pausa", col passo in cui e' stata chiesta): Esc
+  o il pulsante di pausa (o il puntatore liberato) la chiedono, le due
+  pagine si fermano allo stesso passo col menu di pausa e il sottotitolo
+  "Pausa del giocatore rosso/blu". Riprende chi vuole dei due (Riprendi o
+  Esc: `{t: "R", at}` col passo della pausa; se arriva prima che l'altra
+  pagina ci sia arrivata, quella pausa non si apre). Due pause chieste
+  insieme ne fanno una sola (si ignora una pausa chiesta prima dell'ultima
+  eseguita). La pausa non tocca la partita: e' solo tempo fermo.
+- *L'avvio.* Aperto il canale ognuno manda `{t: "hello"}` con versione del
+  gioco e del protocollo (diverse: "L'altro giocatore ha un'altra versione
+  del gioco"). Chi crea misura i ping e manda `{t: "start", delay}`; si parte
+  dal passo 0 (il ciclo gira gia' durante la sala d'attesa, ma i passi
+  aspettano: dietro c'e' il nero della dissolvenza d'ingresso, che parte col
+  primo passo).
+- *La fine del canale.* Lasciare la partita ("Lascia la partita" nella
+  pausa, "Torna al menu", chiudere la pagina) manda `{t: "bye"}`: l'altro
+  legge "L'altro giocatore ha lasciato la partita."; il canale chiuso senza
+  saluto: "La connessione con l'altro giocatore si e' persa." In tutti e
+  due i casi la partita si ferma col menu di pausa (senza "Riprendi") e la
+  barra rossa. Dopo la fine della partita niente avvisi.
+
+**Scelte mie** (da rivedere con l'autore se vuole):
+- chi crea e' il rosso, chi entra il blu (la posizione sulla mappa resta a
+  caso col seme, come contro la CPU);
+- nella partita in rete niente salvataggi (ne' automatici), niente
+  "Ricomincia livello" e niente trucchi (V + Alt: il comando arriva ma non
+  fa niente); il menu di pausa ha "Lascia la partita" al posto di "Torna al
+  menu";
+- la pausa la riprende chiunque dei due;
+- i server STUN: `stun.l.google.com:19302` e `stun.cloudflare.com:3478`
+  (rtc.js STUN_SERVERS). Sono servizi esterni (vedono gli indirizzi dei due
+  giocatori, nessun dato della partita): **da confermare con l'autore**.
+  `?stun=0` (anche dal menu: passa alla partita) ne fa a meno, per le prove
+  in locale.
+
+**Trovato per strada.**
+- *Chi entra va in "failed" prima della risposta.* Chi entra comincia i
+  controlli di connessione appena crea la risposta, ma chi ha creato non
+  risponde finche' non incolla il codice di ritorno: senza risposte Chromium
+  dice "failed" dopo ~15 s (sonda con un indirizzo irraggiungibile). Non e'
+  la fine: con la risposta incollata dopo 40 s (e dopo 60 s, con indirizzi
+  raggiungibili) si collegano lo stesso. Quindi prima che il canale si sia
+  mai aperto "failed" non chiude niente (rtc.js), e chi entra continua ad
+  aspettare; chi crea, se dopo aver incollato la risposta non si collega in
+  25 s (o il browser dice "failed"), legge il messaggio delle reti che non
+  si collegano, ma resta in ascolto (se poi si collega, si parte). Su reti
+  vere con NAT, se chi crea aspetta troppo a incollare la risposta, la
+  connessione potrebbe non riprendersi: da provare a mano.
+- Difetti del gioco: nessuno trovato in questo lavoro (le prove esistenti,
+  sotto).
+
+**Prove.**
+- `test/lockstep.test.mjs` (unitaria): due "pagine" con un mondo
+  giocattolo e un canale finto che ritarda fino a 6 giri e rimescola, a
+  velocita' irregolari: stesso stato e stessi comandi agli stessi passi
+  (3 semi, 400 passi), nessun comando prima di D passi; l'avvio e il
+  ritardo misurato; versioni diverse; la pausa allo stesso passo, una
+  ripresa prima della pausa, due pause chieste insieme; una differenza vista
+  alla prima impronta da tutte e due; il saluto, il canale perso, la fine.
+  I codici: andata e ritorno, incollati con a capo e virgolette, errori.
+- `test/i18n.test.mjs`: ogni tr("...") di netgame.js e pause.js ha la sua
+  traduzione.
+- `test/browser/netfake.mjs` (nella CI): due pagine (rosso 1280x720, blu
+  960x600) con `?net=fake`, il lockstep vero, e la prova che porta i
+  messaggi in ritardo (fino a 6 giri) e in disordine, con le pagine che
+  avanzano a scatti irregolari (0-4 passi per giro). I comandi li danno le
+  pagine per la strada vera (world.act): civili in coda, legna, la casa
+  blu; al passo 900 due eserciti al centro; la pausa con Esc vero in A,
+  ripresa con Esc in B. Sk_padus, seme 7, 2400 passi, ritardo 5: 8 confronti
+  su 8 uguali, la stessa impronta alla fine, gli stessi 8 comandi agli
+  stessi passi nelle due pagine (ognuno 5 passi dopo il passo in cui e'
+  stato dato), la pausa allo stesso passo (1306/1306), legna 330/250, la
+  casa blu, morti da tutte e due le parti. Controlli: la pagina B cambiata di
+  nascosto (7 di legna al blu) -> tutte e due avvisano al passo 2700; A
+  lascia la partita -> B "L'altro giocatore ha lasciato la partita", ferma.
+- `test/browser/rtc.mjs` (nella CI): WebRTC vero fra due pagine dello stesso
+  Chromium, tutto il percorso coi clic e le caselle veri, a tempo vero: A
+  nel menu (Schermaglia, Partita a due, Crea), B nel menu (incolla il codice
+  di A con del testo attorno, Entra), A incolla la risposta (Collega); la
+  partita parte nelle due pagine (stesso seme e room, rosso e blu, la sala
+  d'attesa sparita); un civile per parte; pausa con Esc in A, ripresa con
+  Esc in B (stesso passo); 950 passi coi confronti a 300, 600, 900 uguali;
+  A torna al menu e B lo sa. In questa macchina: codice 775 caratteri,
+  risposta 606, ritardo 4 passi, andata e ritorno 2 ms.
+- Il gioco in singolo non cambia: col seme fisso le impronte di
+  determinism.mjs (sk_padus, lvl06, match, 3000 passi) sono le stesse di
+  main (2c37b62) prima del lavoro.
+- La suite completa nel browser della CI: SUITE_RISULTATO.
+
+**Come riprendere** (cosa resta, in ordine di utilita'):
+1. *Provarla su due computer veri*, in due reti diverse (casa e telefono,
+   due case): e' l'unica prova che manca (qui le due pagine sono nella
+   stessa macchina). Dopo l'unione su main: https://andlll.github.io/535collapse/
+   da due computer, Schermaglia, Partita a due. Se non si collegano: il
+   messaggio delle reti; se si separano: la barra arancione, e in console
+   (F12) "[535 rete] partite diverse" con lo stato (`__game.net.desyncDump`
+   da confrontare fra i due).
+2. *TURN* (un server di inoltro, a pagamento o self-hosted: decisione
+   dell'autore) per le reti che non si collegano; basta aggiungerlo a
+   `iceServers` in rtc.js.
+3. *Codici piu' corti*: un SDP ridotto ai campi necessari (ufrag, pwd,
+   fingerprint, indirizzi: ~150 caratteri) ricostruito dall'altra parte,
+   oppure un piccolo servizio di presentazione con codici di 6 lettere
+   (§9.152).
+4. *Il ritardo adattivo*: oggi D si misura una volta all'avvio; si
+   potrebbe rimisurare (i turni portano gia' il passo) e cambiarlo d'accordo
+   a un passo futuro.
+5. *Riconnettersi* dopo una caduta breve (oggi la partita si ferma), i
+   salvataggi nella partita in rete (tutte e due le pagine dallo stesso
+   stato), la velocita' come comando (il gioco non ha velocita' diverse).
+6. Le cose rimaste da §9.155 ("Cosa resta"): altri confronti di nomi
+   d'oggetto per il blu, global.order comune, il vantaggio di chi nasce dopo
+   (equita').

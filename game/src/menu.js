@@ -161,6 +161,9 @@ function skLayout(W, H) {
   });
   rows.push({ kind: "back", circle: [W - 50, 50, 30] });
   rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
+  // [§9.156, richiesta dell'autore] "Partita a due" (in rete, netgame.js),
+  // a sinistra di "Inizia"
+  rows.push({ kind: "pvp", x1: Math.max(gx1, gx2 - 620), y1: H - 100, x2: gx2 - 320, y2: H - 45 });
   return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
 // il valore dopo (dir 1) o prima (dir -1) di un parametro
@@ -230,7 +233,7 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) {
         const L = skLayout(W, H);
         L.rows.forEach((r, k) => {
-          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
+          if ((r.kind === "start" || r.kind === "pvp") && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
           const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
         });
@@ -292,6 +295,7 @@ export function enemyManagerMenu() {
         if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
         saveSkirmish(i.sk);
         if (r.kind === "start") w.gotoRoom(i.sk.map);
+        if (r.kind === "pvp" && w.hooks.twoPlayers) w.hooks.twoPlayers({ ...i.sk }); // §9.156
         return;
       }
       if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); i.skMap = null; return; }
@@ -337,7 +341,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2611";
+export const VERSION = "0.2612";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -467,14 +471,14 @@ function drawSkirmish(i, d, W, H) {
       d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
       return;
     }
-    if (r.kind === "start") {
+    if (r.kind === "start" || r.kind === "pvp") { // pvp: §9.156
       const on = !!m.room;
       d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
       d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
       d.setFont("GUI_1");
       d.setColour(c.black);
       d.setAlpha(on ? 0.8 : 0.35);
-      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr("Start"));
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr(r.kind === "start" ? "Start" : "Two-player game"));
       return;
     }
     if (seen.has(r.key)) return;

@@ -52,10 +52,21 @@ export class PauseMenu {
     this.rects = [];       // pulsanti dell'ultimo disegno: {x, y, w, h, action, value}
     this.dirty = true;     // lo sfondo sfumato va rifatto
     this.hoverButton = 0;
+    // [§9.156] la partita a due in rete: netMode (niente salvataggi ne'
+    // "Ricomincia"; "Torna al menu" lascia la partita) e la pausa in corso
+    // (net: { by } la pausa chiesta da un giocatore, { lost } la partita
+    // interrotta, { solo } una pausa solo qui)
+    this.netMode = false;
+    this.net = null;
   }
 
   open() { this.paused = true; this.submenu = null; this.dirty = true; }
-  close() { this.paused = false; this.submenu = null; }
+  close() { this.paused = false; this.submenu = null; this.net = null; }
+  // [§9.156] Riprendi / Esc: in rete riprendono tutte e due le pagine
+  _resume() {
+    if (this.net && this.net.lost) return;
+    if (this.netMode && this.actions.resume) this.actions.resume(); else this.close();
+  }
 
   // Il pulsante di pausa dell'originale [C, mouser]: in alto a destra
   _overButton(input, W) {
@@ -68,17 +79,27 @@ export class PauseMenu {
   check(input, W) {
     if (this.room === "menu") return false;
     this.hoverButton = this._overButton(input, W) ? 1 : 0;
-    if (this.hoverButton && input.mouseReleased[0]) { this.open(); return true; }
+    const click = this.hoverButton && input.mouseReleased[0];
     // Esc apre solo senza nulla di selezionato (con una selezione Esc
     // deseleziona) [C, mouser Alarm_1: global.sel=0]
-    if (input.pressed.has(27) && this.g.sel === 0) { this.open(); return true; }
-    return false;
+    const esc = input.pressed.has(27) && this.g.sel === 0;
+    if (!click && !esc) return false;
+    // [§9.156] in rete la pausa e' un comando (si apre allo stesso passo in
+    // tutte e due le pagine): il passo si gioca, senza il clic ne' l'Esc
+    if (this.netMode && this.actions.requestPause) {
+      if (click) input.mouseReleased[0] = false;
+      input.pressed.delete(27);
+      this.actions.requestPause();
+      return false;
+    }
+    this.open();
+    return true;
   }
 
   // In pausa: Esc torna indietro, un clic preme un pulsante.
   input(input) {
     if (input.pressed.has(27)) {
-      if (this.submenu) this.submenu = this.submenu === "load" ? "saves" : null; else this.close();
+      if (this.submenu) this.submenu = this.submenu === "load" ? "saves" : null; else this._resume();
       return;
     }
     if (!input.mouseReleased[0]) return;
@@ -89,7 +110,7 @@ export class PauseMenu {
   _do(b) {
     const g = this.g, s = this.settings;
     switch (b.action) {
-      case "resume": this.close(); break;
+      case "resume": this._resume(); break;
       case "graphics": this.submenu = "graphics"; break;
       case "saves": this.submenu = "saves"; break;
       case "saveGame": this.actions.saveGame(); this.dirty = true; break;
@@ -192,7 +213,7 @@ export class PauseMenu {
     this.rects = [];
     const g = this.g, s = this.settings;
     const onOff = (v) => tr(v ? "ON" : "OFF");
-    let title, before, segCaption, segs, segAction, after;
+    let title, before, segCaption, segs, segAction, after, subtitle = null;
     if (this.submenu === "graphics") {
       title = tr("GRAPHICS OPTIONS");
       before = [
@@ -232,6 +253,26 @@ export class PauseMenu {
       before.push([tr("Load from file"), "loadFile"]);
       segs = null;
       after = [[tr("Back"), "back"]];
+    } else if (this.netMode) {
+      // [§9.156] la partita a due in rete: niente salvataggi ne' "Ricomincia"
+      title = tr("PAUSE");
+      const lost = this.net && this.net.lost;
+      before = [
+        ...(lost ? [] : [[tr("Resume"), "resume"]]),
+        [tr("Graphics options"), "graphics"],
+        [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
+        [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
+        [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
+        [tr("Music: {state}", { state: onOff(s.music) }), "music"],
+        [tr("Sound effects: {state}", { state: onOff(s.sfx) }), "sfx"],
+      ];
+      segCaption = tr("Language");
+      const cur = getLanguage();
+      segs = LANGUAGES.map((l) => ({ value: l, label: l.toUpperCase(), selected: l === cur }));
+      segAction = "language";
+      after = [[tr("Leave the game"), "menu"]];
+      subtitle = lost ? lost : this.net && this.net.by !== undefined
+        ? tr(this.net.by === 0 ? "Paused by the red player" : "Paused by the blue player") : null;
     } else {
       title = tr("PAUSE");
       before = [
@@ -261,7 +302,21 @@ export class PauseMenu {
     // [§9.137] su uno schermo basso pulsanti e spazi si stringono (fino a 30
     // e 4 px) perche' tutto stia nella finestra: a 600 px le opzioni grafiche
     // (dieci righe) e la pausa con gli effetti sonori uscivano in basso
-    const fixed = 84 + (segs ? CAPTION_H + SEG_H : 0) + 18;
+    // [§9.156] il sottotitolo della partita a due (chi ha messo in pausa, la
+    // connessione persa), anche su due o tre righe
+    d.setFont("overdue");
+    const subLines = [];
+    if (subtitle) {
+      let cur = "";
+      for (const w of subtitle.split(" ")) {
+        const next = cur ? cur + " " + w : w;
+        if (cur && TEXT_SCALE * d.stringWidth(next) > 440) { subLines.push(cur); cur = w; } else cur = next;
+      }
+      subLines.push(cur);
+      subLines.splice(3);
+    }
+    const subH = subLines.length ? subLines.length * 24 + 8 : 0;
+    const fixed = 84 + subH + (segs ? CAPTION_H + SEG_H : 0) + 18;
     const pitch = Math.min(BTN_H + BTN_GAP, (H - 20 - fixed) / (rows + (segs ? 1 : 0)));
     const bh = Math.max(30, Math.min(BTN_H, Math.round(pitch * 0.78))), gap = Math.max(4, Math.floor(pitch - bh));
     const panelH = fixed + rows * (bh + gap) + (segs ? gap : 0);
@@ -271,6 +326,8 @@ export class PauseMenu {
     this._glowLabel(d, px + panelW / 2, py + 40, title, "gui_sblocco");
     const btnW = panelW - 60, bx = px + 30;
     let by = py + 84;
+    subLines.forEach((l, k) => this._glowLabel(d, px + panelW / 2, py + 76 + k * 24, l, "overdue"));
+    by += subH;
     for (const [label, action, off, value] of before) { this._button(d, bx, by, btnW, bh, label, action, input, off, value); by += bh + gap; }
     if (segs) {
       this._glowLabel(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
