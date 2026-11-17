@@ -99,6 +99,12 @@ export function nameMaps(objects) {
   return { twins: [...twins], m1, m2 };
 }
 
+// [§9.156] i nomi del nemico per il codice del giocatore (le chiavi di
+// ENEMY_EQ): durante la tregua cercano TRUCE_NAME, che non c'e'
+export const HOSTILE = new Set(Object.keys(ENEMY_EQ));
+export const TRUCE_NAME = "__tregua";
+export const isHostile = (name) => HOSTILE.has(name);
+
 // gli oggetti gemelli (definizioni) da aggiungere: stessi campi, i genitori
 // tradotti
 export function twinObjects(objects, twins) {
@@ -125,7 +131,18 @@ function poolProxy(g) {
 // chiamate interne non si traducono due volte), con gli argomenti stringa
 // tradotti.
 export function mirrorWorld(world, map, pool2) {
-  const tr = (a) => (typeof a === "string" && map[a] !== undefined ? map[a] : a);
+  // [§9.156] durante la tregua della partita a due (mp.truce) i nomi del
+  // nemico ("enemy_unit", "enemy_build", ...) non trovano nessuno: per il
+  // codice di ogni giocatore l'avversario non c'e' come bersaglio (niente
+  // attacchi automatici, ordini d'attacco, torri, catapulte, fuoco). Non per
+  // create, ne' per chi guarda con mp.noTruce (la minimappa)
+  const tr = (a) => {
+    if (typeof a !== "string") return a;
+    const mp = world.mp;
+    if (mp && mp.truce && !mp.noTruce && HOSTILE.has(a)) return TRUCE_NAME;
+    return map[a] !== undefined ? map[a] : a;
+  };
+  const plain = (a) => (typeof a === "string" && map[a] !== undefined ? map[a] : a);
   const cache = new Map();
   let gp = null, gOf = null;
   return new Proxy(world, {
@@ -136,7 +153,8 @@ export function mirrorWorld(world, map, pool2) {
       if (typeof v !== "function") return v;
       let f = cache.get(k);
       if (!f || f.__v !== v) {
-        f = function (...args) { return v.apply(t, args.map(tr)); };
+        const t1 = k === "create" ? plain : tr;
+        f = function (...args) { return v.apply(t, args.map(t1)); };
         f.__v = v;
         cache.set(k, f);
       }
@@ -155,7 +173,7 @@ export function setupMultiplayer(world, local) {
   Object.assign(world.objects, twinObjects(world.objects, twins));
   for (const n of twins) if (world.behaviours[n]) world.behaviours[twinName(n)] = world.behaviours[n];
   world.mp = { twins: new Set(twins), m1, m2, mirror1: mirrorWorld(world, m1, false), mirror2: mirrorWorld(world, m2, true),
-               local, actor: null };
+               local, actor: null, truce: false, noTruce: false };
   world._collMaps = null;
   return world.mp;
 }

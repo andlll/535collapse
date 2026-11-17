@@ -161,6 +161,9 @@ function skLayout(W, H) {
   });
   rows.push({ kind: "back", circle: [W - 50, 50, 30] });
   rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
+  // [§9.156, richiesta dell'autore] "Multigiocatore online" (la partita a
+  // due in rete, netgame.js), a sinistra di "Inizia"
+  rows.push({ kind: "pvp", x1: Math.max(gx1, gx2 - 620), y1: H - 100, x2: gx2 - 320, y2: H - 45 });
   return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
 // il valore dopo (dir 1) o prima (dir -1) di un parametro
@@ -170,6 +173,16 @@ function stepValue(key, v, dir) {
 }
 // la mappa mostrata (anche quelle "in arrivo"): indice in SK_MAPS
 const shownMap = (i) => (i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
+// [§9.156, decisione dell'autore] i parametri che valgono solo contro la CPU:
+// in grigio (e fermi) col pannello "Multigiocatore online" aperto
+const CPU_ONLY = new Set(["difficulty", "style"]);
+// (i.netPreview: un codice valido incollato, la griglia mostra la partita in
+// cui si entra: tutti i parametri fermi)
+const offline = (i, r) => !!i.netPanel && (r.kind === "start" || r.kind === "map"
+  || (r.kind === "opt" && (CPU_ONLY.has(r.key) || !!i.netPreview)));
+// il riquadro del pannello "Multigiocatore online": quello della mappa,
+// fino in fondo alla finestra se serve
+const netDock = (L, H) => [L.card.x1, 20, L.card.x2, H - 20];
 
 export function enemyManagerMenu() {
   return {
@@ -191,7 +204,7 @@ export function enemyManagerMenu() {
       Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
                          comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
                          loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0,
-                         skmenu: 0, skhover: 0, skrow: -1, sk: null }); // §9.118
+                         skmenu: 0, skhover: 0, skrow: -1, sk: null, netPanel: null }); // §9.118, netPanel: §9.156
     },
     // Alarm_0 [C]: le unita' ferme vanno contro il nemico piu' vicino
     alarm0(i, w) {
@@ -229,8 +242,10 @@ export function enemyManagerMenu() {
       i.skrow = -1;
       if (g.campagna === 0 && i.skmenu === 1) {
         const L = skLayout(W, H);
+        if (i.netPanel) i.netPanel.dock(netDock(L, H)); // §9.156 (la finestra puo' cambiare)
         L.rows.forEach((r, k) => {
-          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
+          if ((r.kind === "start" || r.kind === "pvp") && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
+          if (offline(i, r)) return; // §9.156
           const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
         });
@@ -282,15 +297,46 @@ export function enemyManagerMenu() {
         return;
       }
       if (g.campagna === 0 && i.skmenu === 1) { // §9.118
-        const r = skLayout(w.cam.cssW, w.cam.cssH).rows[i.skrow];
-        if (!r) return;
-        if (r.kind === "back") { i.skmenu = 0; return; }
+        const L = skLayout(w.cam.cssW, w.cam.cssH), r = L.rows[i.skrow];
+        if (!r || offline(i, r)) return;
+        if (r.kind === "back") { if (i.netPanel) i.netPanel.close(); i.skmenu = 0; return; }
+        // [§9.156] "Multigiocatore online": apre (o chiude) il pannello al posto
+        // del riquadro della mappa
+        if (r.kind === "pvp") {
+          if (i.netPanel) { i.netPanel.close(); return; }
+          if (!w.hooks.twoPlayers) return;
+          saveSkirmish(i.sk);
+          i.netPanel = w.hooks.twoPlayers({
+            sk: { ...i.sk }, dock: netDock(L, w.cam.cssH),
+            onMap: (dir) => {
+              let k = shownMap(i);
+              do k = (k + dir + SK_MAPS.length) % SK_MAPS.length; while (!SK_MAPS[k].room);
+              i.skMap = k;
+              i.sk.map = SK_MAPS[k].room;
+              saveSkirmish(i.sk);
+              return { ...i.sk };
+            },
+            // [§9.156] il codice incollato: la griglia mostra le sue opzioni
+            // (senza salvarle), poi di nuovo le proprie
+            onPreview: (sk) => {
+              if (sk && !i.netPreview) i.netPreview = { mine: i.sk, skMap: i.skMap };
+              if (sk) { i.sk = { ...sk }; i.skMap = null; return; }
+              if (i.netPreview) { i.sk = i.netPreview.mine; i.skMap = i.netPreview.skMap; i.netPreview = null; }
+            },
+            onClose: () => {
+              if (i.netPreview) { i.sk = i.netPreview.mine; i.skMap = i.netPreview.skMap; i.netPreview = null; }
+              i.netPanel = null;
+            },
+          });
+          return;
+        }
         if (r.kind === "map") {
           i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
           if (SK_MAPS[i.skMap].room) i.sk.map = SK_MAPS[i.skMap].room;
         }
         if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
         saveSkirmish(i.sk);
+        if (i.netPanel) i.netPanel.update({ ...i.sk }); // §9.156: le opzioni della partita online
         if (r.kind === "start") w.gotoRoom(i.sk.map);
         return;
       }
@@ -337,7 +383,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2611";
+export const VERSION = "0.2612";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -422,12 +468,18 @@ function drawSkirmish(i, d, W, H) {
     const h = Math.max(0, ...SK_MAPS.map((q) => (q.desc ? d.stringHeightExt(tr(q.desc), 30, dw) : 0)));
     if (h > 0) { skDescH = h; skDescKey = dkey; } // (0: il font non c'e' ancora)
   }
-  const L = skLayout(W, H), { card, photo } = L, m = SK_MAPS[shownMap(i)];
+  const L = skLayout(W, H), m = SK_MAPS[shownMap(i)];
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("gui_sblocco");
   glowText(d, W / 2, 55, tr("Skirmish"));
-  // la mappa: riquadro, foto, nome con le frecce, descrizione
+  // la mappa: riquadro, foto, nome con le frecce, descrizione ([§9.156] non
+  // col pannello "Multigiocatore online", che sta al suo posto)
+  if (!i.netPanel) drawMapCard(i, d, L, m);
+  drawGrid(i, d, W, H, L, m);
+}
+function drawMapCard(i, d, L, m) {
+  const { card, photo } = L;
   d.setAlpha(0.69);
   d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
   const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
@@ -454,11 +506,15 @@ function drawSkirmish(i, d, W, H) {
   d.justify = false;
   d.setHalign("center");
   d.setValign("middle");
+}
+function drawGrid(i, d, W, H, L, m) {
+  d.setHalign("center");
+  d.setValign("middle");
   // i parametri: un riquadro per due righe (le due meta')
   const seen = new Set();
   const rainOnTop = () => { if (i.skRainPs) i.skRain.draw(i.skRainPs, d.r, d.a, { x: 0, y: 0, w: W, h: H }); };
   L.rows.forEach((r, k) => {
-    if (r.kind === "map") { arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
+    if (r.kind === "map") { if (!i.netPanel) arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
     if (r.kind === "back") {
       const [cx, cy, rad] = r.circle;
       d.setAlpha(i.skrow === k ? 0.99 : 0.69);
@@ -467,32 +523,40 @@ function drawSkirmish(i, d, W, H) {
       d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
       return;
     }
-    if (r.kind === "start") {
-      const on = !!m.room;
-      d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
+    if (r.kind === "start" || r.kind === "pvp") { // pvp: §9.156
+      const on = !!m.room && !offline(i, r), lit = i.skrow === k || (r.kind === "pvp" && !!i.netPanel);
+      d.setAlpha(!on ? 0.3 : lit ? 0.99 : 0.69);
       d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
       d.setFont("GUI_1");
       d.setColour(c.black);
       d.setAlpha(on ? 0.8 : 0.35);
-      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr("Start"));
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr(r.kind === "start" ? "Start" : "Online multiplayer"));
       return;
     }
     if (seen.has(r.key)) return;
     seen.add(r.key);
     const [x1, y1, x2, y2] = r.card, cx = (x1 + x2) / 2, hov = i.skrow === k || i.skrow === k + 1;
-    d.setAlpha(hov ? 0.9 : 0.69);
+    // [§9.156] col pannello "Multigiocatore online" aperto i parametri della
+    // CPU sono in grigio: il riquadro piu' trasparente, niente frecce, l'icona
+    // velata, le scritte tenui
+    const off = offline(i, r);
+    d.setAlpha(off ? 0.3 : hov ? 0.9 : 0.69);
     d.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
     d.setFont("overdue");
     d.setColour(c.black);
-    d.setAlpha(0.8);
+    d.setAlpha(off ? 0.35 : 0.8);
     d.text(cx, y1 + 26, tr(SK_OPTIONS[r.key].label));
     const iy = (y1 + y2) / 2 + 2;
+    iconFade = off ? 0.3 : 1;
     drawOptIcon(d, r.key, i.sk[r.key], cx, iy, i);
-    arrow(d, x1 + 24, iy, 14, -1, i.skrow === k);
-    arrow(d, x2 - 24, iy, 14, 1, i.skrow === k + 1);
+    iconFade = 1;
+    if (!off) {
+      arrow(d, x1 + 24, iy, 14, -1, i.skrow === k);
+      arrow(d, x2 - 24, iy, 14, 1, i.skrow === k + 1);
+    }
     d.setFont("overdue");
     d.setColour(c.black);
-    d.setAlpha(0.8);
+    d.setAlpha(off ? 0.35 : 0.8);
     d.text(cx, y2 - 24, optionLabel(r.key, i.sk[r.key]));
     if (r.key === "rain") rainOnTop();
   });
@@ -524,14 +588,15 @@ function arrow(d, x, y, r, dir, hover) {
 // (decisione dell'autore); la pioggia la disegnano le particelle
 // (skRainStep), qui niente.
 const DARK = 0x3c3c3c;
-function icon(d, name, x, y, s = 1, a = 0.85) { d.spriteExt(name, 0, x, y, s, s, 0, c.white, a); }
+let iconFade = 1; // [§9.156] le icone dei parametri in grigio
+function icon(d, name, x, y, s = 1, a = 0.85) { d.spriteExt(name, 0, x, y, s, s, 0, c.white, a * iconFade); }
 function drawOptIcon(d, key, v, x, y, i) {
   d.setAlpha(1);
   if (key === "difficulty") {
     const n = { easy: 1, normal: 2, hard: 3, rigged: 4 }[v] || 1;
     for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
   } else if (key === "style") {
-    if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85); d.text(x, y, "?"); }
+    if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85 * iconFade); d.text(x, y, "?"); }
     else icon(d, { balanced: "ico_sk_equilibrio", aggressive: "ico_caserma", defensive: "ico_difesa", economic: "ico_sk_oro",
                    raider: "ico_cavaliere" }[v], x, y, { balanced: 0.85, aggressive: 0.8, defensive: 0.75, economic: 0.9, raider: 0.75 }[v]);
   } else if (key === "victory") {

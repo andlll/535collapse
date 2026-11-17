@@ -45,15 +45,16 @@ import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
-import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
+import { enemyManagerMenu, fogController, fog01, VERSION } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
 import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
-import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
+import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
+import { netParams, startNet, netMenu } from "./netgame.js"; // §9.156
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
@@ -131,6 +132,10 @@ async function main() {
   }
 
   const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
+  // [§9.156, multiplayer, fase 4] la partita a due in rete (?net=host|join,
+  // netgame.js): chi crea e' il rosso, chi entra il blu; mappa, opzioni e
+  // seme sono quelli di chi crea
+  const net = netParams(params, roomName);
   // [§9.152, multiplayer, fase 1] il seme della partita, prima di tutto (gli
   // alberi a caso della room, la schermaglia): ?seed=N per le prove e, poi,
   // per la partita in rete; se no uno nuovo. Con ?nostart e senza seed (le
@@ -175,7 +180,7 @@ async function main() {
   // schermaglia (per ora nella stessa pagina; &parte=2: si gioca il blu).
   // La cassa del giocatore 2 c'e' prima che nascano le istanze (il suo
   // centro alza il suo tetto di popolazione)
-  const pvp = params.get("pvp") === "1" && isSkirmish(roomName);
+  const pvp = (params.get("pvp") === "1" || !!net) && isSkirmish(roomName);
   if (pvp) g.p2 = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, popcap: 0, idle: 0 };
   const manager = new Manager(roomName, g);
   const draw = new Draw(r, assets);
@@ -196,8 +201,10 @@ async function main() {
   // ritorno, con la vittoria o la sconfitta): qui passa dall'indirizzo.
   if (params.get("campaign") === "1") g.campagna = 1;
   world.hooks.roomGoto = (name) => {
+    if (netGame) netGame.leave(); // §9.156: il saluto all'altro giocatore
     location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
   };
+  let netGame = null; // §9.156: la partita in rete (startNet, sotto)
   // [§9.97] i fiumi disegnati come linee (rivers.js): forma, acqua, ostacolo
   const FEET = [10, 5];
   const useRivers = (list, roads = [], bridges = [], patches = []) => {
@@ -319,7 +326,8 @@ async function main() {
   for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
   world.register("gate_clicker", gateClicker());
   world.action("prolunga", extendAction); // §9.154
-  world.action("trucco", (w, c) => manager.cheat(c.res, w.g));
+  // [§9.156] niente trucchi nella partita in rete
+  world.action("trucco", (w, c) => { if (!net) manager.cheat(c.res, w.g); });
   world.action("porta", gateAction);
   // [§9.154] le code di produzione come comandi
   world.action("costruisci", buildAction);
@@ -392,11 +400,12 @@ async function main() {
   const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
-  const skParams = isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
+  const skParams = net ? { ...net.sk, pvp } // §9.156: le opzioni di chi ha creato la partita
+    : isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
   // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
   // sprite blu per il disegno (p2sprites.js)
   if (pvp) {
-    setupMultiplayer(world, params.get("parte") === "2" ? 2 : 1);
+    setupMultiplayer(world, net ? net.local + 1 : params.get("parte") === "2" ? 2 : 1);
     world.p2Sprites = p2SpriteMap(assets.sprites);
   }
   const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
@@ -407,7 +416,7 @@ async function main() {
   // Partita salvata (save.js, snapshot.js): ?load=slot (IndexedDB, §9.107) o
   // ?load=file (il file scelto, passato da setPending). Il parametro si
   // toglie subito: "Ricomincia livello" riparte dalla room.
-  const loadMode = params.get("load");
+  const loadMode = net ? null : params.get("load"); // §9.156: niente salvataggi nella partita in rete
   await loadSlotIndex(); // §9.107: le intestazioni degli slot in IndexedDB, per i menu
   let saved = null;
   if (loadMode) {
@@ -441,6 +450,7 @@ async function main() {
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
     if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
+    if (world.mp) world.mp.truce = pvpTruce(g); // §9.156
   }
   // [§9.56] prove della schermata di vittoria: ?victory=1 vince dopo un
   // secondo; ?vblur, ?vwhite, ?vin, ?vtext, ?vtextin cambiano VICTORY
@@ -533,6 +543,9 @@ async function main() {
         if (lastMessage) message(t(lastMessage[0]), lastMessage[1], lastMessage[0]);
       },
       restart: () => location.reload(),          // room_restart
+      // [§9.156] in rete la pausa e la ripresa sono di tutte e due le pagine
+      requestPause: () => { if (netGame) netGame.requestPause(); },
+      resume: () => { if (netGame) netGame.resume(); else pause.close(); },
       menu: () => world.gotoRoom("menu"),        // room_goto(menu)
       graphics: applyGraphics,
       saveGame: () => saveGame(false),
@@ -552,17 +565,22 @@ async function main() {
       },
     },
   });
+  pause.netMode = !!net;
   // puntatore liberato (Esc, cambio di finestra) a gioco in corso: pausa
-  input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) pause.open(); };
+  // (in rete: chiesta all'altro giocatore, §9.156)
+  input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) { if (netGame) netGame.requestPause(); else pause.open(); } };
   // "Full screen" e "Load game" del menu principale (menu.js)
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
+  // [§9.156] "Multigiocatore online" nella schermata della schermaglia
+  // (?stun=0 passa alla partita: senza server STUN, per le prove in locale)
+  world.hooks.twoPlayers = (opts) => netMenu({ ...opts, version: VERSION, stun: params.get("stun") !== "0" });
   // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
   const autosave = () => {
-    if (roomName === "menu" || !settings.autosave || --autosaveAt > 0) return;
+    if (roomName === "menu" || net || !settings.autosave || --autosaveAt > 0) return;
     autosaveAt = AUTOSAVE_STEPS;
     if (world.exists("victory_manager") || world.exists("gameover_manager")) return;
     saveGame(true);
@@ -572,11 +590,17 @@ async function main() {
   const commands = new Commands();
   // [§9.154, fase 2, passo 2] le azioni del giocatore (world.js act): date al
   // passo in corso, eseguite all'inizio del successivo (i tipi: world.actions)
-  world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1, world.mp ? world.mp.local - 1 : 0);
+  // ([§9.156] in rete D passi dopo: il ritardo dei comandi, lockstep.js)
+  world.hooks.command = (kind, c) => commands.issue(kind, c, netGame ? netGame.cmdStep(world._stepNo) : world._stepNo + 1,
+                                                    world.mp ? world.mp.local - 1 : 0);
   // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
   world.hooks.commands = () => commands.runDue(world);
   const hashNow = () => stateHash({ world, g, manager, path });
   const step = () => {
+    // [§9.156] in rete il passo si gioca solo col turno dell'altro giocatore
+    // (lockstep.js): se non c'e' ancora si aspetta (loop.js), e l'input resta
+    // da leggere al passo che si giochera'
+    if (netGame && !pause.paused && !netGame.canStep()) return false;
     input.beginStep();
     commands.frame(input, cam); // in replay: l'input e la telecamera del registro
     if (pause.paused) {
@@ -584,6 +608,9 @@ async function main() {
       return;
     }
     if (pause.check(input, cam.cssW)) return;
+    // [§9.156] la tregua della partita a due, decisa a ogni passo dal tempo
+    // della partita (uguale nelle due pagine)
+    if (world.mp) world.mp.truce = pvpTruce(g);
     manager.alarms();
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
@@ -635,6 +662,7 @@ async function main() {
       cam.clamp();
     }
     commands.afterStep(world, hashNow); // §9.153: l'impronta nel registro, ogni CHECK_EVERY passi
+    if (netGame) netGame.afterStep(); // §9.156: il turno all'altro giocatore, le impronte
   };
 
   let fpsNow = 0;
@@ -698,7 +726,12 @@ async function main() {
     draw.reset();
     world.drawGUI(draw);
     draw.reset();
+    // ([§9.156] la minimappa mostra i nemici anche durante la tregua)
+    if (world.mp) world.mp.noTruce = true;
     manager.drawGUI(draw, cam, world.worldFor(null), fpsNow);
+    if (world.mp) world.mp.noTruce = false;
+    // [§9.156] la chat della partita online, fra le risorse e la minimappa
+    if (netGame) { draw.reset(); netGame.chat.draw(draw, manager.chatArea(cam, world.worldFor(null))); }
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();
@@ -901,6 +934,7 @@ async function main() {
         view: `${Math.round(cam.x)},${Math.round(cam.y)} ${Math.round(cam.w)}x${Math.round(cam.h)}`,
         room: roomName, maxTextureSize: r.maxTextureSize, units: r.units,
         particles: world.particles.count, systems: world.particles.systems.length,
+        net: netGame ? netGame.diagLine() : null, // §9.156
       });
     },
   });
@@ -922,11 +956,19 @@ async function main() {
     loop.start();
   });
 
+  // [§9.156] la partita in rete: la sala d'attesa, poi il lockstep (il ciclo
+  // gira subito: disegna la propria base dietro la sala d'attesa, i passi
+  // aspettano l'avvio)
+  if (net) {
+    if (world._stepNo !== 0) console.warn("[535 rete] il mondo non parte dal passo 0");
+    netGame = startNet({ net, world, g, commands, pause, version: VERSION, hash: hashNow,
+                         dump: () => stateDump({ world, g, manager, path }), toMenu: () => { location.search = "?room=menu"; } });
+  }
   // ?nostart=1: per i test, il mondo resta fermo finche' non lo si avanza
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+  window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
     // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
     commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),
@@ -941,7 +983,10 @@ async function main() {
                     },
                     ambience: { cloudBlobs, shadeAt, leafType }, // §9.84, §9.106
                     // per i test: avanza la simulazione di n passi senza disegnare
-                    advance(n) { for (let k = 0; k < n; k++) step(); } };
+                    advance(n) { for (let k = 0; k < n; k++) step(); },
+                    // [§9.156] la partita in rete; pump(n): fino a n passi, finche' si puo' (quanti ne ha fatti)
+                    net: netGame,
+                    pump(n) { const s0 = world._stepNo; for (let k = 0; k < n; k++) if (step() === false) break; return world._stepNo - s0; } };
 }
 
 // PWA (sw.js): solo dove i service worker sono permessi (https o localhost)

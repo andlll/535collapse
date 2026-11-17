@@ -55,6 +55,10 @@ export const MM = {
   szRange: [12, 60],
   szEase: 0.25,
 };
+// [§9.156, richiesta dell'autore] i colori delle due parti dalla parte di
+// chi guarda: i tuoi marroni e gli altri blu; nella partita a due, per chi
+// gioca il blu, i suoi blu e quelli del rosso marroni ([mine, theirs])
+export const sideColours = (world) => (world && world.mp && world.mp.local === 2 ? [MM.enemy, MM.ally] : [MM.ally, MM.enemy]);
 export const clampSz = (s) => Math.max(MM.szRange[0], Math.min(MM.szRange[1], s));
 
 // nome dell'oggetto -> icona (mm_<nome>)

@@ -79,18 +79,21 @@ const KEY = "535.skirmish";
 
 export function loadSkirmish() {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s && typeof s === "object") {
-      const out = { ...SK_DEFAULTS };
-      for (const k of Object.keys(SK_DEFAULTS)) {
-        if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
-        const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
-        if (vs && vs.includes(s[k])) out[k] = s[k];
-      }
-      return out;
-    }
+    return cleanSkirmish(JSON.parse(localStorage.getItem(KEY) || "null"));
   } catch (e) { /* storage non disponibile: i valori di partenza */ }
   return { ...SK_DEFAULTS };
+}
+// i parametri validi di `s` (gli altri ai valori di partenza): quelli
+// salvati, e [§9.156] quelli che arrivano nel codice della partita a due
+export function cleanSkirmish(s) {
+  const out = { ...SK_DEFAULTS };
+  if (!s || typeof s !== "object") return out;
+  for (const k of Object.keys(SK_DEFAULTS)) {
+    if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
+    const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
+    if (vs && vs.includes(s[k])) out[k] = s[k];
+  }
+  return out;
 }
 export function saveSkirmish(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* solo per questa sessione */ }
@@ -165,6 +168,12 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
 // da 20000 a 35000 passi; "frequente" un terzo
 export const RAIN_EVERY = { normal: [20000, 35000], frequent: [6000, 12000] };
 export const rainGap = (g) => RAIN_EVERY[g.sk && g.sk.rain === "frequent" ? "frequent" : "normal"];
+
+// [§9.156, decisione dell'autore] la tregua nella partita a due: per i
+// minuti scelti nessuno dei due puo' attaccare l'altro (multiplayer.js: il
+// nemico non c'e' come bersaglio). Contro la CPU la tregua e' un'altra cosa:
+// la CPU non manda attacchi (global.en.hold), il giocatore puo'.
+export const pvpTruce = (g) => !!(g.sk && g.sk.pvp && g.sk.truce > 0 && !g.skWinner && elapsed(g) < g.sk.truce * 60);
 
 // Il tetto di popolazione scelto (manager.js lo tiene a 99)
 export function skirmishPopcap(g) {

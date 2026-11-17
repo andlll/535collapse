@@ -85,6 +85,16 @@ minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" 
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 
+**Multigiocatore online** (§9.152-§9.156): Schermaglia, "Multigiocatore online". Chi
+crea la partita (il rosso) manda all'altro il codice che compare; l'altro lo
+incolla nello stesso pannello ("Entra", il blu) e rimanda il suo codice di
+risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
+due browser (WebRTC, con un server STUN pubblico per attraversare i router;
+senza un server TURN alcune reti non si collegano); i due giochi si
+scambiano solo i comandi (lockstep) e confrontano ogni 5 secondi
+un'impronta della partita. In partita Invio apre la chat con l'altro
+giocatore.
+
 ## Mappe in Tiled
 
 I livelli nuovi si disegnano in [Tiled](https://www.mapeditor.org) con gli
@@ -131,6 +141,10 @@ node game/test/browser/enemyarmy.mjs                   # economia nemica: soldat
 node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
 node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
 node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
+node game/test/browser/pvp.mjs sk_padus 5 1500         # partita a due in una pagina: le due parti, stesse impronte
+node game/test/browser/netfake.mjs sk_padus 7 2400     # partita a due in rete, canale finto con ritardo e disordine (§9.156)
+node game/test/browser/rtc.mjs sk_padus 950            # partita a due con WebRTC vero fra due pagine, dal menu (§9.156)
+node game/test/browser/truce.mjs sk_padus 5            # la tregua nella partita a due: nessuno attacca, poi si combatte (§9.156)
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella
 ```
