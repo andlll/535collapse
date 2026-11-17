@@ -21,12 +21,15 @@ const pw = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const [room = "sk_padus", stepsArg = "9000", engine = "chromium"] = process.argv.slice(2);
 const STEPS = Number(stepsArg), EVERY = 300, SEED = 12345;
-// WebGL2 in software: in Chromium SwiftShader; in Firefox headless senza GPU
-// (la CI) WebGL va forzato, se no il gioco non parte ("webgl2")
+// WebGL2 in software: in Chromium SwiftShader; Firefox headless su Linux
+// senza GPU non ha driver GL ("Exhausted GL driver options", la CI): li'
+// gira con la finestra (HEADED=1) su uno schermo virtuale, xvfb-run, con Mesa
+// in software (build.yml)
 const launch = {
   chromium: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
   firefox: { firefoxUserPrefs: { "webgl.force-enabled": true, "webgl.disabled": false, "webgl.enable-webgl2": true } },
 }[engine] || {};
+if (process.env.HEADED) launch.headless = false;
 const browser = await pw[engine].launch(launch);
 const errs = [], logs = [];
 const open = async (w, h, seed) => {

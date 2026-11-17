@@ -160,9 +160,13 @@ jobs:
       - name: Determinismo fra browser (Chromium, Firefox, WebKit)
         run: |
           (cd game && npx playwright install --with-deps firefox webkit)
+          # Firefox headless qui non ha driver GL (niente WebGL2, il gioco non
+          # parte): con la finestra su Xvfb e Mesa in software (llvmpipe)
+          sudo apt-get install -y -q xvfb libgl1-mesa-dri libegl-mesa0 > /dev/null
           python3 -m http.server 8124 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8124/index.html > /dev/null && break; sleep 1; done
-          for b in chromium firefox webkit; do BASE=http://localhost:8124 node game/test/browser/determinism.mjs sk_padus 3000 $b | tee det_$b.txt; done
+          for b in chromium webkit; do BASE=http://localhost:8124 node game/test/browser/determinism.mjs sk_padus 3000 $b | tee det_$b.txt; done
+          BASE=http://localhost:8124 HEADED=1 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1080x24" node game/test/browser/determinism.mjs sk_padus 3000 firefox | tee det_firefox.txt || true
           for b in chromium firefox webkit; do grep -qx ok det_$b.txt || { echo "$b: la prova non e' passata (det_$b.txt)"; exit 1; }; done
           for b in firefox webkit; do
             diff <(grep "impronte:" det_chromium.txt) <(grep "impronte:" det_$b.txt) || { echo "impronte diverse fra chromium e $b"; exit 1; }
