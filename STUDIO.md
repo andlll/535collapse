@@ -10771,6 +10771,9 @@ lampeggi, la telecamera.
   figlie di mura_ori e ally_build, e i nemici le avrebbero viste. Lo sprite
   a caso (choices) delle istanze dell'interfaccia e cosmetiche col
   generatore di chi guarda (vrand), come lo stile del fantasma della casa.
+  Vale per tutte le ricerche: per nome (all, number, nearest: l'indice) e per
+  posizione (instancePlace, instancePosition, positionMeeting,
+  collisionRectangle, le collisioni).
 
 **Prove.**
 - `test/browser/orders.mjs [room]` (nella CI su lvl06 e match): due pagine
@@ -10798,9 +10801,6 @@ la sequenza cambiava solo per chi costruisce).
 - Campagna: dialoghi (dialogo_*) e suggerimenti (hint_*) sono
   interfaccia ma alcuni fanno partire cose della partita (script dei
   livelli); la schermaglia non li usa. Da guardare solo se servira'.
-- Le ricerche per posizione senza istanza (instancePosition, positionMeeting)
-  ora saltano l'interfaccia anche col nome; quelle per nome (all, nearest)
-  non la vedono piu' se il nome e' di un genitore della partita.
 - Il comando si esegue al passo dopo: le prove nel browser che danno un
   ordine e guardano subito lo stato devono fare almeno un passo.
 
