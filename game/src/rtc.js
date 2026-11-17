@@ -19,8 +19,9 @@
 // i messaggi in uscita restano in una coda che la prova porta all'altra
 // pagina quando vuole (in ritardo, in disordine).
 
-// [§9.156] i server STUN pubblici (scelta da confermare con l'autore: sono
-// servizi esterni; ?stun=0 per farne a meno, in locale e nelle prove)
+// [§9.156, decisione dell'autore] i server STUN pubblici di Google e
+// Cloudflare (servizi esterni: vedono solo gli indirizzi dei due giocatori;
+// ?stun=0 per farne a meno, in locale e nelle prove)
 export const STUN_SERVERS = ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"];
 const GATHER_SOFT = 2500, GATHER_MAX = 8000;
 // il canale, uguale dalle due parti (negoziato: niente ondatachannel)

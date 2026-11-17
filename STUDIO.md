@@ -11175,8 +11175,8 @@ parti).
 - la pausa la riprende chiunque dei due;
 - i server STUN: `stun.l.google.com:19302` e `stun.cloudflare.com:3478`
   (rtc.js STUN_SERVERS). Sono servizi esterni (vedono gli indirizzi dei due
-  giocatori, nessun dato della partita): **da confermare con l'autore**.
-  `?stun=0` (anche dal menu: passa alla partita) ne fa a meno, per le prove
+  giocatori, nessun dato della partita): [decisione dell'autore, 17
+  novembre 2026] "STUN di Google e Cloudflare va bene, tienili". `?stun=0` (anche dal menu: passa alla partita) ne fa a meno, per le prove
   in locale.
 
 **Trovato per strada.**
