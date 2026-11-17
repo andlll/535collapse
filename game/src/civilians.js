@@ -14,13 +14,16 @@ import { fireStop, seedsThrow } from "./effects.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
-import { phaseOf, walkCycle, firstSelected } from "./units.js";
+import { lmStep, lmReady } from "./lastmile.js";
+import { phaseOf, walkCycle, firstSelected, dcOn, dcArm } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 import { bridgeEnds, woodDue } from "./bridge.js";
 import { FAM, buttonAlpha, canBuild } from "./buildings.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { pathEnemy } from "./multiplayer.js"; // §9.155
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const OM = "ally_omino";
 
 // [§9.44] La fazione del civile: l'alleato (ally_omino, del giocatore) o il
@@ -75,7 +78,7 @@ function goTo(p, i, tx, ty, freeCell = false) {
 function fieldTo(w, p, i, tx, ty, fallback = true) {
   const gx = Math.floor(tx / GRID), gy = Math.floor(ty / GRID), key = gy * p.gw + gx;
   const old = i.goal_field;
-  const c = w._fieldTo, en = sideOf(i).enemy; // §9.44: il campo della fazione (porte)
+  const c = w._fieldTo, en = pathEnemy(i); // §9.44: il campo della fazione (porte); §9.155: il blu come i nemici
   let f;
   if (c && c.step === w._stepNo && c.key === key && c.ver === p.solidVer && c.en === en) f = c.f;
   else {
@@ -110,12 +113,14 @@ function fieldTo(w, p, i, tx, ty, fallback = true) {
 // destro resta quella (woodx/goldx/stonex sulla sua origine, rightClick):
 // prima il civile, a 250 px, passava all'albero piu' vicino a se', e dal
 // deposito tornava all'albero piu' vicino al deposito.
-const known = (i, r) => !sideOf(i).player || r.visible === true;
+// [§9.155] i civili blu della partita a due conoscono le risorse scoperte
+// dal blu (vis2, reveal)
+const known = (i, r) => !sideOf(i).player || (i.object.startsWith("p2_") ? r.vis2 === true : r.visible === true);
 function nearestKnown(w, i, name, x, y) {
   let best = null, bd = Infinity;
   for (const r of w.all(name)) {
     if (!known(i, r)) continue;
-    const d = Math.hypot(r.x - x, r.y - y);
+    const d = dhypot(r.x - x, r.y - y);
     if (d < bd) { bd = d; best = r; }
   }
   return best;
@@ -394,11 +399,11 @@ function ominoStep(i, w, p, stop) {
   // azione 1: tasto sinistro (i civili non contano in milsel; §9.44: solo i
   // civili del giocatore)
   if (S.player && i.hover === 1 && input.mouseReleased[0]) {
-    if (i.dc === 1) for (const o of w.all(OM)) if (inView(w, o)) { o.selected = 1; g.sel += 1; }
+    if (dcOn(i, w)) for (const o of w.all(OM)) if (inView(w, o)) { o.selected = 1; g.sel += 1; }
     if (g.sele > -1 && i.selected === 0) {
       i.selected = 1;
-      if (i.dc === 0) g.sel += 1;
-      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+      if (!dcOn(i, w)) g.sel += 1;
+      if (!dcOn(i, w)) dcArm(i, w);
     }
     if (g.sele === -1) {
       if (i.selected === 1) g.sel -= 1;
@@ -514,6 +519,22 @@ function ominoStep(i, w, p, stop) {
 // che la cella si liberasse.
 const WORK = { sep: 30, extras: [0, 8] };
 const EDGE = { sep: 30, extras: [0] }; // §9.64: solo a contatto (cantiere, riparazione)
+// [§9.147] Al cantiere o all'edificio da riparare, da vicino: l'ultimo tratto
+// (lastmile.js) verso il proprio posto sul bordo (meleeSpot, come toEdgeSpot).
+// Prima qui si passava fra il campo comune (che finisce nella cella libera
+// piu' vicina all'edificio), il passo dritto e il salvataggio di edgeRescue:
+// in buildstuck.mjs un civile restava a 190 px dal cantiere, avanti e
+// indietro di pochi px in fondo al campo. Falso se non si puo' (lontano, o
+// il posto non si raggiunge da qui): come prima.
+function edgeLastMile(w, p, i, t) {
+  if (!lmReady(w, i, t.x, t.y)) return false;
+  const s = meleeSpot(w, i, t, null, EDGE);
+  if (!s) return false;
+  // (non aroundTarget, §9.102: col campo verso l'edificio quando la linea
+  // verso il posto lo attraversa; il campo fine ci gira attorno da solo)
+  return !!lmStep(w, p, i, s[0], s[1]);
+}
+
 function toEdgeSpot(w, i, t) {
   if (!t) return;
   const s = meleeSpot(w, i, t, null, EDGE);
@@ -670,7 +691,7 @@ function overflowTo(w, i, res) {
   const cands = [];
   for (const r of w.all(gold ? "miniera_oro" : "stone_parent")) {
     if (r === res || !known(i, r)) continue;
-    const d = Math.hypot(r.x - res.x, r.y - res.y);
+    const d = dhypot(r.x - res.x, r.y - res.y);
     if (d > OVERFLOW_R) continue;
     const S = resSpots(w, i, r);
     if (S && S.work.some((s) => spotOpen(w, i, r, s))) cands.push([d, r]);
@@ -838,8 +859,8 @@ function separate(w, i) {
   for (const o of w._nearList(bb)) {
     if (o === i || !o.alive || !o.solid || !w.is(o, sideOf(i).unit) || !w.overlap(i, i.x, i.y, o)) continue;
     let dx = i.x - o.x, dy = i.y - o.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = Math.cos(a); dy = Math.sin(a); } // uno sull'altro
+    const d = dhypot(dx, dy);
+    if (d < 0.5) { const a = degtorad((i.id * 137) % 360); dx = dcos(a); dy = dsin(a); } // uno sull'altro
     else { dx /= d; dy /= d; }
     vx += dx; vy += dy; n++;
   }
@@ -905,6 +926,7 @@ function ominoMove(i, w, p) {
       : i.repairwork === 1 && !complexOf(i.repT) ? n(S.build, i.repx, i.repy) : null;
     const blocked = !!bldT && !seesTarget(w, p, i, bldT);
     if (bldT && !far && edgeRescue(w, p, i, bldT)) { /* §9.102: gia' mosso col campo */ }
+    else if (bldT && !bldT.buildReach && edgeLastMile(w, p, i, bldT)) { /* §9.147 (dopo il controllo dei progressi di edgeRescue) */ }
     else if (atRes) toResSpot(w, i, res); // §9.21
     // il campo non ha collisioni: da lontano, o per uscire da un ostacolo
     // vero (albero, edificio) in cui il campo l'ha portato
@@ -920,6 +942,10 @@ function ominoMove(i, w, p) {
       const d = i.foodwork === 2 ? n(S.barn, i.dirox, i.diroy) : n(S.magazza, i.dirox, i.diroy);
       if (d) mpPotentialStep(w, i, d.x, d.y, i.autospeed, false, true);
     }
+    // [§9.147] lo spostamento semplice, vicino alla meta: l'ultimo tratto
+    // (lastmile.js), anche sovrapposti o senza vista; prima qui si passava
+    // al campo comune e, staccati, al passo dritto, un passo per uno
+    else if (plain && !i.woodwork && !i.depositTo && lmReady(w, i, i.dirox, i.diroy) && lmStep(w, p, i, i.dirox, i.diroy)) arriveIfBlocked(i);
     else if (far || !w.placeFreeForSlot(i, i.x, i.y) || (plain && !seesGoal(p, i)) || blocked) {
       const otro = w.instancePlace(i, i.x, i.y, S.unit);
       if (otro) {
@@ -951,7 +977,7 @@ function ominoMove(i, w, p) {
         // [§8.19] consegna su ordine: un posto sul bordo del deposito (chi
         // ha gia' consegnato si ferma li' accanto e faceva da tappo)
         else if (i.depositTo) toWorkSpot(w, i, i.depositTo);
-        else mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        else if (!lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
         // §6.1 n.89, solo per un semplice spostamento (non verso il legno;
         // non per la consegna su ordine, §8.19: misura i progressi verso il
         // centro dell'edificio, e chi gli girava attorno per arrivare al suo
@@ -1239,7 +1265,7 @@ function workTick(i, w) {
     if (i.step !== 2) return;
     i.step = 0;
     i.alarm.set(2, 13);
-    const ax = i.x + 30 * Math.cos(degtorad(i.direction)), ay = i.y - 30 * Math.sin(degtorad(i.direction));
+    const ax = i.x + 30 * dcos(degtorad(i.direction)), ay = i.y - 30 * dsin(degtorad(i.direction));
     if (a === 2) {
       i.wood += 2;
       const t = w.nearest(ax, ay, "albero");
@@ -1402,7 +1428,7 @@ function otherWorkTick(i, w) {
     if (c) { c.alarm.set(1, i.food < 10 ? 40 : 1); c.foodwork = 1; }
     // [§9.107] la falce nel grano: pagliuzze (ambience.js workChips)
     i.workHit = w._stepNo; i.workKind = "food";
-    i.workX = i.x + 20 * Math.cos(degtorad(i.direction)); i.workY = i.y - 20 * Math.sin(degtorad(i.direction));
+    i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
@@ -1472,8 +1498,8 @@ function otherWorkTick(i, w) {
 // distance_to_point [I]: dal bbox dell'istanza al punto (0 se dentro).
 function distanceToPoint(w, i, px, py) {
   const b = w.bbox(i);
-  if (!b) return Math.hypot(px - i.x, py - i.y);
-  return Math.hypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
+  if (!b) return dhypot(px - i.x, py - i.y);
+  return dhypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
 }
 
 // azione 3, "Campi di grano" [C]. foodwork: 0 niente, 1 verso il mio campo,
@@ -1619,6 +1645,12 @@ function ominoPanel(i, w, d) {
 // Esplorata o Totale tutte le risorse (alberi, miniere, pietre, rovine) si
 // vedono da subito: prima solo gli alberi e solo con Totale (fogville 0).
 function reveal(i, w, dist, fogAware) {
+  // [§9.155] nella partita a due anche per il blu (vis2), col suo specchio
+  if (w.mp && i.vis2 !== true) {
+    const w2 = w.mp.mirror2;
+    i.vis2 = (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") || w2.nearWithin(i, "ally_unit", dist)
+      || w2.nearWithin(i, "ally_build", dist) || (fogAware && w.g.fogville === 0);
+  }
   if (i.visible) return;
   if (w.g.sk && w.g.sk.fog && w.g.sk.fog !== "normal") { i.visible = true; return; }
   // §6.3 N3: nearWithin da' lo stesso risultato di

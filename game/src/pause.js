@@ -25,6 +25,7 @@ import { tr, LANGUAGES, getLanguage } from "./i18n.js";
 import { SAVE_ROOMS } from "./save.js";
 import { slotLabel } from "./menu.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
+import { dcos, dsin } from "./dmath.js"; // §9.152
 
 // Pointer Lock (input.js): non c'e' su alcuni browser e negli iframe che
 // non lo permettono
@@ -156,7 +157,7 @@ export class PauseMenu {
       d.setAlpha(a);
       for (let n = 0; n < 16; n++) {
         const t = (n / 16) * Math.PI * 2;
-        d.textTransformed(x + Math.cos(t) * r, y + Math.sin(t) * r, str, k);
+        d.textTransformed(x + dcos(t) * r, y + dsin(t) * r, str, k);
       }
     }
     this._label(d, x, y, str, font, 0.9);

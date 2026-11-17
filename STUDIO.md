@@ -35,6 +35,32 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
+**Multiplayer 1 contro 1** (§9.152-§9.155; decisioni dell'autore: 1v1, con un
+codice, preferibilmente connessione diretta, parti simmetriche). Fasi: 1
+determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
+coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
+selezione fuori dalla partita e le azioni come comandi; restano la campagna,
+cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
+3 parti simmetriche (§9.155: fatta; gemelli blu, specchio, interfaccia,
+nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
+resta"); 4 rete e lobby (da fare: §9.155 "Come riprendere: la fase 4").
+
+**Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
+nebbia, di giorno e pieno di nebbia. Fatto il prototipo
+(`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
+allarme e "!", tiro furtivo e rapido, il messaggero che corre alla torre e
+il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
+che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
+banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+
+**Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
+con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
+per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
+d'assedio e i civili (spostamenti e cantieri). Da fare: la mischia (provata
+col campo fine per le due parti: peggio, §9.147), i posti di lavoro dei
+civili (risorse, depositi). La taratura di lvl06.mjs resta com'e'
+(decisione dell'autore, §9.147).
+
 Ultimo aggiornamento: 9 ottobre 2026, settima sessione (branch
 `claude/clever-heisenberg-qbpsex`): **kit per Tiled** (tileset per
 categoria, mappa vuota, room dell'autore convertite, pennello bosco) e
@@ -10035,3 +10061,981 @@ livello 1 e' sempre di notte: li' il field non si sente mai. La musica e'
 la stessa ovunque (un solo loop); con altri loop si potra' sceglierne uno
 per livello.
 
+
+### 9.146 Gli inceppamenti e mp_potential_step: misura e un passo nuovo
+
+Domanda dell'autore (12 novembre 2026, versione 0.2611): gran parte degli
+"inceppamenti" che si vedono in gioco (alleati e nemici) possono venire da
+`mp_potential_step`? Si puo' sostituirlo, o ripensare l'ultimo tratto del
+pathfinding?
+
+**Misura.** Per attribuire ogni inversione di marcia al meccanismo che ha
+mosso l'unita' in quel passo, contatori provvisori (non versionati) in
+`mpPotentialStep` (dritto, scarto fino a 45, 90, oltre 90 gradi, giro sul
+posto), `moveFlowField` (percorso, fondo del campo con separazione, uscita da
+una cella chiusa) e `stepOver`; poi `crowd.mjs` (seme 3) e `movement.mjs`
+(semi 1 e 2: otto ordini di gruppo, cinque incroci, uno scontro). Col codice
+di prima:
+
+| prova | inversioni | da mp_potential_step | dal flow field | da stepOver |
+|---|---|---|---|---|
+| movement, seme 1 | 305 | 168 (55%) | 124 | 13 |
+| movement, seme 2 | 236 | 141 (60%) | 95 | 0 |
+| crowd "nemici" | 425 (+196 giri sul posto) | 425 (100%) | 0 | 0 |
+| crowd "fuoco" | 33 | 24 | 4 | 0 |
+| crowd "attacco" | 104 | 31 | 2 | 71 |
+| crowd "mischia" | 107 | 33 | 44 | 30 |
+| crowd "punto" | 179 | 0 | 178 | 0 |
+
+Quindi **si', in buona parte**: nei nemici quasi tutto, negli ordini di
+gruppo degli alleati piu' della meta' (pur muovendo con uno scarto dalla
+meta solo l'1,7% dei passi in cammino: quando scarta, inverte). Il motivo:
+senza memoria, a ogni passo provava prima un lato e poi l'altro, fino a
+180 gradi, e chi era stretto fra altre unita' andava a +90 gradi, poi a -90,
+poi indietro (le coppie di passi "scarto < 45 -> scarto > 90" e viceversa
+sono le piu' frequenti); senza nessuna direzione libera girava sul posto.
+Ma **non tutto**: l'altra grossa fonte e' il fondo del flow field. Chi vi
+arriva sovrapposto a un altro si separa (verso la sua meta o via
+dall'altro), esce dalla cella, e il campo lo riporta dentro: in "punto" 134
+inversioni su 179 sono questo ping-pong fra i due rami di `moveFlowField`; e
+in mischia `stepOver` (§9.71) e i cambi fra campo e passo dritto.
+
+**Ora** (pathing.js `mpPotentialStep`, stesso contratto e stessi chiamanti):
+- direzioni solo entro 90 gradi dalla meta, a passi di 15 gradi, in ordine
+  di scarto; a pari scarto prima il lato dell'ultima volta (la prima volta
+  quello lontano dal centro di chi sbarra il passo), tenuto finche' la
+  strada dritta non resta libera per 8 passi;
+- nessuna direzione a oltre 90 gradi dal passo di prima (un'inversione):
+  meglio fermi, al piu' SIDE_HOLD = 20 passi, poi anche quella;
+- nessuna direzione: fermi, senza girare sul posto (decidono i chiamanti
+  quando rinunciare: arriveIfBlocked, moveStalled, chaseStuck);
+- gia' sovrapposti a qualcuno (nessun passo e' libero finche' non ci si
+  stacca): come prima, tutte le direzioni fino a 180 gradi.
+
+**Provato e tolto.**
+- Guardare 3 passi avanti solo gli ostacoli fissi (le unita' si muovono):
+  in mischia si arrivava addosso agli altri e si combatteva peggio (18
+  contro 18, semi 7 e 11: alleati tutti morti, prima vincevano).
+- Il lato tenuto per 20 passi anche con l'altro libero: idem, in mischia.
+- Al fondo del campo, tenere la direzione di separazione e restare fermi
+  appena staccati: "punto" da 179 a 43 inversioni al seme 3, ma tremolio
+  7 e 6 ai semi 7 e 11 (soglia 5), e con una finestra di 3 passi invece di
+  1 peggio di prima. Fragile: e' parte del ripensamento (sotto).
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima -> ora):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| nemici | inversioni | 425 / 389 / 408 | 58 / 48 / 28 |
+| nemici | finestre di tremolio | 10 / 17 / 14 | 2 / 0 / 0 |
+| mischia | inversioni | 107 / 177 / 185 | 40 / 33 / 74 |
+| mischia | coppie sovrapposte >= 3 s | 6 / 7 / 6 | 0 / 2 / 3 |
+| mischia | passi x coppie sovrapposte | 4591 / 4566 / 4159 | 872 / 1251 / 3512 |
+| mischia | alleati vivi alla fine | 9 / 6 / 7 | 10 / 7 / 8 |
+| attacco | inversioni | 104 / 109 / 99 | 74 / 87 / 41 |
+| attacco | coppie sovrapposte >= 3 s | 4 / 1 / 5 | 6 / 11 / 6 |
+| fuoco | inversioni | 33 / 96 / 81 | 54 / 32 / 49 |
+| circondato, riva | finestre di tremolio | 1 / 1 / 1 | 0 / 0 / 0 |
+| movement | inversioni | 305 / 236 | 135 / 99 |
+| movement | giri sul posto | 6 / 4 | 4 / 6 |
+| movement | sprite che torna alla faccia di prima | 299 / 248 | 189 / 213 |
+| movement, scontro | nemici rimasti, alleati vivi | 5 e 12 / 7 e 11 | 6 e 10 / 8 e 10 |
+
+"punto" e' uguale (va col solo flow field). In "attacco" le coppie
+sovrapposte a lungo sono alleati che colpiscono o che cercano un posto con
+`stepOver`, non passi di mp_potential_step: col passo nuovo ai soli alleati
+3 / 1 / 3, ai soli nemici 9 / 3 / 4, a tutti 6 / 11 / 6 (lo scontro cambia
+forma; il seme 3 della CI resta sotto la soglia di 10).
+
+`crowd.mjs`: soglia nuova per i nemici, al piu' 150 inversioni (col codice
+di prima 425). `lvl05.mjs`, la sortita: "tornati" erano quelli entro 150 px
+dal posto, ma la ritirata arriva a 120 px e poi i nemici fermi sovrapposti
+si separano fino a 128 px (settleEnemies, §9.116): col passo nuovo la
+partita prende un'altra strada fin dalla battaglia d'apertura e due nemici,
+arrivati a 118-120 px, venivano spostati a 163-173 px. Ora entro 250 px
+(120 + 128); col codice di prima la prova passa lo stesso. Le altre prove
+della CI nel browser, soak e salvataggi compresi, passano.
+
+**Resta, e il ripensamento proposto.** Gli inceppamenti che restano vengono
+dal fatto che l'ultimo tratto ha quattro modi di muoversi, con regole di
+collisione diverse, e l'unita' salta dall'uno all'altro: il flow field (senza
+collisioni, verso la cella del capo o della meta, non verso la casella di
+ognuno), il fondo del campo (separazione senza collisioni), il passo dritto
+(mp_potential_step, tutte le collisioni) e stepOver (sopra i compagni). Le
+soglie che scelgono il modo (400 px, "sovrapposto", "in vista") fanno
+oscillare fra modi che tirano in direzioni diverse. Proposta: un solo
+"ultimo tratto" per unita', dal punto in cui vede la propria meta (o a una
+o due celle dal fondo del campo) fino all'arrivo, con un campo piccolo e
+fine (celle da 8-16 px, una finestra di ~20 x 20 celle attorno all'unita')
+verso la sua casella, in cui gli ostacoli fissi e le unita' ferme sono
+chiusi e quelle in cammino costano di piu', ricalcolato ogni qualche passo;
+e un solo modo di arrivare (la casella o, se occupata da chi e' gia'
+arrivato, il punto libero piu' vicino del campo piccolo). Al posto del passo
+dritto, del fondo del campo e di stepOver; il flow field grande resta per il
+viaggio.
+
+### 9.147 L'ultimo tratto: un campo fine attorno all'unita'
+
+Richiesta dell'autore (12 novembre 2026, stessa PR, versione 0.2611): passare
+al nuovo ultimo tratto proposto in §9.146. Poi, durante il lavoro,
+[indicazione dell'autore] le prove di combattimento vanno fatte con il
+sistema nuovo per **tutte e due** le parti: vincere uno scontro contro una
+parte che si muove male non dice che il sistema e' migliore. Le prove con
+una parte sola sono servite solo a capire dove guardare; i giudizi sotto
+sono tutti con le due parti sullo stesso sistema, e su misure di movimento
+(inversioni, sovrapposizioni, tremolio, arrivo), non su chi vince.
+
+**Il modulo** (`game/src/lastmile.js`). Vicino alla meta (400 px; chi c'e'
+gia' ci resta fino a 550, se no al confine il campo comune, verso la cella
+del capo, e l'ultimo tratto, verso la propria casella, tiravano da parti
+opposte un passo per uno: in `movement.mjs` 359 inversioni cosi'):
+- un campo per unita' (Dijkstra dalla meta) su celle da 16 px, nella
+  finestra che contiene unita' e meta piu' 160 px (al piu' 72 x 72 celle);
+- ostacoli fissi guardati con la maschera vera dell'unita' messa al centro
+  della cella (edifici, alberi, mura, acqua; le porte secondo la parte, con
+  le griglie enemyBlock / enemyPass), in una cache per forma della maschera
+  e per parte, rifatta quando cambiano gli ostacoli (solidVer); le unita'
+  dell'altra parte chiuse; quelle della propria parte si attraversano ma
+  costano (2 per cella se camminano, 8 se ferme: con 40 si facevano giri di
+  centinaia di px attorno alla formazione, settle.mjs);
+- rifatto ogni 10 passi, quando la meta cambia cella o quando il passo e'
+  bloccato; l'unita' punta al punto piu' lontano del percorso (fino a 8
+  celle) che vede in linea retta e fa un passo con le collisioni vere (sopra
+  i compagni si passa); passo chiuso: scarti fino a 75 gradi senza invertire
+  la marcia, se no ferma; ferma 15 passi di fila, o meta non raggiungibile
+  nella finestra: per 30 passi il modo di prima;
+- gia' sovrapposti a un ostacolo (appena usciti da un edificio): un passo va
+  se non tocca niente di nuovo, cosi' se ne esce seguendo il campo (prima
+  restavano dentro la caserma: rally.mjs);
+- la faccia dello sprite cambia solo se la direzione esce dal suo settore di
+  45 gradi di oltre 10 gradi (girando di pochi gradi al passo sul confine lo
+  sprite saltava avanti e indietro).
+
+**Chi lo usa.** Ordini di movimento e chi va a dare fuoco (fanti, cavalieri,
+arcieri), i nemici che non inseguono (non le ondate in marcia, la strada
+del livello 4, la colonna del livello 6), le macchine d'assedio (siegeMove:
+in `movement.mjs` la catapulta faceva 74 inversioni passando fra campo e
+passo dritto, ora 0), i civili nello spostamento semplice e verso il posto
+sul bordo del cantiere o dell'edificio da riparare (al posto di aroundTarget,
+§9.102, che tornava al campo; dopo il controllo dei progressi di
+edgeRescue, che fa cominciare il lavoro da dove si e').
+
+**Non la mischia.** Provato con il campo fine per le due parti: inversioni
+40/33/74 -> 64/115/91, nemici sovrapposti fra loro 0 -> 4306/535/587
+("nemici"). La logica della mischia (posti attorno al bersaglio, melee.js;
+uscita dalla sovrapposizione; attesa senza posto) e' tarata sul passo dritto
+e su stepOver; da ripensare insieme a quella, a parte.
+
+**Due regole vecchie corrette lungo la strada.**
+- `moveStalled` (§9.71) scambiava per bloccato chi dava la precedenza a un
+  compagno e lo fermava con pause che raddoppiano (1, 2, 4 s), anche dopo
+  che l'altro se n'era andato: in marcia code di unita' ferme. Ora chi sta
+  dando la precedenza non viene giudicato.
+- Gli arcieri in marcia sovrapposti si aspettavano a vicenda (i fanti no,
+  §9.38): ora non si aspetta chi aspetta noi.
+
+**Dopo** (semi 3 / 7 / 11 per crowd, 1 / 2 per movement; prima = §9.146):
+
+| prova | misura | prima | ora |
+|---|---|---|---|
+| punto | inversioni | 179 / 244 / 316 | 8 / 6 / 6 |
+| punto | passi x coppie sovrapposte | 8993 / 14254 / 10685 | 4635 / 4985 / 4478 |
+| punto | coppie sovrapposte alla fine | 2 / 2 / 1 | 0 / 0 / 0 |
+| fuoco | inversioni | 54 / 32 / 49 | 37 / 29 / 21 |
+| circondato, riva | passi x coppie sovrapposte | 2920 / 2417 / 2303, 2668 / 2121 / 2140 | 2150 / 2384 / 2120, 1889 / 1685 / 1919 |
+| riva | inversioni | 5 / 10 / 2 | 22 / 5 / 11 |
+| movement | inversioni | 135 / 99 | 21 / 43 |
+| movement | sprite che torna alla faccia di prima | 189 / 213 | 74 / 99 |
+| movement | in cammino / fuori casella a fine ordine | 1, 3 / 0, 2 | 0, 0 / 0, 0 |
+| movement | coppie sovrapposte alla fine | 1 / 5 | 0 / 0 |
+| rally | inversioni (caserma, stalla, centro) | 7 / 1 / 0 | 61 / 33 / 0 |
+
+Attacco, nemici e mischia restano come prima (non usano l'ultimo tratto; i
+numeri cambiano di poco). In `rally` le inversioni in piu' sono singole,
+all'ingresso nell'ultimo tratto (il campo comune porta verso la cella del
+capo, l'ultimo tratto verso il posto), al piu' 4 per unita' (soglia 20);
+in ritardo, bloccati, lontani: 0 come prima.
+
+`crowd.mjs`: "punto" al piu' 100 inversioni (col codice di prima 179).
+
+**lvl06.mjs, la taratura** (la colonna contro le 15 torri piu' vicine al
+percorso: ne passano al piu' 5). Con l'ultimo tratto, sotto carico, al seme
+della prova ne passavano 6. Misurato su 6 semi: prima 6/6/6/4/4/5 (media
+5,2), ora 4/3/6/6/5/6 (5,0); la colonna non usa l'ultimo tratto (lo usano
+solo i lavoratori nemici), e anche col codice di prima la prova supera la
+soglia in tre semi su sei: e' il seme fisso che decide. [Proposta
+dell'autore] due torri in piu': con 17 prima 6/6/5/6/4/1, ora 4/6/9/7/6/6,
+cioe' il caso pesa piu' delle due torri; non cambiato. Da sola la prova
+passa (5); sotto carico lo stesso seme ha dato 6, quindi il risultato
+dipende anche dal tempo reale (il ciclo del gioco della pagina, da
+verificare). Decisione dell'autore (12 novembre 2026): il livello 6 va bene
+cosi', la prova resta com'e'.
+
+Le altre prove della CI nel browser, soak e salvataggi compresi, passano.
+
+### 9.148 Livello 7, "Lost in the Fog": l'arciere della nebbia (prototipo)
+
+Richiesta dell'autore (12-13 novembre 2026): la regia del livello 7, "fog" o
+"Lost in the Fog", una specie di stealth con poche unita' o una sola che,
+sfruttando la nebbia, si fa strada in un ambiente ostile: boschi, un
+labirinto di mura, unita' alleate da liberare per tornare in forze e aprire
+il passaggio (sconfiggere una guarnigione, o liberare macchine d'assedio per
+distruggere un castello che chiude il passo).
+
+**Cosa c'era gia'.** Vicino a una nuvola `fog01` i nemici si accorgono del
+giocatore a meta' distanza (§9.80), di notte ancora a meta' (§9.88); le
+pattuglie su percorsi disegnati in Tiled (§9.101); torri e fortezze nemiche
+presidiate (§9.80); mura e porte nemiche (§9.75); la nebbia di guerra.
+
+**Decisioni dell'autore.**
+- Un arciere: in corpo a corpo e' l'unita' piu' debole, gli errori sono
+  micidiali. Con lo sprite di sempre, e regole sue: due modi di tiro scelti
+  con due pulsanti, piu' campo visivo.
+- I banchi di nebbia si muovono **solo in orizzontale** (in diagonale o in
+  verticale il disegno non regge); le pattuglie vanno in verticale e li
+  incrociano: il giocatore sincronizza pattuglie e nebbia.
+- Niente coni di vista disegnati: da dove guarda un nemico si capisce dallo
+  sprite. Sopra chi non e' ignaro un "!": li' il tiro furtivo non va.
+
+**Perche' l'arciere va fatto "speciale"** (misurato nel codice): un'unita'
+del giocatore vede un'ellisse di 400 x 240 px, i nemici si accorgono a
+400 px: vedeva i nemici solo quando loro vedevano lui. Una freccia ogni 56
+passi, 6 di danno (13 frecce per un guerriero). E chi era colpito da oltre
+400 px non reagiva: si poteva tirare per sempre.
+
+**Il prototipo** (`game/src/stealth.js`; `?room=match&prova=nebbia`):
+- *banchi di nebbia* (`nebbia_banco`): tre nuvole (fog1) che vanno avanti e
+  indietro fra due x a velocita' fissa; la zona coperta e' un'ellisse larga
+  quanto le nuvole (mezzi assi 520 x 150 px). Dentro, la vista dei nemici si
+  dimezza: per chi e' guardato e per chi guarda (tutti e due dentro: un
+  quarto);
+- *la vista* (solo con `g.stealth`, enemies.js): davanti, 60 gradi per
+  parte dalla direzione in cui il nemico guarda, fino alla distanza di
+  sempre; ai lati e dietro solo a meno di 90 px (lo sente). Chi e' in
+  allarme guarda tutto attorno;
+- *l'allarme*: chi vede l'arciere, chi e' colpito senza morire e chi e' a
+  meno di 300 px da un colpito "rumoroso" e' in allarme per 10 s; chi non
+  combatteva gia' va a guardare da dove e' partita la freccia (searching).
+  Sopra i nemici visibili non ignari un "!" rosso (`stealth_segni`);
+- *l'arciere della nebbia* (un `ally_arciere` con `hunter`): vede 1,5 volte
+  piu' lontano (600 x 360 px). Due pulsanti accanto ad attacco e difesa
+  (`tiro_furtivo_clicker`, `tiro_rapido_clicker`; tasti F e R; per ora le
+  lettere, in attesa delle icone):
+  - **furtivo**: tira solo al bersaglio scelto col clic destro (niente tiri
+    ne' inseguimenti da solo), da fermo, caricando 2 s, fino a 700 px; un
+    nemico ignaro muore e nessuno se ne accorge; uno in allarme prende 3
+    volte il danno (18) e il colpo fa rumore;
+  - **rapido**: come l'arciere di sempre ma una freccia ogni ~0,5 s (28
+    passi invece di 56), danno di sempre, e ogni colpo fa rumore;
+- *la prova*: nella zona piu' aperta del match, tolti tutti, l'arciere a
+  ovest, due pattuglie su percorsi verticali di 760 px (due guerrieri; un
+  picchiere e un arciere), una sentinella girata verso ovest, due banchi che
+  incrociano i percorsi (1,3 e 0,9 px a passo, in versi opposti).
+
+**Prova** (`game/test/browser/stealth.mjs`, nella CI): i banchi restano a y
+fissa e tornano indietro ai capi; le pattuglie fanno avanti e indietro
+(727-771 px); un guerriero girato a est vede un soldato a 300 px davanti, non
+a 300 px alle spalle, si' a 60 px alle spalle; col soldato nella nebbia non lo
+vede a 300 px, si' a 150; furtivo su un ignaro: morto dopo 142 passi (il
+caricamento), il vicino a 200 px non in allarme; furtivo su uno in allarme:
+75 -> 57, vicino in allarme e diretto verso l'arciere; rapido: 75 -> 69 dopo
+44 passi, il vicino in allarme verso l'arciere, quello a 600 px no.
+
+**Altre decisioni dell'autore** (13 novembre 2026):
+1. il tiro furtivo uccide **sempre** un nemico ignaro (com'e');
+2. **solo di giorno, ma pieno di nebbia** (nella prova i banchi diventano
+   quattro: 0,7 / 1,3 / 0,9 / 1,1 px a passo, due versi);
+3. **l'allarme**: un nemico **solo** che si accorge dell'arciere, se arriva
+   alla torre nemica piu' vicina, suona l'allarme e parte una pattuglia di
+   rinforzo.
+
+**Il messaggero e il rinforzo** (stealth.js `messengerFor`, `soundAlarm`,
+`stealthStep`): "solo" = nessun compagno entro 350 px; la torre al piu' a
+2500 px. Il messaggero non insegue ne' tira: corre a 130 px sotto la torre;
+a 150 px suona l'allarme e, se la torre non ne ha mandato uno negli ultimi
+30 s, nascono li' tre fanti (guerriero, picchiere, guerriero) in allarme,
+diretti al punto in cui il messaggero ha visto l'arciere; finita la ricerca
+tornano alla torre. Sul messaggero il "!" e' arancione (va fermato prima che
+arrivi); sopra la torre che ha suonato, un "!" arancione grande per 5 s. Chi
+e' in gruppo combatte come prima. Uccidere il compagno di una coppia in
+silenzio lascia l'altro solo: se poi vede l'arciere, corre alla torre.
+
+**Le torri nella nebbia** (enemygarrison.js `garrisonShoot`): con l'arciere
+dentro un banco la torre tira solo entro 300 px (600 a meta'). Nella prova
+una torre nemica, a nord-est.
+
+**Prova**, casi nuovi: il messaggero (un guerriero solo, girato verso
+l'arciere a 250 px): messaggero subito, non insegue, alla torre in 185
+passi, 3 rinforzi diretti al punto in cui era l'arciere (a 0 px); due
+nemici insieme: inseguono, nessun messaggero; la torre con l'arciere a
+~400 px: 6 frecce in 150 passi allo scoperto, 0 nella nebbia.
+
+**Da fare, in quest'ordine proposto.** Le altre meccaniche: la copertura del
+bosco (piu' alberi vicini, vista dimezzata come nella nebbia), le mura che
+nascondono (la linea fra nemico e arciere non deve passare per ostacoli
+fissi), i prigionieri da liberare (soldati e macchine d'assedio); poi in
+Tiled i banchi (polilinee orizzontali `nebbia` nel livello regia, con
+velocita' e numero di nuvole), le pattuglie e le torri; la mappa
+(dell'autore) e la regia a fasi (infiltrazione, labirinto, liberazione,
+ritorno in forze).
+
+### 9.149 Gli anelli della pioggia lontani dalle rive
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): sui
+fiumi a linee (§9.97) gli anelli delle gocce di pioggia (§8.13) scavalcano la
+riva: metterli a una certa distanza dalle rive. Prova e screenshot.
+
+**Prima.** L'anello nasceva in un punto a caso della vista se la sua cella
+da 8 px era acqua, e poi si allargava fino a ~24 x 12 px di raggio
+(dimensione 0,716 di 64 px, schiacciato come il suolo): vicino alla riva ne
+usciva. E sotto la riva lontana c'e' la sua parete, una fascia scura alta
+fino a 16 px disegnata dentro l'acqua (rivers.js WALL): li' l'anello stava
+sulla sponda.
+
+**Ora** (effects.js `ringFits`): sui fiumi a linee un anello nasce solo se,
+alla grandezza massima, 8 punti del suo bordo sono ancora acqua, e verso
+l'alto anche oltre la parete (16 px in piu'). Il grande (24 x 12) dove ci
+sta; dove ci sta solo il piccolo (11 x 6, i ruscelli stretti), solo il
+piccolo: se no sk_silva perdeva quasi tutti gli anelli (69 -> 19). Lo stesso
+per le increspature (17 x 9). I fiumi dipinti dell'autore come prima.
+
+**Misura** (prova nuova `game/test/browser/ripples.mjs`, nella CI: pioggia
+piena, la vista lungo i fiumi, seme 3; per ogni anello sul fiume, 16 punti
+del bordo alla grandezza massima):
+
+| mappa | grandi fuori dall'acqua | grandi sulla parete | piccoli fuori |
+|---|---|---|---|
+| lvl06, prima | 158 su 462 | 47 | 98 su 504 |
+| lvl06, ora | 3 su 308 | 0 | 3 su 459 |
+| sk_padus, prima / ora | 72 su 231 / 2 su 162 | 14 / 0 | |
+| sk_rivo, prima / ora | 110 su 371 / 5 su 271 | 24 / 0 | |
+| sk_silva, prima | 52 su 69 | 0 | 35 su 84 |
+| sk_silva, ora | 1 su 15 | 0 | 0 su 55 |
+
+I pochi rimasti sfiorano la riva fra gli 8 punti del controllo. Screenshot
+prima/dopo su lvl06 e sk_padus con la pioggia: prima anelli a cavallo della
+riva alta e della sua parete, e qualcuno sulla riva bassa; dopo tutti
+nell'acqua.
+
+### 9.150 Le macchie d'erba fuori dai fiumi delle schermaglie
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611): nelle
+mappe delle schermaglie le macchie d'erba non devono finire nei fiumi (si
+vedeva negli screenshot di §9.149, sul Po di Padus); se serve, spostarle.
+
+**Perche'.** Le macchie a particelle (`burst_erba1`, `burst_grano1`,
+`chiazzaparticellare`, i fiori) spargono l'erba in un'ellisse attorno al
+centro, 500 x 300 px di semiassi (200 x 125 i fiori: effects.js DECOR_SIZE).
+tools/16 (`scatter`, `free`) guardava solo il centro, a 150-300 px dalle
+linee di fiumi e strade: il bordo della macchia arrivava nell'acqua. Per i
+centri delle basi c'era gia' il controllo sull'ellisse intera (`on_base`,
+§9.131), per i fiumi no.
+
+**Ora** (tools/16 `on_water`, `patch_wet`): una macchia non si mette dove il
+centro o uno dei 16 punti del bordo della sua ellisse e' a meno di meta'
+larghezza del fiume + 20 px dalla sua linea, misurato sul terreno "steso"
+(y / 0,62) come le rive del gioco; `scatter` cerca un altro posto.
+`--check` (nella CI) da' errore per una macchia nell'acqua.
+
+**Le mappe.** Prima (ellisse intera): Padus 2 macchie nel Po (piu' i loro
+gemelli), Rivoaltus 6 nella laguna; Bardonis, Silva Umbra, Urbs nessuna (non
+cambiano). Rigenerate `mappe/sk_padus.tmx`, `mappe/sk_rivo.tmx` e i loro
+scenari: a Padus si spostano solo le 4 macchie; a Rivoaltus le 6 e, a
+cascata (il generatore estrae i numeri in sequenza), i fiori e i ciuffi
+d'erba messi dopo; alberi, risorse, basi, strade e fiumi uguali. Rifatte
+anche le loro cartoline (tools/17): uguali a parte la nebbia decorativa
+(a caso) e un fiore. Screenshot: la macchia d'erba vecchia rimessa al suo
+posto copre il Po; senza, il fiume e' pulito; lo stesso sul canale di
+Rivoaltus.
+
+Nel livello 6 (la mappa dell'autore, non generata) 2 macchie toccano
+l'acqua al 70% dell'ellisse, 4 all'ellisse intera: spostate su richiesta
+dell'autore (§9.151).
+
+### 9.151 Le macchie del livello 6 fuori dai fiumi; l'avviso in Tiled
+
+Richiesta dell'autore (13 novembre 2026, stessa PR, versione 0.2611):
+spostare anche le macchie del livello 6 che finiscono nei fiumi.
+
+**Spostate** in `mappe/lvl06.tmx` (e rifatto `scenari/lvl06.json`), ognuna
+nel punto asciutto piu' vicino (lo stesso criterio di §9.150: ellisse
+intera, 20 px dalla riva), cosi' resta nello stesso angolo di paesaggio:
+due macchie di grano (180 px a destra; 160 px in giu'), due d'erba (40 px)
+e una di fiori di papavero, che arrivava a meno di 20 px dall'acqua (20 px).
+Si sono mossi solo questi 5 oggetti; il resto della mappa e dello scenario
+e' uguale. Screenshot (la macchia vecchia rimessa al suo posto): prima il
+grano entrava nel fiume, dopo comincia oltre la riva.
+
+**L'avviso** (tools/12_tiled_import.py): importando una mappa, una macchia a
+particelle che arriva nell'acqua di un fiume da' un avviso ("la macchia
+arriva nell'acqua di un fiume, spostala", con le coordinate), per le mappe
+che l'autore disegnera'. Con la mappa del livello 6 di prima: i 4 avvisi
+delle macchie bagnate; con quella nuova nessuno. Il controllo (`patch_wet`)
+e le misure delle macchie (`PATCH_SIZE`) stanno ora in tools/tiledkit.py,
+comuni a tools/12 e tools/16 (le schermaglie restano identiche).
+
+### 9.152 Multiplayer, fase 1: la partita deterministica
+
+Richiesta dell'autore (15-17 novembre 2026, stessa PR, versione 0.2611): un
+multiplayer PvP con le mappe e le impostazioni della schermaglia. Decisioni:
+**1 contro 1**, partita privata **con un codice**, preferibilmente **solo
+connessione diretta** (da capire se e' fattibile), **parti simmetriche**
+(le stesse regole per i due); intanto la **fase 1**, poi le altre si
+valutano.
+
+**Il piano** (proposto e discusso): lockstep deterministico, come i grandi
+RTS: i due browser simulano la stessa partita e si scambiano solo i
+comandi; ogni tanto confrontano un'impronta dello stato. Fasi: 1)
+determinismo; 2) strato dei comandi (oggi gli ordini sono eventi delle
+istanze che leggono il mouse durante il passo: ~90 eventi d'input, ~40
+letture del mouse nei passi); 3) parti simmetriche (291 riferimenti a
+oggetti ally, 506 a enemy, ~2.500 righe solo per i nemici; la nebbia solo
+per il giocatore; `visible` che entra nelle decisioni); 4) rete e lobby.
+
+**Fase 1: cosa poteva far divergere due browser con la stessa partita.**
+- *Lo stesso Math.random per la partita e per gli effetti*: particelle,
+  pioggia, foglie, sangue, suoni consumavano numeri casuali secondo cosa
+  c'e' sullo schermo e le opzioni grafiche (gli anelli della pioggia nascono
+  solo nella vista): due giocatori che guardano punti diversi avrebbero avuto
+  partite diverse in pochi secondi.
+- *La matematica del browser*: Math.sin, cos, atan2, hypot, exp, log e `**`
+  sono "approssimati dall'implementazione": V8, SpiderMonkey e
+  JavaScriptCore possono differire nell'ultimo bit.
+- *Istanze che nascono per chi guarda* (scoperte con la prova, sotto): i
+  mattoni di un crollo nascono solo se il crollo e' sullo schermo, e l'avviso
+  d'allarme della minimappa; prendevano gli id della partita, che decidono i
+  pareggi.
+- *I pulsanti dell'interfaccia nel mondo*: seguono la vista, hanno una
+  maschera, e `placeEmpty` li contava: un nemico con la meta sotto il pulsante
+  degli obiettivi la spostava a caso di 20 px (livello 6, passo 600).
+
+**Ora.**
+- `game/src/rng.js`: `simRandom`, il generatore della partita (sfc32 col
+  seme della partita; lo stato si salva coi salvataggi: un caricamento
+  riprende la stessa sequenza), e `vrand`, quello degli effetti (libero,
+  locale, non si salva). Il seme: `?seed=N` o uno nuovo a ogni partita; con
+  `?nostart` e senza seme (le prove nel browser, che fissano Math.random a
+  mano) Math.random come prima. Math.random e' rimasto solo in rng.js.
+- `game/src/dmath.js`: `dsin`, `dcos`, `datan2`, `dhypot`, `sq` con gli
+  algoritmi di fdlibm, scritti solo con + - * / e Math.sqrt / round (esatti
+  in ogni browser): rispetto a quelli di Chrome, su 2 milioni di valori, sin
+  e cos entro 1 ulp, atan2 identico, hypot entro 2 ulp. Al posto di Math.* in
+  38 file (anche il disegno: niente da classificare); `|log a| < |log b|`
+  delle pietre delle strade riscritto senza log.
+- Istanze cosmetiche (`opts.fx`, i mattoni) e d'interfaccia (pulsanti,
+  dialoghi, suggerimenti: world.js `isUiObject`) hanno id negativi a parte e
+  le ricerche della partita (`instancePlace` e `collisionRectangle` senza
+  famiglia) non le contano. Le cosmetiche non si salvano.
+- `snapshot.js stateHash`: l'impronta della partita (FNV-1a, due volte),
+  senza quello di chi guarda (particelle, nebbia di guerra, telecamera e
+  zoom, puntatore, allarmi della minimappa, i campi grafici delle istanze:
+  particelle di fuoco ed erba, righe del grano) e senza interfaccia ed
+  effetti; `__game.hash()`, `__game.dump()` per le prove.
+- Il kit di Tiled: rivers.js importa dmath.js; tools/11 copia anche
+  dmath.mjs e corregge l'import (come la prova dell'anteprima).
+
+**Prove.**
+- `test/dmath.test.mjs`: precisione e solo operazioni esatte.
+- `test/determinism.test.mjs`: niente Math.random fuori da rng.js, niente
+  matematica non deterministica fuori da dmath.js e dal disegno (gl.js,
+  draw.js).
+- `test/browser/determinism.mjs` (nella CI): la stessa partita, stesso
+  seme, nessun input, in due pagine che fanno tutto il resto diversamente
+  (finestra 1280x720 contro 960x600, la vista ferma sulla base contro una
+  che salta per la mappa ogni 7 passi, disegno ogni 2 passi contro ogni 5,
+  erba e pioggia spente nelle opzioni della seconda), la pioggia che comincia
+  allo stesso passo; l'impronta ogni 300 passi. Se divergono, dice il primo
+  campo diverso (DIFFS=n: i primi n). Controllo: un altro seme da' un'altra
+  impronta.
+- Nella CI anche Firefox e WebKit: la stessa prova in ognuno, e le
+  impronte dei tre browser devono essere uguali fra loro.
+
+**Risultati** (Chromium, seme 12345, nessun input, le due pagine sopra):
+le impronte coincidono a ogni controllo (ogni 300 passi) in tutte le room:
+le cinque schermaglie, il tutorial e i livelli 1-6 per 6000 passi (Padus
+anche per 12.000: la CPU costruisce, produce, attacca; piove). Prima delle
+correzioni sulle istanze: livello 5 diverso al passo 300 (gli allarmi della
+minimappa), livello 6 al passo 600 (un nemico con la meta sotto il pulsante
+degli obiettivi: 8 estrazioni casuali in piu' in una pagina; trovato con una
+traccia delle chiamate al generatore).
+
+**Le altre prove** (tutta la suite della CI, con la sequenza casuale nuova:
+le partite delle prove prendono altre strade): passano tutte tranne tre,
+sistemate cosi':
+- `stealth.mjs`, il messaggero (§9.148) restava a 167 px dal centro della
+  torre (la soglia era 150 dal centro): il punto fisso sotto la torre era
+  occupato e la regola di sempre (meta occupata, spostata a caso) lo portava
+  via. Ora va a un posto libero a 40 px dal bordo, il piu' vicino, e
+  "arrivato" si misura dal bordo (80 px): alla torre in 181 passi.
+- `ripples.mjs` (§9.149): 3 anelli su 17 sfioravano la riva a sk_silva: il
+  controllo nel gioco guardava 8 punti del bordo, la prova 16. Ora anche il
+  gioco ne guarda 16: nessun anello fuori (lvl06 0 su 305, sk_silva 0 su 16).
+- `lvl06.mjs`, la taratura: 8 passati (soglia 5). Le prove nel browser
+  fissano Math.random dopo il caricamento della mappa, che usa gia' numeri a
+  caso (gli sprite degli alberi): ogni esecuzione partiva da una mappa un po'
+  diversa, e lo stesso seme dava 4 o 8 passati. Ora la taratura usa ?seed
+  (sempre uguale) e la media di tre semi: con 15 torri 6, 5, 5 (5,3), con 5
+  torri 35, 35, 35. La media "vera" e' attorno a 5, la soglia della media
+  passa a 6 (con "al piu' 5" e un seme solo falliva una volta su due anche
+  col codice di prima). Le altre prove nel browser hanno lo stesso
+  difetto (il caricamento non fissato): da sistemare, ?seed nelle loro pagine.
+
+**La connessione diretta** (domanda dell'autore): fattibile con WebRTC, ma
+"solo diretta" ha due costi. Per collegarsi i due browser devono scambiarsi
+una descrizione della connessione (qualche centinaio di caratteri): senza
+server, il primo giocatore manda un codice lungo all'altro (in chat), che ne
+rimanda uno suo; con un piccolo servizio di sola presentazione (gratuito,
+per esempio un worker) basta un codice di 6 lettere, e la partita resta
+diretta. E per attraversare i router serve un server STUN pubblico (solo per
+scoprire l'indirizzo, niente traffico di gioco); senza un server TURN (che
+inoltra il traffico, a pagamento) una parte delle reti (stimata 10-20%:
+NAT simmetrici, reti aziendali) non si collega. Da decidere con l'autore
+quando si arriva alla fase 4.
+
+### 9.153 Multiplayer, fase 2, passo 1: coda dei comandi, registro, replay
+
+Richiesta dell'autore (17 novembre 2026, stessa PR, versione 0.2611):
+cominciare la fase 2 dal passo 1, documentando tutto, perche' il lavoro si
+riprendera' nelle sessioni successive.
+
+**Perche' la fase 2.** In una partita in lockstep (§9.152) i due browser si
+scambiano i comandi dei giocatori e li eseguono allo stesso passo. Oggi gli
+ordini non sono comandi: sono eventi delle istanze, alla GameMaker, che
+leggono il mouse durante il passo, e la selezione (`selected`) fa parte dello
+stato della partita. Inventario (17 novembre 2026: gestori per file; "clic dx
+glob." = globalRightReleased, l'ordine col clic destro; "sx altrove" =
+globalLeftPressed, la deselezione; "mouse nei passi" = letture di w.mouse,
+w.input, mousePressed/Released; "selected" = punti in cui decide):
+
+| file | clic dx glob. | clic dx | clic sx | sx altrove | tasti | hover | mouse nei passi | selected |
+|---|---|---|---|---|---|---|---|---|
+| buildings.js | 1 | 6 | 6 | 7 | 9 | 6 | 24 | 39 |
+| units.js | 2 | 0 | 1 | 1 | 1 | 3 | 17 | 35 |
+| walls.js | 0 | 4 | 6 | 4 | 5 | 2 | 4 | 19 |
+| ranged.js | 1 | 2 | 3 | 4 | 0 | 1 | 9 | 20 |
+| civilians.js | 0 | 1 | 1 | 2 | 0 | 2 | 6 | 20 |
+| production.js | 1 | 0 | 0 | 1 | 2 | 2 | 8 | 6 |
+| siege.js | 2 | 0 | 0 | 0 | 0 | 1 | 8 | 9 |
+| enemies.js | 0 | 1 | 2 | 1 | 1 | 1 | 2 | 11 |
+| levels.js | 0 | 2 | 2 | 0 | 2 | 1 | 4 | 2 |
+| manager.js | 0 | 0 | 0 | 0 | 0 | 0 | 9 | 1 |
+| bridge.js, economy.js, enemybuild.js, hints.js, world.js, menu.js, stealth.js | | | | | | | | (pochi) |
+
+Da qui la scelta: non convertire tutto in una volta (e' il cuore di ogni
+interazione), ma un'infrastruttura che regge subito una prova completa, e
+poi un'azione alla volta.
+
+**Il passo 1: cosa c'e'** (`game/src/commands.js`, classe `Commands`; in
+app.js `commands`, esposto come `window.__game.commands`).
+- *Comandi veri* (per il passo 2): `on(kind, fn)` registra il gestore di un
+  tipo; `issue(kind, data, step, p = 0)` mette un comando del giocatore `p`
+  da eseguire all'inizio del passo `step` del mondo; `runDue(world)` (in
+  app.js subito prima di `world.step`) esegue quelli del passo in un ordine
+  che non dipende dall'arrivo: passo, giocatore, numero. Un tipo senza
+  gestore e' un errore. Oggi nessun tipo registrato.
+- *Il comando di transizione `input`*: `frame(input, cam)` (in app.js subito
+  dopo `input.beginStep()`, a ogni passo del ciclo, anche in pausa) registra la
+  fotografia dell'input (mouse in pixel CSS, dentro/fuori, tasti
+  giu'/premuti/rilasciati, pulsanti del mouse, rotella) e della telecamera
+  (x, y, w, h, cssW, cssH, zoom e zoom in corso), solo quando cambia. In
+  replay la rimette, passo per passo: il resto della partita e'
+  deterministico (§9.152), quindi in singolo la partita si rigioca identica
+  anche con un'altra misura della finestra. NON serve in rete (i pulsanti
+  seguono la vista di chi gioca; l'input del secondo giocatore dovra'
+  muovere la parte nemica): e' la rete di sicurezza mentre le azioni passano
+  ai comandi veri, e il modo per provarle (sotto).
+- *Il registro*: `__game.record()` lo comincia (room e seme della partita:
+  rng.js `simSeedValue`; serve una partita con seme, `?seed=` o quello
+  nuovo di ogni partita), `commands.stop()` lo restituisce:
+  `{ v: 1, room, seed, frames: [[passo del ciclo, fotografia]], cmds: [...],
+  checks: [[passo del mondo, impronta]] }`. `afterStep(world, hash)` (alla
+  fine del passo in app.js) aggiunge l'impronta ogni CHECK_EVERY = 300
+  passi.
+- *Il replay*: `commands.replay(log)` in una pagina aperta con lo stesso seme
+  (e `?nostart`): l'input vero e' ignorato (e i comandi locali: `issue`
+  restituisce null), si rifanno fotografie e comandi del registro; a ogni
+  impronta registrata il confronto (`play.result`, `play.divergedAt`).
+- Quando non si registra ne' si rigioca, gli agganci non fanno niente
+  (salvataggi, determinismo, crowd: uguali).
+
+**Prove.**
+- `test/commands.test.mjs` (unitaria): ordine (passo, giocatore, numero)
+  con comandi arrivati in disordine; registro; replay agli stessi passi;
+  comandi locali ignorati in replay; tipo sconosciuto; la fotografia solo
+  quando cambia e rimessa uguale.
+- `test/browser/replay.mjs` (nella CI): una schermaglia su Padus (seme 11)
+  giocata SOLO con input veri (clic sul centro e Q; trascinamento attorno ai
+  lavoratori e clic destro su un albero; un lavoratore, Q, il fantasma della
+  casa sotto il puntatore fino al posto buono, clic; frecce; rotella; un
+  ordine di movimento; la CPU che gioca), 3765 passi, 223 fotografie;
+  rigiocata dal solo registro in una finestra 960x640: 12 impronte su 12
+  uguali e la stessa alla fine. Controllo: col primo clic destro spostato di
+  200 px diverge al passo 600. La prova fallisce anche se la sessione non fa
+  davvero le sue azioni (centro selezionato, lavoratori selezionati, un
+  cantiere).
+
+**Come riprendere (passo 2 e 3).** Per ogni azione:
+1. un tipo di comando con i dati che bastano a eseguirla senza mouse ne'
+   selezione: per esempio `{ k: "muovi", ids: [...], x, y }`, `{ k:
+   "attacca", ids, target }`, `{ k: "costruisci", ids, obj, x, y }`, `{ k:
+   "produci", edificio, unita' }`, `{ k: "comportamento", ids, comp }`; il
+   gestore (`commands.on`) fa quello che oggi fa l'evento;
+2. l'evento d'input (clic destro, tasto, pulsante) non cambia piu' lo stato:
+   calcola i dati (chi e' selezionato, dove punta il mouse) e chiama
+   `commands.issue(...)` per il passo in corso;
+3. la prova: replay.mjs (e le prove che danno ordini col clic vero: crowd,
+   movement, settle, attackorder, fireorder, sites, buildstuck, garrison...)
+   devono restare uguali; poi una variante del replay che rigioca SOLO i
+   comandi veri (senza le fotografie, o con le fotografie svuotate dei clic
+   gia' convertiti) deve dare le stesse impronte per le azioni convertite.
+Ordine proposto (dal piu' usato): (a) la selezione fuori dallo stato della
+partita (`selected` diventa dell'interfaccia del giocatore; i ~150 punti in
+cui decide passano a "le unita' del comando"); (b) gli ordini col clic destro
+(9 globalRightReleased: fanti e cavalieri, arcieri, civili, assedio,
+edifici con la bandiera); (c) comportamento, modi di tiro, presidio; (d)
+costruzione e piazzamento (i fantasmi *_placer), mura e porte; (e)
+produzione e code; (f) riparazione, fuoco, gruppi di controllo, doppio clic.
+Attenzioni: le istanze d'interfaccia (pulsanti, fantasmi, dialoghi) hanno
+id a parte e le ricerche della partita non le vedono (§9.152): i comandi non
+devono dipendere da loro; il passo in cui un comando si esegue e' quello
+in corso in singolo, in rete qualche passo dopo (il ritardo dei comandi,
+fase 4).
+
+**Il determinismo fra browser nella CI** (verificato il 17 novembre 2026,
+commit 31b8878): Chromium, Firefox e WebKit danno le stesse 10 impronte su
+Padus in 3000 passi (seme 12345). Firefox headless sulla macchina della CI
+non ha driver GL ("Exhausted GL driver options": niente WebGL2, il gioco non
+parte): gira con la finestra (HEADED=1) su Xvfb con Mesa in software
+(build.yml). Il passo dura ~8 minuti; il limite del lavoro e' passato da 30
+a 45 minuti (con 30 una CI e' stata annullata a meta' di Firefox).
+determinism.mjs, se il gioco non parte, stampa errori, console e WebGL2.
+
+**Per provare in questa macchina** (cloud): niente server http (negato
+dall'ambiente): un modulo che serve game/ da disco a Playwright
+(PLAYWRIGHT_MODULE, come in §9.146); la suite completa nel browser richiede
+~45 minuti con 4 prove in parallelo.
+
+### 9.154 Multiplayer, fase 2, passo 2: la selezione e le azioni come comandi
+
+Richiesta dell'autore (17 novembre 2026, stessa PR, versione 0.2611):
+procedere col passo 2 della fase 2.
+
+**L'idea.** Un'azione del giocatore che cambia la partita non la cambia piu'
+nel gestore d'input: diventa un comando coi dati che bastano a eseguirla
+(chi: gli id delle unita' o degli edifici; dove: il punto), eseguito
+all'inizio del passo DOPO quello in cui nasce, uguale per chi la da' e (in
+rete) per chi la riceve. Tutto quello che resta nei gestori d'input e'
+interfaccia di chi guarda: la selezione, i pulsanti, i fantasmi, i
+lampeggi, la telecamera.
+
+**Il meccanismo** (world.js, app.js, commands.js):
+- `world.action(tipo, fn(world, c))` registra un tipo; `world.act(tipo,
+  dati)` lo da': con la coda dei comandi (app.js `hooks.command`) e' un
+  comando del passo dopo, senza (prove unitarie) si esegue subito.
+  `commands.runDue` esegue i tipi del mondo se non ha un gestore suo.
+  `world.selectedIds()` gli id selezionati (della partita), `world.byIds(ids,
+  nome)` le istanze vive. I campi s, p, n, k del comando sono riservati
+  (issue li rifiuta).
+- `world.withSelection(ids, fn)`: per il tempo di fn i selezionati sono
+  `ids`, poi tornano quelli di chi guarda (restano cambiati solo quelli che fn
+  stessa ha cambiato). Serve a rifare gli eventi di sempre (che guardano
+  `selected`) dai dati del comando senza riscriverli tutti.
+
+**I tipi fatti** (in ordine di uso):
+| tipo | dati | da | eseguito da |
+|---|---|---|---|
+| ordine | ids, x, y, over | rilascio destro (world._mouseEvents) | world.rightOrder: GlobalRightPressed (il centro azzera le destinazioni; prima alla pressione), RightReleased sotto il punto se over, scr_movement_general, GlobalRightReleased, formazione; il mouse del mondo e' (x, y) |
+| comportamento | ids, attacco | attacco/difesa (Q, A) | units.js behaviourAction |
+| tiro | ids, modo | furtivo/rapido (F, R) | stealth.js shotAction |
+| civile, annulla_civile | ids (centri) | omino_clicker (Q), centro_indietro (W) | buildings.js workerAction, cancelWorkerAction |
+| produci, annulla | ids, prod, type | i pulsanti di caserma, stalla, castello | production.js produceAction, cancelAction |
+| costruisci | fam, x, y, tipo, posiz, ids, mx, my | clic del fantasma (*_placer) | buildings.js buildAction: paga, il cantiere; i costruttori `ids` (prima buildarm sui civili) partono al suo Alarm_0 verso (mx, my) (prima il mouse di allora) |
+| prolunga | vert, x, y | clic sull'anteprima del tratto | walls.js extendAction |
+| porta | ids | gate_clicker (Q) | walls.js gateAction |
+| canc | ids | Canc (world._keyEvents) | world.cancAction: il KeyPress_Delete di sempre sulle istanze ids |
+| trucco | res | V + Alt + F/Q/S/W/P (manager.keys) | manager.cheat |
+
+**Fuori dalla partita** (snapshot.js, l'impronta; world.js):
+- la selezione: `selected`, `assi` (gruppi di controllo), `dcAt` (la
+  finestra del doppio clic: prima l'Alarm_1 dell'unita' con dc 1/0, ora il
+  passo fino a cui vale, units.js dcOn/dcArm; il dc dei NEMICI resta, e'
+  logica loro), `_mouseOver`; i contatori sel, milsel, firesel, arcsel,
+  siegsel, selected; i cerchi del puntatore (alberhover, minierahover,
+  stonehover, farmhover, buildhover, preshover); i tasti visia, minim, obj,
+  hint.
+- istanze dell'interfaccia (id negativi, fuori dall'impronta, §9.152) anche
+  i lampeggi delle risorse (*_blink), i "+" e le anteprime delle mura
+  (mplus_*, oodl, oosl, ovbl, oval; i fantasmi *_placer lo erano gia', figli
+  di clicker_parent).
+- un'istanza dell'interfaccia si trova solo col suo nome o un genitore
+  d'interfaccia (world.js indexNames, _hits): le anteprime delle mura sono
+  figlie di mura_ori e ally_build, e i nemici le avrebbero viste. Lo sprite
+  a caso (choices) delle istanze dell'interfaccia e cosmetiche col
+  generatore di chi guarda (vrand), come lo stile del fantasma della casa.
+  Vale per tutte le ricerche: per nome (all, number, nearest: l'indice) e per
+  posizione (instancePlace, instancePosition, positionMeeting,
+  collisionRectangle, le collisioni).
+
+**Prove.**
+- `test/browser/orders.mjs [room]` (nella CI su lvl06 e match): due pagine
+  con lo stesso seme; A da' gli ordini col clic destro vero, B gli stessi
+  SOLO come comandi, con un'altra selezione che cambia a caso a ogni passo
+  e la vista altrove: impronte uguali ogni 50 passi (lvl06: 16 soldati e 4
+  civili, formazione e legna; anche lvl03, sk_padus). Controllo: un ordine
+  spostato diverge.
+- `test/browser/replay.mjs`: la sessione (ordini, civili in coda, la casa,
+  un trucco) rigiocata dai SOLI comandi, senza nessun input ne'
+  telecamera (`commands.replay(log, { input: false })`): 12/12 e la stessa
+  impronta alla fine. E' la prova del passo 2: una sessione che fa
+  un'azione non ancora convertita diverge qui. Il controllo ora sposta un
+  comando (non piu' un clic delle fotografie, che in replay non da' ordini).
+- `test/browser/determinism.mjs`: la pagina B seleziona e deseleziona a caso.
+- `test/commands.test.mjs`: le azioni del mondo come comandi.
+
+**Trovato per strada** (con la sonda che rigioca in parallelo il registro
+completo e quello senza input, e stampa il primo campo diverso): il timer
+del doppio clic in una sveglia della partita; il fantasma della casa che
+sceglieva lo stile col generatore della partita (ora era dell'interfaccia:
+la sequenza cambiava solo per chi costruisce).
+
+**Cosa resta (fase 2).**
+- Campagna: dialoghi (dialogo_*) e suggerimenti (hint_*) sono
+  interfaccia ma alcuni fanno partire cose della partita (script dei
+  livelli); la schermaglia non li usa. Da guardare solo se servira'.
+- Il comando si esegue al passo dopo: le prove nel browser che danno un
+  ordine e guardano subito lo stato devono fare almeno un passo.
+
+**Dove si eseguono i comandi.** In world.step dopo Begin Step e allarmi,
+dove giravano tastiera e mouse (`hooks.commands`; prima, in §9.153, in testa
+al passo). Il passo di ritardo ha fatto emergere in attackorder.mjs (la CI
+rossa) due unita' ferme a 3-9 px dal nemico per sempre, due difetti veri
+dell'attacco (units.js autoAttack), corretti:
+- chi aspetta (waitHere: non riesce ad avvicinarsi di piu') a meno di 10 px
+  colpisce anche in verticale, dove la portata e' 10 * k = 6,4 px e da sopra
+  o da sotto ci si ferma prima (il picchiere a 9 px);
+- chi insegue il suo bersaglio e ha un altro nemico a portata di colpo (che
+  gli sbarra la strada) prende quello (il guerriero a 3 px da uno, col
+  bersaglio a 84 px).
+
+**Per la fase 3** (parti simmetriche): i gestori degli ordini cercano
+`ally_*` e il comando ha gia' gli id: un comando del giocatore 1 deve
+muovere le unita' `enemy_*` (o, meglio, le parti diventano due insiemi della
+stessa famiglia). Attenzione a: `visible` (la nebbia di chi guarda: alcune
+decisioni della partita la leggono, p.es. chi si vede si attacca) e le
+istanze dell'interfaccia distrutte dalla partita (il cantiere delle mura
+distrugge le anteprime: in rete quelle dell'altro).
+
+### 9.155 Multiplayer, fase 3: i gemelli blu del giocatore 2 e lo specchio
+
+Richieste dell'autore (17 novembre 2026, stessa PR, versione 0.2611): "il
+secondo giocatore con dei secondi modelli blu, funzionali solo al
+multiplayer"; poi: "i gemelli blu, ma devono usare gli sprite di enemy, non
+devono essere solo un tint: uno dei due giocatori si vedra' con gli sprite
+di enemy, l'altro con quelli rossi soliti. Sono comunque oggetti distinti".
+
+**Le opzioni considerate.** (1) gemelli p2_* con la logica del giocatore
+(scelta); (2) gli stessi oggetti con un campo "parte" (ogni ricerca del
+codice da filtrare: decine di file); (3) il giocatore 2 con gli oggetti
+enemy_* (scartata dall'autore: un'altra logica, un cantiere solo).
+
+**Gli sprite blu** (`src/p2sprites.js`). I gemelli usano gli sprite del
+giocatore (stesse maschere e fotogrammi: la partita non sa di colori); al
+disegno (world.draw, sprites.js `setSpriteRemap`) ognuno passa al suo
+corrispondente blu: le famiglie d'animazione (ww -> bww, ff -> bfg, cm ->
+bcw, ow -> b_ow, ..., P2_FAMILIES), gli edifici finiti (cc_spr -> cc_b,
+barn_spr -> mub, campo2 -> campo1, rflag -> bflag, P2_EXACT), le case (c3s ->
+c3b), mura, porte e i loro danni (castello_r1 -> castello_b_r1). Restano
+quelli del giocatore cantieri e rovine (neutri: il nemico della CPU ha un
+cantiere solo) e le icone; due fotogrammi mancanti (bwa31, bpa31) prendono
+il primo della stessa direzione. I civili blu (b_ow, b_os, b_car...) erano
+nell'atlas ma la CPU non li usava (enemy_omino e' rosso). Prova:
+test/p2sprites.test.mjs (ogni animazione delle unita' e dei cadaveri del
+giocatore e ogni edificio finito ha il suo blu).
+
+**I gemelli e lo specchio** (`src/multiplayer.js`, world.js).
+- I gemelli: la famiglia del giocatore (ally_* e chi ha un genitore ally*:
+  unita', edifici, cantieri, mura, porte, cc_barn) e quello che porta la
+  parte (frecce e proiettili, cadaveri, bandiere, food_bullet): p2_<nome>
+  (ally_warrior -> p2_warrior, centro -> p2_centro), stessa definizione coi
+  genitori tradotti, lo stesso comportamento registrato.
+- Lo specchio (mirrorWorld): il codice del giocatore non si riscrive. Per
+  gli eventi di un'istanza p2_* il mondo passa uno Proxy di se stesso che
+  traduce gli argomenti stringa dei metodi (all, nearest, number, create,
+  instancePlace, positionMeeting, is, byIds, ...) con la tabella m2: i nomi
+  del giocatore -> p2_*, "enemy_*" -> il giocatore 1 (ENEMY_EQ: enemy_unit ->
+  ally_unit, enemy_centro -> centro, ...); e w.g e' la cassa del giocatore 2
+  (global.p2: food, wood, gold, stone, pop, popcap, idle; il resto di global
+  e' comune). Nella partita a due anche il giocatore 1 ha il suo specchio
+  (m1: "enemy_*" -> p2_*). I metodi girano sul mondo vero: le chiamate
+  interne non si traducono due volte.
+- Chi vede da quale parte (world.worldFor): un'istanza della parte 1 o 2 con
+  lo specchio della sua parte; durante un comando le neutre (risorse...) con
+  quello di chi lo da' (mp.actor, runAction); fuori dai comandi le neutre
+  sempre con la parte 1 (uguale in ogni pagina: risorse, sk_manager) e
+  l'interfaccia con quella di chi guarda (mp.local). Le collisioni con i
+  nomi tradotti per la parte dell'istanza (le frecce blu colpiscono i rossi).
+  L'input lo prendono solo le istanze della parte di chi guarda; dentro un
+  comando quelle della parte che lo da'.
+- I comandi portano il giocatore (p 0 o 1; app.js hooks.command: la parte di
+  chi guarda) e si eseguono col suo specchio.
+- app.js: `?pvp=1` su una mappa da schermaglia accende la partita a due
+  (`&parte=2`: si guarda dal blu); quello che app.js fa per "il giocatore" a
+  ogni passo (civili inattivi, sovrapposizioni, assedio, fiaccole) gira per
+  le due parti, la selezione, la nebbia e gli allarmi per chi guarda.
+- skirmish.js: il secondo centro e' p2_centro, il blu ha 3 civili e la sua
+  cassa con le risorse di partenza scelte, niente regia della CPU ne'
+  tregua.
+- Fuori dall'impronta anche alLife (gli allarmi della minimappa) e
+  _fogStamp (la nebbia): sono di chi guarda.
+
+**Prove.**
+- test/browser/pvp.mjs (nella CI): due pagine con lo stesso seme, una
+  guarda dal rosso e una dal blu, gli stessi comandi dei due giocatori
+  (civili in coda, legna, la casa blu); al passo 900 due piccoli eserciti
+  nascono al centro e si combattono. Impronte uguali (30/30 ogni 50 passi su
+  1500); tutti e due raccolgono, la casa blu c'e', morti da tutte e due le
+  parti; il centro blu disegnato cc_b. Controllo: un ordine blu diverso
+  cambia la partita. `EVERY=20 DIFFS=20` per cercare dove divergono.
+- test/multiplayer.test.mjs: gemelli, tabelle, lo specchio e la cassa.
+- Il gioco in singolo non cambia: col seme fisso le impronte di
+  determinism.mjs (sk_padus, lvl06, match, 3000 passi) sono le stesse di
+  prima del rifacimento (confrontate con 47f32a4 con la stessa impronta).
+
+**Fatto dopo** (stesso giorno, seconda tornata):
+- L'interfaccia di chi guarda: manager.drawGUI, drawEnd e drawMouser
+  ricevono lo specchio di chi guarda (world.worldFor(null)) e usano la sua
+  cassa (world.g): il riquadro di risorse, popolazione e inattivi del blu,
+  la minimappa ("i miei edifici"). L'obiettivo nella partita a due:
+  "Avversario: il giocatore blu/rosso" (endgame.js, texts.js). La vista di
+  partenza sulla propria base. I tetti della cassa (9999, popcap 99 e
+  quello scelto) anche per il blu.
+- La nebbia di guerra (multiplayer.js pvpVisibility, a ogni passo in
+  app.js): per le istanze delle due parti visible vuol dire "la vede
+  l'avversario", calcolato per tutte e due come per i nemici della CPU
+  (unita' 150 px, edifici 200, castelli e torri 500, di piu' di giorno,
+  sempre se colpite o con la visibilita' Totale). Cosi' il codice del
+  giocatore che guarda visible sul bersaglio vale per tutte e due le parti.
+  Il disegno (world.shown) mostra sempre le istanze di chi guarda (quelle
+  che la definizione vuole visibili), dell'avversario quelle che vede.
+- Le risorse scoperte dal blu (vis2, civilians.js reveal col suo specchio);
+  i civili blu conoscono quelle (known); il disegno e la minimappa del blu le
+  usano.
+- La fine (skirmish.js pvpCheck, pvpEnd): chi vince e' un dato comune
+  (global.skWinner), deciso da sk_manager per conquista, municipio o
+  punteggio (a tempo; a pari vince il rosso, provvisorio); il rosso vede la
+  vittoria e il blu la sconfitta (o il contrario), schermate cosmetiche (fx).
+  Il centro distrutto e "nessuna mossa" (noMovesCheck) non decidono da soli
+  nella partita a due. Dopo la fine le pagine possono differire
+  (global.victory, gameover): il controllo della rete si fermera' li'.
+- pvp.mjs: anche la fine (edifici blu distrutti: vince il rosso in tutte e
+  due le pagine, il rosso vede la vittoria, il blu la sconfitta).
+- Giocare dal blu con mouse e tastiera (`PVP=2 replay.mjs`, nella CI: la
+  sessione del replay da ?pvp=1&parte=2; 12/12 anche dai soli comandi). Per
+  arrivarci: i pulsanti di costruzione col suo specchio (buildButtons); il
+  trucco nella cassa di chi lo da'; e i punti del codice del giocatore che
+  confrontano i NOMI degli oggetti, che lo specchio non traduce:
+  multiplayer.js `baseOf(i)` (il nome originale di un gemello: p2_omino ->
+  ally_omino; units.js: contatori della selezione, ruoli e velocita' della
+  formazione, assedio) e `unitFam(i)` (la famiglia delle unita' della parte:
+  enemy_unit, p2_unit, ally_unit; pathing.js canYield, stepAside, sideUnit,
+  lastmile.js side, world.placeFreeForSlot). Prima i civili blu contavano
+  come soldati (niente pulsanti di costruzione) e le unita' blu non si
+  scansavano fra loro.
+
+**Segnalazioni dell'autore** (corrette):
+- [Segnalazione dell'autore: "un mulino rosso sul centro blu"] Due gemelli
+  con lo stesso nome: ally_barn (la famiglia dei depositi del cibo) e barn
+  (il mulino) diventavano tutti e due p2_barn, e il deposito invisibile del
+  centro blu (p2_cc_barn, figlio di p2_barn) prendeva il comportamento del
+  mulino: nasceva con lo sprite mul1. Ora un nome che togliendo "ally_"
+  darebbe un altro oggetto tiene il prefisso (p2_ally_barn), e nameMaps si
+  ferma con un errore se due gemelli finiscono sullo stesso nome. La nebbia
+  controllata con le immagini: dal rosso la base blu e' nera, e viceversa;
+  un soldato blu vicino ai rossi il rosso lo vede. pvp.mjs controlla tutte e
+  due le cose.
+- [Segnalazione dell'autore: "sugli screen del blu la nebbia sembra
+  'esplorato ma nessuno presente'"] La nebbia ha due strati: lo scoperto
+  (FogMap.update, a ogni passo) e il visibile adesso (FogMap.compose, al
+  disegno, fogdraw.js prepare). Lo scoperto si calcolava gia' con lo
+  specchio di chi guarda, il visibile no: riceveva il mondo vero, cioe' le
+  fonti di vista del rosso; dal blu tutto era "scoperto ma non visibile".
+  Ora fogLayer.prepare e la prima scoperta (all'avvio) ricevono lo specchio
+  di chi guarda. pvp.mjs controlla la luce sotto il proprio centro (shade 0)
+  da tutte e due le parti. Per strada: leafHit (le foglie del colpo, solo
+  sugli alberi sullo schermo di chi guarda) era nell'impronta: ora fra i
+  campi grafici (VISUAL_KEYS).
+
+**Terza tornata** (stesso giorno, i punti rimasti):
+- Le porte nei percorsi. La griglia (Pathing) ha due varianti, "giocatore"
+  e "nemico" (cost/enemyBlock per le porte del giocatore, enemyPass per
+  quelle nemiche). Nella partita a due il blu usa la variante "nemico"
+  (multiplayer.js `pathEnemy`: pathing.js generateFields, siegeMove,
+  goNear, canReach, il ritorno; lastmile.js; melee.js; civilians.js
+  fieldTo) e le sue porte si segnano come quelle nemiche (walls.js gate:
+  tutta la porta chiusa per il rosso, il varco aperto per il blu). Prova in
+  pvp.mjs: nello stesso punto la porta rossa ha 6 celle di varco libere per
+  il rosso e chiuse per il blu, quella blu il contrario.
+- L'equita' (una sonda, non nella CI): 4 guerrieri contro 4 in posizioni
+  speculari, 6 semi, scambiando chi nasce prima: vince SEMPRE chi nasce
+  dopo (chi viene dopo nell'ordine delle istanze del passo), con lo stesso
+  risultato a parti scambiate (2 vivi con vita 24, o 2 con vita 10). La
+  logica delle due parti e' simmetrica; il vantaggio e' dell'ordine delle
+  istanze, che c'e' anche contro la CPU e in partita dipende da quando
+  ognuno ha prodotto le sue unita'. Non si cambia (sarebbe l'ordine di
+  tutto il gioco); da riconsiderare se in rete si nota.
+- I confronti di nomi: settleSiege (siege.js) nella partita a due gira per
+  ogni parte col suo specchio e tratta solo le proprie macchine (prima le
+  avrebbe trattate due volte, e confrontate con quelle dell'altra parte).
+  Gli altri confronti per nome rimasti (civilians.js "ponte", le slices
+  degli edifici) valgono anche per i gemelli. Le fiaccole delle case
+  passano due volte ma non si raddoppiano (h.torch).
+
+**Cosa resta (fase 3).**
+- Altri confronti di nomi d'oggetto nel codice del giocatore (i.object ===
+  "...", tabelle per nome) non ancora passati da baseOf: cercarli quando un
+  comportamento del blu non torna (grep 'object ===', '[i.object]').
+- Cose comuni da dividere per parte: global.order (il numero d'ordine
+  delle unita', comune: deterministico ma condiviso), i suggerimenti (di chi
+  guarda), le fiaccole delle case (houseTorches legge visible).
+- Il menu della partita a due (fase 4, insieme alla rete).
+
+**Come riprendere: la fase 4** (la rete; decisioni dell'autore: 1 contro
+1, con un codice, preferibilmente connessione diretta, §9.152).
+Quello che c'e' gia':
+- la partita a due in una pagina: `?room=sk_*&pvp=1&parte=1|2&seed=N`
+  (app.js), le due parti identiche (pvp.mjs: due pagine con gli stessi
+  comandi danno le stesse impronte; PVP=2 replay.mjs: si gioca dal blu);
+- i comandi (commands.js): `issue(kind, data, step, p)` col giocatore p (0
+  rosso, 1 blu), eseguiti in ordine (passo, giocatore, numero) dentro il
+  passo del mondo (world hooks.commands); app.js li da' oggi per il passo
+  dopo (hooks.command: world._stepNo + 1); il registro e le impronte ogni
+  CHECK_EVERY = 300 passi (afterStep), stateHash in snapshot.js;
+- cosa e' di chi guarda e non entra nell'impronta (selezione, puntatore,
+  nebbia disegnata, allarmi, interfaccia: snapshot.js UI_GLOBALS,
+  SELECTION_KEYS, VISUAL_KEYS; le istanze ui/fx).
+Da fare, in quest'ordine:
+1. Il canale: WebRTC, un RTCDataChannel affidabile e in ordine. Lo
+   scambio dei codici da decidere con l'autore (§9.152): incollare a mano
+   offerta e risposta (lunghe, compresse), oppure un piccolo servizio di
+   segnalazione con codici di 6 lettere; STUN pubblico; senza TURN il 10-20%
+   delle reti non si collega.
+2. Il lockstep: ogni comando locale per il passo s + D (ritardo, p.es. 4-8
+   passi); a ogni passo ogni pagina manda i suoi comandi di quel passo (o
+   "niente") e il mondo avanza solo quando ha quelli dell'altro per quel
+   passo (Commands: una coda dei comandi remoti e "pronto per il passo s";
+   il ciclo di app.js aspetta). La pausa e la velocita' diventano comandi;
+   i salvataggi nella partita a due da decidere (o niente).
+3. L'avvio comune: chi crea sceglie mappa, opzioni e seme e li manda;
+   tutti e due aprono la room con gli stessi parametri (?pvp=1&parte=1/2&seed).
+4. Il controllo: le impronte ogni 300 passi si scambiano; se diverse,
+   avviso e dump (stateDump) per capire; si smette alla fine della partita
+   (global.skWinner: dopo, victory e gameover sono di chi guarda).
+5. Il menu: "Partita a due" nella schermaglia (crea / entra con il codice),
+   l'attesa dell'altro, la disconnessione.
+6. Le prove: due pagine collegate da un canale finto (in memoria, con
+   ritardo e disordine) -> stesse impronte; poi WebRTC vero fra due pagine
+   dello stesso browser (in locale non serve STUN).
+Attenzione: il vantaggio di chi nasce dopo (sopra, equita'); le cose di chi
+guarda che non devono mai cambiare la partita (se una prova a due pagine
+diverge, la sonda: EVERY=20 DIFFS=20 pvp.mjs stampa il primo campo
+diverso, come per alLife, _fogStamp, leafHit).

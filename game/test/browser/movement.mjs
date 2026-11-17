@@ -22,7 +22,7 @@ const [room = "match", seedArg = "1"] = process.argv.slice(2);
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=${room}&nostart=1`);
+await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=${room}&nostart=1&seed=${seedArg}`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 const res = await page.evaluate(([SEED]) => {
   const G = window.__game, w = G.world, cam = G.cam, p = w.path;

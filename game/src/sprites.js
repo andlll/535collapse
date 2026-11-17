@@ -6,9 +6,16 @@
 // verso il basso, come in GameMaker [I].
 
 import { packColor } from "./gl.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+
+// [§9.155] gli sprite blu del giocatore 2: mentre il mondo disegna una sua
+// istanza (world.draw) ogni sprite passa da questa tabella (p2sprites.js)
+let REMAP = null;
+export function setSpriteRemap(m) { REMAP = m; }
 
 export function drawSprite(r, assets, name, index, x, y, xscale = 1, yscale = 1, angle = 0,
                            colour = 0xffffff, alpha = 1) {
+  if (REMAP && REMAP[name]) name = REMAP[name];
   const fr = assets.frame(name, index);
   if (!fr) return false;
   const { s, f, tex } = fr;
@@ -21,7 +28,7 @@ export function drawSprite(r, assets, name, index, x, y, xscale = 1, yscale = 1,
     r.quad(tex, x + lx0, y + ly0, x + lx1, y + ly0, x + lx1, y + ly1, x + lx0, y + ly1,
            u, v, u + w, v + h, rgba);
   } else {
-    const a = -angle * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    const a = -angle * Math.PI / 180, c = dcos(a), sn = dsin(a);
     const px = (lx, ly) => x + lx * c - ly * sn, py = (lx, ly) => y + lx * sn + ly * c;
     r.quad(tex, px(lx0, ly0), py(lx0, ly0), px(lx1, ly0), py(lx1, ly0),
            px(lx1, ly1), py(lx1, ly1), px(lx0, ly1), py(lx0, ly1), u, v, u + w, v + h, rgba);
@@ -36,7 +43,7 @@ export function spriteBounds(assets, name, x, y, xscale = 1, yscale = 1) {
   const ax = Math.abs(xscale), ay = Math.abs(yscale);
   const ox = s.origin[0] * ax, oy = s.origin[1] * ay;
   // largo per eccesso: con rotazione il rettangolo puo' girare attorno all'origine
-  const rad = Math.hypot(Math.max(ox, s.width * ax - ox), Math.max(oy, s.height * ay - oy));
+  const rad = dhypot(Math.max(ox, s.width * ax - ox), Math.max(oy, s.height * ay - oy));
   return [x - rad, y - rad, x + rad, y + rad];
 }
 
@@ -49,6 +56,7 @@ export function spriteBounds(assets, name, x, y, xscale = 1, yscale = 1) {
 // cuciture, nessuna texture in piu'. Senza scala verticale ne' rotazione
 // (gli alberi non ne hanno); se no, come drawSprite.
 export function drawSway(r, assets, name, index, x, y, xscale, yscale, top, colour = 0xffffff, alpha = 1, h = 150, rows = 6) {
+  if (REMAP && REMAP[name]) name = REMAP[name];
   const fr = assets.frame(name, index);
   if (!fr) return false;
   const { s, f, tex } = fr;

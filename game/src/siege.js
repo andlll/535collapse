@@ -17,23 +17,25 @@ import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinatio
 import { ramSpot } from "./melee.js";
 import { fogSight } from "./enemies.js";
 import { sightK, seenNear } from "./fog.js";
-import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
+import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups, dcOn, dcArm } from "./units.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { simRandom } from "./rng.js"; // §9.152
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const WHITE = 0xffffff;
 
 // distance_to_point [I]: dal bbox al punto (con l'istanza in x, y)
 function distanceToPoint(w, i, px, py, x = i.x, y = i.y) {
   const b = w.bbox(i, x, y);
   if (!b) return pointDistance(x, y, px, py);
-  return Math.hypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
+  return dhypot(Math.max(0, b[0] - px, px - b[2]), Math.max(0, b[1] - py, py - b[3]));
 }
 
 // distance_to_object con l'istanza in x, y
 function distanceAt(w, i, x, y, o) {
   const a = w.bbox(i, x, y), b = o && w.bbox(o);
   if (!a || !b) return Infinity;
-  return Math.hypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
+  return dhypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
 }
 
 // --------------------------------------------- parti comuni agli alleati
@@ -74,7 +76,7 @@ function siegeCommon(name, corpseName, icon) {
     leftClickAndDeath(i, w) {
       const g = w.g;
       if (i.hover === 1 && w.input.mouseReleased[0]) {
-        if (i.dc === 1) {
+        if (dcOn(i, w)) {
           const c = w.cam;
           for (const o of w.all(name)) {
             if (o.x > c.x && o.x < c.x + c.w && o.y > c.y && o.y < c.y + c.h) { o.selected = 1; g.sel += 1; g.siegsel++; g.milsel += 1; }
@@ -82,8 +84,8 @@ function siegeCommon(name, corpseName, icon) {
         }
         if (g.sele > -1 && i.selected === 0) {
           i.selected = 1; g.milsel += 1; g.siegsel++;
-          if (i.dc === 0) g.sel += 1;
-          if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+          if (!dcOn(i, w)) g.sel += 1;
+          if (!dcOn(i, w)) dcArm(i, w);
         }
         if (g.sele === -1) {
           if (i.selected === 1) { g.sel -= 1; g.siegsel--; g.milsel -= 1; }
@@ -156,7 +158,7 @@ export function allyRam() {
       if (i.step !== 3) return;
       i.step = 0;
       i.alarm.set(2, 13);
-      const b = w.nearest(i.x + 50 * Math.cos(degtorad(i.direction)), i.y - 50 * Math.sin(degtorad(i.direction)), "enemy_build");
+      const b = w.nearest(i.x + 50 * dcos(degtorad(i.direction)), i.y - 50 * dsin(degtorad(i.direction)), "enemy_build");
       if (b) { b.hit = 1; b.alarm.set(2, 50); b.life -= b.slife === 100 ? 5 : 50; }
     },
     step(i, w) {
@@ -283,7 +285,7 @@ function spotSearch(w, i, score, rings, apart) {
   for (const r of rings) {
     let best = null, bs = Infinity;
     for (let a = 0; a < 24; a++) {
-      const x = Math.round(i.x + Math.cos((a * Math.PI) / 12) * r), y = Math.round(i.y + Math.sin((a * Math.PI) / 12) * r);
+      const x = Math.round(i.x + dcos((a * Math.PI) / 12) * r), y = Math.round(i.y + dsin((a * Math.PI) / 12) * r);
       const gx = Math.floor(x / GRID), gy = Math.floor(y / GRID);
       if (!p.inside(gx, gy) || p.cost[gy * p.gw + gx] >= 1000) continue;
       const sc = score(x, y);
@@ -352,7 +354,9 @@ function unstack(w, i, ok) {
 // quella libera se l'altra sta tirando, colpendo o ricaricando.
 export function settleSiege(w) {
   if (w._stepNo % 10 !== 0) return;
-  for (const n of [...SIEGE_OF.ally, ...SIEGE_OF.enemy]) {
+  // [§9.155] nella partita a due gira per ognuna delle due parti col suo
+  // specchio (app.js): solo le proprie ("ally_*" e' la parte dello specchio)
+  for (const n of w.mp ? SIEGE_OF.ally : [...SIEGE_OF.ally, ...SIEGE_OF.enemy]) {
     for (const i of w.all(n)) {
       if (!i.alive || i.action !== 0 || (i.warwork && i.warwork !== 4) || i.order) continue;
       const o = siegeNear(w, i, i.x, i.y, false);
@@ -472,7 +476,7 @@ function followOrder(i, w) {
   if (d >= RANGE) {
     // lontano: verso il bersaglio (la meta si aggiorna se si sposta di 100 px)
     const g = i.orderGoal;
-    if (i.action !== 1 || !g || Math.hypot(t.x - g[0], t.y - g[1]) > 100) {
+    if (i.action !== 1 || !g || dhypot(t.x - g[0], t.y - g[1]) > 100) {
       if (i.action !== 1) { i.alarm.set(0, irandomRange(5, 13)); i.step = 0; }
       i.action = 1; i.dirox = Math.round(t.x); i.diroy = Math.round(t.y);
       i.orderGoal = [t.x, t.y];
@@ -708,7 +712,7 @@ export function smoke() {
   return {
     create(i) {
       i.aaa = 1;
-      i.bbb = Math.random() * 2 === 1 ? 1 : -1;
+      i.bbb = simRandom() * 2 === 1 ? 1 : -1;
       i.alarm.set(0, 50);
       i.direction = 90;
       i.speed = 3;
@@ -770,7 +774,7 @@ export function enemyRam(base) {
       if (i.step !== 3) return;
       i.step = 0;
       i.alarm.set(2, 13);
-      const b = forcedTarget(i) || w.nearest(i.x + 50 * Math.cos(degtorad(i.direction)), i.y - 50 * Math.sin(degtorad(i.direction)), "ally_build");
+      const b = forcedTarget(i) || w.nearest(i.x + 50 * dcos(degtorad(i.direction)), i.y - 50 * dsin(degtorad(i.direction)), "ally_build");
       // [§9.11] il monastero del livello 3 ha un danno suo (ramHit)
       if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.ramHit ?? (b.slife === 100 ? 5 : 50); }
     },

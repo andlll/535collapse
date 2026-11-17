@@ -18,8 +18,27 @@
 // 128 px aggiornata quando si muovono (moved()).
 
 import { Alarms } from "./alarms.js";
-import { drawSprite, drawSway, spriteBounds } from "./sprites.js";
+import { drawSprite, drawSway, spriteBounds, setSpriteRemap } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
+import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
+import { simRandom, vrand } from "./rng.js"; // §9.152
+import { unitFam } from "./multiplayer.js"; // §9.155
+
+// [§9.152] le istanze dell'interfaccia (pulsanti, dialoghi, suggerimenti):
+// seguono la vista o nascono per chi guarda; id a parte (negativi) e fuori
+// dalle ricerche della partita e dall'impronta (snapshot.js)
+export const UI_PARENTS = ["clicker_parent", "clicchero", "parent_hint"];
+// [§9.154] i nomi sotto cui si trova un'istanza (world.all, number, nearest):
+// quella della partita col suo oggetto e tutti i genitori; quella
+// dell'interfaccia (o cosmetica) solo col suo oggetto e i genitori
+// d'interfaccia (le anteprime delle mura sono figlie di mura_ori e ally_build:
+// le ricerche della partita non devono vederle)
+export const indexNames = (i) => (i.ui || i.fx ? [i.object, ...i.parents.filter((p) => UI_PARENTS.includes(p))] : [i.object, ...i.parents]);
+export const isUiObject = (name, parents = []) => UI_PARENTS.some((p) => parents.includes(p))
+  // §9.154: _blink le risorse che mancano; _placer il fantasma di chi costruisce
+  // §9.154: mplus_* i "+" alle estremita' delle mura, oodl/oosl/ovbl/oval le
+  // anteprime dei prolungamenti
+  || /_clicker$|_button$|_blink$|_placer$|^mplus_|^(oodl|oosl|ovbl|oval)$|^dialogo|^hint_|^tooltip/.test(name);
 
 const CELL = 128;
 // [Richiesta dell'autore] passi della dissolvenza fra due sprite (swapSprite)
@@ -52,6 +71,11 @@ export class World {
     this.byName = new Map();
     this.behaviours = {};
     this.nextId = 100001;
+    // [§9.152] gli id delle istanze cosmetiche (opts.fx: i mattoni di un
+    // crollo, che nascono solo se il crollo e' sullo schermo): negativi e a
+    // parte, cosi' non spostano gli id della partita (che decidono i pareggi)
+    // fra due giocatori che guardano punti diversi
+    this.fxNextId = -1;
     this.grid = new Map();
     this._qstamp = 0; // contrassegno delle ricerche dei vicini (_eachNear)
     // [§6.3 N1] versione del mondo: cresce a ogni spostamento, creazione e
@@ -68,6 +92,10 @@ export class World {
     this._epoch = 0;
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
+    this.mp = null; // §9.155: la partita a due (multiplayer.js, app.js)
+    this.actions = new Map(); // §9.154: i tipi di comando (action, act)
+    this.action("ordine", (w, c) => w.rightOrder(c));
+    this.action("canc", (w, c) => w.cancAction(c));
     // [§9.116] se impostato (il menu: app.js), solo le istanze di questi
     // oggetti ricevono gli eventi di mouse e tastiera: le altre (unita',
     // edifici) sono decorative, non si selezionano ne' si evidenziano
@@ -107,8 +135,52 @@ export class World {
 
   fire(inst, ev, ...args) {
     const h = this.handler(inst, ev);
-    if (h && inst.alive) h(inst, this, ...args);
+    if (h && inst.alive) h(inst, this.mp ? this.worldFor(inst) : this, ...args);
     return !!h;
+  }
+
+  // -------------------------------------------- multiplayer (§9.155, fase 3)
+
+  // this.mp (app.js, solo nella partita a due): { twins: i nomi che hanno
+  // un gemello, mirror1 e mirror2: gli specchi delle due parti
+  // (multiplayer.js), local: la parte di chi guarda, actor: la parte del
+  // comando che si sta eseguendo }.
+  // la parte di un'istanza: 2 le p2_*, 1 quelle del giocatore, 0 le neutre
+  // (risorse, rovine, ...) e quelle dell'interfaccia
+  sideOf(inst) {
+    if (!this.mp) return 0;
+    if (inst.object.startsWith("p2_")) return 2;
+    return this.mp.twins.has(inst.object) ? 1 : 0;
+  }
+  // il mondo con cui un'istanza vede la partita: lo specchio della sua parte;
+  // durante un comando le neutre con quello di chi lo da'; fuori, le neutre
+  // sempre con la parte 1 (uguale in tutte e due le pagine: risorse, il
+  // gestore della schermaglia) e l'interfaccia (o inst null: le funzioni
+  // dell'interfaccia di app.js) con quello di chi guarda
+  worldFor(inst) {
+    const mp = this.mp;
+    if (!mp) return this;
+    const s = inst ? this.sideOf(inst) : 0;
+    if (s) return this.sideWorld(s);
+    if (mp.actor) return this.sideWorld(mp.actor);
+    return this.sideWorld(!inst || inst.ui || inst.fx ? mp.local : 1);
+  }
+  // [§9.155] si disegna? Fuori dalla partita a due: visible. Nella partita
+  // a due le istanze della parte di chi guarda sempre (se la definizione le
+  // vuole visibili: per loro visible e' "la vede l'avversario",
+  // multiplayer.js pvpVisibility); le risorse, per chi guarda dal blu, se le
+  // ha scoperte il blu (vis2)
+  shown(i) {
+    const mp = this.mp;
+    if (!mp) return i.visible;
+    const s = this.sideOf(i);
+    if (s && s === mp.local) { const def = this.objects[i.object]; return !!(def && def.visible) || i.visible; }
+    if (!s && mp.local === 2 && i.vis2 !== undefined) return i.vis2;
+    return i.visible;
+  }
+  sideWorld(side) {
+    const mp = this.mp;
+    return !mp ? this : side === 2 ? mp.mirror2 : mp.mirror1;
   }
 
   // [Richiesta dell'autore] Cambio di sprite con dissolvenza (FADE passi):
@@ -135,9 +207,12 @@ export class World {
     const o = this.objects[object];
     if (!o) throw new Error("oggetto sconosciuto: " + object);
     let sprite = o.sprite;
-    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor(Math.random() * o.choices.length)];
+    const ui = isUiObject(object, o.parents);
+    // [§9.154] l'interfaccia e il cosmetico col generatore di chi guarda
+    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor((ui || opts.fx ? vrand() : simRandom()) * o.choices.length)];
     const inst = {
-      id: this.nextId++, object, parents: o.parents, alive: true,
+      id: opts.fx || isUiObject(object, o.parents) ? this.fxNextId-- : this.nextId++, object, parents: o.parents, alive: true,
+      fx: !!opts.fx, ui: isUiObject(object, o.parents), // §9.152
       x, y, xstart: x, ystart: y, xprevious: x, yprevious: y,
       sprite_index: sprite, mask_index: o.mask, image_index: 0, image_speed: 1,
       image_xscale: opts.sx ?? 1, image_yscale: opts.sy ?? 1, image_angle: opts.rot ?? 0,
@@ -154,7 +229,7 @@ export class World {
     this.instances.push(inst);
     this._ver++;
     if (isTracked(inst)) this._epoch++;
-    for (const n of [object, ...o.parents]) {
+    for (const n of indexNames(inst)) {
       let l = this.byName.get(n);
       if (!l) this.byName.set(n, (l = []));
       l.push(inst);
@@ -197,6 +272,16 @@ export class World {
     return inst.object === name || inst.parents.includes(name);
   }
 
+  // [§9.152, §9.154] le ricerche per posizione: senza nome solo le istanze
+  // della partita; con un nome quelle che lo sono, ma un'istanza
+  // dell'interfaccia solo per il suo nome o un genitore d'interfaccia (come
+  // l'indice, indexNames)
+  _hits(o, name) {
+    if (!name) return !o.ui && !o.fx;
+    if (!this.is(o, name)) return false;
+    return !(o.ui || o.fx) || o.object === name || UI_PARENTS.includes(name);
+  }
+
   *all(name) {
     for (const i of this._list(name)) if (i.alive) yield i;
   }
@@ -223,7 +308,7 @@ export class World {
     let best = null, bd = Infinity;
     for (const i of this._list(name)) {
       if (!i.alive) continue;
-      const d = (i.x - x) ** 2 + (i.y - y) ** 2;
+      const d = sq(i.x - x) + sq(i.y - y);
       if (d < bd) { bd = d; best = i; }
     }
     if (m) { m.ver = this._ver; m.x = x; m.y = y; m.res = best; }
@@ -262,7 +347,7 @@ export class World {
   // `from`: l'edificio da cui si tira (torri, castello, centro: §6.5); non
   // contano lui e le mura e le porte (si tira dall'alto).
   shotClear(x0, y0, x1, y1, from = null) {
-    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    const dx = x1 - x0, dy = y1 - y0, len = dhypot(dx, dy);
     if (len <= 40) return true;
     const cands = [];
     this._eachNear([Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)],
@@ -319,7 +404,7 @@ export class World {
   // (il piu' vicino al punto 30 px davanti), nemici col piu' vicino.
   faceAhead(i, name) {
     const r = Math.PI / 180;
-    const v = this.nearest(i.x + 30 * Math.cos(i.direction * r), i.y - 30 * Math.sin(i.direction * r), name);
+    const v = this.nearest(i.x + 30 * dcos(i.direction * r), i.y - 30 * dsin(i.direction * r), name);
     if (v) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   }
 
@@ -354,7 +439,7 @@ export class World {
     if (inst.image_angle % 360) {
       // [§9.7] maschera ruotata come lo sprite (drawSprite): la scatola e'
       // quella dei quattro angoli girati attorno all'origine
-      const a = -inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+      const a = -inst.image_angle * Math.PI / 180, c = dcos(a), s = dsin(a);
       const lx0 = x0 - x, lx1 = x1 - x, ly0 = y0 - y, ly1 = y1 - y;
       const ax = lx0 * c, bx = lx1 * c, ay = lx0 * s, by = lx1 * s;
       const cx = -ly0 * s, dx = -ly1 * s, cy = ly0 * c, dy = ly1 * c;
@@ -412,7 +497,7 @@ export class World {
   // la scala) e si prova il suo centro; i pixel pieni consecutivi fanno un
   // intervallo. Il caso senza rotazione resta quello esatto qui sopra.
   _spansRot(inst, m, ix, iy, y, xa, xb, out) {
-    const a = inst.image_angle * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    const a = inst.image_angle * Math.PI / 180, c = dcos(a), s = dsin(a);
     const sx = inst.image_xscale, sy = inst.image_yscale;
     const bb = m.bbox, ox = m.origin[0], oy = m.origin[1];
     const px0 = Math.floor(xa), px1 = Math.ceil(xb);
@@ -564,10 +649,13 @@ export class World {
 
   // place_meeting / instance_place: prima istanza di `name` (o qualunque,
   // o solo solide) che la maschera di inst toccherebbe in (x, y).
+  // [§9.152] senza `name` non conta l'interfaccia (pulsanti che seguono la
+  // vista) ne' gli effetti: dipendono da chi guarda (un nemico spostava a caso
+  // la meta se ci stava sopra il pulsante degli obiettivi)
   instancePlace(inst, x, y, name = null, solidOnly = false) {
     const bb = this.bbox(inst, x, y);
     if (!bb) return null;
-    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && (!name || this.is(o, name))
+    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && this._hits(o, name)
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
@@ -583,14 +671,14 @@ export class World {
     const bb = this.bbox(inst, x, y);
     if (!bb) return true;
     if (this.terrainBlocks && this.terrainBlocks(inst, x, y)) return false; // §9.97
-    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !this.is(o, name)
+    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !o.ui && !o.fx && !this.is(o, name)
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
   // [§8.11] libero per chi va alla sua casella della formazione (vedi sopra)
   placeFreeForSlot(inst, x, y) {
     return inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY
-      ? this.placeFreeExcept(inst, x, y, inst.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit") : this.placeFree(inst, x, y); // §9.57
+      ? this.placeFreeExcept(inst, x, y, unitFam(inst)) : this.placeFree(inst, x, y); // §9.57, §9.155
   }
 
   placeEmpty(inst, x, y) {
@@ -598,7 +686,7 @@ export class World {
   }
 
   instancePosition(px, py, name) {
-    return this._eachNear([px, py, px, py], (o) => (o.alive && (!name || this.is(o, name)) && this.pointIn(o, px, py) ? o : null));
+    return this._eachNear([px, py, px, py], (o) => (o.alive && this._hits(o, name) && this.pointIn(o, px, py) ? o : null));
   }
 
   positionMeeting(px, py, name) {
@@ -611,7 +699,7 @@ export class World {
   collisionRectangle(x1, y1, x2, y2, name, prec = true, notme = null, only = null) {
     const rect = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
     for (const o of only ? [only] : this._nearList(rect)) {
-      if (!o.alive || o === notme || (name && !this.is(o, name))) continue;
+      if (!o.alive || o === notme || (o !== only && !this._hits(o, name)) || (only && name && !this.is(o, name))) continue; // §9.152, §9.154
       const bb = this.bbox(o);
       if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
       if (!prec) return o;
@@ -634,7 +722,7 @@ export class World {
       if (!b) continue;
       const dx = Math.max(0, b[0] - a[2], a[0] - b[2]);
       const dy = Math.max(0, b[1] - a[3], a[1] - b[3]);
-      const d = Math.hypot(dx, dy);
+      const d = dhypot(dx, dy);
       if (d < best) best = d;
     }
     return best;
@@ -643,7 +731,7 @@ export class World {
   distanceToInstance(inst, o) {
     const a = DIST_A, b = DIST_B;
     if (!this._bboxInto(inst, inst.x, inst.y, a) || !o || !this._bboxInto(o, o.x, o.y, b)) return Infinity;
-    return Math.hypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
+    return dhypot(Math.max(0, b[0] - a[2], a[0] - b[2]), Math.max(0, b[1] - a[3], a[1] - b[3]));
   }
 
   // --------------------------------------------------------------- passo
@@ -653,6 +741,11 @@ export class World {
     const live = () => this.instances.filter((i) => i.alive);
     for (const i of live()) this.fire(i, "stepBegin");
     for (const i of live()) i.alarm.tick((n) => this.fire(i, "alarm" + n));
+    // [§9.154] i comandi di questo passo (le azioni dei giocatori): dove
+    // nell'originale giravano tastiera e mouse, dopo Begin Step e allarmi (in
+    // testa al passo, prima degli allarmi, le unita' si fermavano accanto al
+    // nemico senza attaccare: attackorder.mjs)
+    if (this.hooks.commands) this.hooks.commands();
     this._keyEvents(input);
     this._mouseEvents(input, mouseX, mouseY);
     // manager e' la prima istanza [C]: il suo Step (pulsanti di costruzione)
@@ -696,8 +789,8 @@ export class World {
         if (!bb) continue;
         for (const o of this._nearList(bb)) {
           if (!i.alive) break;
-          if (o === i || !o.alive || !this.is(o, name)) continue;
-          if (this.overlap(i, i.x, i.y, o)) fn(i, this, o);
+          if (o === i || !o.alive || !this._hits(o, name)) continue;
+          if (this.overlap(i, i.x, i.y, o)) fn(i, this.mp ? this.worldFor(i) : this, o);
         }
       }
     }
@@ -710,9 +803,17 @@ export class World {
     let out = this._collMaps.get(i.object);
     if (out !== undefined) return out;
     out = [];
+    // [§9.155] i nomi delle collisioni visti dalla parte dell'istanza (le
+    // frecce del giocatore 2 colpiscono il giocatore 1)
+    const side = this.sideOf(i), map = side === 2 ? this.mp.m2 : side === 1 ? this.mp.m1 : null;
     for (const n of [i.object, ...i.parents]) {
       const b = this.behaviours[n];
-      if (b && b.collisions) for (const k of Object.keys(b.collisions)) if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k]]);
+      if (b && b.collisions) {
+        for (const k0 of Object.keys(b.collisions)) {
+          const k = map && map[k0] !== undefined ? map[k0] : k0;
+          if (!out.some(([x]) => x === k)) out.push([k, b.collisions[k0]]);
+        }
+      }
     }
     out = out.length ? out : null;
     this._collMaps.set(i.object, out);
@@ -726,17 +827,52 @@ export class World {
     this.input.mousePressed[button] = false;
   }
 
-  _takesInput(i) { return !this.inputOnly || this.inputOnly.has(i.object); }
+  // [§9.155] nella partita a due l'input lo prendono solo le istanze della
+  // parte di chi guarda (e le neutre e l'interfaccia); dentro un comando,
+  // quelle della parte che lo da'
+  _takesInput(i) {
+    if (this.mp) { const s = this.sideOf(i); if (s && s !== (this.mp.actor || this.mp.local)) return false; }
+    return !this.inputOnly || this.inputOnly.has(i.object);
+  }
 
   // Eventi di tastiera: Keyboard (tasto tenuto, ogni passo), KeyPress,
   // KeyRelease; gestori "keyboard27", "keyPress81", "keyRelease46".
   _keyEvents(input) {
     if (!input.down.size && !input.pressed.size && !input.released.size) return;
+    // [§9.154] Canc sulle istanze della partita e' il comando "canc" (le
+    // selezionate: cancAction); sulle istanze dell'interfaccia resta com'e'
+    const canc = input.pressed.has(46);
+    if (canc) this.act("canc", { ids: this.selectedIds() });
     for (const i of this.instances) {
       if (!i.alive || !this._takesInput(i)) continue;
       for (const k of input.down) this.fire(i, "keyboard" + k);
-      for (const k of input.pressed) this.fire(i, "keyPress" + k);
+      for (const k of input.pressed) if (k !== 46 || i.ui || i.fx) this.fire(i, "keyPress" + k);
       for (const k of input.released) this.fire(i, "keyRelease" + k);
+    }
+  }
+
+  // [§9.154] l'azione "canc" ({ ids }): il KeyPress_Delete di sempre sulle
+  // istanze `ids` (demoliscono se selezionate: lo sono, per il tempo
+  // dell'azione)
+  cancAction(c) {
+    this.withSelection(c.ids, () => {
+      for (const i of this.byIds(c.ids)) if (i.alive && !i.ui && !i.fx && this._takesInput(i)) this.fire(i, "keyPress46");
+    });
+  }
+
+  // [§9.154] per il tempo di fn i selezionati sono `ids` (le istanze della
+  // partita): poi tornano quelli di chi guarda (cambiano solo quelli che fn
+  // stessa ha cambiato)
+  withSelection(ids, fn) {
+    const set = new Set(ids), saved = [];
+    for (const i of this.instances) {
+      if (!i.alive || i.ui || i.fx || !("selected" in i)) continue;
+      const want = set.has(i.id) ? 1 : (i.selected === 1 ? 0 : i.selected);
+      saved.push([i, i.selected, want]);
+      i.selected = want;
+    }
+    try { fn(); } finally {
+      for (const [i, before, want] of saved) if (i.selected === want) i.selected = before;
     }
   }
 
@@ -751,24 +887,21 @@ export class World {
   _mouseEvents(input, mx, my) {
     const [pL, pR] = input.mousePressed, [rL, rR] = input.mouseReleased;
     const live = this.instances.filter((i) => i.alive && this._takesInput(i));
-    const over = new Map();
-    // [§9.29] un comportamento puo' dire lui dove e' il puntatore
-    // (pointOver: il complesso del monastero, complex.js)
-    const isOver = (i) => {
-      if (!over.has(i)) {
-        const b = this.behaviours[i.object];
-        over.set(i, input.inside && (b && b.pointOver ? b.pointOver(i, this, mx, my) : this.pointIn(i, mx, my)));
-      }
-      return over.get(i);
-    };
-    const local = (flag, ev) => {
+    const isOver = this._overTest(input.inside, mx, my);
+    const local = (flag, ev, list = live) => {
       if (!flag) return;
-      for (const i of live) if (i.alive && this.handler(i, ev) && isOver(i)) this.fire(i, ev);
+      for (const i of list) if (i.alive && this.handler(i, ev) && isOver(i)) this.fire(i, ev);
     };
     local(pL, "leftPressed");
     local(pR, "rightPressed");
     local(rL, "leftReleased");
-    local(rR, "rightReleased");
+    // [§9.154, multiplayer, fase 2, passo 2] il rilascio destro e' un ORDINE:
+    // un comando (chi e' selezionato, il punto, se il puntatore era sul
+    // mondo) eseguito all'inizio del passo dopo da rightOrder, che rifa' gli
+    // eventi di sempre senza leggere ne' il mouse ne' la selezione di chi
+    // guarda. Qui restano solo quelli delle istanze dell'interfaccia.
+    if (rR) this.act("ordine", { ids: this.selectedIds(), x: mx, y: my, over: !!input.inside });
+    local(rR, "rightReleased", live.filter((i) => i.ui || i.fx));
     for (const i of live) {
       if (!i.alive || !(this.handler(i, "mouseEnter") || this.handler(i, "mouseLeave"))) continue;
       const o = isOver(i);
@@ -781,14 +914,86 @@ export class World {
       for (const i of live) if (i.alive) this.fire(i, ev);
     };
     global(pL, "globalLeftPressed");
-    global(pR, "globalRightPressed");
     global(rL, "globalLeftReleased");
-    // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
-    // suo GlobalRightReleased (scr_movement_general) gira per primo.
-    if (rR && this.hooks.globalRightReleased) this.hooks.globalRightReleased(mx, my);
-    global(rR, "globalRightReleased");
-    // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
-    if (rR && this.hooks.afterRightReleased) this.hooks.afterRightReleased(mx, my);
+  }
+
+  // ------------------------------------------- azioni del giocatore (comandi)
+
+  // [§9.154, multiplayer, fase 2, passo 2] Un'azione del giocatore che cambia
+  // la partita (un ordine, un pulsante, un tasto) non la cambia piu' dove
+  // nasce, nel gestore d'input: diventa un comando coi dati che bastano
+  // (`ids`: le unita' a cui si rivolge, non "le selezionate") e si esegue
+  // all'inizio del passo dopo (app.js: hooks.command, commands.js), uguale
+  // per chi la da' e per chi la riceve. I tipi: action(tipo, fn(world, c)).
+  // Senza la coda dei comandi (prove unitarie) si esegue subito.
+  action(kind, fn) { this.actions.set(kind, fn); }
+  act(kind, data) {
+    if (this.hooks.command) this.hooks.command(kind, data);
+    else this.runAction(kind, data);
+  }
+  runAction(kind, c) {
+    const fn = this.actions.get(kind);
+    if (!fn) throw new Error("azione sconosciuta: " + kind);
+    if (!this.mp) { fn(this, c); return; }
+    // [§9.155] l'azione del giocatore c.p (0 o 1): col suo specchio, e chi
+    // riceve eventi durante l'azione (risorse, interfaccia) la vede da li'
+    const mp = this.mp, prev = mp.actor;
+    mp.actor = (c.p ?? 0) + 1;
+    try { fn(this.sideWorld(mp.actor), c); } finally { mp.actor = prev; }
+  }
+  // le istanze della partita selezionate da chi guarda (i loro id)
+  selectedIds() {
+    return this.instances.filter((i) => i.alive && !i.ui && !i.fx && i.selected === 1).map((i) => i.id);
+  }
+  // le istanze vive di `ids` (nell'ordine delle istanze), di `name` se dato
+  byIds(ids, name = null) {
+    const set = new Set(ids);
+    return this.instances.filter((i) => i.alive && set.has(i.id) && (!name || this.is(i, name)));
+  }
+
+  // chi e' sotto il puntatore in (mx, my)
+  // [§9.29] un comportamento puo' dire lui dove e' il puntatore
+  // (pointOver: il complesso del monastero, complex.js)
+  _overTest(inside, mx, my) {
+    const over = new Map();
+    return (i) => {
+      if (!over.has(i)) {
+        const b = this.behaviours[i.object];
+        over.set(i, inside && (b && b.pointOver ? b.pointOver(i, this, mx, my) : this.pointIn(i, mx, my)));
+      }
+      return over.get(i);
+    };
+  }
+
+  // [§9.154, fase 2, passo 2] L'ordine col clic destro, dai dati del comando
+  // `c` ({ ids, x, y, over }): per il tempo dell'ordine i selezionati sono
+  // `ids` e il mouse e' (x, y); poi tornano quelli di chi guarda (cambiano
+  // solo i selezionati che l'ordine stesso ha cambiato). Gli eventi, come
+  // prima e nello stesso ordine: GlobalRightPressed (il centro azzera le
+  // destinazioni dei nuovi civili; prima girava alla pressione), il rilascio
+  // destro sulle istanze sotto il punto (se il puntatore era sul mondo e non
+  // sulla minimappa), scr_movement_general del manager, i GlobalRightReleased
+  // delle istanze, la formazione. Le istanze dell'interfaccia ne sono fuori.
+  rightOrder(c) {
+    this.withSelection(c.ids, () => this._rightOrder(c));
+  }
+  _rightOrder(c) {
+    const mouse = this.mouse;
+    this.mouse = { x: c.x, y: c.y };
+    try {
+      const live = this.instances.filter((i) => i.alive && !i.ui && !i.fx && this._takesInput(i));
+      const isOver = this._overTest(c.over, c.x, c.y);
+      for (const i of live) if (i.alive) this.fire(i, "globalRightPressed");
+      for (const i of live) if (i.alive && this.handler(i, "rightReleased") && isOver(i)) this.fire(i, "rightReleased");
+      // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
+      // suo GlobalRightReleased (scr_movement_general) gira per primo.
+      if (this.hooks.globalRightReleased) this.hooks.globalRightReleased(c.x, c.y, this.worldFor(null));
+      for (const i of live) if (i.alive) this.fire(i, "globalRightReleased");
+      // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
+      if (this.hooks.afterRightReleased) this.hooks.afterRightReleased(c.x, c.y, this.worldFor(null));
+    } finally {
+      this.mouse = mouse;
+    }
   }
 
   // ------------------------------------------------------------- disegno
@@ -817,10 +1022,16 @@ export class World {
     const skip = this.skipDraw;
     // [Richiesta dell'autore] "drawBelow": a terra, sopra il suolo e sotto
     // tutte le istanze (la linea verso il punto di raccolta degli edifici)
-    for (const i of list) if (i.visible) this.fire(i, "drawBelow", d);
+    // [§9.155] le istanze del giocatore 2 (p2_*) con gli sprite blu
+    // (p2sprites.js): la tabella vale mentre si disegna una di loro
+    const blue = this.p2Sprites || null;
+    const tint = (i) => setSpriteRemap(blue && i.object.startsWith("p2_") ? blue : null);
+    const shown = (i) => this.shown(i);
+    for (const i of list) if (shown(i)) { tint(i); this.fire(i, "drawBelow", d); }
     for (const i of list) {
-      while (si < systems.length && systems[si].depth > i.depth) { r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
-      if (!i.visible || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
+      while (si < systems.length && systems[si].depth > i.depth) { setSpriteRemap(null); r.shade = 1; P.draw(systems[si++], r, this.assets, cam); }
+      if (!shown(i) || (skip && skip.has(i))) continue; // skip: il suolo cotto (ground.js)
+      tint(i);
       r.shade = shade ? shade(i.x, i.y) : 1;
       if (this.fire(i, "draw", d)) continue;
       if (!i.persistentDraw || !i.sprite_index) continue;
@@ -846,12 +1057,14 @@ export class World {
                      i.image_yscale, i.image_angle, i.image_blend, i.image_alpha)) drawn++;
     }
     r.shade = 1;
+    setSpriteRemap(null);
     while (si < systems.length) P.draw(systems[si++], r, this.assets, cam);
     let managerDone = !manager;
     for (const i of list) {
-      if (!managerDone && i.depth <= -1) { manager(); managerDone = true; }
-      if (i.visible) this.fire(i, "drawEnd", d);
+      if (!managerDone && i.depth <= -1) { setSpriteRemap(null); manager(); managerDone = true; }
+      if (shown(i)) { tint(i); this.fire(i, "drawEnd", d); }
     }
+    setSpriteRemap(null);
     if (!managerDone) manager();
     this.drawn = drawn;
   }

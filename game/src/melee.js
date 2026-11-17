@@ -22,6 +22,8 @@
 
 import { pointDirection, pointDistance, lengthdirX, lengthdirY } from "./gm.js";
 import { canYield } from "./pathing.js";
+import { dhypot } from "./dmath.js"; // §9.152
+import { unitFam, pathEnemy } from "./multiplayer.js"; // §9.155
 
 const GAP = 4, SEP = 45, STUCK = 40, SPREAD = 160, MAXC = 4;
 
@@ -71,7 +73,7 @@ function freeSlot(w, i, t, pref, taken, sep = SEP, extras = [0], passIdle = fals
         const [x, y] = slotPoint(w, i, t, ang, extra);
         const o = w.instancePlace(i, x, y, null, true);
         if (o && o !== t && !(passIdle && canYield(o, i) && !w.instancePlace(i, x, y, "natural_parent", true)
-                             && w.placeFreeExcept(i, x, y, i.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit"))) continue;
+                             && w.placeFreeExcept(i, x, y, unitFam(i)))) continue;
         if (reach) {
           const gx = Math.floor(x / 32), gy = Math.floor(y / 32);
           if (reach.p.fieldAt(reach.f, gx, gy) === -1 && !reach.p.escapeCell(reach.f, gx, gy, 2)) continue;
@@ -103,7 +105,7 @@ export const MELEE_UNSTACK = { sep: SEP, extras: [0], noStay: true };
 // raggiungibile per un ariete (il campo "largo" dalla sua posizione, tenuto
 // finche' gli ostacoli non cambiano); la strada la fa siegeMove.
 export function ramSpot(w, i, t) {
-  const p = w.path, enemy = i.parents.includes("enemy_unit");
+  const p = w.path, enemy = pathEnemy(i); // §9.155
   const gx = Math.floor(i.x / 32), gy = Math.floor(i.y / 32);
   let r = RAM_REACH.get(i);
   if (!r || r.ver !== p.solidVer || (p.fieldAt(r.f, gx, gy) === -1 && !p.escapeCell(r.f, gx, gy, 2))) {
@@ -236,7 +238,7 @@ function route(w, i, tx, ty) {
   blocked[S] = 0; blocked[G] = 0;
   // linea dritta libera: niente percorso
   const clear = (x0, y0, x1, y1) => {
-    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 6));
+    const n = Math.max(1, Math.ceil(dhypot(x1 - x0, y1 - y0) / 6));
     for (let k = 1; k < n; k++) {
       const [cx, cy] = cellOf(x0 + ((x1 - x0) * k) / n, y0 + ((y1 - y0) * k) / n);
       if (cx < 0 || cy < 0 || cx >= N || cy >= N || blocked[cy * N + cx]) return false;

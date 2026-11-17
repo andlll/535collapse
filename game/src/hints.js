@@ -25,6 +25,7 @@
 import { c } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
 import { panTo } from "./camera.js";
+import { dhypot } from "./dmath.js"; // §9.152
 
 const W380 = 380;
 
@@ -237,7 +238,7 @@ export const DIALOGS = {
                   text: "Our spies have found the enemy base. It's north of here. Let's destroy it to stop the attacks!",
                   create: (i, w) => w.create("palo_1", 150, 250),
                   click: (i, w) => {
-                    for (const b of w.all("enemy_build")) if (Math.hypot(b.x - 150, b.y - 250) < 600) b.visible = true;
+                    for (const b of w.all("enemy_build")) if (dhypot(b.x - 150, b.y - 250) < 600) b.visible = true;
                     for (const m of w.all("enemy_manager_lv2")) m.pan = panTo(w, 300, 450);
                   } },
   dialogo_2_14: { who: SPY, arm: 10, vanish: true, text: "It seems that this very barracks trains the archers who protect that point." },
@@ -359,7 +360,7 @@ function keepClear(w, i) {
     let bd = Infinity;
     for (const [l, t, r, b] of R) {
       for (const [cx, cy] of [[x, b + pad], [x, t - hh], [r + pad, y], [l - ww, y], [r + pad, b + pad], [l - ww, b + pad], [r + pad, t - hh], [l - ww, t - hh]]) {
-        const [qx, qy] = clamp(cx, cy), d = Math.hypot(qx - x, qy - y);
+        const [qx, qy] = clamp(cx, cy), d = dhypot(qx - x, qy - y);
         if (d < bd && !hit(qx, qy)) { bd = d; best = [qx, qy]; }
       }
     }

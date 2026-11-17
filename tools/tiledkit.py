@@ -56,6 +56,34 @@ RIVER_WIDTH = 150
 ROAD_LAYER = "strade"
 ROAD_KINDS = {"strada1": 1, "strada2": 2}
 ROAD_WIDTH = 110
+
+# [§9.131, §9.150] le macchie a particelle: semiassi dell'ellisse in cui il
+# gioco sparge i fili d'erba e i fiori (game/src/effects.js DECOR_SIZE,
+# [500, 300] se non c'e')
+PATCH_SIZE = {"burst_erba1": (500, 300), "burst_grano1": (500, 300), "chiazzaparticellare": (500, 300),
+              "fiori_papaveri": (200, 125), "fiori_papaveri_erba": (200, 125), "fiori_gialli_erba": (200, 125),
+              "fiori_prato": (200, 125)}
+
+
+def patch_wet(x, y, rx, ry, rivers, margin=0):
+    """[§9.150] L'ellisse (x, y, rx, ry) di una macchia a particelle tocca
+    l'acqua di uno dei fiumi [(punti, larghezza)]? Il centro e 16 punti del
+    bordo, a meno di meta' larghezza + margin px dalla linea, sul terreno
+    "steso" (y / 0,62) come le rive del gioco (game/src/rivers.js)."""
+    iso = 0.62
+    pts = [(x, y)] + [(x + rx * math.cos(a * math.pi / 8), y + ry * math.sin(a * math.pi / 8)) for a in range(16)]
+    for line, wdt in rivers:
+        half = wdt / 2 + margin
+        for (x0, y0), (x1, y1) in zip(line, line[1:]):
+            y0, y1 = y0 / iso, y1 / iso
+            vx, vy = x1 - x0, y1 - y0
+            L2 = vx * vx + vy * vy or 1
+            for px, py in pts:
+                qy = py / iso
+                t = max(0, min(1, ((px - x0) * vx + (qy - y0) * vy) / L2))
+                if math.hypot(px - (x0 + t * vx), qy - (y0 + t * vy)) < half:
+                    return True
+    return False
 BRIDGE_TYPE = "ponte"
 # [§9.99] macchie di un altro sfondo (aree di classe macchia nel livello
 # macchie): sfondo, sfumatura (px), opacita'

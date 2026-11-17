@@ -23,7 +23,7 @@ jobs:
   build:
     # ubuntu-latest e' passato a 26.04, dove Playwright 1.56.1 non installa Chromium
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -106,7 +106,7 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
 
-      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, catapulte, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, presidio nemico, suggerimenti, zoom, ambiente, fiumi a linee, danni, ostacoli, cantieri vicini, risorse, viaggi lunghi, soldati ammassati, mura nemiche, livello 5, livello 6, zip in un iframe)
+      - name: Prove nel browser (soak, salvataggi, mischia, monastero, raccolta, fuoco, arieti, catapulte, attacco, incendi, ponte, edifici nemici, depositi, soldati sovrapposti, presidio, presidio nemico, suggerimenti, zoom, ambiente, fiumi a linee, danni, ostacoli, cantieri vicini, risorse, viaggi lunghi, soldati ammassati, mura nemiche, stealth del livello 7, anelli della pioggia, registro e replay dei comandi, ordini come comandi, partita a due, livello 5, livello 6, zip in un iframe)
         run: |
           python3 -m http.server 8123 --directory game > /dev/null 2>&1 &
           for k in $(seq 1 30); do curl -sf http://localhost:8123/index.html > /dev/null && break; sleep 1; done
@@ -148,7 +148,33 @@ jobs:
           node game/test/browser/longmove.mjs
           node game/test/browser/crowd.mjs
           node game/test/browser/enemywalls.mjs
+          node game/test/browser/stealth.mjs
+          node game/test/browser/ripples.mjs
+          node game/test/browser/replay.mjs
+          node game/test/browser/orders.mjs lvl06
+          node game/test/browser/orders.mjs match
+          node game/test/browser/pvp.mjs sk_padus 5 1500
+          PVP=2 node game/test/browser/replay.mjs
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
+
+      # [§9.152, multiplayer, fase 1] la stessa partita (stesso seme, nessun
+      # input) in Chromium, Firefox e WebKit: in ogni browser due pagine con
+      # viste e opzioni grafiche diverse danno le stesse impronte, e le
+      # impronte dei tre browser sono uguali fra loro
+      - name: Determinismo fra browser (Chromium, Firefox, WebKit)
+        run: |
+          (cd game && npx playwright install --with-deps firefox webkit)
+          # Firefox headless qui non ha driver GL (niente WebGL2, il gioco non
+          # parte): con la finestra su Xvfb e Mesa in software (llvmpipe)
+          sudo apt-get install -y -q xvfb libgl1-mesa-dri libegl-mesa0 > /dev/null
+          python3 -m http.server 8124 --directory game > /dev/null 2>&1 &
+          for k in $(seq 1 30); do curl -sf http://localhost:8124/index.html > /dev/null && break; sleep 1; done
+          for b in chromium webkit; do BASE=http://localhost:8124 node game/test/browser/determinism.mjs sk_padus 3000 $b | tee det_$b.txt; done
+          BASE=http://localhost:8124 HEADED=1 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1080x24" node game/test/browser/determinism.mjs sk_padus 3000 firefox | tee det_firefox.txt || true
+          for b in chromium firefox webkit; do grep -qx ok det_$b.txt || { echo "$b: la prova non e' passata (det_$b.txt)"; exit 1; }; done
+          for b in firefox webkit; do
+            diff <(grep "impronte:" det_chromium.txt) <(grep "impronte:" det_$b.txt) || { echo "impronte diverse fra chromium e $b"; exit 1; }
+          done
 
       - uses: actions/upload-artifact@v4
         with:

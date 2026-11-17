@@ -15,9 +15,11 @@ import { tr } from "./i18n.js";
 import { hintOnce } from "./hints.js";
 import { fireStep, fireStop, burnTick, campoCreate, campoStep, campoDestroy, campoFondCreate, campoFondStream } from "./effects.js";
 import { pointDirection, pointDistance, irandomRange } from "./gm.js";
+import { vrand } from "./rng.js";
 import { GRID, generateFields } from "./pathing.js";
 import { spawnSlices, destroySlices } from "./scenario.js";
 import { linkParts, complexPointOver } from "./complex.js";
+import { dsin } from "./dmath.js"; // §9.152
 
 const WHITE = 0xffffff, BLACK = 0, GREEN = 0x008000, RED = 0x0000ff;
 
@@ -110,7 +112,11 @@ export function clicker(fam) {
       i.active = 1;
       for (const p of w.all("clicker_parent")) w.destroy(p);
       if (!checkOne || w.number(placer) === 0) w.create(placer, i.x, i.y);
-      for (const o of w.all("ally_omino")) if (o.selected === 1) o.buildarm = 1;
+      // [§9.154] i civili selezionati sono i costruttori: li tiene il
+      // fantasma (dell'interfaccia) e li passa al comando "costruisci"
+      // (prima: buildarm = 1 sui civili, uno stato della partita)
+      const ids = [...w.all("ally_omino")].filter((o) => o.selected === 1).map((o) => o.id);
+      for (const pl of w.all(placer)) pl.armed = [...new Set([...(pl.armed || []), ...ids])];
     } else blinkMissing(w, fam, d.cost);
   };
   return {
@@ -207,7 +213,10 @@ export function placer(fam) {
   return {
     create(i) {
       i.place = 1;
-      if (fam === "casa") { i.tipo = irandomRange(1, 6); i.bounce = 0; }
+      // [§9.154] il fantasma e' dell'interfaccia: lo stile a caso col
+      // generatore di chi guarda (vrand), non con quello della partita; arriva
+      // alla partita nel comando "costruisci"
+      if (fam === "casa") { i.tipo = 1 + Math.floor(vrand() * 6); i.bounce = 0; }
       if (fam === "mura") i.posiz = 0;
     },
     alarm0(i) { i.bounce = 0; },
@@ -234,23 +243,17 @@ export function placer(fam) {
       i.tipo = i.tipo < 6 ? i.tipo + 1 : 1;
     },
     // Mouse_GlobalLeftPressed [C]: paga, crea il cantiere, spegne il pulsante.
+    // [§9.154, fase 2, passo 2] il fantasma e' dell'interfaccia (di chi
+    // costruisce): qui sparisce e parte il comando "costruisci" col punto,
+    // lo stile della casa, l'orientamento del muro e i costruttori;
+    // buildAction paga e crea il cantiere.
     globalLeftPressed(i, w) {
       const g = w.g;
       if (i.place === 1 && canPay(g, d.cost)) {
         w.destroy(i);
         g.sele = 1;
-        for (const [r, v] of Object.entries(d.cost)) g[r] -= v;
-        // [Correzione decisa dall'autore, §3.5 n.17] l'originale assegna
-        // tipo, sprite e maschera della casa DOPO il Create del cantiere,
-        // che ha gia' marcato la griglia con la maschera c1m: qui arrivano
-        // prima, e la marcatura usa la maschera giusta.
-        const init = fam !== "casa" ? null : (f) => {
-          f.sprite_index = "c" + i.tipo + "f";
-          f.tipo = i.tipo;
-          f.mask_index = "c" + i.tipo + "m";
-        };
-        const fondName = fam === "mura" ? (i.posiz === 0 ? "mura_ori_fond" : "mura_vert_fond") : fam + "_fond";
-        w.create(fondName, i.x, i.y, { init });
+        w.act("costruisci", { fam, x: i.x, y: i.y, tipo: i.tipo ?? null, posiz: i.posiz ?? null,
+                              ids: i.armed || [], mx: w.mouse.x, my: w.mouse.y });
         for (const c of w.all(fam + "_clicker")) c.active = 0;
       } else if (i.place === 1) {
         blinkMissing(w, fam, d.cost);
@@ -263,22 +266,50 @@ export function placer(fam) {
   };
 }
 
+// [§9.154] l'azione "costruisci" ({ fam, x, y, tipo, posiz, ids, mx, my }):
+// paga e crea il cantiere in (x, y); i costruttori `ids` partono al suo
+// Alarm_0 (armBuilders) verso il punto del clic (mx, my)
+export function buildAction(w, c) {
+  const g = w.g, d = FAM[c.fam];
+  if (!d || !canPay(g, d.cost)) return;
+  for (const [r, v] of Object.entries(d.cost)) g[r] -= v;
+  // [Correzione decisa dall'autore, §3.5 n.17] l'originale assegna
+  // tipo, sprite e maschera della casa DOPO il Create del cantiere,
+  // che ha gia' marcato la griglia con la maschera c1m: qui arrivano
+  // prima, e la marcatura usa la maschera giusta.
+  const init = (f) => {
+    f.builders = c.ids; f.mx = c.mx; f.my = c.my;
+    if (c.fam !== "casa") return;
+    f.sprite_index = "c" + c.tipo + "f";
+    f.tipo = c.tipo;
+    f.mask_index = "c" + c.tipo + "m";
+  };
+  const fondName = c.fam === "mura" ? (c.posiz === 1 ? "mura_vert_fond" : "mura_ori_fond") : c.fam + "_fond";
+  w.create(fondName, c.x, c.y, { init });
+}
+
 // -------------------------------------------------------------- cantieri
 
 // Alarm_0 dei cantieri [C, *_fond]: i civili "armati" dal pulsante
 // (buildarm) ricevono il lavoro (buildwork, o fieldwork per il campo) e
 // partono verso la cella valida piu' vicina al punto del mouse.
+// [§9.154] i costruttori sono quelli del comando (i.builders) e il punto e'
+// quello del clic (i.mx, i.my); senza (i cantieri delle anteprime delle mura)
+// come prima: i civili con buildarm e il mouse di adesso
+export const fondMouse = (i, w) => [i.mx ?? w.mouse.x, i.my ?? w.mouse.y];
 export function armBuilders(i, w, p, work, bx, by) {
   const g = w.g;
-  for (const o of w.all("ally_omino")) {
-    if (o.buildarm !== 1) continue;
+  const [mx, my] = fondMouse(i, w);
+  const who = i.builders ? w.byIds(i.builders, "ally_omino") : [...w.all("ally_omino")].filter((o) => o.buildarm === 1);
+  i.builders = null;
+  for (const o of who) {
     o[work] = 1;
     o.buildx = bx;
     o.buildy = by;
     p.free(o);
     o.target_angle = pointDirection(o.x, o.y, i.x, i.y);
     if (o.action === 0) g.idle -= 1;
-    const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(w.mouse.x / GRID), Math.trunc(w.mouse.y / GRID),
+    const [cx, cy] = p.findValidCellBackwards(o.goal_field, Math.trunc(mx / GRID), Math.trunc(my / GRID),
                                               Math.trunc(o.x / GRID), Math.trunc(o.y / GRID));
     const found = p.fieldAt(o.goal_field, cx, cy) !== -1;
     o.goal_x = found ? cx * GRID : o.x;
@@ -307,7 +338,8 @@ export function fond(fam, p) {
     // Alarm_0 [C]: i civili "armati" dal pulsante (buildarm) vanno a
     // costruire: al cantiere la casa, al punto del mouse le altre famiglie.
     alarm0(i, w) {
-      armBuilders(i, w, p, "buildwork", fam === "casa" ? i.x : w.mouse.x, fam === "casa" ? i.y : w.mouse.y);
+      const [mx, my] = fondMouse(i, w);
+      armBuilders(i, w, p, "buildwork", fam === "casa" ? i.x : mx, fam === "casa" ? i.y : my);
     },
     // Step [C]: fasi del cantiere, poi l'edificio finito.
     // [§9.55, richiesta dell'autore] colpito fino a 0 (arieti, catapulte)
@@ -522,7 +554,7 @@ export function monastery(p) {
       i.alarm.set(0, M.every);
       for (const u of w.all("ally_unit")) {
         const diri = pointDirection(u.x, u.y, i.x, i.y);
-        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(diri * Math.PI / 180))) < M.radius
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(dsin(diri * Math.PI / 180))) < M.radius
             && u.life < u.slife) {
           w.create("sfx_croce", u.x, u.y);
           u.life = Math.min(u.slife, u.life + M.heal);
@@ -663,7 +695,7 @@ export function campoFond(p) {
     },
     // Alarm_0 [C]: come gli altri cantieri, ma con fieldwork e il punto
     // del mouse al momento dell'alarm.
-    alarm0(i, w) { armBuilders(i, w, p, "fieldwork", w.mouse.x, w.mouse.y); },
+    alarm0(i, w) { armBuilders(i, w, p, "fieldwork", ...fondMouse(i, w)); },
     step(i, w) {
       if (i.life <= 0) { w.destroy(i); return; } // §9.55, come gli altri cantieri
       if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
@@ -788,7 +820,8 @@ export function centro(p) {
         // [§9.11] nel livello 3 si perde solo col monastero
         // [§9.118] nella schermaglia solo con la vittoria "Municipio" (le
         // altre le decide sk_manager, skirmish.js)
-        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall");
+        // [§9.155] nella partita a due lo decide sk_manager (pvpCheck)
+        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall") && !(g.sk && g.sk.pvp);
         if (lose) g.gameover = 1;
         const flag = w.nearest(i.x, i.y - 100, "flag_r");
         if (flag) w.destroy(flag);
@@ -897,27 +930,31 @@ export function centro(p) {
 
 // Pulsante "crea civile" [C, omino_clicker]: 50 cibo, coda fino a 6.
 const WORKER_COST = { food: 50 };
+// [§9.154] diviso in due come enqueue (production.js): qui i lampeggi e il
+// comando "civile" coi centri selezionati; workerAction paga e accoda
 function enqueueWorker(i, w, fromKey) {
   const g = w.g;
-  const c = [...w.all("centro")].find((x) => x.selected === 1);
-  const ok = c && c.coda < 6;
+  const sel = [...w.all("centro")].filter((x) => x.selected === 1);
+  const ok = sel.length && sel[0].coda < 6;
   if (g.food < WORKER_COST.food) w.create("food_blink", 0, 0);
   if (g.pop >= g.popcap) w.create("pop_blink", 0, 0);
-  if (ok && g.food >= WORKER_COST.food && g.pop < g.popcap) {
-    i.active = 1;
-    g.food -= WORKER_COST.food;
-    for (const ce of w.all("centro")) {
-      if (ce.selected !== 1) continue;
-      if (ce.progression === 0) {
-        ce.alarm.set(0, 20);
-        ce.progression = 1;
-        if (!fromKey) w.mouseClear(0);
-        return; // exit dentro with: termina l'evento [I]
-      }
-      if (ce.progression !== 0) ce.coda += 1;
-    }
-  }
+  const can = ok && g.food >= WORKER_COST.food && g.pop < g.popcap;
+  if (sel.length) w.act("civile", { ids: sel.map((x) => x.id) });
+  if (can) i.active = 1;
   if (!fromKey) w.mouseClear(0);
+}
+export function workerAction(w, c) {
+  const g = w.g, cs = w.byIds(c.ids, "centro");
+  if (!(cs.length && cs[0].coda < 6 && g.food >= WORKER_COST.food && g.pop < g.popcap)) return;
+  g.food -= WORKER_COST.food;
+  for (const ce of cs) {
+    if (ce.progression === 0) {
+      ce.alarm.set(0, 20);
+      ce.progression = 1;
+      return;
+    }
+    ce.coda += 1;
+  }
 }
 
 export function ominoClicker() {
@@ -970,8 +1007,12 @@ export function ominoClicker() {
 // "Annulla" [C, centro_indietro_clicker]: restituisce 50 cibo e toglie
 // l'ultimo dalla coda (o ferma la produzione in corso).
 function cancelWorker(w) {
-  for (const ce of w.all("centro")) {
-    if (ce.selected === 1 && ce.progression !== 0) {
+  const ids = [...w.all("centro")].filter((x) => x.selected === 1).map((x) => x.id);
+  if (ids.length) w.act("annulla_civile", { ids }); // §9.154: cancelWorkerAction
+}
+export function cancelWorkerAction(w, c) {
+  for (const ce of w.byIds(c.ids, "centro")) {
+    if (ce.progression !== 0) {
       w.g.food += 50;
       if (ce.coda > 0) ce.coda -= 1; else ce.progression = 0;
     }

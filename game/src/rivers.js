@@ -38,6 +38,8 @@
 // dell'acqua colorata (nuovi/fiumi/carta.png), come il ponte dipinto
 // (Ponte_5). Sotto il ponte l'acqua non c'e' piu': si passa, e non ci piove.
 
+import { datan2, dhypot, dsin } from "./dmath.js"; // §9.152
+
 const STEP = 10;      // px fra un punto e l'altro della linea ammorbidita
 const ISO = 0.62;     // il suolo schiacciato: la larghezza in verticale
 const WALL = 16;      // altezza della parete della riva lontana
@@ -52,7 +54,7 @@ const or = (v, d) => (v === undefined || v === null ? d : v);
 // rumore liscio e sempre uguale per lo stesso fiume (niente Math.random:
 // non tocca la sequenza casuale della partita)
 function wave(s, seed, len) {
-  return Math.sin(s / len + seed) * 0.6 + Math.sin(s / (len * 0.37) + seed * 2.3) * 0.4;
+  return dsin(s / len + seed) * 0.6 + dsin(s / (len * 0.37) + seed * 2.3) * 0.4;
 }
 
 // Catmull-Rom attraverso i punti, campionata ogni STEP px circa
@@ -61,7 +63,7 @@ function smooth(pts) {
   const P = (k) => pts[Math.max(0, Math.min(pts.length - 1, k))];
   for (let k = 0; k < pts.length - 1; k++) {
     const [p0, p1, p2, p3] = [P(k - 1), P(k), P(k + 1), P(k + 2)];
-    const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / STEP));
+    const n = Math.max(1, Math.ceil(dhypot(p2[0] - p1[0], p2[1] - p1[1]) / STEP));
     for (let j = 0; j < n; j++) {
       const t = j / n, t2 = t * t, t3 = t2 * t;
       const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
@@ -83,9 +85,9 @@ export function riverGeometry(rv) {
   const T = [], S = [0];
   for (let k = 0; k < n; k++) {
     const a = C[Math.max(0, k - 1)], b = C[Math.min(n - 1, k + 1)];
-    const tl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const tl = dhypot(b[0] - a[0], b[1] - a[1]) || 1;
     T.push([(b[0] - a[0]) / tl, (b[1] - a[1]) / tl]);
-    if (k > 0) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
+    if (k > 0) S.push(S[k - 1] + dhypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
   }
   // curvatura (con segno: > 0 gira a sinistra) media su +-3 punti: nelle
   // curve strette il bordo interno si ferma prima del centro della curva
@@ -93,7 +95,7 @@ export function riverGeometry(rv) {
   const K = T.map((t, k) => {
     const a = T[Math.max(0, k - 3)], b = T[Math.min(n - 1, k + 3)];
     const ds = S[Math.min(n - 1, k + 3)] - S[Math.max(0, k - 3)] || 1;
-    return Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]) / ds;
+    return datan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]) / ds;
   });
   // la mezza larghezza di ogni lato: al piu' il 55% del raggio della curva
   // dalla parte interna, poi ammorbidita (media su +-8 punti, mai sopra il
@@ -118,7 +120,7 @@ export function riverGeometry(rv) {
     const hl = HL[k], hr = HR[k];
     const nx = -T[k][1], ny = T[k][0]; // a sinistra
     const ink = (k2) => 2.2 + 0.9 * wave(S[k], seed + k2, 23);
-    const up = ny / Math.hypot(nx, ny * ISO) * ISO; // quanto il bordo sinistro guarda in giu' sullo schermo
+    const up = ny / dhypot(nx, ny * ISO) * ISO; // quanto il bordo sinistro guarda in giu' sullo schermo
     L.push({ x: C[k][0] + nx * hl, y: (C[k][1] + ny * hl) * ISO, ny: up, ink: ink(1), tx: T[k][0], ty: T[k][1] * ISO });
     R.push({ x: C[k][0] - nx * hr, y: (C[k][1] - ny * hr) * ISO, ny: -up, ink: ink(4) });
   }
@@ -145,7 +147,7 @@ export function inkLine(r, white, E, dy, keep, col = INK, alpha = INK_ALPHA) {
     const a = E[k], b = E[k + 1];
     if (!keep(a) && !keep(b)) continue;
     const ay = a.y + dy(a), by = b.y + dy(b);
-    const dx = b.x - a.x, dyy = by - ay, l = Math.hypot(dx, dyy) || 1;
+    const dx = b.x - a.x, dyy = by - ay, l = dhypot(dx, dyy) || 1;
     const nx = -dyy / l, ny = dx / l;
     // un po' piu' lunga del tratto, per non lasciare fessure alle giunture
     const ex = (dx / l) * 0.6, ey = (dyy / l) * 0.6;
@@ -253,7 +255,7 @@ export function riverCells(w) {
     for (let k = 0; k < n - 1; k++) {
       if (k % STRETCH === 0) {
         const m = L[Math.min(n - 1, k + STRETCH / 2)];
-        stretches.push({ angle: Math.atan2(-m.ty, m.tx) * 180 / Math.PI });
+        stretches.push({ angle: datan2(-m.ty, m.tx) * 180 / Math.PI });
       }
       const si = stretches.length - 1;
       const q = [[L[k].x, L[k].y], [L[k + 1].x, L[k + 1].y], [R[k + 1].x, R[k + 1].y], [R[k].x, R[k].y]];
@@ -349,7 +351,7 @@ const ROAD_FADE = 80;                       // alle estremita' dentro la room si
 // scuri ai piu' chiari, e il riquadro.
 export function roadGeometry(rd) {
   const C = smooth(rd.pts).map(([x, y]) => [x, y / ISO]), n = C.length, S = [0];
-  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + dhypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
   // [richiesta dell'autore] come i fiumi: widthEnd, se c'e', e' la
   // larghezza all'ultimo punto (cambia piano lungo la strada)
   const total = S[n - 1] || 1, w0 = rd.width, w1 = or(rd.widthEnd, rd.width), width = Math.max(w0, w1);
@@ -367,7 +369,7 @@ export function roadGeometry(rd) {
     while (k < n - 2 && S[k + 1] < s) k++;
     const f = (s - S[k]) / ((S[k + 1] - S[k]) || 1);
     const a = C[k], b = C[Math.min(n - 1, k + 1)];
-    const tl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const tl = dhypot(b[0] - a[0], b[1] - a[1]) || 1;
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, (b[0] - a[0]) / tl, (b[1] - a[1]) / tl];
   };
   for (let j = 0; j < count; j++) {
@@ -401,11 +403,11 @@ export function roadGeometry(rd) {
 // usa solo l'anteprima di Tiled (tools/tiled/anteprima.mjs).
 export function roadOutline(rd) {
   const C = smooth(rd.pts).map(([x, y]) => [x, y / ISO]), n = C.length, S = [0];
-  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + dhypot(C[k][0] - C[k - 1][0], C[k][1] - C[k - 1][1]));
   const total = S[n - 1] || 1, w0 = rd.width, w1 = or(rd.widthEnd, rd.width);
   const L = [], R = [];
   for (let k = 0; k < n; k++) {
-    const a = C[Math.max(0, k - 1)], b = C[Math.min(n - 1, k + 1)], tl = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const a = C[Math.max(0, k - 1)], b = C[Math.min(n - 1, k + 1)], tl = dhypot(b[0] - a[0], b[1] - a[1]) || 1;
     const nx = -(b[1] - a[1]) / tl, ny = (b[0] - a[0]) / tl, hw = (w0 + (w1 - w0) * (S[k] / total)) / 2;
     L.push({ x: C[k][0] + nx * hw, y: (C[k][1] + ny * hw) * ISO });
     R.push({ x: C[k][0] - nx * hw, y: (C[k][1] - ny * hw) * ISO });
@@ -421,7 +423,10 @@ export function drawRoad(r, geo, tex, box) {
   for (const [x, y, sc, v, c] of geo.stones) {
     if (x < box[0] - STONE || x > box[2] + STONE || y < box[1] - STONE || y > box[3] + STONE) continue;
     let row = 0;
-    for (let k = 1; k < STONE_ROWS.length; k++) if (Math.abs(Math.log(sc / STONE_ROWS[k])) < Math.abs(Math.log(sc / STONE_ROWS[row]))) row = k;
+    // [§9.152] |log(a)| < |log(b)| senza Math.log (deterministico): per
+    // rapporti positivi e' max(a, 1/a) < max(b, 1/b)
+    const fold = (r) => (r >= 1 ? r : 1 / r);
+    for (let k = 1; k < STONE_ROWS.length; k++) if (fold(sc / STONE_ROWS[k]) < fold(sc / STONE_ROWS[row])) row = k;
     const e = h * (sc / STONE_ROWS[row]);
     r.quad(tex, x - e, y - e, x + e, y - e, x + e, y + e, x - e, y + e, v * STONE, row * STONE, (v + 1) * STONE, (row + 1) * STONE, c);
   }
@@ -438,13 +443,13 @@ const PARAPET = 8, FACADE_H = 20, SHADOW = [10, 7], SHADOW_ALPHA = 0.3;
 // (un ponte da nord a sud non mostra fianchi, come la parete del fiume).
 export function bridgeGeometry(b) {
   let q = b.pts.map((p) => [p[0], p[1]]);
-  const len = (a, c) => Math.hypot(c[0] - a[0], c[1] - a[1]);
+  const len = (a, c) => dhypot(c[0] - a[0], c[1] - a[1]);
   if (len(q[0], q[1]) < len(q[1], q[2])) q = [q[1], q[2], q[3], q[0]];
   const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
   // i due lati lunghi e quanto ciascuno guarda in giu' (normale verso fuori,
   // sul terreno steso)
   const sides = [[q[0], q[1]], [q[3], q[2]]].map(([a, c]) => {
-    const tx = c[0] - a[0], ty = (c[1] - a[1]) / ISO, tl = Math.hypot(tx, ty) || 1;
+    const tx = c[0] - a[0], ty = (c[1] - a[1]) / ISO, tl = dhypot(tx, ty) || 1;
     let nx = -ty / tl, ny = tx / tl;
     const mx = (a[0] + c[0]) / 2 - cx, my = (a[1] + c[1]) / 2 - cy;
     if (nx * mx + ny * my / ISO < 0) { nx = -nx; ny = -ny; }
@@ -478,13 +483,13 @@ export function drawBridge(r, g, paper, white) {
   if (fh > 0) {
     // la facciata (pietra) con gli archi (acqua in ombra)
     P(near[0], near[1], down(near[1], fh), down(near[0], fh), tint(FACADE));
-    const L = Math.hypot(near[1][0] - near[0][0], near[1][1] - near[0][1]);
+    const L = dhypot(near[1][0] - near[0][0], near[1][1] - near[0][1]);
     const arches = L > 220 ? 3 : L > 120 ? 2 : 1;
     for (let a = 0; a < arches; a++) {
       const c = (a + 0.5) / arches, half = 0.36 / arches, segs = 12, pts = [];
       const at = (j) => lerp(near[0], near[1], c - half + (2 * half * j) / segs);
       for (let j = 0; j <= segs; j++) {
-        const p = at(j), up = Math.sin((Math.PI * j) / segs) * fh * 0.72;
+        const p = at(j), up = dsin((Math.PI * j) / segs) * fh * 0.72;
         pts.push({ x: p[0], y: p[1] + fh - up, ink: 1.8 });
       }
       for (let j = 0; j < segs; j++) {
@@ -498,7 +503,7 @@ export function drawBridge(r, g, paper, white) {
   P(far[0], far[1], near[1], near[0], tint(DECK));
   const mid = lerp(lerp(far[0], far[1], 0.5), lerp(near[0], near[1], 0.5), 0.5);
   const inset = (a, b, d) => { // a, b spostati di d px verso l'interno del ponte
-    const m = lerp(a, b, 0.5), dx = mid[0] - m[0], dy = mid[1] - m[1], l = Math.hypot(dx, dy) || 1;
+    const m = lerp(a, b, 0.5), dx = mid[0] - m[0], dy = mid[1] - m[1], l = dhypot(dx, dy) || 1;
     return [[a[0] + (dx / l) * d, a[1] + (dy / l) * d], [b[0] + (dx / l) * d, b[1] + (dy / l) * d]];
   };
   const fi = inset(far[0], far[1], PARAPET), ni = inset(near[0], near[1], PARAPET);
@@ -559,7 +564,7 @@ export function patchGeometry(p) {
   // il bordo, un punto ogni PATCH_STEP px, in senso antiorario
   let P = [];
   for (let i = 0; i < p.pts.length; i++) {
-    const a = p.pts[i], b = p.pts[(i + 1) % p.pts.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / PATCH_STEP));
+    const a = p.pts[i], b = p.pts[(i + 1) % p.pts.length], n = Math.max(1, Math.ceil(dhypot(b[0] - a[0], b[1] - a[1]) / PATCH_STEP));
     for (let j = 0; j < n; j++) P.push([a[0] + (b[0] - a[0]) * (j / n), a[1] + (b[1] - a[1]) * (j / n)]);
   }
   if (area2(P) < 0) P = P.reverse();
@@ -570,11 +575,11 @@ export function patchGeometry(p) {
   for (let k = 0; k < n; k++) {
     const a = P[(k + n - 1) % n], b = P[k], c = P[(k + 1) % n];
     const n1 = [b[1] - a[1], -(b[0] - a[0])], n2 = [c[1] - b[1], -(c[0] - b[0])];
-    const l1 = Math.hypot(n1[0], n1[1]) || 1, l2 = Math.hypot(n2[0], n2[1]) || 1;
+    const l1 = dhypot(n1[0], n1[1]) || 1, l2 = dhypot(n2[0], n2[1]) || 1;
     let nx = n1[0] / l1 + n2[0] / l2, ny = n1[1] / l1 + n2[1] / l2;
-    const nl = Math.hypot(nx, ny) || 1;
+    const nl = dhypot(nx, ny) || 1;
     nx /= nl; ny /= nl;
-    if (k > 0) s += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (k > 0) s += dhypot(b[0] - a[0], b[1] - a[1]);
     const f = F * (1 + 0.6 * wave(s, seed, 40));
     out.push([b[0] + nx * f, b[1] + ny * f]);
   }

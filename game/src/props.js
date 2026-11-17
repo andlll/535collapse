@@ -18,6 +18,7 @@
 
 import { pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireStarterCreate, fireStarterStep } from "./effects.js";
+import { dsin } from "./dmath.js"; // §9.152
 
 // offset dei bracieri per oggetto [C, Create di ciascun ocr_*]
 const STD = [[-50, -50], [10, -100], [40, -55]];
@@ -91,7 +92,7 @@ export function statue() {
       if (i.attiva !== 1) return;
       for (const u of w.all("ally_unit")) {
         const diri = pointDirection(u.x, u.y, i.x, i.y);
-        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(Math.sin(degtorad(diri)))) < 400 && u.life < u.slife) {
+        if (pointDistance(u.x, u.y, i.x, i.y) * (1 - 0.36 * Math.abs(dsin(degtorad(diri)))) < 400 && u.life < u.slife) {
           w.create("sfx_croce", u.x, u.y);
           u.life += 3;
           if (u.life > u.slife) u.life = u.slife;

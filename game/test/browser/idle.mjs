@@ -41,7 +41,7 @@ const report = (name, checks) => {
 async function scenario(name, fn, arg) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=match&nostart=1`);
+  await page.goto(`${base}/index.html?room=match&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   await page.evaluate(() => {
     const G = window.__game, w = G.world;
@@ -306,7 +306,7 @@ await scenario("8 bordo", () => {
 {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=match&nostart=1`);
+  await page.goto(`${base}/index.html?room=match&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   const before = await page.evaluate(async () => {
     const G = window.__game, w = G.world;

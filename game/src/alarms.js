@@ -4,6 +4,8 @@
 // passo successivo; 0 o un valore negativo non scattano mai. Gli alarm si
 // controllano dopo Begin Step e prima di Step.
 
+import { simRandom } from "./rng.js"; // §9.152
+
 export class Alarms {
   constructor(n = 12) {
     this.a = new Array(n).fill(-1);
@@ -28,5 +30,5 @@ export class Alarms {
 }
 
 export function irandomRange(a, b) {
-  return a + Math.floor(Math.random() * (b - a + 1));
+  return a + Math.floor(simRandom() * (b - a + 1));
 }

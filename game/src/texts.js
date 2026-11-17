@@ -123,6 +123,21 @@ export const TEXTS = {
     fr: "Siège à distance, bon contre tous les bâtiments." },
   "Aggressive": { it: "Aggressivo", es: "Agresivo", pt: "Agressivo", de: "Angriff", fr: "Offensif" },
   "Defensive": { it: "Difensivo", es: "Defensivo", pt: "Defensivo", de: "Verteidigung", fr: "Défensif" },
+  // [§9.148] i modi di tiro dell'arciere della nebbia (livello 7)
+  "Stealth shot": { it: "Tiro furtivo", es: "Disparo sigiloso", pt: "Tiro furtivo", de: "Lautloser Schuss", fr: "Tir furtif" },
+  "Rapid shot": { it: "Tiro rapido", es: "Disparo rápido", pt: "Tiro rápido", de: "Schnellschuss", fr: "Tir rapide" },
+  "Only at the target you choose, standing still: an unaware enemy dies in silence.": {
+    it: "Solo al bersaglio che scegli, da fermo: un nemico ignaro muore in silenzio.",
+    es: "Solo al objetivo que elijas, sin moverte: un enemigo desprevenido muere en silencio.",
+    pt: "Só no alvo que escolheres, parado: um inimigo desprevenido morre em silêncio.",
+    de: "Nur auf das gewählte Ziel, im Stehen: ein ahnungsloser Feind stirbt lautlos.",
+    fr: "Seulement sur la cible choisie, à l'arrêt : un ennemi pris au dépourvu meurt en silence." },
+  "Fast and weak: every hit alerts the enemies nearby.": {
+    it: "Veloce e debole: ogni colpo mette in allarme i nemici vicini.",
+    es: "Rápido y débil: cada impacto alerta a los enemigos cercanos.",
+    pt: "Rápido e fraco: cada acerto alerta os inimigos próximos.",
+    de: "Schnell und schwach: jeder Treffer alarmiert die Feinde in der Nähe.",
+    fr: "Rapide et faible : chaque coup alerte les ennemis proches." },
   "Military units engage enemy units in a fight at a greater distance.": {
     it: "I soldati attaccano i nemici anche da lontano.", es: "Los soldados atacan a los enemigos desde más lejos.",
     pt: "Os soldados atacam os inimigos de mais longe.", de: "Soldaten greifen Feinde schon aus größerer Entfernung an.",
@@ -551,6 +566,8 @@ export const TEXTS = {
   "Truce: {t}": { it: "Tregua: {t}", es: "Tregua: {t}", pt: "Trégua: {t}", de: "Waffenruhe: {t}", fr: "Trêve : {t}" },
   "Time left: {t}": { it: "Tempo rimasto: {t}", es: "Tiempo restante: {t}", pt: "Tempo restante: {t}", de: "Verbleibende Zeit: {t}", fr: "Temps restant : {t}" },
   "Score: you {a}, the enemy {b}": { it: "Punteggio: tu {a}, il nemico {b}", es: "Puntuación: tú {a}, el enemigo {b}", pt: "Pontuação: você {a}, o inimigo {b}", de: "Punkte: du {a}, der Feind {b}", fr: "Score : toi {a}, l'ennemi {b}" },
+  "Opponent: the blue player": { it: "Avversario: il giocatore blu", es: "Rival: el jugador azul", pt: "Adversário: o jogador azul", de: "Gegner: der blaue Spieler", fr: "Adversaire : le joueur bleu" },
+  "Opponent: the red player": { it: "Avversario: il giocatore rosso", es: "Rival: el jugador rojo", pt: "Adversário: o jogador vermelho", de: "Gegner: der rote Spieler", fr: "Adversaire : le joueur rouge" },
   "Enemy: {d}, {s}": { it: "Nemico: {d}, {s}", es: "Enemigo: {d}, {s}", pt: "Inimigo: {d}, {s}", de: "Feind: {d}, {s}", fr: "Ennemi : {d}, {s}" },
   "The enemy has been defeated": { it: "Il nemico è stato sconfitto", es: "El enemigo ha sido derrotado", pt: "O inimigo foi derrotado", de: "Der Feind wurde besiegt", fr: "L'ennemi a été vaincu" },
   "All your buildings were destroyed.": { it: "Tutti i tuoi edifici sono stati distrutti.", es: "Todos tus edificios han sido destruidos.", pt: "Todos os seus edifícios foram destruídos.", de: "Alle deine Gebäude wurden zerstört.", fr: "Tous tes bâtiments ont été détruits." },

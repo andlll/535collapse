@@ -154,7 +154,7 @@ const pageFor = async (lang, room) => {
   await page.addInitScript((l) => {
     try { localStorage.setItem("535.settings", JSON.stringify({ v: 1, settings: { language: l } })); } catch (e) { /* niente */ }
   }, lang);
-  await page.goto(`${base}/index.html?room=${room}&nostart=1`);
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   await page.addStyleTag({ content: "#message{display:none !important}" }); // l'avviso del disegno software (DOM)
   await page.evaluate(INSTALL);

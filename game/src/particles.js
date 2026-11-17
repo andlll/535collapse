@@ -34,6 +34,8 @@
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { mergeColour } from "./colours.js";
 import { drawSprite } from "./sprites.js";
+import { dhypot, dsin } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
 
 // star: §9.94, le scintille delle miniere (tools/05_atlas.py)
 const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring", star: "__pt_star", leaf: "__pt_leaf", // leaf: §9.106
@@ -49,7 +51,7 @@ const TAU = Math.PI * 2;
 // distraeva: erano 1,6, 1,6 e 0,75.
 const SWAY_AMP = 1.3, SWAY_RATE = 1.3, SWAY_LEAN = 0.45;
 
-const rand = (a, b) => a + Math.random() * (b - a);
+const rand = (a, b) => a + vrand() * (b - a);
 
 // Tipo di particella: le proprieta' hanno i nomi delle funzioni part_type_*.
 // size/speed/direction/orientation: [min, max, incr, wiggle(, relativo)].
@@ -67,12 +69,12 @@ export function partType(p = {}) {
 
 // Valore in [0,1] con la distribuzione dell'emettitore [I]
 function distr(kind) {
-  if (kind === "gaussian") return (Math.random() + Math.random() + Math.random()) / 3;
+  if (kind === "gaussian") return (vrand() + vrand() + vrand()) / 3;
   if (kind === "invgaussian") {
-    const v = (Math.random() + Math.random() + Math.random()) / 3;
+    const v = (vrand() + vrand() + vrand()) / 3;
     return v < 0.5 ? v + 0.5 : v - 0.5;
   }
-  return Math.random();
+  return vrand();
 }
 
 export class Particles {
@@ -196,11 +198,11 @@ export class Particles {
     q.speed = rand(t.speed[0], t.speed[1]);
     q.dir = rand(t.direction[0], t.direction[1]);
     q.ang = rand(t.orientation[0], t.orientation[1]);
-    q.ph = Math.random();             // fase del wiggle
+    q.ph = vrand();             // fase del wiggle
     // periodo del wiggle in passi [I]; [§9.61] wigglePeriod: [min, max] del tipo
-    q.per = t.wigglePeriod ? rand(t.wigglePeriod[0], t.wigglePeriod[1]) : 16 + 16 * Math.random();
+    q.per = t.wigglePeriod ? rand(t.wigglePeriod[0], t.wigglePeriod[1]) : 16 + 16 * vrand();
     const c = t.colour;
-    q.col = c && c.mix ? mergeColour(c.mix[0], c.mix[1], Math.random())
+    q.col = c && c.mix ? mergeColour(c.mix[0], c.mix[1], vrand())
       : c && c.rgb ? (Math.round(rand(c.rgb[0], c.rgb[1])) | (Math.round(rand(c.rgb[2], c.rgb[3])) << 8)
                       | (Math.round(rand(c.rgb[4], c.rgb[5])) << 16))
       : 0xffffff;
@@ -211,7 +213,7 @@ export class Particles {
   // -------------------------------------------------------------- passo
 
   _wig(q, amount) {
-    return amount ? amount * Math.sin(TAU * (q.age / q.per + q.ph)) : 0;
+    return amount ? amount * dsin(TAU * (q.age / q.per + q.ph)) : 0;
   }
 
   // orientamento disegnato: wiggle, direzione se relativo, vento (§9.90)
@@ -219,7 +221,7 @@ export class Particles {
     const t = q.t, ow = t.orientation[3], k = !t.orientation[4] && ow ? this.wind : 0;
     if (!k) return q.ang + this._wig(q, ow) + (t.orientation[4] ? q.dir : 0);
     const amp = 1 + (SWAY_AMP - 1) * k, rate = 1 + (SWAY_RATE - 1) * k;
-    return q.ang + ow * (SWAY_LEAN * k + amp * Math.sin(TAU * (q.age * rate / q.per + q.ph)));
+    return q.ang + ow * (SWAY_LEAN * k + amp * dsin(TAU * (q.age * rate / q.per + q.ph)));
   }
 
   step() {
@@ -229,7 +231,7 @@ export class Particles {
       if (!ps.automatic || this.hidden.has(ps.cat)) continue;
       for (const em of ps.emitters) {
         if (!em.type || !em.n) continue;
-        if (em.n < 0) { if (Math.random() * -em.n < 1) this.burst(ps, em, em.type, 1); }
+        if (em.n < 0) { if (vrand() * -em.n < 1) this.burst(ps, em, em.type, 1); }
         else this.burst(ps, em, em.type, Math.ceil(em.n));
       }
       const parts = ps.parts;
@@ -245,7 +247,7 @@ export class Particles {
         if (t.gravity[0]) {
           const vx = lengthdirX(q.speed, q.dir) + lengthdirX(t.gravity[0], t.gravity[1]);
           const vy = lengthdirY(q.speed, q.dir) + lengthdirY(t.gravity[0], t.gravity[1]);
-          q.speed = Math.hypot(vx, vy);
+          q.speed = dhypot(vx, vy);
           q.dir = pointDirection(0, 0, vx, vy);
         }
         if (q.speed || t.speed[3]) {

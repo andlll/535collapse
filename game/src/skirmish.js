@@ -16,6 +16,7 @@
 //   (global.sk, anche nei salvataggi).
 
 import { tr } from "./i18n.js";
+import { simRandom } from "./rng.js"; // §9.152
 
 // Le mappe: room -> nome e descrizione. [§9.129, decisione dell'autore] I
 // nomi in italiano (prima erano quelli storici in latino: Padus, Silva
@@ -112,15 +113,15 @@ const STYLES = ["balanced", "aggressive", "defensive", "economic", "raider"];
 export function skirmishPrepare(params, all) {
   const cc = all.filter((e) => e[0] === "centro").sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
   if (cc.length !== 2) return null;
-  const side = params.start === "random" ? (Math.random() < 0.5 ? "A" : "B") : params.start;
+  const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
   const [mine, cpu] = side === "A" ? cc : [cc[1], cc[0]];
-  cpu[0] = "enemy_centro";
+  cpu[0] = params.pvp ? "p2_centro" : "enemy_centro"; // §9.155: nella partita a due il centro del giocatore 2
   return { side, player: [mine[1], mine[2]], cpu: [cpu[1], cpu[2]] };
 }
 
 // Dopo: lavoratori, risorse, regia economica della CPU, opzioni, vista
 export function skirmishStart(world, g, manager, fog, cam, params, starts) {
-  const style = params.style === "random" ? STYLES[Math.floor(Math.random() * STYLES.length)] : params.style;
+  const style = params.style === "random" ? STYLES[Math.floor(simRandom() * STYLES.length)] : params.style;
   g.sk = { ...params, style, side: starts.side, popMax: params.pop };
   Object.assign(g, START_RES[params.resources]);
   const en = START_RES[params.resources];
@@ -131,9 +132,15 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
   // nascere la sua regia, ECO startWorkers)
   const [px, py] = starts.player;
   for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
-  world.create("enemy_eco", 0, 0);
+  if (params.pvp) {
+    // [§9.155] la partita a due: il giocatore 2 come il giocatore 1, con la
+    // sua cassa (global.p2) e i suoi 3 lavoratori; niente regia della CPU
+    Object.assign(g.p2, START_RES[params.resources]);
+    const [qx, qy] = starts.cpu;
+    for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
+  } else world.create("enemy_eco", 0, 0);
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
-  if (params.truce > 0) g.en.hold = 1;
+  if (params.truce > 0 && !params.pvp) g.en.hold = 1;
   world.create("sk_manager", 0, 0);
   // [§9.122] un po' di nebbia (anche sul lato B, ruotata)
   const map = SK_MAPS.find((m) => m.room === world.room);
@@ -162,6 +169,7 @@ export const rainGap = (g) => RAIN_EVERY[g.sk && g.sk.rain === "frequent" ? "fre
 // Il tetto di popolazione scelto (manager.js lo tiene a 99)
 export function skirmishPopcap(g) {
   if (g.sk && g.popcap > g.sk.popMax) g.popcap = g.sk.popMax;
+  if (g.sk && g.p2 && g.p2.popcap > g.sk.popMax) g.p2.popcap = g.sk.popMax; // §9.155: anche il blu
 }
 
 // Il punteggio per la vittoria a tempo: il valore di quello che si ha in
@@ -199,6 +207,7 @@ export function skManager() {
       const g = w.g, S = g.sk;
       if (!S || g.victory || g.gameover || w.exists("victory_manager") || w.exists("gameover_manager")) return;
       skirmishPopcap(g);
+      if (S.pvp) { pvpCheck(w, g, S); return; } // §9.155: la partita a due
       if (S.truce > 0 && g.en && g.en.hold && elapsed(g) >= S.truce * 60) g.en.hold = 0;
       const win = () => { g.victory = 1; g.skResult = "win"; w.create("victory_manager", 0, 0); };
       const lose = (why) => { g.gameover = 1; g.skLost = why; w.create("gameover_manager", 0, 0); };
@@ -219,6 +228,42 @@ export function skManager() {
       else if (myBuildings === 0) lose("buildings");
     },
   };
+}
+
+// [§9.155] La fine della partita a due. Chi vince e' un dato comune
+// (global.skWinner, 1 il rosso, 2 il blu), deciso qui (sk_manager e' neutro:
+// w e' lo specchio della parte 1) come contro la CPU: conquista (perde chi
+// resta senza edifici), municipio (chi perde il centro), punteggio (a
+// tempo: piu' alto vince, a pari il rosso: provvisorio). Cosa si vede dipende
+// da chi guarda: vittoria a chi ha vinto, sconfitta all'altro; le schermate
+// sono cosmetiche (fx: fuori dall'impronta). Da qui le due pagine possono
+// differire (global.victory e gameover): il controllo della rete si ferma
+// alla fine (fase 4).
+function pvpCheck(w, g, S) {
+  const mp = w.mp;
+  if (!mp || g.skWinner) return;
+  const built = (s) => (s === 1 ? w.number("ally_build") - w.number("cc_barn") : w.number("p2_build") - w.number("p2_cc_barn"));
+  let lost = 0, why = "buildings";
+  const mins = scoreMinutes(S.victory);
+  if (S.victory === "townhall") {
+    why = "townhall";
+    if (!w.exists("centro")) lost = 1; else if (!w.exists("p2_centro")) lost = 2;
+  } else if (mins && elapsed(g) >= mins * 60) {
+    const a = skirmishScore(mp.mirror1, "player"), b = skirmishScore(mp.mirror2, "player");
+    g.skScores = [a, b];
+    why = "score";
+    lost = a >= b ? 2 : 1;
+  } else if (built(2) === 0) lost = 2;
+  else if (built(1) === 0) lost = 1;
+  if (lost) pvpEnd(w, g, 3 - lost, why);
+}
+function pvpEnd(w, g, winner, why) {
+  g.skWinner = winner;
+  const local = w.mp.local;
+  // il punteggio dalla parte di chi guarda ("tu, l'avversario")
+  if (g.skScores) g.skScore = local === 1 ? g.skScores : [g.skScores[1], g.skScores[0]];
+  if (local === winner) { g.victory = 1; g.skResult = "win"; w.create("victory_manager", 0, 0, { fx: true }); }
+  else { g.gameover = 1; g.skLost = why === "townhall" ? "buildings" : why; w.create("gameover_manager", 0, 0, { fx: true }); }
 }
 
 // ---------------------------------------------------- la CPU (economy.js)
@@ -268,7 +313,7 @@ export const MIST = { n: 5, every: 2400, alpha: 0.5, speed: 0.5, life: 6000, spr
 export function skNebbia() {
   const spawn = (i, w) => {
     for (let k = 0; k < MIST.n; k++) {
-      const x = i.x + (Math.random() - 0.5) * 2 * MIST.spread[0], y = i.y + (Math.random() - 0.5) * 2 * MIST.spread[1];
+      const x = i.x + (simRandom() - 0.5) * 2 * MIST.spread[0], y = i.y + (simRandom() - 0.5) * 2 * MIST.spread[1];
       w.create("sk_nube", Math.round(x), Math.round(y));
     }
     i.alarm.set(0, MIST.every);
@@ -282,7 +327,7 @@ export function skNube() {
       i.alfa = 0; i.out = 0;
       i.direction = 0; i.speed = MIST.speed;
       i.alarm.set(0, MIST.life);
-      i.image_xscale = i.image_yscale = 0.8 + Math.random() * 0.6;
+      i.image_xscale = i.image_yscale = 0.8 + simRandom() * 0.6;
     },
     alarm0(i) { i.out = 1; },
     step(i, w) {

@@ -13,6 +13,9 @@
 //   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante;
 // - [§9.141] i suoni continui (la pioggia): ambient(nome, livello);
 // - [§9.143] la musica, a parti in loop: music({ nome: volume }).
+import { dhypot } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
+
 const FAR = 700;      // px di mondo oltre il bordo della vista a cui il suono si spegne
 const PAN = 0.6;      // pan massimo (ai bordi della vista)
 const VOICES = 4;     // voci dello stesso suono insieme
@@ -114,7 +117,7 @@ export class SoundBank {
       const g = ctx.createGain();
       g.gain.value = 0;
       src.connect(g).connect(this.master);
-      src.start(0, Math.random() * src.buffer.duration);
+      src.start(0, vrand() * src.buffer.duration);
       a = { src, g, target: 0, zeroAt: null };
       this.ambients.set(name, a);
     }
@@ -205,7 +208,7 @@ export class SoundBank {
     const c = this.cam;
     if (!c || x === undefined) return [1, 0];
     const dx = Math.max(c.x - x, 0, x - (c.x + c.w)), dy = Math.max(c.y - y, 0, y - (c.y + c.h));
-    const g = Math.max(0, 1 - Math.hypot(dx, dy) / FAR);
+    const g = Math.max(0, 1 - dhypot(dx, dy) / FAR);
     const pan = Math.max(-1, Math.min(1, (x - (c.x + c.w / 2)) / (c.w / 2))) * PAN;
     return [g, pan];
   }
@@ -219,14 +222,14 @@ export class SoundBank {
     if (now - s.at < MIN_GAP) return false;
     const [g, pan] = this.placement(x, y);
     if (g <= 0.01) return false;
-    let k = Math.floor(Math.random() * s.buffers.length);
+    let k = Math.floor(vrand() * s.buffers.length);
     if (s.buffers.length > 1 && k === s.last) k = (k + 1) % s.buffers.length;
     s.last = k; s.at = now; s.playing++;
     const src = ctx.createBufferSource();
     src.buffer = s.buffers[k];
-    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * (s.pitch ?? PITCH); // §9.140: per suono (audio.json "altezza")
+    src.playbackRate.value = 1 + (vrand() * 2 - 1) * (s.pitch ?? PITCH); // §9.140: per suono (audio.json "altezza")
     const gain = ctx.createGain();
-    gain.gain.value = g * vol * s.gain * (1 + (Math.random() * 2 - 1) * GAIN_VAR);
+    gain.gain.value = g * vol * s.gain * (1 + (vrand() * 2 - 1) * GAIN_VAR);
     let node = src.connect(gain);
     if (ctx.createStereoPanner) {
       const p = ctx.createStereoPanner();

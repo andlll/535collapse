@@ -19,6 +19,7 @@
 
 import { spawnSlices, destroySlices } from "./scenario.js";
 import { panel } from "./buildings.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
 const RIVER_ORIGIN = [1886, 1452];       // il centro di Fiume_Completo, la sua origine
 export const BRIDGE = {
@@ -43,7 +44,7 @@ const SPOTS = [0.5, 0.3, 0.7, 0.12, 0.88];
 // Un punto dello sprite (lx, ly dall'origine) nella room, con la scala e la
 // rotazione dell'istanza (come drawSprite e waterMap)
 function toRoom(i, lx, ly) {
-  const t = (i.image_angle || 0) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+  const t = (i.image_angle || 0) * Math.PI / 180, c = dcos(t), s = dsin(t);
   const x = lx * (i.image_xscale || 1), y = ly * (i.image_yscale || 1);
   return [i.x + x * c + y * s, i.y - x * s + y * c];
 }
@@ -125,6 +126,6 @@ export function bridgeEnds(i, x, y) {
     const f = SPOTS[n[k] % SPOTS.length];
     return { k, p: toRoom(i, ax + (bx - ax) * f, ay + (by - ay) * f), mid: toRoom(i, (ax + bx) / 2, (ay + by) / 2) };
   });
-  e.sort((a, b) => Math.hypot(a.mid[0] - x, a.mid[1] - y) - Math.hypot(b.mid[0] - x, b.mid[1] - y));
+  e.sort((a, b) => dhypot(a.mid[0] - x, a.mid[1] - y) - dhypot(b.mid[0] - x, b.mid[1] - y));
   return e.map(({ k, p }) => ({ x: p[0], y: p[1], take() { n[k]++; } }));
 }

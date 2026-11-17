@@ -18,9 +18,12 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, makeWay, waiting, waitHere, canReach, nearestReachable, moveStalled, goNear, WAIT_RETRY } from "./pathing.js";
 import { meleeSpot, FIRE, MELEE_UNSTACK } from "./melee.js";
+import { lmStep, lmReady } from "./lastmile.js";
 import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { baseOf } from "./multiplayer.js"; // §9.155
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -30,7 +33,7 @@ export function phaseOf(direction) {
 
 // 1 - 0,36 |sin(direzione)|: le unita' vanno piu' piano in verticale
 // (prospettiva isometrica) [C, autospeed di ogni unita']
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 
 function inView(w, i) {
   const c = w.cam;
@@ -119,7 +122,7 @@ export function formation(w, p, mx, my) {
   for (const u of units) { cx += u.x; cy += u.y; }
   cx /= units.length; cy /= units.length;
   let fx = mx - cx, fy = my - cy;
-  const fl = Math.hypot(fx, fy);
+  const fl = dhypot(fx, fy);
   if (fl < 1) { fx = 0; fy = -1; } else { fx /= fl; fy /= fl; }
   const lx = -fy, ly = fx; // laterale
   // ingombro di ogni unita' (maschere: fanteria ~48x46, cavalieri ~91x41,
@@ -134,7 +137,7 @@ export function formation(w, p, mx, my) {
   for (const u of units) {
     const bb = w.bbox(u);
     const sz = bb ? [bb[2] - bb[0], bb[3] - bb[1]] : [48, 46];
-    size.set(u, SIEGE_UNITS.has(u.object) ? [Math.max(sz[0], SIEGE_FOOT[0] - MARGIN), Math.max(sz[1], SIEGE_FOOT[1] - MARGIN)] : sz);
+    size.set(u, SIEGE_UNITS.has(baseOf(u)) ? [Math.max(sz[0], SIEGE_FOOT[0] - MARGIN), Math.max(sz[1], SIEGE_FOOT[1] - MARGIN)] : sz);
   }
   const apart = (dx, dy, wsum, hsum) => {
     const a = Math.abs(dx) > 1e-3 ? wsum / 2 / Math.abs(dx) : Infinity;
@@ -147,10 +150,10 @@ export function formation(w, p, mx, my) {
   // velocita': i cavalieri vanno a 5, fanteria e arcieri a 4, civili 3,
   // assedio 2), a blocchi di una riga per posizione laterale
   const lat = (u) => (u.x - cx) * lx + (u.y - cy) * ly;
-  const speed = (u) => (u.object === "ally_cavaliere" ? 5 : u.object === "ally_omino" ? 3
-    : u.object === "ally_ariete" || u.object === "ally_catapulta" ? 2 : 4);
+  const speed = (u) => (baseOf(u) === "ally_cavaliere" ? 5 : baseOf(u) === "ally_omino" ? 3
+    : baseOf(u) === "ally_ariete" || baseOf(u) === "ally_catapulta" ? 2 : 4);
   const eta = new Map(units.map((u) => [u, pointDistance(u.x, u.y, mx, my) / speed(u)]));
-  const role = new Map(units.map((u) => [u, ROLE[u.object] ?? 1]));
+  const role = new Map(units.map((u) => [u, ROLE[baseOf(u)] ?? 1]));
   units.sort((a, b) => role.get(a) - role.get(b) || eta.get(a) - eta.get(b));
   const rowUnits = [];
   for (let k = 0; k < n;) {
@@ -216,8 +219,8 @@ export function escapeDeselect(i, w) {
 // (possono dare fuoco), arcsel per gli arcieri, siegsel per l'assedio.
 export function selCounter(w, i) {
   if (w.is(i, "ally_infantry")) return "firesel";
-  if (i.object === "ally_arciere") return "arcsel";
-  if (i.object === "ally_ariete" || i.object === "ally_catapulta") return "siegsel";
+  if (baseOf(i) === "ally_arciere") return "arcsel";
+  if (baseOf(i) === "ally_ariete" || baseOf(i) === "ally_catapulta") return "siegsel";
   return null;
 }
 
@@ -267,15 +270,15 @@ export function cavaliere(p) {
       const g = w.g, input = w.input;
       // azione 1: tasto sinistro sull'unita'
       if (i.hover === 1 && input.mouseReleased[0]) {
-        if (i.dc === 1) {
+        if (dcOn(i, w)) {
           for (const o of w.all(CAV)) if (inView(w, o)) { o.selected = 1; g.sel += 1; g.milsel += 1; }
         }
         if (g.sele > -1 && i.selected === 0) {
           i.selected = 1;
           g.milsel += 1;
-          if (i.dc === 0) g.sel += 1;
+          if (!dcOn(i, w)) g.sel += 1;
           hintOnce(w, "hint_multi", "multihint", i.x, i.y);
-          if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+          if (!dcOn(i, w)) dcArm(i, w);
         }
         if (g.sele === -1) {
           if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; }
@@ -361,6 +364,13 @@ export function cavaliere(p) {
   };
 }
 
+// [§9.154] La finestra del doppio clic (30 passi dopo il clic che seleziona)
+// e' dell'interfaccia di chi clicca: prima era l'Alarm_1 dell'unita' (dc = 1,
+// poi 0), uno stato della partita; ora il passo fino a cui vale (dcAt, fuori
+// dall'impronta)
+export const dcOn = (i, w) => (i.dcAt ?? -1) > w._stepNo;
+export function dcArm(i, w) { i.dcAt = w._stepNo + 30; }
+
 // "creazione pulsanti di comportamento" [C, Step di ogni unita' militare]
 function behaviourButtons(i, w) {
   if (i.selected === 1 && w.number("attacco_clicker") === 0) {
@@ -395,7 +405,7 @@ export function infantry(name, p) {
   const leftClick = (i, w) => {
     const g = w.g;
     if (!(i.hover === 1 && w.input.mouseReleased[0])) return;
-    if (i.dc === 1) {
+    if (dcOn(i, w)) {
       for (const o of w.all(name)) if (inView(w, o)) { o.selected = 1; g.sel += 1; g.milsel += 1; g.firesel++; }
     }
     if (g.sele > -1 && i.selected === 0) {
@@ -403,8 +413,8 @@ export function infantry(name, p) {
       g.milsel += 1;
       g.firesel++;
       hintOnce(w, "hint_multi", "multihint", i.x, i.y);
-      if (i.dc === 0) g.sel += 1;
-      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+      if (!dcOn(i, w)) g.sel += 1;
+      if (!dcOn(i, w)) dcArm(i, w);
     }
     if (g.sele === -1) {
       if (i.selected === 1) { g.sel -= 1; g.firesel--; g.milsel -= 1; }
@@ -595,12 +605,15 @@ export function controlGroups(civilian) {
 
 // attacco_clicker / difesa_clicker [C]: comp 700 (insegue entro 700 px) o
 // 200.
+// [§9.154] l'azione "comportamento" ({ ids, attacco }): le unita' `ids`
+// (prima: le selezionate)
+export function behaviourAction(w, c) {
+  for (const u of w.byIds(c.ids, "ally_militare")) u.comp = c.attacco ? 700 : 200;
+  if (!c.attacco) for (const u of w.byIds(c.ids, "ally_arciere")) u.comp = 200;
+}
 export function behaviourClicker(kind) {
   const attack = kind === "attacco";
-  const apply = (w) => {
-    for (const u of w.all("ally_militare")) if (u.selected === 1) u.comp = attack ? 700 : 200;
-    if (!attack) for (const u of w.all("ally_arciere")) if (u.selected === 1) u.comp = 200;
-  };
+  const apply = (w) => w.act("comportamento", { ids: w.selectedIds(), attacco: attack });
   return {
     create(i) { i.active = 0; i.hover = 0; },
     step(i, w) {
@@ -739,7 +752,13 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
     // suo attorno al bersaglio, sopra gli alleati (stepOver)
     const over = i.warwork === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFreeForSlot(i, i.x, i.y)
       && w.placeFreeExcept(i, i.x, i.y, "ally_unit");
-    if (!over && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)))) {
+    // [§9.147] vicino alla meta l'ultimo tratto (lastmile.js), anche
+    // sovrapposti e senza vista sulla meta: il campo fine ci gira attorno.
+    // Non in mischia: li' i posti attorno al bersaglio (melee.js) e il passo
+    // sopra i compagni restano come prima (con l'ultimo tratto, che non
+    // spinge contro i nemici, gli alleati arrivavano a colpire piu' tardi)
+    const lm = (moveOrder || i.firework === 1) && lmReady(w, i, i.dirox, i.diroy);
+    if (!over && !lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 400 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)))) {
       const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
       if (otro) {
         if (otro.ordo === undefined || otro.ordo > i.ordo || otro.action !== 1 || noYield(w, i, otro)) moveFlowField(w, p, i); // §8.11: assedio
@@ -756,11 +775,11 @@ function flowMovement(i, w, p, { nearRank = false, speed = 4 } = {}) {
         } else i.autospeed = speed * iso(i.direction);
       }
       if (i.firework === 0 && (i.warwork === 0 || i.warwork === 4)) {
-        mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        if (!lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); // §9.147
         arriveIfBlocked(i); // §6.1 n.89
       }
       // a dare fuoco: verso il proprio posto (qui sopra)
-      if (i.firework === 1 && i.targetid) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+      if (i.firework === 1 && i.targetid && !lmStep(w, p, i, i.dirox, i.diroy)) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
       // [§7.7] in mischia verso un posto libero attorno al bersaglio, non
       // verso il suo centro (melee.js)
       const ring = over ? MELEE_UNSTACK : null;
@@ -899,8 +918,13 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     const ta = w.nearest(i.x, i.y, "enemy_unit");
     const valid = ta.visible === true;
     const dist = w.distanceToInstance(i, ta);
-    if (dist < 10 * k && unstack(w, i, ta)) return null; // §9.71
-    if (dist < 10 * k) {
+    // [§9.154] fermo ad aspettare (waitHere: non si avvicina di piu') a meno
+    // di 10 px: colpisce anche in verticale, dove la portata e' 10 * k (6,4
+    // px) e da sopra o da sotto ci si ferma prima (attackorder.mjs, "vert":
+    // il picchiere aspettava a 9 px per sempre)
+    const close = dist < 10 * k || (dist < 10 && waiting(w, i));
+    if (close && unstack(w, i, ta)) return null; // §9.71
+    if (close) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) { i.targetx = ta.x; i.targety = ta.y; p.occupy(i); }
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; p.occupy(i); i.alarm.set(2, 13);
@@ -935,7 +959,14 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       i.warwork = 1;
     }
   } else {
-    const te = i.target_eu;
+    let te = i.target_eu;
+    // [§9.154] inseguendo il bersaglio, un altro nemico a portata di colpo
+    // (che sbarra la strada): diventa lui il bersaglio (attackorder.mjs,
+    // "far": il guerriero restava a 3 px da uno, verso l'altro, per sempre)
+    if (i.warwork === 1 && w.distanceToInstance(i, te) >= 10) {
+      const n = w.nearest(i.x, i.y, "enemy_unit");
+      if (n && n !== te && w.distanceToInstance(i, n) < 10 * k) { i.target_eu = n; te = n; }
+    }
     if (w.distanceToInstance(i, te) < 10 && unstack(w, i, te)) return null; // §9.71
     if (w.distanceToInstance(i, te) < 10) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) {
@@ -988,7 +1019,7 @@ function unstack(w, i, t) {
   if (i.warwork === 4) return false; // un ordine di movimento: non colpisce comunque
   if (i.action === 2 && i.step !== 0) return false; // colpo in corso: lo finisce
   const o = w.instancePlace(i, i.x, i.y, "ally_militare");
-  const give = o && !SIEGE_UNITS.has(o.object) && o.action === 2
+  const give = o && !SIEGE_UNITS.has(baseOf(o)) && o.action === 2
     && (i.action !== 2 || (i.ordo ?? 0) < (o.ordo ?? 0) || ((i.ordo ?? 0) === (o.ordo ?? 0) && i.id < o.id));
   if (!give) { i.unstackN = 0; return false; }
   i.unstackN = (i.unstackN || 0) + 1;
@@ -1032,7 +1063,7 @@ export function meleeStrike(i, w, table, enemySide, face = false) {
   i.step = 0;
   i.alarm.set(2, 13);
   const target = enemySide ? "ally_unit" : "enemy_unit";
-  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), target));
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction)), target));
   if (!v) return;
   if (face) i.direction = pointDirection(i.x, i.y, v.x, v.y);
   const io_x = i.x, io_y = i.y;
@@ -1074,7 +1105,7 @@ function rallyMove(i, w, p, offset100) {
 const SIEGE_RING = 2.2;
 const RING_WIDE = new Set(["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"]);
 export function unitRing(d, i) {
-  if (!RING_WIDE.has(i.object)) { d.sprite("circ_1", 0, i.x, i.y); return; }
+  if (!RING_WIDE.has(baseOf(i))) { d.sprite("circ_1", 0, i.x, i.y); return; }
   d.spriteExt("circ_1", 0, i.x, i.y, SIEGE_RING, SIEGE_RING, 0, 0xffffff, 1);
 }
 
@@ -1107,7 +1138,7 @@ export function unitDrawEnd(i, w, d, showGroup = true) {
 // scheda della vita (che diventa il contatore " x N" del manager).
 export function firstSelected(w, civilian) {
   for (const u of w.all("ally_unit")) {
-    if (u.selected === 1 && (u.object === "ally_omino") === civilian) return u;
+    if (u.selected === 1 && (baseOf(u) === "ally_omino") === civilian) return u;
   }
   return null;
 }
@@ -1211,7 +1242,7 @@ export function recountSelection(w) {
   for (const u of w.all("ally_unit")) {
     if (u.selected !== 1) continue;
     sel++;
-    if (u.object === "ally_omino") continue;
+    if (baseOf(u) === "ally_omino") continue;
     mil++;
     const k = selCounter(w, u);
     if (k) extra[k]++;
@@ -1234,7 +1265,7 @@ export function recountSelection(w) {
 // alleati); per SETTLE_WAIT passi non si sposta di nuovo.
 const SETTLE_EVERY = 10, SETTLE_STEP = 16, SETTLE_MAX = 160, SETTLE_WAIT = 120;
 const SIEGE = new Set(["ally_ariete", "ally_catapulta"]);
-const atRest = (u) => u.alive && u.visible !== false && !SIEGE.has(u.object) && u.action === 0 && !u.warwork
+const atRest = (u) => u.alive && u.visible !== false && !SIEGE.has(baseOf(u)) && u.action === 0 && !u.warwork
   && !u.firework && !u.presidiowork && !u.creation;
 
 function settleSpot(w, u, o) {

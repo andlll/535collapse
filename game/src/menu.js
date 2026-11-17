@@ -35,6 +35,8 @@ import { saveUnlock } from "./progress.js";
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 import { Particles, partType } from "./particles.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
@@ -219,7 +221,7 @@ export function enemyManagerMenu() {
         i.hover = +inRect(mx, my, ...b.tutorial);
         i.campagnahover = +inRect(mx, my, ...b.campaign);
         i.loadhover = +inRect(mx, my, ...b.load);
-        i.fullhover = +(!!b.full && Math.hypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
+        i.fullhover = +(!!b.full && dhypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
         i.skhover = +inRect(mx, my, ...b.skirmish);
       } else {
         i.hover = i.campagnahover = i.loadhover = i.fullhover = i.skhover = 0;
@@ -229,7 +231,7 @@ export function enemyManagerMenu() {
         const L = skLayout(W, H);
         L.rows.forEach((r, k) => {
           if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
-          const on = r.circle ? Math.hypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
+          const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
         });
         skRainStep(i, L); // §9.121: la pioggia nel riquadro della pioggia
@@ -335,7 +337,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-const VERSION = "0.2610";
+const VERSION = "0.2611";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H);
@@ -404,7 +406,7 @@ function glowText(d, x, y, str, wrapW = 0) {
   for (const [r, a] of [[5, 0.04], [4, 0.06], [3, 0.09], [2, 0.13], [1, 0.2]]) {
     d.setAlpha(a);
     for (let n = 0; n < 16; n++) {
-      const t = (n / 16) * Math.PI * 2, gx = x + Math.cos(t) * r, gy = y + Math.sin(t) * r;
+      const t = (n / 16) * Math.PI * 2, gx = x + dcos(t) * r, gy = y + dsin(t) * r;
       if (wrapW) d.textExt(gx, gy, str, 30, wrapW); else d.text(gx, gy, str);
     }
   }
@@ -556,7 +558,7 @@ function sun(d, x, y, s) {
   d.circleColour(x, y, 9 * s, DARK, DARK, false);
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2;
-    d.lineWidthColour(x + Math.cos(a) * 13 * s, y + Math.sin(a) * 13 * s, x + Math.cos(a) * 19 * s, y + Math.sin(a) * 19 * s, 3, DARK, DARK);
+    d.lineWidthColour(x + dcos(a) * 13 * s, y + dsin(a) * 13 * s, x + dcos(a) * 19 * s, y + dsin(a) * 19 * s, 3, DARK, DARK);
   }
 }
 function moon(d, x, y, s) { icon(d, "ico_sk_luna", x, y, s); } // §9.131: il disegno dell'autore
@@ -579,7 +581,7 @@ function skRainStep(i, L) {
     SK_DROP.fall = fall;
   }
   const n = { normal: 1, frequent: 3, off: 0 }[i.sk.rain] || 0;
-  for (let k = 0; k < n; k++) i.skRain.create(i.skRainPs, x1 + 55 + Math.random() * (x2 - x1 - 90), y1 + 44, SK_DROP, 1); // fra le frecce
+  for (let k = 0; k < n; k++) i.skRain.create(i.skRainPs, x1 + 55 + vrand() * (x2 - x1 - 90), y1 + 44, SK_DROP, 1); // fra le frecce
   i.skRain.step();
 }
 

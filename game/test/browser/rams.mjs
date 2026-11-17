@@ -27,7 +27,7 @@ let failed = false;
 for (const kind of ["enemy", "ally", "lvl03"]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=${kind === "lvl03" ? "lvl03" : "match"}&nostart=1`);
+  await page.goto(`${base}/index.html?room=${kind === "lvl03" ? "lvl03" : "match"}&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   const res = await page.evaluate((KIND) => {
     const G = window.__game, w = G.world, p = w.path;

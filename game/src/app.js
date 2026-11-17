@@ -15,8 +15,8 @@ import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
-import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
-import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
+import { cavaliere, infantry, controlGroups, behaviourClicker, behaviourAction, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
+import { producer, unitClicker, cancelClicker, PRODUCERS, produceAction, cancelAction } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies, defendBuildings } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
@@ -26,11 +26,11 @@ import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_DRA
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
+import { FAM, clicker, placer, buildAction, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, workerAction, cancelWorkerAction, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
-import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
+import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker, extendAction, gateAction } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
-import { FogMap } from "./fog.js";
+import { FogMap, sightK } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { Particles } from "./particles.js";
@@ -46,10 +46,15 @@ import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
-import { captureGame, restoreGame } from "./snapshot.js";
+import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
+import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
+import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
+import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
+import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
+import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
@@ -126,6 +131,12 @@ async function main() {
   }
 
   const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
+  // [§9.152, multiplayer, fase 1] il seme della partita, prima di tutto (gli
+  // alberi a caso della room, la schermaglia): ?seed=N per le prove e, poi,
+  // per la partita in rete; se no uno nuovo. Con ?nostart e senza seed (le
+  // prove nel browser, che fissano Math.random a mano) Math.random come prima
+  if (params.has("seed")) simSeed(Number(params.get("seed")) >>> 0);
+  else if (!params.has("nostart")) simSeed(freshSeed());
   const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
@@ -160,6 +171,12 @@ async function main() {
   diag.toggle(settings.diagnostics || params.has("diag"));
   const clear = bgrToRGB(room.colour);
   const g = newGlobals(roomName);
+  // [§9.155, multiplayer, fase 3] la partita a due: ?pvp=1 su una mappa da
+  // schermaglia (per ora nella stessa pagina; &parte=2: si gioca il blu).
+  // La cassa del giocatore 2 c'e' prima che nascano le istanze (il suo
+  // centro alza il suo tetto di popolazione)
+  const pvp = params.get("pvp") === "1" && isSkirmish(roomName);
+  if (pvp) g.p2 = { food: 0, wood: 0, gold: 0, stone: 0, pop: 0, popcap: 0, idle: 0 };
   const manager = new Manager(roomName, g);
   const draw = new Draw(r, assets);
   draw.setFont("GUI_1");
@@ -233,6 +250,7 @@ async function main() {
   world.register("ally_warrior", infantry("ally_warrior", path));
   world.register("ally_picchiere", infantry("ally_picchiere", path));
   world.register("ally_militare", controlGroups(false));
+  world.action("comportamento", behaviourAction); // §9.154
   world.register("attacco_clicker", behaviourClicker("attacco"));
   world.register("difesa_clicker", behaviourClicker("difesa"));
   for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"]) world.register(n, resource(path, n));
@@ -300,6 +318,15 @@ async function main() {
   }
   for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
   world.register("gate_clicker", gateClicker());
+  world.action("prolunga", extendAction); // §9.154
+  world.action("trucco", (w, c) => manager.cheat(c.res, w.g));
+  world.action("porta", gateAction);
+  // [§9.154] le code di produzione come comandi
+  world.action("costruisci", buildAction);
+  world.action("civile", workerAction);
+  world.action("annulla_civile", cancelWorkerAction);
+  world.action("produci", produceAction);
+  world.action("annulla", cancelAction);
   world.register("omino_clicker", ominoClicker());
   world.register("centro_indietro_clicker", centroCancel());
   for (const n of ["wood_blink", "stone_blink", "food_blink", "gold_blink", "pop_blink"]) world.register(n, blink(n));
@@ -330,13 +357,21 @@ async function main() {
   world.register("enemy_manager_menu", enemyManagerMenu());
   world.register("fog_controller", fogController());
   world.register("fog01", fog01());
+  // [§9.148] livello 7: banchi di nebbia, il "!", i modi di tiro, la prova
+  world.register("nebbia_banco", fogBank());
+  world.register("stealth_segni", stealthMarks());
+  world.action("tiro", shotAction); // §9.154
+  world.register("tiro_furtivo_clicker", shotClicker("furtivo"));
+  world.register("tiro_rapido_clicker", shotClicker("rapido"));
+  world.register("prova_nebbia", provaNebbia());
   for (const n of Object.keys(ENEMY_LIFE)) if (!world.behaviours[n]) world.register(n, enemyDummy(n));
-  world.hooks.globalRightReleased = (mx, my) => {
+  // (w: lo specchio della parte che da' l'ordine, §9.155)
+  world.hooks.globalRightReleased = (mx, my, w = world) => {
     // manager Mouse_GlobalRightReleased: if room!=menu scr_movement_general()
-    if (roomName !== "menu") movementGeneral(world, path, mx, my);
+    if (roomName !== "menu") movementGeneral(w, path, mx, my);
   };
-  world.hooks.afterRightReleased = (mx, my) => {
-    if (roomName !== "menu") formation(world, path, mx, my); // §6.1 n.89
+  world.hooks.afterRightReleased = (mx, my, w = world) => {
+    if (roomName !== "menu") formation(w, path, mx, my); // §6.1 n.89
   };
   // manager Create (la parte della griglia dei costi) gira dopo che tutte le
   // istanze della room esistono e prima dei loro Create (world.loadRoom).
@@ -357,7 +392,13 @@ async function main() {
   const all = room.instances.filter((e) => !(DROPPED[roomName] || []).includes(e[0]) && !DROPPED_ALL.includes(e[0]) && !droppedAt(e));
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
-  const skParams = isSkirmish(roomName) && !params.get("load") ? loadSkirmish() : null;
+  const skParams = isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
+  // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
+  // sprite blu per il disegno (p2sprites.js)
+  if (pvp) {
+    setupMultiplayer(world, params.get("parte") === "2" ? 2 : 1);
+    world.p2Sprites = p2SpriteMap(assets.sprites);
+  }
   const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
@@ -391,7 +432,9 @@ async function main() {
     // i militari di partenza del livello 1 sono in attacco (comp 700).
     // i gestori del menu e dei nemici di match e lvl02
     if (roomName === "menu") world.create("enemy_manager_menu", 0, 0);
-    if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
+    // [§9.148] ?room=match&prova=nebbia: la prova dello stealth del livello 7
+    if (roomName === "match" && params.get("prova") === "nebbia") world.create("prova_nebbia", 0, 0);
+    else if (roomName === "match") { world.create("enemy_manager", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl02") world.create("enemy_manager_lv2", 0, 0);
     if (roomName === "lvl03") { world.create("enemy_manager_lv3", 0, 0); world.create("objective_button", 0, 0); }
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
@@ -408,9 +451,10 @@ async function main() {
   }
   let victoryAt = params.get("victory") === "1" && roomName !== "menu" ? 60 : 0;
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
-  world.hooks.step = () => { buildButtons(world); levelStep(world); };
+  // (i pulsanti sono di chi guarda: il suo specchio, §9.155)
+  world.hooks.step = () => { buildButtons(world.worldFor(null)); levelStep(world); };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
-  fog.update(world);
+  fog.update(world.worldFor(null)); // §9.155: chi guarda (dal blu, i suoi)
   const fogLayer = new FogLayer(r, fog);
   const ground = new GroundCache(r, assets, room, world, clear);
 
@@ -440,7 +484,11 @@ async function main() {
   for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, () => { pause.dirty = true; });
   resize();
   // [§9.118] schermaglia: la vista sulla propria base, a misura nota
-  if (skStarts) { cam.x = skStarts.player[0] - cam.w / 2; cam.y = skStarts.player[1] - cam.h / 2; cam.clamp(); }
+  // ([§9.155] chi gioca blu sulla base blu)
+  if (skStarts) {
+    const [bx, by] = world.mp && world.mp.local === 2 ? skStarts.cpu : skStarts.player;
+    cam.x = bx - cam.w / 2; cam.y = by - cam.h / 2; cam.clamp();
+  }
 
   // Un passo, nell'ordine di GameMaker (STUDIO.md §1.3): alarm, tastiera,
   // mouse, Step, poi la view segue il puntatore.
@@ -520,8 +568,17 @@ async function main() {
     saveGame(true);
   };
 
+  // [§9.153, multiplayer, fase 2] i comandi: registro e replay (commands.js)
+  const commands = new Commands();
+  // [§9.154, fase 2, passo 2] le azioni del giocatore (world.js act): date al
+  // passo in corso, eseguite all'inizio del successivo (i tipi: world.actions)
+  world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1, world.mp ? world.mp.local - 1 : 0);
+  // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
+  world.hooks.commands = () => commands.runDue(world);
+  const hashNow = () => stateHash({ world, g, manager, path });
   const step = () => {
     input.beginStep();
+    commands.frame(input, cam); // in replay: l'input e la telecamera del registro
     if (pause.paused) {
       pause.input(input);
       return;
@@ -546,17 +603,22 @@ async function main() {
     if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
     world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
     input.inside = inside;
-    recountIdle(world); // §6.1 n.80
-    alarmsStep(world); // §9.108: allarmi d'attacco sulla minimappa
-    settleOverlaps(world, path); // §9.62
+    // [§9.155] nella partita a due quello che vale per una parte gira per
+    // tutte e due, ognuna col suo specchio; l'interfaccia con quello di chi guarda
+    const sides = world.mp ? [world.mp.mirror1, world.mp.mirror2] : [world];
+    const mine = world.worldFor(null);
+    for (const w of sides) recountIdle(w); // §6.1 n.80
+    alarmsStep(mine); // §9.108: allarmi d'attacco sulla minimappa
+    for (const w of sides) settleOverlaps(w, path); // §9.62
     settleEnemies(world, path); // §9.116
     defendBuildings(world); // §9.116
-    settleSiege(world); // §9.79
+    for (const w of sides) settleSiege(w); // §9.79
+    pvpVisibility(world, sightK); // §9.155: la nebbia di guerra della partita a due
     ambienceStep(world, cam); // §9.84: fumo, polvere, crolli
-    houseTorches(world); // §9.104: le fiaccole sulle case
-    recountSelection(world); // §6.1 n.81
+    for (const w of sides) houseTorches(w); // §9.104: le fiaccole sulle case
+    recountSelection(mine); // §6.1 n.81
     world.particles.step(); // aggiornamento automatico dei sistemi [I]
-    fog.update(world);
+    fog.update(mine);
     autosave();
     if (input.pressed.has(114)) { // F3
       diag.toggle();
@@ -572,6 +634,7 @@ async function main() {
     } else {
       cam.clamp();
     }
+    commands.afterStep(world, hashNow); // §9.153: l'impronta nel registro, ogni CHECK_EVERY passi
   };
 
   let fpsNow = 0;
@@ -599,10 +662,10 @@ async function main() {
     // il Draw End del manager (con nebbia e notte) gira alla sua depth fra
     // quelli delle istanze; il cerchio del puntatore (mouser) dopo tutti
     world.draw(r, draw, cam, () => {
-      manager.drawEnd(draw, world);
+      manager.drawEnd(draw, world.worldFor(null)); // §9.155: lo specchio di chi guarda
       fogLayer.draw();
     }, blobs.length ? (x, y) => shadeAt(blobs, x, y) : null);
-    manager.drawMouser(draw, world);
+    manager.drawMouser(draw, world.worldFor(null));
   };
 
   // la scena: mondo, poi l'interfaccia (Draw GUI)
@@ -610,7 +673,7 @@ async function main() {
     draw.glassStyle = settings.glass; // barre della vita in stile vetro (Draw.lifeBar)
     // nebbia e notte composte prima del mondo (§7.13)
     draw.reset();
-    fogLayer.prepare(draw, world, cam);
+    fogLayer.prepare(draw, world.worldFor(null), cam); // §9.155: la vista di chi guarda
     r.setProjection(cam.x, cam.y, cam.w, cam.h);
     if (worldScale < canvasScale - 1e-6) {
       const t = worldSurface();
@@ -635,7 +698,7 @@ async function main() {
     draw.reset();
     world.drawGUI(draw);
     draw.reset();
-    manager.drawGUI(draw, cam, world, fpsNow);
+    manager.drawGUI(draw, cam, world.worldFor(null), fpsNow);
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();
@@ -864,6 +927,9 @@ async function main() {
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+    hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
+    // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
+    commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),
                     objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)

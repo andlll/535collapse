@@ -24,6 +24,8 @@
 
 import { partType } from "./particles.js";
 import { fogActive } from "./fog.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
 
 const BLACK = 0, DUST = 0x6e8ca8; // sabbia (BGR di 168, 140, 110)
 
@@ -87,10 +89,10 @@ export function treeSway(w, i) {
   const T = TREE_SWAY, v = windLevel(w.g), t = w._stepNo;
   const amp = (T.amp[0] + (T.amp[1] - T.amp[0]) * v) * (1 + (T.rain - 1) * (w.overcast || 0));
   const a = swayPhase(i, t, swayPeriod(v));
-  let off = amp * (0.78 * Math.sin(a) + 0.22 * Math.sin(2.37 * a + (i.swayId ?? i.id)));
+  let off = amp * (0.78 * dsin(a) + 0.22 * dsin(2.37 * a + (i.swayId ?? i.id)));
   off += (T.lean[0] + (T.lean[1] - T.lean[0]) * v) * Math.sign(WIND_DIR[0]);
   const dt = t - (i.hitAt ?? -1e9);
-  if (dt >= 0 && dt < T.hitSteps) off += T.hit * (1 - dt / T.hitSteps) * Math.sin(dt * 0.95);
+  if (dt >= 0 && dt < T.hitSteps) off += T.hit * (1 - dt / T.hitSteps) * dsin(dt * 0.95);
   return off;
 }
 
@@ -148,9 +150,9 @@ function leavesStep(w, cam) {
     for (const tr of w.all(n)) {
       if (!tr.alive || tr.visible === false || !onScreen(cam, tr.x, tr.y - 100, 60)) continue;
       let k = 0;
-      if (tr.hitAt === t - 1 || tr.hitAt === t) { if (tr.leafHit !== tr.hitAt) { tr.leafHit = tr.hitAt; k = LEAF.hit[0] + Math.floor(Math.random() * (LEAF.hit[1] - LEAF.hit[0] + 1)); } }
-      const s = Math.sin(swayPhase(tr, t, per)), gust = 0.3 + 1.7 * (s > 0 ? s * s : 0);
-      if (Math.random() < rate * gust) k++;
+      if (tr.hitAt === t - 1 || tr.hitAt === t) { if (tr.leafHit !== tr.hitAt) { tr.leafHit = tr.hitAt; k = LEAF.hit[0] + Math.floor(vrand() * (LEAF.hit[1] - LEAF.hit[0] + 1)); } }
+      const s = dsin(swayPhase(tr, t, per)), gust = 0.3 + 1.7 * (s > 0 ? s * s : 0);
+      if (vrand() < rate * gust) k++;
       if (!k) continue;
       S = S || leafSystem(w);
       const top = treeSway(w, tr) * 0.35, type = leafType(tr.sprite_index, v);
@@ -245,10 +247,10 @@ export function cloudBlobs(w, cam) {
     if (!G) continue;
     const x = ((cl.cx + WIND_DIR[0] * v * t) % C.W + C.W) % C.W - C.M;
     const y = ((cl.cy + WIND_DIR[1] * v * t) % C.H + C.H) % C.H - C.M;
-    const rad = Math.hypot(G.W, G.H) / 2 * Math.max(Math.abs(cl.sx), cl.sy);
+    const rad = dhypot(G.W, G.H) / 2 * Math.max(Math.abs(cl.sx), cl.sy);
     if (x + rad < cam.x || x - rad > cam.x + cam.w || y + rad < cam.y || y - rad > cam.y + cam.h + 300) continue;
     const ang = -cl.rot * Math.PI / 180; // come drawSprite
-    out.push({ spr: cl.spr, x, y, sx: cl.sx, sy: cl.sy, rot: cl.rot, a, c: Math.cos(ang), s: Math.sin(ang), g: G });
+    out.push({ spr: cl.spr, x, y, sx: cl.sx, sy: cl.sy, rot: cl.rot, a, c: dcos(ang), s: dsin(ang), g: G });
   }
   return out;
 }
@@ -336,8 +338,8 @@ function collapseDust(w, i) {
   const rx = Math.max(60, wdt * 0.45), ry = rx * 0.45;
   puffAt(w, ps, em, COLLAPSE, i.x, i.y - 30, big ? 26 : 12, rx, ry);
   for (let k = 0; k < (big ? 8 : 4); k++) {
-    const m = w.create("sfx_mattone", i.x + (Math.random() - 0.5) * rx * 1.4, i.y - 20 + (Math.random() - 0.5) * ry * 1.4);
-    m.speed = 1.5 + Math.random() * 2; m.direction = Math.random() * 360;
+    const m = w.create("sfx_mattone", i.x + (vrand() - 0.5) * rx * 1.4, i.y - 20 + (vrand() - 0.5) * ry * 1.4, { fx: true }); // §9.152
+    m.speed = 1.5 + vrand() * 2; m.direction = vrand() * 360;
   }
 }
 
@@ -394,7 +396,7 @@ function mineSparkles(w, cam) {
   const P = w.particles;
   for (const i of w.all("miniera_oro")) {
     if (!onScreen(cam, i.x, i.y)) continue;
-    const g = Math.random() * GLINT_EVERY < 1, m = Math.random() * MOTE_EVERY < 1;
+    const g = vrand() * GLINT_EVERY < 1, m = vrand() * MOTE_EVERY < 1;
     if ((!g && !m) || !mineSeen(w, i)) continue;
     let s = MINES.get(i);
     if (!s || !s.ps.alive || !P.systems.includes(s.ps)) { // (dopo un caricamento i sistemi sono altri)
@@ -403,7 +405,7 @@ function mineSparkles(w, cam) {
       s.em = P.emitterCreate(s.ps);
       MINES.set(i, s);
     }
-    const v = VEINS[Math.floor(Math.random() * VEINS.length)];
+    const v = VEINS[Math.floor(vrand() * VEINS.length)];
     if (g) { P.create(s.ps, i.x + v[0], i.y + v[1], HALO, 1); P.create(s.ps, i.x + v[0], i.y + v[1], GLINT, 1); }
     if (m) puffAt(w, s.ps, s.em, MOTE, i.x + v[0], i.y + v[1] - 2, 1, 3, 2);
   }
@@ -459,11 +461,11 @@ function workChips(w, cam) {
       }
       // sopra il civile e la risorsa colpita (le schegge le saltano davanti)
       s.ps.depth = Math.min(u.depth, -u.workY) - 2;
-      const x = u.workX, y = u.workY - W.h, k = W.n[0] + Math.floor(Math.random() * (W.n[1] - W.n[0] + 1));
+      const x = u.workX, y = u.workY - W.h, k = W.n[0] + Math.floor(vrand() * (W.n[1] - W.n[0] + 1));
       if (u.workKind === "food") { puffAt(w, s.ps, s.em, CHAFF, x, y, k, 12, 5); continue; }
       puffAt(w, s.ps, s.em, CHIP_TYPES[u.workKind], x, y, k, 5, 4);
       if (W.dust) puffAt(w, s.ps, s.em, CHIP_DUST, x, y + 6, W.dust, 4, 2);
-      if (W.glint && Math.random() < W.glint) puffAt(w, s.ps, s.em, CHIP_GLINT, x, y, 1, 4, 4);
+      if (W.glint && vrand() < W.glint) puffAt(w, s.ps, s.em, CHIP_GLINT, x, y, 1, 4, 4);
     }
   }
 }
@@ -512,7 +514,7 @@ export function ambienceStep(w, cam) {
       if (!u.alive || u.visible === false) continue;
       const l = LAST.get(u);
       if (!l) { LAST.set(u, [u.x, u.y]); continue; }
-      const d = Math.hypot(u.x - l[0], u.y - l[1]);
+      const d = dhypot(u.x - l[0], u.y - l[1]);
       if (d < 18) continue;
       l[0] = u.x; l[1] = u.y;
       if (d > 120 || !onScreen(cam, u.x, u.y)) continue; // un salto (nata altrove, caricamento)

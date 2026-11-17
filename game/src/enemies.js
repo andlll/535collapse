@@ -22,9 +22,12 @@ import { bloodHit } from "./blood.js";
 import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
+import { lmStep } from "./lastmile.js";
+import { stealthOn, sees, ST, messengerFor } from "./stealth.js"; // §9.148
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
-const iso = (dir) => 1 - 0.36 * Math.abs(Math.sin(degtorad(dir)));
+const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const C = { black: 0, blue: 0xff0000, white: 0xffffff };
 
 // Danni di Alarm_2 per vita massima del bersaglio [C, STUDIO.md §1.4];
@@ -273,6 +276,13 @@ function enemyMove(i, w, p) {
   // gli alleati (units.js, flowMovement "over"). Prima: col campo dell'ondata
   // (la meta dell'ondata, non il posto) o fermo ad aspettare, e i nemici
   // arrivavano a combattere uno sopra l'altro
+  // [§9.147] vicino alla meta l'ultimo tratto (lastmile.js); non le ondate
+  // (ruolo 31: a 400 px sono arrivate), ne' sulla strada o in colonna, ne' in
+  // mischia (inseguendo un alleato: come per gli alleati, units.js)
+  if (i.role !== 31 && !(i.road && !i.warwork) && !i.pace && i.warwork !== 1 && i.warwork !== 2) {
+    const r = lmStep(w, p, i, i.dirox, i.diroy);
+    if (r) { if (r === "moved") yieldClear(i); return; }
+  }
   if (i.warwork === 1 && !i.firework && i.meleeGo && i.dirox === i.meleeGo[0] && i.diroy === i.meleeGo[1]
       && pointDistance(i.x, i.y, i.dirox, i.diroy) <= 400 && !w.placeFree(i, i.x, i.y) && w.placeFreeExcept(i, i.x, i.y, "enemy_unit")) {
     yieldClear(i);
@@ -320,7 +330,7 @@ export function retreatTo(w, p, i, x, y, ff = null) {
 function retreatStep(i, w, p) {
   if (!i.retreat) return false;
   const [x, y] = i.retreat;
-  if (Math.hypot(i.x - x, i.y - y) < RETREAT_ARRIVE) {
+  if (dhypot(i.x - x, i.y - y) < RETREAT_ARRIVE) {
     // i soldati della regia economica tornano in attesa (ruolo 30)
     Object.assign(i, { retreat: null, action: 0, role: i.eco === 1 ? 30 : 0, speed: 0, defender: 1 });
     return false;
@@ -346,7 +356,7 @@ function enemyStrike(i, w, T) {
   if (i.step !== 2) return;
   i.step = 0;
   i.alarm.set(2, 13);
-  const v = swingVictim(w, i, w.nearest(i.x + 30 * Math.cos(degtorad(i.direction)), i.y - 30 * Math.sin(degtorad(i.direction)), "ally_unit"));
+  const v = swingVictim(w, i, w.nearest(i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction)), "ally_unit"));
   if (!v) return;
   v.hit = 1;
   v.alarm.set(5, 47);
@@ -435,6 +445,13 @@ function enemyAttack(i, w, T) {
     let n = nearest();
     const lim = range * (1 - 0.5 * night) * k;
     if (!(w.distanceToInstance(i, n) < lim)) return false;
+    // [§9.148] lo stealth (livello 7): la vista davanti, la nebbia, l'allarme
+    if (stealthOn(w)) {
+      if (i.messenger) return true; // corre alla torre
+      if (!sees(w, i, n, lim)) return false;
+      i.alertUntil = w._stepNo + ST.alert; i.alertX = n.x; i.alertY = n.y; i.searching = 0;
+      if (messengerFor(w, i)) return true; // solo: corre alla torre, non insegue
+    }
     // [§9.71, richiesta dell'autore] fermo ad aspettare: riprova dopo
     // WAIT_RETRY passi. Il piu' vicino non si raggiunge (oltre un fiume,
     // dietro le mura): un altro che si raggiunge, o fermo
@@ -744,7 +761,13 @@ export function enemyArcher(p) {
     const n0 = w.nearest(i.x, i.y, "ally_unit");
     const fs = fogSight(w, i); // §9.80
     const range = 400 * (1 - 0.5 * night) * k * fs;
-    if (w.distanceToInstance(i, n0) < range) {
+    if (stealthOn(w) && i.messenger) return; // §9.148: corre alla torre
+    const seen = !stealthOn(w) || sees(w, i, n0, range); // §9.148
+    if (seen && stealthOn(w)) {
+      i.alertUntil = w._stepNo + ST.alert; i.alertX = n0.x; i.alertY = n0.y;
+      if (messengerFor(w, i)) return; // solo: corre alla torre, non tira
+    }
+    if (w.distanceToInstance(i, n0) < range && seen) {
       // §6.4: l'alleato piu' vicino a tiro con la linea libera
       const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);
       if (!s) {
@@ -765,6 +788,7 @@ export function enemyArcher(p) {
     const chase = (needStill) => {
       const n = w.nearest(i.x, i.y, "ally_unit");
       if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k * fs && (!needStill || i.action !== 1))) return;
+      if (stealthOn(w) && !sees(w, i, n, 600 * (1 - 0.5 * night) * k * fs)) return; // §9.148
       if (i.warwork === 0 || i.warwork === 1) {
         if (i.action !== 1) i.alarm.set(0, 15);
         i.action = 1; i.warwork = 1; i.dirox = n.x; i.diroy = n.y;
@@ -886,7 +910,7 @@ export function defendBuildings(w) {
     if (!a || w.distanceToInstance(a, b) > DEFEND_ATT) continue;
     idle = idle || [...w.all("enemy_unit")].filter(canDefend);
     for (const e of idle) {
-      if (!e.alive || e.action !== 0 || Math.hypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
+      if (!e.alive || e.action !== 0 || dhypot(e.x - b.x, e.y - b.y) > DEFEND_R) continue;
       e.action = 1; e.warwork = 1; e.dirox = a.x; e.diroy = a.y;
       if (e.alarm.get(0) < 1) e.alarm.set(0, irandomRange(12, 15));
     }

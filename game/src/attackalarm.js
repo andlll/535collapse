@@ -26,6 +26,8 @@
 // sulla zona piu' recente, e di nuovo sulla precedente (manager.js). La
 // prima volta il suggerimento hint_allarme (hints.js).
 
+import { dhypot, dsin } from "./dmath.js"; // §9.152
+
 export const ALARM = {
   zoneR: 800,      // px di room: un colpo piu' vicino di cosi' a una zona dello stesso tipo e' la stessa battaglia
   quiet: 30 * 60,  // passi senza colpi: la zona finisce
@@ -48,7 +50,7 @@ export function raiseAlarm(w, kind, x, y) {
   let best = null, bd = ALARM.zoneR;
   for (const z of A.zones) {
     if (z.kind !== kind || z.ending) continue;
-    const d = Math.hypot(z.x - x, z.y - y);
+    const d = dhypot(z.x - x, z.y - y);
     if (d < bd) { bd = d; best = z; }
   }
   if (best) { best.last = now; return best; }
@@ -122,10 +124,10 @@ export function drawAlarms(d, g, now, ox, oy, sz) {
     }
     const [spr, sc] = ALARM.icon[z.kind];
     const a0 = Math.min(1, age / 15), end = z.ending ? Math.max(0, 1 - (now - z.ending) / ALARM.fade) : 1;
-    const pulse = 1 + 0.08 * Math.sin(age * 0.12);
+    const pulse = 1 + 0.08 * dsin(age * 0.12);
     const s = sc * pulse * (1 + 2.5 * (1 - a0));
     d.setAlpha(1);
-    d.spriteExt(spr, 0, x, y, s, s, 0, col, a0 * end * (0.85 + 0.15 * Math.sin(age * 0.12)));
+    d.spriteExt(spr, 0, x, y, s, s, 0, col, a0 * end * (0.85 + 0.15 * dsin(age * 0.12)));
   }
   d.setAlpha(1);
 }

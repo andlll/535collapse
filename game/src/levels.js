@@ -20,6 +20,7 @@ import { dialogOpen } from "./hints.js";
 import { startFarm } from "./economy.js";
 import { sendRepair } from "./buildings.js";
 import { c } from "./colours.js";
+import { dhypot } from "./dmath.js"; // §9.152
 
 function createIfPorted(w, name, x, y) {
   return w.behaviours[name] ? w.create(name, x, y) : null;
@@ -711,7 +712,7 @@ export const LV4 = {
 // bersaglio t
 function roadTo(t) {
   let k = 0, bd = Infinity;
-  LV4.road.forEach(([x, y], j) => { const d = Math.hypot(x - t.x, y - t.y); if (d < bd) { bd = d; k = j; } });
+  LV4.road.forEach(([x, y], j) => { const d = dhypot(x - t.x, y - t.y); if (d < bd) { bd = d; k = j; } });
   return LV4.road.slice(0, k + 1);
 }
 
@@ -741,7 +742,7 @@ export function enemyManagerLv4(p) {
       p.markInstance(c, 1000);
       startFarm(w, p, c, LV4.farm); // §9.57
       for (const b of w.all("enemy_build")) {
-        if (Math.hypot(b.x - c.x, b.y - c.y) > LV4.ecoR) b.noEco = 1;
+        if (dhypot(b.x - c.x, b.y - c.y) > LV4.ecoR) b.noEco = 1;
       }
       // i nemici gia' sulla mappa difendono dove sono
       for (const e of w.all("enemy_unit")) e.defender = 1;
@@ -835,7 +836,7 @@ export function enemyManagerLv4(p) {
           e.alarm.set(0, irandomRange(12, 15));
           continue;
         }
-        if (e.role !== 31 || e.action !== 1 || Math.hypot(e.x - tx, e.y - ty) > LV4.roadNext) continue;
+        if (e.role !== 31 || e.action !== 1 || dhypot(e.x - tx, e.y - ty) > LV4.roadNext) continue;
         e.roadK++;
         const [nx, ny] = e.roadK < e.road.length ? e.road[e.roadK] : e.roadT;
         if (e.roadK >= e.road.length) e.road = null;
@@ -956,7 +957,7 @@ function lv5Sally(w, p, L, allyNear) {
       if (e.object === "enemy_omino" || e.eco === 1 || e.l5w || e.presidiowork === 1 || (e.x < LV5.east && !e.l5sally)) continue;
       if (e.retreat && !e.l5sally) continue; // la ritirata della battaglia d'apertura
       if (e.warwork === 2 || (e.action === 1 && e.warwork === 1 && !e.retreat)) continue; // gia' combatte o insegue
-      if (Math.hypot(e.x - a.x, e.y - a.y) > LV5.sallyFrom) continue;
+      if (dhypot(e.x - a.x, e.y - a.y) > LV5.sallyFrom) continue;
       if (!e.l5sally) e.l5post = [e.x, e.y];
       e.l5sally = 1;
       ff = ff || p.flowField(p.goalField(a.x, a.y, true, false, true));
@@ -972,7 +973,7 @@ function lv5Sally(w, p, L, allyNear) {
   for (const e of w.all("enemy_unit")) {
     if (!sallying(e) || e.retreat || e.warwork === 2) continue;
     const n = w.nearest(e.x, e.y, "ally_unit");
-    if (n && Math.hypot(n.x - e.x, n.y - e.y) < LV5.sallyFree) continue;
+    if (n && dhypot(n.x - e.x, n.y - e.y) < LV5.sallyFree) continue;
     e.l5sally = 2; // torna al suo posto (una sortita nuova lo riprende)
     // col campo dei soli ostacoli fissi (§9.82): con quello di sempre i
     // compagni fermi nel varco della porta la chiudevano, e chi era fuori
@@ -1019,7 +1020,7 @@ export function enemyManagerLv5(p) {
   const allyNear = (w, objs, r) => {
     for (const o of objs) for (const b of w.all(o)) {
       const a = w.nearest(b.x, b.y, "ally_unit");
-      if (a && Math.hypot(a.x - b.x, a.y - b.y) < r) return a;
+      if (a && dhypot(a.x - b.x, a.y - b.y) < r) return a;
     }
     return null;
   };
@@ -1062,7 +1063,7 @@ export function enemyManagerLv5(p) {
         // fase 2, la ritirata: sulla via del ritorno, l'acropoli
         if (L.phase === 2 && L.t - L.wallsAt >= LV5.acropolisAfter) {
           const [ax, ay] = LV5.acropolis, a = w.nearest(ax, ay, "ally_unit");
-          if (a && Math.hypot(a.x - ax, a.y - ay) < LV5.acropolisR) { L.phase = 3; say(w, "dialogo_5_3", [a.x, a.y]); }
+          if (a && dhypot(a.x - ax, a.y - ay) < LV5.acropolisR) { L.phase = 3; say(w, "dialogo_5_3", [a.x, a.y]); }
         }
       }
       // la fortezza (a qualunque fase): l'obiettivo diventa la citta'
@@ -1087,7 +1088,7 @@ export function enemyManagerLv5(p) {
         if (f) {
           for (const e of w.all("enemy_unit")) {
             if (!e.l5w || e.l5w <= L.fortWave || e.retreat) continue;
-            if (Math.hypot(e.x - f.x, e.y - f.y) >= LV5.sightR) continue;
+            if (dhypot(e.x - f.x, e.y - f.y) >= LV5.sightR) continue;
             L.warned = 1; L.siege = 1;
             lv5Retreat(w, p, [...w.all("enemy_unit")].filter((u) => u.l5w === e.l5w));
             say(w, "dialogo_5_5", [e.x, e.y]);
@@ -1184,7 +1185,7 @@ function nearestOpen(w, x, y, name = "ally_build") {
   let best = null, bd = Infinity;
   for (const o of w.all(name)) {
     if (!o.alive || o.locked) continue;
-    const d = Math.hypot(o.x - x, o.y - y);
+    const d = dhypot(o.x - x, o.y - y);
     if (d < bd) { bd = d; best = o; }
   }
   return best;
@@ -1194,7 +1195,7 @@ const allyTarget = (w, x, y) => w.nearest(x, y, "ally_unit") || nearestOpen(w, x
 // del ponte, se e' in citta', se no il mezzo della citta'
 function raidGoal(w) {
   const [x, y] = LV6.raidRoute[LV6.raidRoute.length - 1], t = allyTarget(w, x, y);
-  return t && Math.hypot(t.x - x, t.y - y) < LV6.raidReach ? [t.x, t.y] : LV6.raidCamp;
+  return t && dhypot(t.x - x, t.y - y) < LV6.raidReach ? [t.x, t.y] : LV6.raidCamp;
 }
 
 // [§9.101] La torre del livello 6 (app.js, sopra garrisoned): con
@@ -1259,7 +1260,7 @@ export function enemyManagerLv6(p) {
       for (const e of w.all("enemy_unit")) {
         let best = null;
         pr.forEach((r, gi) => r.pts.forEach(([x, y], k) => {
-          const d = Math.hypot(e.x - x, e.y - y);
+          const d = dhypot(e.x - x, e.y - y);
           if (d < LV6.patrolR && (!best || d < best.d)) best = { d, gi, k };
         }));
         if (!best) { e.defender = 1; continue; }
@@ -1293,7 +1294,7 @@ export function enemyManagerLv6(p) {
         if (!e.l6 || !e.road || (e.role !== 31 && e.role !== 32) || e.warwork) continue;
         if (e.action === 0) { walk(i, e, e.roadK); continue; }
         const [tx, ty] = e.road[e.roadK];
-        if (e.role !== 31 || e.action !== 1 || Math.hypot(e.x - tx, e.y - ty) > LV6.next) continue;
+        if (e.role !== 31 || e.action !== 1 || dhypot(e.x - tx, e.y - ty) > LV6.next) continue;
         if (e.roadK + 1 < e.road.length) { walk(i, e, e.roadK + 1); continue; }
         if (e.l6loop) { walk(i, e, 0); continue; }
         if (e.l6 === "c") continue; // (la colonna passa il ponte prima dell'ultima tappa)
@@ -1351,7 +1352,7 @@ export function enemyManagerLv6(p) {
         for (const e of w.all("enemy_unit")) {
           if (e.l6 !== "r" || e.road || e.action !== 0 || e.role === 31) continue;
           const t = allyTarget(w, e.x, e.y);
-          if (!t || Math.hypot(t.x - e.x, t.y - e.y) > LV6.raidHunt) continue;
+          if (!t || dhypot(t.x - e.x, t.y - e.y) > LV6.raidHunt) continue;
           e.action = 1; e.warwork = 1; e.dirox = t.x; e.diroy = t.y; e.alarm.set(0, 15);
         }
       }
@@ -1379,7 +1380,7 @@ export function enemyManagerLv6(p) {
       const R = L.colRoute;
       if (L.col < LV6.columnRows && L.t >= L.colAt + L.col * LV6.columnEvery) {
         const [ex, ey] = R[0], [nx, ny] = R[1];
-        const d = Math.hypot(nx - ex, ny - ey) || 1, px = -(ny - ey) / d, py = (nx - ex) / d; // di traverso
+        const d = dhypot(nx - ex, ny - ey) || 1, px = -(ny - ey) / d, py = (nx - ex) / d; // di traverso
         LV6.columnRow.forEach((obj, k) => {
           const off = (k - (LV6.columnRow.length - 1) / 2) * 55;
           const e = w.create(obj, ex + px * off, ey + py * off);

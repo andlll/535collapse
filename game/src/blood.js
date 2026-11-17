@@ -11,6 +11,8 @@
 // a passo nelle battaglie grandi. Categoria di particelle "blood": si spegne
 // nelle opzioni grafiche ("Sangue", settings.blood).
 import { partType } from "./particles.js";
+import { datan2, dcos, dsin } from "./dmath.js"; // §9.152
+import { vrand } from "./rng.js"; // §9.152
 
 export const BLOOD = {
   melee: { n: [4, 6], spread: 35 },  // gocce per colpo (min, max), gradi attorno alla direzione
@@ -28,7 +30,7 @@ function dropType(dir, spread) {
     // un po' verso l'alto, come uno schizzo, qualunque sia la direzione
     // (gradi di GameMaker: 90 e' in alto)
     const a = (k * SECTOR * Math.PI) / 180;
-    const d = (Math.atan2(Math.sin(a) + 0.6, Math.cos(a)) * 180) / Math.PI;
+    const d = (datan2(dsin(a) + 0.6, dcos(a)) * 180) / Math.PI;
     t = partType({
       sprite: "sfxsangue", size: [0.12, 0.2, -0.0025, 0], colour: { rgb: [175, 255, 175, 255, 175, 255] },
       alpha: [1, 0.85, 0], speed: [1.3, 2.6, -0.02, 0], direction: [d - spread, d + spread, 0, 0],
@@ -49,7 +51,7 @@ export function bloodHit(w, v, dir, kind = "melee") {
   const step = w._stepNo;
   if (w._bloodStep !== step) { w._bloodStep = step; w._bloodN = 0; }
   const K = BLOOD[kind] || BLOOD.melee;
-  const n = Math.min(K.n[0] + Math.floor(Math.random() * (K.n[1] - K.n[0] + 1)), BLOOD.MAX_STEP - w._bloodN);
+  const n = Math.min(K.n[0] + Math.floor(vrand() * (K.n[1] - K.n[0] + 1)), BLOOD.MAX_STEP - w._bloodN);
   if (n <= 0) return;
   w._bloodN += n;
   const ps = P.systemCreate((v.depth ?? -v.y) - 2, "blood");

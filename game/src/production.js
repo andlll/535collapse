@@ -280,30 +280,46 @@ function buttonSele(i, w) {
 // o tasto. Paga e mette in coda nell'edificio selezionato; con la coda
 // vuota parte subito (alarm 13). La popolazione si controlla con +1 anche
 // se l'unita' ne occupa 2.
+// [§9.154, multiplayer, fase 2, passo 2] diviso in due: qui, dal pulsante,
+// quello che vede chi clicca (i lampeggi delle risorse che mancano) e il
+// comando "produci" con gli edifici selezionati; produceAction, eseguito come
+// comando, paga e mette in coda. Restituisce "exit" se la produzione partira'
+// (l'originale allora non consumava il clic: mouse_clear saltato).
 function enqueue(w, prod, type, u) {
   const g = w.g, P = PRODUCERS[prod];
-  let ok = 0; // var ok dentro with: vale l'ultimo edificio visitato
-  for (const b of w.all(prod)) if (b.selected === 1) ok = b.coda < 6 ? 1 : 0;
+  const sel = [...w.all(prod)].filter((b) => b.selected === 1);
+  const ok = sel.length && sel[sel.length - 1].coda < 6 ? 1 : 0; // var ok dentro with: l'ultimo visitato
   if (u.cost.food && g.food < u.cost.food) w.create("food_blink", 0, 0);
   if (u.cost.gold && g.gold < u.cost.gold) w.create("gold_blink", 0, 0);
   if (u.cost.wood && g.wood < u.cost.wood) w.create("wood_blink", 0, 0);
   if (g.pop + P.popMargin >= g.popcap) w.create("pop_blink", 0, 0);
-  if (!(ok === 1 && Object.entries(u.cost).every(([r, v]) => g[r] >= v) && g.pop + P.popMargin < g.popcap)) return null;
+  if (!sel.length) return null;
+  w.act("produci", { ids: sel.map((b) => b.id), prod, type });
+  const can = ok === 1 && Object.entries(u.cost).every(([r, v]) => g[r] >= v) && g.pop + P.popMargin < g.popcap;
+  return can && sel.some((b) => b.progression === 0) ? "exit" : null;
+}
+// l'azione "produci" ({ ids, prod, type }): negli edifici `ids` (prima: i
+// selezionati)
+export function produceAction(w, c) {
+  const g = w.g, P = PRODUCERS[c.prod], u = P && P.units[c.type], type = c.type;
+  if (!u) return;
+  const bs = w.byIds(c.ids, c.prod);
+  let ok = 0;
+  for (const b of bs) ok = b.coda < 6 ? 1 : 0;
+  if (!(ok === 1 && Object.entries(u.cost).every(([r, v]) => g[r] >= v) && g.pop + P.popMargin < g.popcap)) return;
   for (const [r, v] of Object.entries(u.cost)) g[r] -= v;
-  for (const b of w.all(prod)) {
-    if (b.selected !== 1) continue;
+  for (const b of bs) {
     if (!P.slots) {
       // stalla [C]: parte (alarm 20) o si accoda
-      if (b.progression === 0) { b.alarm.set(P.alarm, P.start); b.progression = 1; return "exit"; }
+      if (b.progression === 0) { b.alarm.set(P.alarm, P.start); b.progression = 1; return; }
       b.coda += 1;
       continue;
     }
     if (b.progression !== 0) b.coda += 1;
     if (b.progression === 0 && b.coda === 0) b.coda0 = type;
     if (b.coda >= 1 && b.coda <= 6) b[SLOTS[b.coda]] = type;
-    if (b.progression === 0) { b.alarm.set(P.alarm, P.start); b.progression = 1; return "exit"; }
+    if (b.progression === 0) { b.alarm.set(P.alarm, P.start); b.progression = 1; return; }
   }
-  return null;
 }
 
 export function unitClicker(prod, type) {
@@ -381,10 +397,17 @@ export function unitClicker(prod, type) {
 
 // caserma_indietro_clicker [C]: toglie l'ultima in coda (o ferma quella in
 // produzione) e rimborsa il suo costo.
+// [§9.154] dal pulsante il comando "annulla" con gli edifici selezionati;
+// cancelAction lo esegue
 function cancelLast(w, prod) {
-  const P = PRODUCERS[prod];
-  for (const b of w.all(prod)) {
-    if (b.selected !== 1 || b.progression === 0) continue;
+  const ids = [...w.all(prod)].filter((b) => b.selected === 1).map((b) => b.id);
+  if (ids.length) w.act("annulla", { ids, prod });
+}
+export function cancelAction(w, c) {
+  const P = PRODUCERS[c.prod];
+  if (!P) return;
+  for (const b of w.byIds(c.ids, c.prod)) {
+    if (b.progression === 0) continue;
     if (!P.slots) {
       // stalla [C]: nessun exit, vale per ogni stalla selezionata
       for (const [r, v] of Object.entries(P.units[1].cost)) w.g[r] += v;

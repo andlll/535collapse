@@ -1,0 +1,113 @@
+// Prova nel browser del determinismo della partita (§9.152, multiplayer,
+// fase 1): la stessa schermaglia (la CPU gioca, nessun input), con lo stesso
+// seme (?seed), in due pagine che fanno tutto il resto diversamente:
+//   A  finestra 1280x720, la vista ferma sulla base del giocatore, disegna
+//      un passo si' e uno no, opzioni grafiche di sempre
+//   B  finestra 960x600, la vista che salta per la mappa ogni 7 passi,
+//      disegna un passo ogni 5, erba e pioggia spente nelle opzioni
+// A tutte e due allo stesso passo lo stesso "input": comincia a piovere.
+// Ogni EVERY passi l'impronta della partita (snapshot.js stateHash) deve
+// essere uguale; se no la prova dice dove divergono (il primo campo diverso).
+// Controllo: una terza pagina con un altro seme deve avere un'impronta
+// diversa (la prova se ne accorgerebbe).
+// Esce con codice 1 se qualcosa non torna.
+//
+//   python3 -m http.server 8123 --directory game     (in un altro terminale)
+//   node game/test/browser/determinism.mjs [room] [passi] [browser]
+//   (browser: chromium, firefox, webkit; stampa anche le impronte, per
+//   confrontare browser diversi: test/browser/determinism-cross.mjs)
+const mod = process.env.PLAYWRIGHT_MODULE || "playwright";
+const pw = await import(mod);
+const base = process.env.BASE || "http://localhost:8123";
+const [room = "sk_padus", stepsArg = "9000", engine = "chromium"] = process.argv.slice(2);
+const STEPS = Number(stepsArg), EVERY = 300, SEED = 12345;
+// WebGL2 in software: in Chromium SwiftShader; Firefox headless su Linux
+// senza GPU non ha driver GL ("Exhausted GL driver options", la CI): li'
+// gira con la finestra (HEADED=1) su uno schermo virtuale, xvfb-run, con Mesa
+// in software (build.yml)
+const launch = {
+  chromium: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+  firefox: { firefoxUserPrefs: { "webgl.force-enabled": true, "webgl.disabled": false, "webgl.enable-webgl2": true } },
+}[engine] || {};
+if (process.env.HEADED) launch.headless = false;
+const browser = await pw[engine].launch(launch);
+const errs = [], logs = [];
+const open = async (w, h, seed) => {
+  const page = await browser.newPage({ viewport: { width: w, height: h } });
+  page.on("pageerror", (e) => errs.push(e.message));
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") logs.push(m.text()); });
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=${seed}`);
+  try {
+    await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
+  } catch (e) {
+    // il gioco non e' partito: perche' (invece del solo timeout)
+    console.log(engine, "il gioco non parte:", e.message.split("\n")[0]);
+    console.log("  errori:", JSON.stringify(errs.slice(0, 5)));
+    console.log("  console:", JSON.stringify(logs.slice(-10)));
+    console.log("  webgl2:", await page.evaluate(() => { try { return !!document.createElement("canvas").getContext("webgl2"); } catch (x) { return String(x); } }).catch(() => "?"));
+    await browser.close();
+    process.exit(1);
+  }
+  return page;
+};
+const A = await open(1280, 720, SEED), B = await open(960, 600, SEED);
+await B.evaluate(() => { const P = window.__game.world.particles; P.hidden.add("grass"); P.hidden.add("rain"); });
+// la vista di A sulla base del giocatore
+await A.evaluate(() => {
+  const G = window.__game, u = G.world.all("ally_unit").next().value || G.world.all("ally_build").next().value;
+  if (u) { G.cam.x = u.x - G.cam.w / 2; G.cam.y = u.y - G.cam.h / 2; }
+});
+const run = (page, n, from, kind) => page.evaluate(([n, from, kind]) => {
+  const G = window.__game, w = G.world;
+  let s = from, seed = 99;
+  const r = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }; // della prova, non del gioco
+  for (let k = 0; k < n; k++, s++) {
+    if (s === 1500) G.g.raining = 1; // lo stesso "input" nelle due pagine
+    G.advance(1);
+    if (kind === "B" && s % 7 === 0) { G.cam.x = r() * (w.roomW - G.cam.w); G.cam.y = r() * (w.roomH - G.cam.h); }
+    // [§9.154] B seleziona e deseleziona a caso (senza dare ordini): la
+    // selezione e' di chi guarda, la partita non deve cambiare
+    if (kind === "B" && s % 11 === 0) {
+      const mine = w.instances.filter((i) => i.alive && !i.ui && !i.fx && "selected" in i && /^(ally|centro|casa|caserma|torre|mura|porta|granaio|deposito|monastero|stalla|arcieria|fucina|mulino|fattoria)/.test(i.object));
+      if (mine.length) { const i = mine[Math.floor(r() * mine.length)]; i.selected = i.selected === 1 ? 0 : 1; }
+    }
+    if (s % (kind === "A" ? 2 : 5) === 0) G.loop.render();
+  }
+  return G.hash();
+}, [n, from, kind]);
+// il primo campo diverso fra due stati (per trovare la causa)
+// (DIFFS=n: le prime n)
+const allDiffs = (a, b, path = "", out = []) => {
+  if (a === b || out.length >= (Number(process.env.DIFFS) || 1)) return out;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) { out.push(`${path}: ${JSON.stringify(a)?.slice(0, 80)} / ${JSON.stringify(b)?.slice(0, 80)}`); return out; }
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) allDiffs(a[k], b[k], path + "." + k, out);
+  return out;
+};
+const firstDiff = (a, b) => allDiffs(a, b).join("\n    ");
+const hashes = [];
+let bad = null;
+for (let s = 0; s < STEPS && !bad; s += EVERY) {
+  const [ha, hb] = await Promise.all([run(A, EVERY, s, "A"), run(B, EVERY, s, "B")]);
+  hashes.push(ha);
+  if (ha !== hb) {
+    const [da, db] = await Promise.all([A.evaluate(() => window.__game.dump()), B.evaluate(() => window.__game.dump())]);
+    bad = { passo: s + EVERY, diverso: firstDiff(da, db) };
+  }
+}
+const info = await A.evaluate(() => {
+  const G = window.__game, w = G.world, n = (f) => [...w.all(f)].length;
+  return { alleati: n("ally_unit"), nemici: n("enemy_unit"), edificiNemici: n("enemy_build"), piove: G.g.raining };
+});
+// controllo: un altro seme, un'altra partita
+const C = await open(1280, 720, SEED + 1);
+const hc = await run(C, EVERY, 0, "A");
+const control = hc !== hashes[0];
+await browser.close();
+const ok = !bad && control && errs.length === 0 && hashes.length === Math.ceil(STEPS / EVERY);
+console.log(engine, room, "passi", STEPS, "impronte uguali:", bad ? "NO" : hashes.length, JSON.stringify(info));
+if (bad) console.log("  divergono al passo", bad.passo, "->", bad.diverso);
+console.log("  controllo (un altro seme da' un'altra impronta):", control ? "si'" : "NO");
+console.log("  impronte:", hashes.join(" "));
+if (errs.length) console.log(errs.slice(0, 3));
+console.log(ok ? "ok" : "NON VA");
+process.exit(ok ? 0 : 1);
