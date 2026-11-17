@@ -21,13 +21,30 @@ const pw = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const [room = "sk_padus", stepsArg = "9000", engine = "chromium"] = process.argv.slice(2);
 const STEPS = Number(stepsArg), EVERY = 300, SEED = 12345;
-const browser = await pw[engine].launch(engine === "chromium" ? { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] } : {});
-const errs = [];
+// WebGL2 in software: in Chromium SwiftShader; in Firefox headless senza GPU
+// (la CI) WebGL va forzato, se no il gioco non parte ("webgl2")
+const launch = {
+  chromium: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+  firefox: { firefoxUserPrefs: { "webgl.force-enabled": true, "webgl.disabled": false, "webgl.enable-webgl2": true } },
+}[engine] || {};
+const browser = await pw[engine].launch(launch);
+const errs = [], logs = [];
 const open = async (w, h, seed) => {
   const page = await browser.newPage({ viewport: { width: w, height: h } });
   page.on("pageerror", (e) => errs.push(e.message));
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") logs.push(m.text()); });
   await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=${seed}`);
-  await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
+  try {
+    await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
+  } catch (e) {
+    // il gioco non e' partito: perche' (invece del solo timeout)
+    console.log(engine, "il gioco non parte:", e.message.split("\n")[0]);
+    console.log("  errori:", JSON.stringify(errs.slice(0, 5)));
+    console.log("  console:", JSON.stringify(logs.slice(-10)));
+    console.log("  webgl2:", await page.evaluate(() => { try { return !!document.createElement("canvas").getContext("webgl2"); } catch (x) { return String(x); } }).catch(() => "?"));
+    await browser.close();
+    process.exit(1);
+  }
   return page;
 };
 const A = await open(1280, 720, SEED), B = await open(960, 600, SEED);
