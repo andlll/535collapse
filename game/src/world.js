@@ -21,15 +21,23 @@ import { Alarms } from "./alarms.js";
 import { drawSprite, drawSway, spriteBounds } from "./sprites.js";
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
-import { simRandom } from "./rng.js"; // §9.152
+import { simRandom, vrand } from "./rng.js"; // §9.152
 
 // [§9.152] le istanze dell'interfaccia (pulsanti, dialoghi, suggerimenti):
 // seguono la vista o nascono per chi guarda; id a parte (negativi) e fuori
 // dalle ricerche della partita e dall'impronta (snapshot.js)
-const UI_PARENTS = ["clicker_parent", "clicchero", "parent_hint"];
+export const UI_PARENTS = ["clicker_parent", "clicchero", "parent_hint"];
+// [§9.154] i nomi sotto cui si trova un'istanza (world.all, number, nearest):
+// quella della partita col suo oggetto e tutti i genitori; quella
+// dell'interfaccia (o cosmetica) solo col suo oggetto e i genitori
+// d'interfaccia (le anteprime delle mura sono figlie di mura_ori e ally_build:
+// le ricerche della partita non devono vederle)
+export const indexNames = (i) => (i.ui || i.fx ? [i.object, ...i.parents.filter((p) => UI_PARENTS.includes(p))] : [i.object, ...i.parents]);
 export const isUiObject = (name, parents = []) => UI_PARENTS.some((p) => parents.includes(p))
   // §9.154: _blink le risorse che mancano; _placer il fantasma di chi costruisce
-  || /_clicker$|_button$|_blink$|_placer$|^dialogo|^hint_|^tooltip/.test(name);
+  // §9.154: mplus_* i "+" alle estremita' delle mura, oodl/oosl/ovbl/oval le
+  // anteprime dei prolungamenti
+  || /_clicker$|_button$|_blink$|_placer$|^mplus_|^(oodl|oosl|ovbl|oval)$|^dialogo|^hint_|^tooltip/.test(name);
 
 const CELL = 128;
 // [Richiesta dell'autore] passi della dissolvenza fra due sprite (swapSprite)
@@ -85,6 +93,7 @@ export class World {
     this.hooks = {};
     this.actions = new Map(); // §9.154: i tipi di comando (action, act)
     this.action("ordine", (w, c) => w.rightOrder(c));
+    this.action("canc", (w, c) => w.cancAction(c));
     // [§9.116] se impostato (il menu: app.js), solo le istanze di questi
     // oggetti ricevono gli eventi di mouse e tastiera: le altre (unita',
     // edifici) sono decorative, non si selezionano ne' si evidenziano
@@ -152,7 +161,9 @@ export class World {
     const o = this.objects[object];
     if (!o) throw new Error("oggetto sconosciuto: " + object);
     let sprite = o.sprite;
-    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor(simRandom() * o.choices.length)];
+    const ui = isUiObject(object, o.parents);
+    // [§9.154] l'interfaccia e il cosmetico col generatore di chi guarda
+    if (o.choices && !opts.noChoice) sprite = o.choices[Math.floor((ui || opts.fx ? vrand() : simRandom()) * o.choices.length)];
     const inst = {
       id: opts.fx || isUiObject(object, o.parents) ? this.fxNextId-- : this.nextId++, object, parents: o.parents, alive: true,
       fx: !!opts.fx, ui: isUiObject(object, o.parents), // §9.152
@@ -172,7 +183,7 @@ export class World {
     this.instances.push(inst);
     this._ver++;
     if (isTracked(inst)) this._epoch++;
-    for (const n of [object, ...o.parents]) {
+    for (const n of indexNames(inst)) {
       let l = this.byName.get(n);
       if (!l) this.byName.set(n, (l = []));
       l.push(inst);
@@ -213,6 +224,16 @@ export class World {
 
   is(inst, name) {
     return inst.object === name || inst.parents.includes(name);
+  }
+
+  // [§9.152, §9.154] le ricerche per posizione: senza nome solo le istanze
+  // della partita; con un nome quelle che lo sono, ma un'istanza
+  // dell'interfaccia solo per il suo nome o un genitore d'interfaccia (come
+  // l'indice, indexNames)
+  _hits(o, name) {
+    if (!name) return !o.ui && !o.fx;
+    if (!this.is(o, name)) return false;
+    return !(o.ui || o.fx) || o.object === name || UI_PARENTS.includes(name);
   }
 
   *all(name) {
@@ -588,7 +609,7 @@ export class World {
   instancePlace(inst, x, y, name = null, solidOnly = false) {
     const bb = this.bbox(inst, x, y);
     if (!bb) return null;
-    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && (name ? this.is(o, name) : !o.ui && !o.fx)
+    return this._eachNear(bb, (o) => (o !== inst && o.alive && (!solidOnly || o.solid) && this._hits(o, name)
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
@@ -604,7 +625,7 @@ export class World {
     const bb = this.bbox(inst, x, y);
     if (!bb) return true;
     if (this.terrainBlocks && this.terrainBlocks(inst, x, y)) return false; // §9.97
-    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !this.is(o, name)
+    return !this._eachNear(bb, (o) => (o !== inst && o.alive && o.solid && !o.ui && !o.fx && !this.is(o, name)
       && this.overlap(inst, x, y, o) ? o : null));
   }
 
@@ -619,7 +640,7 @@ export class World {
   }
 
   instancePosition(px, py, name) {
-    return this._eachNear([px, py, px, py], (o) => (o.alive && (!name || this.is(o, name)) && this.pointIn(o, px, py) ? o : null));
+    return this._eachNear([px, py, px, py], (o) => (o.alive && this._hits(o, name) && this.pointIn(o, px, py) ? o : null));
   }
 
   positionMeeting(px, py, name) {
@@ -632,7 +653,7 @@ export class World {
   collisionRectangle(x1, y1, x2, y2, name, prec = true, notme = null, only = null) {
     const rect = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
     for (const o of only ? [only] : this._nearList(rect)) {
-      if (!o.alive || o === notme || (name ? !this.is(o, name) : (o.ui || o.fx) && o !== only)) continue; // §9.152
+      if (!o.alive || o === notme || (o !== only && !this._hits(o, name)) || (only && name && !this.is(o, name))) continue; // §9.152, §9.154
       const bb = this.bbox(o);
       if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
       if (!prec) return o;
@@ -717,7 +738,7 @@ export class World {
         if (!bb) continue;
         for (const o of this._nearList(bb)) {
           if (!i.alive) break;
-          if (o === i || !o.alive || !this.is(o, name)) continue;
+          if (o === i || !o.alive || !this._hits(o, name)) continue;
           if (this.overlap(i, i.x, i.y, o)) fn(i, this, o);
         }
       }
@@ -753,11 +774,40 @@ export class World {
   // KeyRelease; gestori "keyboard27", "keyPress81", "keyRelease46".
   _keyEvents(input) {
     if (!input.down.size && !input.pressed.size && !input.released.size) return;
+    // [§9.154] Canc sulle istanze della partita e' il comando "canc" (le
+    // selezionate: cancAction); sulle istanze dell'interfaccia resta com'e'
+    const canc = input.pressed.has(46);
+    if (canc) this.act("canc", { ids: this.selectedIds() });
     for (const i of this.instances) {
       if (!i.alive || !this._takesInput(i)) continue;
       for (const k of input.down) this.fire(i, "keyboard" + k);
-      for (const k of input.pressed) this.fire(i, "keyPress" + k);
+      for (const k of input.pressed) if (k !== 46 || i.ui || i.fx) this.fire(i, "keyPress" + k);
       for (const k of input.released) this.fire(i, "keyRelease" + k);
+    }
+  }
+
+  // [§9.154] l'azione "canc" ({ ids }): il KeyPress_Delete di sempre sulle
+  // istanze `ids` (demoliscono se selezionate: lo sono, per il tempo
+  // dell'azione)
+  cancAction(c) {
+    this.withSelection(c.ids, () => {
+      for (const i of this.byIds(c.ids)) if (i.alive && !i.ui && !i.fx && this._takesInput(i)) this.fire(i, "keyPress46");
+    });
+  }
+
+  // [§9.154] per il tempo di fn i selezionati sono `ids` (le istanze della
+  // partita): poi tornano quelli di chi guarda (cambiano solo quelli che fn
+  // stessa ha cambiato)
+  withSelection(ids, fn) {
+    const set = new Set(ids), saved = [];
+    for (const i of this.instances) {
+      if (!i.alive || i.ui || i.fx || !("selected" in i)) continue;
+      const want = set.has(i.id) ? 1 : (i.selected === 1 ? 0 : i.selected);
+      saved.push([i, i.selected, want]);
+      i.selected = want;
+    }
+    try { fn(); } finally {
+      for (const [i, before, want] of saved) if (i.selected === want) i.selected = before;
     }
   }
 
@@ -855,13 +905,9 @@ export class World {
   // sulla minimappa), scr_movement_general del manager, i GlobalRightReleased
   // delle istanze, la formazione. Le istanze dell'interfaccia ne sono fuori.
   rightOrder(c) {
-    const ids = new Set(c.ids), saved = [];
-    for (const i of this.instances) {
-      if (!i.alive || i.ui || i.fx || !("selected" in i)) continue;
-      const want = ids.has(i.id) ? 1 : (i.selected === 1 ? 0 : i.selected);
-      saved.push([i, i.selected, want]);
-      i.selected = want;
-    }
+    this.withSelection(c.ids, () => this._rightOrder(c));
+  }
+  _rightOrder(c) {
     const mouse = this.mouse;
     this.mouse = { x: c.x, y: c.y };
     try {
@@ -877,7 +923,6 @@ export class World {
       if (this.hooks.afterRightReleased) this.hooks.afterRightReleased(c.x, c.y);
     } finally {
       this.mouse = mouse;
-      for (const [i, before, want] of saved) if (i.selected === want) i.selected = before;
     }
   }
 

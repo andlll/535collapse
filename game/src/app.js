@@ -28,7 +28,7 @@ import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower
 import { omino, resource, dying, recountIdle } from "./civilians.js";
 import { FAM, clicker, placer, buildAction, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, workerAction, cancelWorkerAction, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
-import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
+import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker, extendAction, gateAction } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
 import { FogMap } from "./fog.js";
 import { GroundCache } from "./ground.js";
@@ -310,6 +310,9 @@ async function main() {
   }
   for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
   world.register("gate_clicker", gateClicker());
+  world.action("prolunga", extendAction); // §9.154
+  world.action("trucco", (w, c) => manager.cheat(c.res));
+  world.action("porta", gateAction);
   // [§9.154] le code di produzione come comandi
   world.action("costruisci", buildAction);
   world.action("civile", workerAction);

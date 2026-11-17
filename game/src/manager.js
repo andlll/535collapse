@@ -102,22 +102,10 @@ export class Manager {
     g.scaleview = cam.scaleview;
     // Trucchi [C, tenuti anche fuori dal debug: decisione dell'autore §0.10]:
     // V + Alt + F/Q/S/W/P.
+    // [§9.154] come comandi ("trucco", cheatAction)
     const cheat = g.sele === -1 && g.visia === 1;
-    if (P(70) && cheat) g.food += 1000;
-    // [Difetto corretto, §3.2 n.10: nell'originale lo stop della pioggia era
-    // fuori dall'if e ogni Q fermava la pioggia; era un'esigenza di test
-    // dell'autore]
-    if (P(81) && cheat) {
-      g.gold += 1000;
-      this.stopRain();
-    }
-    if (P(83) && cheat) g.stone += 1000;
-    if (P(87) && cheat) g.wood += 1000;
-    // [Difetto corretto, §3.2 n.11: alarm[4]=1 era fuori dall'if]
-    if (P(80) && cheat) {
-      g.popcap += 1000;
-      this.al.set(4, 1);
-    }
+    const act = (res) => (this.world ? this.world.act("trucco", { res }) : this.cheat(res));
+    for (const [key, k] of [[70, "food"], [81, "gold"], [83, "stone"], [87, "wood"], [80, "popcap"]]) if (P(key) && cheat) act(k);
     // KeyRelease_Delete con Ctrl + V: nebbia on/off
     if (R(46) && g.sele === 1 && g.visia === 1) g.fogville = g.fogville ? 0 : 1;
     if (P(77)) g.minim = g.minim ? 0 : 1;          // M: minimappa
@@ -137,6 +125,17 @@ export class Manager {
     }
     if (R(18) || R(17)) g.sele = 0;
     if (R(86)) g.visia = 0;
+  }
+
+  // [§9.154] i trucchi, eseguiti come comandi
+  // [Difetto corretto, §3.2 n.10: nell'originale lo stop della pioggia era
+  // fuori dall'if e ogni Q fermava la pioggia; era un'esigenza di test
+  // dell'autore] [Difetto corretto, §3.2 n.11: alarm[4]=1 era fuori dall'if]
+  cheat(k) {
+    const g = this.g;
+    if (k === "food" || k === "gold" || k === "stone" || k === "wood" || k === "popcap") g[k] += 1000;
+    if (k === "gold") this.stopRain();
+    if (k === "popcap") this.al.set(4, 1);
   }
 
   // part_system_destroy(rain); global.raining=0

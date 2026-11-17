@@ -4,6 +4,7 @@
 //   - clic sul centro, Q due volte (due lavoratori in coda)
 //   - selezione a trascinamento dei lavoratori, clic destro su un albero
 //   - clic su un lavoratore, Q (la casa), clic sinistro in un posto libero
+//   - un trucco (V + Alt + W)
 //   - la vista spostata con le frecce, lo zoom con la rotella
 //   - un ordine di movimento col clic destro; intanto la CPU gioca
 // registrata (G.record) con le impronte ogni 300 passi; poi la stessa partita
@@ -82,6 +83,14 @@ const rec = await A.evaluate(() => {
   }
   out.fatto.push("cantieri " + [...w.all("ally_fondamenta")].length);
   step(300);
+  // [§9.154] un trucco (V + Alt + W: +1000 legna), un comando anche lui
+  const wood0 = w.g.wood;
+  input._pressed.add(86); input._down.add(86); step(1);
+  input._pressed.add(18); input._down.add(18); step(1);
+  input._pressed.add(87); input._down.add(87); step(1);
+  for (const k of [87, 18, 86]) { input._down.delete(k); input._released.add(k); }
+  step(2);
+  out.fatto.push("trucco " + (w.g.wood - wood0));
   // la vista con le frecce, lo zoom con la rotella
   key(39, 90); key(40, 60);
   input.wheel = 1; step(30); input.wheel = -1; step(30);
@@ -129,7 +138,8 @@ const played = did("centro ") === "true" && /^[1-9]/.test(did("selezionati ")) &
 const ok = played && errs.length === 0 && rec.log.checks.length >= 8 && checks === rec.log.checks.length && same
   && B.hash === rec.hash && B.passi === rec.passi && !!fr && C.hash !== rec.hash
   && D.result.length === rec.log.checks.length && D.result.every(([, o]) => o) && D.hash === rec.hash
-  && ["ordine", "civile", "costruisci"].every((k) => rec.log.cmds.some((c) => c.k === k));
+  && ["ordine", "civile", "costruisci", "trucco"].every((k) => rec.log.cmds.some((c) => c.k === k))
+  && Number(did("trucco ")) >= 1000;
 console.log("partita  ", JSON.stringify({ passi: rec.passi, fatto: rec.fatto, fotografie: rec.log.frames.length, impronte: rec.log.checks.length, seme: rec.log.seed }));
 console.log("replay   ", JSON.stringify({ passi: B.passi, impronteUguali: `${B.result.filter(([, o]) => o).length}/${checks}`, finale: B.hash === rec.hash, divergeAl: B.divergedAt }));
 console.log("controllo", JSON.stringify({ divergeAl: C.divergedAt, finaleDiverso: C.hash !== rec.hash }));

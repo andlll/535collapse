@@ -446,6 +446,15 @@ export function wallExtender(name) {
   };
 }
 
+// [§9.154] l'azione "prolunga" ({ vert, x, y }): 40 pietra e il cantiere del
+// tratto (rimborso 40, n.28)
+export function extendAction(w, c) {
+  const g = w.g;
+  if (g.stone < 40) return;
+  g.stone -= 40;
+  w.create(c.vert ? "mura_vert_fond" : "mura_ori_fond", c.x, c.y, { init: (f) => { f.paid = 40; } });
+}
+
 // Anteprime dei tratti [C, oodl/oosl orizzontali, ovbl/oval verticali]: il
 // fantasma bianco o rosso; clic sinistro: 40 pietra e il cantiere. Solo
 // oodl distrugge anche il pulsante mura_clicker. Il draw_sprite(x,y,0,obj)
@@ -458,13 +467,14 @@ export function wallPreview(name) {
     create(i) { Object.assign(i, { place: 1, posiz: 0, life: 1, slife: 800 }); },
     step(i, w) { i.place = w.placeFree(i, i.x, i.y) ? 1 : 0; },
     draw(i, w, dr) { dr.spriteExt(ghost, 0, i.x, i.y, 1, 1, 0, i.place === 1 ? WHITE : RED, 0.5); },
+    // [§9.154] l'anteprima e' dell'interfaccia: il cantiere lo crea il
+    // comando "prolunga" (extendAction)
     globalLeftPressed(i, w) {
       const g = w.g;
       if (i.place !== 1) return;
       if (g.stone >= 40) {
         g.sele = 1;
-        g.stone -= 40;
-        w.create(fondName, i.x, i.y, { init: (f) => { f.paid = 40; } });
+        w.act("prolunga", { vert, x: i.x, y: i.y });
         if (name === "oodl") {
           w.destroy(i);
           for (const c of w.all("mura_clicker")) { c.active = 0; w.destroy(c); }
@@ -492,18 +502,25 @@ export function wallPreview(name) {
 // gate_clicker [C]: trasforma il tratto selezionato in una porta (100 oro).
 // with(mura_vert) e with(mura_ori) contano anche le anteprime (figlie), che
 // pero' non sono mai selezionate.
+// [§9.154] dal pulsante: il comando "porta" coi tratti selezionati (e, per
+// chi clicca, il lampeggio dell'oro che manca); gateAction lo esegue
 function makeGate(w) {
+  const sel = [];
+  for (const wallName of ["mura_vert", "mura_ori"]) for (const m of w.all(wallName)) if (m.selected === 1) sel.push(m);
+  if (!sel.length) return;
+  if (w.g.gold < 100 * sel.length) w.create("gold_blink", 0, 0);
+  if (w.g.gold >= 100) destroyAll(w, "gate_clicker");
+  w.act("porta", { ids: sel.map((m) => m.id) });
+}
+export function gateAction(w, c) {
   const g = w.g;
   for (const [wallName, gateName] of [["mura_vert", "porta_vert"], ["mura_ori", "porta_ori"]]) {
-    for (const m of w.all(wallName)) {
-      if (m.selected !== 1) continue;
-      if (g.gold >= 100) {
-        g.gold -= 100;
-        w.create(gateName, m.x, m.y);
-        m.selected = 0;
-        w.destroy(m);
-        destroyAll(w, "gate_clicker");
-      } else w.create("gold_blink", 0, 0);
+    for (const m of w.byIds(c.ids, wallName)) {
+      if (g.gold < 100) continue;
+      g.gold -= 100;
+      w.create(gateName, m.x, m.y);
+      m.selected = 0;
+      w.destroy(m);
     }
   }
 }

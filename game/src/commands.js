@@ -75,6 +75,7 @@ export class Commands {
   // `step` del mondo (in singolo quello in corso; in rete qualche passo dopo)
   issue(kind, data, step, p = 0) {
     if (this.play) return null; // in replay contano solo i comandi del registro
+    for (const r of ["s", "p", "n", "k"]) if (r in data) throw new Error("campo riservato nel comando " + kind + ": " + r);
     const c = { s: step, p, n: this.seq++, k: kind, ...data };
     this.queue.push(c);
     return c;

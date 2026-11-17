@@ -35,12 +35,14 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
-**Multiplayer 1 contro 1** (§9.152-§9.153; decisioni dell'autore: 1v1, con un
+**Multiplayer 1 contro 1** (§9.152-§9.154; decisioni dell'autore: 1v1, con un
 codice, preferibilmente connessione diretta, parti simmetriche). Fasi: 1
-determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto: coda,
-registro, replay e la prova; passi 2-3 da fare: i comandi veri, un'azione
-alla volta, §9.153 "Come riprendere"); 3 parti simmetriche; 4 rete e lobby
-(WebRTC; scambio dei codici e STUN/TURN da decidere, §9.152).
+determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
+coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
+selezione fuori dalla partita e le azioni come comandi; restano la campagna,
+cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
+3 parti simmetriche (§9.154 "Per la fase 3"); 4 rete e lobby (WebRTC;
+scambio dei codici e STUN/TURN da decidere, §9.152).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -10711,3 +10713,101 @@ determinism.mjs, se il gioco non parte, stampa errori, console e WebGL2.
 dall'ambiente): un modulo che serve game/ da disco a Playwright
 (PLAYWRIGHT_MODULE, come in §9.146); la suite completa nel browser richiede
 ~45 minuti con 4 prove in parallelo.
+
+### 9.154 Multiplayer, fase 2, passo 2: la selezione e le azioni come comandi
+
+Richiesta dell'autore (17 novembre 2026, stessa PR, versione 0.2611):
+procedere col passo 2 della fase 2.
+
+**L'idea.** Un'azione del giocatore che cambia la partita non la cambia piu'
+nel gestore d'input: diventa un comando coi dati che bastano a eseguirla
+(chi: gli id delle unita' o degli edifici; dove: il punto), eseguito
+all'inizio del passo DOPO quello in cui nasce, uguale per chi la da' e (in
+rete) per chi la riceve. Tutto quello che resta nei gestori d'input e'
+interfaccia di chi guarda: la selezione, i pulsanti, i fantasmi, i
+lampeggi, la telecamera.
+
+**Il meccanismo** (world.js, app.js, commands.js):
+- `world.action(tipo, fn(world, c))` registra un tipo; `world.act(tipo,
+  dati)` lo da': con la coda dei comandi (app.js `hooks.command`) e' un
+  comando del passo dopo, senza (prove unitarie) si esegue subito.
+  `commands.runDue` esegue i tipi del mondo se non ha un gestore suo.
+  `world.selectedIds()` gli id selezionati (della partita), `world.byIds(ids,
+  nome)` le istanze vive. I campi s, p, n, k del comando sono riservati
+  (issue li rifiuta).
+- `world.withSelection(ids, fn)`: per il tempo di fn i selezionati sono
+  `ids`, poi tornano quelli di chi guarda (restano cambiati solo quelli che fn
+  stessa ha cambiato). Serve a rifare gli eventi di sempre (che guardano
+  `selected`) dai dati del comando senza riscriverli tutti.
+
+**I tipi fatti** (in ordine di uso):
+| tipo | dati | da | eseguito da |
+|---|---|---|---|
+| ordine | ids, x, y, over | rilascio destro (world._mouseEvents) | world.rightOrder: GlobalRightPressed (il centro azzera le destinazioni; prima alla pressione), RightReleased sotto il punto se over, scr_movement_general, GlobalRightReleased, formazione; il mouse del mondo e' (x, y) |
+| comportamento | ids, attacco | attacco/difesa (Q, A) | units.js behaviourAction |
+| tiro | ids, modo | furtivo/rapido (F, R) | stealth.js shotAction |
+| civile, annulla_civile | ids (centri) | omino_clicker (Q), centro_indietro (W) | buildings.js workerAction, cancelWorkerAction |
+| produci, annulla | ids, prod, type | i pulsanti di caserma, stalla, castello | production.js produceAction, cancelAction |
+| costruisci | fam, x, y, tipo, posiz, ids, mx, my | clic del fantasma (*_placer) | buildings.js buildAction: paga, il cantiere; i costruttori `ids` (prima buildarm sui civili) partono al suo Alarm_0 verso (mx, my) (prima il mouse di allora) |
+| prolunga | vert, x, y | clic sull'anteprima del tratto | walls.js extendAction |
+| porta | ids | gate_clicker (Q) | walls.js gateAction |
+| canc | ids | Canc (world._keyEvents) | world.cancAction: il KeyPress_Delete di sempre sulle istanze ids |
+| trucco | res | V + Alt + F/Q/S/W/P (manager.keys) | manager.cheat |
+
+**Fuori dalla partita** (snapshot.js, l'impronta; world.js):
+- la selezione: `selected`, `assi` (gruppi di controllo), `dcAt` (la
+  finestra del doppio clic: prima l'Alarm_1 dell'unita' con dc 1/0, ora il
+  passo fino a cui vale, units.js dcOn/dcArm; il dc dei NEMICI resta, e'
+  logica loro), `_mouseOver`; i contatori sel, milsel, firesel, arcsel,
+  siegsel, selected; i cerchi del puntatore (alberhover, minierahover,
+  stonehover, farmhover, buildhover, preshover); i tasti visia, minim, obj,
+  hint.
+- istanze dell'interfaccia (id negativi, fuori dall'impronta, §9.152) anche
+  i lampeggi delle risorse (*_blink), i "+" e le anteprime delle mura
+  (mplus_*, oodl, oosl, ovbl, oval; i fantasmi *_placer lo erano gia', figli
+  di clicker_parent).
+- un'istanza dell'interfaccia si trova solo col suo nome o un genitore
+  d'interfaccia (world.js indexNames, _hits): le anteprime delle mura sono
+  figlie di mura_ori e ally_build, e i nemici le avrebbero viste. Lo sprite
+  a caso (choices) delle istanze dell'interfaccia e cosmetiche col
+  generatore di chi guarda (vrand), come lo stile del fantasma della casa.
+
+**Prove.**
+- `test/browser/orders.mjs [room]` (nella CI su lvl06 e match): due pagine
+  con lo stesso seme; A da' gli ordini col clic destro vero, B gli stessi
+  SOLO come comandi, con un'altra selezione che cambia a caso a ogni passo
+  e la vista altrove: impronte uguali ogni 50 passi (lvl06: 16 soldati e 4
+  civili, formazione e legna; anche lvl03, sk_padus). Controllo: un ordine
+  spostato diverge.
+- `test/browser/replay.mjs`: la sessione (ordini, civili in coda, la casa,
+  un trucco) rigiocata dai SOLI comandi, senza nessun input ne'
+  telecamera (`commands.replay(log, { input: false })`): 12/12 e la stessa
+  impronta alla fine. E' la prova del passo 2: una sessione che fa
+  un'azione non ancora convertita diverge qui. Il controllo ora sposta un
+  comando (non piu' un clic delle fotografie, che in replay non da' ordini).
+- `test/browser/determinism.mjs`: la pagina B seleziona e deseleziona a caso.
+- `test/commands.test.mjs`: le azioni del mondo come comandi.
+
+**Trovato per strada** (con la sonda che rigioca in parallelo il registro
+completo e quello senza input, e stampa il primo campo diverso): il timer
+del doppio clic in una sveglia della partita; il fantasma della casa che
+sceglieva lo stile col generatore della partita (ora era dell'interfaccia:
+la sequenza cambiava solo per chi costruisce).
+
+**Cosa resta (fase 2).**
+- Campagna: dialoghi (dialogo_*) e suggerimenti (hint_*) sono
+  interfaccia ma alcuni fanno partire cose della partita (script dei
+  livelli); la schermaglia non li usa. Da guardare solo se servira'.
+- Le ricerche per posizione senza istanza (instancePosition, positionMeeting)
+  ora saltano l'interfaccia anche col nome; quelle per nome (all, nearest)
+  non la vedono piu' se il nome e' di un genitore della partita.
+- Il comando si esegue al passo dopo: le prove nel browser che danno un
+  ordine e guardano subito lo stato devono fare almeno un passo.
+
+**Per la fase 3** (parti simmetriche): i gestori degli ordini cercano
+`ally_*` e il comando ha gia' gli id: un comando del giocatore 1 deve
+muovere le unita' `enemy_*` (o, meglio, le parti diventano due insiemi della
+stessa famiglia). Attenzione a: `visible` (la nebbia di chi guarda: alcune
+decisioni della partita la leggono, p.es. chi si vede si attacca) e le
+istanze dell'interfaccia distrutte dalla partita (il cantiere delle mura
+distrugge le anteprime: in rete quelle dell'altro).

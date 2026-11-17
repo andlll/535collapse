@@ -17,7 +17,7 @@ import { Alarms } from "./alarms.js";
 import { encodeGraph, decodeGraph, SAVE_VERSION } from "./save.js";
 import { ZOOM_MAX } from "./camera.js";
 import { simRngState, simRngRestore } from "./rng.js"; // §9.152
-import { isUiObject } from "./world.js"; // §9.152
+import { isUiObject, indexNames } from "./world.js"; // §9.152
 
 const isInstance = (o) => typeof o.object === "string" && typeof o.id === "number" && o.alarm instanceof Alarms;
 const OPTS = { isInstance, skipInstanceKeys: ["parents", "cells", "_qs", "steerField", "chaseFf", "lmc", "_far", "_bb", "_tStep", "_tSum", "_trk", "edgeT"], classes: { Alarms }, roundKeys: ["parts"] };
@@ -58,7 +58,9 @@ export const UI_GLOBALS = ["scaleview", "sz", "sele", "multi", "startx", "starty
                            // la sua; i contatori dei selezionati
                            "sel", "milsel", "firesel", "arcsel", "siegsel", "selected",
                            // il puntatore sopra una risorsa, un cantiere, un campo, una torre (il cerchio)
-                           "alberhover", "minierahover", "stonehover", "farmhover", "buildhover", "preshover"];
+                           "alberhover", "minierahover", "stonehover", "farmhover", "buildhover", "preshover",
+                           // V tenuto, minimappa, obiettivi, suggerimenti accesi (tasti di chi guarda)
+                           "visia", "minim", "obj", "hint"];
 // [§9.154] i campi delle istanze che sono della selezione di chi guarda (il
 // selezionato, il doppio clic in corso, il gruppo di controllo)
 export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver"]; // (e il puntatore sopra l'istanza)
@@ -115,7 +117,7 @@ export function restoreGame(data, { world, g, manager, path, fog, cam }) {
   world.byName = new Map();
   world.grid = new Map();
   for (const i of world.instances) {
-    for (const n of [i.object, ...i.parents]) {
+    for (const n of indexNames(i)) { // §9.154
       let l = world.byName.get(n);
       if (!l) world.byName.set(n, (l = []));
       l.push(i);
