@@ -23,7 +23,7 @@ import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { riverCells, riverIn } from "./rivers.js";
 import { lmStep } from "./lastmile.js";
 import { dhypot, sq } from "./dmath.js"; // §9.152
-import { baseOf, unitFam } from "./multiplayer.js"; // §9.155
+import { baseOf, unitFam, pathEnemy } from "./multiplayer.js"; // §9.155
 
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
@@ -646,7 +646,7 @@ export class Pathing {
 
 // scr_generate_goal_field + scr_generate_flow_field per l'istanza
 export function generateFields(p, inst, gx, gy) {
-  inst.goal_field = p.goalField(gx, gy, (inst.parents || []).includes("enemy_unit"));
+  inst.goal_field = p.goalField(gx, gy, pathEnemy(inst)); // §9.155: anche il blu
   inst.flow_field = p.flowField(inst.goal_field);
 }
 
@@ -743,7 +743,7 @@ export function moveFlowField(w, p, inst) {
 // la macchina arriva (dirox, diroy = x, y), invece di spingere contro
 // l'ostacolo.
 export function siegeMove(w, p, i) {
-  const enemy = (i.parents || []).includes("enemy_unit");
+  const enemy = pathEnemy(i); // §9.155
   const gx = Math.floor(i.dirox / GRID), gy = Math.floor(i.diroy / GRID);
   const goal = p.inside(gx, gy) ? gy * p.gw + gx : -1;
   if (goal !== i.siegeGoal) {
@@ -1176,7 +1176,7 @@ export function waitHere(w, p, i, steps = WAIT_RETRY) {
 export function goNear(w, p, i, t) {
   if (w._nearStep !== w._stepNo) { w._nearStep = w._stepNo; w._nearUsed = new Set(); }
   const used = w._nearUsed;
-  const k = p.nearestReachableCell(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"), used);
+  const k = p.nearestReachableCell(i.x, i.y, t.x, t.y, pathEnemy(i), used);
   if (k < 0) return false;
   const gx = k % p.gw, gy = (k - gx) / p.gw;
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (p.inside(gx + dx, gy + dy)) used.add(k + dy * p.gw + dx);
@@ -1189,7 +1189,7 @@ export function goNear(w, p, i, t) {
   i.action = 1; i.warwork = 0; i.creation = 0;
   return true;
 }
-export const canReach = (w, i, t) => w.path.reachable(i.x, i.y, t.x, t.y, !!i.parents && i.parents.includes("enemy_unit"));
+export const canReach = (w, i, t) => w.path.reachable(i.x, i.y, t.x, t.y, pathEnemy(i));
 // il piu' vicino della famiglia `fam` entro `range` px che si raggiunge
 export function nearestReachable(w, i, fam, range, ok = null) {
   let best = null, bd = range;
@@ -1257,7 +1257,7 @@ export function moveStalled(w, p, i) {
   const stuck = pointDistance(i.x, i.y, c.x, c.y) < MOVE_NET && d > c.d - MOVE_GAIN;
   Object.assign(c, { x: i.x, y: i.y, d, at: now });
   if (!stuck) { c.n = 0; return false; }
-  if (!p.reachable(i.x, i.y, i.dirox, i.diroy, !!i.parents && i.parents.includes("enemy_unit"))) {
+  if (!p.reachable(i.x, i.y, i.dirox, i.diroy, pathEnemy(i))) {
     i.action = 0; i.warwork = 0; i.creation = 0; i.speed = 0; i.step = 0;
     i.dirox = i.x; i.diroy = i.y;
     p.occupy(i);

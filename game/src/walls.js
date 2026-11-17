@@ -201,9 +201,20 @@ export function gate(k, p) {
       // (porta_ori Create rimette mask_index=m_ori_pa_mask, gia' quella
       // dell'oggetto) celle della porta chiusa (la maschera aperta e' solo i pilastri):
       // libere per il giocatore, ostacolo per i nemici
-      i.mask_index = K.closed[1]; w.moved(i);
-      p.markInstance(i, 1);
-      i.enemyCells = p.blockEnemy(i);
+      // [§9.155] la porta del blu nella partita a due: come quelle nemiche
+      // (enemyGate), chiusa per il rosso e col varco aperto per il blu, che
+      // va nei percorsi con la variante "nemico" (multiplayer.js pathEnemy)
+      if (i.object.startsWith("p2_")) {
+        i.mask_index = w.objects[K.gate].mask; w.moved(i);
+        const pillars = new Set(p.cellsOf(i));
+        i.mask_index = K.closed[1]; w.moved(i);
+        p.markInstance(i, 1000);
+        i.passCells = p.passEnemy(p.cellsOf(i).filter((c) => !pillars.has(c)));
+      } else {
+        i.mask_index = K.closed[1]; w.moved(i);
+        p.markInstance(i, 1);
+        i.enemyCells = p.blockEnemy(i);
+      }
       i.mask_index = w.objects[K.gate].mask; w.moved(i);
       // [§7.4, segnalazione dell'autore] i pilastri (la maschera aperta)
       // restano ostacolo: liberando tutta la porta chiusa il flow field
@@ -224,6 +235,7 @@ export function gate(k, p) {
     destroy(i) {
       p.markInstance(i, 1);
       if (i.enemyCells) { p.unblockEnemy(i.enemyCells); i.enemyCells = null; }
+      if (i.passCells) { p.unpassEnemy(i.passCells); i.passCells = null; } // §9.155: la porta blu
     },
     step(i, w) {
       // [Correzione §3.8 n.27] a vita 0 la porta sparisce

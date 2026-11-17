@@ -149,6 +149,31 @@ if (process.env.SHOT) {
   await B.evaluate(() => { const G = window.__game, c = G.world.all("p2_centro").next().value; if (c) { G.cam.x = c.x - G.cam.w / 2; G.cam.y = c.y - G.cam.h / 2 + 150; } G.loop.render(); });
   await B.screenshot({ path: process.env.SHOT });
 }
+// [§9.155] le porte nella griglia dei percorsi: quella rossa libera per il
+// rosso e chiusa per il blu (enemyBlock), quella blu chiusa per il rosso
+// (cost 1000) e col varco aperto per il blu (enemyPass, la variante "nemico")
+const gates = await A.evaluate(() => {
+  const w = window.__game.world, p = w.path, [mx, my] = [Math.round(w.roomW / 2), Math.round(w.roomH / 2)];
+  // tutte le celle della porta: il varco (libere per la sua parte) e i pilastri
+  const cell = (g) => {
+    const b = w.bbox(g), out = { varcoRosso: 0, chiuseBlu: 0, varcoBlu: 0, chiuseRosso: 0 };
+    for (let gy = Math.floor(b[1] / 32); gy <= Math.floor(b[3] / 32); gy++) for (let gx = Math.floor(b[0] / 32); gx <= Math.floor(b[2] / 32); gx++) {
+      const k = gy * p.gw + gx;
+      if (p.cost[k] < 1000) out.varcoRosso++;
+      if (p.enemyBlock[k] > 0) out.chiuseBlu++;
+      if (p.enemyPass[k] > 0) out.varcoBlu++;
+      if (p.cost[k] >= 1000 && !p.enemyPass[k]) out.chiuseRosso++;
+    }
+    return out;
+  };
+  // nello stesso punto, una dopo l'altra (prima com'era la griglia li')
+  const at = [mx + 400, my + 600];
+  const blue = w.create("p2_porta_ori", ...at), blu = cell(blue);
+  w.destroy(blue);
+  const red = w.create("porta_ori", ...at), rossa = cell(red);
+  w.destroy(red);
+  return { rossa, blu };
+});
 // la fine: gli edifici blu distrutti in tutte e due le pagine; vince il
 // rosso (global.skWinner, uguale), il rosso vede la vittoria e il blu la
 // sconfitta (§9.155, pvpCheck)
@@ -166,6 +191,8 @@ const ok = errs.length === 0 && !bad && control && hashes.length === Math.ceil(S
   && !fog0[0].vede && !fog0[1].vede && fog0[0].shade === 0 && fog0[1].shade === 0 && !plan.eco && plan.om2.length === 3
   && after.legna[0] > 0 && after.legna[1] > 0 && after.casaBlu >= 1 && after.caseRosse === 0 && after.civili[1] >= 4 && fought
   && end[0].vince === 1 && end[1].vince === 1 && end[0].vittoria && !end[0].sconfitta && end[1].sconfitta && !end[1].vittoria
+  && gates.rossa.varcoRosso > 0 && gates.rossa.chiuseBlu > 0 && gates.rossa.varcoBlu === 0
+  && gates.blu.varcoRosso === 0 && gates.blu.varcoBlu > 0 && gates.blu.chiuseBlu === 0
   && look.tabella > 500 && look.civile && look.civile[1] && look.centro && look.centro[1] === "cc_b";
 console.log(room, "partita a due, passi", STEPS, "impronte uguali (rosso = blu):", bad ? "NO" : `${hashes.length}/${hashes.length}`);
 if (bad) console.log("  divergono al passo", bad.passo, "->", bad.diverso);
@@ -173,6 +200,7 @@ console.log("  nebbia", JSON.stringify({ rossoVedeBaseBlu: fog0[0].vede, bluVede
 console.log("  inizio", JSON.stringify({ centri: plan.centri, regiaCPU: plan.eco, civiliBlu: plan.om2.length, cassaBlu: plan.p2, casaBlu: plan.spot }));
 console.log("  fatto ", JSON.stringify(after));
 console.log("  blu   ", JSON.stringify(look));
+console.log("  porte ", JSON.stringify(gates));
 console.log("  fine  ", JSON.stringify({ rosso: end[0], blu: end[1] }));
 console.log("  controllo (un ordine blu diverso cambia la partita):", control ? "si'" : "NO");
 if (errs.length) console.log(errs.slice(0, 3));

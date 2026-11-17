@@ -45,6 +45,11 @@ const BASE = new Map();
 export const baseOf = (i) => (i.object.startsWith("p2_") ? BASE.get(i.object) ?? i.object : i.object);
 // la famiglia delle unita' della parte di un'istanza: enemy_unit (la CPU),
 // p2_unit (il blu), ally_unit (il giocatore)
+// [§9.155] la variante della griglia dei percorsi (Pathing: porte e
+// regioni): "nemico" per la CPU e, nella partita a due, per il blu (le sue
+// porte sono segnate come quelle nemiche: walls.js gate), "giocatore" per il
+// giocatore 1
+export const pathEnemy = (i) => unitFam(i) !== "ally_unit";
 export const unitFam = (i) => {
   const ps = i.parents || [];
   return ps.includes("enemy_unit") ? "enemy_unit" : i.object && i.object.startsWith("p2_") ? "p2_unit" : "ally_unit";

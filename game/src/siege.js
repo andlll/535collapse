@@ -354,7 +354,9 @@ function unstack(w, i, ok) {
 // quella libera se l'altra sta tirando, colpendo o ricaricando.
 export function settleSiege(w) {
   if (w._stepNo % 10 !== 0) return;
-  for (const n of [...SIEGE_OF.ally, ...SIEGE_OF.enemy]) {
+  // [§9.155] nella partita a due gira per ognuna delle due parti col suo
+  // specchio (app.js): solo le proprie ("ally_*" e' la parte dello specchio)
+  for (const n of w.mp ? SIEGE_OF.ally : [...SIEGE_OF.ally, ...SIEGE_OF.enemy]) {
     for (const i of w.all(n)) {
       if (!i.alive || i.action !== 0 || (i.warwork && i.warwork !== 4) || i.order) continue;
       const o = siegeNear(w, i, i.x, i.y, false);

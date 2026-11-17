@@ -109,7 +109,7 @@ const NX = [1, -1, 0, 0, 1, -1, 1, -1], NY = [0, 0, 1, -1, 1, 1, -1, -1], NC = [
 function build(w, p, i, xg, yg) {
   const bb = w.bbox(i);
   if (!bb) return null;
-  const sd = side(i), enemy = sd === "enemy_unit";
+  const sd = side(i), enemy = sd !== "ally_unit"; // §9.155: anche il blu (le sue porte come quelle nemiche)
   const ol = bb[0] - i.x, ot = bb[1] - i.y, or = bb[2] - i.x, ob = bb[3] - i.y;
   const S = staticGrid(w, p, i, sd, bb), SG = w._lmStatic;
   const x0 = Math.max(0, Math.floor(Math.min(i.x, xg) / C) - MARGIN), y0 = Math.max(0, Math.floor(Math.min(i.y, yg) / C) - MARGIN);

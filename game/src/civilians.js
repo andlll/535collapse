@@ -21,6 +21,7 @@ import { complexOf, complexPoint, complexNear, complexField } from "./complex.js
 import { bridgeEnds, woodDue } from "./bridge.js";
 import { FAM, buttonAlpha, canBuild } from "./buildings.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { pathEnemy } from "./multiplayer.js"; // §9.155
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const OM = "ally_omino";
@@ -77,7 +78,7 @@ function goTo(p, i, tx, ty, freeCell = false) {
 function fieldTo(w, p, i, tx, ty, fallback = true) {
   const gx = Math.floor(tx / GRID), gy = Math.floor(ty / GRID), key = gy * p.gw + gx;
   const old = i.goal_field;
-  const c = w._fieldTo, en = sideOf(i).enemy; // §9.44: il campo della fazione (porte)
+  const c = w._fieldTo, en = pathEnemy(i); // §9.44: il campo della fazione (porte); §9.155: il blu come i nemici
   let f;
   if (c && c.step === w._stepNo && c.key === key && c.ver === p.solidVer && c.en === en) f = c.f;
   else {
