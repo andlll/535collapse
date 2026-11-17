@@ -30,8 +30,9 @@
 //   comandi del registro; l'input vero e' ignorato. Prova:
 //   test/browser/replay.mjs.
 //
-// Chi lo usa: app.js (il passo: `frame` all'inizio, `runDue` prima del passo
-// del mondo, `afterStep` alla fine), `window.__game.commands`.
+// Chi lo usa: app.js (il passo: `frame` all'inizio, `runDue` dentro il passo
+// del mondo dopo Begin Step e allarmi, world.js hooks.commands, §9.154;
+// `afterStep` alla fine), `window.__game.commands`.
 
 export const CHECK_EVERY = 300; // passi fra due impronte nel registro
 

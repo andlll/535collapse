@@ -917,8 +917,13 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
     const ta = w.nearest(i.x, i.y, "enemy_unit");
     const valid = ta.visible === true;
     const dist = w.distanceToInstance(i, ta);
-    if (dist < 10 * k && unstack(w, i, ta)) return null; // §9.71
-    if (dist < 10 * k) {
+    // [§9.154] fermo ad aspettare (waitHere: non si avvicina di piu') a meno
+    // di 10 px: colpisce anche in verticale, dove la portata e' 10 * k (6,4
+    // px) e da sopra o da sotto ci si ferma prima (attackorder.mjs, "vert":
+    // il picchiere aspettava a 9 px per sempre)
+    const close = dist < 10 * k || (dist < 10 && waiting(w, i));
+    if (close && unstack(w, i, ta)) return null; // §9.71
+    if (close) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) { i.targetx = ta.x; i.targety = ta.y; p.occupy(i); }
       if (i.warwork !== 2 && i.warwork !== 4 && i.alarm.get(2) < 1) {
         i.action = 2; i.warwork = 2; p.occupy(i); i.alarm.set(2, 13);
@@ -953,7 +958,14 @@ function autoAttack(i, w, p, { move100 = false, faceTarget = false } = {}) {
       i.warwork = 1;
     }
   } else {
-    const te = i.target_eu;
+    let te = i.target_eu;
+    // [§9.154] inseguendo il bersaglio, un altro nemico a portata di colpo
+    // (che sbarra la strada): diventa lui il bersaglio (attackorder.mjs,
+    // "far": il guerriero restava a 3 px da uno, verso l'altro, per sempre)
+    if (i.warwork === 1 && w.distanceToInstance(i, te) >= 10) {
+      const n = w.nearest(i.x, i.y, "enemy_unit");
+      if (n && n !== te && w.distanceToInstance(i, n) < 10 * k) { i.target_eu = n; te = n; }
+    }
     if (w.distanceToInstance(i, te) < 10 && unstack(w, i, te)) return null; // §9.71
     if (w.distanceToInstance(i, te) < 10) {
       if (i.warwork === 2 && i.alarm.get(2) < 1) {

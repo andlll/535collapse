@@ -553,6 +553,8 @@ async function main() {
   // [§9.154, fase 2, passo 2] le azioni del giocatore (world.js act): date al
   // passo in corso, eseguite all'inizio del successivo (i tipi: world.actions)
   world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1);
+  // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
+  world.hooks.commands = () => commands.runDue(world);
   const hashNow = () => stateHash({ world, g, manager, path });
   const step = () => {
     input.beginStep();
@@ -579,7 +581,6 @@ async function main() {
     world.input = input;
     const inside = input.inside;
     if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
-    commands.runDue(world); // §9.153: i comandi di questo passo, prima delle istanze
     world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
     input.inside = inside;
     recountIdle(world); // §6.1 n.80

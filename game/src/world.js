@@ -695,6 +695,11 @@ export class World {
     const live = () => this.instances.filter((i) => i.alive);
     for (const i of live()) this.fire(i, "stepBegin");
     for (const i of live()) i.alarm.tick((n) => this.fire(i, "alarm" + n));
+    // [§9.154] i comandi di questo passo (le azioni dei giocatori): dove
+    // nell'originale giravano tastiera e mouse, dopo Begin Step e allarmi (in
+    // testa al passo, prima degli allarmi, le unita' si fermavano accanto al
+    // nemico senza attaccare: attackorder.mjs)
+    if (this.hooks.commands) this.hooks.commands();
     this._keyEvents(input);
     this._mouseEvents(input, mouseX, mouseY);
     // manager e' la prima istanza [C]: il suo Step (pulsanti di costruzione)

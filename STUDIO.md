@@ -10804,6 +10804,18 @@ la sequenza cambiava solo per chi costruisce).
 - Il comando si esegue al passo dopo: le prove nel browser che danno un
   ordine e guardano subito lo stato devono fare almeno un passo.
 
+**Dove si eseguono i comandi.** In world.step dopo Begin Step e allarmi,
+dove giravano tastiera e mouse (`hooks.commands`; prima, in §9.153, in testa
+al passo). Il passo di ritardo ha fatto emergere in attackorder.mjs (la CI
+rossa) due unita' ferme a 3-9 px dal nemico per sempre, due difetti veri
+dell'attacco (units.js autoAttack), corretti:
+- chi aspetta (waitHere: non riesce ad avvicinarsi di piu') a meno di 10 px
+  colpisce anche in verticale, dove la portata e' 10 * k = 6,4 px e da sopra
+  o da sotto ci si ferma prima (il picchiere a 9 px);
+- chi insegue il suo bersaglio e ha un altro nemico a portata di colpo (che
+  gli sbarra la strada) prende quello (il guerriero a 3 px da uno, col
+  bersaglio a 84 px).
+
 **Per la fase 3** (parti simmetriche): i gestori degli ordini cercano
 `ally_*` e il comando ha gia' gli id: un comando del giocatore 1 deve
 muovere le unita' `enemy_*` (o, meglio, le parti diventano due insiemi della
