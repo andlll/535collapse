@@ -47,6 +47,7 @@ export class Diagnostics {
       `view ${data.view}   room ${data.room}`,
       `particelle ${data.particles} in ${data.systems} sistemi`,
       `MAX_TEXTURE_SIZE ${data.maxTextureSize}   unita' texture ${data.units}`,
+      ...(data.net ? [data.net] : []), // §9.156: la partita in rete
     ];
     this.el.textContent = lines.join("\n");
     this.frames = 0;

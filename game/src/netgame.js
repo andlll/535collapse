@@ -145,7 +145,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
     else if (bar.desync) netBar(bar.desync, "warning");
     else netBar(bar.waiting);
   };
-  const ctl = { mode: net.mode, local: net.local, link, ls: null, desyncDump: null, events: [] };
+  const ctl = { mode: net.mode, local: net.local, link, ls: null, desyncDump: null, events: [], waits: 0 };
 
   // la connessione si e' persa / l'altro se n'e' andato / non si puo' giocare
   const stop = (text) => {
@@ -213,7 +213,9 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   // ------------------------------------------------- la sala d'attesa
   const lobby = () => {
     const cancel = () => { ls.leave(); toMenu(); };
-    panel = new NetPanel({ onEscape: cancel });
+    // (Esc qui non fa niente: perderebbe il codice gia' mandato all'altro;
+    // per uscire c'e' "Annulla")
+    panel = new NetPanel();
     panel.title(tr("Two-player game"));
     panel.text(sideText(net.local) + " " + setupSummary(net.sk));
     if (!link) {
@@ -281,7 +283,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       return;
     }
     const now = performance.now();
-    if (!waitSince) { waitSince = now; return; }
+    if (!waitSince) { waitSince = now; ctl.waits++; return; }
     if (now - waitSince > WAIT_BAR && !bar.waiting) { bar.waiting = tr("Waiting for the other player..."); showBar(); }
     if (now - waitSince > WAIT_PANEL && !waitPanel && !fake) {
       waitPanel = new NetPanel();
@@ -311,6 +313,13 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       if (ls.running && ls.pausedAt !== null) ls.resume(); else pause.close();
     },
     leave() { closeWait(); ls.leave(); },
+    // la riga della diagnostica (F3)
+    diagLine() {
+      const ok = ls.checks.filter(([, v]) => v).length;
+      return `rete: ${ls.state}, ${net.local === 0 ? "rosso" : "blu"}, ritardo ${ls.delay ?? "-"} passi`
+        + `, andata e ritorno ${ls.rtt === null ? "-" : ls.rtt.toFixed(0) + " ms"}, attese ${ctl.waits}`
+        + `, impronte ${ok}/${ls.checks.length} uguali${ls.desync ? ", DIVERSE dal passo " + ls.desync.step : ""}`;
+    },
   });
   // lo stato del lockstep, letto ogni volta (per le prove e la diagnostica)
   for (const k of ["state", "delay", "checks", "desync", "rtt"]) Object.defineProperty(ctl, k, { get: () => ls[k], enumerable: true });

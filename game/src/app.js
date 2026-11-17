@@ -925,6 +925,7 @@ async function main() {
         view: `${Math.round(cam.x)},${Math.round(cam.y)} ${Math.round(cam.w)}x${Math.round(cam.h)}`,
         room: roomName, maxTextureSize: r.maxTextureSize, units: r.units,
         particles: world.particles.count, systems: world.particles.systems.length,
+        net: netGame ? netGame.diagLine() : null, // §9.156
       });
     },
   });

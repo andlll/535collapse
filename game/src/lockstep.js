@@ -66,6 +66,7 @@ export class Lockstep {
     this.checkEvery = checkEvery;
     this.state = "idle";       // idle -> hello -> running -> ended | left | lost | error
     this.base = 0;             // il passo da cui si comincia
+    this.next = 0;             // il prossimo passo da giocare
     this.turns = new Set();    // i turni dell'altro arrivati (passi)
     this.sealed = -1;          // l'ultimo turno mandato
     this.mine = new Map();     // passo -> impronta (mia)
@@ -151,7 +152,8 @@ export class Lockstep {
         break;
       case "T": {
         if (this.state === "hello" || this.state === "idle") { (this.early ||= []).push(m); return; }
-        if (this.state !== "running" || this.turns.has(m.s) || m.s < this.base + this.delay) return;
+        // (doppio, o di un passo gia' giocato: da scartare, non succede su un canale affidabile)
+        if (this.state !== "running" || this.turns.has(m.s) || m.s < this.base + this.delay || m.s < this.next) return;
         for (const c of m.c || []) {
           if (c && c.s === m.s && c.p === this.remote && typeof c.k === "string") this.commands.queue.push(c);
         }
@@ -199,6 +201,7 @@ export class Lockstep {
   afterStep(now, hash, ended = false) {
     if (this.state !== "running") return;
     this.turns.delete(now - 1);
+    this.next = now;
     if (ended) { this.end(); return; }
     const q = this.commands;
     for (let s = this.sealed + 1; s <= now - 1 + this.delay; s++) {

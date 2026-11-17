@@ -11066,7 +11066,8 @@ difficolta', stile della CPU e tregua sono della CPU) e offre:
   pannello dice che partita e' ("Giocherai col blu") e "Entra" apre la stessa
   partita (stessa mappa, opzioni e seme di chi l'ha creata, anche se le sue
   opzioni nel menu sono altre), con il codice di risposta da rimandare.
-Quando chi ha creato incolla la risposta, il canale si apre, le due pagine
+Nella sala d'attesa Esc non fa niente (perderebbe il codice gia' mandato):
+per uscire c'e' "Annulla". Quando chi ha creato incolla la risposta, il canale si apre, le due pagine
 si salutano, si misura il tempo di andata e ritorno e la partita parte
 nelle due pagine; la sala d'attesa sparisce. I codici: ~780 caratteri
 quello di chi crea, ~600 la risposta (si possono incollare con a capo, spazi
@@ -11104,7 +11105,9 @@ le reti che non si collegano.
   chi crea (`skParams`), la parte da `net.local`; il passo chiede
   `canStep()` prima (se manca il turno dell'altro, restituisce false e il
   ciclo aspetta) e `afterStep()` dopo; i comandi per il passo `now + D`;
-  `__game.net` e `__game.pump(n)` per le prove. loop.js: un passo che
+  `__game.net` e `__game.pump(n)` per le prove; nella diagnostica (F3) la
+  riga "rete" (stato, colore, ritardo, andata e ritorno, attese, impronte
+  uguali o il passo da cui differiscono). loop.js: un passo che
   restituisce false ferma i passi del fotogramma senza consumare il tempo
   (al piu' 6 passi da recuperare: dopo un'attesa lunga si riparte, non si
   corre). pause.js: la pausa in rete (sotto). menu.js: il pulsante;
