@@ -35,16 +35,15 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
-**Multiplayer 1 contro 1** (§9.152-§9.154; decisioni dell'autore: 1v1, con un
+**Multiplayer 1 contro 1** (§9.152-§9.155; decisioni dell'autore: 1v1, con un
 codice, preferibilmente connessione diretta, parti simmetriche). Fasi: 1
 determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto, §9.153:
 coda, registro, replay; passo 2 fatto per la schermaglia, §9.154: la
 selezione fuori dalla partita e le azioni come comandi; restano la campagna,
 cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
-3 parti simmetriche (§9.155: fatti i gemelli blu, lo specchio, la prova a
-due pagine, l'interfaccia del blu, la nebbia e la fine per parte; restano
-le cose in §9.155 "Cosa resta"); 4 rete e lobby (WebRTC; scambio dei codici e
-STUN/TURN da decidere, §9.152).
+3 parti simmetriche (§9.155: fatta; gemelli blu, specchio, interfaccia,
+nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
+resta"); 4 rete e lobby (da fare: §9.155 "Come riprendere: la fase 4").
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -10943,7 +10942,7 @@ giocatore e ogni edificio finito ha il suo blu).
   come soldati (niente pulsanti di costruzione) e le unita' blu non si
   scansavano fra loro.
 
-**Cosa resta (fase 3).**
+**Segnalazioni dell'autore** (corrette):
 - [Segnalazione dell'autore: "un mulino rosso sul centro blu"] Due gemelli
   con lo stesso nome: ally_barn (la famiglia dei depositi del cibo) e barn
   (il mulino) diventavano tutti e due p2_barn, e il deposito invisibile del
@@ -10965,15 +10964,78 @@ giocatore e ogni edificio finito ha il suo blu).
   da tutte e due le parti. Per strada: leafHit (le foglie del colpo, solo
   sugli alberi sullo schermo di chi guarda) era nell'impronta: ora fra i
   campi grafici (VISUAL_KEYS).
+
+**Terza tornata** (stesso giorno, i punti rimasti):
+- Le porte nei percorsi. La griglia (Pathing) ha due varianti, "giocatore"
+  e "nemico" (cost/enemyBlock per le porte del giocatore, enemyPass per
+  quelle nemiche). Nella partita a due il blu usa la variante "nemico"
+  (multiplayer.js `pathEnemy`: pathing.js generateFields, siegeMove,
+  goNear, canReach, il ritorno; lastmile.js; melee.js; civilians.js
+  fieldTo) e le sue porte si segnano come quelle nemiche (walls.js gate:
+  tutta la porta chiusa per il rosso, il varco aperto per il blu). Prova in
+  pvp.mjs: nello stesso punto la porta rossa ha 6 celle di varco libere per
+  il rosso e chiuse per il blu, quella blu il contrario.
+- L'equita' (una sonda, non nella CI): 4 guerrieri contro 4 in posizioni
+  speculari, 6 semi, scambiando chi nasce prima: vince SEMPRE chi nasce
+  dopo (chi viene dopo nell'ordine delle istanze del passo), con lo stesso
+  risultato a parti scambiate (2 vivi con vita 24, o 2 con vita 10). La
+  logica delle due parti e' simmetrica; il vantaggio e' dell'ordine delle
+  istanze, che c'e' anche contro la CPU e in partita dipende da quando
+  ognuno ha prodotto le sue unita'. Non si cambia (sarebbe l'ordine di
+  tutto il gioco); da riconsiderare se in rete si nota.
+- I confronti di nomi: settleSiege (siege.js) nella partita a due gira per
+  ogni parte col suo specchio e tratta solo le proprie macchine (prima le
+  avrebbe trattate due volte, e confrontate con quelle dell'altra parte).
+  Gli altri confronti per nome rimasti (civilians.js "ponte", le slices
+  degli edifici) valgono anche per i gemelli. Le fiaccole delle case
+  passano due volte ma non si raddoppiano (h.torch).
+
+**Cosa resta (fase 3).**
 - Altri confronti di nomi d'oggetto nel codice del giocatore (i.object ===
   "...", tabelle per nome) non ancora passati da baseOf: cercarli quando un
   comportamento del blu non torna (grep 'object ===', '[i.object]').
 - Cose comuni da dividere per parte: global.order (il numero d'ordine
   delle unita', comune: deterministico ma condiviso), i suggerimenti (di chi
-  guarda), le porte e le mura nella griglia dei percorsi (Pathing.regions
-  con enemy: le porte del blu andrebbero "nemiche" per il rosso e viceversa),
-  le fiaccole delle case (houseTorches legge visible).
-- Un controllo di equita': una battaglia speculare (le stesse unita' in
-  posizioni ruotate) deve finire alla pari; nella prova a 360 px il rosso
-  ha perso un guerriero in piu' (l'ordine delle istanze nel passo?).
+  guarda), le fiaccole delle case (houseTorches legge visible).
 - Il menu della partita a due (fase 4, insieme alla rete).
+
+**Come riprendere: la fase 4** (la rete; decisioni dell'autore: 1 contro
+1, con un codice, preferibilmente connessione diretta, §9.152).
+Quello che c'e' gia':
+- la partita a due in una pagina: `?room=sk_*&pvp=1&parte=1|2&seed=N`
+  (app.js), le due parti identiche (pvp.mjs: due pagine con gli stessi
+  comandi danno le stesse impronte; PVP=2 replay.mjs: si gioca dal blu);
+- i comandi (commands.js): `issue(kind, data, step, p)` col giocatore p (0
+  rosso, 1 blu), eseguiti in ordine (passo, giocatore, numero) dentro il
+  passo del mondo (world hooks.commands); app.js li da' oggi per il passo
+  dopo (hooks.command: world._stepNo + 1); il registro e le impronte ogni
+  CHECK_EVERY = 300 passi (afterStep), stateHash in snapshot.js;
+- cosa e' di chi guarda e non entra nell'impronta (selezione, puntatore,
+  nebbia disegnata, allarmi, interfaccia: snapshot.js UI_GLOBALS,
+  SELECTION_KEYS, VISUAL_KEYS; le istanze ui/fx).
+Da fare, in quest'ordine:
+1. Il canale: WebRTC, un RTCDataChannel affidabile e in ordine. Lo
+   scambio dei codici da decidere con l'autore (§9.152): incollare a mano
+   offerta e risposta (lunghe, compresse), oppure un piccolo servizio di
+   segnalazione con codici di 6 lettere; STUN pubblico; senza TURN il 10-20%
+   delle reti non si collega.
+2. Il lockstep: ogni comando locale per il passo s + D (ritardo, p.es. 4-8
+   passi); a ogni passo ogni pagina manda i suoi comandi di quel passo (o
+   "niente") e il mondo avanza solo quando ha quelli dell'altro per quel
+   passo (Commands: una coda dei comandi remoti e "pronto per il passo s";
+   il ciclo di app.js aspetta). La pausa e la velocita' diventano comandi;
+   i salvataggi nella partita a due da decidere (o niente).
+3. L'avvio comune: chi crea sceglie mappa, opzioni e seme e li manda;
+   tutti e due aprono la room con gli stessi parametri (?pvp=1&parte=1/2&seed).
+4. Il controllo: le impronte ogni 300 passi si scambiano; se diverse,
+   avviso e dump (stateDump) per capire; si smette alla fine della partita
+   (global.skWinner: dopo, victory e gameover sono di chi guarda).
+5. Il menu: "Partita a due" nella schermaglia (crea / entra con il codice),
+   l'attesa dell'altro, la disconnessione.
+6. Le prove: due pagine collegate da un canale finto (in memoria, con
+   ritardo e disordine) -> stesse impronte; poi WebRTC vero fra due pagine
+   dello stesso browser (in locale non serve STUN).
+Attenzione: il vantaggio di chi nasce dopo (sopra, equita'); le cose di chi
+guarda che non devono mai cambiare la partita (se una prova a due pagine
+diverge, la sonda: EVERY=20 DIFFS=20 pvp.mjs stampa il primo campo
+diverso, come per alLife, _fogStamp, leafHit).
