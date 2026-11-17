@@ -12,6 +12,10 @@ const OBJ = {
   centro: { parents: ["ally_build", "ally"], sprite: "cc_spr" }, casa_fond: { parents: ["ally_fondamenta", "ally_build", "ally"] },
   ally_fondamenta: { parents: ["ally_build", "ally"] }, arciere_bullet: { parents: [] }, albero: { parents: ["natural_parent"] },
   casa_clicker: { parents: ["clicker_parent"] }, enemy_unit: { parents: ["enemy"] },
+  // [segnalazione dell'autore] la famiglia ally_barn e il mulino barn: due gemelli diversi
+  ally_wooden: { parents: ["ally_build", "ally"] }, ally_barn: { parents: ["ally_wooden", "ally_build", "ally"] },
+  barn: { parents: ["ally_barn", "ally_wooden", "ally_build", "ally"], sprite: "barn_spr" },
+  cc_barn: { parents: ["ally_barn", "ally_wooden", "ally_build", "ally"] },
 };
 
 test("§9.155 gemelli e nomi delle due parti", () => {
@@ -31,6 +35,11 @@ test("§9.155 gemelli e nomi delle due parti", () => {
   assert.equal(m2.enemy_centro, "centro");
   assert.equal(m1.enemy_unit, "p2_unit"); // per il rosso il nemico e' il blu
   assert.equal(m1.ally_unit, undefined);
+  // nomi tutti diversi: ally_barn tiene il prefisso, barn no
+  assert.equal(m2.barn, "p2_barn");
+  assert.equal(m2.ally_barn, "p2_ally_barn");
+  assert.deepEqual(twinObjects(OBJ, t).p2_cc_barn.parents, ["p2_ally_barn", "p2_wooden", "p2_build", "p2"]);
+  assert.equal(m2.enemy_barn, "ally_barn");
 });
 
 test("§9.155 lo specchio del mondo", () => {

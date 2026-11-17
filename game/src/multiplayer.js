@@ -29,7 +29,13 @@ const EXTRA = ["arciere_bullet", "arciere_bullet_t", "catapulta_bullet", "food_b
 // della campagna o dell'interfaccia, senza gemello
 const NO_TWIN = /^(monastero|o_statua|palo_|object183$|oodl$|oosl$|ovbl$|oval$)/;
 
-export const twinName = (n) => (n === "ally" ? "p2" : n.startsWith("ally_") ? "p2_" + n.slice(5) : "p2_" + n);
+// [§9.155, segnalazione dell'autore: un mulino rosso sul centro blu] togliere
+// "ally_" non deve dare il nome di un altro oggetto: ally_barn (la famiglia
+// dei depositi del cibo) e barn (il mulino) diventavano tutti e due p2_barn,
+// e il deposito invisibile del centro blu nasceva mulino. Quei nomi tengono
+// il prefisso (p2_ally_barn): COLLIDE, riempito da nameMaps.
+const COLLIDE = new Set();
+export const twinName = (n) => (n === "ally" ? "p2" : COLLIDE.has(n) ? "p2_" + n : n.startsWith("ally_") ? "p2_" + n.slice(5) : "p2_" + n);
 
 // [§9.155] il nome originale di un gemello (p2_omino -> ally_omino, p2_centro
 // -> centro): per il codice del giocatore che confronta i nomi degli oggetti
@@ -72,6 +78,13 @@ export const ENEMY_EQ = {
 // -> p2_*)
 export function nameMaps(objects) {
   const twins = new Set(twinNames(objects));
+  for (const n of twins) if (n.startsWith("ally_") && objects[n.slice(5)]) COLLIDE.add(n);
+  const names = new Map();
+  for (const n of twins) {
+    const t = twinName(n);
+    if (names.has(t) || objects[t]) throw new Error(`gemello doppio: ${t} (${n}, ${names.get(t) || "esiste gia'"})`);
+    names.set(t, n);
+  }
   const m2 = {}, m1 = {};
   for (const n of twins) m2[n] = twinName(n);
   for (const [e, a] of Object.entries(ENEMY_EQ)) {

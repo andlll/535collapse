@@ -55,8 +55,17 @@ const plan = await A.evaluate(() => {
     mid: [Math.round(w.roomW / 2), Math.round(w.roomH / 2)],
     p2: { ...G.g.p2 }, p1: { food: G.g.food, wood: G.g.wood },
     eco: w.exists("enemy_eco"), centri: [w.number("centro"), w.number("p2_centro"), w.number("enemy_centro")],
+    // [segnalazione dell'autore] nessun mulino sul centro blu: il suo deposito
+    // del cibo e' p2_cc_barn, senza sprite, non un mulino (p2_barn, mul1)
+    mulini: w.number("p2_barn"), deposito: [...w.all("p2_cc_barn")].map((i) => [i.sprite_index, i.visible]),
   };
 });
+// la nebbia: dal rosso la base blu non si vede, e viceversa
+const fog0 = await Promise.all([A, B, C].map((P) => P.evaluate(() => { // (C anche: stessi passi)
+  const w = window.__game.world, mine = w.mp.local === 1 ? "p2_centro" : "centro";
+  for (let k = 0; k < 5; k++) window.__game.advance(1);
+  return [...w.all(mine)].some((i) => w.shown(i));
+})));
 // [passo, giocatore, tipo, dati]
 const CMDS = [
   [10, 1, "civile", { ids: [plan.c2] }],
@@ -147,12 +156,14 @@ await browser.close();
 
 const fought = after.cadaveri[0] + after.cadaveri[1] > 0 && (after.guerrieri[0] + after.arcieri[0] < 6) && (after.guerrieri[1] + after.arcieri[1] < 6);
 const ok = errs.length === 0 && !bad && control && hashes.length === Math.ceil(STEPS / EVERY)
-  && plan.centri[1] === 1 && plan.centri[2] === 0 && !plan.eco && plan.om2.length === 3
+  && plan.centri[1] === 1 && plan.centri[2] === 0 && plan.mulini === 0 && plan.deposito.length === 1 && plan.deposito.every(([sp]) => !sp)
+  && !fog0[0] && !fog0[1] && !plan.eco && plan.om2.length === 3
   && after.legna[0] > 0 && after.legna[1] > 0 && after.casaBlu >= 1 && after.caseRosse === 0 && after.civili[1] >= 4 && fought
   && end[0].vince === 1 && end[1].vince === 1 && end[0].vittoria && !end[0].sconfitta && end[1].sconfitta && !end[1].vittoria
   && look.tabella > 500 && look.civile && look.civile[1] && look.centro && look.centro[1] === "cc_b";
 console.log(room, "partita a due, passi", STEPS, "impronte uguali (rosso = blu):", bad ? "NO" : `${hashes.length}/${hashes.length}`);
 if (bad) console.log("  divergono al passo", bad.passo, "->", bad.diverso);
+console.log("  nebbia", JSON.stringify({ rossoVedeBaseBlu: fog0[0], bluVedeBaseRossa: fog0[1], muliniBlu: plan.mulini, deposito: plan.deposito }));
 console.log("  inizio", JSON.stringify({ centri: plan.centri, regiaCPU: plan.eco, civiliBlu: plan.om2.length, cassaBlu: plan.p2, casaBlu: plan.spot }));
 console.log("  fatto ", JSON.stringify(after));
 console.log("  blu   ", JSON.stringify(look));

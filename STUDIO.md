@@ -10944,6 +10944,16 @@ giocatore e ogni edificio finito ha il suo blu).
   scansavano fra loro.
 
 **Cosa resta (fase 3).**
+- [Segnalazione dell'autore: "un mulino rosso sul centro blu"] Due gemelli
+  con lo stesso nome: ally_barn (la famiglia dei depositi del cibo) e barn
+  (il mulino) diventavano tutti e due p2_barn, e il deposito invisibile del
+  centro blu (p2_cc_barn, figlio di p2_barn) prendeva il comportamento del
+  mulino: nasceva con lo sprite mul1. Ora un nome che togliendo "ally_"
+  darebbe un altro oggetto tiene il prefisso (p2_ally_barn), e nameMaps si
+  ferma con un errore se due gemelli finiscono sullo stesso nome. La nebbia
+  controllata con le immagini: dal rosso la base blu e' nera, e viceversa;
+  un soldato blu vicino ai rossi il rosso lo vede. pvp.mjs controlla tutte e
+  due le cose.
 - Altri confronti di nomi d'oggetto nel codice del giocatore (i.object ===
   "...", tabelle per nome) non ancora passati da baseOf: cercarli quando un
   comportamento del blu non torna (grep 'object ===', '[i.object]').
