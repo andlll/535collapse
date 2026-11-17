@@ -35,6 +35,13 @@ del field nel giorno (ora scende in linea dall'alba al tramonto), un filo
 di field di notte (ora 0), la soglia del drone (50 di popolazione), la
 musica nel menu principale (ora muta), i volumi degli effetti a orecchio.
 
+**Multiplayer 1 contro 1** (§9.152-§9.153; decisioni dell'autore: 1v1, con un
+codice, preferibilmente connessione diretta, parti simmetriche). Fasi: 1
+determinismo (fatta, §9.152); 2 strato dei comandi (passo 1 fatto: coda,
+registro, replay e la prova; passi 2-3 da fare: i comandi veri, un'azione
+alla volta, §9.153 "Come riprendere"); 3 parti simmetriche; 4 rete e lobby
+(WebRTC; scambio dei codici e STUN/TURN da decidere, §9.152).
+
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
 (`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
@@ -10581,3 +10588,117 @@ scoprire l'indirizzo, niente traffico di gioco); senza un server TURN (che
 inoltra il traffico, a pagamento) una parte delle reti (stimata 10-20%:
 NAT simmetrici, reti aziendali) non si collega. Da decidere con l'autore
 quando si arriva alla fase 4.
+
+### 9.153 Multiplayer, fase 2, passo 1: coda dei comandi, registro, replay
+
+Richiesta dell'autore (17 novembre 2026, stessa PR, versione 0.2611):
+cominciare la fase 2 dal passo 1, documentando tutto, perche' il lavoro si
+riprendera' nelle sessioni successive.
+
+**Perche' la fase 2.** In una partita in lockstep (§9.152) i due browser si
+scambiano i comandi dei giocatori e li eseguono allo stesso passo. Oggi gli
+ordini non sono comandi: sono eventi delle istanze, alla GameMaker, che
+leggono il mouse durante il passo, e la selezione (`selected`) fa parte dello
+stato della partita. Inventario (17 novembre 2026: gestori per file; "clic dx
+glob." = globalRightReleased, l'ordine col clic destro; "sx altrove" =
+globalLeftPressed, la deselezione; "mouse nei passi" = letture di w.mouse,
+w.input, mousePressed/Released; "selected" = punti in cui decide):
+
+| file | clic dx glob. | clic dx | clic sx | sx altrove | tasti | hover | mouse nei passi | selected |
+|---|---|---|---|---|---|---|---|---|
+| buildings.js | 1 | 6 | 6 | 7 | 9 | 6 | 24 | 39 |
+| units.js | 2 | 0 | 1 | 1 | 1 | 3 | 17 | 35 |
+| walls.js | 0 | 4 | 6 | 4 | 5 | 2 | 4 | 19 |
+| ranged.js | 1 | 2 | 3 | 4 | 0 | 1 | 9 | 20 |
+| civilians.js | 0 | 1 | 1 | 2 | 0 | 2 | 6 | 20 |
+| production.js | 1 | 0 | 0 | 1 | 2 | 2 | 8 | 6 |
+| siege.js | 2 | 0 | 0 | 0 | 0 | 1 | 8 | 9 |
+| enemies.js | 0 | 1 | 2 | 1 | 1 | 1 | 2 | 11 |
+| levels.js | 0 | 2 | 2 | 0 | 2 | 1 | 4 | 2 |
+| manager.js | 0 | 0 | 0 | 0 | 0 | 0 | 9 | 1 |
+| bridge.js, economy.js, enemybuild.js, hints.js, world.js, menu.js, stealth.js | | | | | | | | (pochi) |
+
+Da qui la scelta: non convertire tutto in una volta (e' il cuore di ogni
+interazione), ma un'infrastruttura che regge subito una prova completa, e
+poi un'azione alla volta.
+
+**Il passo 1: cosa c'e'** (`game/src/commands.js`, classe `Commands`; in
+app.js `commands`, esposto come `window.__game.commands`).
+- *Comandi veri* (per il passo 2): `on(kind, fn)` registra il gestore di un
+  tipo; `issue(kind, data, step, p = 0)` mette un comando del giocatore `p`
+  da eseguire all'inizio del passo `step` del mondo; `runDue(world)` (in
+  app.js subito prima di `world.step`) esegue quelli del passo in un ordine
+  che non dipende dall'arrivo: passo, giocatore, numero. Un tipo senza
+  gestore e' un errore. Oggi nessun tipo registrato.
+- *Il comando di transizione `input`*: `frame(input, cam)` (in app.js subito
+  dopo `input.beginStep()`, a ogni passo del ciclo, anche in pausa) registra la
+  fotografia dell'input (mouse in pixel CSS, dentro/fuori, tasti
+  giu'/premuti/rilasciati, pulsanti del mouse, rotella) e della telecamera
+  (x, y, w, h, cssW, cssH, zoom e zoom in corso), solo quando cambia. In
+  replay la rimette, passo per passo: il resto della partita e'
+  deterministico (§9.152), quindi in singolo la partita si rigioca identica
+  anche con un'altra misura della finestra. NON serve in rete (i pulsanti
+  seguono la vista di chi gioca; l'input del secondo giocatore dovra'
+  muovere la parte nemica): e' la rete di sicurezza mentre le azioni passano
+  ai comandi veri, e il modo per provarle (sotto).
+- *Il registro*: `__game.record()` lo comincia (room e seme della partita:
+  rng.js `simSeedValue`; serve una partita con seme, `?seed=` o quello
+  nuovo di ogni partita), `commands.stop()` lo restituisce:
+  `{ v: 1, room, seed, frames: [[passo del ciclo, fotografia]], cmds: [...],
+  checks: [[passo del mondo, impronta]] }`. `afterStep(world, hash)` (alla
+  fine del passo in app.js) aggiunge l'impronta ogni CHECK_EVERY = 300
+  passi.
+- *Il replay*: `commands.replay(log)` in una pagina aperta con lo stesso seme
+  (e `?nostart`): l'input vero e' ignorato (e i comandi locali: `issue`
+  restituisce null), si rifanno fotografie e comandi del registro; a ogni
+  impronta registrata il confronto (`play.result`, `play.divergedAt`).
+- Quando non si registra ne' si rigioca, gli agganci non fanno niente
+  (salvataggi, determinismo, crowd: uguali).
+
+**Prove.**
+- `test/commands.test.mjs` (unitaria): ordine (passo, giocatore, numero)
+  con comandi arrivati in disordine; registro; replay agli stessi passi;
+  comandi locali ignorati in replay; tipo sconosciuto; la fotografia solo
+  quando cambia e rimessa uguale.
+- `test/browser/replay.mjs` (nella CI): una schermaglia su Padus (seme 11)
+  giocata SOLO con input veri (clic sul centro e Q; trascinamento attorno ai
+  lavoratori e clic destro su un albero; un lavoratore, Q, il fantasma della
+  casa sotto il puntatore fino al posto buono, clic; frecce; rotella; un
+  ordine di movimento; la CPU che gioca), 3765 passi, 223 fotografie;
+  rigiocata dal solo registro in una finestra 960x640: 12 impronte su 12
+  uguali e la stessa alla fine. Controllo: col primo clic destro spostato di
+  200 px diverge al passo 600. La prova fallisce anche se la sessione non fa
+  davvero le sue azioni (centro selezionato, lavoratori selezionati, un
+  cantiere).
+
+**Come riprendere (passo 2 e 3).** Per ogni azione:
+1. un tipo di comando con i dati che bastano a eseguirla senza mouse ne'
+   selezione: per esempio `{ k: "muovi", ids: [...], x, y }`, `{ k:
+   "attacca", ids, target }`, `{ k: "costruisci", ids, obj, x, y }`, `{ k:
+   "produci", edificio, unita' }`, `{ k: "comportamento", ids, comp }`; il
+   gestore (`commands.on`) fa quello che oggi fa l'evento;
+2. l'evento d'input (clic destro, tasto, pulsante) non cambia piu' lo stato:
+   calcola i dati (chi e' selezionato, dove punta il mouse) e chiama
+   `commands.issue(...)` per il passo in corso;
+3. la prova: replay.mjs (e le prove che danno ordini col clic vero: crowd,
+   movement, settle, attackorder, fireorder, sites, buildstuck, garrison...)
+   devono restare uguali; poi una variante del replay che rigioca SOLO i
+   comandi veri (senza le fotografie, o con le fotografie svuotate dei clic
+   gia' convertiti) deve dare le stesse impronte per le azioni convertite.
+Ordine proposto (dal piu' usato): (a) la selezione fuori dallo stato della
+partita (`selected` diventa dell'interfaccia del giocatore; i ~150 punti in
+cui decide passano a "le unita' del comando"); (b) gli ordini col clic destro
+(9 globalRightReleased: fanti e cavalieri, arcieri, civili, assedio,
+edifici con la bandiera); (c) comportamento, modi di tiro, presidio; (d)
+costruzione e piazzamento (i fantasmi *_placer), mura e porte; (e)
+produzione e code; (f) riparazione, fuoco, gruppi di controllo, doppio clic.
+Attenzioni: le istanze d'interfaccia (pulsanti, fantasmi, dialoghi) hanno
+id a parte e le ricerche della partita non le vedono (§9.152): i comandi non
+devono dipendere da loro; il passo in cui un comando si esegue e' quello
+in corso in singolo, in rete qualche passo dopo (il ritardo dei comandi,
+fase 4).
+
+**Per provare in questa macchina** (cloud): niente server http (negato
+dall'ambiente): un modulo che serve game/ da disco a Playwright
+(PLAYWRIGHT_MODULE, come in §9.146); la suite completa nel browser richiede
+~45 minuti con 4 prove in parallelo.

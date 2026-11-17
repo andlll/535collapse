@@ -17,6 +17,7 @@
 // Fuori da questo file Math.random non si usa (test/determinism.test.mjs).
 
 let S = null; // stato di sfc32 (4 interi a 32 bit), o null: Math.random
+let SEED = null; // il seme della partita (per il registro dei comandi, §9.153)
 
 function sfc32() {
   let [a, b, c, d] = S;
@@ -32,10 +33,12 @@ function sfc32() {
 
 // il seme della partita (un intero); le prime estrazioni si buttano
 export function simSeed(seed) {
+  SEED = seed >>> 0;
   S = [seed >>> 0, 0x9e3779b9, 0x243f6a88, 0xb7e15162];
   for (let k = 0; k < 15; k++) sfc32();
 }
 export const simSeeded = () => S !== null;
+export const simSeedValue = () => SEED;
 export function simRandom() {
   return S ? sfc32() : Math.random();
 }

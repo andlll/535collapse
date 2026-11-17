@@ -48,7 +48,8 @@ import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, provaNebbia } from "./stealth.js"; // §9.148
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
-import { simSeed, freshSeed } from "./rng.js"; // §9.152
+import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
+import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube } from "./skirmish.js";
@@ -536,8 +537,12 @@ async function main() {
     saveGame(true);
   };
 
+  // [§9.153, multiplayer, fase 2] i comandi: registro e replay (commands.js)
+  const commands = new Commands();
+  const hashNow = () => stateHash({ world, g, manager, path });
   const step = () => {
     input.beginStep();
+    commands.frame(input, cam); // in replay: l'input e la telecamera del registro
     if (pause.paused) {
       pause.input(input);
       return;
@@ -560,6 +565,7 @@ async function main() {
     world.input = input;
     const inside = input.inside;
     if (mm) input.inside = false; // niente hover ne' clic sulle istanze sotto la minimappa
+    commands.runDue(world); // §9.153: i comandi di questo passo, prima delle istanze
     world.step(input, mm && mm.order ? mm.order[0] : mx, mm && mm.order ? mm.order[1] : my);
     input.inside = inside;
     recountIdle(world); // §6.1 n.80
@@ -588,6 +594,7 @@ async function main() {
     } else {
       cam.clamp();
     }
+    commands.afterStep(world, hashNow); // §9.153: l'impronta nel registro, ogni CHECK_EVERY passi
   };
 
   let fpsNow = 0;
@@ -881,6 +888,8 @@ async function main() {
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
+    // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
+    commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),
                     objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
