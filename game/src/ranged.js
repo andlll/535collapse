@@ -12,7 +12,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, moveStalled } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
-import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
+import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups, dcOn, dcArm } from "./units.js";
 import { baseCounters } from "./enemybuild.js";
 import { holdStill } from "./siege.js";
 import { lmStep, lmReady } from "./lastmile.js";
@@ -181,7 +181,7 @@ export function allyArcher(p) {
   const leftClick = (i, w) => {
     const g = w.g;
     if (!(i.hover === 1 && w.input.mouseReleased[0])) return;
-    if (i.dc === 1) {
+    if (dcOn(i, w)) {
       const c = w.cam;
       for (const o of w.all(ARC)) {
         if (o.x > c.x && o.x < c.x + c.w && o.y > c.y && o.y < c.y + c.h) { o.selected = 1; g.sel += 1; g.milsel += 1; g.arcsel += 1; }
@@ -191,8 +191,8 @@ export function allyArcher(p) {
       i.selected = 1;
       g.arcsel++;
       g.milsel += 1;
-      if (i.dc === 0) g.sel += 1;
-      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+      if (!dcOn(i, w)) g.sel += 1;
+      if (!dcOn(i, w)) dcArm(i, w);
     }
     hintOnce(w, "hint_multi", "multihint", i.x, i.y, w.room === "match");
     if (g.sele === -1) {

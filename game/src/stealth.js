@@ -242,9 +242,13 @@ export function stealthMarks() {
 // ---------------------------------------------------------- i due pulsanti
 // tiro_furtivo_clicker / tiro_rapido_clicker: accanto ad attacco e difesa
 // (x 520), per gli arcieri della nebbia selezionati. Il modo scelto e' pieno.
+// [§9.154] l'azione "tiro" ({ ids, modo }): gli arcieri della nebbia `ids`
+export function shotAction(w, c) {
+  for (const u of w.byIds(c.ids, "ally_arciere")) if (u.hunter) u.shotMode = c.modo;
+}
 export function shotClicker(mode) {
   const furtivo = mode === "furtivo", Y = furtivo ? 50 : 120;
-  const apply = (w) => { for (const u of w.all("ally_arciere")) if (u.selected === 1 && u.hunter) u.shotMode = mode; };
+  const apply = (w) => w.act("tiro", { ids: w.selectedIds(), modo: mode }); // §9.154: shotAction
   const anySel = (w) => { for (const u of w.all("ally_arciere")) if (u.selected === 1 && u.hunter) return u; return null; };
   return {
     create(i) { i.hover = 0; },

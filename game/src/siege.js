@@ -17,7 +17,7 @@ import { siegeMove, walkLine, arriveIfBlocked, GRID, onFormationSlot, destinatio
 import { ramSpot } from "./melee.js";
 import { fogSight } from "./enemies.js";
 import { sightK, seenNear } from "./fog.js";
-import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups } from "./units.js";
+import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups, dcOn, dcArm } from "./units.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { simRandom } from "./rng.js"; // §9.152
 
@@ -76,7 +76,7 @@ function siegeCommon(name, corpseName, icon) {
     leftClickAndDeath(i, w) {
       const g = w.g;
       if (i.hover === 1 && w.input.mouseReleased[0]) {
-        if (i.dc === 1) {
+        if (dcOn(i, w)) {
           const c = w.cam;
           for (const o of w.all(name)) {
             if (o.x > c.x && o.x < c.x + c.w && o.y > c.y && o.y < c.y + c.h) { o.selected = 1; g.sel += 1; g.siegsel++; g.milsel += 1; }
@@ -84,8 +84,8 @@ function siegeCommon(name, corpseName, icon) {
         }
         if (g.sele > -1 && i.selected === 0) {
           i.selected = 1; g.milsel += 1; g.siegsel++;
-          if (i.dc === 0) g.sel += 1;
-          if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+          if (!dcOn(i, w)) g.sel += 1;
+          if (!dcOn(i, w)) dcArm(i, w);
         }
         if (g.sele === -1) {
           if (i.selected === 1) { g.sel -= 1; g.siegsel--; g.milsel -= 1; }

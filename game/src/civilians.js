@@ -15,7 +15,7 @@ import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
 import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallySpot, rallyGo } from "./pathing.js";
 import { lmStep, lmReady } from "./lastmile.js";
-import { phaseOf, walkCycle, firstSelected } from "./units.js";
+import { phaseOf, walkCycle, firstSelected, dcOn, dcArm } from "./units.js";
 import { meleeSpot } from "./melee.js";
 import { complexOf, complexPoint, complexNear, complexField } from "./complex.js";
 import { bridgeEnds, woodDue } from "./bridge.js";
@@ -396,11 +396,11 @@ function ominoStep(i, w, p, stop) {
   // azione 1: tasto sinistro (i civili non contano in milsel; §9.44: solo i
   // civili del giocatore)
   if (S.player && i.hover === 1 && input.mouseReleased[0]) {
-    if (i.dc === 1) for (const o of w.all(OM)) if (inView(w, o)) { o.selected = 1; g.sel += 1; }
+    if (dcOn(i, w)) for (const o of w.all(OM)) if (inView(w, o)) { o.selected = 1; g.sel += 1; }
     if (g.sele > -1 && i.selected === 0) {
       i.selected = 1;
-      if (i.dc === 0) g.sel += 1;
-      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+      if (!dcOn(i, w)) g.sel += 1;
+      if (!dcOn(i, w)) dcArm(i, w);
     }
     if (g.sele === -1) {
       if (i.selected === 1) g.sel -= 1;

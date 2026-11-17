@@ -21,7 +21,7 @@
 
 import { tr } from "./i18n.js";
 import { pointDirection } from "./gm.js";
-import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondLifeBar } from "./buildings.js";
+import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondMouse, fondLifeBar } from "./buildings.js";
 import { revealBuilding, enemyBarAndPanel } from "./enemybuild.js";
 import { damageSuffix, showDamage } from "./damage.js";
 
@@ -86,7 +86,7 @@ export function wallFond(k, p) {
       // le anteprime e i placer dei prolungamenti spariscono
       destroyAll(w, "oval", "ovbl", "oosl", "oodl", "muraplacer_va", "muraplacer_vb", "muraplacer_os", "muraplacer_od");
     },
-    alarm0(i, w) { armBuilders(i, w, p, "buildwork", w.mouse.x, w.mouse.y); },
+    alarm0(i, w) { armBuilders(i, w, p, "buildwork", ...fondMouse(i, w)); },
     step(i, w) {
       // §9.55: colpito fino a 0 crolla, come gli altri cantieri
       if (i.life <= 0) { p.markInstance(i, 1); w.destroy(i); destroyAll(w, ...plusNames); return; }

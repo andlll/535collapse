@@ -269,15 +269,15 @@ export function cavaliere(p) {
       const g = w.g, input = w.input;
       // azione 1: tasto sinistro sull'unita'
       if (i.hover === 1 && input.mouseReleased[0]) {
-        if (i.dc === 1) {
+        if (dcOn(i, w)) {
           for (const o of w.all(CAV)) if (inView(w, o)) { o.selected = 1; g.sel += 1; g.milsel += 1; }
         }
         if (g.sele > -1 && i.selected === 0) {
           i.selected = 1;
           g.milsel += 1;
-          if (i.dc === 0) g.sel += 1;
+          if (!dcOn(i, w)) g.sel += 1;
           hintOnce(w, "hint_multi", "multihint", i.x, i.y);
-          if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+          if (!dcOn(i, w)) dcArm(i, w);
         }
         if (g.sele === -1) {
           if (i.selected === 1) { g.sel -= 1; g.milsel -= 1; }
@@ -363,6 +363,13 @@ export function cavaliere(p) {
   };
 }
 
+// [§9.154] La finestra del doppio clic (30 passi dopo il clic che seleziona)
+// e' dell'interfaccia di chi clicca: prima era l'Alarm_1 dell'unita' (dc = 1,
+// poi 0), uno stato della partita; ora il passo fino a cui vale (dcAt, fuori
+// dall'impronta)
+export const dcOn = (i, w) => (i.dcAt ?? -1) > w._stepNo;
+export function dcArm(i, w) { i.dcAt = w._stepNo + 30; }
+
 // "creazione pulsanti di comportamento" [C, Step di ogni unita' militare]
 function behaviourButtons(i, w) {
   if (i.selected === 1 && w.number("attacco_clicker") === 0) {
@@ -397,7 +404,7 @@ export function infantry(name, p) {
   const leftClick = (i, w) => {
     const g = w.g;
     if (!(i.hover === 1 && w.input.mouseReleased[0])) return;
-    if (i.dc === 1) {
+    if (dcOn(i, w)) {
       for (const o of w.all(name)) if (inView(w, o)) { o.selected = 1; g.sel += 1; g.milsel += 1; g.firesel++; }
     }
     if (g.sele > -1 && i.selected === 0) {
@@ -405,8 +412,8 @@ export function infantry(name, p) {
       g.milsel += 1;
       g.firesel++;
       hintOnce(w, "hint_multi", "multihint", i.x, i.y);
-      if (i.dc === 0) g.sel += 1;
-      if (i.dc === 0) { i.dc = 1; i.alarm.set(1, 30); }
+      if (!dcOn(i, w)) g.sel += 1;
+      if (!dcOn(i, w)) dcArm(i, w);
     }
     if (g.sele === -1) {
       if (i.selected === 1) { g.sel -= 1; g.firesel--; g.milsel -= 1; }
@@ -597,12 +604,15 @@ export function controlGroups(civilian) {
 
 // attacco_clicker / difesa_clicker [C]: comp 700 (insegue entro 700 px) o
 // 200.
+// [§9.154] l'azione "comportamento" ({ ids, attacco }): le unita' `ids`
+// (prima: le selezionate)
+export function behaviourAction(w, c) {
+  for (const u of w.byIds(c.ids, "ally_militare")) u.comp = c.attacco ? 700 : 200;
+  if (!c.attacco) for (const u of w.byIds(c.ids, "ally_arciere")) u.comp = 200;
+}
 export function behaviourClicker(kind) {
   const attack = kind === "attacco";
-  const apply = (w) => {
-    for (const u of w.all("ally_militare")) if (u.selected === 1) u.comp = attack ? 700 : 200;
-    if (!attack) for (const u of w.all("ally_arciere")) if (u.selected === 1) u.comp = 200;
-  };
+  const apply = (w) => w.act("comportamento", { ids: w.selectedIds(), attacco: attack });
   return {
     create(i) { i.active = 0; i.hover = 0; },
     step(i, w) {

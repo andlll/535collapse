@@ -53,3 +53,32 @@ test("§9.153 comandi: la fotografia dell'input e della telecamera", () => {
   assert.deepEqual(seen, [[0, [], false, 10], [0, [], false, 10], [100, [81], true, 10], [100, [], false, 300]]);
   assert.ok(CHECK_EVERY > 0);
 });
+
+// [§9.154] Le azioni del mondo (world.action, world.act): con la coda dei
+// comandi sono comandi del passo dopo, eseguiti dai tipi registrati nel
+// mondo; senza, subito. In replay "solo comandi" l'input non si rimette.
+test("§9.154 azioni del mondo come comandi", async () => {
+  const { World } = await import("../src/world.js");
+  const w = new World({ sprites: {}, objects: {} });
+  const done = [];
+  w.action("prova", (ww, c) => done.push([ww._stepNo, c.ids, c.x]));
+  w.act("prova", { ids: [3], x: 1 }); // senza coda: subito
+  assert.deepEqual(done, [[0, [3], 1]]);
+  const C = new Commands();
+  w.hooks.command = (kind, c) => C.issue(kind, c, w._stepNo + 1);
+  C.record({});
+  w.act("prova", { ids: [4, 5], x: 2 });
+  C.runDue(w);
+  assert.equal(done.length, 1); // non ancora: al passo dopo
+  w._stepNo = 1;
+  C.runDue(w);
+  assert.deepEqual(done[1], [1, [4, 5], 2]);
+  const log = C.stop();
+  assert.deepEqual(log.cmds.map((c) => c.k), ["prova"]);
+  assert.throws(() => w.runAction("sconosciuta", {}), /azione sconosciuta/);
+  // replay senza input: le fotografie non si rimettono
+  const R = new Commands(), inp = { x: 7 };
+  R.replay({ frames: [[0, { x: 1 }]], cmds: [], checks: [] }, { input: false });
+  R.frame(inp, {});
+  assert.equal(inp.x, 7);
+});

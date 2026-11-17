@@ -65,6 +65,12 @@ const run = (page, n, from, kind) => page.evaluate(([n, from, kind]) => {
     if (s === 1500) G.g.raining = 1; // lo stesso "input" nelle due pagine
     G.advance(1);
     if (kind === "B" && s % 7 === 0) { G.cam.x = r() * (w.roomW - G.cam.w); G.cam.y = r() * (w.roomH - G.cam.h); }
+    // [§9.154] B seleziona e deseleziona a caso (senza dare ordini): la
+    // selezione e' di chi guarda, la partita non deve cambiare
+    if (kind === "B" && s % 11 === 0) {
+      const mine = w.instances.filter((i) => i.alive && !i.ui && !i.fx && "selected" in i && /^(ally|centro|casa|caserma|torre|mura|porta|granaio|deposito|monastero|stalla|arcieria|fucina|mulino|fattoria)/.test(i.object));
+      if (mine.length) { const i = mine[Math.floor(r() * mine.length)]; i.selected = i.selected === 1 ? 0 : 1; }
+    }
     if (s % (kind === "A" ? 2 : 5) === 0) G.loop.render();
   }
   return G.hash();

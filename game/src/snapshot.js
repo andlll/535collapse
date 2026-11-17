@@ -53,12 +53,20 @@ export function captureGame({ world, g, manager, path, fog, cam, room }) {
 // (pulsanti, dialoghi, suggerimenti).
 // le chiavi di global che sono dell'interfaccia di chi guarda
 export const UI_GLOBALS = ["scaleview", "sz", "sele", "multi", "startx", "starty", "enemyhover", "hover", "mouse_x", "mouse_y",
-                           "alarms", "alarmhint"]; // gli allarmi d'attacco della minimappa (attackalarm.js)
+                           "alarms", "alarmhint", // gli allarmi d'attacco della minimappa (attackalarm.js)
+                           // [§9.154, fase 2, passo 2] la selezione e' di chi guarda: in rete ognuno ha
+                           // la sua; i contatori dei selezionati
+                           "sel", "milsel", "firesel", "arcsel", "siegsel", "selected",
+                           // il puntatore sopra una risorsa, un cantiere, un campo, una torre (il cerchio)
+                           "alberhover", "minierahover", "stonehover", "farmhover", "buildhover", "preshover"];
+// [§9.154] i campi delle istanze che sono della selezione di chi guarda (il
+// selezionato, il doppio clic in corso, il gruppo di controllo)
+export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver"]; // (e il puntatore sopra l'istanza)
 // i campi delle istanze che tengono stato grafico (particelle di fuoco ed
 // erba, righe del grano): diversi con le opzioni grafiche di chi guarda
 const VISUAL_KEYS = ["fire_ps", "fire_emitter", "fire_part", "grass_rows", "grass_system", "grass_system_black",
                      "grass_emitter", "crop_rows", "skRain", "skRainPs"];
-const HASH_OPTS = { ...OPTS, skipInstanceKeys: [...OPTS.skipInstanceKeys, "hover", "hov", ...VISUAL_KEYS] };
+const HASH_OPTS = { ...OPTS, skipInstanceKeys: [...OPTS.skipInstanceKeys, "hover", "hov", ...VISUAL_KEYS, ...SELECTION_KEYS] };
 export function stateParts({ world, g, manager, path }) {
   const gg = {};
   for (const k of Object.keys(g)) if (!UI_GLOBALS.includes(k)) gg[k] = g[k];

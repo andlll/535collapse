@@ -9,7 +9,9 @@
 // registrata (G.record) con le impronte ogni 300 passi; poi la stessa partita
 // rigiocata dal solo registro (G.commands.replay) in un'altra pagina, con
 // un'altra misura della finestra: tutte le impronte uguali e la stessa alla
-// fine. Controllo: il registro con un clic destro spostato diverge.
+// fine. Controllo: il registro con un ordine spostato diverge. [§9.154] E
+// rigiocata dai SOLI comandi (nessun input, ne' selezione, ne' telecamera):
+// la stessa partita (le sue azioni sono tutte comandi).
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -95,23 +97,29 @@ const rec = await A.evaluate(() => {
 });
 
 // la stessa partita dal registro, in un'altra finestra
-const replay = async (log, w, h) => {
+const replay = async (log, w, h, opts = {}) => {
   const P = await open(w, h);
-  const r = await P.evaluate(([log, frames]) => {
+  const r = await P.evaluate(([log, frames, opts]) => {
     const G = window.__game;
-    G.commands.replay(log);
+    G.commands.replay(log, opts);
     for (let k = 0; k < frames; k++) G.advance(1);
     return { passi: G.world._stepNo, hash: G.hash(), result: G.commands.play.result, divergedAt: G.commands.play.divergedAt ?? null };
-  }, [log, rec.frame]);
+  }, [log, rec.frame, opts]);
+  if (r.divergedAt !== null && process.env.DIFFS) r.dump = await P.evaluate(() => window.__game.dump());
   await P.close();
   return r;
 };
 const B = await replay(rec.log, 960, 640);
-// controllo: un clic destro spostato di 200 px
+// controllo: il primo ordine (il comando del clic destro, §9.154) spostato
+// di 200 px
 const bad = JSON.parse(JSON.stringify(rec.log));
-const fr = bad.frames.find(([, s]) => s.mr[1]);
-if (fr) fr[1].x += 200;
+const fr = bad.cmds.find((c) => c.k === "ordine" && c.ids.length);
+if (fr) fr.x += 200;
 const C = await replay(bad, 1280, 720);
+// [§9.154, fase 2, passo 2] SOLO i comandi, senza nessun input (ne'
+// selezione, ne' clic, ne' telecamera): le azioni di questa sessione (ordini,
+// civili in coda, la casa) sono tutte comandi, quindi la partita e' la stessa
+const D = await replay(rec.log, 1280, 720, { input: false });
 await browser.close();
 
 const checks = B.result.length, same = B.result.every(([, ok]) => ok);
@@ -119,10 +127,14 @@ const checks = B.result.length, same = B.result.every(([, ok]) => ok);
 const did = (pre) => { const f = rec.fatto.find((x) => x.startsWith(pre)); return f ? f.slice(pre.length) : ""; };
 const played = did("centro ") === "true" && /^[1-9]/.test(did("selezionati ")) && Number(did("cantieri ")) >= 1;
 const ok = played && errs.length === 0 && rec.log.checks.length >= 8 && checks === rec.log.checks.length && same
-  && B.hash === rec.hash && B.passi === rec.passi && !!fr && C.hash !== rec.hash;
+  && B.hash === rec.hash && B.passi === rec.passi && !!fr && C.hash !== rec.hash
+  && D.result.length === rec.log.checks.length && D.result.every(([, o]) => o) && D.hash === rec.hash
+  && ["ordine", "civile", "costruisci"].every((k) => rec.log.cmds.some((c) => c.k === k));
 console.log("partita  ", JSON.stringify({ passi: rec.passi, fatto: rec.fatto, fotografie: rec.log.frames.length, impronte: rec.log.checks.length, seme: rec.log.seed }));
 console.log("replay   ", JSON.stringify({ passi: B.passi, impronteUguali: `${B.result.filter(([, o]) => o).length}/${checks}`, finale: B.hash === rec.hash, divergeAl: B.divergedAt }));
 console.log("controllo", JSON.stringify({ divergeAl: C.divergedAt, finaleDiverso: C.hash !== rec.hash }));
+console.log("solo comandi", JSON.stringify({ comandi: rec.log.cmds.length, tipi: [...new Set(rec.log.cmds.map((c) => c.k))],
+  impronteUguali: `${D.result.filter(([, o]) => o).length}/${D.result.length}`, finale: D.hash === rec.hash, divergeAl: D.divergedAt }));
 if (errs.length) console.log(errs.slice(0, 3));
 console.log(ok ? "ok" : "NON VA");
 process.exit(ok ? 0 : 1);

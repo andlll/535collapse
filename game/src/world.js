@@ -28,7 +28,8 @@ import { simRandom } from "./rng.js"; // §9.152
 // dalle ricerche della partita e dall'impronta (snapshot.js)
 const UI_PARENTS = ["clicker_parent", "clicchero", "parent_hint"];
 export const isUiObject = (name, parents = []) => UI_PARENTS.some((p) => parents.includes(p))
-  || /_clicker$|_button$|^dialogo|^hint_|^tooltip/.test(name);
+  // §9.154: _blink le risorse che mancano; _placer il fantasma di chi costruisce
+  || /_clicker$|_button$|_blink$|_placer$|^dialogo|^hint_|^tooltip/.test(name);
 
 const CELL = 128;
 // [Richiesta dell'autore] passi della dissolvenza fra due sprite (swapSprite)
@@ -82,6 +83,8 @@ export class World {
     this._epoch = 0;
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
+    this.actions = new Map(); // §9.154: i tipi di comando (action, act)
+    this.action("ordine", (w, c) => w.rightOrder(c));
     // [§9.116] se impostato (il menu: app.js), solo le istanze di questi
     // oggetti ricevono gli eventi di mouse e tastiera: le altre (unita',
     // edifici) sono decorative, non si selezionano ne' si evidenziano
@@ -769,24 +772,21 @@ export class World {
   _mouseEvents(input, mx, my) {
     const [pL, pR] = input.mousePressed, [rL, rR] = input.mouseReleased;
     const live = this.instances.filter((i) => i.alive && this._takesInput(i));
-    const over = new Map();
-    // [§9.29] un comportamento puo' dire lui dove e' il puntatore
-    // (pointOver: il complesso del monastero, complex.js)
-    const isOver = (i) => {
-      if (!over.has(i)) {
-        const b = this.behaviours[i.object];
-        over.set(i, input.inside && (b && b.pointOver ? b.pointOver(i, this, mx, my) : this.pointIn(i, mx, my)));
-      }
-      return over.get(i);
-    };
-    const local = (flag, ev) => {
+    const isOver = this._overTest(input.inside, mx, my);
+    const local = (flag, ev, list = live) => {
       if (!flag) return;
-      for (const i of live) if (i.alive && this.handler(i, ev) && isOver(i)) this.fire(i, ev);
+      for (const i of list) if (i.alive && this.handler(i, ev) && isOver(i)) this.fire(i, ev);
     };
     local(pL, "leftPressed");
     local(pR, "rightPressed");
     local(rL, "leftReleased");
-    local(rR, "rightReleased");
+    // [§9.154, multiplayer, fase 2, passo 2] il rilascio destro e' un ORDINE:
+    // un comando (chi e' selezionato, il punto, se il puntatore era sul
+    // mondo) eseguito all'inizio del passo dopo da rightOrder, che rifa' gli
+    // eventi di sempre senza leggere ne' il mouse ne' la selezione di chi
+    // guarda. Qui restano solo quelli delle istanze dell'interfaccia.
+    if (rR) this.act("ordine", { ids: this.selectedIds(), x: mx, y: my, over: !!input.inside });
+    local(rR, "rightReleased", live.filter((i) => i.ui || i.fx));
     for (const i of live) {
       if (!i.alive || !(this.handler(i, "mouseEnter") || this.handler(i, "mouseLeave"))) continue;
       const o = isOver(i);
@@ -799,14 +799,86 @@ export class World {
       for (const i of live) if (i.alive) this.fire(i, ev);
     };
     global(pL, "globalLeftPressed");
-    global(pR, "globalRightPressed");
     global(rL, "globalLeftReleased");
-    // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
-    // suo GlobalRightReleased (scr_movement_general) gira per primo.
-    if (rR && this.hooks.globalRightReleased) this.hooks.globalRightReleased(mx, my);
-    global(rR, "globalRightReleased");
-    // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
-    if (rR && this.hooks.afterRightReleased) this.hooks.afterRightReleased(mx, my);
+  }
+
+  // ------------------------------------------- azioni del giocatore (comandi)
+
+  // [§9.154, multiplayer, fase 2, passo 2] Un'azione del giocatore che cambia
+  // la partita (un ordine, un pulsante, un tasto) non la cambia piu' dove
+  // nasce, nel gestore d'input: diventa un comando coi dati che bastano
+  // (`ids`: le unita' a cui si rivolge, non "le selezionate") e si esegue
+  // all'inizio del passo dopo (app.js: hooks.command, commands.js), uguale
+  // per chi la da' e per chi la riceve. I tipi: action(tipo, fn(world, c)).
+  // Senza la coda dei comandi (prove unitarie) si esegue subito.
+  action(kind, fn) { this.actions.set(kind, fn); }
+  act(kind, data) {
+    if (this.hooks.command) this.hooks.command(kind, data);
+    else this.runAction(kind, data);
+  }
+  runAction(kind, c) {
+    const fn = this.actions.get(kind);
+    if (!fn) throw new Error("azione sconosciuta: " + kind);
+    fn(this, c);
+  }
+  // le istanze della partita selezionate da chi guarda (i loro id)
+  selectedIds() {
+    return this.instances.filter((i) => i.alive && !i.ui && !i.fx && i.selected === 1).map((i) => i.id);
+  }
+  // le istanze vive di `ids` (nell'ordine delle istanze), di `name` se dato
+  byIds(ids, name = null) {
+    const set = new Set(ids);
+    return this.instances.filter((i) => i.alive && set.has(i.id) && (!name || this.is(i, name)));
+  }
+
+  // chi e' sotto il puntatore in (mx, my)
+  // [§9.29] un comportamento puo' dire lui dove e' il puntatore
+  // (pointOver: il complesso del monastero, complex.js)
+  _overTest(inside, mx, my) {
+    const over = new Map();
+    return (i) => {
+      if (!over.has(i)) {
+        const b = this.behaviours[i.object];
+        over.set(i, inside && (b && b.pointOver ? b.pointOver(i, this, mx, my) : this.pointIn(i, mx, my)));
+      }
+      return over.get(i);
+    };
+  }
+
+  // [§9.154, fase 2, passo 2] L'ordine col clic destro, dai dati del comando
+  // `c` ({ ids, x, y, over }): per il tempo dell'ordine i selezionati sono
+  // `ids` e il mouse e' (x, y); poi tornano quelli di chi guarda (cambiano
+  // solo i selezionati che l'ordine stesso ha cambiato). Gli eventi, come
+  // prima e nello stesso ordine: GlobalRightPressed (il centro azzera le
+  // destinazioni dei nuovi civili; prima girava alla pressione), il rilascio
+  // destro sulle istanze sotto il punto (se il puntatore era sul mondo e non
+  // sulla minimappa), scr_movement_general del manager, i GlobalRightReleased
+  // delle istanze, la formazione. Le istanze dell'interfaccia ne sono fuori.
+  rightOrder(c) {
+    const ids = new Set(c.ids), saved = [];
+    for (const i of this.instances) {
+      if (!i.alive || i.ui || i.fx || !("selected" in i)) continue;
+      const want = ids.has(i.id) ? 1 : (i.selected === 1 ? 0 : i.selected);
+      saved.push([i, i.selected, want]);
+      i.selected = want;
+    }
+    const mouse = this.mouse;
+    this.mouse = { x: c.x, y: c.y };
+    try {
+      const live = this.instances.filter((i) => i.alive && !i.ui && !i.fx && this._takesInput(i));
+      const isOver = this._overTest(c.over, c.x, c.y);
+      for (const i of live) if (i.alive) this.fire(i, "globalRightPressed");
+      for (const i of live) if (i.alive && this.handler(i, "rightReleased") && isOver(i)) this.fire(i, "rightReleased");
+      // manager e' prima di tutte le unita' nell'ordine delle istanze [C]: il
+      // suo GlobalRightReleased (scr_movement_general) gira per primo.
+      if (this.hooks.globalRightReleased) this.hooks.globalRightReleased(c.x, c.y);
+      for (const i of live) if (i.alive) this.fire(i, "globalRightReleased");
+      // dopo gli ordini delle unita': le caselle della formazione (§6.1 n.89)
+      if (this.hooks.afterRightReleased) this.hooks.afterRightReleased(c.x, c.y);
+    } finally {
+      this.mouse = mouse;
+      for (const [i, before, want] of saved) if (i.selected === want) i.selected = before;
+    }
   }
 
   // ------------------------------------------------------------- disegno

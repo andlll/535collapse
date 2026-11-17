@@ -91,7 +91,8 @@ export class Commands {
     if (!due.length) return;
     this.queue = this.queue.filter((c) => c.s > now);
     for (const c of due) {
-      const fn = this.handlers.get(c.k);
+      // un gestore registrato qui, se no un'azione del mondo (world.action)
+      const fn = this.handlers.get(c.k) || (world.actions && world.actions.has(c.k) ? (w, cc) => w.runAction(cc.k, cc) : null);
       if (!fn) throw new Error("comando sconosciuto: " + c.k);
       if (this.log) this.log.cmds.push(c);
       fn(world, c);
@@ -104,6 +105,7 @@ export class Commands {
   frame(input, cam) {
     const f = this.frameNo++;
     if (this.play) {
+      if (this.play.noInput) return; // §9.154: solo i comandi, l'input resta quello (fermo) della pagina
       const L = this.play.frames;
       while (this._pi < L.length && L[this._pi][0] <= f) this._snap = L[this._pi++][1];
       if (this._snap) applyInput(this._snap, input, cam);
@@ -136,8 +138,11 @@ export class Commands {
     this.frameNo = 0;
   }
   stop() { const l = this.log; this.log = null; return l; }
-  replay(log) {
-    this.play = { ...log, result: [] };
+  // opts.input false [§9.154]: SOLO i comandi, senza le fotografie
+  // dell'input (ne' selezione, ne' clic, ne' telecamera): la prova che le
+  // azioni gia' convertite dipendono solo dai dati dei loro comandi
+  replay(log, opts = {}) {
+    this.play = { ...log, result: [], noInput: opts.input === false };
     this.frameNo = 0; this._pi = 0; this._ci = 0; this._snap = null; this.queue = [];
   }
 }

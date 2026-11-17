@@ -15,8 +15,8 @@ import { RenderScale } from "./renderscale.js";
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
-import { cavaliere, infantry, controlGroups, behaviourClicker, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
-import { producer, unitClicker, cancelClicker, PRODUCERS } from "./production.js";
+import { cavaliere, infantry, controlGroups, behaviourClicker, behaviourAction, corpse, enemyDummy, movementGeneral, ENEMY_LIFE, recountSelection, formation, settleOverlaps } from "./units.js";
+import { producer, unitClicker, cancelClicker, PRODUCERS, produceAction, cancelAction } from "./production.js";
 import { enemyMelee, enemyArcher, atkSignalObject, settleEnemies, defendBuildings } from "./enemies.js";
 import { alarmsStep } from "./attackalarm.js";
 import { enemyBuilding, oBox, church, crossEffect, roleAssign, ENEMY_BUILDINGS } from "./enemybuild.js";
@@ -26,7 +26,7 @@ import { cloudBlobs, drawCloudShadows, shadeAt, ambienceStep, treeSway, SWAY_DRA
 import { allyRam, allyCatapult, catapultBullet, debris, bloodSplat, fireBullet, smoke, enemyRam, enemyCatapult, settleSiege } from "./siege.js";
 import { allyArrow, enemyArrow, allyArcher, garrisoned, centroArrows, enemyTower, flag } from "./ranged.js";
 import { omino, resource, dying, recountIdle } from "./civilians.js";
-import { FAM, clicker, placer, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, blink, WOOD_RUINS, woodRuin,
+import { FAM, clicker, placer, buildAction, fond, built, allyBuild, campoFond, campo, foodBullet, centro, ominoClicker, centroCancel, workerAction, cancelWorkerAction, blink, WOOD_RUINS, woodRuin,
          prizeDrawer, idleClicker, buildButtons, monastery } from "./buildings.js";
 import { wallFond, wall, gate, enemyWall, enemyGate, mplus, wallExtender, wallPreview, gateClicker } from "./walls.js";
 import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseTorches } from "./props.js";
@@ -46,7 +46,7 @@ import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01 } from "./menu.js";
-import { fogBank, stealthMarks, shotClicker, provaNebbia } from "./stealth.js"; // §9.148
+import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
 import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
@@ -242,6 +242,7 @@ async function main() {
   world.register("ally_warrior", infantry("ally_warrior", path));
   world.register("ally_picchiere", infantry("ally_picchiere", path));
   world.register("ally_militare", controlGroups(false));
+  world.action("comportamento", behaviourAction); // §9.154
   world.register("attacco_clicker", behaviourClicker("attacco"));
   world.register("difesa_clicker", behaviourClicker("difesa"));
   for (const n of ["albero", "albero_fake", "miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"]) world.register(n, resource(path, n));
@@ -309,6 +310,12 @@ async function main() {
   }
   for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
   world.register("gate_clicker", gateClicker());
+  // [§9.154] le code di produzione come comandi
+  world.action("costruisci", buildAction);
+  world.action("civile", workerAction);
+  world.action("annulla_civile", cancelWorkerAction);
+  world.action("produci", produceAction);
+  world.action("annulla", cancelAction);
   world.register("omino_clicker", ominoClicker());
   world.register("centro_indietro_clicker", centroCancel());
   for (const n of ["wood_blink", "stone_blink", "food_blink", "gold_blink", "pop_blink"]) world.register(n, blink(n));
@@ -342,6 +349,7 @@ async function main() {
   // [§9.148] livello 7: banchi di nebbia, il "!", i modi di tiro, la prova
   world.register("nebbia_banco", fogBank());
   world.register("stealth_segni", stealthMarks());
+  world.action("tiro", shotAction); // §9.154
   world.register("tiro_furtivo_clicker", shotClicker("furtivo"));
   world.register("tiro_rapido_clicker", shotClicker("rapido"));
   world.register("prova_nebbia", provaNebbia());
@@ -539,6 +547,9 @@ async function main() {
 
   // [§9.153, multiplayer, fase 2] i comandi: registro e replay (commands.js)
   const commands = new Commands();
+  // [§9.154, fase 2, passo 2] le azioni del giocatore (world.js act): date al
+  // passo in corso, eseguite all'inizio del successivo (i tipi: world.actions)
+  world.hooks.command = (kind, c) => commands.issue(kind, c, world._stepNo + 1);
   const hashNow = () => stateHash({ world, g, manager, path });
   const step = () => {
     input.beginStep();
