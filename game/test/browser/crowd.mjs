@@ -54,7 +54,7 @@ let failed = false;
 for (const C of CASES) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=${room}&nostart=1`);
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=${seedArg}`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   const res = await page.evaluate(([C, SEED]) => {
     const G = window.__game, w = G.world, p = w.path, cam = G.cam;

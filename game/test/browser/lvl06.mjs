@@ -38,7 +38,7 @@ const errs = [];
 const open = async (seed = null) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=lvl06&nostart=1${seed === null ? "" : "&seed=" + seed}`);
+  await page.goto(`${base}/index.html?room=lvl06&nostart=1&seed=${seed === null ? 1 : seed}`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
   return page;
 };

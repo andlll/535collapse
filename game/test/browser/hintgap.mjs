@@ -23,7 +23,7 @@ let failed = false;
 for (const [VW, VH] of [[1280, 720], [1366, 768], [1920, 1080]]) {
   const page = await browser.newPage({ viewport: { width: VW, height: VH } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=match&nostart=1`);
+  await page.goto(`${base}/index.html?room=match&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   for (const name of HINTS) {
     const res = await page.evaluate((NAME) => {

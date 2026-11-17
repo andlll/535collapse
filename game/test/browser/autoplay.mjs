@@ -24,7 +24,7 @@ const SHOTS = process.env.SHOTS || "";
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=lvl05&nostart=1`);
+await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=lvl05&nostart=1&seed=${SEED}`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 if (SHOTS) await page.addStyleTag({ content: "#message{display:none !important}" });
 

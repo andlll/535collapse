@@ -13,7 +13,7 @@ const [base = "http://localhost:8123", room = "match", which = "centro", nArg = 
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-await page.goto(`${base}/index.html?room=${room}&nostart=1`);
+await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=1`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 const r = await page.evaluate(([which, N]) => {
   const G = window.__game, w = G.world, cam = G.cam;

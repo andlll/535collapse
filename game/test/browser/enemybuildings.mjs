@@ -19,7 +19,7 @@ const { chromium } = await import(mod);
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=match&nostart=1`);
+await page.goto(`${process.env.BASE || "http://localhost:8123"}/index.html?room=match&nostart=1&seed=1`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 const KINDS = {
   enemy_centro: { arrows: true, wooden: true, ruin: "ccruin" },

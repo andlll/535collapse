@@ -25,7 +25,7 @@ let ok = true;
 for (const kind of ["presidio", "costruzione", "riparazione", "senzaLegno", "accanto"]) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=match&nostart=1`);
+  await page.goto(`${base}/index.html?room=match&nostart=1&seed=${SEED}`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   const r = await page.evaluate(([kind, SEED]) => {
     const G = window.__game, w = G.world, cam = G.cam, p = w.path, g = G.g;

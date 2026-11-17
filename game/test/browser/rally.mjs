@@ -34,7 +34,7 @@ let failed = false;
 for (const [room, bx, by, prod] of cases) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=${room}&nostart=1`);
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=1`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
   const res = await page.evaluate(([BX, BY, PROD, ANGLES, RADII]) => {
     const G = window.__game, w = G.world, p = w.path;

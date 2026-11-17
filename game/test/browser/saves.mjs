@@ -21,7 +21,7 @@ for (const room of rooms) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const ready = () => page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
-  await page.goto(`${base}/index.html?room=${room}&nostart=1`);
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=1`);
   await ready();
   const A = await page.evaluate(async (n) => {
     const G = window.__game;

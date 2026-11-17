@@ -33,7 +33,7 @@ const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--ena
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
 const ready = () => page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
-await page.goto(`${base}/index.html?room=lvl03&nostart=1`);
+await page.goto(`${base}/index.html?room=lvl03&nostart=1&seed=1`);
 await ready();
 
 // la rivelazione, senza dialoghi, nebbia, ondate e attacchi al villaggio
@@ -165,7 +165,7 @@ const res = await page.evaluate((OFF) => {
 }, Number(process.env.OFF || 0));
 
 // --- salvataggio dopo la rivelazione
-await page.goto(`${base}/index.html?room=lvl03&nostart=1`);
+await page.goto(`${base}/index.html?room=lvl03&nostart=1&seed=1`);
 await ready();
 await reveal();
 await page.evaluate(async () => { await window.__pause.actions.saveGame(); });
