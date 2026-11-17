@@ -10698,6 +10698,15 @@ devono dipendere da loro; il passo in cui un comando si esegue e' quello
 in corso in singolo, in rete qualche passo dopo (il ritardo dei comandi,
 fase 4).
 
+**Il determinismo fra browser nella CI** (verificato il 17 novembre 2026,
+commit 31b8878): Chromium, Firefox e WebKit danno le stesse 10 impronte su
+Padus in 3000 passi (seme 12345). Firefox headless sulla macchina della CI
+non ha driver GL ("Exhausted GL driver options": niente WebGL2, il gioco non
+parte): gira con la finestra (HEADED=1) su Xvfb con Mesa in software
+(build.yml). Il passo dura ~8 minuti; il limite del lavoro e' passato da 30
+a 45 minuti (con 30 una CI e' stata annullata a meta' di Firefox).
+determinism.mjs, se il gioco non parte, stampa errori, console e WebGL2.
+
 **Per provare in questa macchina** (cloud): niente server http (negato
 dall'ambiente): un modulo che serve game/ da disco a Playwright
 (PLAYWRIGHT_MODULE, come in §9.146); la suite completa nel browser richiede
