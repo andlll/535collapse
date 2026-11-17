@@ -10930,8 +10930,23 @@ giocatore e ogni edificio finito ha il suo blu).
   (global.victory, gameover): il controllo della rete si fermera' li'.
 - pvp.mjs: anche la fine (edifici blu distrutti: vince il rosso in tutte e
   due le pagine, il rosso vede la vittoria, il blu la sconfitta).
+- Giocare dal blu con mouse e tastiera (`PVP=2 replay.mjs`, nella CI: la
+  sessione del replay da ?pvp=1&parte=2; 12/12 anche dai soli comandi). Per
+  arrivarci: i pulsanti di costruzione col suo specchio (buildButtons); il
+  trucco nella cassa di chi lo da'; e i punti del codice del giocatore che
+  confrontano i NOMI degli oggetti, che lo specchio non traduce:
+  multiplayer.js `baseOf(i)` (il nome originale di un gemello: p2_omino ->
+  ally_omino; units.js: contatori della selezione, ruoli e velocita' della
+  formazione, assedio) e `unitFam(i)` (la famiglia delle unita' della parte:
+  enemy_unit, p2_unit, ally_unit; pathing.js canYield, stepAside, sideUnit,
+  lastmile.js side, world.placeFreeForSlot). Prima i civili blu contavano
+  come soldati (niente pulsanti di costruzione) e le unita' blu non si
+  scansavano fra loro.
 
 **Cosa resta (fase 3).**
+- Altri confronti di nomi d'oggetto nel codice del giocatore (i.object ===
+  "...", tabelle per nome) non ancora passati da baseOf: cercarli quando un
+  comportamento del blu non torna (grep 'object ===', '[i.object]').
 - Cose comuni da dividere per parte: global.order (il numero d'ordine
   delle unita', comune: deterministico ma condiviso), i suggerimenti (di chi
   guarda), le porte e le mura nella griglia dei percorsi (Pathing.regions

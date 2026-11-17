@@ -23,6 +23,7 @@ import { bloodHit } from "./blood.js";
 import { counterArcher } from "./ranged.js";
 import { infantryFire, holdStill, SIEGE_FOOT } from "./siege.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { baseOf } from "./multiplayer.js"; // §9.155
 
 // "direzione" [C, Step azione 4 di ogni unita']: 8 settori da 45 gradi
 export function phaseOf(direction) {
@@ -136,7 +137,7 @@ export function formation(w, p, mx, my) {
   for (const u of units) {
     const bb = w.bbox(u);
     const sz = bb ? [bb[2] - bb[0], bb[3] - bb[1]] : [48, 46];
-    size.set(u, SIEGE_UNITS.has(u.object) ? [Math.max(sz[0], SIEGE_FOOT[0] - MARGIN), Math.max(sz[1], SIEGE_FOOT[1] - MARGIN)] : sz);
+    size.set(u, SIEGE_UNITS.has(baseOf(u)) ? [Math.max(sz[0], SIEGE_FOOT[0] - MARGIN), Math.max(sz[1], SIEGE_FOOT[1] - MARGIN)] : sz);
   }
   const apart = (dx, dy, wsum, hsum) => {
     const a = Math.abs(dx) > 1e-3 ? wsum / 2 / Math.abs(dx) : Infinity;
@@ -149,10 +150,10 @@ export function formation(w, p, mx, my) {
   // velocita': i cavalieri vanno a 5, fanteria e arcieri a 4, civili 3,
   // assedio 2), a blocchi di una riga per posizione laterale
   const lat = (u) => (u.x - cx) * lx + (u.y - cy) * ly;
-  const speed = (u) => (u.object === "ally_cavaliere" ? 5 : u.object === "ally_omino" ? 3
-    : u.object === "ally_ariete" || u.object === "ally_catapulta" ? 2 : 4);
+  const speed = (u) => (baseOf(u) === "ally_cavaliere" ? 5 : baseOf(u) === "ally_omino" ? 3
+    : baseOf(u) === "ally_ariete" || baseOf(u) === "ally_catapulta" ? 2 : 4);
   const eta = new Map(units.map((u) => [u, pointDistance(u.x, u.y, mx, my) / speed(u)]));
-  const role = new Map(units.map((u) => [u, ROLE[u.object] ?? 1]));
+  const role = new Map(units.map((u) => [u, ROLE[baseOf(u)] ?? 1]));
   units.sort((a, b) => role.get(a) - role.get(b) || eta.get(a) - eta.get(b));
   const rowUnits = [];
   for (let k = 0; k < n;) {
@@ -218,8 +219,8 @@ export function escapeDeselect(i, w) {
 // (possono dare fuoco), arcsel per gli arcieri, siegsel per l'assedio.
 export function selCounter(w, i) {
   if (w.is(i, "ally_infantry")) return "firesel";
-  if (i.object === "ally_arciere") return "arcsel";
-  if (i.object === "ally_ariete" || i.object === "ally_catapulta") return "siegsel";
+  if (baseOf(i) === "ally_arciere") return "arcsel";
+  if (baseOf(i) === "ally_ariete" || baseOf(i) === "ally_catapulta") return "siegsel";
   return null;
 }
 
@@ -1018,7 +1019,7 @@ function unstack(w, i, t) {
   if (i.warwork === 4) return false; // un ordine di movimento: non colpisce comunque
   if (i.action === 2 && i.step !== 0) return false; // colpo in corso: lo finisce
   const o = w.instancePlace(i, i.x, i.y, "ally_militare");
-  const give = o && !SIEGE_UNITS.has(o.object) && o.action === 2
+  const give = o && !SIEGE_UNITS.has(baseOf(o)) && o.action === 2
     && (i.action !== 2 || (i.ordo ?? 0) < (o.ordo ?? 0) || ((i.ordo ?? 0) === (o.ordo ?? 0) && i.id < o.id));
   if (!give) { i.unstackN = 0; return false; }
   i.unstackN = (i.unstackN || 0) + 1;
@@ -1104,7 +1105,7 @@ function rallyMove(i, w, p, offset100) {
 const SIEGE_RING = 2.2;
 const RING_WIDE = new Set(["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"]);
 export function unitRing(d, i) {
-  if (!RING_WIDE.has(i.object)) { d.sprite("circ_1", 0, i.x, i.y); return; }
+  if (!RING_WIDE.has(baseOf(i))) { d.sprite("circ_1", 0, i.x, i.y); return; }
   d.spriteExt("circ_1", 0, i.x, i.y, SIEGE_RING, SIEGE_RING, 0, 0xffffff, 1);
 }
 
@@ -1137,7 +1138,7 @@ export function unitDrawEnd(i, w, d, showGroup = true) {
 // scheda della vita (che diventa il contatore " x N" del manager).
 export function firstSelected(w, civilian) {
   for (const u of w.all("ally_unit")) {
-    if (u.selected === 1 && (u.object === "ally_omino") === civilian) return u;
+    if (u.selected === 1 && (baseOf(u) === "ally_omino") === civilian) return u;
   }
   return null;
 }
@@ -1241,7 +1242,7 @@ export function recountSelection(w) {
   for (const u of w.all("ally_unit")) {
     if (u.selected !== 1) continue;
     sel++;
-    if (u.object === "ally_omino") continue;
+    if (baseOf(u) === "ally_omino") continue;
     mil++;
     const k = selCounter(w, u);
     if (k) extra[k]++;
@@ -1264,7 +1265,7 @@ export function recountSelection(w) {
 // alleati); per SETTLE_WAIT passi non si sposta di nuovo.
 const SETTLE_EVERY = 10, SETTLE_STEP = 16, SETTLE_MAX = 160, SETTLE_WAIT = 120;
 const SIEGE = new Set(["ally_ariete", "ally_catapulta"]);
-const atRest = (u) => u.alive && u.visible !== false && !SIEGE.has(u.object) && u.action === 0 && !u.warwork
+const atRest = (u) => u.alive && u.visible !== false && !SIEGE.has(baseOf(u)) && u.action === 0 && !u.warwork
   && !u.firework && !u.presidiowork && !u.creation;
 
 function settleSpot(w, u, o) {

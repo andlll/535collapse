@@ -22,6 +22,7 @@ import { drawSprite, drawSway, spriteBounds, setSpriteRemap } from "./sprites.js
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { simRandom, vrand } from "./rng.js"; // §9.152
+import { unitFam } from "./multiplayer.js"; // §9.155
 
 // [§9.152] le istanze dell'interfaccia (pulsanti, dialoghi, suggerimenti):
 // seguono la vista o nascono per chi guarda; id a parte (negativi) e fuori
@@ -677,7 +678,7 @@ export class World {
   // [§8.11] libero per chi va alla sua casella della formazione (vedi sopra)
   placeFreeForSlot(inst, x, y) {
     return inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY
-      ? this.placeFreeExcept(inst, x, y, inst.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit") : this.placeFree(inst, x, y); // §9.57
+      ? this.placeFreeExcept(inst, x, y, unitFam(inst)) : this.placeFree(inst, x, y); // §9.57, §9.155
   }
 
   placeEmpty(inst, x, y) {

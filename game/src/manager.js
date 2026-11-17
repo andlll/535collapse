@@ -131,8 +131,8 @@ export class Manager {
   // [Difetto corretto, §3.2 n.10: nell'originale lo stop della pioggia era
   // fuori dall'if e ogni Q fermava la pioggia; era un'esigenza di test
   // dell'autore] [Difetto corretto, §3.2 n.11: alarm[4]=1 era fuori dall'if]
-  cheat(k) {
-    const g = this.g;
+  // (g: la cassa di chi lo da'; nella partita a due quella del blu, §9.155)
+  cheat(k, g = this.g) {
     if (k === "food" || k === "gold" || k === "stone" || k === "wood" || k === "popcap") g[k] += 1000;
     if (k === "gold") this.stopRain();
     if (k === "popcap") this.al.set(4, 1);

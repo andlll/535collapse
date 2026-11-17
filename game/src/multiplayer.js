@@ -31,6 +31,19 @@ const NO_TWIN = /^(monastero|o_statua|palo_|object183$|oodl$|oosl$|ovbl$|oval$)/
 
 export const twinName = (n) => (n === "ally" ? "p2" : n.startsWith("ally_") ? "p2_" + n.slice(5) : "p2_" + n);
 
+// [§9.155] il nome originale di un gemello (p2_omino -> ally_omino, p2_centro
+// -> centro): per il codice del giocatore che confronta i nomi degli oggetti
+// (i.object === "ally_omino", tabelle per nome). La tabella la riempie
+// setupMultiplayer; senza partita a due e' il nome stesso.
+const BASE = new Map();
+export const baseOf = (i) => (i.object.startsWith("p2_") ? BASE.get(i.object) ?? i.object : i.object);
+// la famiglia delle unita' della parte di un'istanza: enemy_unit (la CPU),
+// p2_unit (il blu), ally_unit (il giocatore)
+export const unitFam = (i) => {
+  const ps = i.parents || [];
+  return ps.includes("enemy_unit") ? "enemy_unit" : i.object && i.object.startsWith("p2_") ? "p2_unit" : "ally_unit";
+};
+
 export function twinNames(objects) {
   const out = [];
   for (const [n, v] of Object.entries(objects)) {
@@ -120,6 +133,7 @@ export function mirrorWorld(world, map, pool2) {
 // che nascano le istanze. La cassa del giocatore 2 (global.p2) la fa app.js.
 export function setupMultiplayer(world, local) {
   const { twins, m1, m2 } = nameMaps(world.objects);
+  for (const t of twins) BASE.set(twinName(t), t);
   Object.assign(world.objects, twinObjects(world.objects, twins));
   for (const n of twins) if (world.behaviours[n]) world.behaviours[twinName(n)] = world.behaviours[n];
   world.mp = { twins: new Set(twins), m1, m2, mirror1: mirrorWorld(world, m1, false), mirror2: mirrorWorld(world, m2, true),

@@ -21,19 +21,24 @@ const mod = process.env.PLAYWRIGHT_MODULE || "playwright";
 const { chromium } = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const [room = "sk_padus", seedArg = "11"] = process.argv.slice(2);
+// [§9.155] PVP=2: la stessa sessione nella partita a due, giocata dal blu
+// (?pvp=1&parte=2): i suoi oggetti sono p2_*, i comandi del giocatore 2
+const P2 = process.env.PVP === "2", PVP = P2 ? "&pvp=1&parte=2" : "";
+const N = (n) => (P2 ? (n.startsWith("ally_") ? "p2_" + n.slice(5) : "p2_" + n) : n);
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const errs = [];
 const open = async (w, h) => {
   const page = await browser.newPage({ viewport: { width: w, height: h } });
   page.on("pageerror", (e) => errs.push(e.message));
-  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=${seedArg}`);
+  await page.goto(`${base}/index.html?room=${room}&nostart=1&seed=${seedArg}${PVP}`);
   await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
   return page;
 };
 
 // la partita giocata con l'input
 const A = await open(1280, 720);
-const rec = await A.evaluate(() => {
+const rec = await A.evaluate((P2) => {
+  const N = (n) => (P2 ? (n.startsWith("ally_") ? "p2_" + n.slice(5) : "p2_" + n) : n);
   const G = window.__game, w = G.world, cam = G.cam, I = w.input || G.world.input;
   G.record();
   const step = (n = 1) => G.advance(n);
@@ -51,13 +56,13 @@ const rec = await A.evaluate(() => {
     input._mdown[0] = false; input._mr[0] = true; step(2);
   };
   const out = { fatto: [] };
-  const centro = w.all("centro").next().value;
+  const centro = w.all(N("centro")).next().value;
   look(centro.x, centro.y + 150);
   left(centro.x, centro.y); out.fatto.push("centro " + (centro.selected === 1));
   key(81); key(81); out.fatto.push("coda " + (centro.coda || 0));
   step(400);
   // i lavoratori: trascinamento attorno a loro
-  const om = [...w.all("ally_omino")];
+  const om = [...w.all(N("ally_omino"))];
   const xs = om.map((u) => u.x), ys = om.map((u) => u.y);
   const bx0 = Math.min(...xs) - 60, by0 = Math.min(...ys) - 80, bx1 = Math.max(...xs) + 60, by1 = Math.max(...ys) + 40;
   look((bx0 + bx1) / 2, (by0 + by1) / 2);
@@ -67,7 +72,7 @@ const rec = await A.evaluate(() => {
   look(tree.x, tree.y); right(tree.x, tree.y);
   step(600);
   // un lavoratore costruisce una casa
-  const b = [...w.all("ally_omino")][0];
+  const b = [...w.all(N("ally_omino"))][0];
   look(b.x, b.y); left(b.x, b.y);
   key(81);
   // il fantasma della casa sotto il puntatore, a spirale attorno al centro
@@ -81,21 +86,21 @@ const rec = await A.evaluate(() => {
       if (pl.alive && pl.place === 1) { left(px, py); break; }
     }
   }
-  out.fatto.push("cantieri " + [...w.all("ally_fondamenta")].length);
+  out.fatto.push("cantieri " + [...w.all(N("ally_fondamenta"))].length);
   step(300);
   // [§9.154] un trucco (V + Alt + W: +1000 legna), un comando anche lui
-  const wood0 = w.g.wood;
+  const pool = P2 ? w.g.p2 : w.g, wood0 = pool.wood; // la cassa di chi gioca
   input._pressed.add(86); input._down.add(86); step(1);
   input._pressed.add(18); input._down.add(18); step(1);
   input._pressed.add(87); input._down.add(87); step(1);
   for (const k of [87, 18, 86]) { input._down.delete(k); input._released.add(k); }
   step(2);
-  out.fatto.push("trucco " + (w.g.wood - wood0));
+  out.fatto.push("trucco " + (pool.wood - wood0));
   // la vista con le frecce, lo zoom con la rotella
   key(39, 90); key(40, 60);
   input.wheel = 1; step(30); input.wheel = -1; step(30);
   // un ordine di movimento al soldato o al lavoratore piu' vicino
-  const m = [...w.all("ally_unit")].find((u) => u.selected === 1) || b;
+  const m = [...w.all(N("ally_unit"))].find((u) => u.selected === 1) || b;
   look(m.x, m.y); right(m.x + 300, m.y + 120);
   step(2200);
   out.passi = w._stepNo;
@@ -103,7 +108,7 @@ const rec = await A.evaluate(() => {
   out.hash = G.hash();
   out.log = G.commands.stop();
   return out;
-});
+}, P2);
 
 // la stessa partita dal registro, in un'altra finestra
 const replay = async (log, w, h, opts = {}) => {

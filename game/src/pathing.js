@@ -23,6 +23,7 @@ import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { riverCells, riverIn } from "./rivers.js";
 import { lmStep } from "./lastmile.js";
 import { dhypot, sq } from "./dmath.js"; // §9.152
+import { baseOf, unitFam } from "./multiplayer.js"; // §9.155
 
 export const GRID = 32;
 const LOOK = 6;        // celle guardate avanti lungo il percorso (steerAt)
@@ -865,8 +866,8 @@ export function rallyGo(p, inst) {
 const WAY_EVERY = 10, SIEGE_OBJ = ["ally_ariete", "ally_catapulta", "enemy_ariete", "enemy_catapulta"];
 // `o` si sposta per far passare `i` (della stessa parte)
 export const canYield = (o, i) => o !== i && o.action === 0 && o.warwork !== 2 && o.firework !== 1
-  && !SIEGE_OBJ.includes(o.object) && !!o.parents && o.parents.includes("enemy_unit") === i.parents.includes("enemy_unit")
-  && (o.parents.includes("enemy_unit") || o.parents.includes("ally_unit"));
+  && !SIEGE_OBJ.includes(baseOf(o)) && !!o.parents && unitFam(o) === unitFam(i) // §9.155: anche il blu
+  && (o.parents.includes("enemy_unit") || o.parents.includes("ally_unit") || o.parents.includes("p2_unit"));
 export function makeWay(w, p, i, fam) {
   if ((i.wayAt || 0) > w._stepNo) return;
   i.wayAt = w._stepNo + WAY_EVERY;
@@ -888,7 +889,7 @@ function stepAside(w, p, o, i, dir) {
   const off = nx * (o.x - i.x) + ny * (o.y - i.y), side = off >= 0 ? 1 : -1;
   const half = (inst) => { const b = w.bbox(inst); return b ? ((b[2] - b[0]) / 2) * Math.abs(nx) + ((b[3] - b[1]) / 2) * Math.abs(ny) : 24; };
   const need = half(o) + half(i) + 8;
-  const fam = o.parents.includes("enemy_unit") ? "enemy_unit" : "ally_unit";
+  const fam = unitFam(o); // §9.155
   for (const s of [side, -side]) {
     for (const extra of [0, 24, 48]) {
       const len = need + extra - s * off;
@@ -1024,7 +1025,7 @@ export function seesGoal(p, inst) {
 // [§9.57] la famiglia dei compagni di `inst` (sopra cui si passa verso la
 // casella o il posto): prima era sempre ally_unit, e i lavoratori nemici
 // si bloccavano fra loro (e passavano sopra gli alleati)
-export const sideUnit = (inst) => ((inst.parents || []).includes("enemy_unit") ? "enemy_unit" : "ally_unit");
+export const sideUnit = (inst) => unitFam(inst); // §9.155: enemy_unit, p2_unit o ally_unit
 
 export const onFormationSlot = (inst) => inst.formX !== undefined && inst.dirox === inst.formX && inst.diroy === inst.formY;
 

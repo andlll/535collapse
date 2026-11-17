@@ -319,7 +319,7 @@ async function main() {
   for (const n of ["oodl", "oosl", "ovbl", "oval"]) world.register(n, wallPreview(n));
   world.register("gate_clicker", gateClicker());
   world.action("prolunga", extendAction); // §9.154
-  world.action("trucco", (w, c) => manager.cheat(c.res));
+  world.action("trucco", (w, c) => manager.cheat(c.res, w.g));
   world.action("porta", gateAction);
   // [§9.154] le code di produzione come comandi
   world.action("costruisci", buildAction);
@@ -451,7 +451,8 @@ async function main() {
   }
   let victoryAt = params.get("victory") === "1" && roomName !== "menu" ? 60 : 0;
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
-  world.hooks.step = () => { buildButtons(world); levelStep(world); };
+  // (i pulsanti sono di chi guarda: il suo specchio, §9.155)
+  world.hooks.step = () => { buildButtons(world.worldFor(null)); levelStep(world); };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world);
   const fogLayer = new FogLayer(r, fog);

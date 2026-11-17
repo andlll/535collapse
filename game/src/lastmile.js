@@ -33,6 +33,7 @@
 // stepOver. Ne' i posti di lavoro dei civili (risorse, cantieri, depositi).
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { dhypot } from "./dmath.js"; // §9.152
+import { unitFam } from "./multiplayer.js"; // §9.155
 
 export const LM_RANGE = 400;
 const C = 16, MARGIN = 10, MAXC = 72, LM_RECALC = 10, LM_LOOK = 8;
@@ -43,7 +44,7 @@ const FACE_HYST = 10;
 // di centinaia di px attorno alla formazione (settle.mjs)
 const SOFT_MOVING = 2, SOFT_STILL = 8, SOFT_MAX = 16;
 const INF = 0x3fffffff;
-const side = (i) => ((i.parents || []).includes("enemy_unit") ? "enemy_unit" : "ally_unit");
+const side = (i) => unitFam(i); // §9.155: enemy_unit, p2_unit o ally_unit
 
 // ---------------------------------------------------------- ostacoli fissi
 // Per ogni forma di maschera (scostamenti del bbox dall'origine) e parte, una
