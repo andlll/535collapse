@@ -92,7 +92,8 @@ risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
 due browser (WebRTC, con un server STUN pubblico per attraversare i router;
 senza un server TURN alcune reti non si collegano); i due giochi si
 scambiano solo i comandi (lockstep) e confrontano ogni 5 secondi
-un'impronta della partita.
+un'impronta della partita. In partita Invio apre la chat con l'altro
+giocatore.
 
 ## Mappe in Tiled
 
