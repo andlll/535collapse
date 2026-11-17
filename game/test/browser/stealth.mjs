@@ -158,7 +158,9 @@ const ok = errs.length === 0
   && r.furtivo.ignaro.morto && r.furtivo.ignaro.colpito >= 100 && !r.furtivo.ignaro.vicinoInAllarme
   && !r.furtivo.inAllarme.morto && r.furtivo.inAllarme.vita === 75 - 18
   && !r.rapido.morto && r.rapido.vita === 75 - 6 && r.rapido.colpito < 60 && r.rapido.vicinoInAllarme && r.rapido.vicinoVaVerso !== null
-  && r.rapido.vicinoVaVerso < 40 && !r.rapido.lontanoInAllarme
+  // (verso l'arciere: la meta e' il punto in cui sta lui, occupato, e la regola
+  // dei nemici la sposta a caso fino a 20 + 30 px per lato: entro ~70 px)
+  && r.rapido.vicinoVaVerso < 100 && !r.rapido.lontanoInAllarme
   && r.messaggero.diventa >= 0 && r.messaggero.diventa < 30 && !r.messaggero.insegue && r.messaggero.rinforzoDopo > 0
   && r.messaggero.rinforzi === 3 && r.messaggero.versoArciere.every((d) => d < 80) && !r.messaggero.dopoArrivo
   && r.gruppo.insegue && !r.gruppo.messaggero
