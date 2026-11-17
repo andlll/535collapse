@@ -10954,6 +10954,17 @@ giocatore e ogni edificio finito ha il suo blu).
   controllata con le immagini: dal rosso la base blu e' nera, e viceversa;
   un soldato blu vicino ai rossi il rosso lo vede. pvp.mjs controlla tutte e
   due le cose.
+- [Segnalazione dell'autore: "sugli screen del blu la nebbia sembra
+  'esplorato ma nessuno presente'"] La nebbia ha due strati: lo scoperto
+  (FogMap.update, a ogni passo) e il visibile adesso (FogMap.compose, al
+  disegno, fogdraw.js prepare). Lo scoperto si calcolava gia' con lo
+  specchio di chi guarda, il visibile no: riceveva il mondo vero, cioe' le
+  fonti di vista del rosso; dal blu tutto era "scoperto ma non visibile".
+  Ora fogLayer.prepare e la prima scoperta (all'avvio) ricevono lo specchio
+  di chi guarda. pvp.mjs controlla la luce sotto il proprio centro (shade 0)
+  da tutte e due le parti. Per strada: leafHit (le foglie del colpo, solo
+  sugli alberi sullo schermo di chi guarda) era nell'impronta: ora fra i
+  campi grafici (VISUAL_KEYS).
 - Altri confronti di nomi d'oggetto nel codice del giocatore (i.object ===
   "...", tabelle per nome) non ancora passati da baseOf: cercarli quando un
   comportamento del blu non torna (grep 'object ===', '[i.object]').

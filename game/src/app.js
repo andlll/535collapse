@@ -454,7 +454,7 @@ async function main() {
   // (i pulsanti sono di chi guarda: il suo specchio, §9.155)
   world.hooks.step = () => { buildButtons(world.worldFor(null)); levelStep(world); };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
-  fog.update(world);
+  fog.update(world.worldFor(null)); // §9.155: chi guarda (dal blu, i suoi)
   const fogLayer = new FogLayer(r, fog);
   const ground = new GroundCache(r, assets, room, world, clear);
 
@@ -673,7 +673,7 @@ async function main() {
     draw.glassStyle = settings.glass; // barre della vita in stile vetro (Draw.lifeBar)
     // nebbia e notte composte prima del mondo (§7.13)
     draw.reset();
-    fogLayer.prepare(draw, world, cam);
+    fogLayer.prepare(draw, world.worldFor(null), cam); // §9.155: la vista di chi guarda
     r.setProjection(cam.x, cam.y, cam.w, cam.h);
     if (worldScale < canvasScale - 1e-6) {
       const t = worldSurface();

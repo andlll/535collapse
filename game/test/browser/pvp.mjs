@@ -62,9 +62,15 @@ const plan = await A.evaluate(() => {
 });
 // la nebbia: dal rosso la base blu non si vede, e viceversa
 const fog0 = await Promise.all([A, B, C].map((P) => P.evaluate(() => { // (C anche: stessi passi)
-  const w = window.__game.world, mine = w.mp.local === 1 ? "p2_centro" : "centro";
-  for (let k = 0; k < 5; k++) window.__game.advance(1);
-  return [...w.all(mine)].some((i) => w.shown(i));
+  const G = window.__game, w = G.world, theirs = w.mp.local === 1 ? "p2_centro" : "centro";
+  for (let k = 0; k < 5; k++) G.advance(1);
+  // [segnalazione dell'autore] attorno alla propria base la nebbia e' quella
+  // del "visibile" (shade 0), non dell'"esplorato" (si calcolava con la vista
+  // del rosso anche per il blu)
+  const c = w.all(w.mp.local === 1 ? "centro" : "p2_centro").next().value, m = w.fog;
+  G.cam.x = c.x - G.cam.w / 2; G.cam.y = c.y - G.cam.h / 2; G.loop.render();
+  const shade = m.shade[Math.floor((c.y + 200) / m.cell) * m.gw + Math.floor(c.x / m.cell)];
+  return { vede: [...w.all(theirs)].some((i) => w.shown(i)), shade };
 })));
 // [passo, giocatore, tipo, dati]
 const CMDS = [
@@ -157,13 +163,13 @@ await browser.close();
 const fought = after.cadaveri[0] + after.cadaveri[1] > 0 && (after.guerrieri[0] + after.arcieri[0] < 6) && (after.guerrieri[1] + after.arcieri[1] < 6);
 const ok = errs.length === 0 && !bad && control && hashes.length === Math.ceil(STEPS / EVERY)
   && plan.centri[1] === 1 && plan.centri[2] === 0 && plan.mulini === 0 && plan.deposito.length === 1 && plan.deposito.every(([sp]) => !sp)
-  && !fog0[0] && !fog0[1] && !plan.eco && plan.om2.length === 3
+  && !fog0[0].vede && !fog0[1].vede && fog0[0].shade === 0 && fog0[1].shade === 0 && !plan.eco && plan.om2.length === 3
   && after.legna[0] > 0 && after.legna[1] > 0 && after.casaBlu >= 1 && after.caseRosse === 0 && after.civili[1] >= 4 && fought
   && end[0].vince === 1 && end[1].vince === 1 && end[0].vittoria && !end[0].sconfitta && end[1].sconfitta && !end[1].vittoria
   && look.tabella > 500 && look.civile && look.civile[1] && look.centro && look.centro[1] === "cc_b";
 console.log(room, "partita a due, passi", STEPS, "impronte uguali (rosso = blu):", bad ? "NO" : `${hashes.length}/${hashes.length}`);
 if (bad) console.log("  divergono al passo", bad.passo, "->", bad.diverso);
-console.log("  nebbia", JSON.stringify({ rossoVedeBaseBlu: fog0[0], bluVedeBaseRossa: fog0[1], muliniBlu: plan.mulini, deposito: plan.deposito }));
+console.log("  nebbia", JSON.stringify({ rossoVedeBaseBlu: fog0[0].vede, bluVedeBaseRossa: fog0[1].vede, luceBaseRossa: fog0[0].shade, luceBaseBlu: fog0[1].shade, muliniBlu: plan.mulini, deposito: plan.deposito }));
 console.log("  inizio", JSON.stringify({ centri: plan.centri, regiaCPU: plan.eco, civiliBlu: plan.om2.length, cassaBlu: plan.p2, casaBlu: plan.spot }));
 console.log("  fatto ", JSON.stringify(after));
 console.log("  blu   ", JSON.stringify(look));

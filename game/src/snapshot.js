@@ -68,7 +68,8 @@ export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver", // (e i
 // i campi delle istanze che tengono stato grafico (particelle di fuoco ed
 // erba, righe del grano): diversi con le opzioni grafiche di chi guarda
 const VISUAL_KEYS = ["fire_ps", "fire_emitter", "fire_part", "grass_rows", "grass_system", "grass_system_black",
-                     "grass_emitter", "crop_rows", "skRain", "skRainPs"];
+                     "grass_emitter", "crop_rows", "skRain", "skRainPs",
+                     "leafHit"]; // §9.155: le foglie del colpo, solo sugli alberi sullo schermo di chi guarda
 const HASH_OPTS = { ...OPTS, skipInstanceKeys: [...OPTS.skipInstanceKeys, "hover", "hov", ...VISUAL_KEYS, ...SELECTION_KEYS] };
 export function stateParts({ world, g, manager, path }) {
   const gg = {};
