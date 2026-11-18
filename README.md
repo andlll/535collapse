@@ -85,10 +85,15 @@ minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" 
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 
-**Multigiocatore online** (§9.152-§9.156): Schermaglia, "Multigiocatore online". Chi
-crea la partita (il rosso) manda all'altro il codice che compare; l'altro lo
-incolla nello stesso pannello ("Entra", il blu) e rimanda il suo codice di
-risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
+Il menu principale (§9.157): "Gioca il tutorial", "Giocatore singolo"
+(campagna e schermaglia), "Multigiocatore", "Carica partita".
+
+**Multigiocatore online** (§9.152-§9.157): "Multigiocatore", "Crea partita":
+mappa e opzioni come nella schermaglia (difficolta' e stile della CPU in
+grigio), poi "Crea partita" in basso a destra. Chi crea la partita (il
+rosso) manda all'altro il codice che compare; l'altro va in
+"Multigiocatore", "Partecipa", lo incolla ("Entra", il blu) e rimanda il suo
+codice di risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
 due browser (WebRTC, con un server STUN pubblico per attraversare i router;
 senza un server TURN alcune reti non si collegano); i due giochi si
 scambiano solo i comandi (lockstep) e confrontano ogni 5 secondi

@@ -46,7 +46,8 @@ nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere").
+ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
+"Multigiocatore" con "Crea partita" e "Partecipa" (§9.157).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -11334,3 +11335,69 @@ sinistra nella GUI tra il pannello risorse e la minimappa".
 6. Le cose rimaste da §9.155 ("Cosa resta"): altri confronti di nomi
    d'oggetto per il blu, global.order comune, il vantaggio di chi nasce dopo
    (equita').
+
+
+### 9.157 Il menu: "Giocatore singolo" e "Multigiocatore"
+
+Richiesta dell'autore (18 novembre 2026, nuova PR, versione 0.2613):
+"mettiamo a monte 'giocatore singolo' che conterrà campagna e schermaglia
+(nella schermaglia deve scomparire il tasto multiplayer), e 'multiplayer',
+che contiene 'crea partita' e 'partecipa'. Crea partita apre la schermata
+che prima si apriva cliccando 'multiplayer' da 'schermaglia', [...] con le
+opzioni in grigio per i punti in cui non ha senso. Quando si crea la
+partita con il tasto in basso a destra [...] deve comparire la schermata di
+condivisione codici. In 'partecipa' [...] la schermata per inserire il
+codice fornito, senza tutta l'interfaccia di opzioni della schermaglia."
+
+**Com'e' ora.** La colonna dei pulsanti del menu ha tre pagine (menu.js
+`MENU_PAGES`, `i.page`):
+- il titolo: "Gioca il tutorial", "Giocatore singolo", "Multigiocatore",
+  "Carica partita";
+- "Giocatore singolo": "Campagna - Collapse", "Schermaglia", "Indietro";
+- "Multigiocatore": "Crea partita", "Partecipa", "Indietro".
+Le colonne finiscono tutte a 100 px dal fondo (al posto di "Indietro" c'era
+"Carica partita": un doppio clic su "Giocatore singolo" o "Multigiocatore"
+non torna indietro); il logo resta dove sta nel titolo.
+- *Schermaglia*: com'era, senza il pulsante "Multigiocatore online".
+- *Crea partita*: la stessa schermata (titolo "Crea partita"), con il
+  riquadro della mappa e le sue frecce di sempre, difficolta' e stile della
+  CPU in grigio (come in §9.156); il pulsante in basso a destra si chiama
+  "Crea partita" e apre la partita di chi crea con la sala d'attesa e i
+  codici (netgame.js `hostGame`: quello che faceva "Crea una partita" nel
+  pannello). Le opzioni sono quelle salvate della schermaglia (le stesse
+  nelle due schermate).
+- *Partecipa*: un pannello al centro sopra il menu (netgame.js
+  `joinMenu`): "Incolla qui il codice che hai ricevuto da chi ha creato la
+  partita:", la casella, poi (con un codice valido) la partita in testo
+  ("Mappa: Padania. Vittoria: Conquista, ... Giocherai col blu.") ed
+  "Entra"; "Indietro" o Esc lo chiudono.
+- *Indietro*: Esc o "Indietro" dalle due pagine tornano al titolo; dalla
+  schermaglia e dalla campagna si torna a "Giocatore singolo" (anche
+  tornando al menu da un livello della campagna), da "Crea partita" a
+  "Multigiocatore".
+
+**Tolti** (non servono piu'): il pannello agganciato alla colonna della
+mappa con le sue frecce e l'anteprima del codice nella griglia (netui.js
+`dock`, `chooser`; menu.js `netDock`, `netPreview`; netgame.js `netMenu`),
+e tre testi ("Against another player...", "Create a game", "Or paste here
+the code you received:"). Testi nuovi in sei lingue: "Single player"
+(Giocatore singolo), "Multiplayer" (Multigiocatore), "Create game" (Crea
+partita), "Join game" (Partecipa) e la frase del pannello. I nomi dei
+pulsanti dei menu passano dalla prova delle traduzioni (`MENU_LABELS`).
+
+**Scelte mie** (da rivedere con l'autore se vuole): il tutorial e "Carica
+partita" restano nel titolo (la richiesta non li nomina); "Indietro" e' un
+pulsante della colonna, non il cerchio in alto a destra (li' c'e' lo
+schermo intero); in italiano "Multigiocatore" (come "Multigiocatore
+online" scelto in §9.156).
+
+**Prove.** `test/browser/rtc.mjs` (nella CI) segue il percorso nuovo coi
+clic veri: A "Multigiocatore", "Crea partita", un clic sulla difficolta'
+(in grigio: non cambia), "Crea partita" in basso a destra; B
+"Multigiocatore", "Partecipa", incolla il codice, "Entra"; poi come prima
+(WebRTC vero, pausa, impronte, chat, uscita): passata. Passate anche
+netfake.mjs, soak.mjs sul menu, `npm test`, e ui.mjs nelle sei lingue (che
+ora disegna le tre pagine della colonna con ogni pulsante acceso): nessun
+problema. Screenshot di tutte le schermate in italiano, spagnolo e tedesco:
+i testi stanno nei pulsanti.
+

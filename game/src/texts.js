@@ -570,16 +570,19 @@ export const TEXTS = {
   "Opponent: the red player": { it: "Avversario: il giocatore rosso", es: "Rival: el jugador rojo", pt: "Adversário: o jogador vermelho", de: "Gegner: der rote Spieler", fr: "Adversaire : le joueur rouge" },
   // [§9.156] la partita a due in rete: il menu, la sala d'attesa, gli avvisi
   "Online multiplayer": { it: "Multigiocatore online", es: "Multijugador en línea", pt: "Multijogador online", de: "Online-Mehrspieler", fr: "Multijoueur en ligne" },
-  "Against another player, with a direct connection between your computers: create a game with this map and the options on the right, or join one with the code you received.": {
-    it: "Contro un altro giocatore, con una connessione diretta fra i vostri computer: crea una partita con questa mappa e le opzioni a destra, o entra in una col codice che hai ricevuto.",
-    es: "Contra otro jugador, con una conexión directa entre vuestros ordenadores: crea una partida con este mapa y las opciones de la derecha, o entra en una con el código que has recibido.",
-    pt: "Contra outro jogador, com uma conexão direta entre os seus computadores: crie uma partida com este mapa e as opções à direita, ou entre em uma com o código que você recebeu.",
-    de: "Gegen einen anderen Spieler, mit einer direkten Verbindung zwischen euren Computern: Erstelle ein Spiel mit dieser Karte und den Optionen rechts oder tritt mit dem erhaltenen Code einem Spiel bei.",
-    fr: "Contre un autre joueur, avec une connexion directe entre vos ordinateurs : crée une partie avec cette carte et les options à droite, ou rejoins-en une avec le code que tu as reçu." },
   "Map: {map}": { it: "Mappa: {map}", es: "Mapa: {map}", pt: "Mapa: {map}", de: "Karte: {map}", fr: "Carte : {map}" },
-  "Create a game": { it: "Crea una partita", es: "Crear una partida", pt: "Criar uma partida", de: "Spiel erstellen", fr: "Créer une partie" },
-  "Or paste here the code you received:": { it: "Oppure incolla qui il codice che hai ricevuto:", es: "O pega aquí el código que has recibido:",
-    pt: "Ou cole aqui o código que você recebeu:", de: "Oder füge hier den Code ein, den du bekommen hast:", fr: "Ou colle ici le code que tu as reçu :" },
+  // [§9.157] il menu: "Single player" (campagna, schermaglia) e "Multiplayer"
+  // ("Create game", "Join game")
+  "Single player": { it: "Giocatore singolo", es: "Un jugador", pt: "Um jogador", de: "Einzelspieler", fr: "Solo" },
+  "Multiplayer": { it: "Multigiocatore", es: "Multijugador", pt: "Multijogador", de: "Mehrspieler", fr: "Multijoueur" },
+  "Create game": { it: "Crea partita", es: "Crear partida", pt: "Criar partida", de: "Spiel erstellen", fr: "Créer une partie" },
+  "Join game": { it: "Partecipa", es: "Unirse a una partida", pt: "Participar", de: "Spiel beitreten", fr: "Rejoindre une partie" },
+  "Paste here the code you received from the player who created the game:": {
+    it: "Incolla qui il codice che hai ricevuto da chi ha creato la partita:",
+    es: "Pega aquí el código que has recibido de quien ha creado la partida:",
+    pt: "Cole aqui o código que você recebeu de quem criou a partida:",
+    de: "Füge hier den Code ein, den du vom Ersteller des Spiels bekommen hast:",
+    fr: "Colle ici le code que tu as reçu de celui qui a créé la partie :" },
   "Paste the code here": { it: "Incolla qui il codice", es: "Pega aquí el código", pt: "Cole o código aqui", de: "Code hier einfügen", fr: "Colle le code ici" },
   "Join": { it: "Entra", es: "Entrar", pt: "Entrar", de: "Beitreten", fr: "Rejoindre" },
   "You will play blue.": { it: "Giocherai col blu.", es: "Jugarás con el azul.", pt: "Você jogará com o azul.", de: "Du spielst Blau.", fr: "Tu joueras les bleus." },

@@ -4,8 +4,9 @@
 //
 // IL PERCORSO (decisioni dell'autore: 1 contro 1, connessione diretta,
 // codici da incollare, senza server).
-// 1. Menu, schermaglia, "Multigiocatore online" (netMenu): "Crea una partita" con la
-//    mappa e le opzioni scelte, o il codice ricevuto da incollare ("Entra").
+// 1. Menu, "Multiplayer" (§9.157): "Create game" (la schermata della
+//    schermaglia, poi hostGame) con la mappa e le opzioni scelte, o "Join
+//    game" (joinMenu) col codice ricevuto da incollare ("Entra").
 // 2. Chi crea apre la room (?room=sk_*&net=host&seed=N; le opzioni restano
 //    in sessionStorage): nella sala d'attesa il suo codice (l'offerta WebRTC
 //    con mappa, opzioni e seme) da mandare all'altro, e la casella per la
@@ -76,34 +77,34 @@ function codeProblem(e, want, version, data) {
 }
 
 // ------------------------------------------------------------- il menu
-// "Multigiocatore online" nella schermata della schermaglia (menu.js): crea o
-// entra. [§9.156, decisione dell'autore] Il pannello sta al posto del riquadro
-// della mappa (dock, pixel CSS): la griglia delle opzioni resta visibile e si
-// usa, con difficolta' e stile della CPU in grigio; la mappa si sceglie con
-// le frecce del pannello (onMap(dir) -> le opzioni nuove); update(sk) quando
-// cambiano le opzioni nella griglia.
-export function netMenu({ sk, version, stun = true, dock = null, onMap = null, onPreview = null, onClose = null }) {
-  let cur = sk;
-  const panel = new NetPanel({ onEscape: () => panel.close(), dock });
+// [§9.157, richiesta dell'autore] Dal menu principale, "Multiplayer":
+// - "Create game" apre la schermata della schermaglia (menu.js, con
+//   difficolta' e stile della CPU in grigio); il pulsante in basso a destra
+//   chiama hostGame con mappa e opzioni scelte: si apre la partita di chi
+//   crea con la sala d'attesa e i codici (lobby, sotto);
+// - "Join game" apre joinMenu: il pannello per incollare il codice ricevuto
+//   (solo quello: mappa e opzioni sono di chi ha creato la partita).
+
+// chi crea: la sua partita (il rosso), con le opzioni sk
+export function hostGame({ sk, stun = true }) {
+  const seed = freshSeed();
+  setSession({ role: "host", sk, seed });
+  location.search = urlFor(sk.map, "host", seed, stun);
+}
+
+// chi entra: il pannello col codice, al centro sopra il menu (Esc o "Back"
+// lo chiudono: onClose)
+export function joinMenu({ version, stun = true, onClose = null }) {
+  const panel = new NetPanel({ onEscape: () => panel.close() });
   panel.onClose = onClose;
-  panel.title(tr("Online multiplayer"));
-  panel.text(tr("Against another player, with a direct connection between your computers: create a game with this map and the options on the right, or join one with the code you received."));
+  panel.title(tr("Join game"));
   if (!rtcAvailable()) {
     panel.status(tr("This browser does not support direct connections (WebRTC)."), "error");
     panel.button(panel.row(), tr("Back"), () => panel.close(), { name: "back" });
     return panel;
   }
-  const pick = (dir) => { if (found) return; cur = onMap(dir); map.set(mapName(cur.map)); };
-  let found = null;
-  const map = onMap ? panel.chooser(mapName(cur.map), () => pick(-1), () => pick(1), "map") : null;
-  if (!map) panel.text(setupSummary(cur));
-  const create = panel.button(panel.row(), tr("Create a game"), () => {
-    const seed = freshSeed();
-    setSession({ role: "host", sk: cur, seed });
-    location.search = urlFor(cur.map, "host", seed, stun);
-  }, { primary: true, name: "create" });
-  panel.text(tr("Or paste here the code you received:"));
-  let tries = 0;
+  panel.text(tr("Paste here the code you received from the player who created the game:"));
+  let tries = 0, found = null;
   const box = panel.code({ placeholder: tr("Paste the code here"), name: "join-code", onInput: (text) => check(text) });
   const info = panel.text("");
   const row = panel.row();
@@ -124,17 +125,11 @@ export function netMenu({ sk, version, stun = true, dock = null, onMap = null, o
     found = bad === null ? { sk: cleanSkirmish(d.data.setup.sk ? { ...d.data.setup.sk, map: d.data.setup.map } : { map: d.data.setup.map }),
                              seed: d.data.setup.seed >>> 0 } : null;
     join.disabled = !found;
-    // [§9.156] col pannello agganciato la griglia del menu mostra la partita
-    // del codice (onPreview); qui la mappa e il colore
-    create.disabled = !!found;
-    if (onPreview) onPreview(found ? found.sk : null);
-    if (map) map.set(mapName((found ? found.sk : cur).map));
-    const what = found ? (onPreview ? tr("Map: {map}", { map: mapName(found.sk.map) }) + ". " : setupSummary(found.sk) + " ") + tr("You will play blue.") : "";
-    panel.setText(info, what);
+    // la partita del codice: mappa e opzioni, e il colore
+    panel.setText(info, found ? setupSummary(found.sk) + " " + tr("You will play blue.") : "");
     panel.status(bad || "", "error");
   };
-  // le opzioni cambiate nella griglia del menu
-  panel.update = (sk2) => { cur = sk2; if (map) map.set(mapName(cur.map)); };
+  setTimeout(() => box.focus(), 0);
   return panel;
 }
 

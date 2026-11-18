@@ -26,6 +26,11 @@
 //
 // [Richiesta dell'autore] i quattro pulsanti della schermata iniziale in
 // colonna, alti uguali (titleButtons).
+//
+// [§9.157, richiesta dell'autore] la schermata iniziale: "Play the
+// tutorial", "Single player" (dentro: la campagna e la schermaglia),
+// "Multiplayer" (dentro: "Create game", la schermaglia per la partita
+// online, e "Join game", il pannello per il codice ricevuto), "Load game".
 
 import { c, makeColourRgb, mergeColour } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
@@ -73,14 +78,31 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // [§9.119, richiesta dell'autore] "Full screen" non piu' nella colonna (con
 // la schermaglia c'era "traffico"): un pulsante tondo in alto a destra col
 // simbolo, come quelli della campagna (indietro, lucchetto). full: [x, y, r].
+// [§9.157, richiesta dell'autore] la colonna ha tre pagine (i.page): il
+// titolo ("Play the tutorial", "Single player", "Multiplayer", "Load
+// game"), "Single player" (la campagna e la schermaglia) e "Multiplayer"
+// ("Create game": la schermaglia per la partita online; "Join game": il
+// pannello per il codice ricevuto). Nelle due pagine interne l'ultimo
+// pulsante e' "Back" (il cerchio in alto a destra e' lo schermo intero).
+// Ogni colonna finisce a 100 px dal fondo; il logo resta dove sta col
+// titolo (top: l'alto della colonna del titolo).
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
 const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
-function titleButtons(W, H) {
-  const keys = ["tutorial", "campaign", "skirmish", "load"]; // skirmish: §9.118
-  const top = H - 100 - keys.length * BTN_H - (keys.length - 1) * BTN_GAP;
-  const out = { top };
+const MENU_PAGES = {
+  title: ["tutorial", "single", "multi", "load"],
+  single: ["campaign", "skirmish", "back"],
+  multi: ["create", "join", "back"],
+};
+const BTN_LABEL = { tutorial: "Play the tutorial", single: "Single player", multi: "Multiplayer", load: "Load game",
+                    campaign: "Campaign - Collapse", skirmish: "Skirmish", create: "Create game", join: "Join game", back: "Back" };
+export const MENU_LABELS = Object.values(BTN_LABEL); // (per la prova delle traduzioni)
+const colTop = (H, n) => H - 100 - n * BTN_H - (n - 1) * BTN_GAP;
+function titleButtons(W, H, page = "title") {
+  const keys = MENU_PAGES[page] || MENU_PAGES.title;
+  const first = colTop(H, keys.length);
+  const out = { top: colTop(H, MENU_PAGES.title.length), keys };
   keys.forEach((k, n) => {
-    const y = top + n * (BTN_H + BTN_GAP);
+    const y = first + n * (BTN_H + BTN_GAP);
     out[k] = [W / 2 - BTN_W / 2, y, W / 2 + BTN_W / 2, y + BTN_H];
   });
   out.full = fullscreenAvailable() ? [W - FULL_BTN[0], FULL_BTN[1], FULL_BTN[2]] : null;
@@ -160,10 +182,8 @@ function skLayout(W, H) {
     rows.push({ kind: "opt", key, dir: 1, x1: cx + cw / 2, y1: cy, x2: cx + cw, y2: cy + ch, card: [cx, cy, cx + cw, cy + ch] });
   });
   rows.push({ kind: "back", circle: [W - 50, 50, 30] });
+  // (nella partita online, §9.157: "Create game", che apre la sala d'attesa)
   rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
-  // [§9.156, richiesta dell'autore] "Multigiocatore online" (la partita a
-  // due in rete, netgame.js), a sinistra di "Inizia"
-  rows.push({ kind: "pvp", x1: Math.max(gx1, gx2 - 620), y1: H - 100, x2: gx2 - 320, y2: H - 45 });
   return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
 // il valore dopo (dir 1) o prima (dir -1) di un parametro
@@ -174,15 +194,10 @@ function stepValue(key, v, dir) {
 // la mappa mostrata (anche quelle "in arrivo"): indice in SK_MAPS
 const shownMap = (i) => (i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
 // [§9.156, decisione dell'autore] i parametri che valgono solo contro la CPU:
-// in grigio (e fermi) col pannello "Multigiocatore online" aperto
+// in grigio (e fermi) nella schermaglia della partita online ([§9.157]
+// i.skNet: "Multiplayer", "Create game")
 const CPU_ONLY = new Set(["difficulty", "style"]);
-// (i.netPreview: un codice valido incollato, la griglia mostra la partita in
-// cui si entra: tutti i parametri fermi)
-const offline = (i, r) => !!i.netPanel && (r.kind === "start" || r.kind === "map"
-  || (r.kind === "opt" && (CPU_ONLY.has(r.key) || !!i.netPreview)));
-// il riquadro del pannello "Multigiocatore online": quello della mappa,
-// fino in fondo alla finestra se serve
-const netDock = (L, H) => [L.card.x1, 20, L.card.x2, H - 20];
+const offline = (i, r) => !!i.skNet && r.kind === "opt" && CPU_ONLY.has(r.key);
 
 export function enemyManagerMenu() {
   return {
@@ -201,10 +216,15 @@ export function enemyManagerMenu() {
       i.testo_c = "";
       i.testo_h = 0;
       if (g.campagna !== 1) g.campagna = 0;
-      Object.assign(i, { hover: 0, campagnahover: 0, sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
+      // [§9.157] page: la pagina della colonna (titleButtons); btnhover: il
+      // pulsante sotto il puntatore; skNet: la schermaglia della partita
+      // online; joinPanel: il pannello "Join game" (netgame.js joinMenu).
+      // (Tornando dalla campagna si torna a "Single player")
+      Object.assign(i, { page: g.campagna === 1 ? "single" : "title", btnhover: null,
+                         sblocco: 0, c_indhover: 0, c_unlhover: 0, lvlhover: 0, lvlshown: 0,
                          comb: [0, 0, 0, 0, 0], combHover: null, sblocco_hover: 0, redamount: 0,
-                         loadmenu: 0, loadhover: 0, loadrow: -1, fullhover: 0,
-                         skmenu: 0, skhover: 0, skrow: -1, sk: null, netPanel: null }); // §9.118, netPanel: §9.156
+                         loadmenu: 0, loadrow: -1, fullhover: 0,
+                         skmenu: 0, skrow: -1, sk: null, skNet: false, joinPanel: null }); // §9.118, §9.156-§9.157
     },
     // Alarm_0 [C]: le unita' ferme vanno contro il nemico piu' vicino
     alarm0(i, w) {
@@ -229,22 +249,19 @@ export function enemyManagerMenu() {
     stepEnd(i, w) {
       const g = w.g, W = w.cam.cssW, H = w.cam.cssH, mx = w.input.x, my = w.input.y;
       g.sele = -1; // nel menu le unita' non si selezionano
-      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0) {
-        const b = titleButtons(W, H);
-        i.hover = +inRect(mx, my, ...b.tutorial);
-        i.campagnahover = +inRect(mx, my, ...b.campaign);
-        i.loadhover = +inRect(mx, my, ...b.load);
+      if (g.campagna === 0 && i.loadmenu === 0 && i.skmenu === 0 && !i.joinPanel) {
+        const b = titleButtons(W, H, i.page);
+        i.btnhover = b.keys.find((k) => inRect(mx, my, ...b[k])) || null;
         i.fullhover = +(!!b.full && dhypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
-        i.skhover = +inRect(mx, my, ...b.skirmish);
       } else {
-        i.hover = i.campagnahover = i.loadhover = i.fullhover = i.skhover = 0;
+        i.btnhover = null;
+        i.fullhover = 0;
       }
       i.skrow = -1;
       if (g.campagna === 0 && i.skmenu === 1) {
         const L = skLayout(W, H);
-        if (i.netPanel) i.netPanel.dock(netDock(L, H)); // §9.156 (la finestra puo' cambiare)
         L.rows.forEach((r, k) => {
-          if ((r.kind === "start" || r.kind === "pvp") && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
+          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
           if (offline(i, r)) return; // §9.156
           const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
@@ -282,9 +299,11 @@ export function enemyManagerMenu() {
       if (i.redamount > 0) i.redamount -= 0.03125;
     },
     keyPress27(i, w) {
+      if (i.joinPanel) return; // (Esc lo chiude il pannello, netui.js)
       if (i.loadmenu === 1) { i.loadmenu = 0; return; }
       if (i.skmenu === 1) { i.skmenu = 0; return; } // §9.118
-      if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0;
+      if (w.g.campagna === 1) { if (i.sblocco === 0) w.g.campagna = 0; else i.sblocco = 0; return; }
+      i.page = "title"; // §9.157: dalle pagine "Single player" e "Multiplayer"
     },
     globalLeftReleased(i, w) {
       const g = w.g, mx = w.input.x, my = w.input.y;
@@ -299,53 +318,39 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) { // §9.118
         const L = skLayout(w.cam.cssW, w.cam.cssH), r = L.rows[i.skrow];
         if (!r || offline(i, r)) return;
-        if (r.kind === "back") { if (i.netPanel) i.netPanel.close(); i.skmenu = 0; return; }
-        // [§9.156] "Multigiocatore online": apre (o chiude) il pannello al posto
-        // del riquadro della mappa
-        if (r.kind === "pvp") {
-          if (i.netPanel) { i.netPanel.close(); return; }
-          if (!w.hooks.twoPlayers) return;
-          saveSkirmish(i.sk);
-          i.netPanel = w.hooks.twoPlayers({
-            sk: { ...i.sk }, dock: netDock(L, w.cam.cssH),
-            onMap: (dir) => {
-              let k = shownMap(i);
-              do k = (k + dir + SK_MAPS.length) % SK_MAPS.length; while (!SK_MAPS[k].room);
-              i.skMap = k;
-              i.sk.map = SK_MAPS[k].room;
-              saveSkirmish(i.sk);
-              return { ...i.sk };
-            },
-            // [§9.156] il codice incollato: la griglia mostra le sue opzioni
-            // (senza salvarle), poi di nuovo le proprie
-            onPreview: (sk) => {
-              if (sk && !i.netPreview) i.netPreview = { mine: i.sk, skMap: i.skMap };
-              if (sk) { i.sk = { ...sk }; i.skMap = null; return; }
-              if (i.netPreview) { i.sk = i.netPreview.mine; i.skMap = i.netPreview.skMap; i.netPreview = null; }
-            },
-            onClose: () => {
-              if (i.netPreview) { i.sk = i.netPreview.mine; i.skMap = i.netPreview.skMap; i.netPreview = null; }
-              i.netPanel = null;
-            },
-          });
-          return;
-        }
+        if (r.kind === "back") { i.skmenu = 0; return; }
         if (r.kind === "map") {
           i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
           if (SK_MAPS[i.skMap].room) i.sk.map = SK_MAPS[i.skMap].room;
         }
         if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
         saveSkirmish(i.sk);
-        if (i.netPanel) i.netPanel.update({ ...i.sk }); // §9.156: le opzioni della partita online
-        if (r.kind === "start") w.gotoRoom(i.sk.map);
+        if (r.kind === "start") {
+          // [§9.157] nella partita online "Create game": la sala d'attesa coi
+          // codici (netgame.js hostGame), nella partita della mappa scelta
+          if (i.skNet) { if (w.hooks.hostGame) w.hooks.hostGame({ ...i.sk }); } else w.gotoRoom(i.sk.map);
+        }
         return;
       }
-      if (g.campagna === 0 && i.skhover === 1) { i.skmenu = 1; i.skhover = 0; i.sk = loadSkirmish(); i.skMap = null; return; }
-      if (g.campagna === 0 && i.loadhover === 1) { i.loadmenu = 1; i.loadhover = 0; return; }
-      if (g.campagna === 0 && i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
       if (g.campagna === 0) {
-        if (i.hover === 1) { w.gotoRoom("match"); return; }
-        if (i.campagnahover === 1) { g.campagna = 1; return; }
+        if (i.joinPanel) return; // (il pannello copre la finestra: qui per sicurezza)
+        if (i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
+        const k = i.btnhover;
+        i.btnhover = null;
+        if (k === "tutorial") w.gotoRoom("match");
+        else if (k === "single" || k === "multi") i.page = k; // §9.157
+        else if (k === "back") i.page = "title";
+        else if (k === "load") i.loadmenu = 1;
+        else if (k === "campaign") g.campagna = 1;
+        else if (k === "skirmish" || k === "create") {
+          // la schermaglia (§9.118) o, da "Multiplayer", la sua versione per la
+          // partita online (§9.157): le stesse opzioni salvate
+          Object.assign(i, { skmenu: 1, skNet: k === "create", sk: loadSkirmish(), skMap: null });
+        } else if (k === "join" && w.hooks.joinGame) {
+          // [§9.157] il pannello per il codice ricevuto, sopra il menu
+          i.joinPanel = w.hooks.joinGame({ onClose: () => { i.joinPanel = null; } });
+        }
+        return;
       }
       if (i.c_indhover === 1) {
         if (i.sblocco === 0) { g.campagna = 0; i.c_indhover = 0; return; }
@@ -383,20 +388,16 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2612";
+export const VERSION = "0.2613";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
-  const b = titleButtons(W, H);
-  const btn = [["tutorial", i.hover, tr("Play the tutorial")], ["campaign", i.campagnahover, tr("Campaign - Collapse")],
-               ["skirmish", i.skhover, tr("Skirmish")], // §9.118
-               ["load", i.loadhover, tr("Load game")]];
+  const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("GUI_1");
-  for (const [k, hov, label] of btn) {
-    if (!b[k]) continue;
-    const [x1, y1, x2, y2] = b[k];
-    d.setAlpha(hov ? 0.99 : 0.69);
+  for (const k of b.keys) {
+    const [x1, y1, x2, y2] = b[k], label = tr(BTN_LABEL[k]);
+    d.setAlpha(i.btnhover === k ? 0.99 : 0.69);
     d.roundrectColourExt(x1, y1, x2, y2, 60, 60, c.white, c.white, false);
     d.setColour(c.black);
     d.setAlpha(0.75);
@@ -472,10 +473,9 @@ function drawSkirmish(i, d, W, H) {
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("gui_sblocco");
-  glowText(d, W / 2, 55, tr("Skirmish"));
-  // la mappa: riquadro, foto, nome con le frecce, descrizione ([§9.156] non
-  // col pannello "Multigiocatore online", che sta al suo posto)
-  if (!i.netPanel) drawMapCard(i, d, L, m);
+  glowText(d, W / 2, 55, tr(i.skNet ? "Create game" : "Skirmish")); // §9.157
+  // la mappa: riquadro, foto, nome con le frecce, descrizione
+  drawMapCard(i, d, L, m);
   drawGrid(i, d, W, H, L, m);
 }
 function drawMapCard(i, d, L, m) {
@@ -514,7 +514,7 @@ function drawGrid(i, d, W, H, L, m) {
   const seen = new Set();
   const rainOnTop = () => { if (i.skRainPs) i.skRain.draw(i.skRainPs, d.r, d.a, { x: 0, y: 0, w: W, h: H }); };
   L.rows.forEach((r, k) => {
-    if (r.kind === "map") { if (!i.netPanel) arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
+    if (r.kind === "map") { arrow(d, ...r.circle, r.dir, i.skrow === k); return; }
     if (r.kind === "back") {
       const [cx, cy, rad] = r.circle;
       d.setAlpha(i.skrow === k ? 0.99 : 0.69);
@@ -523,20 +523,20 @@ function drawGrid(i, d, W, H, L, m) {
       d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
       return;
     }
-    if (r.kind === "start" || r.kind === "pvp") { // pvp: §9.156
-      const on = !!m.room && !offline(i, r), lit = i.skrow === k || (r.kind === "pvp" && !!i.netPanel);
-      d.setAlpha(!on ? 0.3 : lit ? 0.99 : 0.69);
+    if (r.kind === "start") {
+      const on = !!m.room;
+      d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
       d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
       d.setFont("GUI_1");
       d.setColour(c.black);
       d.setAlpha(on ? 0.8 : 0.35);
-      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr(r.kind === "start" ? "Start" : "Online multiplayer"));
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr(i.skNet ? "Create game" : "Start")); // §9.157
       return;
     }
     if (seen.has(r.key)) return;
     seen.add(r.key);
     const [x1, y1, x2, y2] = r.card, cx = (x1 + x2) / 2, hov = i.skrow === k || i.skrow === k + 1;
-    // [§9.156] col pannello "Multigiocatore online" aperto i parametri della
+    // [§9.156] nella partita online ([§9.157] "Create game") i parametri della
     // CPU sono in grigio: il riquadro piu' trasparente, niente frecce, l'icona
     // velata, le scritte tenui
     const off = offline(i, r);

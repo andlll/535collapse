@@ -54,7 +54,7 @@ import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
-import { netParams, startNet, netMenu } from "./netgame.js"; // §9.156
+import { netParams, startNet, hostGame, joinMenu } from "./netgame.js"; // §9.156, §9.157
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
@@ -573,9 +573,12 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
-  // [§9.156] "Multigiocatore online" nella schermata della schermaglia
-  // (?stun=0 passa alla partita: senza server STUN, per le prove in locale)
-  world.hooks.twoPlayers = (opts) => netMenu({ ...opts, version: VERSION, stun: params.get("stun") !== "0" });
+  // [§9.156, §9.157] "Multiplayer" nel menu: "Create game" (dalla schermata
+  // della schermaglia) e "Join game" (?stun=0 passa alla partita: senza
+  // server STUN, per le prove in locale)
+  const stun = params.get("stun") !== "0";
+  world.hooks.hostGame = (sk) => hostGame({ sk, stun });
+  world.hooks.joinGame = (opts) => joinMenu({ ...opts, version: VERSION, stun });
   // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;

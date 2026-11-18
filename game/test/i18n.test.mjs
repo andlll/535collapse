@@ -36,8 +36,9 @@ test("tr: lingua scelta, segnaposto, ricaduta sull'inglese", () => {
 });
 
 test("menu principale tradotto (livelli e storie)", async () => {
-  const { LEVELS, STORY } = await import("../src/menu.js");
-  for (const s of [...LEVELS, ...Object.values(STORY), "Campaign - Collapse", "Play the tutorial", "Coming soon", "Unlock level"]) {
+  const { LEVELS, STORY, MENU_LABELS } = await import("../src/menu.js");
+  // (MENU_LABELS, §9.157: i pulsanti delle tre pagine della colonna)
+  for (const s of [...LEVELS, ...Object.values(STORY), ...MENU_LABELS, "Coming soon", "Unlock level"]) {
     assert.ok(TEXTS[s], s);
   }
 });

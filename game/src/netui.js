@@ -32,16 +32,6 @@ const CSS = `
 .net-btn.primary:hover { background: rgb(86, 190, 90); }
 .net-btn:disabled { opacity: .45; cursor: default; }
 .net-status:empty { display: none; }
-.net-dock { position: fixed; z-index: 10; display: flex; }
-.net-dock .net-panel { width: 100%; max-height: 100%; padding: 16px 22px; border-radius: 30px; }
-.net-chooser { display: flex; align-items: center; justify-content: center; gap: 14px; }
-.net-arrow { width: 40px; height: 40px; border: 0; border-radius: 20px; cursor: pointer; background: rgba(255, 255, 255, .95);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .25); position: relative; flex: none; }
-.net-arrow:hover { background: #f2f2f2; }
-.net-arrow::after { content: ""; position: absolute; top: 13px; border: 7px solid transparent; }
-.net-arrow.prev::after { left: 9px; border-right: 10px solid #333; }
-.net-arrow.next::after { left: 15px; border-left: 10px solid #333; }
-.net-chooser > div { min-width: 180px; }
 #net-bar { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); max-width: min(90vw, 720px);
   padding: 10px 16px; border-radius: 8px; color: #fff; background: #4a4f3c; pointer-events: none; z-index: 9; }
 #net-bar.warning { background: #8a5a12; }
@@ -58,19 +48,16 @@ function style() {
 
 const INNER = () => Math.min(600, window.innerWidth * 0.94) - 56;
 
+// (§9.157: il pannello agganciato alla colonna della mappa della
+// schermaglia, §9.156, non serve piu': sempre al centro, sopra tutto)
 export class NetPanel {
-  // dock [x1, y1, x2, y2] (pixel CSS): [§9.156] il pannello in quel
-  // riquadro, senza coprire il resto (il menu della schermaglia: la griglia
-  // delle opzioni resta visibile e si usa); se no al centro, sopra tutto
-  constructor({ onEscape = null, dock = null } = {}) {
+  constructor({ onEscape = null } = {}) {
     style();
     this.root = document.createElement("div");
-    this.root.className = dock ? "net-dock" : "net-overlay";
+    this.root.className = "net-overlay";
     this.panel = document.createElement("div");
     this.panel.className = "net-panel";
     this.root.append(this.panel);
-    this.docked = !!dock;
-    if (dock) this.dock(dock);
     // i tasti battuti qui non arrivano al gioco (input.js ascolta window)
     for (const ev of ["keydown", "keyup", "keypress"]) this.root.addEventListener(ev, (e) => e.stopPropagation());
     this.onEscape = onEscape;
@@ -87,22 +74,12 @@ export class NetPanel {
 
   _add(el) { this.panel.append(el); return el; }
   // la larghezza utile del testo
-  inner() { return this.docked ? this.dockW - 44 : INNER(); }
-  // il riquadro del pannello agganciato (si rifa' se la finestra cambia)
-  dock([x1, y1, x2, y2]) {
-    const k = [x1, y1, x2, y2].map(Math.round).join();
-    if (k === this._dockKey) return;
-    this._dockKey = k;
-    this.dockW = Math.round(x2 - x1);
-    Object.assign(this.root.style, { left: Math.round(x1) + "px", top: Math.round(y1) + "px", width: this.dockW + "px",
-                                     maxHeight: Math.round(y2 - y1) + "px" });
-  }
+  inner() { return INNER(); }
 
   title(text) {
     const el = this._add(document.createElement("div"));
-    // (agganciato, stretto: il font dei pulsanti, non quello dei titoli)
-    setDomText(el, text, { font: this.docked ? "GUI_1" : "gui_sblocco", colour: "#111", width: this.inner() });
-    el.style.margin = this.docked ? "4px 0 8px" : "2px 0 10px";
+    setDomText(el, text, { font: "gui_sblocco", colour: "#111", width: this.inner() });
+    el.style.margin = "2px 0 10px";
     return el;
   }
 
@@ -117,25 +94,6 @@ export class NetPanel {
   setText(el, text, { center = false, colour = "#222" } = {}) {
     el.dataset.text = text;
     setDomText(el, text, { font: "overdue", colour, width: this.inner(), center });
-  }
-
-  // una scelta con due frecce (la mappa): label al centro
-  chooser(label, onPrev, onNext, name = "") {
-    const r = this._add(document.createElement("div"));
-    r.className = "net-chooser";
-    const mk = (cls, fn) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "net-arrow " + cls;
-      if (name) b.dataset.net = name + "-" + cls;
-      b.addEventListener("click", fn);
-      return b;
-    };
-    const mid = document.createElement("div");
-    r.append(mk("prev", onPrev), mid, mk("next", onNext));
-    const set = (text) => { mid.dataset.text = text; setDomText(mid, text, { font: "GUI_1", colour: "#111", width: 300 }); };
-    set(label);
-    return { set };
   }
 
   // una casella per un codice: da copiare (readonly) o da incollare
