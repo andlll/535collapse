@@ -424,12 +424,12 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
 
 // [§9.158, richiesta dell'autore] La partita non piu' sincronizzata: al posto
 // della barra in alto (prendeva troppo spazio) un'icona tonda di vetro sotto
-// il riquadro dei civili inattivi (sotto gli FPS, se si vedono), col segno
-// "diverso" (le due partite non sono piu' uguali) nel colore degli avvisi;
-// lampeggia per DESYNC_BLINK ms quando compare. Col puntatore sopra, il
+// il riquadro dei civili inattivi (sotto gli FPS, se si vedono), col globo
+// disegnato dall'autore ([§9.162] al posto del segno "diverso" provvisorio,
+// ico_desync, nero come le altre icone); il cerchio lampeggia nel colore
+// degli avvisi per DESYNC_BLINK ms quando compare. Col puntatore sopra, il
 // suggerimento nello stile di quelli del tutorial (hints.js drawWindow:
 // riquadro bianco largo 380, titolo e testo) alla sua sinistra.
-// (L'icona e' provvisoria: da decidere con l'autore.)
 const DESYNC_BLINK = 6000, WARN = makeColourRgb(160, 90, 20);
 export const desyncIcon = (W, g) => [W - 55, g && g.fps_show > 0 ? 290 : 250, 30];
 function drawDesync(d, W, g, input, note) {
@@ -442,10 +442,8 @@ function drawDesync(d, W, g, input, note) {
     d.setAlpha(0.3 + 0.3 * dsin(age / 160));
     d.circleColour(x, y, r, WARN, WARN, false);
   }
-  d.setAlpha(0.9);
-  d.lineWidthColour(x - 12, y - 6, x + 12, y - 6, 4, WARN, WARN);
-  d.lineWidthColour(x - 12, y + 6, x + 12, y + 6, 4, WARN, WARN);
-  d.lineWidthColour(x + 7, y - 15, x - 7, y + 15, 4, WARN, WARN);
+  d.setAlpha(1);
+  d.spriteExt("ico_desync", 0, x, y, 0.55, 0.55, 0, c.white, 1); // §9.162: il globo dell'autore
   if (!hover) { d.setAlpha(1); return; }
   const title = tr("Out of sync"), text = note.text;
   d.setFont("overdue");

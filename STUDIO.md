@@ -11650,3 +11650,17 @@ lvl05, sk_padus: nessun errore.
 **Da regolare a orecchio con l'autore**: la distanza dei nemici (500 px),
 quanti per dr2 (5), quanto restano su (10 s), la durata dei turni (5 min), i
 volumi relativi (il basso e' 10 dB sopra il piano, come nell'esportazione).
+
+### 9.162 L'icona della partita non sincronizzata: il globo
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613), con un
+disegno (96 x 96, nero su trasparente): "usa questo simbolo al posto
+dell'uguale barrato per la desincronizzazione segnalata a destra nel
+multiplayer". Il disegno e' `nuovi/sprites/net_globo.png`, in nuovi.json
+"derivati" come `ico_desync` (64 px, nero al 70% come le altre icone
+dell'originale, gruppo gui); netgame.js `drawDesync` lo disegna a 0,55 (35
+px, quanto l'icona degli inattivi sopra) nel cerchio di vetro sotto gli
+inattivi, al posto del segno "diverso" provvisorio di §9.158. Resta il
+lampeggio arancione del cerchio nei primi 6 s, e il suggerimento col
+puntatore sopra. Prova: netfake.mjs (la partita resa diversa di nascosto:
+l'icona e il suggerimento si disegnano, screenshot), passata.
