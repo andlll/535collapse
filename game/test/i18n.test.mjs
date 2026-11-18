@@ -36,8 +36,9 @@ test("tr: lingua scelta, segnaposto, ricaduta sull'inglese", () => {
 });
 
 test("menu principale tradotto (livelli e storie)", async () => {
-  const { LEVELS, STORY } = await import("../src/menu.js");
-  for (const s of [...LEVELS, ...Object.values(STORY), "Campaign - Collapse", "Play the tutorial", "Coming soon", "Unlock level"]) {
+  const { LEVELS, STORY, MENU_LABELS } = await import("../src/menu.js");
+  // (MENU_LABELS, §9.157: i pulsanti delle tre pagine della colonna)
+  for (const s of [...LEVELS, ...Object.values(STORY), ...MENU_LABELS, "Coming soon", "Unlock level"]) {
     assert.ok(TEXTS[s], s);
   }
 });
@@ -46,9 +47,12 @@ test("menu principale tradotto (livelli e storie)", async () => {
 // pausa in rete): ogni tr("...") del codice ha la sua traduzione
 test("§9.156 partita a due: testi tradotti", async () => {
   const { readFileSync } = await import("node:fs");
-  const src = ["netgame.js", "pause.js", "chat.js"].map((f) => readFileSync(new URL("../src/" + f, import.meta.url), "utf8")).join("\n");
+  const src = ["netgame.js", "pause.js", "chat.js", "nethelp.js"].map((f) => readFileSync(new URL("../src/" + f, import.meta.url), "utf8")).join("\n");
   const keys = [...src.matchAll(/\btr\(\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse('"' + m[1] + '"'));
   assert.ok(keys.length > 30);
   for (const k of keys) assert.ok(TEXTS[k], k);
   assert.ok(TEXTS["Online multiplayer"]);
+  // [§9.158] la guida "Problemi di connessione": titoli e paragrafi
+  const { HELP_TEXTS } = await import("../src/nethelp.js");
+  for (const k of HELP_TEXTS) assert.ok(TEXTS[k], k);
 });

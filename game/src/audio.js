@@ -24,6 +24,20 @@ const PITCH = 0.07;   // +- velocita' di riproduzione (altezza)
 const GAIN_VAR = 0.15; // +- volume
 const FADE_TAU = 1;   // [§9.141] s: costante di tempo con cui un suono continuo segue il suo livello
 const MUSIC_TAU = 2.5; // [§9.143] s: con cui una parte della musica segue il suo volume
+const MUSIC_OUT = 1.5; // [§9.161] s: con cui sfumano le parti del brano che ha finito il turno
+// [§9.161] senza scaletta (le prove, una room senza musicPlan): un brano solo
+// con le parti che arrivano
+const DEFAULT_PLAN = { segs: [["loop1", Infinity]], full: false, brani: {}, tau: {} };
+// il turno della scaletta al secondo t della musica: brano, inizio (s),
+// chiave (cambia a ogni turno), full (il primo turno, se la scaletta lo vuole)
+export function planAt(plan, t) {
+  const segs = plan.segs;
+  if (segs.length === 1 || !(t >= 0)) return { brano: segs[0][0], start: 0, key: "0", full: !!plan.full };
+  const T = segs.reduce((a, [, d]) => a + d, 0), round = Math.floor(t / T);
+  let u = t - round * T, k = 0, start = round * T;
+  while (k < segs.length - 1 && u >= segs[k][1]) { u -= segs[k][1]; start += segs[k][1]; k++; }
+  return { brano: segs[k][0], start, key: round + ":" + k, full: !!plan.full && round === 0 && k === 0 };
+}
 
 export class SoundBank {
   constructor(base = "assets/audio/") {
@@ -39,7 +53,11 @@ export class SoundBank {
     this.musicEnabled = true;  // settings.music (menu di pausa)
     this.musicRoom = true;     // la musica in questa room (app.js: non nel menu principale, per ora)
     this.musicBus = null;
-    this.musicT0 = null;       // l'istante (AudioContext) in cui sono partite tutte le parti
+    this.musicT0 = null;       // l'istante (AudioContext) in cui e' partita la musica
+    // [§9.161] la scaletta dei brani della room (music.js musicPlan; app.js) e
+    // il brano che suona: nome, turno (indice in segs, quante volte), inizio
+    this.musicPlan = null;
+    this.brano = null;
     this.cam = null;         // la vista: { x, y, w, h }
     this._manifest = null;
   }
@@ -131,13 +149,21 @@ export class SoundBank {
   }
 
   // [§9.143] La musica: le parti in loop (audio.json "music"), ognuna lunga
-  // quanto vuole (gli archi 42 s, il field 92), che partono tutte nello
-  // stesso istante (musicT0) e girano ognuna sul suo giro: si sfasano come
-  // nella traccia unita dell'autore. Una parte decodificata dopo entra al
-  // punto giusto del suo giro, come se fosse partita con le altre. Il gioco
-  // da' il volume di ciascuna, 0-1 (per il suo gain), con music({ nome:
-  // volume }) (music.js, dal manager); il volume lo segue in MUSIC_TAU s. La
-  // musica ha un suo volume generale (musicBus), fuori dagli effetti.
+  // quanto vuole, che partono tutte nello stesso istante e girano ognuna sul
+  // suo giro (gli archi 42 s, il field 92: si sfasano come nella traccia
+  // unita dell'autore). Una parte decodificata dopo entra al punto giusto del
+  // suo giro, come se fosse partita con le altre. Il gioco da' il volume di
+  // ciascuna, 0-1 (per il suo gain), con music({ nome: volume }) (music.js,
+  // dal manager); il volume lo segue in MUSIC_TAU s (o con i tempi della
+  // parte, plan.tau: [salita, discesa]). La musica ha un suo volume generale
+  // (musicBus), fuori dagli effetti.
+  // [§9.161] I brani: la scaletta della room (musicPlan, music.js) dice quale
+  // brano suona e per quanto, a turno; le parti di un brano partono insieme
+  // all'inizio del suo turno (branoT0: a tempo fra loro, il brano 2 ha giri
+  // di 4, 10 e 40 s), quelle del brano finito sfumano (MUSIC_OUT) e si
+  // fermano. levels puo' essere una funzione del brano che suona: info =
+  // { brano, elapsed (s dall'inizio del turno), full (il primo turno al
+  // pieno) }.
   music(levels) {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== "running") return;
@@ -146,8 +172,30 @@ export class SoundBank {
       this.musicBus = ctx.createGain();
       this.musicBus.connect(ctx.destination);
     }
-    if (this.musicT0 === null) this.musicT0 = ctx.currentTime + 0.05;
-    for (const [name, level] of Object.entries(levels)) {
+    if (this.musicT0 === null) { this.musicT0 = ctx.currentTime + 0.05; this.brano = null; }
+    const plan = this.musicPlan || DEFAULT_PLAN;
+    const now = Math.max(ctx.currentTime, this.musicT0);
+    const seg = planAt(plan, now - this.musicT0);
+    if (!this.brano || this.brano.key !== seg.key) {
+      // il turno nuovo: le parti degli altri brani sfumano
+      const keep = new Set((plan.brani[seg.brano] || { parts: [] }).parts);
+      for (const [name, L] of this.layers) {
+        if (keep.has(name) && this.brano && this.brano.name === seg.brano) continue;
+        try {
+          L.g.gain.cancelScheduledValues(ctx.currentTime);
+          L.g.gain.setTargetAtTime(0, ctx.currentTime, MUSIC_OUT);
+          L.src.stop(ctx.currentTime + MUSIC_OUT * 6);
+        } catch (e) { /* gia' ferma */ }
+        this.layers.delete(name);
+      }
+      this.brano = { key: seg.key, name: seg.brano, t0: this.musicT0 + seg.start, full: seg.full };
+    }
+    const B = this.brano, info = { brano: B.name, elapsed: now - B.t0, full: B.full };
+    const lv = typeof levels === "function" ? levels(info) : levels;
+    const parts = plan.brani[B.name] ? plan.brani[B.name].parts : Object.keys(lv);
+    for (const name of parts) {
+      const level = lv[name];
+      if (level === undefined) continue;
       const s = this.sounds.get(name);
       if (!s || !s.buffers.length) continue; // non ancora decodificata (o non c'e')
       let L = this.layers.get(name);
@@ -158,14 +206,17 @@ export class SoundBank {
         const g = ctx.createGain();
         g.gain.value = 0;
         src.connect(g).connect(this.musicBus);
-        const d = src.buffer.duration, t = Math.max(ctx.currentTime, this.musicT0);
-        src.start(t, (((t - this.musicT0) % d) + d) % d);
+        const d = src.buffer.duration, t = Math.max(ctx.currentTime, B.t0);
+        src.start(t, (((t - B.t0) % d) + d) % d);
         L = { src, g, target: 0 };
         this.layers.set(name, L);
       }
       const target = Math.max(0, Math.min(1, level || 0)) * s.gain;
       if (Math.abs(target - L.target) > 0.002) {
-        L.g.gain.setTargetAtTime(target, ctx.currentTime, MUSIC_TAU);
+        const [up, down] = (plan.tau && plan.tau[name]) || [MUSIC_TAU, MUSIC_TAU];
+        // (il primo turno al pieno: le parti entrano gia' al loro volume)
+        if (B.full && L.target === 0 && now - B.t0 < 1) L.g.gain.setValueAtTime(target, ctx.currentTime);
+        else L.g.gain.setTargetAtTime(target, ctx.currentTime, target > L.target ? up : down);
         L.target = target;
       }
     }
@@ -188,6 +239,7 @@ export class SoundBank {
     }
     this.layers.clear();
     this.musicT0 = null;
+    this.brano = null;
   }
 
   _stopAmbient(name) {

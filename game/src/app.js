@@ -54,12 +54,13 @@ import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
-import { netParams, startNet, netMenu } from "./netgame.js"; // §9.156
+import { netParams, startNet, hostGame, joinMenu } from "./netgame.js"; // §9.156, §9.157
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 import { audio } from "./audio.js"; // §9.137
+import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
 const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
@@ -168,6 +169,7 @@ async function main() {
   audio.cam = cam; // §9.137: il volume secondo la distanza dalla vista
   audio.world = roomName !== "menu"; // §9.139: la battaglia di sfondo del menu e' muta
   audio.musicRoom = roomName !== "menu"; // §9.143: la musica in partita (nel menu, da decidere)
+  audio.musicPlan = musicPlan(roomName); // §9.161: i brani della room, a turno
   const input = new Input(canvas);
   input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();
@@ -573,9 +575,12 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
-  // [§9.156] "Multigiocatore online" nella schermata della schermaglia
-  // (?stun=0 passa alla partita: senza server STUN, per le prove in locale)
-  world.hooks.twoPlayers = (opts) => netMenu({ ...opts, version: VERSION, stun: params.get("stun") !== "0" });
+  // [§9.156, §9.157] "Multiplayer" nel menu: "Create game" (dalla schermata
+  // della schermaglia) e "Join game" (?stun=0 passa alla partita: senza
+  // server STUN, per le prove in locale)
+  const stun = params.get("stun") !== "0";
+  world.hooks.hostGame = (sk) => hostGame({ sk, stun });
+  world.hooks.joinGame = (opts) => joinMenu({ ...opts, version: VERSION, stun });
   // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
@@ -732,6 +737,8 @@ async function main() {
     if (world.mp) world.mp.noTruce = false;
     // [§9.156] la chat della partita online, fra le risorse e la minimappa
     if (netGame) { draw.reset(); netGame.chat.draw(draw, manager.chatArea(cam, world.worldFor(null))); }
+    // [§9.158] l'icona della partita non piu' sincronizzata
+    if (netGame) { draw.reset(); netGame.drawGUI(draw, cam.cssW, world.worldFor(null).g, world.input); }
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();

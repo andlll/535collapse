@@ -170,7 +170,15 @@ const MENU = () => {
   const g = G.g;
   g.campagna = 0; if (m) m.loadmenu = 0;
   UI.shot("menu: titolo");
-  for (const k of ["hover", "campagnahover", "loadhover", "fullhover"]) if (m) { m[k] = 1; UI.shot("menu: titolo, " + k); m[k] = 0; }
+  // [§9.157] le tre pagine della colonna, ogni pulsante acceso (btnhover)
+  for (const [page, keys] of [["title", ["tutorial", "single", "multi", "load"]], ["single", ["campaign", "skirmish", "back"]],
+                              ["multi", ["create", "join", "back"]]]) {
+    if (!m) break;
+    m.page = page;
+    for (const k of keys) { m.btnhover = k; UI.shot(`menu: ${page}, ${k}`); }
+    m.btnhover = null;
+  }
+  if (m) { m.page = "title"; m.fullhover = 1; UI.shot("menu: titolo, fullhover"); m.fullhover = 0; }
   if (m) { m.loadmenu = 1; UI.shot("menu: partite salvate"); m.loadmenu = 0; }
   g.campagna = 1; g.unlock = 3;
   for (let n = 1; n <= 3; n++) if (m) { m.lvlhover = n; m.lvlshown = n; UI.shot("menu: campagna, livello " + n); }

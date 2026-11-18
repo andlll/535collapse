@@ -4,8 +4,9 @@
 //
 // IL PERCORSO (decisioni dell'autore: 1 contro 1, connessione diretta,
 // codici da incollare, senza server).
-// 1. Menu, schermaglia, "Multigiocatore online" (netMenu): "Crea una partita" con la
-//    mappa e le opzioni scelte, o il codice ricevuto da incollare ("Entra").
+// 1. Menu, "Multiplayer" (§9.157): "Create game" (la schermata della
+//    schermaglia, poi hostGame) con la mappa e le opzioni scelte, o "Join
+//    game" (joinMenu) col codice ricevuto da incollare ("Entra").
 // 2. Chi crea apre la room (?room=sk_*&net=host&seed=N; le opzioni restano
 //    in sessionStorage): nella sala d'attesa il suo codice (l'offerta WebRTC
 //    con mappa, opzioni e seme) da mandare all'altro, e la casella per la
@@ -38,10 +39,18 @@ import { tr } from "./i18n.js";
 import { SK_MAPS, SK_ROOMS, SK_OPTIONS, cleanSkirmish, optionLabel } from "./skirmish.js";
 import { freshSeed } from "./rng.js";
 import { Chat } from "./chat.js";
+import { diagnose, diagText, summarizeStats } from "./netdiag.js";
+import { causeText, showNetHelp } from "./nethelp.js";
+import { c, makeColourRgb } from "./colours.js";
+import { dhypot, dsin } from "./dmath.js";
 
 const KEY = "535.net"; // sessionStorage: chi crea (le opzioni) o chi entra (il codice)
 const CONNECT_WAIT = 25000; // ms: dopo la risposta, se il canale non si apre non si aprira'
 const WAIT_BAR = 600, WAIT_PANEL = 8000; // ms di attesa del turno dell'altro: la barra, poi il pannello
+const JOIN_WAIT = 90000; // ms: chi entra, ancora non collegato, legge l'avviso e trova la guida (§9.158)
+// l'identita' di una descrizione WebRTC (a=ice-ufrag): la risposta dice a
+// quale offerta risponde (§9.158)
+const iceUfrag = (sdp) => (/^a=ice-ufrag:(\S+)/m.exec(sdp || "") || [])[1] || "";
 
 // le opzioni che contano nella partita a due (difficolta' e stile sono della
 // CPU; la tregua, §9.156, vale anche qui: nessuno dei due puo' attaccare)
@@ -76,34 +85,34 @@ function codeProblem(e, want, version, data) {
 }
 
 // ------------------------------------------------------------- il menu
-// "Multigiocatore online" nella schermata della schermaglia (menu.js): crea o
-// entra. [§9.156, decisione dell'autore] Il pannello sta al posto del riquadro
-// della mappa (dock, pixel CSS): la griglia delle opzioni resta visibile e si
-// usa, con difficolta' e stile della CPU in grigio; la mappa si sceglie con
-// le frecce del pannello (onMap(dir) -> le opzioni nuove); update(sk) quando
-// cambiano le opzioni nella griglia.
-export function netMenu({ sk, version, stun = true, dock = null, onMap = null, onPreview = null, onClose = null }) {
-  let cur = sk;
-  const panel = new NetPanel({ onEscape: () => panel.close(), dock });
+// [§9.157, richiesta dell'autore] Dal menu principale, "Multiplayer":
+// - "Create game" apre la schermata della schermaglia (menu.js, con
+//   difficolta' e stile della CPU in grigio); il pulsante in basso a destra
+//   chiama hostGame con mappa e opzioni scelte: si apre la partita di chi
+//   crea con la sala d'attesa e i codici (lobby, sotto);
+// - "Join game" apre joinMenu: il pannello per incollare il codice ricevuto
+//   (solo quello: mappa e opzioni sono di chi ha creato la partita).
+
+// chi crea: la sua partita (il rosso), con le opzioni sk
+export function hostGame({ sk, stun = true }) {
+  const seed = freshSeed();
+  setSession({ role: "host", sk, seed });
+  location.search = urlFor(sk.map, "host", seed, stun);
+}
+
+// chi entra: il pannello col codice, al centro sopra il menu (Esc o "Back"
+// lo chiudono: onClose)
+export function joinMenu({ version, stun = true, onClose = null }) {
+  const panel = new NetPanel({ onEscape: () => panel.close() });
   panel.onClose = onClose;
-  panel.title(tr("Online multiplayer"));
-  panel.text(tr("Against another player, with a direct connection between your computers: create a game with this map and the options on the right, or join one with the code you received."));
+  panel.title(tr("Join game"));
   if (!rtcAvailable()) {
     panel.status(tr("This browser does not support direct connections (WebRTC)."), "error");
     panel.button(panel.row(), tr("Back"), () => panel.close(), { name: "back" });
     return panel;
   }
-  const pick = (dir) => { if (found) return; cur = onMap(dir); map.set(mapName(cur.map)); };
-  let found = null;
-  const map = onMap ? panel.chooser(mapName(cur.map), () => pick(-1), () => pick(1), "map") : null;
-  if (!map) panel.text(setupSummary(cur));
-  const create = panel.button(panel.row(), tr("Create a game"), () => {
-    const seed = freshSeed();
-    setSession({ role: "host", sk: cur, seed });
-    location.search = urlFor(cur.map, "host", seed, stun);
-  }, { primary: true, name: "create" });
-  panel.text(tr("Or paste here the code you received:"));
-  let tries = 0;
+  panel.text(tr("Paste here the code you received from the player who created the game:"));
+  let tries = 0, found = null;
   const box = panel.code({ placeholder: tr("Paste the code here"), name: "join-code", onInput: (text) => check(text) });
   const info = panel.text("");
   const row = panel.row();
@@ -124,17 +133,11 @@ export function netMenu({ sk, version, stun = true, dock = null, onMap = null, o
     found = bad === null ? { sk: cleanSkirmish(d.data.setup.sk ? { ...d.data.setup.sk, map: d.data.setup.map } : { map: d.data.setup.map }),
                              seed: d.data.setup.seed >>> 0 } : null;
     join.disabled = !found;
-    // [§9.156] col pannello agganciato la griglia del menu mostra la partita
-    // del codice (onPreview); qui la mappa e il colore
-    create.disabled = !!found;
-    if (onPreview) onPreview(found ? found.sk : null);
-    if (map) map.set(mapName((found ? found.sk : cur).map));
-    const what = found ? (onPreview ? tr("Map: {map}", { map: mapName(found.sk.map) }) + ". " : setupSummary(found.sk) + " ") + tr("You will play blue.") : "";
-    panel.setText(info, what);
+    // la partita del codice: mappa e opzioni, e il colore
+    panel.setText(info, found ? setupSummary(found.sk) + " " + tr("You will play blue.") : "");
     panel.status(bad || "", "error");
   };
-  // le opzioni cambiate nella griglia del menu
-  panel.update = (sk2) => { cur = sk2; if (map) map.set(mapName(cur.map)); };
+  setTimeout(() => box.focus(), 0);
   return panel;
 }
 
@@ -158,10 +161,11 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   const fake = net.mode === "fake";
   const link = fake ? new FakeLink() : rtcAvailable() ? new RtcLink({ stun: net.stun }) : null;
   let panel = null, waitSince = 0, waitPanel = null, opened = false;
-  const bar = { lost: "", desync: "", waiting: "" };
+  // ([§9.158] la partita non piu' sincronizzata non e' piu' una barra:
+  // un'icona nell'interfaccia, drawGUI sotto)
+  const bar = { lost: "", waiting: "" };
   const showBar = () => {
     if (bar.lost) netBar(bar.lost, "error");
-    else if (bar.desync) netBar(bar.desync, "warning");
     else netBar(bar.waiting);
   };
   const ctl = { mode: net.mode, local: net.local, link, ls: null, desyncDump: null, events: [], waits: 0 };
@@ -186,7 +190,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       switch (t) {
         case "started":
           if (panel) { panel.close(); panel = null; }
-          chat.system(tr("Press Enter to chat with the other player."));
+          chat.system(tr("Enter to chat")); // §9.159: corto
           break;
         case "chat": chat.receive(i.text); break;
         case "error":
@@ -196,8 +200,8 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
           try { link.close(); } catch (e) { /* gia' chiuso */ }
           break;
         case "desync":
-          bar.desync = tr("The two games are out of sync (step {n}): from here on the two players may see different things.", { n: i.step });
-          showBar();
+          ctl.desyncNote = { text: tr("The two games are out of sync (step {n}): from here on the two players may see different things.", { n: i.step }),
+                             since: performance.now() };
           try { ctl.desyncDump = dump(); } catch (e) { /* per capire, se si puo' */ }
           console.error("[535 rete] partite diverse al passo", i.step, i, ctl.desyncDump);
           break;
@@ -250,10 +254,50 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       return;
     }
     const failed = (e) => { console.error(e); panel && panel.status(tr("Could not prepare the connection: reload the page and try again."), "error"); };
-    // (chi crea, dopo aver incollato la risposta: i controlli non passano. Chi
-    // entra aspetta: i suoi "failed" prima della risposta sono normali, rtc.js)
-    let accepted = false;
-    link.onstate = (s) => { if (s === "failed" && !opened && panel && accepted) panel.status(noDirect(), "error"); };
+    // [§9.158] i problemi di connessione: la causa (netdiag.js) nella riga di
+    // stato e il pulsante della guida (nethelp.js), che compare sotto
+    let helpInfo = null;
+    const helpButton = (info) => {
+      helpInfo = info;
+      if (!panel || panel.helpRow) return;
+      panel.helpRow = panel.row();
+      panel.button(panel.helpRow, tr("Connection problems"), () => showNetHelp(helpInfo), { name: "help" });
+    };
+    const role = net.mode === "host" ? "rosso, crea" : "blu, entra";
+    let remoteSdp = "", offerAt = 0, acceptedAt = 0;
+    const diagnosis = async (strongOnly) => {
+      const elapsed = acceptedAt && offerAt ? acceptedAt - offerAt : 0;
+      const diag = diagnose({ local: link.pc.localDescription && link.pc.localDescription.sdp, remote: remoteSdp, stun: net.stun, elapsed, strongOnly });
+      let stats = null;
+      if (!strongOnly) { try { stats = summarizeStats(await link.pc.getStats()); } catch (e) { /* niente statistiche */ } }
+      const minutes = Math.max(1, Math.round(elapsed / 60000));
+      ctl.diag = { ...diag, stats };
+      return { diag, minutes, help: { causes: diag.causes, minutes, details: diagText(diag, { role, stats, version, elapsed, stun: net.stun }) } };
+    };
+    // prima del tentativo: solo le cause sicure, come avviso
+    const predict = async () => {
+      const { diag, minutes, help } = await diagnosis(true);
+      if (!diag.causes.length || opened || !panel) return false;
+      panel.status(tr("It will probably not connect:") + " " + causeText(diag.causes[0], { minutes }), "warn");
+      helpButton(help);
+      return true;
+    };
+    // chi crea, dopo aver incollato la risposta: i controlli non passano (una
+    // volta sola). (Chi entra aspetta: i suoi "failed" prima della risposta
+    // sono normali, rtc.js)
+    let accepted = false, reported = false;
+    const report = async () => {
+      if (reported || opened || !panel) return;
+      reported = true;
+      const { diag, minutes, help } = await diagnosis(false);
+      if (opened || !panel) return;
+      const [first] = diag.causes;
+      let msg = tr("Could not connect.") + " " + causeText(first, { minutes });
+      if (first !== "slow" && diag.causes.includes("slow")) msg += " " + causeText("slow", { minutes });
+      panel.status(msg + " " + tr("The button below explains what to try."), "error");
+      helpButton(help);
+    };
+    link.onstate = (s) => { if (s === "failed" && !opened && panel && accepted) report(); };
     if (net.mode === "host") {
       panel.text(tr("1. Send this code to the other player (by chat, e-mail...):"));
       const out = panel.code({ readonly: true, placeholder: tr("Preparing the connection..."), name: "code" });
@@ -269,18 +313,27 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
         try { d = await decodeCode(inp.value); } catch (e) { err = e; }
         const bad = codeProblem(err, "answer", version, d);
         if (bad !== null) { panel.status(bad || tr("This code is not valid: copy it again, whole."), "error"); return; }
+        // [§9.158] la risposta a un altro codice (uno di prima, una pagina
+        // ricaricata): si dice subito
+        if (d.data.o && d.data.o !== iceUfrag(link.pc.localDescription && link.pc.localDescription.sdp)) {
+          panel.status(tr("This answer code was made for another game code (an older one?): send the other player your current code again and paste the new answer."), "error");
+          return;
+        }
         accepted = true;
         go.disabled = true;
+        remoteSdp = d.data.sdp;
+        acceptedAt = performance.now();
         panel.status(tr("Connecting..."));
         try { await link.accept(d.data.sdp); } catch (e) { accepted = false; go.disabled = false; failed(e); return; }
-        setTimeout(() => { if (!opened && panel) panel.status(noDirect(), "error"); }, CONNECT_WAIT);
+        await predict();
+        setTimeout(report, CONNECT_WAIT);
       }, { primary: true, name: "connect" });
       panel.button(r2, tr("Cancel"), cancel, { name: "cancel" });
       panel.status(tr("Preparing the connection..."));
       const seed = Number(new URLSearchParams(location.search).get("seed")) >>> 0;
       link.offer()
         .then((sdp) => encodeCode("offer", { v: version, sdp, setup: { map: net.sk.map, sk: net.sk, seed } }))
-        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; panel.status(tr("Waiting for the answer code.")); })
+        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; offerAt = performance.now(); panel.status(tr("Waiting for the answer code.")); })
         .catch(failed);
     } else {
       panel.text(tr("Send this answer code to the player who created the game:"));
@@ -291,9 +344,23 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       panel.button(r1, tr("Cancel"), cancel, { name: "cancel" });
       panel.status(tr("Preparing the connection..."));
       decodeCode(net.code || "")
-        .then((d) => { if (d.kind !== "offer") throw new Error("non e' un'offerta"); return link.answer(d.data.sdp); })
-        .then((sdp) => encodeCode("answer", { v: version, sdp }))
-        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; if (!opened) panel.status(tr("Waiting for the other player to connect...")); })
+        .then((d) => { if (d.kind !== "offer") throw new Error("non e' un'offerta"); remoteSdp = d.data.sdp; return link.answer(d.data.sdp); })
+        // (o: l'offerta a cui risponde, per chi crea: la risposta giusta?)
+        .then((sdp) => encodeCode("answer", { v: version, sdp, o: iceUfrag(remoteSdp) }))
+        .then(async (code) => {
+          out.value = code; copy.disabled = false; ctl.code = code;
+          if (opened) return;
+          if (!(await predict())) panel.status(tr("Waiting for the other player to connect..."));
+          // [§9.158] chi entra non sa quando l'altro incolla: dopo JOIN_WAIT
+          // l'avviso e la guida
+          setTimeout(async () => {
+            if (opened || !panel) return;
+            const { help } = await diagnosis(false);
+            if (opened || !panel) return;
+            panel.status(tr("Still not connected. If the other player has already pasted your code and nothing happens, the connection did not work."), "warn");
+            helpButton(help);
+          }, JOIN_WAIT);
+        })
         .catch(failed);
     }
   };
@@ -320,6 +387,9 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   };
 
   Object.assign(ctl, {
+    // [§9.158] l'icona della partita non piu' sincronizzata e il suo
+    // suggerimento (nell'interfaccia, pixel CSS; app.js dopo la chat)
+    drawGUI(d, W, g, input) { if (ctl.desyncNote) drawDesync(d, W, g, input, ctl.desyncNote); },
     // il passo del mondo si puo' giocare? (se no si aspetta)
     canStep() {
       const ok = ls.ready(world._stepNo);
@@ -350,4 +420,46 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   // lo stato del lockstep, letto ogni volta (per le prove e la diagnostica)
   for (const k of ["state", "delay", "checks", "desync", "rtt"]) Object.defineProperty(ctl, k, { get: () => ls[k], enumerable: true });
   return ctl;
+}
+
+// [§9.158, richiesta dell'autore] La partita non piu' sincronizzata: al posto
+// della barra in alto (prendeva troppo spazio) un'icona tonda di vetro sotto
+// il riquadro dei civili inattivi (sotto gli FPS, se si vedono), col globo
+// disegnato dall'autore ([§9.162] al posto del segno "diverso" provvisorio,
+// ico_desync, nero come le altre icone); il cerchio lampeggia nel colore
+// degli avvisi per DESYNC_BLINK ms quando compare. Col puntatore sopra, il
+// suggerimento nello stile di quelli del tutorial (hints.js drawWindow:
+// riquadro bianco largo 380, titolo e testo) alla sua sinistra.
+const DESYNC_BLINK = 6000, WARN = makeColourRgb(160, 90, 20);
+export const desyncIcon = (W, g) => [W - 55, g && g.fps_show > 0 ? 290 : 250, 30];
+function drawDesync(d, W, g, input, note) {
+  const [x, y, r] = desyncIcon(W, g);
+  const hover = !!input && input.inside && dhypot(input.x - x, input.y - y) < r;
+  const age = performance.now() - note.since;
+  d.setAlpha(hover ? 0.99 : 0.69);
+  d.circleColour(x, y, r, c.white, c.white, false);
+  if (age < DESYNC_BLINK) {
+    d.setAlpha(0.3 + 0.3 * dsin(age / 160));
+    d.circleColour(x, y, r, WARN, WARN, false);
+  }
+  d.setAlpha(1);
+  d.spriteExt("ico_desync", 0, x, y, 0.55, 0.55, 0, c.white, 1); // §9.162: il globo dell'autore
+  if (!hover) { d.setAlpha(1); return; }
+  const title = tr("Out of sync"), text = note.text;
+  d.setFont("overdue");
+  const th = d.stringHeightExt(text, 30, 340), wx = x - r - 20 - 380, wy = y - r;
+  d.setAlpha(0.69);
+  d.roundrectColourExt(wx, wy, wx + 380, wy + th + 68, 60, 60, c.white, c.white, false);
+  d.setColour(c.black);
+  d.setAlpha(0.75);
+  d.setFont("GUI_1");
+  d.setHalign("left");
+  d.setValign("bottom");
+  d.text(wx + 20, wy + 38, title);
+  d.setFont("overdue");
+  d.setValign("top");
+  d.textExt(wx + 20, wy + 43, text, 30, 340);
+  d.setAlpha(1);
+  d.setColour(c.white);
+  d.setValign("middle");
 }

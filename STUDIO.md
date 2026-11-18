@@ -46,7 +46,9 @@ nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere").
+ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
+"Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
+collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -11334,3 +11336,331 @@ sinistra nella GUI tra il pannello risorse e la minimappa".
 6. Le cose rimaste da §9.155 ("Cosa resta"): altri confronti di nomi
    d'oggetto per il blu, global.order comune, il vantaggio di chi nasce dopo
    (equita').
+
+
+### 9.157 Il menu: "Giocatore singolo" e "Multigiocatore"
+
+Richiesta dell'autore (18 novembre 2026, nuova PR, versione 0.2613):
+"mettiamo a monte 'giocatore singolo' che conterrà campagna e schermaglia
+(nella schermaglia deve scomparire il tasto multiplayer), e 'multiplayer',
+che contiene 'crea partita' e 'partecipa'. Crea partita apre la schermata
+che prima si apriva cliccando 'multiplayer' da 'schermaglia', [...] con le
+opzioni in grigio per i punti in cui non ha senso. Quando si crea la
+partita con il tasto in basso a destra [...] deve comparire la schermata di
+condivisione codici. In 'partecipa' [...] la schermata per inserire il
+codice fornito, senza tutta l'interfaccia di opzioni della schermaglia."
+
+**Com'e' ora.** La colonna dei pulsanti del menu ha tre pagine (menu.js
+`MENU_PAGES`, `i.page`):
+- il titolo: "Gioca il tutorial", "Giocatore singolo", "Multigiocatore",
+  "Carica partita";
+- "Giocatore singolo": "Campagna - Collapse", "Schermaglia", "Indietro";
+- "Multigiocatore": "Crea partita", "Partecipa", "Indietro".
+Le colonne finiscono tutte a 100 px dal fondo (al posto di "Indietro" c'era
+"Carica partita": un doppio clic su "Giocatore singolo" o "Multigiocatore"
+non torna indietro); il logo resta dove sta nel titolo.
+- *Schermaglia*: com'era, senza il pulsante "Multigiocatore online".
+- *Crea partita*: la stessa schermata (titolo "Crea partita"), con il
+  riquadro della mappa e le sue frecce di sempre, difficolta' e stile della
+  CPU in grigio (come in §9.156); il pulsante in basso a destra si chiama
+  "Crea partita" e apre la partita di chi crea con la sala d'attesa e i
+  codici (netgame.js `hostGame`: quello che faceva "Crea una partita" nel
+  pannello). Le opzioni sono quelle salvate della schermaglia (le stesse
+  nelle due schermate).
+- *Partecipa*: un pannello al centro sopra il menu (netgame.js
+  `joinMenu`): "Incolla qui il codice che hai ricevuto da chi ha creato la
+  partita:", la casella, poi (con un codice valido) la partita in testo
+  ("Mappa: Padania. Vittoria: Conquista, ... Giocherai col blu.") ed
+  "Entra"; "Indietro" o Esc lo chiudono.
+- *Indietro*: Esc o "Indietro" dalle due pagine tornano al titolo; dalla
+  schermaglia e dalla campagna si torna a "Giocatore singolo" (anche
+  tornando al menu da un livello della campagna), da "Crea partita" a
+  "Multigiocatore".
+
+**Tolti** (non servono piu'): il pannello agganciato alla colonna della
+mappa con le sue frecce e l'anteprima del codice nella griglia (netui.js
+`dock`, `chooser`; menu.js `netDock`, `netPreview`; netgame.js `netMenu`),
+e tre testi ("Against another player...", "Create a game", "Or paste here
+the code you received:"). Testi nuovi in sei lingue: "Single player"
+(Giocatore singolo), "Multiplayer" (Multigiocatore), "Create game" (Crea
+partita), "Join game" (Partecipa) e la frase del pannello. I nomi dei
+pulsanti dei menu passano dalla prova delle traduzioni (`MENU_LABELS`).
+
+**Scelte mie** (da rivedere con l'autore se vuole): il tutorial e "Carica
+partita" restano nel titolo (la richiesta non li nomina); "Indietro" e' un
+pulsante della colonna, non il cerchio in alto a destra (li' c'e' lo
+schermo intero); in italiano "Multigiocatore" (come "Multigiocatore
+online" scelto in §9.156).
+
+**Prove.** `test/browser/rtc.mjs` (nella CI) segue il percorso nuovo coi
+clic veri: A "Multigiocatore", "Crea partita", un clic sulla difficolta'
+(in grigio: non cambia), "Crea partita" in basso a destra; B
+"Multigiocatore", "Partecipa", incolla il codice, "Entra"; poi come prima
+(WebRTC vero, pausa, impronte, chat, uscita): passata. Passate anche
+netfake.mjs, soak.mjs sul menu, `npm test`, e ui.mjs nelle sei lingue (che
+ora disegna le tre pagine della colonna con ogni pulsante acceso): nessun
+problema. Screenshot di tutte le schermate in italiano, spagnolo e tedesco:
+i testi stanno nei pulsanti.
+
+
+### 9.158 Indietro, la chat coi ritratti, l'icona della partita non sincronizzata, i problemi di connessione
+
+Risposte e richieste dell'autore (18 novembre 2026, stessa PR di §9.157,
+versione 0.2613), sulle scelte di §9.157: tutorial e "Carica partita" nel
+titolo "si' corretto", i nomi "va benissimo", le opzioni condivise "va bene
+tanto uno puo' cambiarle mentre si trova li'" (si': in "Crea partita" chi
+crea cambia tutte le opzioni tranne quelle della CPU; dalla sala d'attesa
+in poi sono fisse, e chi entra non le cambia). Poi:
+
+**"Indietro"**: "mettilo subito a sinistra di quello per lo schermo
+intero". Nelle pagine "Giocatore singolo" e "Multigiocatore" e' un cerchio
+di vetro con la freccia (ico_indietro, come nella campagna) a 70 px dal
+cerchio dello schermo intero; dove lo schermo intero non c'e' (iPhone) sta
+al suo posto. La colonna ha solo i due pulsanti (menu.js titleButtons,
+`back`).
+
+**La chat**: "togli le scritte 'giocatore rosso' e 'giocatore blu', si
+capisce gia' dal colore [...] possiamo sostituirle con le bolle usate nella
+campagna". Davanti a ogni messaggio il ritratto tondo dei dialoghi, 26 px:
+il soldato del giocatore (capoccia_a1) per il rosso, quello nemico, blu
+(capoccia_n1), per il blu; il testo accanto, nel colore di chi scrive (a
+capo sotto il testo, non sotto il ritratto). I messaggi del gioco senza.
+Via i testi "Red" e "Blue".
+
+**La partita non sincronizzata**: "la scritta in alto [...] prende troppo
+spazio, sostituiamola da un'icona (ora capiamo insieme), se uno fa hovering
+sull'icona appare l'hint [...] stesso stile scritta su roundrect glass come
+gli hint soliti". Al posto della barra arancione un cerchio di vetro sotto il
+riquadro dei civili inattivi (sotto gli FPS se si vedono), col segno
+"diverso" nel colore degli avvisi, che lampeggia per 6 s quando compare;
+col puntatore sopra, alla sua sinistra, il riquadro dei suggerimenti
+(bianco, largo 380, titolo "Partita non sincronizzata" e il testo di prima:
+"Le due partite non sono piu' uguali (passo N): da qui...") (netgame.js
+`drawDesync`, chiamata da app.js dopo la chat). *L'icona e' provvisoria*:
+da scegliere con l'autore (un disegno suo, come le altre). Le altre barre
+(l'attesa dell'altro giocatore, la connessione persa) restano.
+
+**I problemi di connessione**: "se la connessione iniziale fallisce mettiamo
+una segnalazione errori piu' mirata e meno generica, eventualmente facciamo
+anche una pagina di troubleshooting fatta bene a cui si arriva da li'".
+- *Le cause* (netdiag.js, senza browser): dai due codici si leggono gli
+  indirizzi delle due parti (i "candidati" ICE: del computer, esterni dati
+  da STUN, di inoltro) e dal tentativo le statistiche (getStats: coppie
+  provate, controlli mandati e risposte). Le cause, dalla piu' probabile:
+  nessun indirizzo (impostazioni o estensioni che spengono WebRTC); la rete
+  che non raggiunge STUN (UDP bloccato: firewall, reti aziendali o
+  scolastiche, VPN), da una parte o dall'altra; NAT simmetrico da tutte e
+  due le parti, o da una (lo stesso indirizzo esterno con piu' porte di
+  quante prese ha il computer: il browser chiede ai due server STUN dalla
+  stessa presa; contato per difetto, meglio non dirlo che dirlo a torto);
+  solo IPv6 da una parte e solo IPv4 dall'altra; lo stesso indirizzo esterno
+  (la stessa rete che non lascia passare: Wi-Fi ospiti, isolamento); i
+  codici scambiati in piu' di 2 minuti (i router dimenticano gli indirizzi);
+  se no "le reti non hanno lasciato passare, e dai codici non si capisce
+  perche'". Ognuna ha la sua frase, nelle sei lingue (nethelp.js
+  `causeText`).
+- *Nella sala d'attesa*: chi crea, se dopo aver incollato la risposta il
+  canale non si apre in 25 s (o il browser dice "failed"), legge "Collegamento
+  non riuscito." con la causa (e, se c'e', il consiglio dei codici lenti) e
+  "Il pulsante qui sotto spiega cosa provare."; sotto, "Problemi di
+  connessione". Prima del tentativo, se una causa e' sicura (nessun indirizzo,
+  STUN bloccato, NAT simmetrico da tutte e due le parti, IPv4/IPv6), un
+  avviso arancione "Probabilmente il collegamento non riuscira':" (lo legge
+  anche chi entra, appena ha il suo codice). Chi entra non sa quando l'altro
+  incolla: dopo 90 s senza collegamento "Ancora non collegati. Se l'altro
+  giocatore ha gia' incollato il tuo codice e non succede niente, il
+  collegamento non e' riuscito." e il pulsante.
+- *La risposta sbagliata*: la risposta ora dice a quale codice risponde
+  (`o`, l'ice-ufrag dell'offerta); incollata a chi ha un altro codice (la
+  pagina ricaricata, un codice di prima) e' rifiutata subito: "Questo codice
+  di risposta e' stato fatto per un altro codice della partita (uno di
+  prima?): rimanda all'altro giocatore il codice attuale e incolla la nuova
+  risposta."
+- *La guida "Problemi di connessione"* (nethelp.js `showNetHelp`): un
+  pannello sopra la sala d'attesa (quasi opaco; Esc chiude solo lei,
+  netui.js: Esc e' del pannello piu' in alto), che scorre: come funziona il
+  collegamento; "Cosa non ha funzionato" (le cause trovate); "Prima di
+  tutto" (stessa versione, browser aggiornato, codici scambiati in fretta
+  senza ricaricare la pagina); "Prova un'altra rete" (l'hotspot del
+  telefono, il NAT simmetrico delle reti mobili); "Reti aziendali,
+  scolastiche e pubbliche, VPN"; "Firewall, antivirus, estensioni del
+  browser" (Brave, Firefox, uBlock che spengono WebRTC); "Sulla stessa rete"
+  (rete ospiti, cavo); "Altre cose da provare" (scambiarsi i ruoli, il
+  router e UPnP, un altro browser); "Se non funziona niente" (il server di
+  inoltro che manca); "Dettagli tecnici" (versione, ruolo, quanti indirizzi
+  di ogni tipo per parte, NAT, cause, tempi, statistiche, browser: senza gli
+  indirizzi) con "Copia". In italiano i dettagli tecnici (sono per chi aiuta).
+- netui.js: `heading`, paragrafi con pallino, lo stato "warn" (arancione).
+- 38 testi nuovi nelle sei lingue.
+
+**Prove.**
+- `test/netdiag.test.mjs` (unitaria): descrizioni WebRTC finte come le
+  scrive Chromium (una casa, una rete mobile con due porte, una rete che
+  blocca UDP, solo IPv6, nessun indirizzo, due prese dietro lo stesso
+  router): ogni causa, l'avviso solo con quelle sicure, senza STUN nessun
+  "bloccato", le statistiche, i dettagli senza indirizzi.
+- `test/i18n.test.mjs`: anche i testi di nethelp.js e della guida.
+- `test/browser/rtcfail.mjs` (nella CI, nuova): WebRTC vero fra due pagine,
+  coi codici cambiati in indirizzi che non rispondono (192.0.2.x, porta 9):
+  la risposta per un altro codice rifiutata col suo messaggio; la risposta
+  giusta: dopo 25 s "Could not connect. ... The button below explains what
+  to try.", il pulsante, la guida (18 testi, i dettagli tecnici senza
+  indirizzi), Esc chiude la guida e non la sala d'attesa. Trovato
+  scrivendola: in questa macchina un indirizzo che non risponde ma con la
+  porta giusta arriva lo stesso alla pagina accanto (le due pagine si
+  collegavano): la prova cambia anche la porta.
+- `test/browser/netfake.mjs`: la partita non sincronizzata non mostra piu'
+  la barra; l'icona e il suggerimento si disegnano (screenshot).
+- `test/browser/rtc.mjs` col menu nuovo (due pulsanti per pagina), ui.mjs
+  nelle sei lingue (anche il cerchio "Indietro"), soak.mjs sul menu,
+  `npm test`: passate. Screenshot: il menu, la chat coi ritratti, l'icona
+  col suggerimento, la sala d'attesa col collegamento non riuscito, la
+  guida.
+- Non provato: le cause su reti vere (NAT simmetrico, UDP bloccato,
+  IPv6): qui le due pagine stanno nella stessa macchina. Da provare con
+  l'autore su due reti diverse (§9.156 "Come riprendere", punto 1): se la
+  causa detta e' sbagliata, i dettagli tecnici dicono perche'.
+
+
+### 9.159 Il messaggio della chat piu' corto
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613):
+"riusciamo a sostituire 'premi invio' ecc ecc con un testo piu' corto?". Il
+messaggio grigio a partita cominciata ("Premi Invio per scrivere all'altro
+giocatore.") ora e' **"Invio per la chat"** (en "Enter to chat", es "Intro
+para el chat", pt "Enter para o chat", de "Enter zum Chatten", fr "Entrée
+pour le chat"), su una riga. Il suggerimento dentro la casella aperta
+("Messaggio all'altro giocatore (Invio: manda, Esc: chiudi)") resta.
+Prove: `npm test` (la traduzione c'e'), screenshot della chat.
+
+### 9.160 Gli archi della musica: la versione che fa il giro
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613):
+"loop archi della soundtrack: ti carico una versione aggiornata con
+effettivo loop da sostituire all'attuale" (`535_loop1archi_loop.wav`).
+
+- *Il file*: WAV 16 bit, stereo, 32 kHz (il vecchio era un MP3 a 44,1 kHz),
+  42,000 s esatti: il giro di prima. Comincia col suono (la coda del giro
+  precedente) invece che dal silenzio (il vecchio partiva a 1,4 s dal primo
+  suono vero, e a ogni giro c'era il buco), e la fine va nell'inizio senza
+  salti: il passo fra l'ultimo campione e il primo (0,010 e 0,013 sui due
+  canali) sta fra il 99 e il 99,9 percentile dei passi del mezzo secondo
+  intorno, cioe' niente clic. Volume medio -37,0 dB (prima -37,2), picco
+  -21,1 (prima -22,3); l'andamento secondo per secondo e' lo stesso.
+- *Al posto del vecchio*: `nuovi/audio/loop1_archi.wav` (via
+  `loop1_archi.mp3`), in audio.json senza tagli (prima si toglievano i
+  4,9 ms di riempimento dell'MP3) e a 256 kbit/s invece di 320: confrontato
+  col WAV a 320, 256, 192 e 160, a 256 le bande sono uguali entro 0,05 dB fino
+  a 14 kHz (14-16 kHz -1 dB, come a 320; a 192 tutto -0,26 dB), 1,3 MB invece
+  di 1,6. CREDITI.md aggiornato. Il resto (music.js, audio.js) non cambia: gli
+  archi restano costanti, sul loro giro di 42 s accanto al field (92 s) e al
+  drone (214 s).
+- *Verificato*: `tools/18_audio.py` da' `musica_archi_1.mp3` lungo 42,0000 s;
+  decodificato da Chromium (decodeAudioData) 42,000 s a 32 kHz, e il salto
+  al giro (0,011) e' sotto il passo piu' grande dell'ultimo mezzo secondo
+  (0,012). Da sentire con l'autore nel gioco.
+
+### 9.161 Il brano 2 della musica ("Shove") e la scaletta dei brani
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613), coi
+quattro loop del brano 2 (`shove_pianoloop`, `shove_bassloop`,
+`shove_dr1loop`, `shove_dr2loop`): "deve partire solo il piano che resta
+costante come fanno gli archi, poi il basso progressivamente e deve andare a
+pieno volume in 10s circa. dr1 si alza di volume da volume 0 a pieno se ci
+sono nemici vicini e nelle fasi di combattimento, dr2 idem ma per
+battaglie/gruppi di nemici superiori a 4-5. [...] lo implementerei
+sicuramente in lvl1 come unico loop, nelle schermaglie dopo che il loop1 e'
+terminato (dopo 5 min circa?), poi va per 5 min lui e si alterna
+ciclicamente col loop 1, negli altri scenari di campagna valutiamo caso per
+caso, ha senso che parta i primi 5 min dello scenario 3 per poi alternarsi
+col loop 1, e forse anche il lvl5 partendo pero' al massimo perche' la
+battaglia e' in corso".
+
+**I file** (WAV 16 bit, stereo, 32 kHz; `nuovi/audio/loop2_*.wav`, in
+audio.json come le parti del brano 1, MP3 a 256 kbit/s senza taglio degli
+acuti; CREDITI.md):
+- piano 10,000 s, medio -37,2 dB (come gli archi), picco -20,9;
+- basso 40,000 s, medio -26,8 dB, picco -3,6 (meta' dell'energia sotto i
+  200 Hz);
+- percussioni 1 e 2, 4,000 s, medi -27,1 e -24,1 dB.
+I giri (4, 10, 40 s) sono multipli di 4 s: le parti restano a tempo fra loro
+se partono insieme (si fa cosi', sotto). Decodificati: esattamente 4, 10 e
+40 s. Al giro: basso e percussioni senza salti; il piano ha, dall'ultimo
+campione al primo, un passo di 0,004 (-48 dBFS), il piu' grande del mezzo
+secondo intorno (la forma d'onda scende alla fine e risale dall'inizio):
+piccolo, lasciato cosi' com'e', *da sentire*: se fa un tic, un'esportazione
+con la fine che arriva al valore dell'inizio, o qualche ms di incrocio qui.
+Tutte e quattro insieme al pieno: picco -1,3 dBFS (niente saturazione).
+
+**La scaletta** (music.js `musicPlan`, letta da audio.js):
+- lvl01: solo il brano 2;
+- schermaglie (e la partita online): il brano 1, poi il 2, poi l'1, a turno;
+- lvl03: il brano 2 per primo, poi a turno;
+- lvl05: come lvl03, ma il primo turno del brano 2 parte al pieno (piano,
+  basso e percussioni subito su; le percussioni restano almeno 20 s, poi
+  seguono il combattimento);
+- le altre (tutorial, lvl02, lvl04, lvl06): solo il brano 1, come prima.
+Un turno dura i giri interi del brano piu' vicini a 5 minuti, cosi' finisce
+alla fine di un giro: il brano 1 7 giri degli archi (294 s), il brano 2 8
+giri del basso (320 s). Al cambio le parti del brano che finisce sfumano in
+qualche secondo (costante 1,5 s) e quelle del nuovo partono insieme
+dall'inizio (il piano subito, il basso da zero). Il tempo e' quello
+dell'audio (continua anche in pausa); un salvataggio caricato ricomincia la
+scaletta.
+
+**Il brano 2** (music.js `musicLevels`): piano 1; basso da 0 al pieno nei
+primi 10 s del turno (`bassRamp`; ogni volta che il brano 2 ricomincia);
+percussioni:
+- *dr1*: su (in ~1-2 s) se c'e' almeno un nemico visto a 500 px da una tua
+  unita' (`near`), o se una tua unita' e' stata colpita negli ultimi 3 s
+  (le zone "battle" degli allarmi d'attacco: anche le frecce dalla nebbia);
+- *dr2*: su con almeno 5 nemici vicini (`dr2Min`);
+- restano su 10 s dopo l'ultima volta (`hold`), poi sfumano (~8 s).
+Contano i nemici visti (con la nebbia, solo quelli che vedi: niente
+spoiler) vicini alle *unita'* (civili compresi), non agli edifici: provato
+in lvl01, che all'inizio ha 24 nemici visti di guardia, fermi accanto a mura
+e porte della citta', a piu' di 1400 px dai soldati: con gli edifici le
+percussioni sarebbero partite subito e non si sarebbero piu' fermate; e non
+gli incendi (in lvl01 la citta' brucia per tutto il livello). Nella partita
+a due ognuno sente la sua (lo specchio di chi guarda, e anche il drone segue
+la popolazione del blu per il blu).
+Il calcolo legge soltanto il mondo (nessun numero a caso, niente che cambi la
+partita): provato in lvl05 (la battaglia in corso, le percussioni su), 6000
+passi con la musica che suona e senza: le stesse impronte (snapshot.js) a
+ogni 1000 passi.
+
+**audio.js**: `music(levels)` accetta una funzione del brano che suona ({
+brano, elapsed, full }); la scaletta (`musicPlan`, da app.js), il turno
+(`planAt`), le parti di un brano che partono dall'inizio del turno, quelle
+degli altri che sfumano e si fermano; per parte i tempi di salita e discesa
+(music.js `PART_TAU`: il basso insegue la rampa, le percussioni salgono in
+fretta).
+
+**Prove.** test/music.test.mjs: la scaletta per room, i turni e il ritorno
+al brano 1, il primo turno al pieno solo in lvl05 e solo la prima volta, la
+rampa del basso, le percussioni (nemico vicino, sei nemici, non visti, gli
+edifici no, colpi recenti si', gli incendi no, i 10 s dopo, i 20 s di lvl05).
+Nel browser, con l'audio vero (Chromium): lvl01 parte col piano, il basso a
+0,77 a 8 s e pieno a 14, nessuna percussione; sei nemici accanto ai soldati:
+dr1 e dr2 al pieno; sk_padus parte col brano 1, a 294 s passa al 2 (basso in
+salita, percussioni zitte finche' non arrivano nemici, poi su), a 614 s
+torna all'1; lvl05 tutto al pieno da subito. soak.mjs su lvl01, lvl03,
+lvl05, sk_padus: nessun errore.
+
+**Da regolare a orecchio con l'autore**: la distanza dei nemici (500 px),
+quanti per dr2 (5), quanto restano su (10 s), la durata dei turni (5 min), i
+volumi relativi (il basso e' 10 dB sopra il piano, come nell'esportazione).
+
+### 9.162 L'icona della partita non sincronizzata: il globo
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613), con un
+disegno (96 x 96, nero su trasparente): "usa questo simbolo al posto
+dell'uguale barrato per la desincronizzazione segnalata a destra nel
+multiplayer". Il disegno e' `nuovi/sprites/net_globo.png`, in nuovi.json
+"derivati" come `ico_desync` (64 px, nero al 70% come le altre icone
+dell'originale, gruppo gui); netgame.js `drawDesync` lo disegna a 0,55 (35
+px, quanto l'icona degli inattivi sopra) nel cerchio di vetro sotto gli
+inattivi, al posto del segno "diverso" provvisorio di §9.158. Resta il
+lampeggio arancione del cerchio nei primi 6 s, e il suggerimento col
+puntatore sopra. Prova: netfake.mjs (la partita resa diversa di nascosto:
+l'icona e il suggerimento si disegnano, screenshot), passata.

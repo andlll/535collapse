@@ -2,9 +2,10 @@
 // multiplayer, fase 4): due pagine dello stesso Chromium, tutto il percorso
 // del giocatore, coi clic e le caselle di testo veri, a tempo vero (il ciclo
 // del gioco gira, niente ?nostart):
-//   1. A, nel menu: Schermaglia, "Partita a due", "Crea una partita": la sua
-//      partita (il rosso) mostra il codice;
-//   2. B, nel menu: Schermaglia, "Partita a due", incolla il codice di A,
+//   1. A, nel menu (§9.157): "Multiplayer", "Create game", poi "Create game"
+//      in basso a destra nella schermata della schermaglia: la sua partita
+//      (il rosso) mostra il codice;
+//   2. B, nel menu: "Multiplayer", "Join game", incolla il codice di A,
 //      "Entra": la sua partita (il blu) mostra il codice di risposta;
 //   3. A incolla la risposta, "Collega": il canale si apre, la partita parte
 //      nelle due pagine (stessa room, stesso seme), la sala d'attesa sparisce;
@@ -42,27 +43,39 @@ const until = async (page, fn, arg, ms, what) => {
   try { await page.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); return true; } catch (e) { fail.push(what); return false; }
 };
 
-// il menu: "Schermaglia" (il terzo pulsante della colonna, menu.js
-// titleButtons) e "Partita a due" (a sinistra di "Inizia", menu.js skLayout)
-const twoPlayers = async (page, who) => {
-  // (un clic alla volta, aspettando che la pagina lo veda: un secondo clic
-  // sullo stesso punto cadrebbe su un'opzione della schermaglia)
-  const opened = () => page.waitForFunction(() => { const i = window.__game.world.all("enemy_manager_menu").next().value; return i && i.skmenu === 1; },
-                                            null, { timeout: 10000 }).then(() => true, () => false);
-  for (let k = 0; k < 3; k++) {
-    await page.mouse.move(W / 2, H - 225); await sleep(300);
-    await page.mouse.click(W / 2, H - 225);
-    if (await opened()) break;
-  }
-  const gx2 = W - 40, gx1 = Math.max(30, W * 0.05) + Math.min(440, W * 0.33) + 40;
-  const x = (Math.max(gx1, gx2 - 620) + gx2 - 320) / 2, y = H - 72;
+// il menu (§9.157, menu.js titleButtons): "Multiplayer" (il terzo pulsante
+// della colonna del titolo, 4 pulsanti alti 70 ogni 90 px, l'ultimo a 100
+// px dal fondo), poi nella pagina "Multiplayer" (2 pulsanti) "Create game" o
+// "Join game"; "Create game" in basso a destra nella schermaglia (skLayout)
+const menuOf = (page) => page.evaluate(() => { const i = window.__game.world.all("enemy_manager_menu").next().value;
+  return i ? { page: i.page, skmenu: i.skmenu, skNet: i.skNet } : null; });
+// (un clic alla volta, aspettando che la pagina lo veda: un secondo clic
+// sullo stesso punto cadrebbe sul pulsante della pagina dopo)
+const clickUntil = async (page, x, y, ok) => {
   for (let k = 0; k < 3; k++) {
     await page.mouse.move(x, y); await sleep(300);
     await page.mouse.click(x, y);
-    if (await page.waitForSelector(".net-panel", { timeout: 10000 }).then(() => true, () => false)) break;
+    for (let t = 0; t < 50; t++) { if (await ok()) return true; await sleep(200); }
   }
-  if (!(await page.$(".net-panel"))) { fail.push(`${who}: il pannello "Partita a due" non si apre`); return false; }
-  return true;
+  return false;
+};
+const colY = (n, k) => H - 100 - n * 70 - (n - 1) * 20 + k * 90 + 35;
+const multiplayer = async (page, who) => {
+  if (await clickUntil(page, W / 2, colY(4, 2), async () => (await menuOf(page))?.page === "multi")) return true;
+  fail.push(`${who}: la pagina "Multiplayer" non si apre`);
+  return false;
+};
+const hostMenu = async (page, who) => {
+  if (!(await multiplayer(page, who))) return false;
+  if (await clickUntil(page, W / 2, colY(2, 0), async () => { const m = await menuOf(page); return m?.skmenu === 1 && m.skNet; })) return true;
+  fail.push(`${who}: "Create game" non apre la schermaglia della partita online`);
+  return false;
+};
+const joinPanel = async (page, who) => {
+  if (!(await multiplayer(page, who))) return false;
+  if (await clickUntil(page, W / 2, colY(2, 1), async () => !!(await page.$(".net-panel")))) return true;
+  fail.push(`${who}: il pannello "Join game" non si apre`);
+  return false;
 };
 const code = (page) => page.$eval('textarea[data-net="code"]', (t) => t.value);
 const finish = async () => {
@@ -76,13 +89,20 @@ const finish = async () => {
 const t0 = Date.now();
 const A = await open("A"), B = await open("B");
 // 1. A crea la partita
-if (!(await twoPlayers(A, "A"))) await finish();
-await Promise.all([A.waitForNavigation({ timeout: 60000 }), A.click('[data-net="create"]')]);
+if (!(await hostMenu(A, "A"))) await finish();
+// (la difficolta', il primo riquadro della griglia, e' della CPU: in grigio,
+// un clic non la cambia; menu.js skLayout a 1280 x 720)
+const skOf = (P) => P.evaluate(() => window.__game.world.all("enemy_manager_menu").next().value.sk.difficulty);
+const diff0 = await skOf(A), gx1 = Math.max(30, W * 0.05) + Math.min(440, W * 0.33) + 40;
+await A.mouse.move(gx1 + 150, 180); await sleep(300); await A.mouse.click(gx1 + 150, 180); await sleep(500);
+if ((await skOf(A)) !== diff0) fail.push("A: la difficolta' della CPU si cambia nella partita online");
+await A.mouse.move(W - 40 - 150, H - 72); await sleep(300);
+await Promise.all([A.waitForNavigation({ timeout: 60000 }), A.mouse.click(W - 40 - 150, H - 72)]);
 await ready(A);
 if (!(await until(A, () => (document.querySelector('textarea[data-net="code"]') || {}).value?.length > 100, null, 30000, "A: niente codice"))) await finish();
 const offer = await code(A);
 // 2. B entra col codice di A
-if (!(await twoPlayers(B, "B"))) await finish();
+if (!(await joinPanel(B, "B"))) await finish();
 await B.fill('textarea[data-net="join-code"]', "Ecco il codice:\n" + offer + "\n");
 if (!(await until(B, () => !document.querySelector('[data-net="join"]').disabled, null, 10000, "B: il codice di A non e' accettato"))) await finish();
 const summary = await B.$eval(".net-panel", (p) => [...p.querySelectorAll("[data-text]")].map((e) => e.dataset.text).join(" | "));

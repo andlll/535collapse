@@ -190,9 +190,18 @@ for (const [at, p, k] of CMDS) if (!fa.cmds.some(([s, q, kk]) => s === at + DELA
 // controllo 1: B cambiata di nascosto -> tutte e due se ne accorgono
 await B.evaluate(() => { window.__game.g.p2.wood += 7; });
 await advance(STEPS + 330);
-const ds = await Promise.all(pages.map((P) => P.evaluate(() => [window.__game.net.desync, (document.getElementById("net-bar") || {}).dataset?.text || ""])));
-const desyncOk = ds.every(([d, bar]) => d && d.step === STEPS + 300 && bar.length > 10);
+// ([§9.158] non piu' la barra in alto: l'icona sotto gli inattivi, col
+// suggerimento col puntatore sopra, disegnato qui)
+const ds = await Promise.all(pages.map((P) => P.evaluate(() => {
+  const G = window.__game, inp = G.world.input, W = G.world.cam.cssW;
+  Object.assign(inp, { x: W - 55, y: 250, inside: true });
+  G.loop.render();
+  const bar = document.getElementById("net-bar");
+  return [G.net.desync, G.net.desyncNote ? G.net.desyncNote.text : "", !!bar && !bar.hidden];
+})));
+const desyncOk = ds.every(([d, note, bar]) => d && d.step === STEPS + 300 && note.length > 10 && !bar);
 if (!desyncOk) fail.push("controllo: la differenza non e' stata vista " + JSON.stringify(ds));
+if (process.env.SHOTS) await A.screenshot({ path: process.env.SHOTS + "/desync.png" });
 
 // controllo 2: A lascia la partita -> B lo dice e si ferma
 await A.evaluate(() => window.__game.net.leave());
