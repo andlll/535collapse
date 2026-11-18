@@ -190,7 +190,7 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       switch (t) {
         case "started":
           if (panel) { panel.close(); panel = null; }
-          chat.system(tr("Press Enter to chat with the other player."));
+          chat.system(tr("Enter to chat")); // §9.159: corto
           break;
         case "chat": chat.receive(i.text); break;
         case "error":

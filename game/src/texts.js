@@ -916,10 +916,8 @@ export const TEXTS = {
     it: "Messaggio all'altro giocatore (Invio: manda, Esc: chiudi)", es: "Mensaje al otro jugador (Intro: enviar, Esc: cerrar)",
     pt: "Mensagem ao outro jogador (Enter: enviar, Esc: fechar)", de: "Nachricht an den anderen Spieler (Enter: senden, Esc: schließen)",
     fr: "Message à l'autre joueur (Entrée : envoyer, Échap : fermer)" },
-  "Press Enter to chat with the other player.": {
-    it: "Premi Invio per scrivere all'altro giocatore.", es: "Pulsa Intro para escribir al otro jugador.",
-    pt: "Pressione Enter para escrever ao outro jogador.", de: "Drücke Enter, um dem anderen Spieler zu schreiben.",
-    fr: "Appuie sur Entrée pour écrire à l'autre joueur." },
+  // [§9.159, richiesta dell'autore] piu' corto (era "Press Enter to chat with the other player.")
+  "Enter to chat": { it: "Invio per la chat", es: "Intro para el chat", pt: "Enter para o chat", de: "Enter zum Chatten", fr: "Entrée pour le chat" },
   "Paused by the red player": { it: "Pausa del giocatore rosso", es: "Pausa del jugador rojo", pt: "Pausa do jogador vermelho",
     de: "Pause vom roten Spieler", fr: "Pause du joueur rouge" },
   "Paused by the blue player": { it: "Pausa del giocatore blu", es: "Pausa del jugador azul", pt: "Pausa do jogador azul",

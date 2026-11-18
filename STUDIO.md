@@ -11521,3 +11521,14 @@ anche una pagina di troubleshooting fatta bene a cui si arriva da li'".
   l'autore su due reti diverse (§9.156 "Come riprendere", punto 1): se la
   causa detta e' sbagliata, i dettagli tecnici dicono perche'.
 
+
+### 9.159 Il messaggio della chat piu' corto
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613):
+"riusciamo a sostituire 'premi invio' ecc ecc con un testo piu' corto?". Il
+messaggio grigio a partita cominciata ("Premi Invio per scrivere all'altro
+giocatore.") ora e' **"Invio per la chat"** (en "Enter to chat", es "Intro
+para el chat", pt "Enter para o chat", de "Enter zum Chatten", fr "Entrée
+pour le chat"), su una riga. Il suggerimento dentro la casella aperta
+("Messaggio all'altro giocatore (Invio: manda, Esc: chiudi)") resta.
+Prove: `npm test` (la traduzione c'e'), screenshot della chat.
