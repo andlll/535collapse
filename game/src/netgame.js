@@ -39,10 +39,18 @@ import { tr } from "./i18n.js";
 import { SK_MAPS, SK_ROOMS, SK_OPTIONS, cleanSkirmish, optionLabel } from "./skirmish.js";
 import { freshSeed } from "./rng.js";
 import { Chat } from "./chat.js";
+import { diagnose, diagText, summarizeStats } from "./netdiag.js";
+import { causeText, showNetHelp } from "./nethelp.js";
+import { c, makeColourRgb } from "./colours.js";
+import { dhypot, dsin } from "./dmath.js";
 
 const KEY = "535.net"; // sessionStorage: chi crea (le opzioni) o chi entra (il codice)
 const CONNECT_WAIT = 25000; // ms: dopo la risposta, se il canale non si apre non si aprira'
 const WAIT_BAR = 600, WAIT_PANEL = 8000; // ms di attesa del turno dell'altro: la barra, poi il pannello
+const JOIN_WAIT = 90000; // ms: chi entra, ancora non collegato, legge l'avviso e trova la guida (§9.158)
+// l'identita' di una descrizione WebRTC (a=ice-ufrag): la risposta dice a
+// quale offerta risponde (§9.158)
+const iceUfrag = (sdp) => (/^a=ice-ufrag:(\S+)/m.exec(sdp || "") || [])[1] || "";
 
 // le opzioni che contano nella partita a due (difficolta' e stile sono della
 // CPU; la tregua, §9.156, vale anche qui: nessuno dei due puo' attaccare)
@@ -153,10 +161,11 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   const fake = net.mode === "fake";
   const link = fake ? new FakeLink() : rtcAvailable() ? new RtcLink({ stun: net.stun }) : null;
   let panel = null, waitSince = 0, waitPanel = null, opened = false;
-  const bar = { lost: "", desync: "", waiting: "" };
+  // ([§9.158] la partita non piu' sincronizzata non e' piu' una barra:
+  // un'icona nell'interfaccia, drawGUI sotto)
+  const bar = { lost: "", waiting: "" };
   const showBar = () => {
     if (bar.lost) netBar(bar.lost, "error");
-    else if (bar.desync) netBar(bar.desync, "warning");
     else netBar(bar.waiting);
   };
   const ctl = { mode: net.mode, local: net.local, link, ls: null, desyncDump: null, events: [], waits: 0 };
@@ -191,8 +200,8 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
           try { link.close(); } catch (e) { /* gia' chiuso */ }
           break;
         case "desync":
-          bar.desync = tr("The two games are out of sync (step {n}): from here on the two players may see different things.", { n: i.step });
-          showBar();
+          ctl.desyncNote = { text: tr("The two games are out of sync (step {n}): from here on the two players may see different things.", { n: i.step }),
+                             since: performance.now() };
           try { ctl.desyncDump = dump(); } catch (e) { /* per capire, se si puo' */ }
           console.error("[535 rete] partite diverse al passo", i.step, i, ctl.desyncDump);
           break;
@@ -245,10 +254,50 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       return;
     }
     const failed = (e) => { console.error(e); panel && panel.status(tr("Could not prepare the connection: reload the page and try again."), "error"); };
-    // (chi crea, dopo aver incollato la risposta: i controlli non passano. Chi
-    // entra aspetta: i suoi "failed" prima della risposta sono normali, rtc.js)
-    let accepted = false;
-    link.onstate = (s) => { if (s === "failed" && !opened && panel && accepted) panel.status(noDirect(), "error"); };
+    // [§9.158] i problemi di connessione: la causa (netdiag.js) nella riga di
+    // stato e il pulsante della guida (nethelp.js), che compare sotto
+    let helpInfo = null;
+    const helpButton = (info) => {
+      helpInfo = info;
+      if (!panel || panel.helpRow) return;
+      panel.helpRow = panel.row();
+      panel.button(panel.helpRow, tr("Connection problems"), () => showNetHelp(helpInfo), { name: "help" });
+    };
+    const role = net.mode === "host" ? "rosso, crea" : "blu, entra";
+    let remoteSdp = "", offerAt = 0, acceptedAt = 0;
+    const diagnosis = async (strongOnly) => {
+      const elapsed = acceptedAt && offerAt ? acceptedAt - offerAt : 0;
+      const diag = diagnose({ local: link.pc.localDescription && link.pc.localDescription.sdp, remote: remoteSdp, stun: net.stun, elapsed, strongOnly });
+      let stats = null;
+      if (!strongOnly) { try { stats = summarizeStats(await link.pc.getStats()); } catch (e) { /* niente statistiche */ } }
+      const minutes = Math.max(1, Math.round(elapsed / 60000));
+      ctl.diag = { ...diag, stats };
+      return { diag, minutes, help: { causes: diag.causes, minutes, details: diagText(diag, { role, stats, version, elapsed, stun: net.stun }) } };
+    };
+    // prima del tentativo: solo le cause sicure, come avviso
+    const predict = async () => {
+      const { diag, minutes, help } = await diagnosis(true);
+      if (!diag.causes.length || opened || !panel) return false;
+      panel.status(tr("It will probably not connect:") + " " + causeText(diag.causes[0], { minutes }), "warn");
+      helpButton(help);
+      return true;
+    };
+    // chi crea, dopo aver incollato la risposta: i controlli non passano (una
+    // volta sola). (Chi entra aspetta: i suoi "failed" prima della risposta
+    // sono normali, rtc.js)
+    let accepted = false, reported = false;
+    const report = async () => {
+      if (reported || opened || !panel) return;
+      reported = true;
+      const { diag, minutes, help } = await diagnosis(false);
+      if (opened || !panel) return;
+      const [first] = diag.causes;
+      let msg = tr("Could not connect.") + " " + causeText(first, { minutes });
+      if (first !== "slow" && diag.causes.includes("slow")) msg += " " + causeText("slow", { minutes });
+      panel.status(msg + " " + tr("The button below explains what to try."), "error");
+      helpButton(help);
+    };
+    link.onstate = (s) => { if (s === "failed" && !opened && panel && accepted) report(); };
     if (net.mode === "host") {
       panel.text(tr("1. Send this code to the other player (by chat, e-mail...):"));
       const out = panel.code({ readonly: true, placeholder: tr("Preparing the connection..."), name: "code" });
@@ -264,18 +313,27 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
         try { d = await decodeCode(inp.value); } catch (e) { err = e; }
         const bad = codeProblem(err, "answer", version, d);
         if (bad !== null) { panel.status(bad || tr("This code is not valid: copy it again, whole."), "error"); return; }
+        // [§9.158] la risposta a un altro codice (uno di prima, una pagina
+        // ricaricata): si dice subito
+        if (d.data.o && d.data.o !== iceUfrag(link.pc.localDescription && link.pc.localDescription.sdp)) {
+          panel.status(tr("This answer code was made for another game code (an older one?): send the other player your current code again and paste the new answer."), "error");
+          return;
+        }
         accepted = true;
         go.disabled = true;
+        remoteSdp = d.data.sdp;
+        acceptedAt = performance.now();
         panel.status(tr("Connecting..."));
         try { await link.accept(d.data.sdp); } catch (e) { accepted = false; go.disabled = false; failed(e); return; }
-        setTimeout(() => { if (!opened && panel) panel.status(noDirect(), "error"); }, CONNECT_WAIT);
+        await predict();
+        setTimeout(report, CONNECT_WAIT);
       }, { primary: true, name: "connect" });
       panel.button(r2, tr("Cancel"), cancel, { name: "cancel" });
       panel.status(tr("Preparing the connection..."));
       const seed = Number(new URLSearchParams(location.search).get("seed")) >>> 0;
       link.offer()
         .then((sdp) => encodeCode("offer", { v: version, sdp, setup: { map: net.sk.map, sk: net.sk, seed } }))
-        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; panel.status(tr("Waiting for the answer code.")); })
+        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; offerAt = performance.now(); panel.status(tr("Waiting for the answer code.")); })
         .catch(failed);
     } else {
       panel.text(tr("Send this answer code to the player who created the game:"));
@@ -286,9 +344,23 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
       panel.button(r1, tr("Cancel"), cancel, { name: "cancel" });
       panel.status(tr("Preparing the connection..."));
       decodeCode(net.code || "")
-        .then((d) => { if (d.kind !== "offer") throw new Error("non e' un'offerta"); return link.answer(d.data.sdp); })
-        .then((sdp) => encodeCode("answer", { v: version, sdp }))
-        .then((code) => { out.value = code; copy.disabled = false; ctl.code = code; if (!opened) panel.status(tr("Waiting for the other player to connect...")); })
+        .then((d) => { if (d.kind !== "offer") throw new Error("non e' un'offerta"); remoteSdp = d.data.sdp; return link.answer(d.data.sdp); })
+        // (o: l'offerta a cui risponde, per chi crea: la risposta giusta?)
+        .then((sdp) => encodeCode("answer", { v: version, sdp, o: iceUfrag(remoteSdp) }))
+        .then(async (code) => {
+          out.value = code; copy.disabled = false; ctl.code = code;
+          if (opened) return;
+          if (!(await predict())) panel.status(tr("Waiting for the other player to connect..."));
+          // [§9.158] chi entra non sa quando l'altro incolla: dopo JOIN_WAIT
+          // l'avviso e la guida
+          setTimeout(async () => {
+            if (opened || !panel) return;
+            const { help } = await diagnosis(false);
+            if (opened || !panel) return;
+            panel.status(tr("Still not connected. If the other player has already pasted your code and nothing happens, the connection did not work."), "warn");
+            helpButton(help);
+          }, JOIN_WAIT);
+        })
         .catch(failed);
     }
   };
@@ -315,6 +387,9 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   };
 
   Object.assign(ctl, {
+    // [§9.158] l'icona della partita non piu' sincronizzata e il suo
+    // suggerimento (nell'interfaccia, pixel CSS; app.js dopo la chat)
+    drawGUI(d, W, g, input) { if (ctl.desyncNote) drawDesync(d, W, g, input, ctl.desyncNote); },
     // il passo del mondo si puo' giocare? (se no si aspetta)
     canStep() {
       const ok = ls.ready(world._stepNo);
@@ -345,4 +420,48 @@ export function startNet({ net, world, g, commands, pause, hash, dump, version, 
   // lo stato del lockstep, letto ogni volta (per le prove e la diagnostica)
   for (const k of ["state", "delay", "checks", "desync", "rtt"]) Object.defineProperty(ctl, k, { get: () => ls[k], enumerable: true });
   return ctl;
+}
+
+// [§9.158, richiesta dell'autore] La partita non piu' sincronizzata: al posto
+// della barra in alto (prendeva troppo spazio) un'icona tonda di vetro sotto
+// il riquadro dei civili inattivi (sotto gli FPS, se si vedono), col segno
+// "diverso" (le due partite non sono piu' uguali) nel colore degli avvisi;
+// lampeggia per DESYNC_BLINK ms quando compare. Col puntatore sopra, il
+// suggerimento nello stile di quelli del tutorial (hints.js drawWindow:
+// riquadro bianco largo 380, titolo e testo) alla sua sinistra.
+// (L'icona e' provvisoria: da decidere con l'autore.)
+const DESYNC_BLINK = 6000, WARN = makeColourRgb(160, 90, 20);
+export const desyncIcon = (W, g) => [W - 55, g && g.fps_show > 0 ? 290 : 250, 30];
+function drawDesync(d, W, g, input, note) {
+  const [x, y, r] = desyncIcon(W, g);
+  const hover = !!input && input.inside && dhypot(input.x - x, input.y - y) < r;
+  const age = performance.now() - note.since;
+  d.setAlpha(hover ? 0.99 : 0.69);
+  d.circleColour(x, y, r, c.white, c.white, false);
+  if (age < DESYNC_BLINK) {
+    d.setAlpha(0.3 + 0.3 * dsin(age / 160));
+    d.circleColour(x, y, r, WARN, WARN, false);
+  }
+  d.setAlpha(0.9);
+  d.lineWidthColour(x - 12, y - 6, x + 12, y - 6, 4, WARN, WARN);
+  d.lineWidthColour(x - 12, y + 6, x + 12, y + 6, 4, WARN, WARN);
+  d.lineWidthColour(x + 7, y - 15, x - 7, y + 15, 4, WARN, WARN);
+  if (!hover) { d.setAlpha(1); return; }
+  const title = tr("Out of sync"), text = note.text;
+  d.setFont("overdue");
+  const th = d.stringHeightExt(text, 30, 340), wx = x - r - 20 - 380, wy = y - r;
+  d.setAlpha(0.69);
+  d.roundrectColourExt(wx, wy, wx + 380, wy + th + 68, 60, 60, c.white, c.white, false);
+  d.setColour(c.black);
+  d.setAlpha(0.75);
+  d.setFont("GUI_1");
+  d.setHalign("left");
+  d.setValign("bottom");
+  d.text(wx + 20, wy + 38, title);
+  d.setFont("overdue");
+  d.setValign("top");
+  d.textExt(wx + 20, wy + 43, text, 30, 340);
+  d.setAlpha(1);
+  d.setColour(c.white);
+  d.setValign("middle");
 }

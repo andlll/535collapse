@@ -82,19 +82,21 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // titolo ("Play the tutorial", "Single player", "Multiplayer", "Load
 // game"), "Single player" (la campagna e la schermaglia) e "Multiplayer"
 // ("Create game": la schermaglia per la partita online; "Join game": il
-// pannello per il codice ricevuto). Nelle due pagine interne l'ultimo
-// pulsante e' "Back" (il cerchio in alto a destra e' lo schermo intero).
-// Ogni colonna finisce a 100 px dal fondo; il logo resta dove sta col
-// titolo (top: l'alto della colonna del titolo).
+// pannello per il codice ricevuto). [§9.158, decisione dell'autore] Nelle
+// due pagine interne "Indietro" e' il cerchio in alto a destra, subito a
+// sinistra di quello dello schermo intero (back: [x, y, r]; senza schermo
+// intero al suo posto, come nella campagna). Ogni colonna finisce a 100 px
+// dal fondo; il logo resta dove sta col titolo (top: l'alto della colonna
+// del titolo).
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
 const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
 const MENU_PAGES = {
   title: ["tutorial", "single", "multi", "load"],
-  single: ["campaign", "skirmish", "back"],
-  multi: ["create", "join", "back"],
+  single: ["campaign", "skirmish"],
+  multi: ["create", "join"],
 };
 const BTN_LABEL = { tutorial: "Play the tutorial", single: "Single player", multi: "Multiplayer", load: "Load game",
-                    campaign: "Campaign - Collapse", skirmish: "Skirmish", create: "Create game", join: "Join game", back: "Back" };
+                    campaign: "Campaign - Collapse", skirmish: "Skirmish", create: "Create game", join: "Join game" };
 export const MENU_LABELS = Object.values(BTN_LABEL); // (per la prova delle traduzioni)
 const colTop = (H, n) => H - 100 - n * BTN_H - (n - 1) * BTN_GAP;
 function titleButtons(W, H, page = "title") {
@@ -106,6 +108,7 @@ function titleButtons(W, H, page = "title") {
     out[k] = [W / 2 - BTN_W / 2, y, W / 2 + BTN_W / 2, y + BTN_H];
   });
   out.full = fullscreenAvailable() ? [W - FULL_BTN[0], FULL_BTN[1], FULL_BTN[2]] : null;
+  out.back = page === "title" ? null : [W - FULL_BTN[0] - (out.full ? 70 : 0), FULL_BTN[1], FULL_BTN[2]];
   return out;
 }
 // [Fase 4] il pannello delle partite salvate
@@ -253,6 +256,7 @@ export function enemyManagerMenu() {
         const b = titleButtons(W, H, i.page);
         i.btnhover = b.keys.find((k) => inRect(mx, my, ...b[k])) || null;
         i.fullhover = +(!!b.full && dhypot(mx - b.full[0], my - b.full[1]) < b.full[2]);
+        if (b.back && dhypot(mx - b.back[0], my - b.back[1]) < b.back[2]) i.btnhover = "back"; // §9.158
       } else {
         i.btnhover = null;
         i.fullhover = 0;
@@ -404,6 +408,12 @@ function drawTitle(i, d, W, H) {
     d.text(W / 2, (y1 + y2) / 2, label);
   }
   if (b.full) drawFullButton(d, ...b.full, i.fullhover, isFullscreen()); // §9.119
+  if (b.back) { // §9.158: il cerchio di "Indietro", come nella campagna
+    d.setAlpha(i.btnhover === "back" ? 0.99 : 0.69);
+    d.circleColour(b.back[0], b.back[1], b.back[2], c.white, c.white, false);
+    d.setAlpha(1);
+    d.spriteExt("ico_indietro", 0, b.back[0], b.back[1], 0.6, 0.6, 0, c.white, 1);
+  }
   d.setFont("overdue");
   // una volta su otto, la frase dell'autore al posto della firma [C, §3.20 n.75];
   // [richiesta dell'autore] l'anno della firma e' 2026 (l'originale: 2025)

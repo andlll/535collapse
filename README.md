@@ -88,12 +88,15 @@ partita online, aprire senza rete.
 Il menu principale (§9.157): "Gioca il tutorial", "Giocatore singolo"
 (campagna e schermaglia), "Multigiocatore", "Carica partita".
 
-**Multigiocatore online** (§9.152-§9.157): "Multigiocatore", "Crea partita":
+**Multigiocatore online** (§9.152-§9.158): "Multigiocatore", "Crea partita":
 mappa e opzioni come nella schermaglia (difficolta' e stile della CPU in
 grigio), poi "Crea partita" in basso a destra. Chi crea la partita (il
 rosso) manda all'altro il codice che compare; l'altro va in
 "Multigiocatore", "Partecipa", lo incolla ("Entra", il blu) e rimanda il suo
-codice di risposta, che il primo incolla ("Collega"). La connessione è diretta fra i
+codice di risposta, che il primo incolla ("Collega"). Se il collegamento
+non riesce la sala d'attesa dice la causa che si legge nei codici (rete che
+blocca UDP, NAT simmetrico, IPv4/IPv6, stessa rete, codici scambiati troppo
+tardi) e apre la guida "Problemi di connessione" (§9.158). La connessione è diretta fra i
 due browser (WebRTC, con un server STUN pubblico per attraversare i router;
 senza un server TURN alcune reti non si collegano); i due giochi si
 scambiano solo i comandi (lockstep) e confrontano ogni 5 secondi
@@ -149,6 +152,7 @@ node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondat
 node game/test/browser/pvp.mjs sk_padus 5 1500         # partita a due in una pagina: le due parti, stesse impronte
 node game/test/browser/netfake.mjs sk_padus 7 2400     # partita a due in rete, canale finto con ritardo e disordine (§9.156)
 node game/test/browser/rtc.mjs sk_padus 950            # partita a due con WebRTC vero fra due pagine, dal menu (§9.156)
+node game/test/browser/rtcfail.mjs                      # collegamento che non riesce: la causa, la guida "Problemi di connessione" (§9.158)
 node game/test/browser/truce.mjs sk_padus 5            # la tregua nella partita a due: nessuno attacca, poi si combatte (§9.156)
 python3 tools/10_zip.py                              # zip per i portali -> build/
 node game/test/browser/portal.mjs build/535-collapse-web.zip   # lo zip in un iframe, in una sottocartella

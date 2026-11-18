@@ -735,6 +735,8 @@ async function main() {
     if (world.mp) world.mp.noTruce = false;
     // [§9.156] la chat della partita online, fra le risorse e la minimappa
     if (netGame) { draw.reset(); netGame.chat.draw(draw, manager.chatArea(cam, world.worldFor(null))); }
+    // [§9.158] l'icona della partita non piu' sincronizzata
+    if (netGame) { draw.reset(); netGame.drawGUI(draw, cam.cssW, world.worldFor(null).g, world.input); }
     draw.reset();
     world.drawGUIEnd(draw);
     draw.reset();

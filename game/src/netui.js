@@ -63,6 +63,10 @@ export class NetPanel {
     this.onEscape = onEscape;
     this._esc = (e) => {
       if (e.code !== "Escape") return;
+      // ([§9.158] due pannelli uno sopra l'altro, la guida sopra la sala
+      // d'attesa: Esc e' di quello sopra)
+      const all = document.querySelectorAll(".net-overlay");
+      if (all.length && all[all.length - 1] !== this.root) return;
       e.stopPropagation();
       if (e.type === "keydown" && this.onEscape) this.onEscape();
     };
@@ -83,11 +87,29 @@ export class NetPanel {
     return el;
   }
 
-  // un paragrafo nel font del gioco (center: false per allinearlo a sinistra)
-  text(text, { center = false, colour = "#222" } = {}) {
+  // un paragrafo nel font del gioco (center: false per allinearlo a
+  // sinistra; [§9.158] bullet: rientrato, con un pallino)
+  text(text, { center = false, colour = "#222", bullet = false } = {}) {
     const el = this._add(document.createElement("div"));
     el.dataset.text = text;
+    if (bullet) {
+      Object.assign(el.style, { position: "relative", paddingLeft: "18px" });
+      setDomText(el, text, { font: "overdue", colour, width: this.inner() - 18, center });
+      const dot = document.createElement("span");
+      Object.assign(dot.style, { position: "absolute", left: "4px", top: "9px", width: "6px", height: "6px", borderRadius: "3px", background: colour });
+      el.append(dot);
+      return el;
+    }
     setDomText(el, text, { font: "overdue", colour, width: this.inner(), center });
+    return el;
+  }
+
+  // [§9.158] il titolo di una sezione (la guida ai problemi di connessione)
+  heading(text) {
+    const el = this._add(document.createElement("div"));
+    el.dataset.text = text;
+    setDomText(el, text, { font: "GUI_1", colour: "#111", width: this.inner(), center: false });
+    el.style.margin = "16px 0 6px";
     return el;
   }
 
@@ -131,7 +153,7 @@ export class NetPanel {
     setDomText(b, label, { font: "GUI_1", colour: primary ? "#fff" : "#111", width: 400 });
   }
 
-  // la riga di stato (in fondo): kind info, ok, error
+  // la riga di stato (in fondo): kind info, ok, warn (§9.158), error
   status(text, kind = "info") {
     if (!this.statusEl) {
       this.statusEl = this._add(document.createElement("div"));
@@ -141,7 +163,7 @@ export class NetPanel {
     this.statusEl.dataset.kind = kind;
     this.statusEl.dataset.text = text || "";
     if (!text) { this.statusEl.replaceChildren(); return; }
-    setDomText(this.statusEl, text, { font: "overdue", width: this.inner(), colour: kind === "error" ? "#9a1a10" : kind === "ok" ? "#2d6b2f" : "#333" });
+    setDomText(this.statusEl, text, { font: "overdue", width: this.inner(), colour: kind === "error" ? "#9a1a10" : kind === "warn" ? "#8a5a12" : kind === "ok" ? "#2d6b2f" : "#333" });
   }
 
   close() {

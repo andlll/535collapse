@@ -45,7 +45,7 @@ const until = async (page, fn, arg, ms, what) => {
 
 // il menu (§9.157, menu.js titleButtons): "Multiplayer" (il terzo pulsante
 // della colonna del titolo, 4 pulsanti alti 70 ogni 90 px, l'ultimo a 100
-// px dal fondo), poi nella pagina "Multiplayer" (3 pulsanti) "Create game" o
+// px dal fondo), poi nella pagina "Multiplayer" (2 pulsanti) "Create game" o
 // "Join game"; "Create game" in basso a destra nella schermaglia (skLayout)
 const menuOf = (page) => page.evaluate(() => { const i = window.__game.world.all("enemy_manager_menu").next().value;
   return i ? { page: i.page, skmenu: i.skmenu, skNet: i.skNet } : null; });
@@ -67,13 +67,13 @@ const multiplayer = async (page, who) => {
 };
 const hostMenu = async (page, who) => {
   if (!(await multiplayer(page, who))) return false;
-  if (await clickUntil(page, W / 2, colY(3, 0), async () => { const m = await menuOf(page); return m?.skmenu === 1 && m.skNet; })) return true;
+  if (await clickUntil(page, W / 2, colY(2, 0), async () => { const m = await menuOf(page); return m?.skmenu === 1 && m.skNet; })) return true;
   fail.push(`${who}: "Create game" non apre la schermaglia della partita online`);
   return false;
 };
 const joinPanel = async (page, who) => {
   if (!(await multiplayer(page, who))) return false;
-  if (await clickUntil(page, W / 2, colY(3, 1), async () => !!(await page.$(".net-panel")))) return true;
+  if (await clickUntil(page, W / 2, colY(2, 1), async () => !!(await page.$(".net-panel")))) return true;
   fail.push(`${who}: il pannello "Join game" non si apre`);
   return false;
 };

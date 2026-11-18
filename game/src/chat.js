@@ -9,6 +9,11 @@
 // I tasti battuti nella casella non arrivano al gioco (input.js ascolta la
 // finestra: qui si fermano), cosi' un "q" scritto non mette in coda un
 // civile.
+//
+// [§9.158, richiesta dell'autore] Niente "Rosso:"/"Blu:" davanti ai messaggi
+// (lo dice il colore): al loro posto il ritratto tondo dei dialoghi della
+// campagna, il soldato del giocatore (capoccia_a1) per il rosso e quello
+// nemico, blu (capoccia_n1), per il blu. I messaggi del gioco senza.
 
 import { c, makeColourRgb } from "./colours.js";
 import { tr } from "./i18n.js";
@@ -18,6 +23,9 @@ const KEEP = 40;                       // messaggi tenuti
 const LINE = 21;                       // px fra le righe
 const COLOURS = [makeColourRgb(150, 32, 22), makeColourRgb(28, 70, 170)]; // rosso, blu
 const SYSTEM = makeColourRgb(70, 70, 70);
+const FACES = ["capoccia_a1", "capoccia_n1"]; // rosso, blu (60 x 60, tondi)
+const FACE = 26;                       // px: il ritratto disegnato
+const FACE_GAP = 8;                    // px fra il ritratto e il testo
 
 const CSS = `
 #chat-input { position: fixed; z-index: 8; box-sizing: border-box; height: 34px; padding: 0 14px; border: 0;
@@ -121,26 +129,34 @@ export class Chat {
     d.setFont("overdue");
     d.setHalign("left");
     d.setValign("top");
-    const w = area.w - 24, bottom = area.bottom - (open ? 42 : 0);
+    const tx = FACE + FACE_GAP, bottom = area.bottom - (open ? 42 : 0);
     let y = bottom, top = bottom, alpha = 0;
     const rows = [];
     for (const [m, a] of shown) {
       // ("#" nel testo del gioco va a capo, come in GameMaker: qui no)
-      const str = (m.who === null ? "" : tr(m.who === 0 ? "Red" : "Blue") + ": ") + m.text.replace(/#/g, " ");
-      const h = Math.max(LINE, d.stringHeightExt(str, LINE, w));
+      const str = m.text.replace(/#/g, " "), face = m.who !== null;
+      const w = area.w - 24 - (face ? tx : 0);
+      const h = Math.max(face ? FACE : LINE, d.stringHeightExt(str, LINE, w));
       if (y - h < area.top) break;
-      y -= h + 4;
-      rows.push([str, y, m, a]);
+      y -= h + 6;
+      rows.push([str, y, h, w, m, a]);
       top = y;
       alpha = Math.max(alpha, a);
     }
     if (!rows.length) return;
     d.setAlpha(0.55 * alpha);
     d.roundrectColourExt(area.x, top - 8, area.x + area.w, bottom + 2, 30, 30, c.white, c.white, false);
-    for (const [str, yy, m, a] of rows) {
+    const s = FACE / 60;
+    for (const [str, yy, h, w, m, a] of rows) {
+      let x = area.x + 12;
+      if (m.who !== null) {
+        // il ritratto in alto, accanto alla prima riga (che ci sta centrata)
+        d.spriteExt(FACES[m.who], 0, x + FACE / 2, yy + FACE / 2, s, s, 0, c.white, a);
+        x += tx;
+      }
       d.setColour(m.who === null ? SYSTEM : COLOURS[m.who]);
       d.setAlpha(0.95 * a);
-      d.textExt(area.x + 12, yy, str, LINE, w);
+      d.textExt(x, yy, str, LINE, w);
     }
     d.setAlpha(1);
     d.setColour(c.white);

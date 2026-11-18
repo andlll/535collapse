@@ -47,7 +47,8 @@ resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, codici piu' corti,
 ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
-"Multigiocatore" con "Crea partita" e "Partecipa" (§9.157).
+"Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
+collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
 **Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
 nebbia, di giorno e pieno di nebbia. Fatto il prototipo
@@ -11400,4 +11401,123 @@ netfake.mjs, soak.mjs sul menu, `npm test`, e ui.mjs nelle sei lingue (che
 ora disegna le tre pagine della colonna con ogni pulsante acceso): nessun
 problema. Screenshot di tutte le schermate in italiano, spagnolo e tedesco:
 i testi stanno nei pulsanti.
+
+
+### 9.158 Indietro, la chat coi ritratti, l'icona della partita non sincronizzata, i problemi di connessione
+
+Risposte e richieste dell'autore (18 novembre 2026, stessa PR di §9.157,
+versione 0.2613), sulle scelte di §9.157: tutorial e "Carica partita" nel
+titolo "si' corretto", i nomi "va benissimo", le opzioni condivise "va bene
+tanto uno puo' cambiarle mentre si trova li'" (si': in "Crea partita" chi
+crea cambia tutte le opzioni tranne quelle della CPU; dalla sala d'attesa
+in poi sono fisse, e chi entra non le cambia). Poi:
+
+**"Indietro"**: "mettilo subito a sinistra di quello per lo schermo
+intero". Nelle pagine "Giocatore singolo" e "Multigiocatore" e' un cerchio
+di vetro con la freccia (ico_indietro, come nella campagna) a 70 px dal
+cerchio dello schermo intero; dove lo schermo intero non c'e' (iPhone) sta
+al suo posto. La colonna ha solo i due pulsanti (menu.js titleButtons,
+`back`).
+
+**La chat**: "togli le scritte 'giocatore rosso' e 'giocatore blu', si
+capisce gia' dal colore [...] possiamo sostituirle con le bolle usate nella
+campagna". Davanti a ogni messaggio il ritratto tondo dei dialoghi, 26 px:
+il soldato del giocatore (capoccia_a1) per il rosso, quello nemico, blu
+(capoccia_n1), per il blu; il testo accanto, nel colore di chi scrive (a
+capo sotto il testo, non sotto il ritratto). I messaggi del gioco senza.
+Via i testi "Red" e "Blue".
+
+**La partita non sincronizzata**: "la scritta in alto [...] prende troppo
+spazio, sostituiamola da un'icona (ora capiamo insieme), se uno fa hovering
+sull'icona appare l'hint [...] stesso stile scritta su roundrect glass come
+gli hint soliti". Al posto della barra arancione un cerchio di vetro sotto il
+riquadro dei civili inattivi (sotto gli FPS se si vedono), col segno
+"diverso" nel colore degli avvisi, che lampeggia per 6 s quando compare;
+col puntatore sopra, alla sua sinistra, il riquadro dei suggerimenti
+(bianco, largo 380, titolo "Partita non sincronizzata" e il testo di prima:
+"Le due partite non sono piu' uguali (passo N): da qui...") (netgame.js
+`drawDesync`, chiamata da app.js dopo la chat). *L'icona e' provvisoria*:
+da scegliere con l'autore (un disegno suo, come le altre). Le altre barre
+(l'attesa dell'altro giocatore, la connessione persa) restano.
+
+**I problemi di connessione**: "se la connessione iniziale fallisce mettiamo
+una segnalazione errori piu' mirata e meno generica, eventualmente facciamo
+anche una pagina di troubleshooting fatta bene a cui si arriva da li'".
+- *Le cause* (netdiag.js, senza browser): dai due codici si leggono gli
+  indirizzi delle due parti (i "candidati" ICE: del computer, esterni dati
+  da STUN, di inoltro) e dal tentativo le statistiche (getStats: coppie
+  provate, controlli mandati e risposte). Le cause, dalla piu' probabile:
+  nessun indirizzo (impostazioni o estensioni che spengono WebRTC); la rete
+  che non raggiunge STUN (UDP bloccato: firewall, reti aziendali o
+  scolastiche, VPN), da una parte o dall'altra; NAT simmetrico da tutte e
+  due le parti, o da una (lo stesso indirizzo esterno con piu' porte di
+  quante prese ha il computer: il browser chiede ai due server STUN dalla
+  stessa presa; contato per difetto, meglio non dirlo che dirlo a torto);
+  solo IPv6 da una parte e solo IPv4 dall'altra; lo stesso indirizzo esterno
+  (la stessa rete che non lascia passare: Wi-Fi ospiti, isolamento); i
+  codici scambiati in piu' di 2 minuti (i router dimenticano gli indirizzi);
+  se no "le reti non hanno lasciato passare, e dai codici non si capisce
+  perche'". Ognuna ha la sua frase, nelle sei lingue (nethelp.js
+  `causeText`).
+- *Nella sala d'attesa*: chi crea, se dopo aver incollato la risposta il
+  canale non si apre in 25 s (o il browser dice "failed"), legge "Collegamento
+  non riuscito." con la causa (e, se c'e', il consiglio dei codici lenti) e
+  "Il pulsante qui sotto spiega cosa provare."; sotto, "Problemi di
+  connessione". Prima del tentativo, se una causa e' sicura (nessun indirizzo,
+  STUN bloccato, NAT simmetrico da tutte e due le parti, IPv4/IPv6), un
+  avviso arancione "Probabilmente il collegamento non riuscira':" (lo legge
+  anche chi entra, appena ha il suo codice). Chi entra non sa quando l'altro
+  incolla: dopo 90 s senza collegamento "Ancora non collegati. Se l'altro
+  giocatore ha gia' incollato il tuo codice e non succede niente, il
+  collegamento non e' riuscito." e il pulsante.
+- *La risposta sbagliata*: la risposta ora dice a quale codice risponde
+  (`o`, l'ice-ufrag dell'offerta); incollata a chi ha un altro codice (la
+  pagina ricaricata, un codice di prima) e' rifiutata subito: "Questo codice
+  di risposta e' stato fatto per un altro codice della partita (uno di
+  prima?): rimanda all'altro giocatore il codice attuale e incolla la nuova
+  risposta."
+- *La guida "Problemi di connessione"* (nethelp.js `showNetHelp`): un
+  pannello sopra la sala d'attesa (quasi opaco; Esc chiude solo lei,
+  netui.js: Esc e' del pannello piu' in alto), che scorre: come funziona il
+  collegamento; "Cosa non ha funzionato" (le cause trovate); "Prima di
+  tutto" (stessa versione, browser aggiornato, codici scambiati in fretta
+  senza ricaricare la pagina); "Prova un'altra rete" (l'hotspot del
+  telefono, il NAT simmetrico delle reti mobili); "Reti aziendali,
+  scolastiche e pubbliche, VPN"; "Firewall, antivirus, estensioni del
+  browser" (Brave, Firefox, uBlock che spengono WebRTC); "Sulla stessa rete"
+  (rete ospiti, cavo); "Altre cose da provare" (scambiarsi i ruoli, il
+  router e UPnP, un altro browser); "Se non funziona niente" (il server di
+  inoltro che manca); "Dettagli tecnici" (versione, ruolo, quanti indirizzi
+  di ogni tipo per parte, NAT, cause, tempi, statistiche, browser: senza gli
+  indirizzi) con "Copia". In italiano i dettagli tecnici (sono per chi aiuta).
+- netui.js: `heading`, paragrafi con pallino, lo stato "warn" (arancione).
+- 38 testi nuovi nelle sei lingue.
+
+**Prove.**
+- `test/netdiag.test.mjs` (unitaria): descrizioni WebRTC finte come le
+  scrive Chromium (una casa, una rete mobile con due porte, una rete che
+  blocca UDP, solo IPv6, nessun indirizzo, due prese dietro lo stesso
+  router): ogni causa, l'avviso solo con quelle sicure, senza STUN nessun
+  "bloccato", le statistiche, i dettagli senza indirizzi.
+- `test/i18n.test.mjs`: anche i testi di nethelp.js e della guida.
+- `test/browser/rtcfail.mjs` (nella CI, nuova): WebRTC vero fra due pagine,
+  coi codici cambiati in indirizzi che non rispondono (192.0.2.x, porta 9):
+  la risposta per un altro codice rifiutata col suo messaggio; la risposta
+  giusta: dopo 25 s "Could not connect. ... The button below explains what
+  to try.", il pulsante, la guida (18 testi, i dettagli tecnici senza
+  indirizzi), Esc chiude la guida e non la sala d'attesa. Trovato
+  scrivendola: in questa macchina un indirizzo che non risponde ma con la
+  porta giusta arriva lo stesso alla pagina accanto (le due pagine si
+  collegavano): la prova cambia anche la porta.
+- `test/browser/netfake.mjs`: la partita non sincronizzata non mostra piu'
+  la barra; l'icona e il suggerimento si disegnano (screenshot).
+- `test/browser/rtc.mjs` col menu nuovo (due pulsanti per pagina), ui.mjs
+  nelle sei lingue (anche il cerchio "Indietro"), soak.mjs sul menu,
+  `npm test`: passate. Screenshot: il menu, la chat coi ritratti, l'icona
+  col suggerimento, la sala d'attesa col collegamento non riuscito, la
+  guida.
+- Non provato: le cause su reti vere (NAT simmetrico, UDP bloccato,
+  IPv6): qui le due pagine stanno nella stessa macchina. Da provare con
+  l'autore su due reti diverse (§9.156 "Come riprendere", punto 1): se la
+  causa detta e' sbagliata, i dettagli tecnici dicono perche'.
 
