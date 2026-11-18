@@ -63,3 +63,46 @@ test("§9.155 lo specchio del mondo", () => {
   w2.g.sel = 7;
   assert.equal(world.g.sel, 7);
 });
+
+// [§9.163, segnalazione dell'autore] il rosso non vedeva i pulsanti del
+// municipio: lo Step del centro blu (non selezionato nella pagina del rosso)
+// distruggeva quelli appena creati dal centro rosso. L'interfaccia e' di chi
+// guarda: gli eventi dell'altra parte (e i comandi dell'altro giocatore) non
+// la creano ne' la distruggono.
+test("§9.163 l'interfaccia e' di chi guarda", async () => {
+  const { World } = await import("../src/world.js");
+  const { newGlobals } = await import("../src/state.js");
+  const { setupMultiplayer } = await import("../src/multiplayer.js");
+  const base = { sprite: null, mask: null, depth: 0, visible: true, solid: false, draw: false };
+  const objects = {
+    ally: { ...base, parents: [] }, ally_build: { ...base, parents: ["ally"] },
+    centro: { ...base, parents: ["ally_build", "ally"] },
+    clicker_parent: { ...base, parents: [] }, omino_clicker: { ...base, parents: ["clicker_parent"] },
+  };
+  // lo Step del centro (buildings.js): selezionato, i pulsanti; no, via
+  const centroStep = {
+    step(i, w) {
+      if (i.selected === 1 && w.number("omino_clicker") < 1) w.create("omino_clicker", 0, 0);
+      if (i.selected === 0) for (const c of w.all("omino_clicker")) w.destroy(c);
+    },
+  };
+  for (const local of [1, 2]) {
+    const w = new World({ objects: structuredClone(objects), masks: {}, assets: {}, g: newGlobals("match"), roomW: 100, roomH: 100 });
+    w.register("centro", centroStep);
+    setupMultiplayer(w, local);
+    const red = w.create("centro", 10, 10), blue = w.create("p2_centro", 50, 50);
+    red.selected = local === 1 ? 1 : 0;
+    blue.selected = local === 2 ? 1 : 0;
+    for (let k = 0; k < 3; k++) w.step({ down: new Set(), pressed: new Set(), released: new Set(), mousePressed: [], mouseReleased: [] }, 0, 0);
+    assert.equal(w.number("omino_clicker"), 1, `guardando dalla parte ${local}`);
+    // un comando dell'altro giocatore non tocca l'interfaccia di chi guarda
+    w.action("via", (mw) => { for (const c of mw.all("omino_clicker")) mw.destroy(c); mw.create("omino_clicker", 0, 0); });
+    const before = w.all("omino_clicker").next().value;
+    w.runAction("via", { p: 2 - local });
+    assert.deepEqual([...w.all("omino_clicker")], [before]);
+    w.runAction("via", { p: local - 1 }); // uno di chi guarda si'
+    const after = [...w.all("omino_clicker")];
+    assert.equal(after.length, 1);
+    assert.notEqual(after[0], before);
+  }
+});

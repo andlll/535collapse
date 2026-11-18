@@ -11664,3 +11664,57 @@ inattivi, al posto del segno "diverso" provvisorio di §9.158. Resta il
 lampeggio arancione del cerchio nei primi 6 s, e il suggerimento col
 puntatore sopra. Prova: netfake.mjs (la partita resa diversa di nascosto:
 l'icona e il suggerimento si disegnano, screenshot), passata.
+
+### 9.163 Il rosso non vedeva i pulsanti del municipio
+
+Segnalazione dell'autore (18 novembre 2026, nuova PR, versione 0.2614): "bug
+nel multiplayer: il giocatore rosso non vede la parte della GUI relativa ai
+pulsanti (costruzione, creazione unita'...)".
+
+**La causa.** Il codice del giocatore gira in ogni pagina per le istanze
+delle due parti (§9.155): nella pagina del rosso anche lo Step di
+p2_centro, in quella del blu lo Step di centro. Lo Step del centro
+(buildings.js) fa "selezionato: crea i pulsanti (omino_clicker, il civile;
+centro_indietro_clicker, l'annulla); non selezionato: via i pulsanti". I
+pulsanti sono dell'interfaccia (nessun gemello, nessuna traduzione nello
+specchio): il centro dell'altra parte, che in quella pagina non e' mai
+selezionato, distruggeva i pulsanti di chi guarda. Chi li perdeva dipende
+dall'ordine dei due centri nella room (skirmishPrepare: l'angolo della
+mappa e il lato scelto): se il centro dell'altro viene dopo, i pulsanti
+spariscono a ogni passo appena creati; se viene prima, li distrugge e il
+proprio li ricrea subito (si vedono, ma rinascono a ogni passo, e il loro
+Destroy rimette global.sele a 0: il puntatore sopra il pulsante non
+contava). Nella partita dell'autore toccava al rosso; con ?pvp=1 su
+sk_padus seme 5 al blu (misurato: senza la correzione il blu, selezionato
+il centro, ha 0 pulsanti, il rosso 2). Lo stesso per i lampeggi delle
+risorse (pop_blink: la popolazione piena dell'altro lampeggiava anche per
+chi guarda).
+
+**La correzione** (world.js `_foreignUi`). Nella partita a due l'interfaccia
+(le istanze ui: pulsanti, lampeggi, fantasmi, suggerimenti) e' di chi
+guarda: un evento di un'istanza dell'altra parte, o un comando dell'altro
+giocatore (mp.actor), non crea ne' distrugge istanze dell'interfaccia.
+`fire` ricorda l'istanza dell'evento in corso; `create` restituisce
+un'istanza gia' morta (chi la usa non se ne accorge; via a fine passo),
+`destroy` non fa niente. Le neutre (risorse, sk_manager) e le funzioni
+dell'interfaccia di app.js restano come prima; fuori dalla partita a due
+niente cambia. L'interfaccia non entra nell'impronta (§9.152): la partita
+resta la stessa nelle due pagine.
+
+**Visto cercando: il rettangolo di selezione.** global.multi (il
+rettangolo che chi guarda sta tirando) e' comune alle due parti: lo Step
+dei civili e boxSelect (soldati, arcieri, macchine) selezionavano anche le
+unita' dell'altra parte che ci finivano dentro (selezionate per sempre in
+quella pagina: nessun clic le deseleziona, e i loro pannelli nella GUI di
+chi guarda). Ora solo le proprie (world.js `mine`).
+
+**Prove.**
+- test/multiplayer.test.mjs "§9.163": un centro rosso e uno blu,
+  selezionato quello di chi guarda, guardando dal rosso e dal blu: i
+  pulsanti restano (senza la correzione la prova fallisce); un comando
+  dell'altro giocatore non li tocca, uno di chi guarda si'.
+- Nel browser (?pvp=1, sk_padus, seme 5, dalle due parti): centro
+  selezionato, i due pulsanti; civili selezionati, i pulsanti di
+  costruzione; un rettangolo su tutta la mappa prende i 3 civili propri e 0
+  dell'altro. pvp.mjs (1500 passi), netfake.mjs, truce.mjs, replay.mjs (anche
+  PVP=2), orders.mjs match, hover.mjs, melee.mjs match: passate.

@@ -451,7 +451,7 @@ function ominoStep(i, w, p, stop) {
   // azione 7: sprite
   ANIM[OM](i, w);
   // azione 8: rettangolo di selezione
-  if (S.player && g.multi === 1 && g.sele === 0) {
+  if (S.player && g.multi === 1 && g.sele === 0 && w.mine(i)) { // §9.163: non i civili dell'altra parte
     const mx = w.mouse.x, my = w.mouse.y;
     const inside = (i.x > g.startx && i.x < mx && i.y > g.starty && i.y < my)
       || (i.x < g.startx && i.x > mx && i.y > g.starty && i.y < my)

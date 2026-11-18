@@ -93,6 +93,7 @@ export class World {
     this.mouse = { x: 0, y: 0 };
     this.hooks = {};
     this.mp = null; // §9.155: la partita a due (multiplayer.js, app.js)
+    this._evInst = null; // §9.163: l'istanza dell'evento in corso (fire)
     this.actions = new Map(); // §9.154: i tipi di comando (action, act)
     this.action("ordine", (w, c) => w.rightOrder(c));
     this.action("canc", (w, c) => w.cancAction(c));
@@ -135,8 +136,41 @@ export class World {
 
   fire(inst, ev, ...args) {
     const h = this.handler(inst, ev);
-    if (h && inst.alive) h(inst, this.mp ? this.worldFor(inst) : this, ...args);
+    if (h && inst.alive) {
+      if (!this.mp) h(inst, this, ...args);
+      else {
+        // [§9.163] chi riceve l'evento (per _foreignUi)
+        const prev = this._evInst;
+        this._evInst = inst;
+        try { h(inst, this.worldFor(inst), ...args); } finally { this._evInst = prev; }
+      }
+    }
     return !!h;
+  }
+
+  // [§9.163, segnalazione dell'autore: il rosso non vedeva i pulsanti del
+  // municipio] Nella partita a due l'interfaccia (pulsanti, lampeggi,
+  // fantasmi: le istanze ui) e' di chi guarda. Il codice del giocatore gira
+  // in ogni pagina anche per le istanze dell'altra parte (p2_centro nella
+  // pagina del rosso, centro in quella del blu), e il suo "non selezionato:
+  // via i pulsanti" (centro Step, buildings.js) distruggeva i pulsanti di
+  // chi guarda (se il centro dell'altro viene dopo nell'ordine delle
+  // istanze, a ogni passo appena creati). Ora un evento di un'istanza
+  // dell'altra parte, o un comando dell'altro giocatore, non crea ne'
+  // distrugge istanze dell'interfaccia: create restituisce un'istanza gia'
+  // morta (chi la usa non se ne accorge; via a fine passo), destroy non fa
+  // niente.
+  _foreignUi() {
+    const mp = this.mp;
+    if (!mp) return false;
+    const s = mp.actor || (this._evInst ? this.sideOf(this._evInst) : 0);
+    return !!s && s !== mp.local;
+  }
+  // [§9.163] l'istanza e' della parte di chi guarda (o neutra; fuori dalla
+  // partita a due sempre): il rettangolo di selezione prende solo le sue
+  mine(inst) {
+    const s = this.mp ? this.sideOf(inst) : 0;
+    return !s || s === this.mp.local;
   }
 
   // -------------------------------------------- multiplayer (§9.155, fase 3)
@@ -198,6 +232,7 @@ export class World {
   // correzioni che anticipano un'assegnazione fatta dopo nell'originale).
   create(object, x, y, opts = {}) {
     const inst = this._alloc(object, x, y, opts);
+    if (inst.ui && this._foreignUi()) { inst.alive = false; this._unindex(inst); return inst; } // §9.163
     if (opts.init) { opts.init(inst); this.moved(inst); }
     this.fire(inst, "create");
     return inst;
@@ -255,7 +290,7 @@ export class World {
   }
 
   destroy(inst) {
-    if (!inst.alive) return;
+    if (!inst.alive || (inst.ui && this._foreignUi())) return; // §9.163
     this.fire(inst, "destroy");
     inst.alive = false;
     this._ver++;
