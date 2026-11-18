@@ -11532,3 +11532,30 @@ para el chat", pt "Enter para o chat", de "Enter zum Chatten", fr "Entrée
 pour le chat"), su una riga. Il suggerimento dentro la casella aperta
 ("Messaggio all'altro giocatore (Invio: manda, Esc: chiudi)") resta.
 Prove: `npm test` (la traduzione c'e'), screenshot della chat.
+
+### 9.160 Gli archi della musica: la versione che fa il giro
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613):
+"loop archi della soundtrack: ti carico una versione aggiornata con
+effettivo loop da sostituire all'attuale" (`535_loop1archi_loop.wav`).
+
+- *Il file*: WAV 16 bit, stereo, 32 kHz (il vecchio era un MP3 a 44,1 kHz),
+  42,000 s esatti: il giro di prima. Comincia col suono (la coda del giro
+  precedente) invece che dal silenzio (il vecchio partiva a 1,4 s dal primo
+  suono vero, e a ogni giro c'era il buco), e la fine va nell'inizio senza
+  salti: il passo fra l'ultimo campione e il primo (0,010 e 0,013 sui due
+  canali) sta fra il 99 e il 99,9 percentile dei passi del mezzo secondo
+  intorno, cioe' niente clic. Volume medio -37,0 dB (prima -37,2), picco
+  -21,1 (prima -22,3); l'andamento secondo per secondo e' lo stesso.
+- *Al posto del vecchio*: `nuovi/audio/loop1_archi.wav` (via
+  `loop1_archi.mp3`), in audio.json senza tagli (prima si toglievano i
+  4,9 ms di riempimento dell'MP3) e a 256 kbit/s invece di 320: confrontato
+  col WAV a 320, 256, 192 e 160, a 256 le bande sono uguali entro 0,05 dB fino
+  a 14 kHz (14-16 kHz -1 dB, come a 320; a 192 tutto -0,26 dB), 1,3 MB invece
+  di 1,6. CREDITI.md aggiornato. Il resto (music.js, audio.js) non cambia: gli
+  archi restano costanti, sul loro giro di 42 s accanto al field (92 s) e al
+  drone (214 s).
+- *Verificato*: `tools/18_audio.py` da' `musica_archi_1.mp3` lungo 42,0000 s;
+  decodificato da Chromium (decodeAudioData) 42,000 s a 32 kHz, e il salto
+  al giro (0,011) e' sotto il passo piu' grande dell'ultimo mezzo secondo
+  (0,012). Da sentire con l'autore nel gioco.
