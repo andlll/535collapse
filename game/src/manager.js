@@ -257,7 +257,12 @@ export class Manager {
       // esce con loro (in 5 s), piano
       audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);
       // [§9.143] la musica: il volume di ogni parte secondo la partita
-      if ((this.musicTick = (this.musicTick || 0) + 1) % MUSIC.every === 1) audio.music(musicLevels(this, g));
+      // ([§9.161] il brano che suona lo dice audio.js; le percussioni del
+      // brano 2 guardano i nemici con gli occhi di chi guarda)
+      if ((this.musicTick = (this.musicTick || 0) + 1) % MUSIC.every === 1) {
+        const w = this.world.mp ? this.world.worldFor(null) : this.world;
+        audio.music((info) => musicLevels(this, w.g || g, info, w)); // (w.g: la cassa di chi guarda, anche per il blu)
+      }
     }
     // [§8.13] anelli delle gocce sul fiume (§9.91: quante sono le gocce)
     if (this.rain && this.world) rainRipples(this.world, cam, this.rain.level);

@@ -11559,3 +11559,94 @@ effettivo loop da sostituire all'attuale" (`535_loop1archi_loop.wav`).
   decodificato da Chromium (decodeAudioData) 42,000 s a 32 kHz, e il salto
   al giro (0,011) e' sotto il passo piu' grande dell'ultimo mezzo secondo
   (0,012). Da sentire con l'autore nel gioco.
+
+### 9.161 Il brano 2 della musica ("Shove") e la scaletta dei brani
+
+Richiesta dell'autore (18 novembre 2026, stessa PR, versione 0.2613), coi
+quattro loop del brano 2 (`shove_pianoloop`, `shove_bassloop`,
+`shove_dr1loop`, `shove_dr2loop`): "deve partire solo il piano che resta
+costante come fanno gli archi, poi il basso progressivamente e deve andare a
+pieno volume in 10s circa. dr1 si alza di volume da volume 0 a pieno se ci
+sono nemici vicini e nelle fasi di combattimento, dr2 idem ma per
+battaglie/gruppi di nemici superiori a 4-5. [...] lo implementerei
+sicuramente in lvl1 come unico loop, nelle schermaglie dopo che il loop1 e'
+terminato (dopo 5 min circa?), poi va per 5 min lui e si alterna
+ciclicamente col loop 1, negli altri scenari di campagna valutiamo caso per
+caso, ha senso che parta i primi 5 min dello scenario 3 per poi alternarsi
+col loop 1, e forse anche il lvl5 partendo pero' al massimo perche' la
+battaglia e' in corso".
+
+**I file** (WAV 16 bit, stereo, 32 kHz; `nuovi/audio/loop2_*.wav`, in
+audio.json come le parti del brano 1, MP3 a 256 kbit/s senza taglio degli
+acuti; CREDITI.md):
+- piano 10,000 s, medio -37,2 dB (come gli archi), picco -20,9;
+- basso 40,000 s, medio -26,8 dB, picco -3,6 (meta' dell'energia sotto i
+  200 Hz);
+- percussioni 1 e 2, 4,000 s, medi -27,1 e -24,1 dB.
+I giri (4, 10, 40 s) sono multipli di 4 s: le parti restano a tempo fra loro
+se partono insieme (si fa cosi', sotto). Decodificati: esattamente 4, 10 e
+40 s. Al giro: basso e percussioni senza salti; il piano ha, dall'ultimo
+campione al primo, un passo di 0,004 (-48 dBFS), il piu' grande del mezzo
+secondo intorno (la forma d'onda scende alla fine e risale dall'inizio):
+piccolo, lasciato cosi' com'e', *da sentire*: se fa un tic, un'esportazione
+con la fine che arriva al valore dell'inizio, o qualche ms di incrocio qui.
+Tutte e quattro insieme al pieno: picco -1,3 dBFS (niente saturazione).
+
+**La scaletta** (music.js `musicPlan`, letta da audio.js):
+- lvl01: solo il brano 2;
+- schermaglie (e la partita online): il brano 1, poi il 2, poi l'1, a turno;
+- lvl03: il brano 2 per primo, poi a turno;
+- lvl05: come lvl03, ma il primo turno del brano 2 parte al pieno (piano,
+  basso e percussioni subito su; le percussioni restano almeno 20 s, poi
+  seguono il combattimento);
+- le altre (tutorial, lvl02, lvl04, lvl06): solo il brano 1, come prima.
+Un turno dura i giri interi del brano piu' vicini a 5 minuti, cosi' finisce
+alla fine di un giro: il brano 1 7 giri degli archi (294 s), il brano 2 8
+giri del basso (320 s). Al cambio le parti del brano che finisce sfumano in
+qualche secondo (costante 1,5 s) e quelle del nuovo partono insieme
+dall'inizio (il piano subito, il basso da zero). Il tempo e' quello
+dell'audio (continua anche in pausa); un salvataggio caricato ricomincia la
+scaletta.
+
+**Il brano 2** (music.js `musicLevels`): piano 1; basso da 0 al pieno nei
+primi 10 s del turno (`bassRamp`; ogni volta che il brano 2 ricomincia);
+percussioni:
+- *dr1*: su (in ~1-2 s) se c'e' almeno un nemico visto a 500 px da una tua
+  unita' (`near`), o se una tua unita' e' stata colpita negli ultimi 3 s
+  (le zone "battle" degli allarmi d'attacco: anche le frecce dalla nebbia);
+- *dr2*: su con almeno 5 nemici vicini (`dr2Min`);
+- restano su 10 s dopo l'ultima volta (`hold`), poi sfumano (~8 s).
+Contano i nemici visti (con la nebbia, solo quelli che vedi: niente
+spoiler) vicini alle *unita'* (civili compresi), non agli edifici: provato
+in lvl01, che all'inizio ha 24 nemici visti di guardia, fermi accanto a mura
+e porte della citta', a piu' di 1400 px dai soldati: con gli edifici le
+percussioni sarebbero partite subito e non si sarebbero piu' fermate; e non
+gli incendi (in lvl01 la citta' brucia per tutto il livello). Nella partita
+a due ognuno sente la sua (lo specchio di chi guarda, e anche il drone segue
+la popolazione del blu per il blu).
+Il calcolo legge soltanto il mondo (nessun numero a caso, niente che cambi la
+partita): provato in lvl05 (la battaglia in corso, le percussioni su), 6000
+passi con la musica che suona e senza: le stesse impronte (snapshot.js) a
+ogni 1000 passi.
+
+**audio.js**: `music(levels)` accetta una funzione del brano che suona ({
+brano, elapsed, full }); la scaletta (`musicPlan`, da app.js), il turno
+(`planAt`), le parti di un brano che partono dall'inizio del turno, quelle
+degli altri che sfumano e si fermano; per parte i tempi di salita e discesa
+(music.js `PART_TAU`: il basso insegue la rampa, le percussioni salgono in
+fretta).
+
+**Prove.** test/music.test.mjs: la scaletta per room, i turni e il ritorno
+al brano 1, il primo turno al pieno solo in lvl05 e solo la prima volta, la
+rampa del basso, le percussioni (nemico vicino, sei nemici, non visti, gli
+edifici no, colpi recenti si', gli incendi no, i 10 s dopo, i 20 s di lvl05).
+Nel browser, con l'audio vero (Chromium): lvl01 parte col piano, il basso a
+0,77 a 8 s e pieno a 14, nessuna percussione; sei nemici accanto ai soldati:
+dr1 e dr2 al pieno; sk_padus parte col brano 1, a 294 s passa al 2 (basso in
+salita, percussioni zitte finche' non arrivano nemici, poi su), a 614 s
+torna all'1; lvl05 tutto al pieno da subito. soak.mjs su lvl01, lvl03,
+lvl05, sk_padus: nessun errore.
+
+**Da regolare a orecchio con l'autore**: la distanza dei nemici (500 px),
+quanti per dr2 (5), quanto restano su (10 s), la durata dei turni (5 min), i
+volumi relativi (il basso e' 10 dB sopra il piano, come nell'esportazione).

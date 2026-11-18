@@ -93,6 +93,58 @@
       "kbit": 96,
       "gain": 1,
       "nota": "la musica, primo loop: il drone (Ableton, 214 s, WAV 16 bit, 32 kHz), cosi' com'e'. Il 93% dell'energia sotto i 200 Hz: e' la parte grave della traccia unita, dove entra a 0 dB (con archi e field il modello ricostruisce la traccia unita con 0,4 dB di errore medio). MP3 a 96 kbit/s, 32 kHz: per un suono cosi' grave le bande sono le stesse che a 160 (2,6 MB invece di 4,3). Da zero, sale con la popolazione del giocatore (game/src/music.js)"
+    },
+    "musica2_piano": {
+      "da": "loop2_piano.wav",
+      "tagli": [[0, 10000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il brano 2 (\"Shove\", dell'autore: Ableton, 10,000 s, WAV 16 bit, 32 kHz, caricato il 18 novembre 2026): il piano, costante come gli archi del primo. Volume medio -37,2 dB, picco -20,9. Al giro, dall'ultimo campione al primo, un passo di 0,004 (-48 dBFS), il piu' grande del mezzo secondo intorno: lasciato cosi' com'e' (da sentire). [§9.161] MP3 a 256 kbit/s senza taglio degli acuti, come gli archi (§9.160)."
+    },
+    "musica2_bass": {
+      "da": "loop2_bass.wav",
+      "tagli": [[0, 40000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il brano 2: il basso (40,000 s, WAV 16 bit, 32 kHz), sale da zero al pieno nei primi 10 s del brano. Volume medio -26,8 dB, picco -3,6 (meta' dell'energia sotto i 200 Hz); al giro nessun salto (sotto il 99,9 percentile dei passi vicini). [§9.161] MP3 a 256 kbit/s senza taglio degli acuti, come gli archi (§9.160)."
+    },
+    "musica2_dr1": {
+      "da": "loop2_dr1.wav",
+      "tagli": [[0, 4000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il brano 2: le percussioni 1 (4,000 s, WAV 16 bit, 32 kHz): da zero al pieno coi nemici vicini o il combattimento (game/src/music.js). Volume medio -27,1 dB, picco -5,9; al giro nessun salto. [§9.161] MP3 a 256 kbit/s senza taglio degli acuti, come gli archi (§9.160)."
+    },
+    "musica2_dr2": {
+      "da": "loop2_dr2.wav",
+      "tagli": [[0, 4000]],
+      "loop": {
+        "incrocio_ms": 0,
+        "stereo": true
+      },
+      "musica": true,
+      "volume_originale": true,
+      "kbit": 256,
+      "gain": 1,
+      "nota": "il brano 2: le percussioni 2 (4,000 s, WAV 16 bit, 32 kHz): da zero al pieno nelle battaglie con almeno 5 nemici vicini (game/src/music.js). Volume medio -24,1 dB, picco -10,2; al giro nessun salto. [§9.161] MP3 a 256 kbit/s senza taglio degli acuti, come gli archi (§9.160)."
     }
   }
 }

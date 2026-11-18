@@ -14,3 +14,4 @@ crediti del gioco.
 | `martello.wav` | `martello` (costruzione e riparazione) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
 | `pioggia.wav` | `pioggia` (il loop della pioggia) | l'autore del gioco | registrazione propria, caricata il 10 novembre 2026 | dell'autore |
 | `loop1_archi.wav`, `loop1_field.wav`, `loop1_drone.wav` | `musica_archi`, `musica_field`, `musica_drone` (la musica, primo loop) | l'autore del gioco | composizione e registrazioni proprie (Ableton), caricate il 10 novembre 2026 (gli archi di nuovo, la versione che fa il giro, il 18 novembre) | dell'autore |
+| `loop2_piano.wav`, `loop2_bass.wav`, `loop2_dr1.wav`, `loop2_dr2.wav` | `musica2_piano`, `musica2_bass`, `musica2_dr1`, `musica2_dr2` (la musica, brano 2, "Shove") | l'autore del gioco | composizione propria (Ableton), caricata il 18 novembre 2026 | dell'autore |

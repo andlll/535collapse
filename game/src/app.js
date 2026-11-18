@@ -60,6 +60,7 @@ import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, o
 import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 import { audio } from "./audio.js"; // §9.137
+import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
 const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
@@ -168,6 +169,7 @@ async function main() {
   audio.cam = cam; // §9.137: il volume secondo la distanza dalla vista
   audio.world = roomName !== "menu"; // §9.139: la battaglia di sfondo del menu e' muta
   audio.musicRoom = roomName !== "menu"; // §9.143: la musica in partita (nel menu, da decidere)
+  audio.musicPlan = musicPlan(roomName); // §9.161: i brani della room, a turno
   const input = new Input(canvas);
   input.wantLock = settings.lockMouse && roomName !== "menu";
   const rscale = new RenderScale();
