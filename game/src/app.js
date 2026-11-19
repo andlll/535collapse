@@ -37,7 +37,7 @@ import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
 import { victoryManager, gameoverManager, objectiveButton, VICTORY, victoryProgress } from "./endgame.js";
-import { loadUnlock } from "./progress.js";
+import { loadUnlock, canPlay } from "./progress.js";
 import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
@@ -132,7 +132,15 @@ async function main() {
     return;
   }
 
-  const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
+  // [§9.164] un livello della campagna non ancora sbloccato (l'indirizzo
+  // cambiato a mano) porta al menu, e l'indirizzo lo dice
+  const asked = params.get("room");
+  const roomName = ROOMS.includes(asked) && canPlay(asked, loadUnlock()) ? asked : "menu";
+  if (asked && roomName !== asked) {
+    for (const k of [...params.keys()]) params.delete(k); // niente salvataggio, campagna, rete...
+    params.set("room", "menu");
+    history.replaceState(null, "", location.pathname + "?room=menu");
+  }
   // [§9.156, multiplayer, fase 4] la partita a due in rete (?net=host|join,
   // netgame.js): chi crea e' il rosso, chi entra il blu; mappa, opzioni e
   // seme sono quelli di chi crea

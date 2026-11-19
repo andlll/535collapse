@@ -23,7 +23,10 @@ numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
 servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 "Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
-`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103). Allora (§9.164) le
+prove nel browser che aprono un livello dall'indirizzo (`?room=lvl05`...)
+finirebbero nel menu: devono scrivere prima lo sblocco in localStorage
+(`535.progress`, `{ v: 1, unlock: 6 }`, con addInitScript).
 
 **Audio, da fare** (§9.137-§9.145): l'autore riesporta da Ableton le tre
 parti del primo loop (archi, field, drone) come loop veri, con "Render as
@@ -11718,3 +11721,45 @@ chi guarda). Ora solo le proprie (world.js `mine`).
   costruzione; un rettangolo su tutta la mappa prende i 3 civili propri e 0
   dell'altro. pvp.mjs (1500 passi), netfake.mjs, truce.mjs, replay.mjs (anche
   PVP=2), orders.mjs match, hover.mjs, melee.mjs match: passate.
+
+### 9.164 I livelli bloccati non si aprono dall'indirizzo
+
+Segnalazione dell'autore (19 novembre 2026, stessa PR di §9.163, versione
+0.2614): "nell'url compare il nome del livello, e se un utente volesse
+'fregare' giocando un livello della campagna che non ha ancora sbloccato
+gli basterebbe cambiare un numerino nell'url. Come possiamo risolvere?
+Usiamo nomi diversi?"
+
+**Nomi diversi: no.** Nascondono la cifra, ma i nomi veri restano nel
+codice del gioco (il bundle) e nelle richieste della pagina
+(`assets/rooms/<room>.json`): basta aprire gli strumenti del browser. E
+cambierebbero l'indirizzo di tutte le prove e della documentazione senza
+fermare nessuno. Il problema non e' il nome: e' che la pagina carica
+qualsiasi room le si chieda.
+
+**La correzione.** Prima di caricare la room, app.js chiede a progress.js
+`canPlay(room, loadUnlock())`: un livello della campagna (`lvlNN`, numero
+da `levelOf`) oltre lo sblocco salvato porta al menu, e l'indirizzo diventa
+`?room=menu` (via anche gli altri parametri: un salvataggio, la campagna).
+Il livello 1, il tutorial (match) e le schermaglie restano sempre
+aperti, come nel menu (shownLevel). Vale anche per un salvataggio (slot o
+file) di un livello bloccato: lo sblocco perso si riprende coi codici del
+lucchetto, che la vittoria mostra.
+
+**Cosa resta.** Il gioco gira tutto nel browser, senza server: lo sblocco
+sta in localStorage e i codici del lucchetto sono nel codice (come
+nell'originale). Chi apre gli strumenti del browser puo' sempre cambiarli;
+fermarlo davvero vorrebbe un server con gli account. Cambiare una cifra
+nell'indirizzo, la scorciatoia alla portata di tutti, ora non basta piu'.
+Finche' `UNLOCK_ALL` e' 6 (provvisorio, §9.53) tutti i livelli sono
+sbloccati e il controllo non ferma niente: vale dall'uscita, con
+`UNLOCK_ALL = 1` (nota sulle prove in "Cose da fare").
+
+**Prove.**
+- test/progress.test.mjs: levelOf e canPlay (il livello 1 sempre, fino
+  allo sblocco si', oltre no; menu, tutorial e schermaglie sempre).
+- Nel browser, con una build provvisoria a `UNLOCK_ALL = 1` e lo sblocco a
+  3 in localStorage: `?room=lvl05` e `?room=lvl04` -> menu (`?room=menu`),
+  anche con `&campaign=1&load=slot`; `lvl01`, `lvl03`, `match`, `sk_padus`
+  si aprono. Con la build normale lvl05.mjs, lvl06.mjs, orders.mjs lvl06,
+  monastery.mjs: passate.
