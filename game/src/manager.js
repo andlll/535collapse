@@ -255,6 +255,8 @@ export class Manager {
       // [§9.116] piove abbastanza (gocce almeno a meta', come §9.92): gli
       // incendi non fanno danno (effects.js burnTick)
       this.world.rainDamp = !!this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT;
+      // [§9.166] le fiamme smorzate sotto la pioggia (effects.js), col livello
+      this.world.rainLevel = this.rain ? (this.rain.level ?? 1) : 0;
       // [§9.141] il suono della pioggia, col livello delle gocce: entra ed
       // esce con loro (in 5 s), piano
       audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);

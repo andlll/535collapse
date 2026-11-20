@@ -11819,3 +11819,28 @@ clic su un soldato) avrebbe reso diverse le impronte.
   del buio pieno (6198). hintgap.mjs, alarms.mjs, pvp.mjs, netfake.mjs,
   ui.mjs it, saves.mjs (match, lvl01, lvl02, sk_padus), determinism.mjs:
   passate.
+
+### 9.166 Le fiamme smorzate sotto la pioggia
+
+Richiesta dell'autore (20 novembre 2026, stessa PR di §9.163, versione
+0.2614): "particelle del fuoco: possiamo 'smorzarle' un po' quando piove?
+sempre presenti ma un po' meno, a livello visivo".
+
+**Come.** effects.js: con la pioggia le fiamme degli incendi (fireStep) e
+di bracieri e torce (fireStarterStep) emettono meno particelle per passo
+(fino a RAIN_FIRE_N = 0,65 del numero di sempre, intero, almeno 1) e
+quelle degli incendi vivono meno (fino a RAIN_FIRE_LIFE = 0,8: fiamme piu'
+basse). Seguono il livello delle gocce (manager.js `world.rainLevel`, il
+rain.level di §9.91): entrano ed escono in 5 s con la pioggia, senza
+scatti. Solo a vederle: il fuoco brucia e si spegne come prima (§9.116),
+le particelle non sono della partita (impronta uguale).
+
+Una prima prova a 0,55 e 0,7 dava il 42% delle particelle sul municipio in
+fiamme: troppo per "un po' meno". Ora circa il 65% (sul municipio a meta'
+vita: 774 particelle all'asciutto, 499 a pioggia piena; 8 e 4 per passo
+diventano 5 e 3).
+
+**Prove.** test/rainfire.test.mjs (asciutto come prima, a pioggia piena
+meno particelle e fiamme piu' corte, a meta' in mezzo, senza manager come
+prima). Nel browser il municipio in fiamme su sk_padus, all'asciutto e a
+pioggia piena (screenshot). determinism.mjs, burn.mjs, pvp.mjs: passate.

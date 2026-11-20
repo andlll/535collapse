@@ -358,6 +358,16 @@ function fireSystem(i, w, reg, depth) {
   return [ps, t];
 }
 
+// [§9.166, richiesta dell'autore] sotto la pioggia le fiamme si smorzano,
+// solo a vederle: meno particelle (fino a RAIN_FIRE_N) e piu' corte
+// (RAIN_FIRE_LIFE) col livello delle gocce (w.rainLevel, manager.js: sale e
+// scende in 5 s con la pioggia). Gli incendi, i bracieri e le torce; il
+// fuoco brucia come prima (burnTick, §9.116).
+export const RAIN_FIRE_N = 0.65, RAIN_FIRE_LIFE = 0.8;
+const rainK = (w, min) => 1 - (1 - min) * Math.max(0, Math.min(1, w.rainLevel || 0));
+// il numero di particelle per passo smorzato, intero (stream: ceil), almeno 1
+const damped = (w, n) => (n > 0 ? Math.max(1, Math.round(n * rainK(w, RAIN_FIRE_N))) : 0);
+
 // "if onfire=1 && firestarted=0 {...}; if onfire=1 && firestarted=1
 // part_type_life(...)" [C].
 // [Correzione decisa dall'autore, §3.17 n.60] nell'originale le fiamme
@@ -373,11 +383,11 @@ export function fireStep(i, w, kind) {
   }
   if (i.firestarted === 1) {
     const v = i.visible ? 1 : 0;
-    if (i.fire_ps && i.fire_ps.emitters[0]) i.fire_ps.emitters[0].n = F.back[4] * v;
-    if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
+    if (i.fire_ps && i.fire_ps.emitters[0]) i.fire_ps.emitters[0].n = damped(w, F.back[4] * v); // §9.166
+    if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = damped(w, F.front[4] * v);
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    const k = F.k || 1, b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena
+    const k = (F.k || 1) * rainK(w, RAIN_FIRE_LIFE), b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena; §9.166
     i.fire_part.life = [(b + F.life[0] - i.life) / 2 * k, (b + F.life[1] - i.life) / 2 * k];
   }
 }
@@ -457,7 +467,7 @@ export function fireStarterStep(i, w) {
     const bb = a && w.bbox(a);
     near = !!bb && dhypot(Math.max(0, bb[0] - i.x, i.x - bb[2]), Math.max(0, bb[1] - i.y, i.y - bb[3])) < 600;
   }
-  P(w).stream(i.fire_emitter, i.fire_part, near ? 3 : 0);
+  P(w).stream(i.fire_emitter, i.fire_part, near ? damped(w, 3) : 0); // §9.166
 }
 
 // ---------------------------------------------- erba e spighe decorative
