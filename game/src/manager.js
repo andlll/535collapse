@@ -18,6 +18,7 @@ import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii
 import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
 import { dsin } from "./dmath.js"; // §9.152
+import { nightHint } from "./hints.js"; // §9.165
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -237,6 +238,7 @@ export class Manager {
     const g = this.g;
     g.frame++;
     if (this.world) this.world.twilight = this.twilight(); // §9.84
+    if (this.world && this.room !== "menu") nightHint(this.world.worldFor ? this.world.worldFor(null) : this.world); // §9.165
     // manager Step [C]: tetti alle risorse (la pietra non ha tetto) e a popcap
     // [§9.155] anche la cassa del giocatore 2 (partita a due)
     for (const c of g.p2 ? [g, g.p2] : [g]) {
@@ -305,14 +307,9 @@ export class Manager {
     switch (i) {
       case 0: // passaggio giorno-notte
         if (g.night < 1) { g.night += 0.005; this.al.set(0, 1); }
-        else {
-          this.al.set(1, 2000);
-          // la prima notte, il suggerimento sotto il puntatore [C]
-          if (g.nighthint === 0 && this.world) {
-            this.world.create("hint_night", this.world.mouse.x, this.world.mouse.y);
-            g.nighthint = 1;
-          }
-        }
+        // [C] qui anche il suggerimento della prima notte: ora
+        // quando la notte c'e' (hints.js nightHint, da step), §9.165
+        else this.al.set(1, 2000);
         break;
       case 1: // passaggio notte-giorno (non nel livello 1, sempre di notte)
         if (this.room === "lvl01") break;

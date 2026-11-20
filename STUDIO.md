@@ -11763,3 +11763,59 @@ sbloccati e il controllo non ferma niente: vale dall'uscita, con
   anche con `&campaign=1&load=slot`; `lvl01`, `lvl03`, `match`, `sk_padus`
   si aprono. Con la build normale lvl05.mjs, lvl06.mjs, orders.mjs lvl06,
   monastery.mjs: passate.
+
+### 9.165 I suggerimenti spenti fuori dal tutorial; quello della notte quando e' notte
+
+Richiesta dell'autore (20 novembre 2026, stessa PR di §9.163, versione
+0.2614): "hints: a parte nel tutorial che sono attivi di default, mettiamoli
+disattivati di default per tutti gli altri livelli. Sono comunque attivabili
+premendo lo shortcut o da menu. Hint notte: occhio che sia coerente con i
+livelli, ora credo sia solo basato sul timer e non sull'effettivo arrivo
+della notte".
+
+**Spenti di default.** state.js: global.hint e' 1 nel tutorial (match), 0
+negli altri livelli e nelle schermaglie (il menu resta 3). Si accendono
+come prima con H o dal menu di pausa ("Suggerimenti"); un salvataggio
+riporta la scelta di quando e' stato fatto.
+
+**Spenti davvero.** Nell'originale H nascondeva solo il disegno: i
+suggerimenti nascevano lo stesso, invisibili, segnavano la loro "volta"
+(woodhint, ...) e il primo aperto bloccava tutti gli altri (una finestra
+alla volta) finche' un clic, alla cieca dove sarebbe stato, non lo
+chiudeva. Andava bene come eccezione; come norma no. Ora con i
+suggerimenti spenti:
+- non ne nasce nessuno (hintOnce, il suggerimento degli allarmi della
+  minimappa) e la volta non si consuma: acceso H dopo, arriva la prossima
+  volta che serve;
+- uno gia' aperto (si spegne mentre c'e') non si chiude ne' va avanti con
+  un clic: riappare quando si riaccendono.
+Restano come prima quelli che nascono da un dialogo del livello 2
+(hint_lavoratori, una volta sola: si vede accendendo H).
+
+**La notte.** Era davvero a tempo: lo creava l'allarme 0 del manager, a
+6000 passi, quando finiva il tramonto. Nel livello 1 (notte dall'inizio)
+arrivava dopo 100 s di notte; nella schermaglia "sempre notte" (allarme 0
+spento) mai. Ora hints.js `nightHint`, a ogni passo da manager.step: la
+prima volta che global.night e' al buio pieno, con i suggerimenti accesi e
+nessun dialogo o altro suggerimento aperto. Nel ciclo del giorno cade
+nello stesso passo del buio pieno; nel livello 1 appena chiusi i dialoghi
+d'inizio (se accesi); di giorno (schermaglia "sempre giorno") mai. Nei
+livelli 2 e 3 resta escluso (§9.14: "gia' visto").
+
+**La partita a due.** Le volte dei suggerimenti (multihint, nighthint, ...)
+nascono per chi guarda (il suo H, le sue finestre): ora sono fuori
+dall'impronta (snapshot.js UI_GLOBALS, come global.hint). Prima un
+suggerimento visto da uno solo dei due giocatori (hint_multi, al primo
+clic su un soldato) avrebbe reso diverse le impronte.
+
+**Prove.**
+- test/hints.test.mjs: accesi solo nel match; spenti, hintOnce non crea e
+  non consuma la volta; nightHint aspetta il buio pieno e la fine dei
+  dialoghi, una volta sola. test/alarm.test.mjs: il suggerimento degli
+  allarmi solo acceso.
+- Nel browser: match acceso con hint_iniziale; lvl01 spento, dopo 7000
+  passi nessun suggerimento della notte e la volta intatta, acceso H arriva
+  subito; sk_padus col ciclo, H acceso: il suggerimento nello stesso passo
+  del buio pieno (6198). hintgap.mjs, alarms.mjs, pvp.mjs, netfake.mjs,
+  ui.mjs it, saves.mjs (match, lvl01, lvl02, sk_padus), determinism.mjs:
+  passate.

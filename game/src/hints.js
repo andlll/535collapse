@@ -404,7 +404,9 @@ export function hint(name) {
     return true;
   };
   const click = (i, w) => {
-    if (!over(i, w) || (H.arm && i.arm !== 1)) return;
+    // [§9.165] spento (H) non si vede: non si chiude ne' va avanti con un
+    // clic dove sarebbe
+    if (w.g.hint !== 1 || !over(i, w) || (H.arm && i.arm !== 1)) return;
     if (H.next) w.create(H.next, H.nextAtSelf ? i.x : 0, H.nextAtSelf ? i.y : 0);
     w.destroy(i);
   };
@@ -491,9 +493,11 @@ export function dialog(name) {
 // I suggerimenti "la prima volta che succede" [C]: solo se non c'e' gia'
 // una finestra aperta (instance_number(parent_hint)<1), una volta sola
 // (il flag globale), e per le risorse solo dopo hint_resource.
+// [§9.165] con i suggerimenti spenti (H) non nasce niente e la volta non
+// si consuma: accesi dopo, il suggerimento arriva la prossima volta che serve
 export function hintOnce(w, name, flag, x, y, cond = true) {
   const g = w.g;
-  if (g[flag] === 0 && w.number("parent_hint") < 1 && cond) {
+  if (g[flag] === 0 && g.hint === 1 && w.number("parent_hint") < 1 && cond) {
     w.create(name, x, y);
     g[flag] = 1;
   }
@@ -505,6 +509,18 @@ export function hintOnce(w, name, flag, x, y, cond = true) {
 export function dialogOpen(w) {
   for (const n of DIALOG_NAMES) if (w.exists(n)) return true;
   return false;
+}
+
+// [§9.165, segnalazione dell'autore] il suggerimento della notte quando la
+// notte c'e' davvero (global.night al buio pieno), a ogni passo (manager.js
+// step): prima lo creava l'allarme 0 del manager a 6000 passi, cioe' a
+// tempo. Nel livello 1, notte dall'inizio, arrivava dopo 100 s; nella
+// schermaglia "sempre notte" (allarme 0 spento) mai. Come gli altri: con i
+// suggerimenti accesi, senza un dialogo o un altro suggerimento aperto.
+export function nightHint(w) {
+  const g = w.g;
+  if (g.nighthint !== 0 || g.night < 1 || !w.behaviours.hint_night || dialogOpen(w)) return;
+  hintOnce(w, "hint_night", "nighthint", w.mouse.x, w.mouse.y);
 }
 
 export const HINT_NAMES = Object.keys(HINTS);

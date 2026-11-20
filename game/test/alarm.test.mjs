@@ -79,6 +79,11 @@ test("il suggerimento, una volta sola", () => {
   w.behaviours.hint_allarme = {};
   w.g.alarmhint = 0;
   raiseAlarm(w, "battle", 3000, 3000);
+  w.g.hint = 0; // [§9.165] spenti: niente, e la volta non si consuma
+  alarmsStep(w);
+  assert.deepEqual(w.created, []);
+  assert.equal(w.g.alarmhint, 0);
+  w.g.hint = 1;
   alarmsStep(w); alarmsStep(w);
   assert.deepEqual(w.created, ["hint_allarme"]);
   assert.equal(w.g.alarmhint, 1);

@@ -23,7 +23,10 @@ export function newGlobals(room) {
     milsel: 0,      // selezionati non civili
     multi: 0, startx: 0, starty: 0,
     scaleview: ZOOM_DEFAULT, // §9.107
-    hint: room === "menu" ? 3 : 1,
+    // [§9.165, richiesta dell'autore] i suggerimenti accesi solo nel
+    // tutorial (match); negli altri livelli e nelle schermaglie spenti, si
+    // accendono con H o dal menu di pausa
+    hint: room === "menu" ? 3 : room === "match" ? 1 : 0,
     obj: 1,
     fogville: 1,    // nebbia attiva (trucco Ctrl+V+Canc la spegne)
     visia: 0,       // V tenuto: abilita i trucchi

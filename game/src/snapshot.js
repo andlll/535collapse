@@ -60,7 +60,11 @@ export const UI_GLOBALS = ["scaleview", "sz", "sele", "multi", "startx", "starty
                            // il puntatore sopra una risorsa, un cantiere, un campo, una torre (il cerchio)
                            "alberhover", "minierahover", "stonehover", "farmhover", "buildhover", "preshover",
                            // V tenuto, minimappa, obiettivi, suggerimenti accesi (tasti di chi guarda)
-                           "visia", "minim", "obj", "hint"];
+                           "visia", "minim", "obj", "hint",
+                           // [§9.165] le volte dei suggerimenti: nascono per chi guarda (con H acceso,
+                           // nessun altro aperto), non sono della partita
+                           "multihint", "woodhint", "goldhint", "stonehint", "foodhint", "casahint", "firehint",
+                           "attackhint", "presidiohint", "nighthint", "resourcehint", "hintata"];
 // [§9.154] i campi delle istanze che sono della selezione di chi guarda (il
 // selezionato, il doppio clic in corso, il gruppo di controllo)
 export const SELECTION_KEYS = ["selected", "dcAt", "assi", "_mouseOver", // (e il puntatore sopra l'istanza)

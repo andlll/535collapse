@@ -83,7 +83,7 @@ export function alarmsStep(w) {
   }
   for (const z of A.zones) if (!z.ending && now - z.last > ALARM.quiet) z.ending = now;
   // la prima volta, il suggerimento (se non ce n'e' gia' uno aperto)
-  if (A.zones.length && (g.alarmhint ?? 0) === 0 && w.behaviours.hint_allarme && w.number("parent_hint") < 1) {
+  if (A.zones.length && (g.alarmhint ?? 0) === 0 && g.hint === 1 && w.behaviours.hint_allarme && w.number("parent_hint") < 1) { // §9.165: accesi
     w.create("hint_allarme", 0, 0);
     g.alarmhint = 1;
   }
