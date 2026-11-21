@@ -143,7 +143,7 @@
       "altezza": 0,
       "dissolvenza_ms": [2, 60],
       "gain": 0.13,
-      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; non i lampeggi automatici di produzione e riparazione, che si ripetono; §9.171). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB"
+      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; §9.171); e la produzione pronta ferma per la popolazione (centro, caserma, stalla, castello), una volta sola quando comincia a lampeggiare, non a ogni nuovo tentativo (buildings.js popHeld, §9.173); non gli altri lampeggi automatici (riparazione, ponte senza legno). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB"
     },
     "cancello": {
       "da": "chain_door.mp3",
