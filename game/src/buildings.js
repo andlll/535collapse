@@ -106,6 +106,16 @@ function blinkMissing(w, fam, cost) {
   for (const r of Object.keys(cost)) if (w.g[r] < cost[r]) { w.create(BLINK[r], 0, 0); audio.ui("risorse"); return; }
 }
 
+// [§9.173, richiesta dell'autore] la produzione pronta ferma per la
+// popolazione (il lampeggio che si ripete a ogni nuovo tentativo): il suono
+// delle risorse che mancano una volta sola, quando comincia (popHeld resta
+// 1 finche' l'unita' non nasce); per chi guarda, se il produttore e' suo
+export function popHeld(i, w) {
+  if (i.popHeld) return;
+  i.popHeld = 1;
+  audio.notice("risorse", w, i);
+}
+
 // ------------------------------------------------------------- pulsanti
 
 export function clicker(fam) {
@@ -854,7 +864,8 @@ export function centro(p) {
       const ax = i.flagx !== null ? i.flagx : i.x + 250, ay = i.flagx !== null ? i.flagy : i.y + 150;
       if (i.progression < 100 && i.progression !== 0) { i.progression += 1; i.alarm.set(0, 10); }
       if (i.progression >= 100) {
-        if (g.pop >= g.popcap) { i.alarm.set(0, 30); w.create("pop_blink", 0, 0); return; }
+        if (g.pop >= g.popcap) { i.alarm.set(0, 30); w.create("pop_blink", 0, 0); popHeld(i, w); return; }
+        i.popHeld = 0;
         i.progression = 0;
         if (i.coda > 0) { i.coda -= 1; i.alarm.set(0, 10); i.progression = 1; }
         const n = w.create("ally_omino", i.x, i.y);

@@ -12229,3 +12229,27 @@ pulsanti; "Carica partita" -> la pausa sui caricamenti; "Torna al menu" ->
 ?room=menu. ui.mjs (tutte le lingue, anche la sconfitta), determinism.mjs,
 pvp.mjs, netfake.mjs, saves.mjs (match, lvl02, lvl03, sk_padus), lvl06.mjs,
 hintgap.mjs: passate.
+
+### 9.173 Le risorse che mancano: una volta quando manca la popolazione
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614): "il suono delle risorse insufficienti lo usiamo una volta sola
+quando manca la popolazione (quando inizia a lampeggiare), inoltre usiamolo
+pure per combinazioni sbagliate del lucchetto della campagna".
+
+**La popolazione.** Un'unita' pronta (il civile del centro, buildings.js;
+caserma, stalla, castello, production.js) che non nasce perche' la
+popolazione e' piena ritenta ogni 30 passi (o P.popWait) e a ogni tentativo
+fa lampeggiare la popolazione. Ora il primo tentativo fallito suona
+"risorse" (buildings.js `popHeld`, per chi guarda se il produttore e' suo:
+audio.js notice); i successivi no (popHeld resta 1) finche' l'unita' non
+nasce (popHeld torna 0): la volta dopo suona di nuovo. Il suono al clic di
+un pulsante senza risorse o popolazione resta (§9.171).
+
+**Il lucchetto.** Il codice sbagliato suonava gia' "risorse" (§9.171).
+
+**Prove.** Nel browser (sk_padus): il centro con un civile pronto e la
+popolazione piena per 600 passi -> la popolazione lampeggia, un suono solo;
+liberato un posto il civile nasce (unita_pronta) e popHeld torna 0; di
+nuovo pieno col civile dopo pronto -> un altro suono. determinism.mjs,
+pvp.mjs, saves.mjs (lvl01, sk_padus): passate.

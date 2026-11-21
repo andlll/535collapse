@@ -15,7 +15,7 @@
 
 import { tr } from "./i18n.js";
 import { rallySpot } from "./pathing.js";
-import { buttonAlpha } from "./buildings.js";
+import { buttonAlpha, popHeld } from "./buildings.js";
 import { audio } from "./audio.js"; // §9.171
 
 const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
@@ -157,7 +157,8 @@ export function producer(name, base, p) {
       const sx = ax > i.x ? 1 : -1, sy = ay > i.y ? 1 : -1;
       if (i.progression < 100 && i.progression !== 0) { i.progression += 1; i.alarm.set(P.alarm, P.period); }
       if (i.progression < 100) return;
-      if (g.pop + P.popMargin >= g.popcap) { i.alarm.set(P.alarm, P.popWait); w.create("pop_blink", 0, 0); return; }
+      if (g.pop + P.popMargin >= g.popcap) { i.alarm.set(P.alarm, P.popWait); w.create("pop_blink", 0, 0); popHeld(i, w); return; }
+      i.popHeld = 0; // §9.173
       i.progression = 0;
       if (i.coda > 0) { i.coda -= 1; i.alarm.set(P.alarm, P.next); i.progression = 1; }
       const u = P.slots ? P.units[i.coda0] : P.units[1];
