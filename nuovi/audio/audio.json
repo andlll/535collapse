@@ -171,6 +171,14 @@
       "gain": 0.9,
       "nota": "il codice giusto: il lucchetto si apre (menu.js; audio.js ui; §9.171): la serie rapida della stessa registrazione (otto clic sempre piu' forti, da 7,82 a 8,76 s), sfumata negli ultimi 150 ms. Gain 0,9: ~ -33 dB"
     },
+    "obiettivo": {
+      "da": "objective.wav",
+      "tagli": [[40, 1300]],
+      "dissolvenza_ms": [2, 400],
+      "altezza": 0,
+      "gain": 0.2,
+      "nota": "un obiettivo nuovo o raggiunto, anche in parte (endgame.js objectiveButton: le righe del riquadro degli obiettivi; senza posizione; §9.172). Suono dell'autore (objective.wav, WAV 16 bit, 32 kHz, 2,5 s; sostituisce un primo file caricato per sbaglio): comincia a 0,05 s, scende sotto -40 dB a 0,5 e sotto -78 a 1,4; da 0,04 a 1,3 s, la coda sfumata negli ultimi 400 ms, cosi' com'e'. Il 95% dell'energia fra 40 e 80 Hz, come no_resour (§9.171): su altoparlanti piccoli si sente poco. Gain 0,2: ~ -27 dB nei primi 300 ms, come l'edificio finito"
+    },
     "pioggia": {
       "da": "pioggia.wav",
       "tagli": [[51000, 59000]],

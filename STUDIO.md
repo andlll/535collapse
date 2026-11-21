@@ -12165,3 +12165,67 @@ con un soldato vicino -> cancello, via il soldato -> cancello; nel menu una
 rotella -> lucchetto, il codice sbagliato -> risorse, quello del livello 7
 -> lucchetto_aperto (e lo sblocco a 7). determinism.mjs, pvp.mjs,
 netfake.mjs, garrison.mjs, economy.mjs, ui.mjs it: passate.
+
+### 9.172 Il suono degli obiettivi; la sconfitta sfocata, coi pulsanti
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "'objective' deve riprodursi quando compare un nuovo
+obiettivo o ne viene raggiunto uno (anche parzialmente vd livello 2
+liberazione ostaggi). Per i sfx per oggi ci fermiamo qui. Altra cosa da
+sistemare: schermata nera della sconfitta: sostituiamola con effetto blur
+ma su fondo grigio scuro invece che bianco, mettiamo due tasti per tornare
+al menu o per ricominciare il livello (o anche un terzo per caricare una
+partita?). Niente timeout prima di avere opzioni di uscita come funziona
+ora". Poi: "temo di averti caricato l'objective sbagliato, questo e'
+quello da usare" (objective.wav al posto di objective.mp3, tolto).
+
+**Il suono** (objective.wav dell'autore, 32 kHz, 2,5 s: da 0,04 a 1,3 s,
+la coda sfumata; gain 0,2, -27 dB come l'edificio finito). Anche questo e'
+quasi tutto fra 40 e 80 Hz (95%): sugli altoparlanti piccoli si sente poco,
+come no_resour (§9.171).
+
+**Quando suona** (endgame.js). Gli obiettivi non hanno uno stato loro: il
+riquadro li ricalcola a ogni disegno dalla partita (le righe per livello).
+Quel calcolo ora e' una funzione a se', `objectiveLines(w, d)` (il disegno
+le passa il Draw per misurare le cifre; il suono null), e objective_button
+ogni 10 passi ne fa una firma (`objectiveSignature`): per ogni riga la
+chiave (il testo con le cifre tolte), se e' spuntata e il conto "(n/m)" se
+c'e'. Suona (`objectiveNews`) se c'e' una riga nuova, una appena spuntata o
+un "(n/m)" salito: gli ostaggi del livello 2 (3/7), le basi del tutorial
+(n/3), le pattuglie e le torri del livello 6; non i numeri che cambiano da
+soli (il tempo resistito, il conto alla rovescia, la vita del monastero, la
+percentuale del ponte, gli edifici o i soldati che restano), ne' una riga
+che sparisce (la tregua). La firma sta in g.objSig con la lingua: si salva
+con la partita (caricarla non suona), cambiata la lingua si ricomincia
+senza suonare, ed e' fuori dall'impronta (snapshot.js: dipende da chi
+guarda). Gli obiettivi gia' presenti all'inizio della room (primi 60
+passi) non suonano; quelli che compaiono dopo un dialogo (livelli 1 e 2)
+si'. Non durante la vittoria o la sconfitta.
+
+**La sconfitta** (endgame.js gameoverManager, app.js). Come la vittoria
+(§9.56): la scena si sfoca a poco a poco (victoryBlur, victoryProgress
+ora anche col contatore della sconfitta), sotto un velo grigio scuro
+(DEFEAT: 38, 38, 38 al 62%) invece che bianco; poi in dissolvenza
+"SCONFITTA" (nuovo, tradotto nelle sei lingue), il perche' e le righe di
+prima (tempo resistito nel tutorial e nel livello 3, basi distrutte) in
+bianco, e tre pulsanti come quelli della pausa: "Ricomincia livello"
+(come nella pausa: la pagina si ricarica sulla room), "Carica partita"
+(apre la pausa sulla pagina dei caricamenti, slot e file; da li' "Indietro"
+e "Riprendi" tornano alla sconfitta), "Torna al menu". Usabili appena
+compaiono (meno di 2 s), e niente piu' ritorno al menu dopo 760 passi. Nella
+partita in rete solo "Lascia la partita" (app.js non da' hooks.restart e
+hooks.loadMenu). I rettangoli dei pulsanti stanno fuori dall'istanza (una
+WeakMap): gameover_manager e' della partita, e le sue variabili entrano
+nell'impronta. Il clic (globalLeftReleased) col suono dei pulsanti
+(§9.168).
+
+**Prove.** test/objectives.test.mjs (riga nuova, spuntata, (n/m) salito:
+si'; riga sparita, tempi, vite, percentuali, quanti ne restano, un conto
+che scende: no). Nel browser: il tutorial per 900 passi -> nessun suono;
+il livello 2: il riquadro che compare -> uno, un villaggio liberato in
+piu' -> uno, poi 200 passi -> nessuno; la sconfitta nel livello 2 dopo
+1000 passi resta (niente ritorno al menu), screenshot col velo e i tre
+pulsanti; "Carica partita" -> la pausa sui caricamenti; "Torna al menu" ->
+?room=menu. ui.mjs (tutte le lingue, anche la sconfitta), determinism.mjs,
+pvp.mjs, netfake.mjs, saves.mjs (match, lvl02, lvl03, sk_padus), lvl06.mjs,
+hintgap.mjs: passate.

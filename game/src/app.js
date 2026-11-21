@@ -593,6 +593,12 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
+  // [§9.172] i pulsanti della sconfitta (endgame.js): ricomincia e carica,
+  // non nella partita in rete
+  if (!net) {
+    world.hooks.restart = () => pause.actions.restart();
+    world.hooks.loadMenu = () => { pause.open(); pause.submenu = "load"; };
+  }
   // [§9.156, §9.157] "Multiplayer" nel menu: "Create game" (dalla schermata
   // della schermaglia) e "Join game" (?stun=0 passa alla partita: senza
   // server STUN, per le prove in locale)
@@ -774,7 +780,8 @@ async function main() {
     draw.reset();
     // [§9.56] la vittoria: tutto quello che c'e' sotto, sfocato, poi il velo
     // e i testi (endgame.js)
-    for (const v of world.all("victory_manager")) {
+    // [§9.172] e la sconfitta, allo stesso modo (col velo grigio scuro)
+    for (const v of [...world.all("victory_manager"), ...world.all("gameover_manager")]) {
       draw.setGlass(null);
       victoryBlur(victoryProgress(v));
       draw.reset();

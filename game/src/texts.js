@@ -191,6 +191,7 @@ export const TEXTS = {
 
   // ------------------------------------------------ vittoria e sconfitta
   "VICTORY": { it: "VITTORIA", es: "VICTORIA", pt: "VITÓRIA", de: "SIEG", fr: "VICTOIRE" },
+  "DEFEAT": { it: "SCONFITTA", es: "DERROTA", pt: "DERROTA", de: "NIEDERLAGE", fr: "DÉFAITE" }, // §9.172
   "You destroyed all the secondary enemy bases": {
     it: "Hai distrutto tutte le basi nemiche secondarie", es: "Has destruido todas las bases enemigas secundarias",
     pt: "Você destruiu todas as bases inimigas secundárias", de: "Du hast alle feindlichen Nebenbasen zerstört",
