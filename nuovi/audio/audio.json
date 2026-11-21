@@ -113,6 +113,64 @@
       "gain": 0.38,
       "nota": "gli zoccoli della cavalleria in movimento (game/src/audio.js ambient, col livello di effects.js hoovesNoise: i cavalieri che si muovono e si vedono, vicini alla vista, S/(S+2): uno 0,33, due 0,5, sei 0,75; col pan; §9.170). Dalla registrazione del galoppo (5,8 s, mono in due canali): il 99% dell'energia era sotto i 40 Hz (un tonfo che non si sente, ma che si mangiava il volume): passa-alto a 60 Hz a 24 dB/ottava; restano lo zoccolo (150-600 Hz) e la terra smossa (5-10 kHz), RMS -45 dB prima del guadagno (+14,5 al picco di -3). Il galoppo e' irregolare (l'inviluppo non ha un periodo netto): un loop da 0,6 a 5,3 s con 400 ms di dissolvenza incrociata non si sente girare. Gain 0,38: ~ -38 dB a pieno livello, -47 con un cavaliere solo: un fondo, non predomina"
     },
+    "edificio_finito": {
+      "da": "build_finish.wav",
+      "tagli": [[90, 950]],
+      "altezza": 0,
+      "dissolvenza_ms": [2, 100],
+      "gain": 0.2,
+      "nota": "l'edificio finito (buildings.js, i cantieri di edifici, campi e mura del giocatore che arrivano a vita piena; senza posizione, e' un avviso; §9.171). Suono dell'autore (build_finish.wav, 32 kHz, 1,5 s): comincia a 0,1 s e finisce a 0,9; il tratto da 0,09 a 0,95 s, cosi' com'e'. Il 74% dell'energia sotto i 40 Hz (fondamentale a 36 Hz, armoniche a 95 Hz -11 dB): su altoparlanti piccoli si sente soprattutto la parte sopra gli 80 Hz. Gain 0,2: ~ -26 dB nei primi 300 ms"
+    },
+    "unita_pronta": {
+      "da": "unit_finish.wav",
+      "tagli": [[0, 600]],
+      "altezza": 0,
+      "dissolvenza_ms": [1, 80],
+      "gain": 0.32,
+      "nota": "l'unita' pronta (production.js: caserma, stalla, castello; buildings.js: il civile del centro; del giocatore, senza posizione; §9.171). Suono dell'autore (unit_finish.wav, 32 kHz, 0,63 s): il tratto da 0 a 0,6 s cosi' com'e' (energia fra 600 Hz e 10 kHz). Gain 0,32: ~ -29 dB"
+    },
+    "chat": {
+      "da": "chat.wav",
+      "tagli": [[45, 690]],
+      "altezza": 0,
+      "dissolvenza_ms": [1, 100],
+      "gain": 0.6,
+      "nota": "un messaggio dell'altro giocatore nella chat della partita in rete (chat.js receive; audio.js ui; §9.171). Suono dell'autore (chat.wav, 32 kHz, 0,69 s): da 0,045 s (prima silenzio) a 0,69, cosi' com'e' (un tintinnio fra 2,5 e 5 kHz). Gain 0,6: ~ -30 dB"
+    },
+    "risorse": {
+      "da": "no_resour.wav",
+      "tagli": [[0, 320]],
+      "altezza": 0,
+      "dissolvenza_ms": [2, 60],
+      "gain": 0.13,
+      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; non i lampeggi automatici di produzione e riparazione, che si ripetono; §9.171). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB"
+    },
+    "cancello": {
+      "da": "chain_door.mp3",
+      "tagli": [[0, 850], [3050, 3850]],
+      "filtro": "highpass=f=80:poles=2,highpass=f=80:poles=2",
+      "dissolvenza_ms": [20, 300],
+      "gain": 0.2,
+      "nota": "la porta delle mura che si apre o si chiude (walls.js, porte del giocatore e nemiche, se si vedono; §9.171). Dalla registrazione della catena (11,3 s, continua): due tratti, l'inizio (0-0,85 s, l'attacco naturale) e uno da 3,05 a 3,85 s (un colpo), sfumati negli ultimi 300 ms; il 45% dell'energia sotto i 150 Hz: passa-alto a 80 Hz a 24 dB/ottava. Gain 0,2: ~ -32 dB, sotto i colpi (le porte si aprono e chiudono spesso)"
+    },
+    "lucchetto": {
+      "da": "clic.mp3",
+      "tagli": [[3198, 3318], [3444, 3564], [3669, 3789]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "altezza": 0.03,
+      "dissolvenza_ms": [1, 50],
+      "gain": 0.55,
+      "nota": "una rotella del lucchetto del menu della campagna (menu.js; audio.js ui; §9.171): tre clic della serie lenta della registrazione dei clic (attacchi a 3,206, 3,452, 3,677 s; i successivi della serie, filtrati, erano 10-30 dB piu' deboli: portati a -3 dB alzavano il fruscio), 120 ms; passa-alto come clic. Gain 0,55"
+    },
+    "lucchetto_aperto": {
+      "da": "clic.mp3",
+      "tagli": [[7823, 8760]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "altezza": 0,
+      "dissolvenza_ms": [1, 150],
+      "gain": 0.9,
+      "nota": "il codice giusto: il lucchetto si apre (menu.js; audio.js ui; §9.171): la serie rapida della stessa registrazione (otto clic sempre piu' forti, da 7,82 a 8,76 s), sfumata negli ultimi 150 ms. Gain 0,9: ~ -33 dB"
+    },
     "pioggia": {
       "da": "pioggia.wav",
       "tagli": [[51000, 59000]],

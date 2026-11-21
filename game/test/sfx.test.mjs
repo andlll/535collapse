@@ -41,3 +41,20 @@ test("§9.168 le voci dei suoni nuovi", () => {
   const credits = readFileSync(new URL("../../nuovi/audio/CREDITI.md", import.meta.url), "utf8");
   for (const f of ["passi_erba.mp3", "catapulta.mp3", "clic.mp3", "roccia.mp3", "fuoco.mp3"]) assert.ok(credits.includes(f), f);
 });
+
+// [§9.171] il messaggio dell'altro giocatore suona; il proprio e i vuoti no
+test("§9.171 il suono della chat", async () => {
+  globalThis.window ??= { addEventListener() {} };
+  const { audio } = await import("../src/audio.js");
+  const { Chat } = await import("../src/chat.js");
+  const heard = [], ui = audio.ui;
+  audio.ui = (n) => heard.push(n);
+  try {
+    const chat = new Chat({ local: 0, send: () => true, can: () => true });
+    chat.receive("ciao rosso");
+    chat.receive("   ");
+    chat.add(0, "il mio");
+    assert.deepEqual(heard, ["chat"]);
+    assert.equal(chat.log.length, 2);
+  } finally { audio.ui = ui; }
+});

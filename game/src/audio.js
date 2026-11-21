@@ -277,6 +277,11 @@ export class SoundBank {
   // [§9.168] ui: un suono dell'interfaccia (il clic dei pulsanti): senza
   // posizione e anche dove i suoni del mondo sono spenti (il menu principale)
   ui(name, vol = 1) { return this.play(name, undefined, undefined, vol, true); }
+  // [§9.171] un avviso della partita per chi guarda (edificio finito, unita'
+  // pronta), senza posizione, solo se l'istanza e' sua (w.mine: nella partita
+  // a due la sua parte; da solo il giocatore: i cantieri e i produttori sono
+  // solo suoi)
+  notice(name, w, i) { return w.mine(i) ? this.play(name) : false; }
 
   play(name, x, y, vol = 1, ui = false) {
     const ctx = this.ctx;

@@ -372,17 +372,17 @@ export function enemyManagerMenu() {
       if (i.c_unlhover === 1) { clic(); i.sblocco = 1; i.c_unlhover = 0; return; }
       if (i.sblocco === 1) {
         if (i.combHover) {
-          clic();
+          audio.ui("lucchetto"); // §9.171: la rotella
           const [k, d] = i.combHover;
           i.comb[k] = (i.comb[k] + d + 10) % 10;
           return;
         }
         if (i.sblocco_hover === 1) {
-          clic();
           // il primo codice giusto che sblocca piu' di quanto gia' sbloccato
           const lvl = Object.keys(CODES).map(Number)
             .find((l) => CODES[l].every((v, k) => v === i.comb[k]) && g.unlock < l);
-          if (lvl) { g.unlock = lvl; saveUnlock(lvl); } else i.redamount = 1;
+          // [§9.171] si apre o no (il suono delle risorse che mancano)
+          if (lvl) { g.unlock = lvl; saveUnlock(lvl); audio.ui("lucchetto_aperto"); } else { i.redamount = 1; audio.ui("risorse"); }
         }
       }
     },

@@ -16,6 +16,7 @@
 import { tr } from "./i18n.js";
 import { rallySpot } from "./pathing.js";
 import { buttonAlpha } from "./buildings.js";
+import { audio } from "./audio.js"; // §9.171
 
 const WHITE = 0xffffff, GREEN = 0x008000, BLACK = 0;
 
@@ -166,8 +167,10 @@ export function producer(name, base, p) {
         const n = w.create(u.obj, i.x + 200, i.y + 100);
         n.alarm.set(u.obj === "ally_arciere" ? 1 : 0, 13);
         n.dirox = ax; n.diroy = ay; n.action = 1;
+        audio.notice("unita_pronta", w, i); // §9.171
       } else if (u) {
         const n = w.create(u.obj, i.x + 20 * sx, i.y + 10 * sy);
+        audio.notice("unita_pronta", w, i); // §9.171
         // [§9.30, segnalazione dell'autore] senza bandiera (o con la bandiera
         // sull'edificio) l'unita' restava dove nasce, di solito dentro
         // l'edificio: ora, se ci si sovrappone, va al posto libero piu'
@@ -293,6 +296,7 @@ function enqueue(w, prod, type, u) {
   if (u.cost.gold && g.gold < u.cost.gold) w.create("gold_blink", 0, 0);
   if (u.cost.wood && g.wood < u.cost.wood) w.create("wood_blink", 0, 0);
   if (g.pop + P.popMargin >= g.popcap) w.create("pop_blink", 0, 0);
+  if (!Object.entries(u.cost).every(([r, v]) => g[r] >= v) || g.pop + P.popMargin >= g.popcap) audio.ui("risorse"); // §9.171
   if (!sel.length) return null;
   w.act("produci", { ids: sel.map((b) => b.id), prod, type });
   const can = ok === 1 && Object.entries(u.cost).every(([r, v]) => g[r] >= v) && g.pop + P.popMargin < g.popcap;

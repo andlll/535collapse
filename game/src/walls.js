@@ -24,6 +24,7 @@ import { pointDirection } from "./gm.js";
 import { panel, lifeBar, repairEnd, sendRepair, armBuilders, fondMouse, fondLifeBar } from "./buildings.js";
 import { revealBuilding, enemyBarAndPanel } from "./enemybuild.js";
 import { damageSuffix, showDamage } from "./damage.js";
+import { audio } from "./audio.js"; // §9.171
 
 const WHITE = 0xffffff, RED = 0x0000ff;
 
@@ -92,7 +93,7 @@ export function wallFond(k, p) {
       if (i.life <= 0) { p.markInstance(i, 1); w.destroy(i); destroyAll(w, ...plusNames); return; }
       if (i.selected === 1 && w.number(plusNames[0]) === 0) plusButtons(w, i, k);
       // [Richiesta dell'autore] fasi e tratto finito in dissolvenza
-      if (i.life >= i.slife) { const m = w.create(K.wall, i.x, i.y); w.swapSprite(m, m.sprite_index, i.sprite_index); w.destroy(i); return; }
+      if (i.life >= i.slife) { const m = w.create(K.wall, i.x, i.y); w.swapSprite(m, m.sprite_index, i.sprite_index); audio.notice("edificio_finito", w, i); w.destroy(i); return; } // §9.171
       if (i.phase === 0 && i.life > i.slife / 2 && i.sprite_index !== K.f2) { w.swapSprite(i, K.f2); i.phase = 1; }
     },
     globalLeftPressed(i, w) {
@@ -255,7 +256,9 @@ export function gate(k, p) {
       if (i.openable === 1 && (k === "ori" || i.armed === 1)) {
         const u = w.nearest(i.x, i.y, "ally_unit");
         const near = !!u && w.distanceToInstance(i, u) < 20;
+        const was = i.open;
         if (near) { if (i.open === 0) i.open = 1; } else if (i.open === 1) i.open = 0;
+        if (i.open !== was && w.shown(i)) audio.play("cancello", i.x, i.y); // §9.171: la porta si apre o si chiude
         if (k === "vert") { i.armed = 0; i.alarm.set(10, 30); }
         setLook(i, w, near ? K.open : K.closed);
       } else if (i.lookBase) setLook(i, w, i.open === 1 ? K.open : K.closed); // §9.85: il danno anche fra un controllo e l'altro
@@ -351,7 +354,10 @@ export function enemyGate(k, p) {
       i.lookAt = w._stepNo + 10;
       const u = w.nearest(i.x, i.y, "enemy_unit");
       const near = !!u && w.distanceToInstance(i, u) < 20;
-      if (near !== (i.open === 1)) { i.open = near ? 1 : 0; setLook(i, w, near ? K.open : K.closed); }
+      if (near !== (i.open === 1)) {
+        i.open = near ? 1 : 0; setLook(i, w, near ? K.open : K.closed);
+        if (w.shown(i)) audio.play("cancello", i.x, i.y); // §9.171
+      }
     },
   };
 }
@@ -494,7 +500,7 @@ export function wallPreview(name) {
           for (const c of w.all("mura_clicker")) c.active = 0;
           w.destroy(i);
         }
-      } else w.create("stone_blink", 0, 0);
+      } else { w.create("stone_blink", 0, 0); audio.ui("risorse"); } // §9.171
     },
     collisions: { campo(i) { i.place = 0; } },
     // [Correzione §3.8 n.26] eventi del muro che l'anteprima non deve
@@ -520,7 +526,7 @@ function makeGate(w) {
   const sel = [];
   for (const wallName of ["mura_vert", "mura_ori"]) for (const m of w.all(wallName)) if (m.selected === 1) sel.push(m);
   if (!sel.length) return;
-  if (w.g.gold < 100 * sel.length) w.create("gold_blink", 0, 0);
+  if (w.g.gold < 100 * sel.length) { w.create("gold_blink", 0, 0); audio.ui("risorse"); } // §9.171
   if (w.g.gold >= 100) destroyAll(w, "gate_clicker");
   w.act("porta", { ids: sel.map((m) => m.id) });
 }

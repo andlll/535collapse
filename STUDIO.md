@@ -12101,3 +12101,67 @@ cavalieri fermi 0, in marcia 0,19 (0,38 x 0,5), uno solo 0,125. Durate
 decodificate: corno 4,5 s, rovina 1,09, rovina_piccola 1,18 e 1,52, zoccoli
 4,7. determinism.mjs, pvp.mjs, alarms.mjs, rams.mjs, catapults.mjs,
 melee.mjs, saves.mjs (lvl01, sk_padus): passate.
+
+### 9.171 Edificio finito, unita' pronta, risorse che mancano, chat, porte, lucchetto
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con cinque file: "te ne allego altri, fatti da me in wav [...].
+Per semina e albero abbattuto non mettiamo sfx (segna come gia' fatti). Per
+il lucchetto del menu usa la serie che hai gia'. Chain door invece e' per il
+cancello, estrapola mezzo secondo - un secondo perche' il file e' lungo".
+
+**Fatti senza suono** (decisione dell'autore): la semina e l'albero
+abbattuto. Della lista dei suoni mancanti restano (da decidere): la morte
+delle unita' ("per ora senza"), i fondi del giorno e della notte, l'aquila,
+vittoria e sconfitta, obiettivo raggiunto, dialogo che si apre, l'altro
+giocatore che si collega o se ne va.
+
+**I suoni dell'autore** (build_finish.wav, unit_finish.wav, chat.wav,
+no_resour.wav: WAV 16 bit, 32 kHz) cosi' come sono: solo il silenzio tolto
+davanti e dietro, il picco a -3 dB come gli altri, il volume col gain
+(misurato nei primi 300 ms). Due sono quasi solo bassi: build_finish ha il
+74% dell'energia sotto i 40 Hz (fondamentale a 36 Hz, armoniche a 95 Hz a
+-11 dB), no_resour e' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB).
+Su altoparlanti piccoli (portatili, telefoni: da 150-200 Hz in su) il
+secondo si sente appena: da dire all'autore.
+- `edificio_finito`: un cantiere del giocatore che arriva a vita piena
+  (edifici, campi, tratti di mura: buildings.js, walls.js). Gain 0,2 (-26
+  dB).
+- `unita_pronta`: un'unita' che esce da caserma, stalla, castello
+  (production.js) o il civile dal centro (buildings.js). Gain 0,32 (-29).
+- Tutti e due senza posizione (un avviso: si sentono anche con la vista
+  altrove) e solo per chi guarda (audio.js `notice`: w.mine, nella partita
+  a due la sua parte; i cantieri e i produttori del nemico della CPU hanno
+  il loro codice e non suonano).
+- `risorse`: il pulsante premuto senza le risorse o la popolazione
+  (costruzione e posa del fantasma: buildings.js blinkMissing, solo se
+  manca davvero qualcosa; produzione: production.js enqueue; il civile:
+  enqueueWorker; la porta: walls.js makeGate; i prolungamenti delle mura)
+  e il codice sbagliato del lucchetto; audio.js ui. Non i lampeggi
+  automatici (la produzione che aspetta la popolazione, la riparazione o
+  il ponte senza legno), che si ripetono. Gain 0,13 (-28).
+- `chat`: il messaggio dell'altro giocatore (chat.js receive; non i propri,
+  non i vuoti), audio.js ui. Gain 0,6 (-30).
+
+**Le porte** (chain_door.mp3, 11,3 s di catena continua; licenza da
+verificare in CREDITI.md): due tratti come varianti, l'inizio (0-0,85 s,
+con l'attacco naturale) e 3,05-3,85 s (un colpo), sfumati negli ultimi 300
+ms; il 45% dell'energia sotto i 150 Hz: passa-alto a 80 Hz a 24 dB/ottava.
+Suona quando una porta delle mura (del giocatore o nemica) si apre o si
+chiude, se si vede (walls.js). Gain 0,2 (-32: le porte si aprono e chiudono
+spesso).
+
+**Il lucchetto** (dalla serie di clic gia' caricata, §9.168): `lucchetto`,
+tre clic della serie lenta (3,206, 3,452, 3,677 s; i successivi, filtrati,
+erano 10-30 dB piu' deboli), a ogni rotella; `lucchetto_aperto`, la serie
+rapida (otto clic sempre piu' forti, 7,82-8,76 s), col codice giusto; il
+codice sbagliato col suono delle risorse che mancano. menu.js, audio.js ui.
+
+**Prove.** test/sfx.test.mjs (la chat: il messaggio dell'altro suona, il
+proprio e quelli vuoti no). Nel browser (chiamate registrate): la casa
+finita -> edificio_finito (senza posizione); il civile dal centro ->
+unita_pronta; Q col centro selezionato e senza cibo -> risorse; la porta
+con un soldato vicino -> cancello, via il soldato -> cancello; nel menu una
+rotella -> lucchetto, il codice sbagliato -> risorse, quello del livello 7
+-> lucchetto_aperto (e lo sblocco a 7). determinism.mjs, pvp.mjs,
+netfake.mjs, garrison.mjs, economy.mjs, ui.mjs it: passate.
