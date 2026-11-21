@@ -101,6 +101,18 @@
       "gain": 0.3,
       "nota": "il loop degli incendi (game/src/audio.js ambient, col livello di effects.js fireNoise: quanti edifici in fiamme si vedono, quanto sono vicini alla vista e da che parte; smorzato sotto la pioggia; §9.167). Dalla registrazione caricata dall'autore il 21 novembre 2026 (MP3 320 kbit/s, 44,1 kHz, stereo, 15,5 s; il suono comincia a 0,07 s e finisce di colpo a 15,15 s): il tratto da 0,3 a 13,5 s, con la fine dissolta in 1,5 s sull'inizio (13,2 s di giro). Pulizia: il 92% dell'energia era un rombo sotto i 150 Hz (75% sotto gli 80), 12 dB sopra il corpo (150-1000 Hz) e 18 sopra il crepitio (1-16 kHz): copriva la musica e sui piccoli altoparlanti non si sente. Passa-alto a 100 Hz a 24 dB/ottava (restano il calore, 100-300 Hz, e il crepitio); niente compressione ne' limitatore (il crepitio e' nei picchi). Picco a -3 dB come gli altri (livello medio -24), MP3 stereo a 192 kbit/s senza taglio degli acuti. Gain 0,3: a pieno livello ~ -35 dB di media, sotto la musica (-30..-37 per parte) e i colpi; un incendio solo nella vista e' a meta' (-41)"
     },
+    "fiume": {
+      "da": "fiume.mp3",
+      "tagli": [[1200, 9400]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "filtro": "equalizer=f=2000:t=o:w=1.5:g=-3",
+      "kbit": 192,
+      "gain": 0.13,
+      "nota": "il loop del fiume, leggero (game/src/audio.js ambient, col livello di effects.js riverNoise: quanta acqua c'e' nella vista e attorno, da che parte; §9.169). Dalla registrazione caricata dall'autore il 21 novembre 2026 (MP3 320 kbit/s, 44,1 kHz, stereo, 11 s): entra in dissolvenza nel primo secondo (-66 -> -21 dB) e finisce a 10,95 s; in mezzo costante (RMS -19..-22 dB ogni 0,5 s), gorgoglii con picchi fino a -0,3 dB. Niente sotto i 150 Hz (gia' tagliati nella registrazione), il 60% dell'energia fra 600 e 2500 Hz. Il tratto da 1,2 a 9,4 s, con la fine dissolta in 1,5 s sull'inizio (8,2 s di giro); un calo largo di 3 dB attorno ai 2 kHz (due ottave e mezza) per un fondo meno tagliente; picco a -3 dB (livello medio -25,5), MP3 stereo a 192 kbit/s. Gain 0,13: a pieno livello ~ -43 dB di media, leggero, sotto il fuoco (-35) e la musica"
+    },
     "musica_archi": {
       "da": "loop1_archi.wav",
       "tagli": [[0, 42000]],

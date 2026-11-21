@@ -11982,3 +11982,52 @@ del civile cliccato col mouse -> clic e un civile in coda; un clic sul
 terreno -> niente; il pulsante della pausa e "Riprendi" -> clic; nel menu
 principale "Giocatore singolo" -> clic. determinism.mjs, pvp.mjs,
 catapults.mjs, rams.mjs, minimap.mjs: passate.
+
+### 9.169 Il fiume; la zappa per il sasso sul terreno e sulle unita'
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "usiamo il suono della zappa anche per le pietre
+della catapulta che cadono su terreno o unita'. Integra anche questo loop
+per quando e' visualizzato il fiume (leggero)".
+
+**Il sasso.** siege.js catapultBullet destroy: su un edificio il crollo
+(§9.168); sul terreno o su un'unita' (se l'unita' si vede) la zappa, il
+colpo nella terra. Alleato e nemico.
+
+**Il file** (`nuovi/audio/fiume.mp3`): MP3 320 kbit/s, 44,1 kHz, stereo
+(L/R correlati 0,75), 11 s. Entra in dissolvenza nel primo secondo (-66 ->
+-21 dB) e finisce a 10,95 s; in mezzo costante (RMS -19..-22 ogni 0,5 s),
+gorgoglii con picchi fino a -0,3 dB. Niente sotto i 150 Hz (gia' tagliati
+nella registrazione: nessun rombo da togliere), il 60% dell'energia fra 600
+e 2500 Hz.
+
+**Le regolazioni** (audio.json "fiume"): il tratto da 1,2 a 9,4 s, fuori
+la dissolvenza d'entrata, con la fine dissolta in 1,5 s sull'inizio (8,2 s
+di giro; attorno al giro il livello resta -23..-28 dB ogni 50 ms come nel
+resto, il salto all'ultimo campione sotto il 99,9 percentile); un calo
+largo di 3 dB attorno ai 2 kHz per un fondo meno tagliente; picco a -3 dB
+(livello medio -25,5), MP3 stereo a 192 kbit/s. Leggero: gain 0,13, a
+pieno livello ~ -43 dB di media (il fuoco -35, la musica -30..-37 per
+parte, la pioggia dell'autore -61).
+
+**Quando si sente** (effects.js `riverNoise`, ogni 10 passi da
+manager.step; audio.js ambient lo segue in ~1 s, col pan): un punto ogni 48
+px nella vista allargata di 700 px, ognuno pesato da quanto e' vicino alla
+vista (audio.js placement); f = l'acqua pesata (waterMap: i fiumi delle
+istanze e quelli a linee di Tiled) sui punti della vista; livello
+sqrt(f / 0,12) fino a 1: un fiume che copre il 12% della vista e' a pieno
+livello, uno del 3% a meta', uno appena fuori dal bordo piano. Senza fiumi
+nella room, o lontani, niente; nel menu niente (i suoni del mondo sono
+spenti). Il calcolo costa meno del rumore della misura (sotto 1 ms ogni 10
+passi).
+
+**Licenza: da verificare** (CREDITI.md), come gli altri file di §9.167 e
+§9.168.
+
+**Prove.** test/riversound.test.mjs (niente fiumi o lontano: zero; la vista
+tutta d'acqua: 1; una striscia del 3% a destra: a meta' strada, pan a
+destra; appena fuori: piu' piano). Nel browser: sk_padus e lvl04 sul fiume
+0,13 (pieno livello per il gain), lontano 0 (sk_padus) o 0,042 (lvl04,
+acqua 240 px fuori dal bordo); il sasso sul terreno e su un guerriero ->
+zappa, sul centro -> crollo. determinism.mjs, pvp.mjs, catapults.mjs,
+lvl04.mjs, ripples.mjs: passate.

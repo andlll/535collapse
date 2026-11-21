@@ -166,6 +166,36 @@ export function waterMap(w) {
   return w._water;
 }
 
+// [§9.169, richiesta dell'autore] Il suono del fiume, leggero (audio.js
+// ambient "fiume"): quanta acqua (waterMap: i fiumi delle istanze e quelli a
+// linee) c'e' nella vista e attorno. Un punto ogni RIVER_STEP px nella vista
+// allargata di 700 px (FAR di audio.js), ognuno pesato da place (audio.js
+// placement: 1 dentro la vista, giu' fino a 0 a 700 px dal bordo); f =
+// l'acqua pesata sui punti della vista. Il livello e' sqrt(f / RIVER_FULL)
+// fino a 1: un fiume che copre il 12% della vista e' a pieno livello, uno
+// del 3% a meta', uno appena fuori dal bordo si sente piano. pan: la media
+// delle posizioni dell'acqua, pesata.
+export const RIVER_STEP = 48, RIVER_FULL = 0.12, RIVER_MARGIN = 700;
+export function riverNoise(w, cam, place) {
+  const wm = waterMap(w);
+  if (!wm || !cam) return { level: 0, pan: 0 };
+  const S = RIVER_STEP, M = RIVER_MARGIN;
+  let water = 0, pan = 0, view = 0;
+  for (let y = cam.y - M + S / 2; y < cam.y + cam.h + M; y += S) {
+    const cy = Math.floor(y / wm.C);
+    for (let x = cam.x - M + S / 2; x < cam.x + cam.w + M; x += S) {
+      const inView = x >= cam.x && x <= cam.x + cam.w && y >= cam.y && y <= cam.y + cam.h;
+      if (inView) view++;
+      const cx = Math.floor(x / wm.C);
+      if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) continue;
+      const [g, p] = place(x, y);
+      water += g; pan += g * p;
+    }
+  }
+  if (water <= 0 || view === 0) return { level: 0, pan: 0 };
+  return { level: Math.min(1, Math.sqrt(water / view / RIVER_FULL)), pan: pan / water };
+}
+
 // [§9.36] Il sistema di particelle di un tipo (kind) sul pezzo di fiume che
 // contiene (x, y): appena sopra di lui (depth del pezzo - 0,5). I pezzi di
 // fiume hanno depth -y [C, fiume_* Create]: a depth fissa (-21) le

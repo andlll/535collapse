@@ -603,6 +603,10 @@ export function catapultBullet(enemySide) {
         if (!enemySide) u.hit = 1;
       }
       if (!onBuild && !onUnit) scatter(w, i, "sfx_erba");
+      // [§9.168, §9.169, richiesta dell'autore] il sasso sul terreno o su
+      // un'unita': il colpo della zappa (nella terra); su un edificio il
+      // crollo (sopra). Su un'unita' se si vede
+      if (!onBuild && (!onUnit || w.nearest(i.x, i.y, unit).visible !== false)) audio.play("zappa", i.x, i.y);
     },
     draw(i, w, d) {
       d.spriteExt("sasso", 0, i.x, i.y - i.deviance, 1, 1, i.rota, WHITE, 1);
