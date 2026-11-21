@@ -77,6 +77,42 @@
       "gain": 0.5,
       "nota": "il clic dei pulsanti dell'interfaccia (audio.js ui: senza posizione, anche nel menu principale; app.js: pulsanti della partita e della minimappa, pausa; pause.js e menu.js; §9.168). Dalla registrazione dei clic della rotella (18 s: un clic da solo a 1,57 s, poi serie lente, rapide e uno sfregamento): quello da solo, 100 ms dall'attacco (1,566 s) col suo decadimento; il 57% dell'energia era un tonfo sotto i 300 Hz: passa-alto a 200 Hz a 24 dB/ottava (resta il tic, 600-2500 Hz). Altezza +-3%. Gain 0,5: ~ -33 dB, discreto"
     },
+    "rovina": {
+      "da": "crolli.mp3",
+      "tagli": [[3385, 4480]],
+      "filtro": "highpass=f=50:poles=2,highpass=f=50:poles=2",
+      "dissolvenza_ms": [5, 450],
+      "altezza": 0.06,
+      "gain": 0.3,
+      "nota": "il crollo di un edificio grande distrutto (vita piena da 300: caserma, stalla, centro, castello, torre, chiesa, monastero; app.js hooks.destroyed, a vita 0, se chi guarda lo vede; §9.170). Dalla registrazione dei tre crolli (8 s, stereo; fra un crollo e l'altro fruscio a -53 dB e due tratti di silenzio digitale), il secondo, quello che l'autore preferisce: attacco a 3,39 s, -8 dB di media nei primi 100 ms, scende sotto -45 a 4,48 s; 1,1 s dall'attacco, sfumato negli ultimi 450 ms. Il 68% dell'energia era sotto gli 80 Hz (il 30% sotto i 40, che non si sente): passa-alto a 50 Hz a 24 dB/ottava (resta il peso, 60-150 Hz). Altezza +-6%. Gain 0,3: ~ -27 dB nei primi 500 ms, qualche dB sopra i colpi (-31): e' raro"
+    },
+    "rovina_piccola": {
+      "da": "crolli.mp3",
+      "tagli": [[1080, 2260], [5975, 7500]],
+      "filtro": "highpass=f=50:poles=2,highpass=f=50:poles=2",
+      "dissolvenza_ms": [5, 500],
+      "gain": 0.28,
+      "nota": "il crollo di un edificio piccolo distrutto (case, magazzini, mulini, mura, porte, cantieri; come rovina, §9.170): il primo e il terzo dei tre crolli (attacchi a 1,09 e 5,98 s; il terzo piu' sbriciolato), 1,2 e 1,5 s, sfumati negli ultimi 500 ms; stesso passa-alto. Gain 0,28: ~ -30 dB, come i colpi"
+    },
+    "corno": {
+      "da": "348862__newagesoup__big-reverb-warhorn.wav",
+      "tagli": [[150, 6000]],
+      "dissolvenza_ms": [5, 2500],
+      "tempo": 1.3,
+      "altezza": 0,
+      "gain": 0.17,
+      "nota": "il corno di guerra: un attacco nuovo fuori dalla vista (attackalarm.js raiseAlarm, quando nascono gli anelli sulla minimappa), al piu' uno ogni 30 s, senza posizione; §9.170. Da Freesound (newagesoup, 'big reverb warhorn', WAV 48 kHz 24 bit, 13,6 s): il corno da 0,2 a 2,4 s (-10 dB), poi il riverbero che scende a -45 dB a 6 s e a -93 a 12. Solo energia fra 40 e 1200 Hz (scuro: e' il suo carattere). Smorzato e accelerato (l'autore): da 0,15 a 6 s con il riverbero sfumato negli ultimi 2,5 s, poi 1,3 volte piu' veloce senza cambiare altezza (atempo: resta scuro): 4,5 s invece di 13,6. Mono. Gain 0,17: ~ -32 dB nei primi 500 ms, sotto la musica"
+    },
+    "zoccoli": {
+      "da": "cavalli.mp3",
+      "tagli": [[600, 5300]],
+      "loop": {
+        "incrocio_ms": 400
+      },
+      "filtro": "highpass=f=60:poles=2,highpass=f=60:poles=2",
+      "gain": 0.38,
+      "nota": "gli zoccoli della cavalleria in movimento (game/src/audio.js ambient, col livello di effects.js hoovesNoise: i cavalieri che si muovono e si vedono, vicini alla vista, S/(S+2): uno 0,33, due 0,5, sei 0,75; col pan; §9.170). Dalla registrazione del galoppo (5,8 s, mono in due canali): il 99% dell'energia era sotto i 40 Hz (un tonfo che non si sente, ma che si mangiava il volume): passa-alto a 60 Hz a 24 dB/ottava; restano lo zoccolo (150-600 Hz) e la terra smossa (5-10 kHz), RMS -45 dB prima del guadagno (+14,5 al picco di -3). Il galoppo e' irregolare (l'inviluppo non ha un periodo netto): un loop da 0,6 a 5,3 s con 400 ms di dissolvenza incrociata non si sente girare. Gain 0,38: ~ -38 dB a pieno livello, -47 con un cavaliere solo: un fondo, non predomina"
+    },
     "pioggia": {
       "da": "pioggia.wav",
       "tagli": [[51000, 59000]],

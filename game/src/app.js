@@ -473,6 +473,16 @@ async function main() {
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   // (i pulsanti sono di chi guarda: il suo specchio, §9.155)
   world.hooks.step = () => { buildButtons(world.worldFor(null)); levelStep(world); };
+  // [§9.170, richiesta dell'autore] un edificio distrutto (a vita 0: colpi,
+  // fuoco, demolizione; anche i cantieri) crolla con un suono, se chi guarda
+  // lo vede: i grandi (vita piena da 300 in su: caserma, stalla, centro,
+  // castello, torre, chiesa, monastero) "rovina", gli altri (case,
+  // magazzini, mulini, mura, cantieri) "rovina_piccola"
+  const BUILD_FAMILIES = ["ally_build", "enemy_build", "p2_build"];
+  world.hooks.destroyed = (i) => {
+    if (!(i.life <= 0) || !i.parents.some((p) => BUILD_FAMILIES.includes(p)) || !world.shown(i)) return;
+    audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y);
+  };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world.worldFor(null)); // §9.155: chi guarda (dal blu, i suoi)
   const fogLayer = new FogLayer(r, fog);

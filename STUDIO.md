@@ -12031,3 +12031,73 @@ destra; appena fuori: piu' piano). Nel browser: sk_padus e lvl04 sul fiume
 acqua 240 px fuori dal bordo); il sasso sul terreno e su un guerriero ->
 zappa, sul centro -> crollo. determinism.mjs, pvp.mjs, catapults.mjs,
 lvl04.mjs, ripples.mjs: passate.
+
+### 9.170 La battaglia: zoccoli, edifici distrutti, il corno; freccia e fuoco con la zappa
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con tre file: "gli zoccoli della cavalleria estrapola bene e evita
+che siano troppo predominanti, per l'edificio distrutto mi piace il secondo
+dei tre suoni che senti in 'ground crash' ma sono tutti e tre
+interessanti, l'horn e' figo e inquietante al punto giusto ma smorziamolo
+un po' (e magari acceleriamolo?). Per le altre: freccia che colpisce usa
+sempre la zappa, idem fuoco appiccato, morte delle unita' per ora lasciamo
+senza." (dalla lista dei suoni mancanti in chat).
+
+**Gli zoccoli** (cavalli.mp3, audio.json "zoccoli"). Il galoppo (5,8 s,
+mono in due canali) aveva il 99% dell'energia sotto i 40 Hz: un tonfo che
+non si sente ma si mangiava il volume. Passa-alto a 60 Hz a 24 dB/ottava:
+restano lo zoccolo (150-600 Hz) e la terra smossa (5-10 kHz), 31 dB sotto
+il livello di prima. Il galoppo e' irregolare (l'inviluppo non ha un
+periodo netto): un loop da 0,6 a 5,3 s con 400 ms di incrocio. Un suono
+continuo (audio.js ambient, col pan) invece di un colpo per zoccolo: con
+venti cavalieri sarebbe una grandinata. effects.js `hoovesNoise`: i
+cavalieri (giocatore, nemici, blu) che si sono mossi nell'ultimo passo e
+chi guarda vede, pesati dalla vicinanza alla vista; livello S/(S+2): uno
+0,33, due 0,5, sei 0,75. Gain 0,38: -38 dB a pieno livello, -47 con uno
+solo; non predomina.
+
+**Gli edifici distrutti** (crolli.mp3: tre crolli, fra l'uno e l'altro
+fruscio a -53 dB). Il secondo, quello che l'autore preferisce, per i
+grandi ("rovina": vita piena da 300, caserma, stalla, centro, castello,
+torre, chiesa, monastero); il primo e il terzo, varianti, per i piccoli
+("rovina_piccola": case, magazzini, mulini, mura, porte, cantieri). Dagli
+attacchi (1,09, 3,39, 5,98 s) a dove scendono sotto -45 dB (1,1-1,5 s),
+sfumati negli ultimi 450-500 ms; passa-alto a 50 Hz a 24 dB/ottava (sotto
+i 40 Hz c'era il 17-70% dell'energia, che non si sente; resta il peso,
+60-150 Hz). Gain 0,3 (-27 dB nei primi 500 ms: qualche dB sopra i colpi,
+e' raro) e 0,28 (-30). Dove: world.js destroy chiama `hooks.destroyed`;
+app.js suona se l'istanza e' di una famiglia di edifici (ally_build,
+enemy_build, p2_build), a vita 0 (colpi, fuoco, demolizione col tasto
+Canc; non un cantiere finito ne' un tratto di mura che diventa muro) e chi
+guarda la vede (world.shown: non nella nebbia).
+
+**Il corno** (Freesound 348862, newagesoup, CC BY 4.0: da citare nei
+crediti del gioco). 13,6 s: il corno da 0,2 a 2,4 s, poi il riverbero fino
+a -93 dB a 12 s; energia solo fra 40 e 1200 Hz (scuro). Smorzato e
+accelerato: da 0,15 a 6 s, il riverbero sfumato negli ultimi 2,5 s, poi 1,3
+volte piu' veloce senza cambiare altezza (atempo: resta scuro e
+inquietante; un'accelerazione che alzasse l'altezza lo renderebbe una
+trombetta): 4,5 s. tools/18 ha ora `tempo` (atempo dopo tagli e
+dissolvenze). Gain 0,17: -32 dB nei primi 500 ms, sotto la musica. Dove:
+attackalarm.js raiseAlarm, un attacco nuovo fuori dalla vista (quando
+nascono gli anelli sulla minimappa), al piu' uno ogni 30 s (ALARM.horn,
+g.alarms.hornAt), senza posizione.
+
+**Freccia e fuoco: la zappa.** ranged.js: la freccia (alleata o nemica)
+che colpisce un'unita' che si vede, a volume 0,7 (le raffiche: audio.js ne
+lascia al piu' 4 insieme, a 45 ms l'uno dall'altro). effects.js
+fireFlare: la fiammata della freccia incendiaria o della torcia che
+appicca il fuoco. La morte delle unita': per ora senza (l'autore).
+
+**Prove.** test/alarm.test.mjs (il corno: dentro la view niente, fuori si',
+un'altra zona subito dopo niente, dopo 30 s di nuovo); test/firesound.test.mjs
+(gli zoccoli: fermo zero; cadaveri, nebbia, lontano zero; sei piu' di uno ma
+sotto 0,8, pan dove sono). Nel browser (sk_padus, chiamate registrate): una
+casa distrutta -> rovina_piccola, una caserma -> rovina, una casa nemica
+nella nebbia -> niente; la freccia nemica su un guerriero -> zappa; la
+freccia incendiaria su una casa -> zappa e la casa brucia; un guerriero
+colpito fuori dalla vista -> corno, un altro subito dopo -> niente; tre
+cavalieri fermi 0, in marcia 0,19 (0,38 x 0,5), uno solo 0,125. Durate
+decodificate: corno 4,5 s, rovina 1,09, rovina_piccola 1,18 e 1,52, zoccoli
+4,7. determinism.mjs, pvp.mjs, alarms.mjs, rams.mjs, catapults.mjs,
+melee.mjs, saves.mjs (lvl01, sk_padus): passate.

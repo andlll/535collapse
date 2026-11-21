@@ -292,6 +292,7 @@ export class World {
   destroy(inst) {
     if (!inst.alive || (inst.ui && this._foreignUi())) return; // §9.163
     this.fire(inst, "destroy");
+    if (this.hooks.destroyed) this.hooks.destroyed(inst); // §9.170 (app.js: il crollo degli edifici)
     inst.alive = false;
     this._ver++;
     this._unindex(inst);

@@ -115,6 +115,11 @@ def main():
             else:
                 gain = target - peak_db(tmp)
             post = "volume=%.2fdB" % gain if gain else "anull"
+            # [§9.170] `tempo`: piu' veloce (o lento) senza cambiare l'altezza
+            # (atempo), dopo tagli e dissolvenze: le dissolvenze restano dove
+            # sono, accorciate con tutto il resto
+            if s.get("tempo"):
+                post += ",atempo=%.4f" % s["tempo"]
             if s.get("limite_db") is not None:
                 post += ",alimiter=limit=%.4f:attack=2:release=40:level=false" % (10 ** (s["limite_db"] / 20))
             out = "%s_%d.mp3" % (name, k)

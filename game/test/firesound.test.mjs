@@ -37,3 +37,18 @@ test("§9.167 il suono degli incendi", () => {
   // la partita a due: decide shown (chi guarda)
   assert.equal(fireNoise({ instances: [fire("casa", 500)], shown: () => false }, place).level, 0);
 });
+
+// [§9.170] gli zoccoli: i cavalieri che si muovono e si vedono
+test("§9.170 gli zoccoli della cavalleria", async () => {
+  const { hoovesNoise, HOOVES_S } = await import("../src/effects.js");
+  const cav = (object, x, moving, extra = {}) => ({ object, x, y: 0, xprevious: moving ? x - 5 : x, yprevious: 0, alive: true, visible: true, ...extra });
+  assert.deepEqual(hoovesNoise(world([cav("ally_cavaliere", 500, false)]), place), { level: 0, pan: 0 }); // fermo
+  const one = hoovesNoise(world([cav("ally_cavaliere", 500, true)]), place);
+  assert.ok(Math.abs(one.level - 1 / (1 + HOOVES_S)) < 1e-9);
+  // non: i cadaveri, nella nebbia, lontano
+  for (const i of [cav("cavaliere_corpse", 500, true), cav("enemy_cavaliere", 500, true, { visible: false }), cav("p2_cavaliere", 4000, true)]) {
+    assert.equal(hoovesNoise(world([i]), place).level, 0, i.object);
+  }
+  const six = hoovesNoise(world([0, 1, 2, 3, 4, 5].map((k) => cav(k % 2 ? "enemy_cavaliere" : "p2_cavaliere", 900, true))), place);
+  assert.ok(six.level > one.level && six.level < 0.8 && six.pan > 0.4);
+});

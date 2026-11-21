@@ -12,6 +12,7 @@ import { riverCells } from "./rivers.js";
 import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 import { baseOf } from "./multiplayer.js"; // §9.167
+import { audio } from "./audio.js"; // §9.170
 
 const P = (w) => w.particles;
 
@@ -423,6 +424,25 @@ export function fireNoise(w, place) {
   return { level: S / (S + FIRE_SOUND_S) * rainK(w, RAIN_FIRE_SOUND), pan: P / S };
 }
 
+// [§9.170, richiesta dell'autore] Gli zoccoli della cavalleria (audio.js
+// ambient "zoccoli"): i cavalieri (del giocatore, nemici, del blu) che si
+// muovono e chi guarda vede, pesati da quanto sono vicini alla vista
+// (place, come i fuochi); il livello sale piano col numero, S / (S +
+// HOOVES_S): uno 0,33, due 0,5, sei 0,75; non predomina mai. pan: la media.
+export const HOOVES_S = 2;
+export function hoovesNoise(w, place) {
+  let S = 0, P = 0;
+  for (const i of w.instances) {
+    if (!i.alive || !/cavaliere$/.test(i.object) || (i.x === i.xprevious && i.y === i.yprevious)) continue;
+    if (w.shown ? !w.shown(i) : i.visible === false) continue;
+    const [g, pan] = place(i.x, i.y);
+    if (g <= 0) continue;
+    S += g; P += g * pan;
+  }
+  if (S <= 0) return { level: 0, pan: 0 };
+  return { level: S / (S + HOOVES_S), pan: P / S };
+}
+
 // "if onfire=1 && firestarted=0 {...}; if onfire=1 && firestarted=1
 // part_type_life(...)" [C].
 // [Correzione decisa dall'autore, §3.17 n.60] nell'originale le fiamme
@@ -474,7 +494,10 @@ const FLARE = partType({
   speed: [1, 2, 0, 0], direction: [0, 355, 0, 20], life: [10, 30], additive: true,
 });
 
+// [§9.170, richiesta dell'autore] la fiammata e' il fuoco appiccato (freccia
+// incendiaria, torcia: siege.js fireBullet): col colpo della zappa
 export function fireFlare(w, x, y) {
+  audio.play("zappa", x, y);
   const ps = P(w).systemCreate(-y - 1, "fire");
   const em = P(w).emitterCreate(ps);
   P(w).region(em, x - 5, x + 5, y + 5, y + 5, "rectangle", "gaussian");
