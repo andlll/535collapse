@@ -11844,3 +11844,66 @@ diventano 5 e 3).
 meno particelle e fiamme piu' corte, a meta' in mezzo, senza manager come
 prima). Nel browser il municipio in fiamme su sk_padus, all'asciutto e a
 pioggia piena (screenshot). determinism.mjs, burn.mjs, pvp.mjs: passate.
+
+### 9.167 Il suono degli incendi
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "questo invece e' il file audio per quando sono
+mostrati incendi: valuta tu le varie regolazioni da fare (clippare per
+loop, volumi, equalizzazione...)".
+
+**Il file** (`nuovi/audio/fuoco.mp3`, il nome d'origine in CREDITI.md):
+MP3 320 kbit/s, 44,1 kHz, stereo (L/R correlati 0,53), 15,5 s. Il suono
+comincia a 0,07 s e finisce di colpo a 15,15 s (poi silenzio digitale),
+livello costante (RMS ogni 0,5 s fra -15 e -19 dB), picco -3. Lo spettro:
+il 92% dell'energia sotto i 150 Hz (75% sotto gli 80), un rombo 12 dB
+sopra il corpo della fiamma (150-1000 Hz) e 18 sopra il crepitio (1-16
+kHz), costante anche lui per tutto il file.
+
+**Le regolazioni** (audio.json "fuoco", tools/18 come la pioggia, §9.141):
+- il giro: il tratto da 0,3 a 13,5 s (fuori l'attacco e il taglio di
+  colpo della fine) con la fine dissolta in 1,5 s sull'inizio: 13,2 s.
+  Misurato: attorno al giro il livello resta fra -22 e -29 dB ogni 50 ms
+  come nel resto, il salto fra l'ultimo campione e il primo e' sotto il
+  99,9 percentile dei salti del file;
+- l'equalizzazione: passa-alto a 100 Hz a 24 dB/ottava. Il rombo copriva la
+  musica (anche lei piena di bassi: il drone) e sui piccoli altoparlanti non
+  si sente; restano il calore (100-300 Hz, ora il 65% dell'energia) e il
+  crepitio, che sale di 10 dB rispetto al resto. Provati anche 80 Hz a 12
+  dB/ottava (il rombo ancora il 75%) e 150 a 24 (fiamma piu' sottile);
+- niente compressione ne' limitatore: il crepitio sta nei picchi;
+- il volume: picco a -3 dB come gli altri suoni (livello medio -24), MP3
+  stereo a 192 kbit/s senza taglio degli acuti; gain 0,3, cioe' a pieno
+  livello ~ -35 dB di media, sotto le parti della musica (-30..-37) e i
+  colpi; un incendio solo nella vista e' a meta' (~ -41).
+
+**Quando si sente** (effects.js `fireNoise`, ogni passo da manager.step,
+audio.js `ambient`): gli edifici in fiamme che chi guarda vede (w.shown:
+non quelli nemici nella nebbia; nella partita a due quelli della sua
+vista), ognuno pesato da quanto e' vicino alla vista (audio.js placement: 1
+dentro, 0 a 700 px dal bordo) e dalla grandezza delle fiamme (casa 1,
+caserma e centro 1,33, monastero 2,67). Il livello e' S / (S + 1): un
+incendio nella vista 0,5, due 0,67, quattro 0,8 (non cresce senza fine). Il
+suono segue il livello in ~1 s (come la pioggia) e va a destra o a
+sinistra dove sono i fuochi (pan medio pesato; ambient ha ora un pan
+opzionale). Sotto la pioggia, come le fiamme (§9.166), fino al 70%. Non i
+bracieri e le torce (sempre accesi: sarebbe un fondo continuo nei livelli
+che ne hanno), non la fiammata della freccia incendiaria (un istante). Nel
+menu niente (i suoni del mondo sono spenti, §9.139).
+
+**Da fare: la licenza.** Il nome del file ("Burning Fire with Sound
+Effects | Fire Background Clip") sembra quello di un video di sottofondo
+scaricato da una piattaforma video: in CREDITI.md autore e licenza sono
+"da verificare". Per l'uscita serve una licenza che permetta l'uso
+commerciale (CREDITI.md); se non si trova, un'altra registrazione con le
+stesse regolazioni.
+
+**Prove.** test/firesound.test.mjs (nessun fuoco: zero; nella nebbia,
+spento, senza fiamme ancora, lontano: zero; piu' fuochi piu' forte sotto
+1; a destra pan a destra; il gemello blu come l'edificio rosso; pioggia
+piena al 70%; nella partita a due decide shown). Nel browser (sk_padus,
+audio sbloccato con un clic): senza incendi il suono non parte; il centro
+in fiamme 0,171 (0,3 x 0,57), con la vista spostata a sinistra pan 0,48,
+lontano 0; quattro edifici 0,244; con la pioggia piena 0,171; il giro
+decodificato 13,2 s. determinism.mjs, pvp.mjs, saves.mjs (lvl01,
+sk_padus): passate.

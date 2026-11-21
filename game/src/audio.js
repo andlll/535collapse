@@ -11,7 +11,7 @@
 //   a destra o a sinistra secondo dove succede (pan);
 // - al massimo VOICES suoni uguali insieme, e non due dello stesso nome a
 //   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante;
-// - [§9.141] i suoni continui (la pioggia): ambient(nome, livello);
+// - [§9.141] i suoni continui (la pioggia, gli incendi §9.167): ambient(nome, livello, pan);
 // - [§9.143] la musica, a parti in loop: music({ nome: volume }).
 import { dhypot } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
@@ -122,7 +122,9 @@ export class SoundBank {
   // e si ferma qualche secondo dopo che level e' tornato a 0. La pioggia lo
   // chiama a ogni passo col livello delle gocce (manager.js), che sale e
   // scende in 5 s: il suono entra ed esce con loro.
-  ambient(name, level) {
+  // [§9.167] pan (-1..1, gli incendi: da che parte della vista sono), seguito
+  // dolcemente come il volume; la pioggia non lo da' (0)
+  ambient(name, level, pan = 0) {
     const ctx = this.ctx, s = this.sounds.get(name);
     let a = this.ambients.get(name);
     const ok = this.enabled && this.world && ctx && ctx.state === "running" && s && s.buffers.length;
@@ -134,10 +136,16 @@ export class SoundBank {
       src.loop = true;
       const g = ctx.createGain();
       g.gain.value = 0;
-      src.connect(g).connect(this.master);
+      const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      src.connect(g).connect(p || this.master);
+      if (p) p.connect(this.master);
       src.start(0, vrand() * src.buffer.duration);
-      a = { src, g, target: 0, zeroAt: null };
+      a = { src, g, p, target: 0, pan: 0, zeroAt: null };
       this.ambients.set(name, a);
+    }
+    if (a.p && Math.abs(pan - a.pan) > 0.01) {
+      a.p.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)), ctx.currentTime, FADE_TAU);
+      a.pan = pan;
     }
     if (Math.abs(target - a.target) > 0.0005) {
       a.g.gain.setTargetAtTime(target, ctx.currentTime, FADE_TAU);

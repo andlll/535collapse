@@ -9,7 +9,7 @@ import { MUSIC, musicLevels } from "./music.js"; // §9.143
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife } from "./effects.js";
+import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife, fireNoise } from "./effects.js";
 import { overcastStep } from "./ambience.js";
 import { rainGap } from "./skirmish.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
@@ -260,6 +260,9 @@ export class Manager {
       // [§9.141] il suono della pioggia, col livello delle gocce: entra ed
       // esce con loro (in 5 s), piano
       audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);
+      // [§9.167] gli incendi che si vedono (effects.js fireNoise)
+      const fire = fireNoise(this.world, (x, y) => audio.placement(x, y));
+      audio.ambient("fuoco", fire.level, fire.pan);
       // [§9.143] la musica: il volume di ogni parte secondo la partita
       // ([§9.161] il brano che suona lo dice audio.js; le percussioni del
       // brano 2 guardano i nemici con gli occhi di chi guarda)

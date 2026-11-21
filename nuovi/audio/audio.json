@@ -55,6 +55,18 @@
       "gain": 1,
       "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz) il tratto di 8 s da 51 a 59 s, cosi' com'e' (§9.142, richiesta dell'autore: niente filtro, limitatore ne' guadagno, che toglievano il fondo e la rendevano troppo forte): solo tagliato, con la fine dissolta in 1,5 s sull'inizio perche' il giro non scatti, e convertito in MP3 a 256 kbit/s senza il taglio degli acuti (bande uguali all'originale entro 0,1 dB; a 128 si perdevano 8 dB sopra i 16 kHz). Volume quello della registrazione (livello medio ~ -64 dBFS), gain 1"
     },
+    "fuoco": {
+      "da": "fuoco.mp3",
+      "tagli": [[300, 13500]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "filtro": "highpass=f=100:poles=2,highpass=f=100:poles=2",
+      "kbit": 192,
+      "gain": 0.3,
+      "nota": "il loop degli incendi (game/src/audio.js ambient, col livello di effects.js fireNoise: quanti edifici in fiamme si vedono, quanto sono vicini alla vista e da che parte; smorzato sotto la pioggia; §9.167). Dalla registrazione caricata dall'autore il 21 novembre 2026 (MP3 320 kbit/s, 44,1 kHz, stereo, 15,5 s; il suono comincia a 0,07 s e finisce di colpo a 15,15 s): il tratto da 0,3 a 13,5 s, con la fine dissolta in 1,5 s sull'inizio (13,2 s di giro). Pulizia: il 92% dell'energia era un rombo sotto i 150 Hz (75% sotto gli 80), 12 dB sopra il corpo (150-1000 Hz) e 18 sopra il crepitio (1-16 kHz): copriva la musica e sui piccoli altoparlanti non si sente. Passa-alto a 100 Hz a 24 dB/ottava (restano il calore, 100-300 Hz, e il crepitio); niente compressione ne' limitatore (il crepitio e' nei picchi). Picco a -3 dB come gli altri (livello medio -24), MP3 stereo a 192 kbit/s senza taglio degli acuti. Gain 0,3: a pieno livello ~ -35 dB di media, sotto la musica (-30..-37 per parte) e i colpi; un incendio solo nella vista e' a meta' (-41)"
+    },
     "musica_archi": {
       "da": "loop1_archi.wav",
       "tagli": [[0, 42000]],

@@ -11,6 +11,7 @@ import { windLevel } from "./ambience.js";
 import { riverCells } from "./rivers.js";
 import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
+import { baseOf } from "./multiplayer.js"; // §9.167
 
 const P = (w) => w.particles;
 
@@ -367,6 +368,30 @@ export const RAIN_FIRE_N = 0.65, RAIN_FIRE_LIFE = 0.8;
 const rainK = (w, min) => 1 - (1 - min) * Math.max(0, Math.min(1, w.rainLevel || 0));
 // il numero di particelle per passo smorzato, intero (stream: ceil), almeno 1
 const damped = (w, n) => (n > 0 ? Math.max(1, Math.round(n * rainK(w, RAIN_FIRE_N))) : 0);
+
+// [§9.167, richiesta dell'autore] Il suono degli incendi (audio.js ambient
+// "fuoco"): gli edifici in fiamme che chi guarda vede (w.shown: non quelli
+// nella nebbia), ognuno quanto e' vicino alla vista (place: audio.js
+// placement, 1 dentro, 0 a 700 px dal bordo) e quanto e' grande (le
+// particelle delle sue fiamme dietro: casa 1, caserma e centro 1,33,
+// monastero 2,67); il livello sale piano col numero (S / (S + FIRE_SOUND_S):
+// un incendio nella vista 0,5, due 0,67, quattro 0,8) e cala sotto la
+// pioggia (fino a RAIN_FIRE_SOUND, come le fiamme, §9.166). pan: la media
+// delle loro posizioni, pesata.
+export const FIRE_SOUND_S = 1, RAIN_FIRE_SOUND = 0.7;
+export function fireNoise(w, place) {
+  let S = 0, P = 0;
+  for (const i of w.instances) {
+    if (i.onfire !== 1 || i.firestarted !== 1 || !i.alive || !i.fire_ps) continue;
+    if (w.shown ? !w.shown(i) : !i.visible) continue;
+    const [g, pan] = place(i.x, i.y);
+    if (g <= 0) continue;
+    const F = FIRE[baseOf(i)], k = g * (F ? F.back[4] / 6 : 1); // baseOf: p2_casa -> casa
+    S += k; P += k * pan;
+  }
+  if (S <= 0) return { level: 0, pan: 0 };
+  return { level: S / (S + FIRE_SOUND_S) * rainK(w, RAIN_FIRE_SOUND), pan: P / S };
+}
 
 // "if onfire=1 && firestarted=0 {...}; if onfire=1 && firestarted=1
 // part_type_life(...)" [C].
