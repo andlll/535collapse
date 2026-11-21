@@ -37,6 +37,7 @@ import { tr, getLanguage } from "./i18n.js";
 import { slotInfo, SAVE_ROOMS } from "./save.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
+import { audio } from "./audio.js"; // §9.168
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 import { Particles, partType } from "./particles.js";
@@ -311,9 +312,12 @@ export function enemyManagerMenu() {
     },
     globalLeftReleased(i, w) {
       const g = w.g, mx = w.input.x, my = w.input.y;
+      // [§9.168] il clic di un pulsante (audio.js ui), dove il clic fa qualcosa
+      const clic = () => audio.ui("clic");
       if (g.campagna === 0 && i.loadmenu === 1) {
         const r = loadRows(w.cam.cssW, w.cam.cssH)[i.loadrow];
         if (!r) return;
+        clic();
         if (r.action === "back") i.loadmenu = 0;
         if (r.action === "slot" && w.hooks.loadSlot) w.hooks.loadSlot(r.room);
         if (r.action === "file" && w.hooks.loadFile) w.hooks.loadFile();
@@ -322,6 +326,7 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) { // §9.118
         const L = skLayout(w.cam.cssW, w.cam.cssH), r = L.rows[i.skrow];
         if (!r || offline(i, r)) return;
+        clic();
         if (r.kind === "back") { i.skmenu = 0; return; }
         if (r.kind === "map") {
           i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
@@ -338,9 +343,10 @@ export function enemyManagerMenu() {
       }
       if (g.campagna === 0) {
         if (i.joinPanel) return; // (il pannello copre la finestra: qui per sicurezza)
-        if (i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
+        if (i.fullhover === 1) { clic(); if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
         const k = i.btnhover;
         i.btnhover = null;
+        if (k) clic();
         if (k === "tutorial") w.gotoRoom("match");
         else if (k === "single" || k === "multi") i.page = k; // §9.157
         else if (k === "back") i.page = "title";
@@ -357,19 +363,22 @@ export function enemyManagerMenu() {
         return;
       }
       if (i.c_indhover === 1) {
+        clic();
         if (i.sblocco === 0) { g.campagna = 0; i.c_indhover = 0; return; }
         i.sblocco = 0;
       }
       const room = ROOMS[i.lvlhover];
-      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
-      if (i.c_unlhover === 1) { i.sblocco = 1; i.c_unlhover = 0; return; }
+      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { clic(); w.gotoRoom(room); return; }
+      if (i.c_unlhover === 1) { clic(); i.sblocco = 1; i.c_unlhover = 0; return; }
       if (i.sblocco === 1) {
         if (i.combHover) {
+          clic();
           const [k, d] = i.combHover;
           i.comb[k] = (i.comb[k] + d + 10) % 10;
           return;
         }
         if (i.sblocco_hover === 1) {
+          clic();
           // il primo codice giusto che sblocca piu' di quanto gia' sbloccato
           const lvl = Object.keys(CODES).map(Number)
             .find((l) => CODES[l].every((v, k) => v === i.comb[k]) && g.unlock < l);

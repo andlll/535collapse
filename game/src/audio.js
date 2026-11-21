@@ -12,7 +12,8 @@
 // - al massimo VOICES suoni uguali insieme, e non due dello stesso nome a
 //   meno di MIN_GAP ms: 40 boscaioli non fanno 40 colpi nello stesso istante;
 // - [§9.141] i suoni continui (la pioggia, gli incendi §9.167): ambient(nome, livello, pan);
-// - [§9.143] la musica, a parti in loop: music({ nome: volume }).
+// - [§9.143] la musica, a parti in loop: music({ nome: volume });
+// - [§9.168] il clic dei pulsanti dell'interfaccia: ui(nome).
 import { dhypot } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
@@ -273,9 +274,13 @@ export class SoundBank {
     return [g, pan];
   }
 
-  play(name, x, y, vol = 1) {
+  // [§9.168] ui: un suono dell'interfaccia (il clic dei pulsanti): senza
+  // posizione e anche dove i suoni del mondo sono spenti (il menu principale)
+  ui(name, vol = 1) { return this.play(name, undefined, undefined, vol, true); }
+
+  play(name, x, y, vol = 1, ui = false) {
     const ctx = this.ctx;
-    if (!this.enabled || !this.world || !ctx || ctx.state !== "running") return false;
+    if (!this.enabled || !(this.world || ui) || !ctx || ctx.state !== "running") return false;
     const s = this.sounds.get(name);
     if (!s || !s.buffers.length || s.playing >= VOICES) return false;
     const now = ctx.currentTime * 1000;

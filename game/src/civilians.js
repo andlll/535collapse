@@ -1429,6 +1429,8 @@ function otherWorkTick(i, w) {
     // [§9.107] la falce nel grano: pagliuzze (ambience.js workChips)
     i.workHit = w._stepNo; i.workKind = "food";
     i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
+    // [§9.168] il colpo di zappa; non dei contadini nemici nella nebbia
+    if (i.visible !== false) audio.play("zappa", i.workX, i.workY);
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi

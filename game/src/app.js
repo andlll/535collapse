@@ -609,6 +609,17 @@ async function main() {
   // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
   world.hooks.commands = () => commands.runDue(world);
   const hashNow = () => stateHash({ world, g, manager, path });
+  // [§9.168] il clic dei pulsanti dell'interfaccia (audio.js ui): quelli
+  // della minimappa alla pressione (scattano li', manager.mouse), i pulsanti
+  // della partita (le istanze *_clicker, *_button, i "+" delle mura, col
+  // puntatore sopra: hover) al rilascio, come scattano loro. Il menu di pausa
+  // e il menu principale lo fanno da se' (pause.js, menu.js)
+  const GUI_BUTTON = /_clicker$|_button$|^mplus_/;
+  const guiClick = (input) => {
+    const mm = g.minim === 1 ? manager.minimViewHover || manager.minimPlusHover || manager.minimMinusHover : manager.minimViewHoverBis;
+    if (input.mousePressed[0] && mm && roomName !== "menu") audio.ui("clic");
+    else if (input.mouseReleased[0] && world.instances.some((i) => i.alive && i.ui && i.hover === 1 && GUI_BUTTON.test(i.object))) audio.ui("clic");
+  };
   const step = () => {
     // [§9.156] in rete il passo si gioca solo col turno dell'altro giocatore
     // (lockstep.js): se non c'e' ancora si aspetta (loop.js), e l'input resta
@@ -628,6 +639,7 @@ async function main() {
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
     manager.hoverMinimap(input, cam, room.width, room.height); // §9.114: col puntatore di adesso
+    guiClick(input);
     manager.mouse(input, mx, my);
     // [§9.109] i clic sulla minimappa non vanno al mondo sotto di lei; il
     // destro e' un ordine verso il punto della mappa (manager.js)

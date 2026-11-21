@@ -11907,3 +11907,78 @@ in fiamme 0,171 (0,3 x 0,57), con la vista spostata a sinistra pan 0,48,
 lontano 0; quattro edifici 0,244; con la pioggia piena 0,171; il giro
 decodificato 13,2 s. determinism.mjs, pvp.mjs, saves.mjs (lvl01,
 sk_padus): passate.
+
+### 9.168 La zappa, la catapulta, il crollo, il clic dei pulsanti
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con quattro file: "da 'footsteps..' estrai quelli per il
+contadino che zappa, sono i primi che senti non quelli in sequenza rapida;
+da catapult quella per il lancio della catapulta, regolala bene che mi
+sembra un po' 'impegnativa', da scrolling clicks invece quelli per la
+selezione elementi GUI (basta uno), 'rock crumbling' per quando ariete o
+sasso della catapulta colpiscono edificio, anche in questo caso lavora di
+editing che dobbiamo un po' smorzare".
+
+**Il metro dei volumi.** I colpi gia' nel gioco, nei primi 150 ms e col
+loro gain, stanno tutti a -30..-32 dB (ascia -31,8, piccone -30, spada
+-30,7, arco -31,5, martello -30,6): i nuovi si tarano su questi.
+
+**I tagli e i filtri** (nuovi/audio/audio.json, tools/18; i dettagli nelle
+note di ogni suono):
+- `zappa` (passi_erba.mp3, 4,6 s, mono in due canali): 14 passi ogni ~320
+  ms; i primi sei colpi singoli e sordi, dai 2 s piu' forti e spesso doppi
+  (tacco e punta a 15-20 ms: la "sequenza rapida"). Tre dei primi (130,
+  786, 1402 ms; 150 ms l'uno); scartato quello a 464 ms, debole e doppio
+  (portato a -3 dB alzava il fruscio di 23 dB). Passa-alto leggero a 80 Hz.
+  Gain 0,35: -32 dB, appena sotto ascia e piccone.
+- `catapulta` (4,2 s): cigolio della carica (0,1-0,6 s), lo scatto del
+  braccio a 0,64 s e 1 s di sbattimenti; il 56% dell'energia sotto gli 80
+  Hz. "Impegnativa": lunga, grave, forte. Solo scatto e coda (0,62-1,52 s:
+  il cigolio ritardava il colpo di mezzo secondo rispetto al sasso),
+  sfumata negli ultimi 450 ms, passa-alto a 120 Hz a 24 dB/ottava, gain
+  0,2: -30 dB come gli altri colpi (era 16 dB sopra).
+- `crollo` (roccia.mp3, 4,7 s): un colpo e quasi 2 s di crollo
+  fortissimo, poi detriti fino a 4,6 s; l'80% dell'energia sotto gli 80
+  Hz. Da smorzare: tre tagli di 600 ms che cominciano su un colpo (0,37 il
+  colpo iniziale; 1,29 e 1,65 dentro il crollo: varianti, l'ariete batte
+  ogni ~1,15 s), sfumati negli ultimi 300 ms, passa-alto a 120 Hz a 24
+  dB/ottava, gain 0,22: -32 dB, sotto gli altri colpi.
+- `clic` (clic.mp3, 18 s di clic di rotella): quello da solo a 1,57 s, 100
+  ms; il 57% dell'energia era un tonfo sotto i 300 Hz: passa-alto a 200 Hz
+  a 24 dB/ottava (resta il tic, 600-2500 Hz). Altezza +-3%, gain 0,5: -33
+  dB, discreto.
+
+**Dove suonano.**
+- zappa: civilians.js otherWorkTick, la raccolta al campo (azione 4), una
+  volta per ciclo di 39 passi come l'ascia, davanti al contadino; non dei
+  contadini nemici nella nebbia.
+- catapulta: siege.js catapultAlarm2, quando parte il sasso (alleate e
+  nemiche, se si vedono).
+- crollo: l'ariete a ogni colpo su un edificio (siege.js ramSound, davanti
+  all'ariete; alleato e nemico, se si vede l'ariete o l'edificio) e il
+  sasso della catapulta che cade su un edificio (catapultBullet destroy,
+  se l'edificio si vede). Non il sasso sull'erba o sulle unita'.
+- clic: audio.js `ui(nome)`, senza posizione e anche dove i suoni del
+  mondo sono spenti (il menu principale), non con gli effetti spenti. I
+  pulsanti della partita (app.js guiClick: le istanze *_clicker, *_button
+  e i "+" delle mura col puntatore sopra, al rilascio, quando scattano) e
+  della minimappa (alla pressione, come scattano), il pulsante della pausa
+  e le voci del menu di pausa (pause.js), i pulsanti del menu principale
+  dove il clic fa qualcosa (menu.js). Non i tasti scorciatoia ne' i clic
+  sul mondo; non (per ora) i pannelli HTML della partita in rete.
+
+**Da fare: le licenze.** Anche questi quattro file hanno i nomi di video di
+effetti scaricati da una piattaforma video (due dicono "No Copyright" e
+"Free" nel titolo, che non basta): in CREDITI.md "da verificare", come
+fuoco.mp3 (§9.167). Per l'uscita servono licenze per l'uso commerciale.
+
+**Prove.** test/sfx.test.mjs (il clic suona nel menu, i suoni del mondo
+no; con gli effetti spenti niente; le voci di audio.json brevi e coi gain
+bassi; i file in CREDITI.md). Nel browser (sk_padus, le chiamate a
+audio.play registrate): il contadino al campo -> zappa; la catapulta che
+lancia -> catapulta; il sasso su un edificio -> crollo; l'ariete ->
+crollo (zittito se arriva entro 45 ms da un altro, MIN_GAP); il pulsante
+del civile cliccato col mouse -> clic e un civile in coda; un clic sul
+terreno -> niente; il pulsante della pausa e "Riprendi" -> clic; nel menu
+principale "Giocatore singolo" -> clic. determinism.mjs, pvp.mjs,
+catapults.mjs, rams.mjs, minimap.mjs: passate.

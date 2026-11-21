@@ -43,6 +43,40 @@
       "gain": 0.75,
       "nota": "il colpo di martello di chi costruisce o ripara (civilians.js otherWorkTick, una volta per ciclo di 39 passi, se il lavoro va avanti): un colpo solo (attacco a 37 ms, -50 dB dopo 70 ms). Il 97% dell'energia era sotto i 120 Hz (un tonfo, come negli archi) e prima del colpo un brusio grave a -47 dB: passa-alto a 150 Hz a 48 dB/ottava come per l'arco (brusio a -77 dB; restano un po' di corpo, 120-250 Hz, e il tac, 2-8 kHz). Una variante sola: altezza +-12% invece di +-7%. Gain 0,75: filtrato suona 2,7 dB piu' piano di ascia e piccone (RMS nei primi 100 ms -26,4 contro -23,6)"
     },
+    "zappa": {
+      "da": "passi_erba.mp3",
+      "tagli": [[130, 280], [786, 936], [1402, 1552]],
+      "filtro": "highpass=f=80:poles=2",
+      "dissolvenza_ms": [2, 80],
+      "gain": 0.35,
+      "nota": "il colpo di zappa del contadino al campo (civilians.js otherWorkTick, la raccolta: una volta per ciclo di 39 passi, come l'ascia; non dei contadini nemici nella nebbia; §9.168). Dalla registrazione dei passi sull'erba (4,6 s, mono in due canali): 14 passi ogni ~320 ms; i primi sei sono colpi singoli e sordi (picchi -22..-36 dB), dai 2 s in poi piu' forti e spesso doppi (tacco e punta, 15-20 ms l'uno dall'altro): la 'sequenza rapida' da lasciare. Tre dei primi, quelli puliti: 130, 786 e 1402 ms (attacchi a 136, 792, 1408), 150 ms l'uno (il passo dura 35-60 ms piu' la coda); scartato quello a 464 (debole e doppio: portato a -3 dB alzava il fruscio di fondo di 23 dB). Passa-alto leggero a 80 Hz (12 dB/ottava) contro il rombo. Gain 0,35: ~ -32 dB nei primi 150 ms, appena sotto ascia e piccone (-30..-32), un colpo nella terra"
+    },
+    "catapulta": {
+      "da": "catapulta.mp3",
+      "tagli": [[620, 1520]],
+      "filtro": "highpass=f=120:poles=2,highpass=f=120:poles=2",
+      "dissolvenza_ms": [2, 450],
+      "altezza": 0.05,
+      "gain": 0.2,
+      "nota": "il lancio della catapulta (siege.js catapultAlarm2, quando parte il sasso; anche nemica, se si vede; §9.168). Dalla registrazione (4,2 s, finisce a 2,05): 0,1-0,6 s il cigolio della carica, a 0,64 lo scatto del braccio (-11 dB RMS) e 1 s di sbattimenti e coda; il 56% dell'energia sotto gli 80 Hz. 'Impegnativa' (l'autore): troppo lunga, troppo grave e troppo forte. Solo lo scatto e la coda (0,62-1,52 s: il cigolio ritardava il colpo di 0,5 s rispetto al sasso), sfumata negli ultimi 450 ms; passa-alto a 120 Hz a 24 dB/ottava (resta il legno, 150-1200 Hz); altezza +-5%. Gain 0,2: ~ -30 dB nei primi 150 ms, come gli altri colpi (spada, ascia, arco)"
+    },
+    "crollo": {
+      "da": "roccia.mp3",
+      "tagli": [[370, 970], [1290, 1890], [1650, 2250]],
+      "filtro": "highpass=f=120:poles=2,highpass=f=120:poles=2",
+      "dissolvenza_ms": [2, 300],
+      "gain": 0.22,
+      "nota": "il colpo su un edificio dell'ariete e del sasso della catapulta (siege.js: l'ariete a ogni colpo, ~1,15 s; il sasso che cade su un edificio; alleati e nemici, se si vedono; §9.168). Dalla registrazione (4,7 s): un colpo a 0,38 s e 1,9 s di crollo fortissimo (RMS -2..-10 dB), poi detriti fino a 4,6 s; l'80% dell'energia sotto gli 80 Hz. Da smorzare (l'autore): tre tagli di 600 ms (invece di 4 s) che cominciano su un colpo (0,37: il colpo iniziale; 1,29 e 1,65: due colpi dentro il crollo), sfumati negli ultimi 300 ms; passa-alto a 120 Hz a 24 dB/ottava (restano pietra e detriti, 150 Hz-5 kHz). Gain 0,22: ~ -32 dB nei primi 150 ms, sotto gli altri colpi (l'ariete batte di continuo)"
+    },
+    "clic": {
+      "da": "clic.mp3",
+      "tagli": [[1566, 1666]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "dissolvenza_ms": [1, 50],
+      "altezza": 0.03,
+      "gain": 0.5,
+      "nota": "il clic dei pulsanti dell'interfaccia (audio.js ui: senza posizione, anche nel menu principale; app.js: pulsanti della partita e della minimappa, pausa; pause.js e menu.js; §9.168). Dalla registrazione dei clic della rotella (18 s: un clic da solo a 1,57 s, poi serie lente, rapide e uno sfregamento): quello da solo, 100 ms dall'attacco (1,566 s) col suo decadimento; il 57% dell'energia era un tonfo sotto i 300 Hz: passa-alto a 200 Hz a 24 dB/ottava (resta il tic, 600-2500 Hz). Altezza +-3%. Gain 0,5: ~ -33 dB, discreto"
+    },
     "pioggia": {
       "da": "pioggia.wav",
       "tagli": [[51000, 59000]],
