@@ -12353,3 +12353,21 @@ quelle di tools/16): le correzioni si fanno nel programma.
 Prove: tools/11 (35,4 MB di zip, 242 tile in 10 tileset), tools/12 --check
 (match, lvl01, lvl02 identiche), tutte le mappe di mappe/ reimportate con
 scenari/ invariato, tools/16 --check (le cinque simmetriche), come nella CI.
+
+### 9.177 Le icone degli allarmi sulla minimappa: piu' grandi, piu' brevi
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "sulla minimappa le icone della battaglia e dell'incendio
+facciamole il 20% piu' grandi ma facciamocele rimanere il 30% del tempo in
+meno".
+
+attackalarm.js ALARM: le scale delle icone da 0,52 e 0,36 a 0,624 e 0,432
+(~16 -> ~19 px; la pulsazione e l'ingrandimento iniziale restano in
+proporzione); la zona finisce dopo 21 s senza colpi invece di 30 (quiet,
+1260 passi) e sfuma in 42 passi invece di 60. Gli anelli della battaglia
+nuova, il lampeggio del pulsante della minimappa chiusa e il corno
+(§9.170, 30 s) restano come prima.
+
+Prove: test/alarm.test.mjs (coi valori di ALARM); alarms.mjs aggiornato
+(22 s di attesa invece di 31) e passato, con le foto della minimappa;
+minimap.mjs passata.

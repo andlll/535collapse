@@ -31,8 +31,9 @@ import { audio } from "./audio.js"; // §9.170
 
 export const ALARM = {
   zoneR: 800,      // px di room: un colpo piu' vicino di cosi' a una zona dello stesso tipo e' la stessa battaglia
-  quiet: 30 * 60,  // passi senza colpi: la zona finisce
-  fade: 60,        // passi della sfumatura finale
+  // [§9.177, richiesta dell'autore] il 30% in meno (erano 30 s e 60 passi)
+  quiet: 21 * 60,  // passi senza colpi: la zona finisce
+  fade: 42,        // passi della sfumatura finale
   grace: 120,      // passi all'inizio della partita senza allarmi
   ring: { n: 3, every: 22, life: 70, r: [5, 38] }, // anelli: quanti, ogni quanti passi, vita, raggio (px dello schermo)
   horn: 30 * 60,   // [§9.170] passi minimi fra due corni (un allarme nuovo fuori dalla view)
@@ -40,7 +41,8 @@ export const ALARM = {
   // [§9.110, richiesta dell'autore] icone e anelli arancioni (le icone
   // bianche mm_battle e mm_fiamma, colorate qui): i tuoi nella minimappa
   // sono marroni, del colore delle icone di prima (135, 73, 0)
-  icon: { battle: ["mm_battle", 0.52], fire: ["mm_fiamma", 0.36] }, // sprite e scala (~16 px)
+  // [§9.177, richiesta dell'autore] il 20% piu' grandi (erano 0,52 e 0,36: ~16 px)
+  icon: { battle: ["mm_battle", 0.624], fire: ["mm_fiamma", 0.432] }, // sprite e scala (~19 px)
   colour: { battle: 0x1a8cf5, fire: 0x1a8cf5 }, // BGR di (245, 140, 26)
 };
 

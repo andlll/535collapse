@@ -8,7 +8,7 @@
 //   vista      una mischia nella view: la zona nasce senza anelli
 //   fuoco      una casa del giocatore in fiamme fuori dalla view: zona "fire"
 //   J          porta la view sulla zona piu' recente, poi sulla precedente
-//   fine       30 s senza colpi: la zona sfuma e sparisce
+//   fine       21 s senza colpi (§9.177): la zona sfuma e sparisce
 //   chiusa     con la minimappa chiusa il suo pulsante lampeggia di rosso
 //   salvataggio  le zone tornano uguali dopo un caricamento
 // Con FOTO=cartella salva le foto della minimappa (anelli, icone).
@@ -114,7 +114,7 @@ const res3 = await page.evaluate(() => {
   for (const e of [...w.all("enemy_unit")]) w.destroy(e);
   window.__fire.onfire = 0;
   const n0 = g.alarms.zones.length;
-  run(31 * 60);
+  run(22 * 60); // §9.177: ALARM.quiet 21 s
   const mid = g.alarms.zones.filter((z) => z.ending).length;
   run(70);
   out.fine = { prima: n0, sfumano: mid, dopo: g.alarms.zones.length, ok: n0 > 0 && g.alarms.zones.length === 0 };
