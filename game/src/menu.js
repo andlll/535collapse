@@ -725,7 +725,7 @@ const L6_ARROW = [46, -31, 0.9, 1.0, -62];
 // [§9.179, indicazione dell'autore] il livello 7 (cap_l7, l'arciere): sulla
 // catena montuosa centrale, a sinistra del 6, con la freccia dal 6
 export const L7_MARK = [-145, -45];
-const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 67];
+const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 85]; // (a -67, come il 6, cadeva sull'arco)
 // la freccia: a meta' fra il 6 e il 7, girata dal 6 al 7 (fr_corta punta a
 // sinistra: angolo = direzione - 180)
 const L7_ARROW = (() => {
