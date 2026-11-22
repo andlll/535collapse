@@ -50,10 +50,9 @@ import { drawSprite } from "./sprites.js";
 import { SK_MAPS } from "./skirmish.js";
 import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
-import { vrand } from "./rng.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario } from "./mapfile.js";
-import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds } from "./editmap.js";
+import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects } from "./editmap.js";
 
 // ----------------------------------------------------------------- vista
 
@@ -133,12 +132,12 @@ export const DESC = {
 };
 export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel: zoom. Esc: back to the menu.";
 // [§9.182] i comandi degli strumenti che ci sono
-export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. "
+export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
 export const READY = new Set(["select", "insert"]); // gli strumenti che funzionano (gli altri: "Prossimamente")
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
-                             "Click: place. Right click: stop.", "Choose an object", "A skirmish map has two starting positions.",
+                             "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "A skirmish map has two starting positions.",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
@@ -269,14 +268,19 @@ export function confirmLayout(W, H) {
 // [§9.182] "Inserisci": nel riquadro in basso le schede delle categorie
 // (CATALOG) e, sotto, gli oggetti della scheda in una fila di caselle, con
 // le frecce se non ci stanno tutti. scroll: il primo oggetto mostrato.
+// [§9.183] una casella per voce del catalogo (una famiglia di stili e' una
+// casella sola): `i`, il suo posto nella scheda
 const CELL = 62, CELL_GAP = 8, ARROW = 30;
 export function paletteLayout(panel, cat, scroll) {
   const [x1, y1, x2] = panel, n = CATALOG.length, tw = (x2 - x1 - 40) / n;
   const tabs = CATALOG.map((_, k) => ({ k, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
   const left = x1 + 20 + ARROW, right = x2 - 20 - ARROW, top = y1 + 98;
   const per = Math.max(1, Math.floor((right - left + CELL_GAP) / (CELL + CELL_GAP)));
-  const objs = CATALOG[cat].objects, max = Math.max(0, objs.length - per), s = Math.max(0, Math.min(scroll, max));
-  const cells = objs.slice(s, s + per).map((obj, k) => ({ obj, x1: left + k * (CELL + CELL_GAP), y1: top, x2: left + k * (CELL + CELL_GAP) + CELL, y2: top + CELL }));
+  const n2 = CATALOG[cat].objects.length, max = Math.max(0, n2 - per), s = Math.max(0, Math.min(scroll, max));
+  const cells = [];
+  for (let k = 0; k < Math.min(per, n2 - s); k++) {
+    cells.push({ i: s + k, x1: left + k * (CELL + CELL_GAP), y1: top, x2: left + k * (CELL + CELL_GAP) + CELL, y2: top + CELL });
+  }
   return { tabs, cells, per, max, scroll: s, strip: [x1 + 20, top, x2 - 20, top + CELL],
            prev: s > 0 ? [x1 + 20, top, x1 + 20 + ARROW - 6, top + CELL] : null,
            next: s < max ? [x2 - 20 - ARROW + 6, top, x2 - 20, top + CELL] : null };
@@ -303,11 +307,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // modifiche ({ action }); loading: si carica qualcosa (niente comandi).
   // Sposta: sel (le voci scelte), over (la voce sotto il puntatore), move
   // (trascinando la scelta), box (il riquadro di scelta), clip (le copie da
-  // incollare). Inserisci: cat e scroll (la tavolozza), obj (l'oggetto
-  // scelto), sprite (la sua variante, per gli alberi).
+  // incollare). Inserisci: cat e scroll (la tavolozza), pick (la casella
+  // scelta: { cat, i }), style (lo stile scelto di ogni casella, §9.183).
+  const ITEMS = CATALOG.map((k) => paletteItems(k, objects));
   const ed = { tool: "select", hover: null, drag: null, view, label: "", open: null, confirm: null, loading: false,
                sel: new Set(), over: null, move: null, box: null, clip: null,
-               cat: 0, scroll: CATALOG.map(() => 0), obj: null, sprite: null, palHover: null };
+               cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null };
+  // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
+  const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
+  const styleOfCell = (cat, i) => ITEMS[cat][i].styles[ed.style[cat][i]];
+  const pickedStyle = () => (ed.pick ? styleOfCell(ed.pick.cat, ed.pick.i) : null);
   canvas.style.cursor = "none"; // il cursore del gioco, disegnato (come in partita)
   const clear = [0x1b / 255, 0x1d / 255, 0x17 / 255]; // fuori dalla mappa: il colore della pagina (index.html)
   const OUTSIDE = 0x171d1b; // lo stesso, in BGR per Draw
@@ -357,7 +366,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const ensureCatalog = () => {
     if (catalog !== "no") return;
     catalog = "loading";
-    const names = CATALOG.flatMap((k) => k.objects);
+    const names = catalogObjects();
     assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], [])
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
@@ -367,17 +376,26 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const inMap = (x, y) => x >= 0 && y >= 0 && x <= scene.map.width && y <= scene.map.height;
   const canStart = (n) => scene.starts() + n <= STARTS;
   const place = (x, y) => {
-    if (!ed.obj || !inMap(x, y) || catalog !== "ready") return;
-    if (ed.obj === START && !canStart(1)) { toast(tr("A skirmish map has two starting positions."), "warning"); return; }
-    const e = { object: ed.obj, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
-    if (ed.sprite) e.sprite = ed.sprite;
+    const st = pickedStyle();
+    if (!st || !inMap(x, y) || catalog !== "ready") return;
+    if (st.object === START && !canStart(1)) { toast(tr("A skirmish map has two starting positions."), "warning"); return; }
+    const e = { object: st.object, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
+    if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
     scene.add([e]);
-    pickSprite();
   };
-  // la variante del prossimo albero (a caso, come la sceglierebbe il gioco)
-  const pickSprite = () => {
-    const ch = ed.obj && objects[ed.obj] && objects[ed.obj].choices;
-    ed.sprite = ch ? ch[Math.floor(vrand() * ch.length)] : null;
+  // [§9.183] S (Maiusc+S all'indietro): lo stile dopo della casella scelta
+  // ("Inserisci") o delle voci scelte ("Sposta", con annulla)
+  const nextStyle = (dir) => {
+    if (ed.tool === "insert" && ed.pick) {
+      const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length;
+      ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
+    } else if (ed.tool === "select") {
+      const list = selected().filter((e) => stylesOf(e, objects));
+      scene.modify(list, (e) => {
+        const S = stylesOf(e, objects), st = S.styles[(S.at + dir + S.styles.length) % S.styles.length];
+        return st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
+      });
+    }
   };
   const selected = () => [...ed.sel].filter((e) => scene.instOf(e));
   const tidySel = () => { for (const e of ed.sel) if (!scene.instOf(e)) ed.sel.delete(e); };
@@ -433,7 +451,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "back") ? hit : null;
     // Esc: prima si lascia l'oggetto o la scelta, poi si esce
     if (K(27)) {
-      if (ed.tool === "insert" && ed.obj) ed.obj = null;
+      if (ed.tool === "insert" && ed.pick) ed.pick = null;
       else if (ed.sel.size) ed.sel.clear();
       else guard(toMenu);
       return;
@@ -443,6 +461,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ctrl && K(89)) { if (scene.redo()) tidySel(); return; }
     // gli strumenti coi tasti 1-4
     if (!ctrl) TOOLS.forEach((t, k) => { if (K(49 + k) || K(97 + k)) setTool(t); });
+    if (!ctrl && K(83)) nextStyle(shift ? -1 : 1); // §9.183
     if (ed.tool === "select") {
       if (K(46) || K(8)) { scene.remove(selected()); ed.sel.clear(); }
       if (K(77) && !ctrl && ed.sel.size) scene.modify(selected(), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
@@ -496,7 +515,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         const q = ed.palHover;
         if (q === "prev") ed.scroll[ed.cat] = Math.max(0, P.scroll - P.per);
         else if (q === "next") ed.scroll[ed.cat] = Math.min(P.max, P.scroll + P.per);
-        else if (q.obj && catalog === "ready") { ed.obj = ed.obj === q.obj ? null : q.obj; pickSprite(); }
+        else if (q.i !== undefined && catalog === "ready") {
+          const same = ed.pick && ed.pick.cat === ed.cat && ed.pick.i === q.i;
+          ed.pick = same ? null : { cat: ed.cat, i: q.i };
+        }
         else ed.cat = q.k;
       }
       return;
@@ -505,7 +527,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const onMap = !hit && input.inside;
     if (ed.tool === "insert") {
       if (onMap && input.mousePressed[0]) place(rx, ry);
-      if (input.mousePressed[1]) ed.obj = null; // il destro lascia l'oggetto
+      if (input.mousePressed[1]) ed.pick = null; // il destro lascia l'oggetto
       return;
     }
     if (ed.tool !== "select") return;
@@ -606,10 +628,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         outline(b, 1.5 * px, c.white, 0.9);
       }
     }
-    if (ed.tool === "insert" && ed.obj && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
-      const [gx, gy] = view.toRoom(input.x, input.y), o = objects[ed.obj];
-      const ok = inMap(gx, gy) && (ed.obj !== START || canStart(1));
-      const spr = ed.sprite || (o && o.sprite);
+    if (ed.tool === "insert" && ed.pick && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
+      const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
+      const ok = inMap(gx, gy) && (st.object !== START || canStart(1));
+      const spr = st.sprite || (o && o.sprite);
       const col = ok ? c.white : 0x4040ff;
       if (spr) drawSprite(r, assets, spr, 0, Math.round(gx), Math.round(gy), 1, 1, 0, col, 0.6);
       else { draw.setAlpha(0.6); draw.circleColour(gx, gy, 10 * px, col, col, false); }
@@ -679,7 +701,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
-      : ed.obj ? tr("Click: place. Right click: stop.") : tr("Choose an object");
+      : ed.pick ? (pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
+        + tr("Click: place. Right click: stop.") : tr("Choose an object");
     draw.text(x2 - 26, y1 + 30, (onMap ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + state);
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
@@ -710,10 +733,18 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     if (catalog !== "ready") { draw.setColour(c.black); draw.setAlpha(0.6); draw.text((P.strip[0] + P.strip[2]) / 2, (P.strip[1] + P.strip[3]) / 2, t("loading")); return; }
     for (const q of P.cells) {
-      const on = q.obj === ed.obj, hov = ed.palHover === q;
+      const on = !!ed.pick && ed.pick.cat === ed.cat && ed.pick.i === q.i, hov = ed.palHover === q;
       draw.setAlpha(on ? 0.85 : hov ? 0.95 : 0.55);
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 18, 18, on ? DARK : c.white, on ? DARK : c.white, false);
-      thumb(q.obj, (q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2, CELL - 10);
+      thumb(styleOfCell(ed.cat, q.i), (q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2, CELL - 10);
+      // [§9.183] piu' stili: quale e quanti, in basso a destra
+      const n = ITEMS[ed.cat][q.i].styles.length;
+      if (n > 1) {
+        draw.setHalign("right"); draw.setValign("bottom");
+        draw.setColour(on ? c.white : c.black); draw.setAlpha(0.85);
+        draw.textTransformed(q.x2 - 4, q.y2 - 1, (ed.style[ed.cat][q.i] + 1) + "/" + n, 0.55);
+        draw.setHalign("center"); draw.setValign("middle");
+      }
     }
     for (const [R, dir] of [[P.prev, -1], [P.next, 1]]) {
       if (!R) continue;
@@ -724,9 +755,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(1);
   };
 
-  // la miniatura di un oggetto, dentro un quadrato di lato `size` (centro cx, cy)
-  const thumb = (name, cx, cy, size) => {
-    const o = objects[name], spr = o && (o.sprite || (o.choices && o.choices[0]));
+  // la miniatura di uno stile ({ object, sprite? }), dentro un quadrato di
+  // lato `size` (centro cx, cy)
+  const thumb = (st, cx, cy, size) => {
+    const name = st.object, o = objects[name], spr = st.sprite || (o && (o.sprite || (o.choices && o.choices[0])));
     const b = spr && tightBounds(assets, spr, 0, 0);
     if (b) {
       const s = Math.min(size / (b[2] - b[0]), size / (b[3] - b[1]), 1);

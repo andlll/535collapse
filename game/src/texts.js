@@ -1454,10 +1454,12 @@ export const TEXTS = {
   "Meadows and flowers": { it: "Prati e fiori", es: "Prados y flores", pt: "Prados e flores", de: "Wiesen und Blumen", fr: "Prés et fleurs" },
   "Mountains": { it: "Montagne", es: "Montañas", pt: "Montanhas", de: "Berge", fr: "Montagnes" },
   "City": { it: "Città", es: "Ciudad", pt: "Cidade", de: "Stadt", fr: "Ville" },
-  "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.": {
-    it: "Clic: scegli (Maiusc: aggiungi). Trascina: sposta, o scegli con un riquadro (Ctrl: sempre il riquadro). Canc: elimina. M: specchia. Ctrl+C, Ctrl+V: copia e incolla. Ctrl+Z, Ctrl+Y: annulla, ripeti.",
-    es: "Clic: seleccionar (Mayús: añadir). Arrastrar: mover, o seleccionar con un recuadro (Ctrl: siempre un recuadro). Supr: eliminar. M: reflejar. Ctrl+C, Ctrl+V: copiar y pegar. Ctrl+Z, Ctrl+Y: deshacer, rehacer.",
-    pt: "Clique: selecionar (Shift: adicionar). Arrastar: mover, ou selecionar com um retângulo (Ctrl: sempre um retângulo). Del: excluir. M: espelhar. Ctrl+C, Ctrl+V: copiar e colar. Ctrl+Z, Ctrl+Y: desfazer, refazer.",
-    de: "Klick: auswählen (Umschalt: hinzufügen). Ziehen: verschieben oder mit einem Rahmen auswählen (Strg: immer ein Rahmen). Entf: löschen. M: spiegeln. Strg+C, Strg+V: kopieren und einfügen. Strg+Z, Strg+Y: rückgängig, wiederholen.",
-    fr: "Clic : sélectionner (Maj : ajouter). Glisser : déplacer, ou sélectionner avec un cadre (Ctrl : toujours un cadre). Suppr : supprimer. M : retourner. Ctrl+C, Ctrl+V : copier-coller. Ctrl+Z, Ctrl+Y : annuler, rétablir." },
+  "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.": {
+    it: "Clic: scegli (Maiusc: aggiungi). Trascina: sposta, o scegli con un riquadro (Ctrl: sempre il riquadro). Canc: elimina. M: specchia. S: stile. Ctrl+C, Ctrl+V: copia e incolla. Ctrl+Z, Ctrl+Y: annulla, ripeti.",
+    es: "Clic: seleccionar (Mayús: añadir). Arrastrar: mover, o seleccionar con un recuadro (Ctrl: siempre un recuadro). Supr: eliminar. M: reflejar. S: estilo. Ctrl+C, Ctrl+V: copiar y pegar. Ctrl+Z, Ctrl+Y: deshacer, rehacer.",
+    pt: "Clique: selecionar (Shift: adicionar). Arrastar: mover, ou selecionar com um retângulo (Ctrl: sempre um retângulo). Del: excluir. M: espelhar. S: estilo. Ctrl+C, Ctrl+V: copiar e colar. Ctrl+Z, Ctrl+Y: desfazer, refazer.",
+    de: "Klick: auswählen (Umschalt: hinzufügen). Ziehen: verschieben oder mit einem Rahmen auswählen (Strg: immer ein Rahmen). Entf: löschen. M: spiegeln. S: Stil. Strg+C, Strg+V: kopieren und einfügen. Strg+Z, Strg+Y: rückgängig, wiederholen.",
+    fr: "Clic : sélectionner (Maj : ajouter). Glisser : déplacer, ou sélectionner avec un cadre (Ctrl : toujours un cadre). Suppr : supprimer. M : retourner. S : style. Ctrl+C, Ctrl+V : copier-coller. Ctrl+Z, Ctrl+Y : annuler, rétablir." },
+  // [§9.183] gli stili di case e alberi, col tasto S
+  "S: style {i}/{n}": { it: "S: stile {i}/{n}", es: "S: estilo {i}/{n}", pt: "S: estilo {i}/{n}", de: "S: Stil {i}/{n}", fr: "S : style {i}/{n}" },
 };

@@ -5,7 +5,7 @@
 // puntatore; il tasto centrale trascina la vista; [§9.181] "Apri mappa"
 // carica Padania col motore del gioco, e da lontano la si vede tutta;
 // [§9.182] solo le schermaglie come modelli; Inserisci mette una miniera,
-// annulla e ripeti; Sposta la sceglie, la trascina, Canc la toglie; uscendo
+// annulla e ripeti; [§9.183] gli stili col tasto S; Sposta la sceglie, la trascina, Canc la toglie; uscendo
 // con la mappa cambiata si chiede conferma; Esc torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -106,7 +106,7 @@ const mid = (q) => [(q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2];
 await click(...mid(P.tabs[1]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
-check("scelta la miniera", (await page.evaluate(() => window.__editor.ed.obj)) === "miniera_oro");
+check("scelta la miniera", await page.evaluate(() => { const E = window.__editor, p = E.ed.pick; return !!p && p.cat === 1 && p.i === 0; }));
 await click(800, 380);
 const placed = await page.evaluate(() => { const m = window.__editor.scene.map.instances; return m[m.length - 1]; });
 check("miniera messa sotto il puntatore", (await count()) === n0 + 1 && placed.object === "miniera_oro"
@@ -115,11 +115,44 @@ await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await pa
 check("annulla", (await count()) === n0);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyY"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
 check("ripeti", (await count()) === n0 + 1);
+// [§9.183] gli stili: l'albero col terzo sprite (S due volte), una casa col
+// secondo stile (S, Maiusc+S, S)
+const last = () => page.evaluate(() => { const m = window.__editor.scene.map.instances; return { ...m[m.length - 1] }; });
+const choices = await page.evaluate(() => window.__editor.scene.objects.albero.choices);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[2]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[0]));
+await page.mouse.move(700, 330);
+await page.keyboard.press("KeyS"); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+await click(700, 330);
+const tree = await last();
+check("albero col terzo stile", tree.object === "albero" && tree.sprite === choices[2]);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[5]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[0]));
+await page.mouse.move(1000, 300);
+await page.keyboard.press("KeyS"); await page.keyboard.down("Shift"); await page.keyboard.press("KeyS"); await page.keyboard.up("Shift");
+await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+await click(1000, 300);
+check("casa col secondo stile", (await last()).object === "ocr_02");
 await click(700, 300, "right");
-check("il destro lascia l'oggetto", (await page.evaluate(() => window.__editor.ed.obj)) === null);
+check("il destro lascia l'oggetto", (await page.evaluate(() => window.__editor.ed.pick)) === null);
+// con "Sposta", S cambia lo stile della casa scelta (e si annulla)
+await click(btn("select").x, btn("select").y);
+await click(1000, 290);
+await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+check("S su una casa scelta", (await last()).object === "ocr_03");
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("annullato lo stile", (await last()).object === "ocr_02");
+// via la casa e l'albero (la miniera resta l'ultima voce, come prima)
+await page.keyboard.press("Delete"); await page.waitForTimeout(150);
+await click(700, 320);
+await page.keyboard.press("Delete"); await page.waitForTimeout(150);
+check("tolti casa e albero", (await count()) === n0 + 1 && (await last()).object === "miniera_oro");
 
 // Sposta: un clic sulla miniera la sceglie, trascinarla la sposta, Canc la toglie
-await click(btn("select").x, btn("select").y);
 await click(800, 380);
 check("miniera scelta", await page.evaluate(() => { const E = window.__editor, m = E.scene.map.instances; return E.ed.sel.size === 1 && E.ed.sel.has(m[m.length - 1]); }));
 const pos0 = await page.evaluate(() => { const m = window.__editor.scene.map.instances; return [m[m.length - 1].x, m[m.length - 1].y]; });

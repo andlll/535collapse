@@ -23,7 +23,17 @@ import { dcos, dsin, dhypot } from "./dmath.js";
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
 // quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
 // Fiumi, strade e ponti sono della polilinea; i boschi anche del pennello.
+// [§9.183, richiesta dell'autore] "per le case e gli alberi dai la
+// possibilita' prima dell'inserimento di cambiare stile con un tasto, in modo
+// da tenere un singolo oggetto con piu' stili": una casella per piu' stili.
+// Gli alberi (albero e albero finto) hanno gli 8 sprite fra cui il gioco
+// sceglie (choices: alb1..alb8, scritti nella voce come `sprite`); le 25
+// case della citta' romana (ocr_01..ocr_45, tutte della stessa misura) sono
+// una famiglia di oggetti ({ family, objects }). Basilica, teatro e tempio
+// restano a parte (monumenti).
 const range = (pre, list) => list.map((n) => pre + n);
+export const HOUSES = range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25",
+                                     "31", "32", "33", "34", "35", "41", "42", "43", "44", "45"]);
 export const CATALOG = [
   { key: "start", label: "Starting positions", objects: ["centro"] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
@@ -33,10 +43,39 @@ export const CATALOG = [
               "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01"] },
   { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
   { key: "city", label: "City",
-    objects: [...range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25",
-                                "31", "32", "33", "34", "35", "41", "42", "43", "44", "45", "basilica", "teatro", "tempio"]),
+    objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
               "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
 ];
+// tutti i nomi degli oggetti del catalogo
+export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q) => (typeof q === "string" ? [q] : q.objects)));
+
+// [§9.183] Le caselle di una scheda: ognuna con i suoi stili ({ object,
+// sprite? }): uno solo, gli sprite fra cui il gioco sceglie (gli alberi), o
+// gli oggetti di una famiglia (le case)
+export function paletteItems(cat, objects) {
+  return cat.objects.map((q) => {
+    if (typeof q !== "string") return { key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) };
+    const o = objects[q];
+    return { key: q, styles: o && o.choices ? o.choices.map((sprite) => ({ object: q, sprite })) : [{ object: q }] };
+  });
+}
+
+// [§9.183] Gli stili di una voce gia' messa (per cambiarli con "Sposta"):
+// la lista e quale ha ora, o null se ne ha uno solo
+export function stylesOf(e, objects) {
+  const o = objects[e.object];
+  if (o && o.choices) {
+    const styles = o.choices.map((sprite) => ({ object: e.object, sprite }));
+    // (senza `sprite` la voce mostra la variante della sua posizione)
+    return { styles, at: o.choices.includes(e.sprite) ? o.choices.indexOf(e.sprite) : variantOf(e.x, e.y, o.choices.length) };
+  }
+  for (const k of CATALOG) {
+    for (const q of k.objects) {
+      if (typeof q !== "string" && q.objects.includes(e.object)) return { styles: q.objects.map((object) => ({ object })), at: q.objects.indexOf(e.object) };
+    }
+  }
+  return null;
+}
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js
 // skirmishPrepare: due centri, uno per parte)
 export const START = "centro", STARTS = 2;

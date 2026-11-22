@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout } from "../src/editor.js";
-import { EditScene, CATALOG, variantOf, SYSTEM, START } from "../src/editmap.js";
+import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom } from "../src/mapfile.js";
 import { lodFor } from "../src/ground.js";
 import { setLanguage } from "../src/i18n.js";
@@ -138,8 +138,9 @@ test("§9.182 la tavolozza di Inserisci", () => {
     assert.equal(end.scroll, end.max);
     if (end.max) assert.ok(end.prev && !end.next);
   });
-  // la citta' (34 oggetti) non ci sta in una fila: si scorre
-  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "city"), 0).max > 0);
+  // i prati e fiori (16 caselle) non ci stanno in una fila: si scorre
+  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "meadows"), 0).max > 0);
+  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0]);
   assert.deepEqual(CATALOG[0].objects, [START]);
 });
 
@@ -157,7 +158,20 @@ test("§9.181 varianti fisse e livelli di dettaglio del suolo", () => {
 // prove) e una scena senza sprite (niente atlas in node)
 test("§9.182 modifiche, annulla e ripeti", { skip: !existsSync(new URL("../assets/objects.json", import.meta.url)) }, () => {
   const objects = JSON.parse(readFileSync(new URL("../assets/objects.json", import.meta.url), "utf8"));
-  for (const k of CATALOG) for (const n of k.objects) assert.ok(objects[n], `nel catalogo ma non fra gli oggetti: ${n}`);
+  for (const n of catalogObjects()) assert.ok(objects[n], `nel catalogo ma non fra gli oggetti: ${n}`);
+  // [§9.183] gli stili: l'albero con gli 8 sprite del gioco, le 25 case in
+  // una casella, gli altri uno solo
+  const city = paletteItems(CATALOG.find((k) => k.key === "city"), objects);
+  assert.equal(city[0].styles.length, 25);
+  assert.deepEqual(city[0].styles.map((q) => q.object), HOUSES);
+  const trees = paletteItems(CATALOG.find((k) => k.key === "trees"), objects);
+  assert.deepEqual(trees[0].styles.map((q) => q.sprite), objects.albero.choices);
+  assert.equal(trees[0].styles.length, 8);
+  assert.equal(paletteItems(CATALOG[1], objects)[0].styles.length, 1);
+  assert.deepEqual(stylesOf({ object: "ocr_12", x: 0, y: 0 }, objects).at, HOUSES.indexOf("ocr_12"));
+  assert.equal(stylesOf({ object: "albero", sprite: objects.albero.choices[3], x: 0, y: 0 }, objects).at, 3);
+  assert.equal(stylesOf({ object: "albero", x: 70, y: 90 }, objects).at, variantOf(70, 90, 8)); // senza sprite: quella mostrata
+  assert.equal(stylesOf({ object: "miniera_oro", x: 0, y: 0 }, objects), null);
   const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
   const map = newMap();
   map.instances.push({ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 },
