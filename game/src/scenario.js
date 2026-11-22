@@ -13,7 +13,7 @@
 // "__neutrale", con lo stesso sprite, ostacolo ma di nessuno, e
 // activateGroup li sostituisce con l'oggetto vero, del giocatore.
 
-export const GROUPS = { lvl03: { citta: "nascosto", monastero: "neutrale" } };
+export const GROUPS = { lvl03: { citta: "nascosto", monastero: "neutrale" }, lvl07: { macchine: "nascosto" } }; // lvl07: §9.178
 
 export function spawnSlices(i, w, slices) {
   if (!slices) return;

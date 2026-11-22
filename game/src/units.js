@@ -683,7 +683,7 @@ export function walkCycle(i) {
 export function boxSelect(i, w, counter) {
   const extra = counter === true ? "firesel" : counter || null;
   const g = w.g, mx = w.mouse.x, my = w.mouse.y;
-  if (g.multi !== 1 || g.sele !== 0) return;
+  if (g.multi !== 1 || g.sele !== 0 || !w.mine(i)) return; // §9.163: non le unita' dell'altra parte
   const inside = (i.x > g.startx && i.x < mx && i.y > g.starty && i.y < my)
     || (i.x < g.startx && i.x > mx && i.y > g.starty && i.y < my)
     || (i.x > g.startx && i.x < mx && i.y < g.starty && i.y > my)

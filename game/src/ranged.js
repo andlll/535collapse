@@ -25,6 +25,10 @@ import { bloodHit } from "./blood.js";
 import { dhypot, dsin } from "./dmath.js"; // §9.152
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
+// [§9.170, richiesta dell'autore] la freccia che colpisce un'unita': il colpo
+// della zappa (§9.168), piu' piano (le raffiche ne fanno tanti: audio.js ne
+// lascia al piu' 4 insieme, a 45 ms l'uno dall'altro)
+const ARROW_HIT_VOL = 0.7;
 const BLACK = 0, GREEN = 0x008000, WHITE = 0xffffff;
 
 // ---------------------------------------------------------------- frecce
@@ -45,6 +49,7 @@ export function allyArrow(tower) {
       bloodHit(w, other, i.direction, "arrow"); // §9.117 (non sulle macchine d'assedio: blood.js)
       if (name !== "enemy_ariete" && name !== "enemy_catapulta") other.hit = 1;
       other.alarm.set(5, 47);
+      if (other.visible !== false) audio.play("zappa", i.x, i.y, ARROW_HIT_VOL); // §9.170: la freccia che colpisce
       if (name === "enemy_cavaliere") i.alarm.set(0, 1); else w.destroy(i);
     };
   }
@@ -104,6 +109,7 @@ export function enemyArrow(tower) {
         o.alarm.set(10, 10);
         [o.flaggox, o.flaggoy] = away(name === "ally_cavaliere" && !tower ? 300 : 200);
       }
+      if (o.visible !== false) audio.play("zappa", io_x, io_y, ARROW_HIT_VOL); // §9.170
       w.destroy(i);
     };
   }

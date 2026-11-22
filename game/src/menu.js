@@ -37,6 +37,7 @@ import { tr, getLanguage } from "./i18n.js";
 import { slotInfo, SAVE_ROOMS } from "./save.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { saveUnlock } from "./progress.js";
+import { audio } from "./audio.js"; // §9.168
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 import { Particles, partType } from "./particles.js";
@@ -44,8 +45,8 @@ import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
-  "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06" }; // lvl06: §9.101
+  "One hundred towers", "Fog", "Escape from the city", "Allies", "The last day"];
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06", 7: "lvl07" }; // lvl06: §9.101; lvl07: §9.178
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -57,6 +58,8 @@ export const STORY = {
   5: "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.",
   // [§9.101] scritto per il porting dalla regia dell'autore, su sua richiesta
   6: "The invaders' city has fallen, and the road home crosses the City of a Hundred Towers. We find it in ruins: its garrison is dead, its armory looted, its towers crumbling. Enemy patrols still roam the streets, and a great column is marching to cross the eastern bridge. The citizens have only their bows left: with them, and with their towers, they must hold.",
+  // [§9.178] scritto per il porting dalla regia dell'autore, da rivedere con lui
+  7: "The column has been stopped, but the road home is lost in a fog that should not be there in this season. Alone and cut off from the others, an archer must slip past the enemy patrols, find the siege engines the invaders have seized and open the gates of their city.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
@@ -115,7 +118,7 @@ function titleButtons(W, H, page = "title") {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6, lvl07: 7 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
@@ -311,9 +314,12 @@ export function enemyManagerMenu() {
     },
     globalLeftReleased(i, w) {
       const g = w.g, mx = w.input.x, my = w.input.y;
+      // [§9.168] il clic di un pulsante (audio.js ui), dove il clic fa qualcosa
+      const clic = () => audio.ui("clic");
       if (g.campagna === 0 && i.loadmenu === 1) {
         const r = loadRows(w.cam.cssW, w.cam.cssH)[i.loadrow];
         if (!r) return;
+        clic();
         if (r.action === "back") i.loadmenu = 0;
         if (r.action === "slot" && w.hooks.loadSlot) w.hooks.loadSlot(r.room);
         if (r.action === "file" && w.hooks.loadFile) w.hooks.loadFile();
@@ -322,6 +328,7 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) { // §9.118
         const L = skLayout(w.cam.cssW, w.cam.cssH), r = L.rows[i.skrow];
         if (!r || offline(i, r)) return;
+        clic();
         if (r.kind === "back") { i.skmenu = 0; return; }
         if (r.kind === "map") {
           i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
@@ -338,9 +345,10 @@ export function enemyManagerMenu() {
       }
       if (g.campagna === 0) {
         if (i.joinPanel) return; // (il pannello copre la finestra: qui per sicurezza)
-        if (i.fullhover === 1) { if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
+        if (i.fullhover === 1) { clic(); if (w.hooks.fullscreen) w.hooks.fullscreen(); return; }
         const k = i.btnhover;
         i.btnhover = null;
+        if (k) clic();
         if (k === "tutorial") w.gotoRoom("match");
         else if (k === "single" || k === "multi") i.page = k; // §9.157
         else if (k === "back") i.page = "title";
@@ -357,14 +365,16 @@ export function enemyManagerMenu() {
         return;
       }
       if (i.c_indhover === 1) {
+        clic();
         if (i.sblocco === 0) { g.campagna = 0; i.c_indhover = 0; return; }
         i.sblocco = 0;
       }
       const room = ROOMS[i.lvlhover];
-      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { w.gotoRoom(room); return; }
-      if (i.c_unlhover === 1) { i.sblocco = 1; i.c_unlhover = 0; return; }
+      if (room && inRect(mx, my, 30, 35 + 40 * i.lvlhover, i.listR || 290, 85 + 40 * i.lvlhover)) { clic(); w.gotoRoom(room); return; }
+      if (i.c_unlhover === 1) { clic(); i.sblocco = 1; i.c_unlhover = 0; return; }
       if (i.sblocco === 1) {
         if (i.combHover) {
+          audio.ui("lucchetto"); // §9.171: la rotella
           const [k, d] = i.combHover;
           i.comb[k] = (i.comb[k] + d + 10) % 10;
           return;
@@ -373,7 +383,8 @@ export function enemyManagerMenu() {
           // il primo codice giusto che sblocca piu' di quanto gia' sbloccato
           const lvl = Object.keys(CODES).map(Number)
             .find((l) => CODES[l].every((v, k) => v === i.comb[k]) && g.unlock < l);
-          if (lvl) { g.unlock = lvl; saveUnlock(lvl); } else i.redamount = 1;
+          // [§9.171] si apre o no (il suono delle risorse che mancano)
+          if (lvl) { g.unlock = lvl; saveUnlock(lvl); audio.ui("lucchetto_aperto"); } else { i.redamount = 1; audio.ui("risorse"); }
         }
       }
     },
@@ -392,7 +403,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2613";
+export const VERSION = "0.2614";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna
@@ -711,6 +722,16 @@ const L5_ARROW = [150, -25, 0.8, 1.0, 58];
 const L6_MARK = [-3, -123];
 const L6_LABEL = [-3, -190];
 const L6_ARROW = [46, -31, 0.9, 1.0, -62];
+// [§9.179, indicazione dell'autore] il livello 7 (cap_l7, l'arciere): sulla
+// catena montuosa centrale, a sinistra del 6, con la freccia dal 6
+export const L7_MARK = [-145, -45];
+const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 85]; // (a -67, come il 6, cadeva sull'arco)
+// la freccia: a meta' fra il 6 e il 7, girata dal 6 al 7 (fr_corta punta a
+// sinistra: angolo = direzione - 180)
+const L7_ARROW = (() => {
+  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (Math.atan2(-(y7 - y6), x7 - x6) * 180) / Math.PI;
+  return [Math.round((x6 + x7) / 2), Math.round((y6 + y7) / 2), 0.75, 1.0, Math.round(dir - 180)];
+})();
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -759,6 +780,11 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap_l6", 0, MX + L6_MARK[0], H / 2 + L6_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L6_ARROW[0], H / 2 + L6_ARROW[1], L6_ARROW[2], L6_ARROW[3], L6_ARROW[4], c.white, 1);
       d.text(MX + L6_LABEL[0], H / 2 + L6_LABEL[1], "6.");
+    }
+    if (i.lvlshown > 6) { // §9.179
+      d.sprite("cap_l7", 0, MX + L7_MARK[0], H / 2 + L7_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L7_ARROW[0], H / 2 + L7_ARROW[1], L7_ARROW[2], L7_ARROW[3], L7_ARROW[4], c.white, 1);
+      d.text(MX + L7_LABEL[0], H / 2 + L7_LABEL[1], "7.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

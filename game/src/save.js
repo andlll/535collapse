@@ -290,7 +290,7 @@ export async function gunzipBase64(b64) {
 
 // uno slot per room: "535.save.match", "535.save.lvl01", ...
 const slotKey = (room) => "535.save." + room;
-export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // SK_ROOMS: §9.118
+export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // SK_ROOMS: §9.118; lvl07: §9.178
 
 const DB_NAME = "535-saves", BODY = "slots", HEAD = "info";
 let dbOpen = null;

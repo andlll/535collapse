@@ -20,6 +20,7 @@ import { sightK, seenNear } from "./fog.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups, dcOn, dcArm } from "./units.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { simRandom } from "./rng.js"; // §9.152
+import { audio } from "./audio.js"; // §9.168
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const WHITE = 0xffffff;
@@ -159,7 +160,7 @@ export function allyRam() {
       i.step = 0;
       i.alarm.set(2, 13);
       const b = w.nearest(i.x + 50 * dcos(degtorad(i.direction)), i.y - 50 * dsin(degtorad(i.direction)), "enemy_build");
-      if (b) { b.hit = 1; b.alarm.set(2, 50); b.life -= b.slife === 100 ? 5 : 50; }
+      if (b) { b.hit = 1; b.alarm.set(2, 50); b.life -= b.slife === 100 ? 5 : 50; ramSound(i, b); }
     },
     step(i, w) {
       if (!C.leftClickAndDeath(i, w)) return;
@@ -230,12 +231,21 @@ const LAUNCH = { 1: [-44, -62], 2: [-38, -50], 3: [0, -44], 4: [39, -59], 5: [45
 const AIM = 15, RELOAD_STEP = 32;
 const ARC_RISE = 5; // = speed del sasso: 45 gradi
 
+// [§9.168] il colpo dell'ariete sull'edificio (audio.js "crollo"), davanti
+// all'ariete; se si vede l'uno o l'altro (non nella nebbia)
+function ramSound(i, b) {
+  if (i.visible !== false || b.visible !== false) {
+    audio.play("crollo", i.x + 50 * dcos(degtorad(i.direction)), i.y - 50 * dsin(degtorad(i.direction)));
+  }
+}
+
 function catapultAlarm2(i, w, bulletName) {
   if (i.action !== 2) return;
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 10); return; }
   if (i.step === 1) {
     const [dx, dy] = LAUNCH[i.phase] || [0, 0];
     const b = w.create(bulletName, i.x + dx, i.y + dy);
+    if (i.visible !== false) audio.play("catapulta", i.x, i.y); // §9.168: il lancio
     b.direction = pointDirection(b.x, b.y, i.targx, i.targy);
     b.objectivex = i.targx; b.objectivey = i.targy;
     // alarm[0] = distance_to_point / speed (speed 5 dal Create del sasso)
@@ -584,6 +594,7 @@ export function catapultBullet(enemySide) {
         const b = w.nearest(i.x, i.y, build);
         if (!enemySide) { b.hit = 1; b.alarm.set(2, 50); }
         b.life -= 40;
+        if (b.visible !== false) audio.play("crollo", i.x, i.y, 1, false, true); // §9.168: il sasso sull'edificio (§9.175: anche lontano)
       }
       if (onUnit) {
         if (!enemySide) w.create("sfx_sangue", i.x, i.y);
@@ -592,6 +603,10 @@ export function catapultBullet(enemySide) {
         if (!enemySide) u.hit = 1;
       }
       if (!onBuild && !onUnit) scatter(w, i, "sfx_erba");
+      // [§9.168, §9.169, richiesta dell'autore] il sasso sul terreno o su
+      // un'unita': il colpo della zappa (nella terra); su un edificio il
+      // crollo (sopra). Su un'unita' se si vede
+      if (!onBuild && (!onUnit || w.nearest(i.x, i.y, unit).visible !== false)) audio.play("zappa", i.x, i.y, 1, false, true); // §9.175: anche lontano
     },
     draw(i, w, d) {
       d.spriteExt("sasso", 0, i.x, i.y - i.deviance, 1, 1, i.rota, WHITE, 1);
@@ -776,7 +791,7 @@ export function enemyRam(base) {
       i.alarm.set(2, 13);
       const b = forcedTarget(i) || w.nearest(i.x + 50 * dcos(degtorad(i.direction)), i.y - 50 * dsin(degtorad(i.direction)), "ally_build");
       // [§9.11] il monastero del livello 3 ha un danno suo (ramHit)
-      if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.ramHit ?? (b.slife === 100 ? 5 : 50); }
+      if (b) { b.hit = 1; b.alarm.set(9, 50); b.life -= b.ramHit ?? (b.slife === 100 ? 5 : 50); ramSound(i, b); }
     },
     alarm3(i, w) {
       const dix = i.dirox, diy = i.diroy;

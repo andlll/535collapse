@@ -26,6 +26,7 @@ import { SAVE_ROOMS } from "./save.js";
 import { slotLabel } from "./menu.js";
 import { fullscreenAvailable, isFullscreen } from "./fullscreen.js";
 import { dcos, dsin } from "./dmath.js"; // §9.152
+import { audio } from "./audio.js"; // §9.168
 
 // Pointer Lock (input.js): non c'e' su alcuni browser e negli iframe che
 // non lo permettono
@@ -84,6 +85,7 @@ export class PauseMenu {
     // deseleziona) [C, mouser Alarm_1: global.sel=0]
     const esc = input.pressed.has(27) && this.g.sel === 0;
     if (!click && !esc) return false;
+    if (click) audio.ui("clic"); // §9.168
     // [§9.156] in rete la pausa e' un comando (si apre allo stesso passo in
     // tutte e due le pagine): il passo si gioca, senza il clic ne' l'Esc
     if (this.netMode && this.actions.requestPause) {
@@ -104,7 +106,7 @@ export class PauseMenu {
     }
     if (!input.mouseReleased[0]) return;
     const hit = this.rects.find((b) => input.x >= b.x && input.x <= b.x + b.w && input.y >= b.y && input.y <= b.y + b.h);
-    if (hit) this._do(hit);
+    if (hit) { audio.ui("clic"); this._do(hit); } // §9.168: il clic
   }
 
   _do(b) {

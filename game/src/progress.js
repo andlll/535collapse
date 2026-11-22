@@ -11,7 +11,7 @@ const VERSION = 1;
 // livelli tutti sbloccati: almeno fino a UNLOCK_ALL (§9.74: anche il 5;
 // §9.103: anche il 6). Da
 // rimettere a 1 prima dell'uscita (STUDIO.md, "Cose da fare").
-export const UNLOCK_ALL = 6;
+export const UNLOCK_ALL = 7; // §9.178: anche il 7
 
 export function loadUnlock() {
   try {
@@ -26,3 +26,16 @@ export function saveUnlock(unlock) {
     localStorage.setItem(KEY, JSON.stringify({ v: VERSION, unlock }));
   } catch (e) { /* storage non disponibile: vale solo per questa sessione */ }
 }
+
+// [§9.164, segnalazione dell'autore] il livello della campagna e'
+// nell'indirizzo (?room=lvl05): cambiando la cifra si entrava in un livello
+// non ancora sbloccato. app.js lo controlla prima di caricare la room: un
+// livello bloccato porta al menu. levelOf: il numero del livello della
+// campagna di una room (lvl03 -> 3; 0 per menu, tutorial, schermaglie);
+// canPlay: si puo' giocare con lo sblocco `unlock` (il livello 1 sempre, come
+// nel menu: menu.js shownLevel)
+export const levelOf = (room) => {
+  const m = /^lvl(\d+)$/.exec(room || "");
+  return m ? Number(m[1]) : 0;
+};
+export const canPlay = (room, unlock) => levelOf(room) <= Math.max(1, unlock || 1);

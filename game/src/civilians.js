@@ -451,7 +451,7 @@ function ominoStep(i, w, p, stop) {
   // azione 7: sprite
   ANIM[OM](i, w);
   // azione 8: rettangolo di selezione
-  if (S.player && g.multi === 1 && g.sele === 0) {
+  if (S.player && g.multi === 1 && g.sele === 0 && w.mine(i)) { // §9.163: non i civili dell'altra parte
     const mx = w.mouse.x, my = w.mouse.y;
     const inside = (i.x > g.startx && i.x < mx && i.y > g.starty && i.y < my)
       || (i.x < g.startx && i.x > mx && i.y > g.starty && i.y < my)
@@ -1429,6 +1429,8 @@ function otherWorkTick(i, w) {
     // [§9.107] la falce nel grano: pagliuzze (ambience.js workChips)
     i.workHit = w._stepNo; i.workKind = "food";
     i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
+    // [§9.168] il colpo di zappa; non dei contadini nemici nella nebbia
+    if (i.visible !== false) audio.play("zappa", i.workX, i.workY);
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi

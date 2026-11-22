@@ -11,6 +11,8 @@ import { windLevel } from "./ambience.js";
 import { riverCells } from "./rivers.js";
 import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
+import { baseOf } from "./multiplayer.js"; // §9.167
+import { audio } from "./audio.js"; // §9.170
 
 const P = (w) => w.particles;
 
@@ -163,6 +165,36 @@ export function waterMap(w) {
   }
   w._water = grid ? { C, gw, gh, grid, owner, pieces, angles } : null;
   return w._water;
+}
+
+// [§9.169, richiesta dell'autore] Il suono del fiume, leggero (audio.js
+// ambient "fiume"): quanta acqua (waterMap: i fiumi delle istanze e quelli a
+// linee) c'e' nella vista e attorno. Un punto ogni RIVER_STEP px nella vista
+// allargata di 700 px (FAR di audio.js), ognuno pesato da place (audio.js
+// placement: 1 dentro la vista, giu' fino a 0 a 700 px dal bordo); f =
+// l'acqua pesata sui punti della vista. Il livello e' sqrt(f / RIVER_FULL)
+// fino a 1: un fiume che copre il 12% della vista e' a pieno livello, uno
+// del 3% a meta', uno appena fuori dal bordo si sente piano. pan: la media
+// delle posizioni dell'acqua, pesata.
+export const RIVER_STEP = 48, RIVER_FULL = 0.12, RIVER_MARGIN = 700;
+export function riverNoise(w, cam, place) {
+  const wm = waterMap(w);
+  if (!wm || !cam) return { level: 0, pan: 0 };
+  const S = RIVER_STEP, M = RIVER_MARGIN;
+  let water = 0, pan = 0, view = 0;
+  for (let y = cam.y - M + S / 2; y < cam.y + cam.h + M; y += S) {
+    const cy = Math.floor(y / wm.C);
+    for (let x = cam.x - M + S / 2; x < cam.x + cam.w + M; x += S) {
+      const inView = x >= cam.x && x <= cam.x + cam.w && y >= cam.y && y <= cam.y + cam.h;
+      if (inView) view++;
+      const cx = Math.floor(x / wm.C);
+      if (cx < 0 || cy < 0 || cx >= wm.gw || cy >= wm.gh || !wm.grid[cy * wm.gw + cx]) continue;
+      const [g, p] = place(x, y);
+      water += g; pan += g * p;
+    }
+  }
+  if (water <= 0 || view === 0) return { level: 0, pan: 0 };
+  return { level: Math.min(1, Math.sqrt(water / view / RIVER_FULL)), pan: pan / water };
 }
 
 // [§9.36] Il sistema di particelle di un tipo (kind) sul pezzo di fiume che
@@ -358,6 +390,59 @@ function fireSystem(i, w, reg, depth) {
   return [ps, t];
 }
 
+// [§9.166, richiesta dell'autore] sotto la pioggia le fiamme si smorzano,
+// solo a vederle: meno particelle (fino a RAIN_FIRE_N) e piu' corte
+// (RAIN_FIRE_LIFE) col livello delle gocce (w.rainLevel, manager.js: sale e
+// scende in 5 s con la pioggia). Gli incendi, i bracieri e le torce; il
+// fuoco brucia come prima (burnTick, §9.116).
+export const RAIN_FIRE_N = 0.65, RAIN_FIRE_LIFE = 0.8;
+const rainK = (w, min) => 1 - (1 - min) * Math.max(0, Math.min(1, w.rainLevel || 0));
+// il numero di particelle per passo smorzato, intero (stream: ceil), almeno 1
+const damped = (w, n) => (n > 0 ? Math.max(1, Math.round(n * rainK(w, RAIN_FIRE_N))) : 0);
+
+// [§9.167, richiesta dell'autore] Il suono degli incendi (audio.js ambient
+// "fuoco"): gli edifici in fiamme che chi guarda vede (w.shown: non quelli
+// nella nebbia), ognuno quanto e' vicino alla vista (place: audio.js
+// placement, 1 dentro, 0 a 700 px dal bordo) e quanto e' grande (le
+// particelle delle sue fiamme dietro: casa 1, caserma e centro 1,33,
+// monastero 2,67); il livello sale piano col numero (S / (S + FIRE_SOUND_S):
+// un incendio nella vista 0,5, due 0,67, quattro 0,8) e cala sotto la
+// pioggia (fino a RAIN_FIRE_SOUND, come le fiamme, §9.166). pan: la media
+// delle loro posizioni, pesata.
+export const FIRE_SOUND_S = 1, RAIN_FIRE_SOUND = 0.7;
+export function fireNoise(w, place) {
+  let S = 0, P = 0;
+  for (const i of w.instances) {
+    if (i.onfire !== 1 || i.firestarted !== 1 || !i.alive || !i.fire_ps) continue;
+    if (w.shown ? !w.shown(i) : !i.visible) continue;
+    const [g, pan] = place(i.x, i.y);
+    if (g <= 0) continue;
+    const F = FIRE[baseOf(i)], k = g * (F ? F.back[4] / 6 : 1); // baseOf: p2_casa -> casa
+    S += k; P += k * pan;
+  }
+  if (S <= 0) return { level: 0, pan: 0 };
+  return { level: S / (S + FIRE_SOUND_S) * rainK(w, RAIN_FIRE_SOUND), pan: P / S };
+}
+
+// [§9.170, richiesta dell'autore] Gli zoccoli della cavalleria (audio.js
+// ambient "zoccoli"): i cavalieri (del giocatore, nemici, del blu) che si
+// muovono e chi guarda vede, pesati da quanto sono vicini alla vista
+// (place, come i fuochi); il livello sale piano col numero, S / (S +
+// HOOVES_S): uno 0,33, due 0,5, sei 0,75; non predomina mai. pan: la media.
+export const HOOVES_S = 2;
+export function hoovesNoise(w, place) {
+  let S = 0, P = 0;
+  for (const i of w.instances) {
+    if (!i.alive || !/cavaliere$/.test(i.object) || (i.x === i.xprevious && i.y === i.yprevious)) continue;
+    if (w.shown ? !w.shown(i) : i.visible === false) continue;
+    const [g, pan] = place(i.x, i.y);
+    if (g <= 0) continue;
+    S += g; P += g * pan;
+  }
+  if (S <= 0) return { level: 0, pan: 0 };
+  return { level: S / (S + HOOVES_S), pan: P / S };
+}
+
 // "if onfire=1 && firestarted=0 {...}; if onfire=1 && firestarted=1
 // part_type_life(...)" [C].
 // [Correzione decisa dall'autore, §3.17 n.60] nell'originale le fiamme
@@ -373,11 +458,11 @@ export function fireStep(i, w, kind) {
   }
   if (i.firestarted === 1) {
     const v = i.visible ? 1 : 0;
-    if (i.fire_ps && i.fire_ps.emitters[0]) i.fire_ps.emitters[0].n = F.back[4] * v;
-    if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = F.front[4] * v;
+    if (i.fire_ps && i.fire_ps.emitters[0]) i.fire_ps.emitters[0].n = damped(w, F.back[4] * v); // §9.166
+    if (i.fire_psf && i.fire_psf.emitters[0]) i.fire_psf.emitters[0].n = damped(w, F.front[4] * v);
   }
   if (i.onfire === 1 && i.firestarted === 1 && i.fire_part) {
-    const k = F.k || 1, b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena
+    const k = (F.k || 1) * rainK(w, RAIN_FIRE_LIFE), b = F.rel ? i.slife : 0; // §9.45 rel: dai danni, sopra la vita piena; §9.166
     i.fire_part.life = [(b + F.life[0] - i.life) / 2 * k, (b + F.life[1] - i.life) / 2 * k];
   }
 }
@@ -409,7 +494,10 @@ const FLARE = partType({
   speed: [1, 2, 0, 0], direction: [0, 355, 0, 20], life: [10, 30], additive: true,
 });
 
+// [§9.170, richiesta dell'autore] la fiammata e' il fuoco appiccato (freccia
+// incendiaria, torcia: siege.js fireBullet): col colpo della zappa
 export function fireFlare(w, x, y) {
+  audio.play("zappa", x, y);
   const ps = P(w).systemCreate(-y - 1, "fire");
   const em = P(w).emitterCreate(ps);
   P(w).region(em, x - 5, x + 5, y + 5, y + 5, "rectangle", "gaussian");
@@ -457,7 +545,7 @@ export function fireStarterStep(i, w) {
     const bb = a && w.bbox(a);
     near = !!bb && dhypot(Math.max(0, bb[0] - i.x, i.x - bb[2]), Math.max(0, bb[1] - i.y, i.y - bb[3])) < 600;
   }
-  P(w).stream(i.fire_emitter, i.fire_part, near ? 3 : 0);
+  P(w).stream(i.fire_emitter, i.fire_part, near ? damped(w, 3) : 0); // §9.166
 }
 
 // ---------------------------------------------- erba e spighe decorative

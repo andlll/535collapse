@@ -1165,6 +1165,14 @@
       "kit": false,
       "nota": "la regia del livello 5 (§9.76, levels.js)"
     },
+    "enemy_manager_lv7": {
+      "sprite": null,
+      "parents": [],
+      "solid": false,
+      "depth": 0,
+      "kit": false,
+      "nota": "la regia del livello 7 (§9.178, lvl07.js)"
+    },
     "enemy_manager_lv6": {
       "sprite": null,
       "parents": [],
@@ -1289,7 +1297,70 @@
       "solid": false,
       "depth": -9999,
       "kit": false
+    },    "dialogo_7_0": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
     },
+    "dialogo_7_1": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_7_2": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_7_3": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_7_4": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_7_5": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+    "dialogo_7_6": {
+      "sprite": null,
+      "parents": [
+        "parent_hint"
+      ],
+      "solid": false,
+      "depth": -9999,
+      "kit": false
+    },
+
     "hint_lavoratori": {
       "sprite": null,
       "parents": [
@@ -1701,6 +1772,12 @@
       "lato": 100,
       "gruppo": "campagna",
       "nota": "segnalino del livello 6 (la Citta' delle Cento Torri) sulla mappa della campagna, disegnato dall'autore (§9.101); lato 100 (era 120, §9.102: un po' piu' piccolo)"
+    },
+    "cap_l7": {
+      "da": "cap7",
+      "lato": 100,
+      "gruppo": "campagna",
+      "nota": "segnalino del livello 7 (l'arciere, Fog) sulla mappa della campagna, disegnato dall'autore (§9.179); lato 100 come il 6"
     },
     "ico_fiamma": {
       "da": "fiamma",

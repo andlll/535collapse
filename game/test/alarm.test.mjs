@@ -79,7 +79,28 @@ test("il suggerimento, una volta sola", () => {
   w.behaviours.hint_allarme = {};
   w.g.alarmhint = 0;
   raiseAlarm(w, "battle", 3000, 3000);
+  w.g.hint = 0; // [§9.165] spenti: niente, e la volta non si consuma
+  alarmsStep(w);
+  assert.deepEqual(w.created, []);
+  assert.equal(w.g.alarmhint, 0);
+  w.g.hint = 1;
   alarmsStep(w); alarmsStep(w);
   assert.deepEqual(w.created, ["hint_allarme"]);
   assert.equal(w.g.alarmhint, 1);
+});
+
+// [§9.170] il corno di guerra: un attacco nuovo fuori dalla view, al piu' uno
+// ogni ALARM.horn passi; dentro la view, o nella stessa zona, niente
+test("§9.170 il corno, al piu' uno ogni 30 s", () => {
+  const w = fakeWorld();
+  raiseAlarm(w, "battle", 800, 400); // nella view
+  assert.equal(w.g.alarms.hornAt, undefined);
+  raiseAlarm(w, "battle", 5000, 5000); // fuori: il corno
+  assert.equal(w.g.alarms.hornAt, 1000);
+  w._stepNo += 100;
+  raiseAlarm(w, "fire", 9000, 200); // un'altra zona fuori, subito dopo: niente
+  assert.equal(w.g.alarms.hornAt, 1000);
+  w._stepNo += ALARM.horn;
+  raiseAlarm(w, "battle", 200, 9000);
+  assert.equal(w.g.alarms.hornAt, 1000 + 100 + ALARM.horn);
 });

@@ -9,7 +9,7 @@ import { MUSIC, musicLevels } from "./music.js"; // §9.143
 import { tr } from "./i18n.js";
 import { Alarms, irandomRange } from "./alarms.js";
 import { c } from "./colours.js";
-import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife } from "./effects.js";
+import { rainStart, rainStep, RAIN_PUT_OUT, rainRipples, waterLife, fireNoise, riverNoise, hoovesNoise } from "./effects.js";
 import { overcastStep } from "./ambience.js";
 import { rainGap } from "./skirmish.js";
 import { ZOOM_MIN, ZOOM_MAX } from "./camera.js";
@@ -18,6 +18,7 @@ import { MM, drawWater, drawMountains, drawIcon, isWall, drawExplored, viewRadii
 import { objectiveMarks } from "./levels.js";
 import { fogActive } from "./fog.js";
 import { dsin } from "./dmath.js"; // §9.152
+import { nightHint } from "./hints.js"; // §9.165
 
 // passi di giorno dopo un'alba (il primo giorno della room ne ha 6000)
 const DAY_AFTER_DAWN = 4000;
@@ -46,6 +47,9 @@ export class Manager {
     // della notte), l'alba no (alarm 1).
     if (room === "lvl01") g.night = 1;
     if (room === "lvl02") { g.night = 1; this.al.set(1, 1); }
+    // [§9.178] il livello 7: giorno fisso; la notte la fa scendere la regia
+    // (lvl07.js) quando si liberano le macchine, e resta
+    if (room === "lvl07") { g.night = 0; this.al.set(0, -1); this.al.set(1, -1); }
     // startflagger (9), bordi solidi (10): con i loro sistemi
     this.minimHover = this.minimViewHover = this.minimPlusHover = this.minimMinusHover = 0;
     this.minimViewHoverBis = 0;
@@ -237,6 +241,7 @@ export class Manager {
     const g = this.g;
     g.frame++;
     if (this.world) this.world.twilight = this.twilight(); // §9.84
+    if (this.world && this.room !== "menu") nightHint(this.world.worldFor ? this.world.worldFor(null) : this.world); // §9.165
     // manager Step [C]: tetti alle risorse (la pietra non ha tetto) e a popcap
     // [§9.155] anche la cassa del giocatore 2 (partita a due)
     for (const c of g.p2 ? [g, g.p2] : [g]) {
@@ -253,9 +258,21 @@ export class Manager {
       // [§9.116] piove abbastanza (gocce almeno a meta', come §9.92): gli
       // incendi non fanno danno (effects.js burnTick)
       this.world.rainDamp = !!this.rain && (this.rain.level ?? 1) >= RAIN_PUT_OUT;
+      // [§9.166] le fiamme smorzate sotto la pioggia (effects.js), col livello
+      this.world.rainLevel = this.rain ? (this.rain.level ?? 1) : 0;
       // [§9.141] il suono della pioggia, col livello delle gocce: entra ed
       // esce con loro (in 5 s), piano
       audio.ambient("pioggia", this.rain ? (this.rain.level ?? 1) : 0);
+      // [§9.167] gli incendi che si vedono (effects.js fireNoise)
+      const fire = fireNoise(this.world, (x, y) => audio.placement(x, y));
+      audio.ambient("fuoco", fire.level, fire.pan);
+      // [§9.169] il fiume nella vista (effects.js riverNoise), ogni 10 passi:
+      // la vista si muove piano e il suono segue in ~1 s (audio.js ambient)
+      if (g.frame % 10 === 0 || !this.river) this.river = riverNoise(this.world, cam, (x, y) => audio.placement(x, y));
+      audio.ambient("fiume", this.river.level, this.river.pan);
+      // [§9.170] gli zoccoli dei cavalieri che si muovono (effects.js hoovesNoise)
+      const hooves = hoovesNoise(this.world, (x, y) => audio.placement(x, y));
+      audio.ambient("zoccoli", hooves.level, hooves.pan);
       // [§9.143] la musica: il volume di ogni parte secondo la partita
       // ([§9.161] il brano che suona lo dice audio.js; le percussioni del
       // brano 2 guardano i nemici con gli occhi di chi guarda)
@@ -305,14 +322,9 @@ export class Manager {
     switch (i) {
       case 0: // passaggio giorno-notte
         if (g.night < 1) { g.night += 0.005; this.al.set(0, 1); }
-        else {
-          this.al.set(1, 2000);
-          // la prima notte, il suggerimento sotto il puntatore [C]
-          if (g.nighthint === 0 && this.world) {
-            this.world.create("hint_night", this.world.mouse.x, this.world.mouse.y);
-            g.nighthint = 1;
-          }
-        }
+        // [C] qui anche il suggerimento della prima notte: ora
+        // quando la notte c'e' (hints.js nightHint, da step), §9.165
+        else this.al.set(1, 2000);
         break;
       case 1: // passaggio notte-giorno (non nel livello 1, sempre di notte)
         if (this.room === "lvl01") break;

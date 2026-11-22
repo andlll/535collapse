@@ -37,7 +37,7 @@ import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
 import { victoryManager, gameoverManager, objectiveButton, VICTORY, victoryProgress } from "./endgame.js";
-import { loadUnlock } from "./progress.js";
+import { loadUnlock, canPlay } from "./progress.js";
 import { FogLayer } from "./fogdraw.js";
 import { Draw } from "./draw.js";
 import { Manager } from "./manager.js";
@@ -47,13 +47,14 @@ import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01, VERSION } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
+import { enemyManagerLv7 } from "./lvl07.js"; // §9.178
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
 import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
-import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
+import { setupMultiplayer, pvpVisibility, baseOf } from "./multiplayer.js"; // §9.155, §9.174
 import { netParams, startNet, hostGame, joinMenu } from "./netgame.js"; // §9.156, §9.157
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
@@ -63,11 +64,11 @@ import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"],
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"], lvl07: ["core", "gioco", "citta"],
                 ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])) }; // §9.118, §9.123: tiers
 
 const $ = (id) => document.getElementById(id);
@@ -132,7 +133,15 @@ async function main() {
     return;
   }
 
-  const roomName = ROOMS.includes(params.get("room")) ? params.get("room") : "menu";
+  // [§9.164] un livello della campagna non ancora sbloccato (l'indirizzo
+  // cambiato a mano) porta al menu, e l'indirizzo lo dice
+  const asked = params.get("room");
+  const roomName = ROOMS.includes(asked) && canPlay(asked, loadUnlock()) ? asked : "menu";
+  if (asked && roomName !== asked) {
+    for (const k of [...params.keys()]) params.delete(k); // niente salvataggio, campagna, rete...
+    params.set("room", "menu");
+    history.replaceState(null, "", location.pathname + "?room=menu");
+  }
   // [§9.156, multiplayer, fase 4] la partita a due in rete (?net=host|join,
   // netgame.js): chi crea e' il rosso, chi entra il blu; mappa, opzioni e
   // seme sono quelli di chi crea
@@ -254,6 +263,7 @@ async function main() {
   world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
   world.register("enemy_manager_lv5", enemyManagerLv5(path)); // §9.76
   world.register("enemy_manager_lv6", enemyManagerLv6(path)); // §9.101
+  world.register("enemy_manager_lv7", enemyManagerLv7()); // §9.178
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -451,6 +461,7 @@ async function main() {
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
+    if (roomName === "lvl07") { world.create("enemy_manager_lv7", 0, 0); world.create("objective_button", 0, 0); } // §9.178
     if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
     if (world.mp) world.mp.truce = pvpTruce(g); // §9.156
   }
@@ -465,6 +476,30 @@ async function main() {
   // manager Step: pulsanti di costruzione, poi la regia dei livelli
   // (i pulsanti sono di chi guarda: il suo specchio, §9.155)
   world.hooks.step = () => { buildButtons(world.worldFor(null)); levelStep(world); };
+  // [§9.170, richiesta dell'autore] un edificio distrutto (a vita 0: colpi,
+  // fuoco, demolizione; anche i cantieri) crolla con un suono, se chi guarda
+  // lo vede: i grandi (vita piena da 300 in su: caserma, stalla, centro,
+  // castello, torre, chiesa, monastero) "rovina", gli altri (case,
+  // magazzini, mulini, mura, cantieri) "rovina_piccola"
+  // [§9.174, richiesta dell'autore] e un'unita' che muore (a vita 0; non chi
+  // entra in una torre o un presidio): niente voci, la caduta. I civili il
+  // tonfo, i soldati il tonfo e l'arma, i cavalieri due tonfi (cavallo e
+  // cavaliere), arieti e catapulte il legno che si rompe (rovina_piccola)
+  const BUILD_FAMILIES = ["ally_build", "enemy_build", "p2_build"];
+  const UNIT_FAMILIES = ["ally_unit", "enemy_unit", "p2_unit"];
+  const deathSound = (i) => {
+    const n = baseOf(i);
+    if (/omino$/.test(n)) return "morte_civile";
+    if (/cavaliere$/.test(n)) return "morte_cavaliere";
+    if (/ariete$|catapulta$/.test(n)) return "rovina_piccola";
+    return "morte";
+  };
+  world.hooks.destroyed = (i) => {
+    if (!(i.life <= 0) || !world.shown(i)) return;
+    // [§9.175] il crollo si sente anche fuori dalla vista, lontano (audio.js far)
+    if (i.parents.some((p) => BUILD_FAMILIES.includes(p))) audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y, 1, false, true);
+    else if (i.parents.some((p) => UNIT_FAMILIES.includes(p))) audio.play(deathSound(i), i.x, i.y);
+  };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world.worldFor(null)); // §9.155: chi guarda (dal blu, i suoi)
   const fogLayer = new FogLayer(r, fog);
@@ -575,6 +610,12 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
+  // [§9.172] i pulsanti della sconfitta (endgame.js): ricomincia e carica,
+  // non nella partita in rete
+  if (!net) {
+    world.hooks.restart = () => pause.actions.restart();
+    world.hooks.loadMenu = () => { pause.open(); pause.submenu = "load"; };
+  }
   // [§9.156, §9.157] "Multiplayer" nel menu: "Create game" (dalla schermata
   // della schermaglia) e "Join game" (?stun=0 passa alla partita: senza
   // server STUN, per le prove in locale)
@@ -601,6 +642,17 @@ async function main() {
   // eseguiti nel passo del mondo, dopo Begin Step e allarmi (world.step)
   world.hooks.commands = () => commands.runDue(world);
   const hashNow = () => stateHash({ world, g, manager, path });
+  // [§9.168] il clic dei pulsanti dell'interfaccia (audio.js ui): quelli
+  // della minimappa alla pressione (scattano li', manager.mouse), i pulsanti
+  // della partita (le istanze *_clicker, *_button, i "+" delle mura, col
+  // puntatore sopra: hover) al rilascio, come scattano loro. Il menu di pausa
+  // e il menu principale lo fanno da se' (pause.js, menu.js)
+  const GUI_BUTTON = /_clicker$|_button$|^mplus_/;
+  const guiClick = (input) => {
+    const mm = g.minim === 1 ? manager.minimViewHover || manager.minimPlusHover || manager.minimMinusHover : manager.minimViewHoverBis;
+    if (input.mousePressed[0] && mm && roomName !== "menu") audio.ui("clic");
+    else if (input.mouseReleased[0] && world.instances.some((i) => i.alive && i.ui && i.hover === 1 && GUI_BUTTON.test(i.object))) audio.ui("clic");
+  };
   const step = () => {
     // [§9.156] in rete il passo si gioca solo col turno dell'altro giocatore
     // (lockstep.js): se non c'e' ancora si aspetta (loop.js), e l'input resta
@@ -620,6 +672,7 @@ async function main() {
     manager.keys(input, cam);
     const [mx, my] = cam.toRoom(input.x, input.y);
     manager.hoverMinimap(input, cam, room.width, room.height); // §9.114: col puntatore di adesso
+    guiClick(input);
     manager.mouse(input, mx, my);
     // [§9.109] i clic sulla minimappa non vanno al mondo sotto di lei; il
     // destro e' un ordine verso il punto della mappa (manager.js)
@@ -744,7 +797,8 @@ async function main() {
     draw.reset();
     // [§9.56] la vittoria: tutto quello che c'e' sotto, sfocato, poi il velo
     // e i testi (endgame.js)
-    for (const v of world.all("victory_manager")) {
+    // [§9.172] e la sconfitta, allo stesso modo (col velo grigio scuro)
+    for (const v of [...world.all("victory_manager"), ...world.all("gameover_manager")]) {
       draw.setGlass(null);
       victoryBlur(victoryProgress(v));
       draw.reset();

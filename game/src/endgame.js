@@ -3,9 +3,10 @@
 
 import { c } from "./colours.js";
 import { saveUnlock } from "./progress.js";
-import { tr } from "./i18n.js";
+import { tr, getLanguage } from "./i18n.js";
 import { PRODUCERS } from "./production.js";
 import { isSkirmish, SK_OPTIONS, elapsed, skirmishScore } from "./skirmish.js";
+import { audio } from "./audio.js"; // §9.172
 
 // victory_manager [C]: lo schermo sbianca (alpha +0,08 a passo fino a 0,9),
 // poi "VICTORY", il punteggio in match o il codice del livello successivo
@@ -34,7 +35,7 @@ export const VICTORY = {
 };
 const ease = (x) => { const k = Math.max(0, Math.min(1, x)); return 1 - (1 - k) * (1 - k) * (1 - k); };
 // 0..1: quanto la scena e' sfocata e velata (app.js)
-export function victoryProgress(i) { return ease(i.t / VICTORY.blurIn); }
+export function victoryProgress(i) { return ease((i.t || 0) / VICTORY.blurIn); }
 
 export function victoryManager() {
   return {
@@ -52,7 +53,7 @@ export function victoryManager() {
       w.destroy(i);
       const g = w.g;
       if (isSkirmish(w.room)) { w.gotoRoom("menu"); return; } // §9.118: la schermaglia finisce
-      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6, lvl06: 7 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6, lvl06: 7, lvl07: 8 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -80,12 +81,13 @@ export function victoryManager() {
       if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
       if (w.room === "lvl05") d.text(vw / 2, vh / 2 - 100, tr("The invaders' city has fallen: the land is ours")); // §9.76
       if (w.room === "lvl06") d.text(vw / 2, vh / 2 - 100, tr("The column has been stopped: the city will rise again")); // §9.101
+      if (w.room === "lvl07") d.text(vw / 2, vh / 2 - 100, tr("Unseen, the archer has reached the heart of the enemy city")); // §9.178
       if (isSkirmish(w.room)) { // §9.118
         const g = w.g;
         d.text(vw / 2, vh / 2 - 100, g.skScore ? tr("Score: you {a}, the enemy {b}", { a: g.skScore[0], b: g.skScore[1] }) : tr("The enemy has been defeated"));
       }
       const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4", lvl05: "8 0 6 5 3",
-                     lvl06: "0 7 3 6 0" }[w.room];
+                     lvl06: "0 7 3 6 0", lvl07: "7 6 3 0 8" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -112,31 +114,93 @@ export function victoryManager() {
 // [Correzione decisa dall'autore, §3.19 n.67] l'oggetto era invisibile
 // (visible=false nel GMX): GameMaker non eseguiva il suo Draw GUI e la
 // schermata non compariva mai. Qui e' visibile.
+// [§9.172, richiesta dell'autore] Niente piu' schermo nero ne' ritorno al
+// menu dopo 760 passi: come la vittoria (§9.56) la scena si sfoca (app.js
+// victoryBlur, victoryProgress: i.t), sotto un velo grigio scuro (DEFEAT)
+// invece che bianco; poi "SCONFITTA", il perche' e (nel tutorial e nel
+// livello 3) il tempo resistito, in bianco, e tre pulsanti come quelli della
+// pausa: ricomincia il livello, carica una partita, torna al menu, subito
+// usabili appena compaiono (nessuna attesa). Nella partita in rete solo
+// "Lascia la partita" (niente ricominciare ne' salvataggi: app.js
+// hooks.restart e hooks.loadMenu mancano).
+export const DEFEAT = {
+  veil: 0.62,       // velo finale
+  colour: 0x262626, // grigio scuro (38, 38, 38)
+  btnW: 340, btnH: 46, gap: 12,
+};
+// i pulsanti disegnati (per il clic): per chi guarda, fuori dall'istanza
+// (che e' della partita: le sue variabili entrano nell'impronta)
+const defeatRects = new WeakMap();
+
 export function gameoverManager() {
+  const buttons = (w) => [
+    ...(w.hooks.restart ? [[tr("Restart level"), () => w.hooks.restart()]] : []),
+    ...(w.hooks.loadMenu ? [[tr("Load game"), () => w.hooks.loadMenu()]] : []),
+    [tr(w.hooks.restart ? "Back to menu" : "Leave the game"), () => w.gotoRoom("menu")],
+  ];
   return {
-    create(i) { i.visible = true; i.fogalpha = 0; i.alarm.set(0, 760); },
-    alarm0(i, w) { w.gotoRoom("menu"); },
-    step(i) { if (i.fogalpha < 1) i.fogalpha += 0.02; },
-    drawGUI(i, w, d) {
-      const g = w.g, vw = w.cam.cssW, vh = w.cam.cssH;
-      d.setColour(c.black);
-      d.setAlpha(i.fogalpha);
-      if (i.fogalpha > 0) d.rectangle(0, 0, vw, vh, false);
-      d.setAlpha(1);
-      if (i.fogalpha < 1) return;
-      d.setColour(c.white);
-      d.setHalign("center");
+    create(i) { i.visible = true; i.t = 0; },
+    step(i) { i.t = (i.t || 0) + 1; },
+    // un clic su un pulsante (quelli disegnati per ultimi)
+    globalLeftReleased(i, w) {
+      const rects = defeatRects.get(i);
+      if (!rects) return;
+      const x = w.input.x, y = w.input.y;
+      const hit = rects.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+      if (!hit) return;
+      audio.ui("clic");
+      w.mouseClear(0);
+      hit.fn();
+    },
+    overlay(i, w, d) {
+      const g = w.g, vw = w.cam.cssW, vh = w.cam.cssH, input = w.input;
+      d.setColour(DEFEAT.colour);
+      d.setAlpha(DEFEAT.veil * victoryProgress(i));
+      d.rectangle(0, 0, vw, vh, false);
+      const a = ease(((i.t || 0) - VICTORY.textAt) / VICTORY.textIn);
+      if (a <= 0) { d.setAlpha(1); defeatRects.delete(i); return; }
       const lines = [g.skLost === "score" ? tr("Score: you {a}, the enemy {b}", { a: g.skScore[0], b: g.skScore[1] }) // §9.118
         : g.skLost === "buildings" ? tr("All your buildings were destroyed.")
         : g.nomovesLost ? tr("You have no units left and cannot train new ones.")
         : w.room === "lvl03" ? tr("The monastery has fallen.")
         : w.room === "lvl06" && g.l6 && g.l6.lost ? tr("The enemy column broke through the eastern bridge.") // §9.101
+        : w.room === "lvl07" && g.l7 && g.l7.lost === "archer" ? tr("The archer has fallen.") // §9.178
+        : w.room === "lvl07" && g.l7 && g.l7.lost === "machines" ? tr("The siege engines were destroyed before the gate fell.")
         : tr("Your town hall was destroyed.")];
       if (w.room === "match" || w.room === "lvl03") {
         lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       }
-      if (!isSkirmish(w.room)) lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte })); // §9.118
-      lines.forEach((t, k) => d.text(vw / 2, vh / 2 - 200 + k * 100, t));
+      if (!isSkirmish(w.room) && w.room !== "lvl07") lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte })); // §9.118, §9.178
+      const B = buttons(w), bh = DEFEAT.btnH, pitch = bh + DEFEAT.gap;
+      // tutto centrato in altezza: titolo, righe, spazio, pulsanti
+      const blockH = 90 + lines.length * 50 + 40 + B.length * pitch;
+      let y = Math.max(20, (vh - blockH) / 2);
+      d.setAlpha(a);
+      d.setColour(c.white);
+      d.setHalign("center");
+      d.setValign("middle");
+      d.setFont("gui_sblocco");
+      d.text(vw / 2, y + 40, tr("DEFEAT"));
+      d.setFont("overdue");
+      y += 90;
+      for (const t of lines) { d.text(vw / 2, y + 20, t); y += 50; }
+      y += 40;
+      d.setFont("GUI_1");
+      const bw = Math.min(DEFEAT.btnW, vw - 40), bx = (vw - bw) / 2, rects = [];
+      for (const [label, fn] of B) {
+        const hover = input && input.inside && input.x >= bx && input.x <= bx + bw && input.y >= y && input.y <= y + bh;
+        d.setAlpha(a * (hover ? 1 : 0.69));
+        d.roundrectColourExt(bx, y, bx + bw, y + bh, bh, bh, hover ? 0xf2f2f2 : c.white, hover ? 0xf2f2f2 : c.white, false);
+        d.setAlpha(a * 0.85);
+        d.setColour(c.black);
+        d.text(vw / 2, y + bh / 2, label);
+        d.setColour(c.white);
+        rects.push({ x: bx, y, w: bw, h: bh, fn });
+        y += pitch;
+      }
+      defeatRects.set(i, rects);
+      d.setAlpha(1);
+      d.setHalign("left");
     },
   };
 }
@@ -210,124 +274,190 @@ function checkMark(d, x, cy) {
   d.lineWidthColour(x + 6, cy + 7, x + 19, cy - 8, 4, CHECK_GREEN, CHECK_GREEN);
 }
 
+// [§9.172] Le righe degli obiettivi della room: [y, testo, completato,
+// facoltativo], i testi che contano solo per la larghezza (sizing) e quante
+// righe (nobs). Le usano il disegno (d: col font per misurare le cifre) e il
+// suono degli obiettivi (d null: le cifre come sono)
+const digitsOf = (d) => {
+  if (!d) return (v) => String(v);
+  d.setFont("overdue");
+  const wide = widestDigit(d);
+  return (v) => wide.repeat(String(v).length);
+};
+export function objectiveLines(w, d) {
+  const g = w.g;
+  let nobs = w.room === "match" ? 4 : 3;
+  const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
+  // [y, testo, completato (prima: la y della barra), facoltativo (§9.116)]
+  const lines = [];
+  // [§9.22] testi che contano solo per la larghezza del riquadro (non si
+  // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
+  const sizing = [];
+  if (w.room === "match") {
+    lines.push([58, tr("Survive for the most time possible")]);
+    lines.push([88, tr("Destroy the enemy secondary bases ({n}/3)", { n: g.basidistrutte })]);
+    lines.push([118, tr("Survival time: {h} hrs {m} min {s} sec", { h: g.hours, m: g.minutes, s: g.seconds })]);
+    lines.push([148, tr("Number of waves: {n}", { n: g.waves })]);
+  }
+  if (w.room === "lvl01") {
+    lines.push([58, tr("Reach the northern gates and escape the city")]);
+    if (g.dialogochest === 1) lines.push([88, tr("Destroy the chests to gather resources")]);
+    if (g.lvl01_gate === 1) lines.push([118, tr("Use the barracks to train more soldiers")]);
+  }
+  if (w.room === "lvl02") {
+    lines.push([58, tr("Free the villages under attack ({n}/7)", { n: g.liberati }), g.liberati === 7 ? 43 : 0]);
+    lines.push([88, tr("Use the freed peasants to build your base")]);
+    lines.push([118, tr("Destroy all the enemy buildings"), w.number("enemy_build") === 0 ? 103 : 0]);
+  }
+  // [§9.11] livello 3: prima il villaggio, poi il conto alla rovescia,
+  // la vita del monastero e (saputo da dove vengono) la base nemica
+  if (w.room === "lvl03") {
+    const L = g.l3 || { phase: 0 };
+    if (L.phase !== 2) lines.push([58, tr("Follow the road to reach the village")]);
+    else {
+      lines.push([58, tr("Defend the monastery: {t}", { t: mmss(L.left) })]);
+      lines.push([88, tr("Monastery: {life} / {slife} (lost below half)", { life: L.life, slife: L.slife })]);
+      // [§9.22, richiesta dell'autore] la larghezza non segue la vita
+      // del monastero (che cala in fretta: il riquadro si allargava e
+      // stringeva di continuo) ne' il conto alla rovescia: la si misura
+      // con tutte le cifre alla cifra piu' larga del font, la vita con
+      // quante ne ha la vita massima
+      const digits = digitsOf(d);
+      sizing.push(tr("Defend the monastery: {t}", { t: digits(99) + ":" + digits(99) }));
+      sizing.push(tr("Monastery: {life} / {slife} (lost below half)", { life: digits(L.slife), slife: digits(L.slife) }));
+      if (L.baseKnown) {
+        const done = w.number("enemy_caserma") + w.number("enemy_stalla") === 0;
+        lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
+      }
+    }
+  }
+  // [§9.52] livello 4: il ponte (con l'avanzamento), la base nord
+  // (facoltativo), e a ponte riparato il centro nemico
+  if (w.room === "lvl04") {
+    const L = g.l4 || { phase: 0, bridge: 0, north: 0 };
+    lines.push([58, tr("Repair the bridge ({p}%)", { p: L.bridge }), L.phase === 1 ? 43 : 0]);
+    sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
+    // [§9.116] il facoltativo dopo gli obbligatori
+    if (L.phase === 1) lines.push([88, tr("Destroy the enemy town hall across the river")]);
+    lines.push([L.phase === 1 ? 118 : 88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0, true]);
+  }
+  // [§9.76] livello 5: l'obiettivo di prima (barrato) e quello di ora
+  if (w.room === "lvl05") {
+    const L = g.l5 || { phase: 0, left: 0 };
+    const goal = (k) => k === 4 ? tr("Destroy the enemy city ({n} buildings left)", { n: L.left }) : tr(LV5_GOALS[k]);
+    if (L.phase > 0) lines.push([58, goal(L.phase - 1), 43]);
+    lines.push([L.phase > 0 ? 88 : 58, goal(L.phase)]);
+    if (L.phase === 4) sizing.push(tr("Destroy the enemy city ({n} buildings left)", { n: 88 }));
+  }
+  // [§9.101] livello 6: le pattuglie; poi il conto alla rovescia e le
+  // torri recuperate; poi la colonna e quanti hanno passato il ponte
+  if (w.room === "lvl06") {
+    const L = g.l6 || { phase: 0, patrols: 3, patrolsLeft: 3, towers: 0, towersOk: 0 };
+    // [§9.116, segnalazione dell'autore] le torri non servono per vincere:
+    // obiettivo facoltativo (spuntato se le si recuperano tutte)
+    const towers = (y) => lines.push([y, tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: L.towersOk, m: L.towers }),
+                                      L.towers > 0 && L.towersOk >= L.towers ? 1 : 0, true]);
+    const digits = digitsOf(d);
+    if (L.phase === 0) {
+      lines.push([58, tr("Defeat the enemy patrols ({n}/{m})", { n: L.patrols - L.patrolsLeft, m: L.patrols })]);
+    } else if (L.phase === 1) {
+      lines.push([58, tr("Defeat the enemy patrols ({n}/{m})", { n: L.patrols, m: L.patrols }), 43]);
+      lines.push([88, tr("The enemy column arrives in {t}", { t: mmss(L.left) })]);
+      sizing.push(tr("The enemy column arrives in {t}", { t: digits(99) + ":" + digits(99) }));
+      towers(118);
+    } else {
+      lines.push([58, tr("Stop the enemy column ({n} soldiers left)", { n: L.colLeft })]);
+      sizing.push(tr("Stop the enemy column ({n} soldiers left)", { n: digits(L.colN || 50) }));
+      lines.push([88, tr("Soldiers across the bridge: {n} (defeat above {m})", { n: L.passed, m: L.max })]);
+      towers(118);
+    }
+    sizing.push(tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
+  }
+  // [§9.178] livello 7: la citta', le macchine, la porta, la cima
+  if (w.room === "lvl07") {
+    const L = g.l7 || { phase: 0 };
+    if (L.gateDown) {
+      lines.push([58, tr("Break down the city gate"), 43]);
+      lines.push([88, tr("Reach the highest point of the city")]);
+    } else if (L.freed) {
+      lines.push([58, tr("Break down the city gate with the siege engines ({n} left)", { n: L.machines })]);
+      sizing.push(tr("Break down the city gate with the siege engines ({n} left)", { n: 88 }));
+    } else {
+      lines.push([58, tr("Slip through the fog and reach the enemy city"), L.gateSeen ? 43 : 0]);
+      if (L.gateSeen) lines.push([88, tr("Find siege engines to break down the gate")]);
+    }
+  }
+  // [§9.118] schermaglia: la condizione di vittoria, la tregua, il tempo
+  // e (a punteggio) il punteggio dei due
+  if (isSkirmish(w.room) && g.sk) {
+    const S = g.sk, t = elapsed(g);
+    const goal = { conquest: "Destroy all the enemy buildings", townhall: "Destroy the enemy town hall" }[S.victory]
+      || "Have the higher score when time runs out";
+    lines.push([58, tr(goal)]);
+    let y = 88;
+    const hms = (sec) => Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+    if (S.truce > 0 && t < S.truce * 60) { lines.push([y, tr("Truce: {t}", { t: hms(S.truce * 60 - t) })]); y += 30; }
+    const mins = { score20: 20, score40: 40, score60: 60 }[S.victory];
+    if (mins) {
+      lines.push([y, tr("Time left: {t}", { t: hms(Math.max(0, mins * 60 - t)) })]); y += 30;
+      lines.push([y, tr("Score: you {a}, the enemy {b}", { a: skirmishScore(w, "player"), b: skirmishScore(w, "cpu") })]);
+    }
+    // [§9.155] nella partita a due l'avversario e' l'altro giocatore
+    const foe = S.pvp ? tr(w.mp && w.mp.local === 2 ? "Opponent: the red player" : "Opponent: the blue player")
+      : tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) });
+    lines.push([mins ? y + 30 : y, foe]);
+    nobs = lines.length; // §9.122: il riquadro alto quanto le righe
+  }
+  return { lines, sizing, nobs };
+}
+
+// [§9.172, richiesta dell'autore] Il suono degli obiettivi ("obiettivo"):
+// quando ne compare uno nuovo o se ne raggiunge uno, anche in parte (gli
+// ostaggi del livello 2, 3/7). Dalle righe del riquadro (objectiveLines):
+// per ognuna la chiave (il testo con le cifre tolte: i conti alla rovescia,
+// le vite, le percentuali cambiano senza che succeda niente), se e'
+// spuntata e il conto "(n/m)" se c'e'. Suona se c'e' una chiave nuova, una
+// riga appena spuntata o un "(n/m)" salito. La firma sta in g.objSig (si
+// salva con la partita: caricarla non suona; fuori dall'impronta, snapshot.js:
+// dipende dalla lingua di chi guarda), con la lingua: cambiata la lingua
+// cambiano i testi, e si ricomincia senza suonare.
+export function objectiveSignature(lines) {
+  return lines.map(([, text, done]) => {
+    const m = /\((\d+)\/(\d+)\)/.exec(text);
+    return [text.replace(/\d+/g, "#"), done ? 1 : 0, m ? Number(m[1]) : -1];
+  });
+}
+export function objectiveNews(before, now) {
+  const old = new Map(before.map((r) => [r[0], r]));
+  return now.some(([key, done, n]) => {
+    const o = old.get(key);
+    return !o || (done && !o[1]) || (n > o[2] && o[2] >= 0);
+  });
+}
+// quante volte (passi) si ricalcola: le righe cambiano di rado
+const OBJ_EVERY = 10;
+// i primi passi della room: gli obiettivi che ci sono gia' non suonano
+const OBJ_QUIET = 60;
+
 export function objectiveButton() {
   return {
     create(i) { i.sprite_index = null; },
+    step(i, w) {
+      if (w._stepNo % OBJ_EVERY !== 0) return;
+      const g = w.g;
+      if (w.number("victory_manager") || w.number("gameover_manager")) return;
+      const lang = getLanguage(), sig = objectiveSignature(objectiveLines(w, null).lines);
+      const prev = g.objSig;
+      g.objSig = { lang, sig };
+      if (!prev) { if (w._stepNo > OBJ_QUIET && sig.length) audio.play("obiettivo"); return; }
+      if (prev.lang === lang && objectiveNews(prev.sig, sig)) audio.play("obiettivo");
+    },
     drawGUI(i, w, d) {
       const g = w.g, W = w.cam.cssW;
       if (g.obj !== 1) return;
       // [§9.27] non sopra le schermate di vittoria e di sconfitta
       if (w.number("victory_manager") || w.number("gameover_manager")) return;
-      let nobs = w.room === "match" ? 4 : 3;
-      const mmss = (steps) => { const t = Math.ceil(steps / 60); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
-      // [y, testo, completato (prima: la y della barra), facoltativo (§9.116)]
-      const lines = [];
-      // [§9.22] testi che contano solo per la larghezza del riquadro (non si
-      // disegnano): le righe con i numeri che cambiano, coi numeri piu' larghi
-      const sizing = [];
-      if (w.room === "match") {
-        lines.push([58, tr("Survive for the most time possible")]);
-        lines.push([88, tr("Destroy the enemy secondary bases ({n}/3)", { n: g.basidistrutte })]);
-        lines.push([118, tr("Survival time: {h} hrs {m} min {s} sec", { h: g.hours, m: g.minutes, s: g.seconds })]);
-        lines.push([148, tr("Number of waves: {n}", { n: g.waves })]);
-      }
-      if (w.room === "lvl01") {
-        lines.push([58, tr("Reach the northern gates and escape the city")]);
-        if (g.dialogochest === 1) lines.push([88, tr("Destroy the chests to gather resources")]);
-        if (g.lvl01_gate === 1) lines.push([118, tr("Use the barracks to train more soldiers")]);
-      }
-      if (w.room === "lvl02") {
-        lines.push([58, tr("Free the villages under attack ({n}/7)", { n: g.liberati }), g.liberati === 7 ? 43 : 0]);
-        lines.push([88, tr("Use the freed peasants to build your base")]);
-        lines.push([118, tr("Destroy all the enemy buildings"), w.number("enemy_build") === 0 ? 103 : 0]);
-      }
-      // [§9.11] livello 3: prima il villaggio, poi il conto alla rovescia,
-      // la vita del monastero e (saputo da dove vengono) la base nemica
-      if (w.room === "lvl03") {
-        const L = g.l3 || { phase: 0 };
-        if (L.phase !== 2) lines.push([58, tr("Follow the road to reach the village")]);
-        else {
-          lines.push([58, tr("Defend the monastery: {t}", { t: mmss(L.left) })]);
-          lines.push([88, tr("Monastery: {life} / {slife} (lost below half)", { life: L.life, slife: L.slife })]);
-          // [§9.22, richiesta dell'autore] la larghezza non segue la vita
-          // del monastero (che cala in fretta: il riquadro si allargava e
-          // stringeva di continuo) ne' il conto alla rovescia: la si misura
-          // con tutte le cifre alla cifra piu' larga del font, la vita con
-          // quante ne ha la vita massima
-          d.setFont("overdue");
-          const wide = widestDigit(d), digits = (v) => wide.repeat(String(v).length);
-          sizing.push(tr("Defend the monastery: {t}", { t: digits(99) + ":" + digits(99) }));
-          sizing.push(tr("Monastery: {life} / {slife} (lost below half)", { life: digits(L.slife), slife: digits(L.slife) }));
-          if (L.baseKnown) {
-            const done = w.number("enemy_caserma") + w.number("enemy_stalla") === 0;
-            lines.push([118, tr("Destroy the enemy barracks and stables"), done ? 103 : 0]);
-          }
-        }
-      }
-      // [§9.52] livello 4: il ponte (con l'avanzamento), la base nord
-      // (facoltativo), e a ponte riparato il centro nemico
-      if (w.room === "lvl04") {
-        const L = g.l4 || { phase: 0, bridge: 0, north: 0 };
-        lines.push([58, tr("Repair the bridge ({p}%)", { p: L.bridge }), L.phase === 1 ? 43 : 0]);
-        sizing.push(tr("Repair the bridge ({p}%)", { p: 100 }));
-        // [§9.116] il facoltativo dopo gli obbligatori
-        if (L.phase === 1) lines.push([88, tr("Destroy the enemy town hall across the river")]);
-        lines.push([L.phase === 1 ? 118 : 88, tr("Optional: destroy the enemy camp in the north-east"), L.north ? 73 : 0, true]);
-      }
-      // [§9.76] livello 5: l'obiettivo di prima (barrato) e quello di ora
-      if (w.room === "lvl05") {
-        const L = g.l5 || { phase: 0, left: 0 };
-        const goal = (k) => k === 4 ? tr("Destroy the enemy city ({n} buildings left)", { n: L.left }) : tr(LV5_GOALS[k]);
-        if (L.phase > 0) lines.push([58, goal(L.phase - 1), 43]);
-        lines.push([L.phase > 0 ? 88 : 58, goal(L.phase)]);
-        if (L.phase === 4) sizing.push(tr("Destroy the enemy city ({n} buildings left)", { n: 88 }));
-      }
-      // [§9.101] livello 6: le pattuglie; poi il conto alla rovescia e le
-      // torri recuperate; poi la colonna e quanti hanno passato il ponte
-      if (w.room === "lvl06") {
-        const L = g.l6 || { phase: 0, patrols: 3, patrolsLeft: 3, towers: 0, towersOk: 0 };
-        // [§9.116, segnalazione dell'autore] le torri non servono per vincere:
-        // obiettivo facoltativo (spuntato se le si recuperano tutte)
-        const towers = (y) => lines.push([y, tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: L.towersOk, m: L.towers }),
-                                          L.towers > 0 && L.towersOk >= L.towers ? 1 : 0, true]);
-        d.setFont("overdue");
-        const wide = widestDigit(d), digits = (v) => wide.repeat(String(v).length);
-        if (L.phase === 0) {
-          lines.push([58, tr("Defeat the enemy patrols ({n}/{m})", { n: L.patrols - L.patrolsLeft, m: L.patrols })]);
-        } else if (L.phase === 1) {
-          lines.push([58, tr("Defeat the enemy patrols ({n}/{m})", { n: L.patrols, m: L.patrols }), 43]);
-          lines.push([88, tr("The enemy column arrives in {t}", { t: mmss(L.left) })]);
-          sizing.push(tr("The enemy column arrives in {t}", { t: digits(99) + ":" + digits(99) }));
-          towers(118);
-        } else {
-          lines.push([58, tr("Stop the enemy column ({n} soldiers left)", { n: L.colLeft })]);
-          sizing.push(tr("Stop the enemy column ({n} soldiers left)", { n: digits(L.colN || 50) }));
-          lines.push([88, tr("Soldiers across the bridge: {n} (defeat above {m})", { n: L.passed, m: L.max })]);
-          towers(118);
-        }
-        sizing.push(tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
-      }
-      // [§9.118] schermaglia: la condizione di vittoria, la tregua, il tempo
-      // e (a punteggio) il punteggio dei due
-      if (isSkirmish(w.room) && g.sk) {
-        const S = g.sk, t = elapsed(g);
-        const goal = { conquest: "Destroy all the enemy buildings", townhall: "Destroy the enemy town hall" }[S.victory]
-          || "Have the higher score when time runs out";
-        lines.push([58, tr(goal)]);
-        let y = 88;
-        const hms = (sec) => Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
-        if (S.truce > 0 && t < S.truce * 60) { lines.push([y, tr("Truce: {t}", { t: hms(S.truce * 60 - t) })]); y += 30; }
-        const mins = { score20: 20, score40: 40, score60: 60 }[S.victory];
-        if (mins) {
-          lines.push([y, tr("Time left: {t}", { t: hms(Math.max(0, mins * 60 - t)) })]); y += 30;
-          lines.push([y, tr("Score: you {a}, the enemy {b}", { a: skirmishScore(w, "player"), b: skirmishScore(w, "cpu") })]);
-        }
-        // [§9.155] nella partita a due l'avversario e' l'altro giocatore
-        const foe = S.pvp ? tr(w.mp && w.mp.local === 2 ? "Opponent: the red player" : "Opponent: the blue player")
-          : tr("Enemy: {d}, {s}", { d: tr(SK_OPTIONS.difficulty.names[S.difficulty]), s: tr(SK_OPTIONS.style.names[S.style]) });
-        lines.push([mins ? y + 30 : y, foe]);
-        nobs = lines.length; // §9.122: il riquadro alto quanto le righe
-      }
+      const { lines, sizing, nobs } = objectiveLines(w, d);
       // il riquadro dell'originale (da W-520 a W-120, testo da W-500) si
       // allarga verso sinistra se un testo tradotto non ci sta.
       // [§9.27] ma non sopra i pulsanti in alto a sinistra (costruzione,

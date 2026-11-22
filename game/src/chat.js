@@ -18,6 +18,7 @@
 import { c, makeColourRgb } from "./colours.js";
 import { tr } from "./i18n.js";
 import { CHAT_MAX } from "./lockstep.js";
+import { audio } from "./audio.js"; // §9.171
 const SHOW = 15000, FADE = 3000;       // ms: un messaggio si vede, poi svanisce
 const KEEP = 40;                       // messaggi tenuti
 const LINE = 21;                       // px fra le righe
@@ -56,11 +57,13 @@ export class Chat {
 
   add(who, text) {
     const s = String(text).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, CHAT_MAX);
-    if (!s) return;
+    if (!s) return false;
     this.log.push({ who, text: s, t: performance.now() });
     if (this.log.length > KEEP) this.log.shift();
+    return true;
   }
-  receive(text) { this.add(1 - this.local, text); }
+  // [§9.171] il messaggio dell'altro, col suo suono (audio.js ui)
+  receive(text) { if (this.add(1 - this.local, text)) audio.ui("chat"); }
   system(text) { this.add(null, text); }
 
   open() {

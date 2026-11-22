@@ -20,6 +20,7 @@ import { GRID, generateFields } from "./pathing.js";
 import { spawnSlices, destroySlices } from "./scenario.js";
 import { linkParts, complexPointOver } from "./complex.js";
 import { dsin } from "./dmath.js"; // §9.152
+import { audio } from "./audio.js"; // §9.171
 
 const WHITE = 0xffffff, BLACK = 0, GREEN = 0x008000, RED = 0x0000ff;
 
@@ -93,13 +94,26 @@ export const buttonAlpha = (g, cost) => (canPay(g, cost) ? 1 : POOR_ALPHA);
 
 // Lampeggi delle risorse che mancano [C]: wood_blink se manca il legno,
 // stone_blink se manca la pietra (chiesa: entrambi, indipendenti).
+// [§9.171] col suono delle risorse che mancano, se ne manca davvero una (il
+// posto occupato lampeggia senza risorse mancanti: niente)
 function blinkMissing(w, fam, cost) {
   if (fam === "chiesa") {
     if (w.g.stone < 150) w.create("stone_blink", 0, 0);
     if (w.g.wood < 50) w.create("wood_blink", 0, 0);
+    if (w.g.stone < 150 || w.g.wood < 50) audio.ui("risorse");
     return;
   }
-  for (const r of Object.keys(cost)) if (w.g[r] < cost[r]) { w.create(BLINK[r], 0, 0); return; }
+  for (const r of Object.keys(cost)) if (w.g[r] < cost[r]) { w.create(BLINK[r], 0, 0); audio.ui("risorse"); return; }
+}
+
+// [§9.173, richiesta dell'autore] la produzione pronta ferma per la
+// popolazione (il lampeggio che si ripete a ogni nuovo tentativo): il suono
+// delle risorse che mancano una volta sola, quando comincia (popHeld resta
+// 1 finche' l'unita' non nasce); per chi guarda, se il produttore e' suo
+export function popHeld(i, w) {
+  if (i.popHeld) return;
+  i.popHeld = 1;
+  audio.notice("risorse", w, i);
 }
 
 // ------------------------------------------------------------- pulsanti
@@ -361,6 +375,7 @@ export function fond(fam, p) {
         }
         // l'edificio finito compare in dissolvenza sul cantiere
         w.swapSprite(b, b.sprite_index, i.sprite_index);
+        audio.notice("edificio_finito", w, i); // §9.171
         w.destroy(i);
       }
     },
@@ -698,7 +713,7 @@ export function campoFond(p) {
     alarm0(i, w) { armBuilders(i, w, p, "fieldwork", ...fondMouse(i, w)); },
     step(i, w) {
       if (i.life <= 0) { w.destroy(i); return; } // §9.55, come gli altri cantieri
-      if (i.life >= i.slife) { w.create("campo", i.x, i.y); w.destroy(i); }
+      if (i.life >= i.slife) { w.create("campo", i.x, i.y); audio.notice("edificio_finito", w, i); w.destroy(i); } // §9.171
       campoFondStream(i, w);
     },
     // [Correzione decisa dall'autore, §3.17 n.57] i germogli spariscono
@@ -849,10 +864,12 @@ export function centro(p) {
       const ax = i.flagx !== null ? i.flagx : i.x + 250, ay = i.flagx !== null ? i.flagy : i.y + 150;
       if (i.progression < 100 && i.progression !== 0) { i.progression += 1; i.alarm.set(0, 10); }
       if (i.progression >= 100) {
-        if (g.pop >= g.popcap) { i.alarm.set(0, 30); w.create("pop_blink", 0, 0); return; }
+        if (g.pop >= g.popcap) { i.alarm.set(0, 30); w.create("pop_blink", 0, 0); popHeld(i, w); return; }
+        i.popHeld = 0;
         i.progression = 0;
         if (i.coda > 0) { i.coda -= 1; i.alarm.set(0, 10); i.progression = 1; }
         const n = w.create("ally_omino", i.x, i.y);
+        audio.notice("unita_pronta", w, i); // §9.171
         n.alarm.set(10, 10);
         n.creation = 1;
         n.flaggox = ax;
@@ -938,6 +955,7 @@ function enqueueWorker(i, w, fromKey) {
   const ok = sel.length && sel[0].coda < 6;
   if (g.food < WORKER_COST.food) w.create("food_blink", 0, 0);
   if (g.pop >= g.popcap) w.create("pop_blink", 0, 0);
+  if (g.food < WORKER_COST.food || g.pop >= g.popcap) audio.ui("risorse"); // §9.171
   const can = ok && g.food >= WORKER_COST.food && g.pop < g.popcap;
   if (sel.length) w.act("civile", { ids: sel.map((x) => x.id) });
   if (can) i.active = 1;

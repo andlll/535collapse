@@ -43,6 +43,343 @@
       "gain": 0.75,
       "nota": "il colpo di martello di chi costruisce o ripara (civilians.js otherWorkTick, una volta per ciclo di 39 passi, se il lavoro va avanti): un colpo solo (attacco a 37 ms, -50 dB dopo 70 ms). Il 97% dell'energia era sotto i 120 Hz (un tonfo, come negli archi) e prima del colpo un brusio grave a -47 dB: passa-alto a 150 Hz a 48 dB/ottava come per l'arco (brusio a -77 dB; restano un po' di corpo, 120-250 Hz, e il tac, 2-8 kHz). Una variante sola: altezza +-12% invece di +-7%. Gain 0,75: filtrato suona 2,7 dB piu' piano di ascia e piccone (RMS nei primi 100 ms -26,4 contro -23,6)"
     },
+    "zappa": {
+      "da": "passi_erba.mp3",
+      "tagli": [[130, 280], [786, 936], [1402, 1552]],
+      "filtro": "highpass=f=80:poles=2",
+      "dissolvenza_ms": [2, 80],
+      "gain": 0.35,
+      "nota": "il colpo di zappa del contadino al campo (civilians.js otherWorkTick, la raccolta: una volta per ciclo di 39 passi, come l'ascia; non dei contadini nemici nella nebbia; §9.168). Dalla registrazione dei passi sull'erba (4,6 s, mono in due canali): 14 passi ogni ~320 ms; i primi sei sono colpi singoli e sordi (picchi -22..-36 dB), dai 2 s in poi piu' forti e spesso doppi (tacco e punta, 15-20 ms l'uno dall'altro): la 'sequenza rapida' da lasciare. Tre dei primi, quelli puliti: 130, 786 e 1402 ms (attacchi a 136, 792, 1408), 150 ms l'uno (il passo dura 35-60 ms piu' la coda); scartato quello a 464 (debole e doppio: portato a -3 dB alzava il fruscio di fondo di 23 dB). Passa-alto leggero a 80 Hz (12 dB/ottava) contro il rombo. Gain 0,35: ~ -32 dB nei primi 150 ms, appena sotto ascia e piccone (-30..-32), un colpo nella terra"
+    },
+    "catapulta": {
+      "da": "catapulta.mp3",
+      "tagli": [[620, 1520]],
+      "filtro": "highpass=f=120:poles=2,highpass=f=120:poles=2",
+      "dissolvenza_ms": [2, 450],
+      "altezza": 0.05,
+      "gain": 0.2,
+      "nota": "il lancio della catapulta (siege.js catapultAlarm2, quando parte il sasso; anche nemica, se si vede; §9.168). Dalla registrazione (4,2 s, finisce a 2,05): 0,1-0,6 s il cigolio della carica, a 0,64 lo scatto del braccio (-11 dB RMS) e 1 s di sbattimenti e coda; il 56% dell'energia sotto gli 80 Hz. 'Impegnativa' (l'autore): troppo lunga, troppo grave e troppo forte. Solo lo scatto e la coda (0,62-1,52 s: il cigolio ritardava il colpo di 0,5 s rispetto al sasso), sfumata negli ultimi 450 ms; passa-alto a 120 Hz a 24 dB/ottava (resta il legno, 150-1200 Hz); altezza +-5%. Gain 0,2: ~ -30 dB nei primi 150 ms, come gli altri colpi (spada, ascia, arco)"
+    },
+    "crollo": {
+      "da": "roccia.mp3",
+      "tagli": [[370, 970], [1290, 1890], [1650, 2250]],
+      "filtro": "highpass=f=120:poles=2,highpass=f=120:poles=2",
+      "dissolvenza_ms": [2, 300],
+      "gain": 0.22,
+      "nota": "il colpo su un edificio dell'ariete e del sasso della catapulta (siege.js: l'ariete a ogni colpo, ~1,15 s; il sasso che cade su un edificio; alleati e nemici, se si vedono; §9.168). Dalla registrazione (4,7 s): un colpo a 0,38 s e 1,9 s di crollo fortissimo (RMS -2..-10 dB), poi detriti fino a 4,6 s; l'80% dell'energia sotto gli 80 Hz. Da smorzare (l'autore): tre tagli di 600 ms (invece di 4 s) che cominciano su un colpo (0,37: il colpo iniziale; 1,29 e 1,65: due colpi dentro il crollo), sfumati negli ultimi 300 ms; passa-alto a 120 Hz a 24 dB/ottava (restano pietra e detriti, 150 Hz-5 kHz). Gain 0,22: ~ -32 dB nei primi 150 ms, sotto gli altri colpi (l'ariete batte di continuo)"
+    },
+    "clic": {
+      "da": "clic.mp3",
+      "tagli": [[1566, 1666]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "dissolvenza_ms": [1, 50],
+      "altezza": 0.03,
+      "gain": 0.5,
+      "nota": "il clic dei pulsanti dell'interfaccia (audio.js ui: senza posizione, anche nel menu principale; app.js: pulsanti della partita e della minimappa, pausa; pause.js e menu.js; §9.168). Dalla registrazione dei clic della rotella (18 s: un clic da solo a 1,57 s, poi serie lente, rapide e uno sfregamento): quello da solo, 100 ms dall'attacco (1,566 s) col suo decadimento; il 57% dell'energia era un tonfo sotto i 300 Hz: passa-alto a 200 Hz a 24 dB/ottava (resta il tic, 600-2500 Hz). Altezza +-3%. Gain 0,5: ~ -33 dB, discreto"
+    },
+    "rovina": {
+      "da": "crolli.mp3",
+      "tagli": [[3385, 4480]],
+      "filtro": "highpass=f=50:poles=2,highpass=f=50:poles=2",
+      "dissolvenza_ms": [5, 450],
+      "altezza": 0.06,
+      "gain": 0.3,
+      "nota": "il crollo di un edificio grande distrutto (vita piena da 300: caserma, stalla, centro, castello, torre, chiesa, monastero; app.js hooks.destroyed, a vita 0, se chi guarda lo vede; §9.170). Dalla registrazione dei tre crolli (8 s, stereo; fra un crollo e l'altro fruscio a -53 dB e due tratti di silenzio digitale), il secondo, quello che l'autore preferisce: attacco a 3,39 s, -8 dB di media nei primi 100 ms, scende sotto -45 a 4,48 s; 1,1 s dall'attacco, sfumato negli ultimi 450 ms. Il 68% dell'energia era sotto gli 80 Hz (il 30% sotto i 40, che non si sente): passa-alto a 50 Hz a 24 dB/ottava (resta il peso, 60-150 Hz). Altezza +-6%. Gain 0,3: ~ -27 dB nei primi 500 ms, qualche dB sopra i colpi (-31): e' raro"
+    },
+    "rovina_piccola": {
+      "da": "crolli.mp3",
+      "tagli": [[1080, 2260], [5975, 7500]],
+      "filtro": "highpass=f=50:poles=2,highpass=f=50:poles=2",
+      "dissolvenza_ms": [5, 500],
+      "gain": 0.28,
+      "nota": "il crollo di un edificio piccolo distrutto (case, magazzini, mulini, mura, porte, cantieri; come rovina, §9.170): il primo e il terzo dei tre crolli (attacchi a 1,09 e 5,98 s; il terzo piu' sbriciolato), 1,2 e 1,5 s, sfumati negli ultimi 500 ms; stesso passa-alto. Gain 0,28: ~ -30 dB, come i colpi"
+    },
+    "corno": {
+      "da": "348862__newagesoup__big-reverb-warhorn.wav",
+      "tagli": [[150, 6000]],
+      "dissolvenza_ms": [5, 2500],
+      "tempo": 1.3,
+      "altezza": 0,
+      "gain": 0.17,
+      "nota": "il corno di guerra: un attacco nuovo fuori dalla vista (attackalarm.js raiseAlarm, quando nascono gli anelli sulla minimappa), al piu' uno ogni 30 s, senza posizione; §9.170. Da Freesound (newagesoup, 'big reverb warhorn', WAV 48 kHz 24 bit, 13,6 s): il corno da 0,2 a 2,4 s (-10 dB), poi il riverbero che scende a -45 dB a 6 s e a -93 a 12. Solo energia fra 40 e 1200 Hz (scuro: e' il suo carattere). Smorzato e accelerato (l'autore): da 0,15 a 6 s con il riverbero sfumato negli ultimi 2,5 s, poi 1,3 volte piu' veloce senza cambiare altezza (atempo: resta scuro): 4,5 s invece di 13,6. Mono. Gain 0,17: ~ -32 dB nei primi 500 ms, sotto la musica"
+    },
+    "zoccoli": {
+      "da": "cavalli.mp3",
+      "tagli": [[600, 5300]],
+      "loop": {
+        "incrocio_ms": 400
+      },
+      "filtro": "highpass=f=60:poles=2,highpass=f=60:poles=2",
+      "gain": 0.38,
+      "nota": "gli zoccoli della cavalleria in movimento (game/src/audio.js ambient, col livello di effects.js hoovesNoise: i cavalieri che si muovono e si vedono, vicini alla vista, S/(S+2): uno 0,33, due 0,5, sei 0,75; col pan; §9.170). Dalla registrazione del galoppo (5,8 s, mono in due canali): il 99% dell'energia era sotto i 40 Hz (un tonfo che non si sente, ma che si mangiava il volume): passa-alto a 60 Hz a 24 dB/ottava; restano lo zoccolo (150-600 Hz) e la terra smossa (5-10 kHz), RMS -45 dB prima del guadagno (+14,5 al picco di -3). Il galoppo e' irregolare (l'inviluppo non ha un periodo netto): un loop da 0,6 a 5,3 s con 400 ms di dissolvenza incrociata non si sente girare. Gain 0,38: ~ -38 dB a pieno livello, -47 con un cavaliere solo: un fondo, non predomina"
+    },
+    "edificio_finito": {
+      "da": "build_finish.wav",
+      "tagli": [[90, 950]],
+      "altezza": 0,
+      "dissolvenza_ms": [2, 100],
+      "gain": 0.2,
+      "nota": "l'edificio finito (buildings.js, i cantieri di edifici, campi e mura del giocatore che arrivano a vita piena; senza posizione, e' un avviso; §9.171). Suono dell'autore (build_finish.wav, 32 kHz, 1,5 s): comincia a 0,1 s e finisce a 0,9; il tratto da 0,09 a 0,95 s, cosi' com'e'. Il 74% dell'energia sotto i 40 Hz (fondamentale a 36 Hz, armoniche a 95 Hz -11 dB): su altoparlanti piccoli si sente soprattutto la parte sopra gli 80 Hz. Gain 0,2: ~ -26 dB nei primi 300 ms"
+    },
+    "unita_pronta": {
+      "da": "unit_finish.wav",
+      "tagli": [[0, 600]],
+      "altezza": 0,
+      "dissolvenza_ms": [1, 80],
+      "gain": 0.32,
+      "nota": "l'unita' pronta (production.js: caserma, stalla, castello; buildings.js: il civile del centro; del giocatore, senza posizione; §9.171). Suono dell'autore (unit_finish.wav, 32 kHz, 0,63 s): il tratto da 0 a 0,6 s cosi' com'e' (energia fra 600 Hz e 10 kHz). Gain 0,32: ~ -29 dB"
+    },
+    "chat": {
+      "da": "chat.wav",
+      "tagli": [[45, 690]],
+      "altezza": 0,
+      "dissolvenza_ms": [1, 100],
+      "gain": 0.6,
+      "nota": "un messaggio dell'altro giocatore nella chat della partita in rete (chat.js receive; audio.js ui; §9.171). Suono dell'autore (chat.wav, 32 kHz, 0,69 s): da 0,045 s (prima silenzio) a 0,69, cosi' com'e' (un tintinnio fra 2,5 e 5 kHz). Gain 0,6: ~ -30 dB"
+    },
+    "risorse": {
+      "da": "no_resour.wav",
+      "tagli": [[0, 320]],
+      "altezza": 0,
+      "dissolvenza_ms": [2, 60],
+      "gain": 0.13,
+      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; §9.171); e la produzione pronta ferma per la popolazione (centro, caserma, stalla, castello), una volta sola quando comincia a lampeggiare, non a ogni nuovo tentativo (buildings.js popHeld, §9.173); non gli altri lampeggi automatici (riparazione, ponte senza legno). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB"
+    },
+    "cancello": {
+      "da": "chain_door.mp3",
+      "tagli": [[0, 850], [3050, 3850]],
+      "filtro": "highpass=f=80:poles=2,highpass=f=80:poles=2",
+      "dissolvenza_ms": [20, 300],
+      "gain": 0.2,
+      "nota": "la porta delle mura che si apre o si chiude (walls.js, porte del giocatore e nemiche, se si vedono; §9.171). Dalla registrazione della catena (11,3 s, continua): due tratti, l'inizio (0-0,85 s, l'attacco naturale) e uno da 3,05 a 3,85 s (un colpo), sfumati negli ultimi 300 ms; il 45% dell'energia sotto i 150 Hz: passa-alto a 80 Hz a 24 dB/ottava. Gain 0,2: ~ -32 dB, sotto i colpi (le porte si aprono e chiudono spesso)"
+    },
+    "lucchetto": {
+      "da": "clic.mp3",
+      "tagli": [[3198, 3318], [3444, 3564], [3669, 3789]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "altezza": 0.03,
+      "dissolvenza_ms": [1, 50],
+      "gain": 0.55,
+      "nota": "una rotella del lucchetto del menu della campagna (menu.js; audio.js ui; §9.171): tre clic della serie lenta della registrazione dei clic (attacchi a 3,206, 3,452, 3,677 s; i successivi della serie, filtrati, erano 10-30 dB piu' deboli: portati a -3 dB alzavano il fruscio), 120 ms; passa-alto come clic. Gain 0,55"
+    },
+    "lucchetto_aperto": {
+      "da": "clic.mp3",
+      "tagli": [[7823, 8760]],
+      "filtro": "highpass=f=200:poles=2,highpass=f=200:poles=2",
+      "altezza": 0,
+      "dissolvenza_ms": [1, 150],
+      "gain": 0.9,
+      "nota": "il codice giusto: il lucchetto si apre (menu.js; audio.js ui; §9.171): la serie rapida della stessa registrazione (otto clic sempre piu' forti, da 7,82 a 8,76 s), sfumata negli ultimi 150 ms. Gain 0,9: ~ -33 dB"
+    },
+    "obiettivo": {
+      "da": "objective.wav",
+      "tagli": [[40, 1300]],
+      "dissolvenza_ms": [2, 400],
+      "altezza": 0,
+      "gain": 0.2,
+      "nota": "un obiettivo nuovo o raggiunto, anche in parte (endgame.js objectiveButton: le righe del riquadro degli obiettivi; senza posizione; §9.172). Suono dell'autore (objective.wav, WAV 16 bit, 32 kHz, 2,5 s; sostituisce un primo file caricato per sbaglio): comincia a 0,05 s, scende sotto -40 dB a 0,5 e sotto -78 a 1,4; da 0,04 a 1,3 s, la coda sfumata negli ultimi 400 ms, cosi' com'e'. Il 95% dell'energia fra 40 e 80 Hz, come no_resour (§9.171): su altoparlanti piccoli si sente poco. Gain 0,2: ~ -27 dB nei primi 300 ms, come l'edificio finito"
+    },
+    "morte": {
+      "strati": [
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 130,
+            "a_ms": 280,
+            "velocita": 0.78,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 493,
+            "a_ms": 693,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": 2.2,
+            "ritardo_ms": 70
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 786,
+            "a_ms": 936,
+            "velocita": 0.78,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 1294,
+            "a_ms": 1494,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": 4.3,
+            "ritardo_ms": 70
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 1402,
+            "a_ms": 1552,
+            "velocita": 0.78,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 2133,
+            "a_ms": 2333,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": -0.4,
+            "ritardo_ms": 70
+          }
+        ]
+      ],
+      "filtro": "highpass=f=60:poles=2",
+      "dissolvenza_ms": [
+        2,
+        120
+      ],
+      "gain": 0.27,
+      "nota": "la morte di un soldato (guerriero, picchiere, arciere: del giocatore, nemici, del blu; app.js hooks.destroyed, a vita 0, se chi guarda lo vede; §9.174). Niente voci (l'autore: i rantoli non si sposano coi personaggi dipinti): la caduta, il corpo e l'arma. A strati (tools/18 \"strati\"): il tonfo della zappa (passi_erba.mp3, i tre colpi di zappa) rallentato a 0,78 (piu' grave e lungo: 190 ms) e, 70 ms dopo, il tintinnio dell'arma (spade.wav, un colpo per variante, passa-alto a 1,5 kHz e accelerato a 1,15: un oggetto di metallo piccolo, non lo scontro) con il picco ~15 dB sotto il tonfo; passa-alto a 60 Hz sul tutto. Gain 0,27: ~ -36 dB nei primi 150 ms, sotto la spada (-31): in una mischia se ne sentono tanti"
+    },
+    "morte_civile": {
+      "strati": [
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 130,
+            "a_ms": 280,
+            "velocita": 0.85,
+            "db": 0,
+            "ritardo_ms": 0
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 786,
+            "a_ms": 936,
+            "velocita": 0.85,
+            "db": 0,
+            "ritardo_ms": 0
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 1402,
+            "a_ms": 1552,
+            "velocita": 0.85,
+            "db": 0,
+            "ritardo_ms": 0
+          }
+        ]
+      ],
+      "filtro": "highpass=f=60:poles=2",
+      "dissolvenza_ms": [
+        2,
+        100
+      ],
+      "gain": 0.21,
+      "nota": "la morte di un civile (§9.174): solo il tonfo, rallentato a 0,85, senza metallo. Gain 0,21: ~ -36 dB"
+    },
+    "morte_cavaliere": {
+      "strati": [
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 130,
+            "a_ms": 280,
+            "velocita": 0.65,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 786,
+            "a_ms": 936,
+            "velocita": 0.72,
+            "db": -3,
+            "ritardo_ms": 130
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 493,
+            "a_ms": 693,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": 0.2,
+            "ritardo_ms": 90
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 786,
+            "a_ms": 936,
+            "velocita": 0.65,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 1402,
+            "a_ms": 1552,
+            "velocita": 0.72,
+            "db": -3,
+            "ritardo_ms": 130
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 1294,
+            "a_ms": 1494,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": 2.3,
+            "ritardo_ms": 90
+          }
+        ],
+        [
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 1402,
+            "a_ms": 1552,
+            "velocita": 0.65,
+            "db": 0,
+            "ritardo_ms": 0
+          },
+          {
+            "da": "passi_erba.mp3",
+            "da_ms": 130,
+            "a_ms": 280,
+            "velocita": 0.72,
+            "db": -3,
+            "ritardo_ms": 130
+          },
+          {
+            "da": "spade.wav",
+            "da_ms": 2133,
+            "a_ms": 2333,
+            "filtro": "highpass=f=1500:poles=2,highpass=f=1500:poles=2",
+            "velocita": 1.15,
+            "db": -2.4,
+            "ritardo_ms": 90
+          }
+        ]
+      ],
+      "filtro": "highpass=f=50:poles=2",
+      "dissolvenza_ms": [
+        2,
+        150
+      ],
+      "gain": 0.28,
+      "nota": "la morte di un cavaliere (§9.174): due tonfi, il cavallo (0,65, piu' grave) e 130 ms dopo il cavaliere (un altro colpo a 0,72, 3 dB sotto), e il tintinnio 90 ms dopo il primo; passa-alto a 50 Hz. Gain 0,28: ~ -35 dB"
+    },
     "pioggia": {
       "da": "pioggia.wav",
       "tagli": [[51000, 59000]],
@@ -54,6 +391,30 @@
       "kbit": 256,
       "gain": 1,
       "nota": "il loop della pioggia (game/src/audio.js ambient, col livello della pioggia di manager.js: entra ed esce con le gocce). Dalla registrazione (61 s, stereo, 44,1 kHz) il tratto di 8 s da 51 a 59 s, cosi' com'e' (§9.142, richiesta dell'autore: niente filtro, limitatore ne' guadagno, che toglievano il fondo e la rendevano troppo forte): solo tagliato, con la fine dissolta in 1,5 s sull'inizio perche' il giro non scatti, e convertito in MP3 a 256 kbit/s senza il taglio degli acuti (bande uguali all'originale entro 0,1 dB; a 128 si perdevano 8 dB sopra i 16 kHz). Volume quello della registrazione (livello medio ~ -64 dBFS), gain 1"
+    },
+    "fuoco": {
+      "da": "fuoco.mp3",
+      "tagli": [[300, 13500]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "filtro": "highpass=f=100:poles=2,highpass=f=100:poles=2",
+      "kbit": 192,
+      "gain": 0.3,
+      "nota": "il loop degli incendi (game/src/audio.js ambient, col livello di effects.js fireNoise: quanti edifici in fiamme si vedono, quanto sono vicini alla vista e da che parte; smorzato sotto la pioggia; §9.167). Dalla registrazione caricata dall'autore il 21 novembre 2026 (MP3 320 kbit/s, 44,1 kHz, stereo, 15,5 s; il suono comincia a 0,07 s e finisce di colpo a 15,15 s): il tratto da 0,3 a 13,5 s, con la fine dissolta in 1,5 s sull'inizio (13,2 s di giro). Pulizia: il 92% dell'energia era un rombo sotto i 150 Hz (75% sotto gli 80), 12 dB sopra il corpo (150-1000 Hz) e 18 sopra il crepitio (1-16 kHz): copriva la musica e sui piccoli altoparlanti non si sente. Passa-alto a 100 Hz a 24 dB/ottava (restano il calore, 100-300 Hz, e il crepitio); niente compressione ne' limitatore (il crepitio e' nei picchi). Picco a -3 dB come gli altri (livello medio -24), MP3 stereo a 192 kbit/s senza taglio degli acuti. Gain 0,3: a pieno livello ~ -35 dB di media, sotto la musica (-30..-37 per parte) e i colpi; un incendio solo nella vista e' a meta' (-41)"
+    },
+    "fiume": {
+      "da": "fiume.mp3",
+      "tagli": [[1200, 9400]],
+      "loop": {
+        "incrocio_ms": 1500,
+        "stereo": true
+      },
+      "filtro": "equalizer=f=2000:t=o:w=1.5:g=-3",
+      "kbit": 192,
+      "gain": 0.13,
+      "nota": "il loop del fiume, leggero (game/src/audio.js ambient, col livello di effects.js riverNoise: quanta acqua c'e' nella vista e attorno, da che parte; §9.169). Dalla registrazione caricata dall'autore il 21 novembre 2026 (MP3 320 kbit/s, 44,1 kHz, stereo, 11 s): entra in dissolvenza nel primo secondo (-66 -> -21 dB) e finisce a 10,95 s; in mezzo costante (RMS -19..-22 dB ogni 0,5 s), gorgoglii con picchi fino a -0,3 dB. Niente sotto i 150 Hz (gia' tagliati nella registrazione), il 60% dell'energia fra 600 e 2500 Hz. Il tratto da 1,2 a 9,4 s, con la fine dissolta in 1,5 s sull'inizio (8,2 s di giro); un calo largo di 3 dB attorno ai 2 kHz (due ottave e mezza) per un fondo meno tagliente; picco a -3 dB (livello medio -25,5), MP3 stereo a 192 kbit/s. Gain 0,13: a pieno livello ~ -43 dB di media, leggero, sotto il fuoco (-35) e la musica"
     },
     "musica_archi": {
       "da": "loop1_archi.wav",

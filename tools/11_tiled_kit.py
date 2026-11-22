@@ -549,6 +549,12 @@ invece, sono tue.
    `lvl02.tmx`) per vedere come sono fatte.
 4. Dimensioni: *Map → Resize Map…* (la griglia e' di {tile} px: una mappa di
    6000 px e' larga 120 celle). Le coordinate in pixel sono quelle del gioco.
+5. Le mappe della schermaglia (`mappe/sk_padus.tmx`, `sk_urbs.tmx`,
+   `sk_silva.tmx`, `sk_rivo.tmx`, `sk_bardonis.tmx`) non sono disegnate a
+   mano: le scrive un programma (`tools/16_schermaglia.py`), simmetriche per
+   i due giocatori. Si possono aprire per guardarle; una modifica fatta qui
+   verrebbe persa alla prossima generazione (e la CI la segnala): le
+   correzioni si dicono a Claude, che cambia il programma.
 
 ## Livelli della mappa (dal basso)
 
@@ -741,7 +747,16 @@ spostare un oggetto in un gruppo: tasto destro sull'oggetto,
   finale non conta). La polilinea e' un percorso aperto (dal primo
   all'ultimo punto), il poligono un giro chiuso. Cosa ci cammina sopra lo
   decide la regia del livello (nel livello 6: le pattuglie in giro e la
-  colonna fino al ponte).
+  colonna fino al ponte; nel 7 le pattuglie, che vanno e tornano per la
+  stessa strada: il giro chiuso passa due volte dagli stessi punti). I
+  nemici a meno di 300 px da un punto di un percorso `pattuglia` sono di
+  quella pattuglia.
+- Banchi di nebbia (livello 7, livello `regia`): una polilinea orizzontale
+  chiamata `nebbia` (anche `nebbia2`...) coi due capi fra cui il banco va e
+  viene; due proprieta' personalizzate: `velocita` (numero decimale, px a
+  passo: 0,5 lento, 1 svelto; il segno e' il verso con cui parte, meno
+  verso sinistra) e `nuvole` (intero, quante nuvole: 3 di solito). Dentro un
+  banco i nemici vedono a meta'.
 
 ## Consegnare una mappa
 

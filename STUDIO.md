@@ -23,7 +23,10 @@ numeri `ECO.lvl04`, obiettivi); i segnaposto "cantiere nemico" in Tiled (se
 servono ancora) e il kit aggiornato quando l'autore lo dice; il nome
 "Dust Veil" nel resto del gioco (titolo della pagina, manifest, icone,
 zip); i livelli 5-10; le voci qui sotto. [Prima dell'uscita] rimettere
-`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103).
+`UNLOCK_ALL` a 1 in progress.js (§9.53: livelli 1-4 sbloccati per le prove; ora 1-6, §9.103). Allora (§9.164) le
+prove nel browser che aprono un livello dall'indirizzo (`?room=lvl05`...)
+finirebbero nel menu: devono scrivere prima lo sblocco in localStorage
+(`535.progress`, `{ v: 1, unlock: 6 }`, con addInitScript).
 
 **Audio, da fare** (§9.137-§9.145): l'autore riesporta da Ableton le tre
 parti del primo loop (archi, field, drone) come loop veri, con "Render as
@@ -11664,3 +11667,851 @@ inattivi, al posto del segno "diverso" provvisorio di §9.158. Resta il
 lampeggio arancione del cerchio nei primi 6 s, e il suggerimento col
 puntatore sopra. Prova: netfake.mjs (la partita resa diversa di nascosto:
 l'icona e il suggerimento si disegnano, screenshot), passata.
+
+### 9.163 Il rosso non vedeva i pulsanti del municipio
+
+Segnalazione dell'autore (18 novembre 2026, nuova PR, versione 0.2614): "bug
+nel multiplayer: il giocatore rosso non vede la parte della GUI relativa ai
+pulsanti (costruzione, creazione unita'...)".
+
+**La causa.** Il codice del giocatore gira in ogni pagina per le istanze
+delle due parti (§9.155): nella pagina del rosso anche lo Step di
+p2_centro, in quella del blu lo Step di centro. Lo Step del centro
+(buildings.js) fa "selezionato: crea i pulsanti (omino_clicker, il civile;
+centro_indietro_clicker, l'annulla); non selezionato: via i pulsanti". I
+pulsanti sono dell'interfaccia (nessun gemello, nessuna traduzione nello
+specchio): il centro dell'altra parte, che in quella pagina non e' mai
+selezionato, distruggeva i pulsanti di chi guarda. Chi li perdeva dipende
+dall'ordine dei due centri nella room (skirmishPrepare: l'angolo della
+mappa e il lato scelto): se il centro dell'altro viene dopo, i pulsanti
+spariscono a ogni passo appena creati; se viene prima, li distrugge e il
+proprio li ricrea subito (si vedono, ma rinascono a ogni passo, e il loro
+Destroy rimette global.sele a 0: il puntatore sopra il pulsante non
+contava). Nella partita dell'autore toccava al rosso; con ?pvp=1 su
+sk_padus seme 5 al blu (misurato: senza la correzione il blu, selezionato
+il centro, ha 0 pulsanti, il rosso 2). Lo stesso per i lampeggi delle
+risorse (pop_blink: la popolazione piena dell'altro lampeggiava anche per
+chi guarda).
+
+**La correzione** (world.js `_foreignUi`). Nella partita a due l'interfaccia
+(le istanze ui: pulsanti, lampeggi, fantasmi, suggerimenti) e' di chi
+guarda: un evento di un'istanza dell'altra parte, o un comando dell'altro
+giocatore (mp.actor), non crea ne' distrugge istanze dell'interfaccia.
+`fire` ricorda l'istanza dell'evento in corso; `create` restituisce
+un'istanza gia' morta (chi la usa non se ne accorge; via a fine passo),
+`destroy` non fa niente. Le neutre (risorse, sk_manager) e le funzioni
+dell'interfaccia di app.js restano come prima; fuori dalla partita a due
+niente cambia. L'interfaccia non entra nell'impronta (§9.152): la partita
+resta la stessa nelle due pagine.
+
+**Visto cercando: il rettangolo di selezione.** global.multi (il
+rettangolo che chi guarda sta tirando) e' comune alle due parti: lo Step
+dei civili e boxSelect (soldati, arcieri, macchine) selezionavano anche le
+unita' dell'altra parte che ci finivano dentro (selezionate per sempre in
+quella pagina: nessun clic le deseleziona, e i loro pannelli nella GUI di
+chi guarda). Ora solo le proprie (world.js `mine`).
+
+**Prove.**
+- test/multiplayer.test.mjs "§9.163": un centro rosso e uno blu,
+  selezionato quello di chi guarda, guardando dal rosso e dal blu: i
+  pulsanti restano (senza la correzione la prova fallisce); un comando
+  dell'altro giocatore non li tocca, uno di chi guarda si'.
+- Nel browser (?pvp=1, sk_padus, seme 5, dalle due parti): centro
+  selezionato, i due pulsanti; civili selezionati, i pulsanti di
+  costruzione; un rettangolo su tutta la mappa prende i 3 civili propri e 0
+  dell'altro. pvp.mjs (1500 passi), netfake.mjs, truce.mjs, replay.mjs (anche
+  PVP=2), orders.mjs match, hover.mjs, melee.mjs match: passate.
+
+### 9.164 I livelli bloccati non si aprono dall'indirizzo
+
+Segnalazione dell'autore (19 novembre 2026, stessa PR di §9.163, versione
+0.2614): "nell'url compare il nome del livello, e se un utente volesse
+'fregare' giocando un livello della campagna che non ha ancora sbloccato
+gli basterebbe cambiare un numerino nell'url. Come possiamo risolvere?
+Usiamo nomi diversi?"
+
+**Nomi diversi: no.** Nascondono la cifra, ma i nomi veri restano nel
+codice del gioco (il bundle) e nelle richieste della pagina
+(`assets/rooms/<room>.json`): basta aprire gli strumenti del browser. E
+cambierebbero l'indirizzo di tutte le prove e della documentazione senza
+fermare nessuno. Il problema non e' il nome: e' che la pagina carica
+qualsiasi room le si chieda.
+
+**La correzione.** Prima di caricare la room, app.js chiede a progress.js
+`canPlay(room, loadUnlock())`: un livello della campagna (`lvlNN`, numero
+da `levelOf`) oltre lo sblocco salvato porta al menu, e l'indirizzo diventa
+`?room=menu` (via anche gli altri parametri: un salvataggio, la campagna).
+Il livello 1, il tutorial (match) e le schermaglie restano sempre
+aperti, come nel menu (shownLevel). Vale anche per un salvataggio (slot o
+file) di un livello bloccato: lo sblocco perso si riprende coi codici del
+lucchetto, che la vittoria mostra.
+
+**Cosa resta.** Il gioco gira tutto nel browser, senza server: lo sblocco
+sta in localStorage e i codici del lucchetto sono nel codice (come
+nell'originale). Chi apre gli strumenti del browser puo' sempre cambiarli;
+fermarlo davvero vorrebbe un server con gli account. Cambiare una cifra
+nell'indirizzo, la scorciatoia alla portata di tutti, ora non basta piu'.
+Finche' `UNLOCK_ALL` e' 6 (provvisorio, §9.53) tutti i livelli sono
+sbloccati e il controllo non ferma niente: vale dall'uscita, con
+`UNLOCK_ALL = 1` (nota sulle prove in "Cose da fare").
+
+**Prove.**
+- test/progress.test.mjs: levelOf e canPlay (il livello 1 sempre, fino
+  allo sblocco si', oltre no; menu, tutorial e schermaglie sempre).
+- Nel browser, con una build provvisoria a `UNLOCK_ALL = 1` e lo sblocco a
+  3 in localStorage: `?room=lvl05` e `?room=lvl04` -> menu (`?room=menu`),
+  anche con `&campaign=1&load=slot`; `lvl01`, `lvl03`, `match`, `sk_padus`
+  si aprono. Con la build normale lvl05.mjs, lvl06.mjs, orders.mjs lvl06,
+  monastery.mjs: passate.
+
+### 9.165 I suggerimenti spenti fuori dal tutorial; quello della notte quando e' notte
+
+Richiesta dell'autore (20 novembre 2026, stessa PR di §9.163, versione
+0.2614): "hints: a parte nel tutorial che sono attivi di default, mettiamoli
+disattivati di default per tutti gli altri livelli. Sono comunque attivabili
+premendo lo shortcut o da menu. Hint notte: occhio che sia coerente con i
+livelli, ora credo sia solo basato sul timer e non sull'effettivo arrivo
+della notte".
+
+**Spenti di default.** state.js: global.hint e' 1 nel tutorial (match), 0
+negli altri livelli e nelle schermaglie (il menu resta 3). Si accendono
+come prima con H o dal menu di pausa ("Suggerimenti"); un salvataggio
+riporta la scelta di quando e' stato fatto.
+
+**Spenti davvero.** Nell'originale H nascondeva solo il disegno: i
+suggerimenti nascevano lo stesso, invisibili, segnavano la loro "volta"
+(woodhint, ...) e il primo aperto bloccava tutti gli altri (una finestra
+alla volta) finche' un clic, alla cieca dove sarebbe stato, non lo
+chiudeva. Andava bene come eccezione; come norma no. Ora con i
+suggerimenti spenti:
+- non ne nasce nessuno (hintOnce, il suggerimento degli allarmi della
+  minimappa) e la volta non si consuma: acceso H dopo, arriva la prossima
+  volta che serve;
+- uno gia' aperto (si spegne mentre c'e') non si chiude ne' va avanti con
+  un clic: riappare quando si riaccendono.
+Restano come prima quelli che nascono da un dialogo del livello 2
+(hint_lavoratori, una volta sola: si vede accendendo H).
+
+**La notte.** Era davvero a tempo: lo creava l'allarme 0 del manager, a
+6000 passi, quando finiva il tramonto. Nel livello 1 (notte dall'inizio)
+arrivava dopo 100 s di notte; nella schermaglia "sempre notte" (allarme 0
+spento) mai. Ora hints.js `nightHint`, a ogni passo da manager.step: la
+prima volta che global.night e' al buio pieno, con i suggerimenti accesi e
+nessun dialogo o altro suggerimento aperto. Nel ciclo del giorno cade
+nello stesso passo del buio pieno; nel livello 1 appena chiusi i dialoghi
+d'inizio (se accesi); di giorno (schermaglia "sempre giorno") mai. Nei
+livelli 2 e 3 resta escluso (§9.14: "gia' visto").
+
+**La partita a due.** Le volte dei suggerimenti (multihint, nighthint, ...)
+nascono per chi guarda (il suo H, le sue finestre): ora sono fuori
+dall'impronta (snapshot.js UI_GLOBALS, come global.hint). Prima un
+suggerimento visto da uno solo dei due giocatori (hint_multi, al primo
+clic su un soldato) avrebbe reso diverse le impronte.
+
+**Prove.**
+- test/hints.test.mjs: accesi solo nel match; spenti, hintOnce non crea e
+  non consuma la volta; nightHint aspetta il buio pieno e la fine dei
+  dialoghi, una volta sola. test/alarm.test.mjs: il suggerimento degli
+  allarmi solo acceso.
+- Nel browser: match acceso con hint_iniziale; lvl01 spento, dopo 7000
+  passi nessun suggerimento della notte e la volta intatta, acceso H arriva
+  subito; sk_padus col ciclo, H acceso: il suggerimento nello stesso passo
+  del buio pieno (6198). hintgap.mjs, alarms.mjs, pvp.mjs, netfake.mjs,
+  ui.mjs it, saves.mjs (match, lvl01, lvl02, sk_padus), determinism.mjs:
+  passate.
+
+### 9.166 Le fiamme smorzate sotto la pioggia
+
+Richiesta dell'autore (20 novembre 2026, stessa PR di §9.163, versione
+0.2614): "particelle del fuoco: possiamo 'smorzarle' un po' quando piove?
+sempre presenti ma un po' meno, a livello visivo".
+
+**Come.** effects.js: con la pioggia le fiamme degli incendi (fireStep) e
+di bracieri e torce (fireStarterStep) emettono meno particelle per passo
+(fino a RAIN_FIRE_N = 0,65 del numero di sempre, intero, almeno 1) e
+quelle degli incendi vivono meno (fino a RAIN_FIRE_LIFE = 0,8: fiamme piu'
+basse). Seguono il livello delle gocce (manager.js `world.rainLevel`, il
+rain.level di §9.91): entrano ed escono in 5 s con la pioggia, senza
+scatti. Solo a vederle: il fuoco brucia e si spegne come prima (§9.116),
+le particelle non sono della partita (impronta uguale).
+
+Una prima prova a 0,55 e 0,7 dava il 42% delle particelle sul municipio in
+fiamme: troppo per "un po' meno". Ora circa il 65% (sul municipio a meta'
+vita: 774 particelle all'asciutto, 499 a pioggia piena; 8 e 4 per passo
+diventano 5 e 3).
+
+**Prove.** test/rainfire.test.mjs (asciutto come prima, a pioggia piena
+meno particelle e fiamme piu' corte, a meta' in mezzo, senza manager come
+prima). Nel browser il municipio in fiamme su sk_padus, all'asciutto e a
+pioggia piena (screenshot). determinism.mjs, burn.mjs, pvp.mjs: passate.
+
+### 9.167 Il suono degli incendi
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "questo invece e' il file audio per quando sono
+mostrati incendi: valuta tu le varie regolazioni da fare (clippare per
+loop, volumi, equalizzazione...)".
+
+**Il file** (`nuovi/audio/fuoco.mp3`, il nome d'origine in CREDITI.md):
+MP3 320 kbit/s, 44,1 kHz, stereo (L/R correlati 0,53), 15,5 s. Il suono
+comincia a 0,07 s e finisce di colpo a 15,15 s (poi silenzio digitale),
+livello costante (RMS ogni 0,5 s fra -15 e -19 dB), picco -3. Lo spettro:
+il 92% dell'energia sotto i 150 Hz (75% sotto gli 80), un rombo 12 dB
+sopra il corpo della fiamma (150-1000 Hz) e 18 sopra il crepitio (1-16
+kHz), costante anche lui per tutto il file.
+
+**Le regolazioni** (audio.json "fuoco", tools/18 come la pioggia, §9.141):
+- il giro: il tratto da 0,3 a 13,5 s (fuori l'attacco e il taglio di
+  colpo della fine) con la fine dissolta in 1,5 s sull'inizio: 13,2 s.
+  Misurato: attorno al giro il livello resta fra -22 e -29 dB ogni 50 ms
+  come nel resto, il salto fra l'ultimo campione e il primo e' sotto il
+  99,9 percentile dei salti del file;
+- l'equalizzazione: passa-alto a 100 Hz a 24 dB/ottava. Il rombo copriva la
+  musica (anche lei piena di bassi: il drone) e sui piccoli altoparlanti non
+  si sente; restano il calore (100-300 Hz, ora il 65% dell'energia) e il
+  crepitio, che sale di 10 dB rispetto al resto. Provati anche 80 Hz a 12
+  dB/ottava (il rombo ancora il 75%) e 150 a 24 (fiamma piu' sottile);
+- niente compressione ne' limitatore: il crepitio sta nei picchi;
+- il volume: picco a -3 dB come gli altri suoni (livello medio -24), MP3
+  stereo a 192 kbit/s senza taglio degli acuti; gain 0,3, cioe' a pieno
+  livello ~ -35 dB di media, sotto le parti della musica (-30..-37) e i
+  colpi; un incendio solo nella vista e' a meta' (~ -41).
+
+**Quando si sente** (effects.js `fireNoise`, ogni passo da manager.step,
+audio.js `ambient`): gli edifici in fiamme che chi guarda vede (w.shown:
+non quelli nemici nella nebbia; nella partita a due quelli della sua
+vista), ognuno pesato da quanto e' vicino alla vista (audio.js placement: 1
+dentro, 0 a 700 px dal bordo) e dalla grandezza delle fiamme (casa 1,
+caserma e centro 1,33, monastero 2,67). Il livello e' S / (S + 1): un
+incendio nella vista 0,5, due 0,67, quattro 0,8 (non cresce senza fine). Il
+suono segue il livello in ~1 s (come la pioggia) e va a destra o a
+sinistra dove sono i fuochi (pan medio pesato; ambient ha ora un pan
+opzionale). Sotto la pioggia, come le fiamme (§9.166), fino al 70%. Non i
+bracieri e le torce (sempre accesi: sarebbe un fondo continuo nei livelli
+che ne hanno), non la fiammata della freccia incendiaria (un istante). Nel
+menu niente (i suoni del mondo sono spenti, §9.139).
+
+**Da fare: la licenza.** Il nome del file ("Burning Fire with Sound
+Effects | Fire Background Clip") sembra quello di un video di sottofondo
+scaricato da una piattaforma video: in CREDITI.md autore e licenza sono
+"da verificare". Per l'uscita serve una licenza che permetta l'uso
+commerciale (CREDITI.md); se non si trova, un'altra registrazione con le
+stesse regolazioni.
+
+**Prove.** test/firesound.test.mjs (nessun fuoco: zero; nella nebbia,
+spento, senza fiamme ancora, lontano: zero; piu' fuochi piu' forte sotto
+1; a destra pan a destra; il gemello blu come l'edificio rosso; pioggia
+piena al 70%; nella partita a due decide shown). Nel browser (sk_padus,
+audio sbloccato con un clic): senza incendi il suono non parte; il centro
+in fiamme 0,171 (0,3 x 0,57), con la vista spostata a sinistra pan 0,48,
+lontano 0; quattro edifici 0,244; con la pioggia piena 0,171; il giro
+decodificato 13,2 s. determinism.mjs, pvp.mjs, saves.mjs (lvl01,
+sk_padus): passate.
+
+### 9.168 La zappa, la catapulta, il crollo, il clic dei pulsanti
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con quattro file: "da 'footsteps..' estrai quelli per il
+contadino che zappa, sono i primi che senti non quelli in sequenza rapida;
+da catapult quella per il lancio della catapulta, regolala bene che mi
+sembra un po' 'impegnativa', da scrolling clicks invece quelli per la
+selezione elementi GUI (basta uno), 'rock crumbling' per quando ariete o
+sasso della catapulta colpiscono edificio, anche in questo caso lavora di
+editing che dobbiamo un po' smorzare".
+
+**Il metro dei volumi.** I colpi gia' nel gioco, nei primi 150 ms e col
+loro gain, stanno tutti a -30..-32 dB (ascia -31,8, piccone -30, spada
+-30,7, arco -31,5, martello -30,6): i nuovi si tarano su questi.
+
+**I tagli e i filtri** (nuovi/audio/audio.json, tools/18; i dettagli nelle
+note di ogni suono):
+- `zappa` (passi_erba.mp3, 4,6 s, mono in due canali): 14 passi ogni ~320
+  ms; i primi sei colpi singoli e sordi, dai 2 s piu' forti e spesso doppi
+  (tacco e punta a 15-20 ms: la "sequenza rapida"). Tre dei primi (130,
+  786, 1402 ms; 150 ms l'uno); scartato quello a 464 ms, debole e doppio
+  (portato a -3 dB alzava il fruscio di 23 dB). Passa-alto leggero a 80 Hz.
+  Gain 0,35: -32 dB, appena sotto ascia e piccone.
+- `catapulta` (4,2 s): cigolio della carica (0,1-0,6 s), lo scatto del
+  braccio a 0,64 s e 1 s di sbattimenti; il 56% dell'energia sotto gli 80
+  Hz. "Impegnativa": lunga, grave, forte. Solo scatto e coda (0,62-1,52 s:
+  il cigolio ritardava il colpo di mezzo secondo rispetto al sasso),
+  sfumata negli ultimi 450 ms, passa-alto a 120 Hz a 24 dB/ottava, gain
+  0,2: -30 dB come gli altri colpi (era 16 dB sopra).
+- `crollo` (roccia.mp3, 4,7 s): un colpo e quasi 2 s di crollo
+  fortissimo, poi detriti fino a 4,6 s; l'80% dell'energia sotto gli 80
+  Hz. Da smorzare: tre tagli di 600 ms che cominciano su un colpo (0,37 il
+  colpo iniziale; 1,29 e 1,65 dentro il crollo: varianti, l'ariete batte
+  ogni ~1,15 s), sfumati negli ultimi 300 ms, passa-alto a 120 Hz a 24
+  dB/ottava, gain 0,22: -32 dB, sotto gli altri colpi.
+- `clic` (clic.mp3, 18 s di clic di rotella): quello da solo a 1,57 s, 100
+  ms; il 57% dell'energia era un tonfo sotto i 300 Hz: passa-alto a 200 Hz
+  a 24 dB/ottava (resta il tic, 600-2500 Hz). Altezza +-3%, gain 0,5: -33
+  dB, discreto.
+
+**Dove suonano.**
+- zappa: civilians.js otherWorkTick, la raccolta al campo (azione 4), una
+  volta per ciclo di 39 passi come l'ascia, davanti al contadino; non dei
+  contadini nemici nella nebbia.
+- catapulta: siege.js catapultAlarm2, quando parte il sasso (alleate e
+  nemiche, se si vedono).
+- crollo: l'ariete a ogni colpo su un edificio (siege.js ramSound, davanti
+  all'ariete; alleato e nemico, se si vede l'ariete o l'edificio) e il
+  sasso della catapulta che cade su un edificio (catapultBullet destroy,
+  se l'edificio si vede). Non il sasso sull'erba o sulle unita'.
+- clic: audio.js `ui(nome)`, senza posizione e anche dove i suoni del
+  mondo sono spenti (il menu principale), non con gli effetti spenti. I
+  pulsanti della partita (app.js guiClick: le istanze *_clicker, *_button
+  e i "+" delle mura col puntatore sopra, al rilascio, quando scattano) e
+  della minimappa (alla pressione, come scattano), il pulsante della pausa
+  e le voci del menu di pausa (pause.js), i pulsanti del menu principale
+  dove il clic fa qualcosa (menu.js). Non i tasti scorciatoia ne' i clic
+  sul mondo; non (per ora) i pannelli HTML della partita in rete.
+
+**Da fare: le licenze.** Anche questi quattro file hanno i nomi di video di
+effetti scaricati da una piattaforma video (due dicono "No Copyright" e
+"Free" nel titolo, che non basta): in CREDITI.md "da verificare", come
+fuoco.mp3 (§9.167). Per l'uscita servono licenze per l'uso commerciale.
+
+**Prove.** test/sfx.test.mjs (il clic suona nel menu, i suoni del mondo
+no; con gli effetti spenti niente; le voci di audio.json brevi e coi gain
+bassi; i file in CREDITI.md). Nel browser (sk_padus, le chiamate a
+audio.play registrate): il contadino al campo -> zappa; la catapulta che
+lancia -> catapulta; il sasso su un edificio -> crollo; l'ariete ->
+crollo (zittito se arriva entro 45 ms da un altro, MIN_GAP); il pulsante
+del civile cliccato col mouse -> clic e un civile in coda; un clic sul
+terreno -> niente; il pulsante della pausa e "Riprendi" -> clic; nel menu
+principale "Giocatore singolo" -> clic. determinism.mjs, pvp.mjs,
+catapults.mjs, rams.mjs, minimap.mjs: passate.
+
+### 9.169 Il fiume; la zappa per il sasso sul terreno e sulle unita'
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "usiamo il suono della zappa anche per le pietre
+della catapulta che cadono su terreno o unita'. Integra anche questo loop
+per quando e' visualizzato il fiume (leggero)".
+
+**Il sasso.** siege.js catapultBullet destroy: su un edificio il crollo
+(§9.168); sul terreno o su un'unita' (se l'unita' si vede) la zappa, il
+colpo nella terra. Alleato e nemico.
+
+**Il file** (`nuovi/audio/fiume.mp3`): MP3 320 kbit/s, 44,1 kHz, stereo
+(L/R correlati 0,75), 11 s. Entra in dissolvenza nel primo secondo (-66 ->
+-21 dB) e finisce a 10,95 s; in mezzo costante (RMS -19..-22 ogni 0,5 s),
+gorgoglii con picchi fino a -0,3 dB. Niente sotto i 150 Hz (gia' tagliati
+nella registrazione: nessun rombo da togliere), il 60% dell'energia fra 600
+e 2500 Hz.
+
+**Le regolazioni** (audio.json "fiume"): il tratto da 1,2 a 9,4 s, fuori
+la dissolvenza d'entrata, con la fine dissolta in 1,5 s sull'inizio (8,2 s
+di giro; attorno al giro il livello resta -23..-28 dB ogni 50 ms come nel
+resto, il salto all'ultimo campione sotto il 99,9 percentile); un calo
+largo di 3 dB attorno ai 2 kHz per un fondo meno tagliente; picco a -3 dB
+(livello medio -25,5), MP3 stereo a 192 kbit/s. Leggero: gain 0,13, a
+pieno livello ~ -43 dB di media (il fuoco -35, la musica -30..-37 per
+parte, la pioggia dell'autore -61).
+
+**Quando si sente** (effects.js `riverNoise`, ogni 10 passi da
+manager.step; audio.js ambient lo segue in ~1 s, col pan): un punto ogni 48
+px nella vista allargata di 700 px, ognuno pesato da quanto e' vicino alla
+vista (audio.js placement); f = l'acqua pesata (waterMap: i fiumi delle
+istanze e quelli a linee di Tiled) sui punti della vista; livello
+sqrt(f / 0,12) fino a 1: un fiume che copre il 12% della vista e' a pieno
+livello, uno del 3% a meta', uno appena fuori dal bordo piano. Senza fiumi
+nella room, o lontani, niente; nel menu niente (i suoni del mondo sono
+spenti). Il calcolo costa meno del rumore della misura (sotto 1 ms ogni 10
+passi).
+
+**Licenza: da verificare** (CREDITI.md), come gli altri file di §9.167 e
+§9.168.
+
+**Prove.** test/riversound.test.mjs (niente fiumi o lontano: zero; la vista
+tutta d'acqua: 1; una striscia del 3% a destra: a meta' strada, pan a
+destra; appena fuori: piu' piano). Nel browser: sk_padus e lvl04 sul fiume
+0,13 (pieno livello per il gain), lontano 0 (sk_padus) o 0,042 (lvl04,
+acqua 240 px fuori dal bordo); il sasso sul terreno e su un guerriero ->
+zappa, sul centro -> crollo. determinism.mjs, pvp.mjs, catapults.mjs,
+lvl04.mjs, ripples.mjs: passate.
+
+### 9.170 La battaglia: zoccoli, edifici distrutti, il corno; freccia e fuoco con la zappa
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con tre file: "gli zoccoli della cavalleria estrapola bene e evita
+che siano troppo predominanti, per l'edificio distrutto mi piace il secondo
+dei tre suoni che senti in 'ground crash' ma sono tutti e tre
+interessanti, l'horn e' figo e inquietante al punto giusto ma smorziamolo
+un po' (e magari acceleriamolo?). Per le altre: freccia che colpisce usa
+sempre la zappa, idem fuoco appiccato, morte delle unita' per ora lasciamo
+senza." (dalla lista dei suoni mancanti in chat).
+
+**Gli zoccoli** (cavalli.mp3, audio.json "zoccoli"). Il galoppo (5,8 s,
+mono in due canali) aveva il 99% dell'energia sotto i 40 Hz: un tonfo che
+non si sente ma si mangiava il volume. Passa-alto a 60 Hz a 24 dB/ottava:
+restano lo zoccolo (150-600 Hz) e la terra smossa (5-10 kHz), 31 dB sotto
+il livello di prima. Il galoppo e' irregolare (l'inviluppo non ha un
+periodo netto): un loop da 0,6 a 5,3 s con 400 ms di incrocio. Un suono
+continuo (audio.js ambient, col pan) invece di un colpo per zoccolo: con
+venti cavalieri sarebbe una grandinata. effects.js `hoovesNoise`: i
+cavalieri (giocatore, nemici, blu) che si sono mossi nell'ultimo passo e
+chi guarda vede, pesati dalla vicinanza alla vista; livello S/(S+2): uno
+0,33, due 0,5, sei 0,75. Gain 0,38: -38 dB a pieno livello, -47 con uno
+solo; non predomina.
+
+**Gli edifici distrutti** (crolli.mp3: tre crolli, fra l'uno e l'altro
+fruscio a -53 dB). Il secondo, quello che l'autore preferisce, per i
+grandi ("rovina": vita piena da 300, caserma, stalla, centro, castello,
+torre, chiesa, monastero); il primo e il terzo, varianti, per i piccoli
+("rovina_piccola": case, magazzini, mulini, mura, porte, cantieri). Dagli
+attacchi (1,09, 3,39, 5,98 s) a dove scendono sotto -45 dB (1,1-1,5 s),
+sfumati negli ultimi 450-500 ms; passa-alto a 50 Hz a 24 dB/ottava (sotto
+i 40 Hz c'era il 17-70% dell'energia, che non si sente; resta il peso,
+60-150 Hz). Gain 0,3 (-27 dB nei primi 500 ms: qualche dB sopra i colpi,
+e' raro) e 0,28 (-30). Dove: world.js destroy chiama `hooks.destroyed`;
+app.js suona se l'istanza e' di una famiglia di edifici (ally_build,
+enemy_build, p2_build), a vita 0 (colpi, fuoco, demolizione col tasto
+Canc; non un cantiere finito ne' un tratto di mura che diventa muro) e chi
+guarda la vede (world.shown: non nella nebbia).
+
+**Il corno** (Freesound 348862, newagesoup, CC BY 4.0: da citare nei
+crediti del gioco). 13,6 s: il corno da 0,2 a 2,4 s, poi il riverbero fino
+a -93 dB a 12 s; energia solo fra 40 e 1200 Hz (scuro). Smorzato e
+accelerato: da 0,15 a 6 s, il riverbero sfumato negli ultimi 2,5 s, poi 1,3
+volte piu' veloce senza cambiare altezza (atempo: resta scuro e
+inquietante; un'accelerazione che alzasse l'altezza lo renderebbe una
+trombetta): 4,5 s. tools/18 ha ora `tempo` (atempo dopo tagli e
+dissolvenze). Gain 0,17: -32 dB nei primi 500 ms, sotto la musica. Dove:
+attackalarm.js raiseAlarm, un attacco nuovo fuori dalla vista (quando
+nascono gli anelli sulla minimappa), al piu' uno ogni 30 s (ALARM.horn,
+g.alarms.hornAt), senza posizione.
+
+**Freccia e fuoco: la zappa.** ranged.js: la freccia (alleata o nemica)
+che colpisce un'unita' che si vede, a volume 0,7 (le raffiche: audio.js ne
+lascia al piu' 4 insieme, a 45 ms l'uno dall'altro). effects.js
+fireFlare: la fiammata della freccia incendiaria o della torcia che
+appicca il fuoco. La morte delle unita': per ora senza (l'autore).
+
+**Prove.** test/alarm.test.mjs (il corno: dentro la view niente, fuori si',
+un'altra zona subito dopo niente, dopo 30 s di nuovo); test/firesound.test.mjs
+(gli zoccoli: fermo zero; cadaveri, nebbia, lontano zero; sei piu' di uno ma
+sotto 0,8, pan dove sono). Nel browser (sk_padus, chiamate registrate): una
+casa distrutta -> rovina_piccola, una caserma -> rovina, una casa nemica
+nella nebbia -> niente; la freccia nemica su un guerriero -> zappa; la
+freccia incendiaria su una casa -> zappa e la casa brucia; un guerriero
+colpito fuori dalla vista -> corno, un altro subito dopo -> niente; tre
+cavalieri fermi 0, in marcia 0,19 (0,38 x 0,5), uno solo 0,125. Durate
+decodificate: corno 4,5 s, rovina 1,09, rovina_piccola 1,18 e 1,52, zoccoli
+4,7. determinism.mjs, pvp.mjs, alarms.mjs, rams.mjs, catapults.mjs,
+melee.mjs, saves.mjs (lvl01, sk_padus): passate.
+
+### 9.171 Edificio finito, unita' pronta, risorse che mancano, chat, porte, lucchetto
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con cinque file: "te ne allego altri, fatti da me in wav [...].
+Per semina e albero abbattuto non mettiamo sfx (segna come gia' fatti). Per
+il lucchetto del menu usa la serie che hai gia'. Chain door invece e' per il
+cancello, estrapola mezzo secondo - un secondo perche' il file e' lungo".
+
+**Fatti senza suono** (decisione dell'autore): la semina e l'albero
+abbattuto. Della lista dei suoni mancanti restano (da decidere): la morte
+delle unita' ("per ora senza"), i fondi del giorno e della notte, l'aquila,
+vittoria e sconfitta, obiettivo raggiunto, dialogo che si apre, l'altro
+giocatore che si collega o se ne va.
+
+**I suoni dell'autore** (build_finish.wav, unit_finish.wav, chat.wav,
+no_resour.wav: WAV 16 bit, 32 kHz) cosi' come sono: solo il silenzio tolto
+davanti e dietro, il picco a -3 dB come gli altri, il volume col gain
+(misurato nei primi 300 ms). Due sono quasi solo bassi: build_finish ha il
+74% dell'energia sotto i 40 Hz (fondamentale a 36 Hz, armoniche a 95 Hz a
+-11 dB), no_resour e' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB).
+Su altoparlanti piccoli (portatili, telefoni: da 150-200 Hz in su) il
+secondo si sente appena: da dire all'autore.
+- `edificio_finito`: un cantiere del giocatore che arriva a vita piena
+  (edifici, campi, tratti di mura: buildings.js, walls.js). Gain 0,2 (-26
+  dB).
+- `unita_pronta`: un'unita' che esce da caserma, stalla, castello
+  (production.js) o il civile dal centro (buildings.js). Gain 0,32 (-29).
+- Tutti e due senza posizione (un avviso: si sentono anche con la vista
+  altrove) e solo per chi guarda (audio.js `notice`: w.mine, nella partita
+  a due la sua parte; i cantieri e i produttori del nemico della CPU hanno
+  il loro codice e non suonano).
+- `risorse`: il pulsante premuto senza le risorse o la popolazione
+  (costruzione e posa del fantasma: buildings.js blinkMissing, solo se
+  manca davvero qualcosa; produzione: production.js enqueue; il civile:
+  enqueueWorker; la porta: walls.js makeGate; i prolungamenti delle mura)
+  e il codice sbagliato del lucchetto; audio.js ui. Non i lampeggi
+  automatici (la produzione che aspetta la popolazione, la riparazione o
+  il ponte senza legno), che si ripetono. Gain 0,13 (-28).
+- `chat`: il messaggio dell'altro giocatore (chat.js receive; non i propri,
+  non i vuoti), audio.js ui. Gain 0,6 (-30).
+
+**Le porte** (chain_door.mp3, 11,3 s di catena continua; licenza da
+verificare in CREDITI.md): due tratti come varianti, l'inizio (0-0,85 s,
+con l'attacco naturale) e 3,05-3,85 s (un colpo), sfumati negli ultimi 300
+ms; il 45% dell'energia sotto i 150 Hz: passa-alto a 80 Hz a 24 dB/ottava.
+Suona quando una porta delle mura (del giocatore o nemica) si apre o si
+chiude, se si vede (walls.js). Gain 0,2 (-32: le porte si aprono e chiudono
+spesso).
+
+**Il lucchetto** (dalla serie di clic gia' caricata, §9.168): `lucchetto`,
+tre clic della serie lenta (3,206, 3,452, 3,677 s; i successivi, filtrati,
+erano 10-30 dB piu' deboli), a ogni rotella; `lucchetto_aperto`, la serie
+rapida (otto clic sempre piu' forti, 7,82-8,76 s), col codice giusto; il
+codice sbagliato col suono delle risorse che mancano. menu.js, audio.js ui.
+
+**Prove.** test/sfx.test.mjs (la chat: il messaggio dell'altro suona, il
+proprio e quelli vuoti no). Nel browser (chiamate registrate): la casa
+finita -> edificio_finito (senza posizione); il civile dal centro ->
+unita_pronta; Q col centro selezionato e senza cibo -> risorse; la porta
+con un soldato vicino -> cancello, via il soldato -> cancello; nel menu una
+rotella -> lucchetto, il codice sbagliato -> risorse, quello del livello 7
+-> lucchetto_aperto (e lo sblocco a 7). determinism.mjs, pvp.mjs,
+netfake.mjs, garrison.mjs, economy.mjs, ui.mjs it: passate.
+
+### 9.172 Il suono degli obiettivi; la sconfitta sfocata, coi pulsanti
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un file: "'objective' deve riprodursi quando compare un nuovo
+obiettivo o ne viene raggiunto uno (anche parzialmente vd livello 2
+liberazione ostaggi). Per i sfx per oggi ci fermiamo qui. Altra cosa da
+sistemare: schermata nera della sconfitta: sostituiamola con effetto blur
+ma su fondo grigio scuro invece che bianco, mettiamo due tasti per tornare
+al menu o per ricominciare il livello (o anche un terzo per caricare una
+partita?). Niente timeout prima di avere opzioni di uscita come funziona
+ora". Poi: "temo di averti caricato l'objective sbagliato, questo e'
+quello da usare" (objective.wav al posto di objective.mp3, tolto).
+
+**Il suono** (objective.wav dell'autore, 32 kHz, 2,5 s: da 0,04 a 1,3 s,
+la coda sfumata; gain 0,2, -27 dB come l'edificio finito). Anche questo e'
+quasi tutto fra 40 e 80 Hz (95%): sugli altoparlanti piccoli si sente poco,
+come no_resour (§9.171).
+
+**Quando suona** (endgame.js). Gli obiettivi non hanno uno stato loro: il
+riquadro li ricalcola a ogni disegno dalla partita (le righe per livello).
+Quel calcolo ora e' una funzione a se', `objectiveLines(w, d)` (il disegno
+le passa il Draw per misurare le cifre; il suono null), e objective_button
+ogni 10 passi ne fa una firma (`objectiveSignature`): per ogni riga la
+chiave (il testo con le cifre tolte), se e' spuntata e il conto "(n/m)" se
+c'e'. Suona (`objectiveNews`) se c'e' una riga nuova, una appena spuntata o
+un "(n/m)" salito: gli ostaggi del livello 2 (3/7), le basi del tutorial
+(n/3), le pattuglie e le torri del livello 6; non i numeri che cambiano da
+soli (il tempo resistito, il conto alla rovescia, la vita del monastero, la
+percentuale del ponte, gli edifici o i soldati che restano), ne' una riga
+che sparisce (la tregua). La firma sta in g.objSig con la lingua: si salva
+con la partita (caricarla non suona), cambiata la lingua si ricomincia
+senza suonare, ed e' fuori dall'impronta (snapshot.js: dipende da chi
+guarda). Gli obiettivi gia' presenti all'inizio della room (primi 60
+passi) non suonano; quelli che compaiono dopo un dialogo (livelli 1 e 2)
+si'. Non durante la vittoria o la sconfitta.
+
+**La sconfitta** (endgame.js gameoverManager, app.js). Come la vittoria
+(§9.56): la scena si sfoca a poco a poco (victoryBlur, victoryProgress
+ora anche col contatore della sconfitta), sotto un velo grigio scuro
+(DEFEAT: 38, 38, 38 al 62%) invece che bianco; poi in dissolvenza
+"SCONFITTA" (nuovo, tradotto nelle sei lingue), il perche' e le righe di
+prima (tempo resistito nel tutorial e nel livello 3, basi distrutte) in
+bianco, e tre pulsanti come quelli della pausa: "Ricomincia livello"
+(come nella pausa: la pagina si ricarica sulla room), "Carica partita"
+(apre la pausa sulla pagina dei caricamenti, slot e file; da li' "Indietro"
+e "Riprendi" tornano alla sconfitta), "Torna al menu". Usabili appena
+compaiono (meno di 2 s), e niente piu' ritorno al menu dopo 760 passi. Nella
+partita in rete solo "Lascia la partita" (app.js non da' hooks.restart e
+hooks.loadMenu). I rettangoli dei pulsanti stanno fuori dall'istanza (una
+WeakMap): gameover_manager e' della partita, e le sue variabili entrano
+nell'impronta. Il clic (globalLeftReleased) col suono dei pulsanti
+(§9.168).
+
+**Prove.** test/objectives.test.mjs (riga nuova, spuntata, (n/m) salito:
+si'; riga sparita, tempi, vite, percentuali, quanti ne restano, un conto
+che scende: no). Nel browser: il tutorial per 900 passi -> nessun suono;
+il livello 2: il riquadro che compare -> uno, un villaggio liberato in
+piu' -> uno, poi 200 passi -> nessuno; la sconfitta nel livello 2 dopo
+1000 passi resta (niente ritorno al menu), screenshot col velo e i tre
+pulsanti; "Carica partita" -> la pausa sui caricamenti; "Torna al menu" ->
+?room=menu. ui.mjs (tutte le lingue, anche la sconfitta), determinism.mjs,
+pvp.mjs, netfake.mjs, saves.mjs (match, lvl02, lvl03, sk_padus), lvl06.mjs,
+hintgap.mjs: passate.
+
+### 9.173 Le risorse che mancano: una volta quando manca la popolazione
+
+Richiesta dell'autore (21 novembre 2026, stessa PR di §9.163, versione
+0.2614): "il suono delle risorse insufficienti lo usiamo una volta sola
+quando manca la popolazione (quando inizia a lampeggiare), inoltre usiamolo
+pure per combinazioni sbagliate del lucchetto della campagna".
+
+**La popolazione.** Un'unita' pronta (il civile del centro, buildings.js;
+caserma, stalla, castello, production.js) che non nasce perche' la
+popolazione e' piena ritenta ogni 30 passi (o P.popWait) e a ogni tentativo
+fa lampeggiare la popolazione. Ora il primo tentativo fallito suona
+"risorse" (buildings.js `popHeld`, per chi guarda se il produttore e' suo:
+audio.js notice); i successivi no (popHeld resta 1) finche' l'unita' non
+nasce (popHeld torna 0): la volta dopo suona di nuovo. Il suono al clic di
+un pulsante senza risorse o popolazione resta (§9.171).
+
+**Il lucchetto.** Il codice sbagliato suonava gia' "risorse" (§9.171).
+
+**Prove.** Nel browser (sk_padus): il centro con un civile pronto e la
+popolazione piena per 600 passi -> la popolazione lampeggia, un suono solo;
+liberato un posto il civile nasce (unita_pronta) e popHeld torna 0; di
+nuovo pieno col civile dopo pronto -> un altro suono. determinism.mjs,
+pvp.mjs, saves.mjs (lvl01, sk_padus): passate.
+
+### 9.174 La morte delle unita': la caduta, non la voce
+
+Domanda dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "per le unita' che muoiono invece non saprei che suono mettere,
+suoni di umani che rantolano non mi hanno mai convinto del tutto negli rts
+e male si sposano con la rappresentazione concettuale dei personaggi del
+gioco, hai idee?". Proposta (in chat): niente voci, la caduta del corpo e
+dell'arma, coerente coi suoni fisici gia' nel gioco (la zappa, i crolli),
+bassa e breve perche' in una mischia ne muoiono tanti insieme; scartato un
+rintocco astratto (in battaglia una raffica di note sopra la musica, e il
+carattere degli avvisi). Risposta: "procedi col tonfo modificato".
+
+**I suoni**, dai file gia' caricati, a strati (tools/18 ora ha `strati`:
+per ogni variante una lista di pezzi di file d'origine, ognuno col suo
+filtro, velocita', volume e ritardo, sommati; poi il filtro del suono e le
+dissolvenze come per gli altri):
+- `morte` (soldati: guerrieri, picchieri, arcieri): il colpo della zappa
+  (§9.168) rallentato a 0,78 (piu' grave, 190 ms) e, 70 ms dopo, il
+  tintinnio dell'arma: un colpo di spade.wav con passa-alto a 1,5 kHz e
+  accelerato a 1,15 (un oggetto di metallo piccolo che cade, non lo
+  scontro), col picco ~15 dB sotto il tonfo (la registrazione delle spade
+  e' ~20 dB piu' debole di quella dei passi: misurati i picchi dei due
+  strati per variante; a -9 dB il metallo copriva il tonfo). Tre varianti
+  (i tre colpi di zappa, tre colpi di spada).
+- `morte_civile`: solo il tonfo, rallentato a 0,85.
+- `morte_cavaliere`: due tonfi, il cavallo (0,65) e 130 ms dopo il
+  cavaliere (0,72, 3 dB sotto), col tintinnio.
+- arieti e catapulte: `rovina_piccola` (§9.170), il legno che si rompe.
+- Volumi: ~ -36 dB nei primi 150 ms (gain 0,27, 0,21, 0,28), sotto la
+  spada (-31).
+
+**Dove** (app.js hooks.destroyed, come gli edifici, §9.170): un'istanza
+delle famiglie delle unita' (ally_unit, enemy_unit, p2_unit) distrutta a
+vita 0 (non chi entra in un presidio o una torre: ha vita), se chi guarda
+la vede; il suono dal nome (multiplayer.js baseOf per il blu).
+
+**Prove.** Nel browser (sk_padus, chiamate registrate): guerriero ->
+morte, civile -> morte_civile, cavaliere -> morte_cavaliere, ariete ->
+rovina_piccola, arciere nemico visibile -> morte, guerriero nemico nella
+nebbia -> niente, un guerriero tolto senza morire -> niente. Un file
+d'ascolto per l'autore: le nove varianti dopo un colpo di spada, poi una
+mischia simulata di 3 s (24 colpi di spada e 10 morti a caso, volumi e pan
+diversi). determinism.mjs, pvp.mjs, melee.mjs, garrison.mjs: passate.
+
+### 9.175 I crolli e il sasso lontani: attutiti e riverberati
+
+Domanda dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "il crollo degli edifici e il sasso della catapulta che colpisce,
+quando sono fuori schermo, possiamo riprodurre il suono attutito magari con
+un po' di riverbero? In modo simile a come succede in Age of Empires 4".
+
+**Prima.** Ogni suono del mondo cala dal bordo della vista fino a zero a 700
+px (audio.js FAR): un edificio che crolla piu' in la' non si sentiva.
+
+**Ora** (audio.js, play col nuovo argomento `far`): per i crolli degli
+edifici (app.js hooks.destroyed: rovina, rovina_piccola) e per il sasso
+della catapulta che cade (siege.js catapultBullet: crollo su un edificio,
+zappa sul terreno o su un'unita'), fuori dalla vista il suono non si
+spegne a 700 px ma si sente fino a DISTANT.range (3500 px dal bordo),
+sempre piu' lontano (t da 0 a 1 con la distanza):
+- volume da 0,7 a 0,25 (distantPlacement; oltre il fondo muto);
+- un passa-basso (BiquadFilter) da 4,5 kHz a 600 Hz: attutito, cupo;
+- il riverbero (ConvolverNode), mandato dal 30 al 75%, col segnale
+  diretto che cala di conseguenza; la risposta all'impulso e' generata
+  (2,2 s di rumore stereo che si spegne come (1-t)^3 e diventa piu' cupo
+  verso la fine), una volta sola al primo suono lontano;
+- il pan da che parte sta, come gli altri.
+Dentro la vista niente cambia. Gli altri suoni (spade, frecce, l'ariete)
+restano come prima: lontano tacciono. Le condizioni di prima restano (un
+edificio nemico nella nebbia non suona).
+
+**Prove.** test/sfx.test.mjs (nella vista niente filtro; senza far muto a
+1500 px dal bordo, con far suona col passa-basso fra i due estremi e il
+riverbero; il volume cala con la distanza; oltre il fondo muto). Nel
+browser, col motore audio del gioco in un OfflineAudioContext: rovina al
+bordo picco -14,2 dB, a 400 px -19,6, a 1500 -22,4, a 3000 -29,7; crollo e
+zappa a 1200 px 7-10 dB sotto (registrato in un file d'ascolto per
+l'autore). In partita, con l'audio vero: una casa distrutta a 2000 px dal
+bordo -> rovina_piccola (e il riverbero creato), il sasso nemico a 1500 px
+-> zappa, un colpo di spada a 1500 px -> muto. determinism.mjs,
+catapults.mjs, pvp.mjs: passate.
+
+### 9.176 Il kit di Tiled con le mappe della schermaglia
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "generami il kit di tiled aggiornato, inseriscici dentro anche le
+mappe della schermaglia cosi' le controllo".
+
+tools/11 copiava gia' nel kit tutte le mappe di `mappe/`, quindi anche le
+cinque della schermaglia (`sk_*.tmx`, §9.118): nel kit sono identiche a
+quelle del repo, e ogni tileset e immagine che citano c'e'. Aggiunto in
+LEGGIMI.md (punto 5) che non sono disegnate a mano: le scrive
+tools/16_schermaglia.py, simmetriche, e una modifica fatta in Tiled
+andrebbe persa alla generazione successiva (la CI controlla che siano
+quelle di tools/16): le correzioni si fanno nel programma.
+
+Prove: tools/11 (35,4 MB di zip, 242 tile in 10 tileset), tools/12 --check
+(match, lvl01, lvl02 identiche), tutte le mappe di mappe/ reimportate con
+scenari/ invariato, tools/16 --check (le cinque simmetriche), come nella CI.
+
+### 9.177 Le icone degli allarmi sulla minimappa: piu' grandi, piu' brevi
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "sulla minimappa le icone della battaglia e dell'incendio
+facciamole il 20% piu' grandi ma facciamocele rimanere il 30% del tempo in
+meno".
+
+attackalarm.js ALARM: le scale delle icone da 0,52 e 0,36 a 0,624 e 0,432
+(~16 -> ~19 px; la pulsazione e l'ingrandimento iniziale restano in
+proporzione); la zona finisce dopo 21 s senza colpi invece di 30 (quiet,
+1260 passi) e sfuma in 42 passi invece di 60. Gli anelli della battaglia
+nuova, il lampeggio del pulsante della minimappa chiusa e il corno
+(§9.170, 30 s) restano come prima.
+
+Prove: test/alarm.test.mjs (coi valori di ALARM); alarms.mjs aggiornato
+(22 s di attesa invece di 31) e passato, con le foto della minimappa;
+minimap.mjs passata.
+
+### 9.178 Livello 7: l'arciere nella nebbia (la mappa dell'autore e la regia)
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614), con la mappa `lvl07.tmx`: "l'arciere solo si ritrova nella nebbia
+non capendo da dove arriva in quella stagione. Decide di usarla per
+aggirare la pattuglia nemica (i tre picchieri di poco alla sua destra). Il
+livello guida l'arciere in modo che, una volta che la pattuglia si e'
+spostata verso il granaio con le quattro fattorie sotto, lui si sposti
+sulla sinistra verso le mura dove ci sono i fiori gialli attendendo che
+tornino sopra, per poi proseguire dopo il granaio. Seguendo la strada si
+rende conto che anche dalle torri non possono vederlo. [...] pattuglie o
+unita' singole nemiche che si spostano e l'arciere deve evitarle o
+ucciderle furtivamente se sole. Arrivato davanti ai cancelli della citta'
+[...] capisce che deve trovare delle macchine d'assedio [...] Al giocatore
+non viene indicato dove sono, ma una volta raggiunte devono comparire con
+un messaggio tipo grazie per averci liberato (dopo che e' stata uccisa
+furtivamente la guardia entrano da sinistra). Una volta liberate le
+macchine d'assedio bisogna tornare in cima e, SOLO DURANTE LA NOTTE,
+attaccare la porta. [...] 5 cavalieri dalla zona dove sono le due stalle
+[...] Qui si ripetono le stesse dinamiche stealth."
+
+Le risposte dell'autore alle domande (in chat): l'arciere va in alto a
+destra (nel Tiled era accanto alla porta); pattuglie e nebbia le traccio
+io; fino alla liberazione delle macchine e' giorno, poi notte (fissi,
+"artificiali"); basta la nebbia per le torri, l'unica che lo vede e'
+quella in basso a sinistra; le macchine compaiono uccisa la guardia, con
+l'arciere vicino; i nemici le ignorano perche' c'e' nebbia ed e' notte; i
+cavalieri restano alle stalle, punitivi: attaccano le macchine troppo
+vicine (e, caduta la porta, comunque); si vince col palo piu' in alto, si
+perde se muore l'arciere o tutte le macchine con la porta in piedi; tutto
+fermo (niente economia nemica), ma lavoratori nemici sulle risorse o in
+giro che, avvicinati troppo, avvertono le guardie.
+
+**La mappa** (`mappe/lvl07.tmx`, `scenari/lvl07.json`). 151 oggetti
+(montagne, fiumi, piante) puntavano ai tileset di una copia vecchia del kit
+("../../261013/535-tiled-kit/"): gli id delle tile sono stabili fra le
+versioni (§9.40), rimappati (montagne_fiumi 243+k -> 13+k, natura 263+k ->
+33+k) e tolti i due tileset vecchi. L'arciere da (480, 1480) a (5100, 360);
+la vista iniziale in alto a destra; le quattro macchine nel livello
+"gruppo macchine" (tenuto da parte: scenario.js GROUPS.lvl07). I pali
+dell'autore disegnano il percorso (cima destra, strada a destra, citta' in
+basso, labirinto, macchine, risalita al centro, porta, il palo piu' in alto
+a (2109, 51)): li ho seguiti per pattuglie e nebbia. Restano i due avvisi
+dell'import (due tratti di mura con l'origine sotto il bordo).
+
+**Nel livello regia, tracciati da me** (da rivedere in Tiled):
+- sette percorsi `pattuglia` (avanti e indietro: il giro chiuso torna per
+  la stessa strada; i nemici a meno di 300 px da un punto ne fanno parte):
+  i tre picchieri della cima fino al granaio lungo la strada (passano a
+  ~200 px dalle mura coi fiori gialli); i tre picchieri al centro lungo la
+  strada degli ulivi; il cavaliere solo fra gli ulivi (col picchiere
+  vicino); due guerrieri soli nel labirinto; due giri nella citta' in alto
+  (una coppia di picchieri, un guerriero). 17 nemici in giro, gli altri
+  fermi;
+- diciassette banchi di nebbia (`nebbia`: nuovo in tools/12 e nel kit, una
+  polilinea orizzontale coi due capi e le proprieta' `velocita` e `nuvole`):
+  uno alla partenza, uno sulle mura coi fiori gialli (il nascondiglio), lungo
+  tutta la strada di destra (torri comprese), sulla citta' in basso, nel
+  labirinto, verso le macchine (lontano dalla torre in basso a sinistra),
+  sulla risalita al centro, alla porta e due in citta'.
+
+**La regia** (`game/src/lvl07.js`, enemy_manager_lv7):
+- *Partenza*: lo stealth (g.stealth, il "!"), l'arciere della nebbia
+  (hunter, tiro furtivo), i banchi dai percorsi `nebbia`, la guardia (i
+  nemici a meno di 450 px dalle macchine), i cavalieri (a meno di 700 px
+  dalle stalle), le pattuglie. Giorno fisso (manager.js: niente ciclo),
+  niente economia nemica (levels.js levelStep). Torri e fortezze nemiche
+  di vedetta (`watch`: non tirano; il messaggero ci corre lo stesso a dare
+  l'allarme), tranne la torre in basso a sinistra.
+- *Lavoratori* (13, LV7.workers): quattro al granaio (cibo), due alle
+  miniere, due agli ulivi (legna, col deposito), cinque in giro (fra le case
+  in basso e in citta'), con orderWork (civilians.js) come la regia
+  economica. Uno che vede l'arciere (davanti a 320 px, meta' nella nebbia e
+  di notte; sempre a meno di 90) corre dalla guardia piu' vicina (entro
+  2200 px; "!" arancione come il messaggero) e mette in allarme lei e chi
+  le sta a meno di 450 px, verso dove ha visto l'arciere.
+- *La porta*: l'arciere a meno di 650 px senza macchine: dialogo 7_2 e
+  l'obiettivo delle macchine (segnalino sulla minimappa sulla porta).
+- *Le macchine*: guardia morta e arciere a meno di 600 px: entrano dal
+  bordo sinistro una alla volta (prima quella che va piu' lontano), alla y
+  del loro posto, e ci vanno (l'ordine del clic destro); la prossima quando
+  l'entrata e' libera, o dopo 4 s accanto. (Nate tutte nello stesso punto,
+  la regola che separa le unita' sovrapposte le spingeva fuori dalla mappa.)
+  Dialogo 7_3 e 7_4; la notte scende in ~3 s e resta.
+- *Di notte* (fino alla porta giu') le macchine hanno `cloak`: nessun nemico
+  le prende come bersaglio (enemies.js `nearestFoe`/`seenFoe` al posto
+  dell'alleato piu' vicino, archery.js towerTarget, la difesa degli edifici),
+  tranne i cavalieri delle stalle (l7knight). Una macchina a meno di 800 px
+  dalle stalle: i cavalieri partono contro le macchine, e restano su di loro.
+- *Porta giu'*: dialogo 7_5, i cavalieri contro le macchine, le macchine di
+  nuovo visibili, l'obiettivo e il segnalino della cima.
+- *Fine*: l'arciere a meno di 130 px dal palo piu' in alto: vittoria (codice
+  del livello 8, 7 6 3 0 8). Sconfitta: l'arciere morto ("L'arciere e'
+  caduto."), o le macchine tutte perse con la porta in piedi.
+- *Dialoghi* (hints.js dialogo_7_0..7_6, oggetti in nuovi.json), obiettivi
+  (endgame.js), storia del livello (menu.js), testi della vittoria e della
+  sconfitta: scritti da me dalla regia, tradotti nelle sei lingue, da
+  rivedere con l'autore. Il titolo nel menu resta quello della lista
+  dell'originale ("Our old gods").
+- progress.js UNLOCK_ALL a 7 (provvisorio, per provarlo).
+
+**Prove.** `game/test/browser/lvl07.mjs` (nella CI): partenza (arciere in
+alto a destra, 17 banchi, 17 nemici di pattuglia, 1 guardia, 5 cavalieri, 13
+lavoratori, niente economia, giorno, 4 macchine tenute da parte, una sola
+torre che tira, in basso a sinistra); i tre picchieri della cima in cammino
+dopo 10 s; un lavoratore del granaio che vede l'arciere corre e mette in
+allarme 2 nemici; la porta (dialogo e obiettivo); con la guardia viva niente,
+uccisa le macchine entrano tutte e quattro, notte; un fante accanto a un
+ariete per 5 s: vita intatta; un ariete vicino alle stalle: i 5 cavalieri
+partono; porta giu' (dialogo, macchine visibili); vittoria al palo; le due
+sconfitte. soak.mjs e saves.mjs con lvl07 (anche nella CI), stealth.mjs,
+lvl06.mjs, orders.mjs lvl06, ui.mjs it, attackorder.mjs, melee.mjs:
+passate.
+
+**Da provare giocando e tarare** (numeri in LV7): quanto si vede la
+nebbia e dove stanno i banchi, i giri delle pattuglie, la vista dei
+lavoratori, la distanza dalle stalle, quanto e' facile la risalita con le
+macchine (i nemici lungo il centro le ignorano, ma vedono l'arciere).
+
+**Titolo e musica** (l'autore, 22 novembre 2026): il titolo del livello 7 e'
+"Fog" (menu.js LEVELS, al posto di "Our old gods" della lista
+dell'originale; tradotto: Nebbia, Niebla, Névoa, Nebel, Brouillard); la
+musica e' quella del livello 1, solo il brano 2 (music.js musicPlan).
+
+### 9.179 Il segnalino del livello 7 sulla mappa della campagna
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un disegno (l'arciere con la balestra, 145 x 159, sfondo
+trasparente): "questa e' l'icona da usare sulla mappa del menu per il
+livello 7, da mettere sempre sulla catena montuosa centrale a sinistra del
+6, fai una prova di piazzamento e girami il risultato".
+
+Il disegno e' `nuovi/sprites/cap7.png`; in nuovi.json "derivati" `cap_l7`,
+lato 100 come il 6 (§9.102), gruppo campagna (tools/05). menu.js
+drawCampaign: con lvlshown oltre 6 il segnalino a L7_MARK = (-145, -45) dal
+centro della mappa (il 6 e' a (-3, -123)), sulla fascia grigia della catena
+centrale, il numero 85 px sopra (a 67, come il 6, cadeva sull'arco:
+l'autore), e la freccia fr_corta dal 6 al 7
+a meta' strada, girata da L7_ARROW (calcolata dai due segnalini) e un po'
+piu' corta (0,75: fra due segnalini vicini toccava le icone). Una prima prova
+a (-150, -95), alla quota del 6, stava sopra la catena e quasi addosso
+all'elenco dei livelli. Prova: foto della mappa a 1280 x 720 e 1920 x 1080
+mandate all'autore per l'approvazione.

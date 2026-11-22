@@ -94,8 +94,11 @@ PATCH_BG, PATCH_FEATHER = "city2", 40
 # "specchiato" nel nome lo specchia sull'asse verticale
 PAINTED_BRIDGES = {"pontedx": "ponte_dx", "pontedx2": "ponte_dx2"}
 # [§9.101] i percorsi della regia dei livelli (livello regia): la colonna
-# del livello 6, i giri delle pattuglie
-PATHS = ("colonna", "pattuglia")
+# del livello 6, i giri delle pattuglie; [§9.178] i banchi di nebbia del
+# livello 7 (una polilinea orizzontale: i due capi fra cui il banco va e
+# viene; proprieta' "velocita" in px a passo, col segno del verso di
+# partenza, e "nuvole")
+PATHS = ("colonna", "pattuglia", "nebbia")
 VIEW_TYPE = "vista"
 FOREST_SPACING = 90          # distanza fra gli alberi del pennello bosco (px)           # rettangolo della vista iniziale, nel livello regia
 

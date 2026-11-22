@@ -173,6 +173,8 @@ const SOLDIER = ["ally_warrior", "capoccia_a1", "Soldier 1"];
 const VILLAGER = ["ally_omino", "capoccia_o1"];
 const SOLDIER2 = ["ally_militare", "capoccia_a1", "Soldier"];
 const SPY = ["ally_militare", "capoccia_a2", "Soldier"];
+const ARCHER = ["ally_arciere", "capoccia_a2", "Archer"]; // §9.178
+const SIEGE = ["ally_unit", "capoccia_a1"]; // §9.178
 
 // parlante, ritratto, titolo, testo, arm, vanish (sparisce se muore chi
 // parla), next (creato nel Destroy), timeout (alarm 1: si chiude da solo),
@@ -288,6 +290,22 @@ export const DIALOGS = {
   dialogo_6_4: { who: SOLDIER2, arm: 30, timeout: 300, text: "Reinforcements have arrived!" },
   dialogo_6_5: { who: SOLDIER2, arm: 30, timeout: 300, text: "Tower recovered: now you can garrison it with archers" },
   dialogo_6_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "The column is here! Stop them before they cross the eastern bridge!" },
+  // livello 7 [§9.178]: la regia e' in lvl07.js, che li crea (testi scritti
+  // per il porting dalla regia dell'autore, da rivedere con lui)
+  dialogo_7_0: { who: ARCHER, arm: 30, next: "dialogo_7_1",
+                 text: "This fog... in this season? I can barely see my own hands. But if I can't see them, they can't see me: I'll use it to slip past that patrol." },
+  dialogo_7_1: { who: ARCHER, arm: 30,
+                 text: "When the pikemen go down to the granary, I'll wait by the walls among the yellow flowers until they come back up. Stealth shot (F) kills an unaware enemy in silence; rapid shot (R) is fast, but noisy." },
+  dialogo_7_2: { who: ARCHER, arm: 30,
+                 text: "The gate is shut, and my arrows will never break it. I need siege engines: the invaders must be keeping some in these lands." },
+  dialogo_7_3: { who: [...SIEGE, "Siege crew"], arm: 30, next: "dialogo_7_4",
+                 text: "Thank you for freeing us! Our rams and catapults are yours." },
+  dialogo_7_4: { who: ARCHER, arm: 30,
+                 text: "Night is falling, and the fog is thicker than ever: in the dark they won't see the engines. Back to the gate, and break it down!" },
+  dialogo_7_5: { who: ARCHER, arm: 30, timeout: 600,
+                 text: "The gate is down! Their horsemen will come for the engines: I must slip into the city now and reach its highest point." },
+  dialogo_7_6: { who: ARCHER, arm: 30, timeout: 420,
+                 text: "Not even the towers can see me in this fog. I'll keep following the road." },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },
@@ -404,7 +422,9 @@ export function hint(name) {
     return true;
   };
   const click = (i, w) => {
-    if (!over(i, w) || (H.arm && i.arm !== 1)) return;
+    // [§9.165] spento (H) non si vede: non si chiude ne' va avanti con un
+    // clic dove sarebbe
+    if (w.g.hint !== 1 || !over(i, w) || (H.arm && i.arm !== 1)) return;
     if (H.next) w.create(H.next, H.nextAtSelf ? i.x : 0, H.nextAtSelf ? i.y : 0);
     w.destroy(i);
   };
@@ -491,9 +511,11 @@ export function dialog(name) {
 // I suggerimenti "la prima volta che succede" [C]: solo se non c'e' gia'
 // una finestra aperta (instance_number(parent_hint)<1), una volta sola
 // (il flag globale), e per le risorse solo dopo hint_resource.
+// [§9.165] con i suggerimenti spenti (H) non nasce niente e la volta non
+// si consuma: accesi dopo, il suggerimento arriva la prossima volta che serve
 export function hintOnce(w, name, flag, x, y, cond = true) {
   const g = w.g;
-  if (g[flag] === 0 && w.number("parent_hint") < 1 && cond) {
+  if (g[flag] === 0 && g.hint === 1 && w.number("parent_hint") < 1 && cond) {
     w.create(name, x, y);
     g[flag] = 1;
   }
@@ -505,6 +527,18 @@ export function hintOnce(w, name, flag, x, y, cond = true) {
 export function dialogOpen(w) {
   for (const n of DIALOG_NAMES) if (w.exists(n)) return true;
   return false;
+}
+
+// [§9.165, segnalazione dell'autore] il suggerimento della notte quando la
+// notte c'e' davvero (global.night al buio pieno), a ogni passo (manager.js
+// step): prima lo creava l'allarme 0 del manager a 6000 passi, cioe' a
+// tempo. Nel livello 1, notte dall'inizio, arrivava dopo 100 s; nella
+// schermaglia "sempre notte" (allarme 0 spento) mai. Come gli altri: con i
+// suggerimenti accesi, senza un dialogo o un altro suggerimento aperto.
+export function nightHint(w) {
+  const g = w.g;
+  if (g.nighthint !== 0 || g.night < 1 || !w.behaviours.hint_night || dialogOpen(w)) return;
+  hintOnce(w, "hint_night", "nighthint", w.mouse.x, w.mouse.y);
 }
 
 export const HINT_NAMES = Object.keys(HINTS);

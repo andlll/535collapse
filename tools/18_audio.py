@@ -71,15 +71,23 @@ def main():
         filt = (s["filtro"] + ",") if s.get("filtro") else ""
         files = []
         loop = s.get("loop")
-        for k, cut in enumerate(s["tagli"], 1):
-            # [§9.139] un taglio puo' venire da un altro file: [inizio, fine, "file"]
-            a, b = cut[0], cut[1]
-            src = os.path.join(SRC, cut[2] if len(cut) > 2 else s["da"])
-            dur = (b - a) / 1000
+        for k, cut in enumerate(s.get("strati") or s["tagli"], 1):
             tmp = os.path.join(OUT, "%s_%d.wav" % (name, k))
-            stereo = bool(loop and loop.get("stereo")) and _channels(src) == 2
-            mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 and not stereo else ""
-            if loop and not loop.get("incrocio_ms", 1000):
+            if s.get("strati"):
+                # [§9.174] una variante fatta di strati sovrapposti (mono)
+                a, b, src, stereo = 0, 0, None, False
+                dur = _layers(cut, filt, fin, fout, tmp)
+                b = round(dur * 1000)
+            else:
+                # [§9.139] un taglio puo' venire da un altro file: [inizio, fine, "file"]
+                a, b = cut[0], cut[1]
+                src = os.path.join(SRC, cut[2] if len(cut) > 2 else s["da"])
+                dur = (b - a) / 1000
+                stereo = bool(loop and loop.get("stereo")) and _channels(src) == 2
+                mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 and not stereo else ""
+            if s.get("strati"):
+                pass
+            elif loop and not loop.get("incrocio_ms", 1000):
                 # [§9.143] un loop gia' pronto (le parti della musica, esportate
                 # da Ableton): solo il taglio, al campione (ms con decimali)
                 ffmpeg("-i", src, "-af", "atrim=start=%.6f:end=%.6f,asetpts=PTS-STARTPTS%s"
@@ -115,6 +123,11 @@ def main():
             else:
                 gain = target - peak_db(tmp)
             post = "volume=%.2fdB" % gain if gain else "anull"
+            # [§9.170] `tempo`: piu' veloce (o lento) senza cambiare l'altezza
+            # (atempo), dopo tagli e dissolvenze: le dissolvenze restano dove
+            # sono, accorciate con tutto il resto
+            if s.get("tempo"):
+                post += ",atempo=%.4f" % s["tempo"]
             if s.get("limite_db") is not None:
                 post += ",alimiter=limit=%.4f:attack=2:release=40:level=false" % (10 ** (s["limite_db"] / 20))
             out = "%s_%d.mp3" % (name, k)
@@ -124,7 +137,7 @@ def main():
             kb = s.get("kbit", 128 if stereo else 96)
             # [§9.143] la frequenza dell'originale (44,1 o 48 kHz); oltre i 48 (le
             # registrazioni a 96) si ricampiona, l'MP3 non ci arriva
-            rate = min(48000, _rate(src))
+            rate = min(48000, _rate(src)) if src else 44100
             ffmpeg("-i", tmp, "-af", post, "-ac", "2" if stereo else "1", "-ar", str(rate), "-c:a", "libmp3lame",
                    "-b:a", "%dk" % kb, *(["-cutoff", "20000"] if s.get("kbit") else []), os.path.join(OUT, out))
             os.remove(tmp)
@@ -145,6 +158,34 @@ def main():
         json.dump(manifest, f, ensure_ascii=False, indent=1)
     print("game/assets/audio: %d suoni, %d file, %.1f KB" % (len(manifest["sounds"]),
           sum(len(v["files"]) for v in manifest["sounds"].values()), total / 1024))
+
+
+def _layers(layers, filt, fin, fout, out):
+    """[§9.174] Una variante a strati (audio.json "strati": per ogni variante
+    una lista di strati): ogni strato e' un pezzo di un file d'origine ("da",
+    "da_ms", "a_ms"), mono, col suo filtro ("filtro"), la sua velocita'
+    ("velocita": < 1 piu' grave e piu' lungo, come un nastro rallentato), il
+    suo volume ("db") e il suo ritardo ("ritardo_ms"); gli strati si sommano,
+    poi il filtro del suono e le dissolvenze. Restituisce la durata (s)."""
+    args, chains, labels, dur = [], [], [], 0.0
+    for n, L in enumerate(layers):
+        src = os.path.join(SRC, L["da"])
+        rate = _rate(src)
+        v = L.get("velocita", 1)
+        a, b = L["da_ms"] / 1000, L["a_ms"] / 1000
+        delay = L.get("ritardo_ms", 0)
+        mono = "pan=mono|c0=0.5*c0+0.5*c1," if _channels(src) == 2 else ""
+        lf = (L["filtro"] + ",") if L.get("filtro") else ""
+        speed = "asetrate=%d,aresample=44100," % round(rate * v) if v != 1 else "aresample=44100,"
+        args += ["-i", src]
+        chains.append("[%d:a]atrim=start=%.4f:end=%.4f,asetpts=PTS-STARTPTS,%s%s%svolume=%.2fdB,adelay=%d|%d[l%d]"
+                      % (n, a, b, mono, lf, speed, L.get("db", 0), delay, delay, n))
+        labels.append("[l%d]" % n)
+        dur = max(dur, (b - a) / v + delay / 1000)
+    post = "%safade=t=in:st=0:d=%.4f,afade=t=out:st=%.4f:d=%.4f" % (filt, fin / 1000, dur - fout / 1000, fout / 1000)
+    ffmpeg(*args, "-filter_complex", ";".join(chains) + ";%samix=inputs=%d:duration=longest:normalize=0,%s"
+           % ("".join(labels), len(layers), post), "-ac", "1", "-c:a", "pcm_f32le", out)
+    return dur
 
 
 def _rate(path):
