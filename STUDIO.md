@@ -65,7 +65,8 @@ banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
 schermaglia. Fatti lo scheletro (dal menu "Giocatore singolo" -> "Editor di
 mappe", `?room=editor`, dal disegno dell'autore), la mappa vera (col motore,
 anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
-annulla e ripeti, "Nuova mappa" vuota. Da fare (§9.182, "Prossimo"): salva
+annulla e ripeti, "Nuova mappa" vuota, gli stili di case e alberi col tasto
+S (§9.183). Da fare (§9.182, "Prossimo"): salva
 e apri (browser e file), impostazioni (nome, descrizione, misura, sfondo,
 CPU, simmetria), polilinea e pennello, prova mappa, le mappe dell'editor
 nella schermaglia e nella partita online. In sospeso la password.
@@ -12781,8 +12782,8 @@ versione 0.2615):
    CPU statica che non fa nulla** (per provare la mappa con calma).
 5. **Password: in sospeso** (l'autore non ricorda a cosa servisse).
 6. **Simmetria spenta di partenza**; si accende **diagonale, orizzontale o
-   verticale** rispetto alla mappa. Come la intendo (da confermare
-   all'autore): diagonale = la rotazione di 180 gradi attorno al centro
+   verticale** rispetto alla mappa. Come la intendo (confermato
+   dall'autore, §9.183): diagonale = la rotazione di 180 gradi attorno al centro
    delle cinque schermaglie di oggi (basi in angoli opposti, tools/16);
    orizzontale = le due meta' a sinistra e a destra (specchio sull'asse
    verticale); verticale = sopra e sotto (specchio sull'asse orizzontale).
@@ -12876,4 +12877,41 @@ R2); le impostazioni (nome, descrizione, misura, sfondo, CPU con la statica,
 simmetria); il pennello (boschi con larghezza e densita', texture) e la
 polilinea (fiumi, strade, ponti); "Prova mappa"; le mappe dell'editor nella
 schermata della schermaglia e poi nella partita online.
+
+### 9.183 Gli stili di case e alberi; la simmetria confermata
+
+Risposta dell'autore (22 novembre 2026, stessa PR, versione 0.2615): "si'
+ti confermo sulla simmetria" (diagonale = rotazione di 180 gradi,
+orizzontale = meta' a sinistra e a destra, verticale = sopra e sotto; gli
+oggetti cambiano posto ma non si capovolgono, §9.182 punto 6), e "per le
+case e gli alberi dai la possibilita' prima dell'inserimento di cambiare
+stile con un tasto, in modo da tenere un singolo oggetto con piu' stili".
+
+Prima ogni casa della citta' romana era una casella a se' (34 caselle nella
+scheda "Citta'", da scorrere) e l'albero prendeva una variante a caso a ogni
+clic.
+- **Una casella, piu' stili** (editmap.js `paletteItems`): gli alberi (albero
+  e albero finto) hanno gli 8 sprite fra cui il gioco sceglie (alb1..alb8,
+  scritti nella voce come `sprite`, come fa tools/12 con le varianti di
+  Tiled); le **25 case** `ocr_01`..`ocr_45` (tutte della stessa misura, viste
+  in un foglio di provini) sono una famiglia: una casella "casa" con 25 stili
+  (`HOUSES`; ogni stile e' l'oggetto della sua casa). Basilica, teatro e
+  tempio restano a parte (monumenti), come colonne, fontane e statue. La
+  scheda "Citta'" ora ha 10 caselle e ci sta in una fila.
+- **Il tasto S** ("stile" in tutte e sei le lingue; Maiusc+S all'indietro):
+  con "Inserisci" cambia lo stile della casella scelta prima di metterla; il
+  fantasma sotto il puntatore e la miniatura mostrano lo stile scelto, la
+  casella scrive quale e quanti in basso a destra ("9/25"), il riquadro "S:
+  stile 9/25". Ogni casella ricorda il suo stile. Con "Sposta" lo stesso
+  tasto cambia lo stile delle case e degli alberi scelti (con annulla), anche
+  quelli gia' messi o venuti dal modello (un albero senza `sprite` parte
+  dalla variante che mostra, quella della sua posizione).
+
+Prove: `editor.test.mjs` (l'albero ha gli 8 sprite del gioco, la casa le 25
+case nell'ordine di `HOUSES`, gli altri uno stile; lo stile di una voce
+messa, anche senza `sprite`; la scheda "Citta'" senza scorrimento, quella
+dei prati e fiori con), `editor.mjs` (in piu': l'albero col terzo sprite
+dopo S due volte, la casa col secondo stile dopo S, Maiusc+S, S; con
+"Sposta" S cambia la casa scelta e Ctrl+Z la rimette), test unitari (127),
+screenshot della scheda delle case e di quella degli alberi.
 
