@@ -61,6 +61,13 @@ il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
 che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
 banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
 
+**Editor di mappe** (§9.180, roadmap R6): fatto lo scheletro (dal menu
+"Giocatore singolo" -> "Editor di mappe", `?room=editor`: la colonna degli
+strumenti e il riquadro dal disegno dell'autore, la vista con zoom e
+scorrimento). Da discutere con l'autore la proposta e le domande di §9.180
+("Da decidere"); poi le fasi F2-F5 (la mappa vera nell'editor; inserisci e
+sposta, salva e apri; polilinea e pennello; prova mappa e impostazioni).
+
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
 per gli spostamenti, il fuoco, i nemici che non inseguono, le macchine
@@ -12515,3 +12522,171 @@ piu' corta (0,75: fra due segnalini vicini toccava le icone). Una prima prova
 a (-150, -95), alla quota del 6, stava sopra la catena e quasi addosso
 all'elenco dei livelli. Prova: foto della mappa a 1280 x 720 e 1920 x 1080
 mandate all'autore per l'approvazione.
+
+### 9.180 L'editor di mappe: lo scheletro e la proposta
+
+Richiesta dell'autore (22 novembre 2026, PR nuova, versione **0.2615**), con
+un disegno a matita: "Dobbiamo creare l'editor dei livelli [...] con
+interfaccia incolonnata a sinistra e tool selezionato in basso. Deve essere
+accessibile dal gioco tramite un tasto 'editor di mappe' sotto
+'schermaglia' e fare circa le cose che facciamo su Tiled [...]. Inizia a
+impostare il lavoro e discutiamo insieme di come farlo". E' la tappa R6
+della roadmap ("Editor di mappe e scenari condivisi").
+
+Il disegno: una colonna a sinistra con, dall'alto, *sposta* (copia e
+incolla, specchia, elimina), *polilinea* (fiumi, strade), *pennello area*
+(boschi, texture), *inserisci* (unita', risorse, edifici...); piu' sotto,
+staccati, *nuova mappa*, *apri mappa*, *salva mappa*, *prova mappa*,
+*impostazioni* (controllo CPU, descrizione e informazioni della mappa;
+"password?"). In basso un riquadro col titolo "tool selezionato".
+
+**Fatto: lo scheletro.**
+- Menu: "Editor di mappe" e' il terzo pulsante di "Giocatore singolo",
+  sotto "Schermaglia" (menu.js MENU_PAGES, BTN_LABEL); apre `?room=editor`.
+- app.js: con `room=editor`, dopo renderer e atlas, passa a
+  `editor.js runEditor`, un ciclo suo senza World ne' partita (input, ciclo,
+  renderer, font e sprite del gioco). E' un import dinamico: esbuild lo mette
+  in un pezzo a parte del bundle (~10 KB), che si scarica solo aprendo
+  l'editor; il resto del gioco va in `dist/app.js` e in un pezzo comune.
+- La mappa: `newMap()` e' uno scenario `535-scenario` versione 1 (§9.3), lo
+  stesso formato di tools/12 e degli `scenari/`, vuoto: 6000 x 6000, sfondo
+  green1 (come la mappa vuota del kit). Si disegna lo sfondo ripetuto dentro
+  la mappa, fuori il colore della pagina, il bordo a 2 px.
+- La vista (EditorView): come la Camera del gioco ma con lo zoom da 0,5 a 4
+  (in partita 1-1,7) attorno al puntatore con la rotella (uno scatto x1,15;
+  il touchpad in proporzione), un margine di 400 px fuori dalla mappa per
+  arrivare ai bordi da sotto la colonna; si sposta con le frecce (Shift: piu'
+  veloce), trascinando col tasto centrale o con Spazio + sinistro.
+- La colonna dal disegno: un vetro chiaro coi pulsanti tondi bianchi (come
+  "Indietro" e lo schermo intero del menu), le icone disegnate a linee
+  (quattro frecce, la polilinea coi punti, il pennello, l'omino col "+", il
+  foglio col "+", la cartella, il dischetto, il triangolo del play,
+  l'ingranaggio); lo strumento scelto scuro con l'icona bianca; una lineetta
+  fra strumenti e azioni. Col puntatore sopra, il nome a destra della
+  colonna. Si rimpicciolisce tutta nelle finestre basse (editorLayout).
+- Il riquadro in basso, centrato a destra della colonna: il nome dello
+  strumento, "Prossimamente", le coordinate del puntatore sulla mappa, cosa
+  fara' lo strumento e i comandi della vista. Strumenti coi tasti 1-4.
+- Le azioni (nuova, apri, salva, prova, impostazioni) per ora dicono
+  "Prossimamente". Esc o il cerchio "Indietro" in alto a destra: il menu.
+- Testi nelle sei lingue (texts.js). Il font del gioco non ha "·" ne' "×":
+  la riga sotto il titolo e' "Nuova mappa  -  6000 x 6000".
+
+*Trovato per strada.* La prova del determinismo (§9.152,
+`determinism.test.mjs`) falliva su `main` dal §9.179: menu.js calcolava la
+freccia del livello 7 con `Math.atan2`. Ora `datan2` di dmath.js: stesso
+angolo (-331 gradi).
+
+Prove: `editor.test.mjs` (nuova: la mappa vuota ha le chiavi degli scenari
+di tools/12; colonna e riquadro dentro la finestra a 1920 x 1080, 1600 x
+900, 1280 x 720 e 1024 x 600, senza toccarsi; i pulsanti al loro posto;
+zoom col punto fermo, limiti e margine; testi tradotti), `editor.mjs`
+(nuova, anche in CI: dal menu all'editor, clic e tasto sugli strumenti,
+rotella col punto fermo, trascinata col centrale, Esc al menu), test
+unitari (122), `soak.mjs` su menu e match, screenshot in inglese e in
+italiano.
+
+**La proposta (da discutere con l'autore).**
+
+*1. Che mappe fa.* Due generi, molto diversi per lavoro:
+- (A) **mappe da schermaglia**: due posizioni di partenza (i due `centro`,
+  come le cinque di oggi: skirmish.js skirmishPrepare da' quello della CPU
+  al nemico), risorse, natura, terreno. Le regole sono quelle della
+  schermaglia (difficolta', vittoria, risorse... si scelgono all'avvio),
+  quindi una mappa e' subito giocabile, contro la CPU e online (§9.156).
+- (B) **scenari con regia**, come i livelli della campagna: eserciti ed
+  edifici nemici gia' piazzati, obiettivi, ondate, dialoghi. Oggi la regia
+  e' codice (levels.js, lvl07.js); per gli scenari dei giocatori servono le
+  regole dichiarative della roadmap R2 ("distruggi X: vittoria", "al minuto
+  5 un'ondata"), un lavoro a parte.
+Raccomandazione: prima (A), con (B) dopo, sopra lo stesso editor.
+
+*2. Il formato.* La mappa resta uno scenario `535-scenario` (§9.3): le
+istanze, `rivers`, `roads`, `bridges` e `patches` come le scrive tools/12.
+Una mappa fatta nell'editor e una fatta in Tiled sono la stessa cosa, e il
+gioco le carica allo stesso modo. In piu' solo le informazioni della mappa
+(descrizione, autore, impostazioni). Validazione rigorosa all'apertura (R2:
+solo oggetti noti, dentro la mappa, misure e numero di istanze massimi,
+niente codice: i file si scambiano fra sconosciuti).
+
+*3. Cosa si vede.* La mappa com'e' in partita, col motore del gioco: gli
+sprite dell'atlas, il suolo cotto in blocchi (ground.js) coi fiumi, le
+strade, i ponti e le macchie di rivers.js; gli alberi sempre visibili (in
+partita si scoprono); le macchie d'erba e di fiori con le loro particelle;
+gli oggetti senza sprite (manager, regia) come segnaposto. Da fare per lo
+zoom lontano: i blocchi del suolo sono al piu' 48 da 512 px (bastano fino
+allo zoom 1,7 della partita); per vedere mezza mappa o tutta servono
+blocchi cotti a risoluzione ridotta (1/2, 1/4).
+
+*4. Gli strumenti* (dal disegno), tutti con annulla e ripeti (Ctrl+Z,
+Ctrl+Y):
+- **Sposta**: clic o riquadro per scegliere (Shift aggiunge), trascinare
+  sposta; Ctrl+C e Ctrl+V (incolla sotto il puntatore), specchia (scala x
+  -1, come il ribaltamento di Tiled), ruota, Canc elimina.
+- **Polilinea**: fiume, strada marcata (strada1) o secondaria (strada2),
+  con larghezza, larghezza finale e densita' come in Tiled (§9.97); un clic
+  per punto, doppio clic o Invio per finire, i punti si trascinano. I ponti:
+  un clic su un fiume mette il ponte di traverso, gia' girato e lungo quanto
+  serve (oggi in Tiled e' un rettangolo da girare a mano); anche i ponti
+  dipinti (§9.100).
+- **Pennello area**: un pennello tondo (raggio regolabile) e la gomma.
+  *Boschi*: il pennello dipinge alberi veri, uno per uno, col campionamento
+  di Poisson di tools/12 (distanza 90 px) solo dove non ce ne sono gia';
+  restano istanze normali (si spostano o tolgono a uno a uno). *Texture*:
+  city2, city1, green1 (le macchie di §9.99): il pennello dipinge su una
+  griglia fine, il contorno diventa i poligoni sfumati di oggi.
+- **Inserisci**: le categorie dei tileset del kit (terreno, montagne e
+  fiumi, natura, risorse, edifici, unita', nemici, citta', nuovi) con le
+  loro miniature; le varianti (alb1..alb8) a caso o scelte; il fantasma
+  dell'oggetto sotto il puntatore, rosso dove non sta (come i cantieri);
+  griglia da 50 px facoltativa. Il catalogo oggi e' in Python
+  (tools/tiledkit.py `category`): va scritto anche per il gioco (un JSON
+  generato da tools/07 o 11, cosi' resta uno solo).
+
+*5. Nuova, apri, salva.* Nuova: nome, misura (le mappe di oggi vanno da
+3200 x 8000 a 9000 x 4000; la schermaglia 7000 x 7000), sfondo. Salva: nel
+browser (IndexedDB, come i salvataggi, con l'elenco delle proprie mappe) e
+su file da scaricare (`.dvmap`, compresso come `.dvgame`, §9.134) per
+scambiarle. Apri: le proprie mappe, un file, e le mappe del gioco
+(schermaglie e livelli) come punto di partenza, in copia.
+
+*6. Prova mappa.* La mappa va in IndexedDB e si apre una partita
+(`?room=custom`): app.js carica lo scenario dal browser invece che da
+`assets/rooms/` (la conversione scenario -> room di tools/07 e' breve, si
+porta in JS), con le opzioni della schermaglia; dal menu di pausa "Torna
+all'editor". Prima di partire un controllo: due `centro`, niente oggetti
+fuori mappa. Il manager e la vista iniziale li mette l'editor.
+
+*7. Impostazioni.* Nome, descrizione (si legge nella schermata della
+schermaglia), autore, misura e sfondo; per la schermaglia la **simmetria**
+facoltativa: quello che si fa in una meta' compare ruotato di 180 gradi
+nell'altra, come fa tools/16 per le cinque mappe di oggi. Le mappe
+dell'editor fra quelle della schermaglia, con la foto fatta dal browser.
+
+*Fasi* (una PR ciascuna, o piu'): F1 lo scheletro (questa); F2 la mappa
+vera nell'editor (istanze, suolo, fiumi, strade, macchie; zoom lontano; le
+mappe del gioco aperte in sola lettura; il catalogo); F3 inserisci e sposta
+con annulla e ripeti, salva e apri (browser e file); F4 polilinea e
+pennello; F5 prova mappa e impostazioni, le mappe dell'editor nella
+schermaglia; poi gli scenari con regia (R2) e la condivisione.
+
+**Da decidere con l'autore**
+- [ ] Che mappe: solo schermaglia per cominciare (raccomandato) o subito
+  anche scenari con regia?
+- [ ] Per chi: l'editor e' per i giocatori, o deve sostituire Tiled anche
+  per i livelli della campagna? (Raccomandazione: prima per i giocatori;
+  Tiled resta per la campagna finche' l'editor non ha la regia: gruppi,
+  percorsi, segnali.)
+- [ ] Il pennello dei boschi: alberi veri dipinti uno per uno
+  (raccomandato) o aree che il gioco riempie al caricamento (come il
+  livello `boschi` di Tiled)?
+- [ ] "Controllo CPU" nelle impostazioni: cosa intende l'autore? (Quale
+  parte gioca la CPU, lo stile e la difficolta' consigliati per la mappa,
+  altro?)
+- [ ] "Password?": a cosa serve? Una mappa che si gioca ma non si modifica
+  non si puo' proteggere davvero (il file lo legge il gioco, quindi chiunque
+  puo' leggerlo); si puo' solo fare in modo che l'editor non la riapra senza
+  la password.
+- [ ] La simmetria automatica per le mappe della schermaglia: serve?
+- [ ] Le mappe fatte con l'editor nella schermata della schermaglia (e in
+  quella della partita online)?

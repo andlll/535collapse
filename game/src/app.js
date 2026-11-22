@@ -64,7 +64,7 @@ import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
@@ -141,6 +141,12 @@ async function main() {
     for (const k of [...params.keys()]) params.delete(k); // niente salvataggio, campagna, rete...
     params.set("room", "menu");
     history.replaceState(null, "", location.pathname + "?room=menu");
+  }
+  // [§9.180] l'editor di mappe: un ciclo suo, senza partita (editor.js, in
+  // un pezzo a parte del bundle: si scarica solo quando lo si apre)
+  if (roomName === "editor") {
+    const { runEditor } = await import("./editor.js");
+    return runEditor({ r, assets, canvas, settings, params, toast, progress });
   }
   // [§9.156, multiplayer, fase 4] la partita a due in rete (?net=host|join,
   // netgame.js): chi crea e' il rosso, chi entra il blu; mappa, opzioni e

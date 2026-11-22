@@ -28,7 +28,8 @@
 // colonna, alti uguali (titleButtons).
 //
 // [§9.157, richiesta dell'autore] la schermata iniziale: "Play the
-// tutorial", "Single player" (dentro: la campagna e la schermaglia),
+// tutorial", "Single player" (dentro: la campagna, la schermaglia e, dal
+// §9.180, l'editor di mappe),
 // "Multiplayer" (dentro: "Create game", la schermaglia per la partita
 // online, e "Join game", il pannello per il codice ricevuto), "Load game".
 
@@ -41,7 +42,7 @@ import { audio } from "./audio.js"; // §9.168
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 import { Particles, partType } from "./particles.js";
-import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { datan2, dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
@@ -95,11 +96,12 @@ const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
 const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
 const MENU_PAGES = {
   title: ["tutorial", "single", "multi", "load"],
-  single: ["campaign", "skirmish"],
+  single: ["campaign", "skirmish", "editor"], // §9.180: l'editor di mappe sotto la schermaglia
   multi: ["create", "join"],
 };
 const BTN_LABEL = { tutorial: "Play the tutorial", single: "Single player", multi: "Multiplayer", load: "Load game",
-                    campaign: "Campaign - Collapse", skirmish: "Skirmish", create: "Create game", join: "Join game" };
+                    campaign: "Campaign - Collapse", skirmish: "Skirmish", editor: "Map editor",
+                    create: "Create game", join: "Join game" };
 export const MENU_LABELS = Object.values(BTN_LABEL); // (per la prova delle traduzioni)
 const colTop = (H, n) => H - 100 - n * BTN_H - (n - 1) * BTN_GAP;
 function titleButtons(W, H, page = "title") {
@@ -350,6 +352,7 @@ export function enemyManagerMenu() {
         i.btnhover = null;
         if (k) clic();
         if (k === "tutorial") w.gotoRoom("match");
+        else if (k === "editor") w.gotoRoom("editor"); // §9.180 (editor.js)
         else if (k === "single" || k === "multi") i.page = k; // §9.157
         else if (k === "back") i.page = "title";
         else if (k === "load") i.loadmenu = 1;
@@ -403,7 +406,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2614";
+export const VERSION = "0.2615";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna
@@ -468,8 +471,8 @@ function drawFullButton(d, x, y, r, hover, on) {
 // [§9.120, richiesta dell'autore] senza il riquadro bianco di sfondo, come il
 // menu di pausa: titolo e descrizione in nero con un alone bianco
 // (glowText, come pause.js _glowLabel); "Indietro" e' il cerchio in alto a
-// destra della campagna
-function glowText(d, x, y, str, wrapW = 0) {
+// destra della campagna. ([§9.180] anche per il titolo dell'editor)
+export function glowText(d, x, y, str, wrapW = 0) {
   d.setColour(c.white);
   for (const [r, a] of [[5, 0.04], [4, 0.06], [3, 0.09], [2, 0.13], [1, 0.2]]) {
     d.setAlpha(a);
@@ -729,7 +732,7 @@ const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 85]; // (a -67, come il 6, cadeva sul
 // la freccia: a meta' fra il 6 e il 7, girata dal 6 al 7 (fr_corta punta a
 // sinistra: angolo = direzione - 180)
 const L7_ARROW = (() => {
-  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (Math.atan2(-(y7 - y6), x7 - x6) * 180) / Math.PI;
+  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (datan2(-(y7 - y6), x7 - x6) * 180) / Math.PI; // (datan2: la prova del determinismo, §9.152)
   return [Math.round((x6 + x7) / 2), Math.round((y6 + y7) / 2), 0.75, 1.0, Math.round(dir - 180)];
 })();
 
