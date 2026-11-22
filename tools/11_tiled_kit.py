@@ -549,6 +549,12 @@ invece, sono tue.
    `lvl02.tmx`) per vedere come sono fatte.
 4. Dimensioni: *Map → Resize Map…* (la griglia e' di {tile} px: una mappa di
    6000 px e' larga 120 celle). Le coordinate in pixel sono quelle del gioco.
+5. Le mappe della schermaglia (`mappe/sk_padus.tmx`, `sk_urbs.tmx`,
+   `sk_silva.tmx`, `sk_rivo.tmx`, `sk_bardonis.tmx`) non sono disegnate a
+   mano: le scrive un programma (`tools/16_schermaglia.py`), simmetriche per
+   i due giocatori. Si possono aprire per guardarle; una modifica fatta qui
+   verrebbe persa alla prossima generazione (e la CI la segnala): le
+   correzioni si dicono a Claude, che cambia il programma.
 
 ## Livelli della mappa (dal basso)
 

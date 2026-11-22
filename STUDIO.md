@@ -12335,3 +12335,21 @@ l'autore). In partita, con l'audio vero: una casa distrutta a 2000 px dal
 bordo -> rovina_piccola (e il riverbero creato), il sasso nemico a 1500 px
 -> zappa, un colpo di spada a 1500 px -> muto. determinism.mjs,
 catapults.mjs, pvp.mjs: passate.
+
+### 9.176 Il kit di Tiled con le mappe della schermaglia
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "generami il kit di tiled aggiornato, inseriscici dentro anche le
+mappe della schermaglia cosi' le controllo".
+
+tools/11 copiava gia' nel kit tutte le mappe di `mappe/`, quindi anche le
+cinque della schermaglia (`sk_*.tmx`, §9.118): nel kit sono identiche a
+quelle del repo, e ogni tileset e immagine che citano c'e'. Aggiunto in
+LEGGIMI.md (punto 5) che non sono disegnate a mano: le scrive
+tools/16_schermaglia.py, simmetriche, e una modifica fatta in Tiled
+andrebbe persa alla generazione successiva (la CI controlla che siano
+quelle di tools/16): le correzioni si fanno nel programma.
+
+Prove: tools/11 (35,4 MB di zip, 242 tile in 10 tileset), tools/12 --check
+(match, lvl01, lvl02 identiche), tutte le mappe di mappe/ reimportate con
+scenari/ invariato, tools/16 --check (le cinque simmetriche), come nella CI.
