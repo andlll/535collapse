@@ -722,6 +722,16 @@ const L5_ARROW = [150, -25, 0.8, 1.0, 58];
 const L6_MARK = [-3, -123];
 const L6_LABEL = [-3, -190];
 const L6_ARROW = [46, -31, 0.9, 1.0, -62];
+// [§9.179, indicazione dell'autore] il livello 7 (cap_l7, l'arciere): sulla
+// catena montuosa centrale, a sinistra del 6, con la freccia dal 6
+export const L7_MARK = [-145, -45];
+const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 67];
+// la freccia: a meta' fra il 6 e il 7, girata dal 6 al 7 (fr_corta punta a
+// sinistra: angolo = direzione - 180)
+const L7_ARROW = (() => {
+  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (Math.atan2(-(y7 - y6), x7 - x6) * 180) / Math.PI;
+  return [Math.round((x6 + x7) / 2), Math.round((y6 + y7) / 2), 0.75, 1.0, Math.round(dir - 180)];
+})();
 
 function drawCampaign(i, g, d, W, H) {
   d.setAlpha(0.9);
@@ -770,6 +780,11 @@ function drawCampaign(i, g, d, W, H) {
       d.sprite("cap_l6", 0, MX + L6_MARK[0], H / 2 + L6_MARK[1]);
       d.spriteExt("fr_corta", 0, MX + L6_ARROW[0], H / 2 + L6_ARROW[1], L6_ARROW[2], L6_ARROW[3], L6_ARROW[4], c.white, 1);
       d.text(MX + L6_LABEL[0], H / 2 + L6_LABEL[1], "6.");
+    }
+    if (i.lvlshown > 6) { // §9.179
+      d.sprite("cap_l7", 0, MX + L7_MARK[0], H / 2 + L7_MARK[1]);
+      d.spriteExt("fr_corta", 0, MX + L7_ARROW[0], H / 2 + L7_ARROW[1], L7_ARROW[2], L7_ARROW[3], L7_ARROW[4], c.white, 1);
+      d.text(MX + L7_LABEL[0], H / 2 + L7_LABEL[1], "7.");
     }
     d.setColour(c.black);
     d.setFont("overdue");

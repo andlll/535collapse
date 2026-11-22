@@ -12495,3 +12495,22 @@ macchine (i nemici lungo il centro le ignorano, ma vedono l'arciere).
 "Fog" (menu.js LEVELS, al posto di "Our old gods" della lista
 dell'originale; tradotto: Nebbia, Niebla, Névoa, Nebel, Brouillard); la
 musica e' quella del livello 1, solo il brano 2 (music.js musicPlan).
+
+### 9.179 Il segnalino del livello 7 sulla mappa della campagna
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614), con un disegno (l'arciere con la balestra, 145 x 159, sfondo
+trasparente): "questa e' l'icona da usare sulla mappa del menu per il
+livello 7, da mettere sempre sulla catena montuosa centrale a sinistra del
+6, fai una prova di piazzamento e girami il risultato".
+
+Il disegno e' `nuovi/sprites/cap7.png`; in nuovi.json "derivati" `cap_l7`,
+lato 100 come il 6 (§9.102), gruppo campagna (tools/05). menu.js
+drawCampaign: con lvlshown oltre 6 il segnalino a L7_MARK = (-145, -45) dal
+centro della mappa (il 6 e' a (-3, -123)), sulla fascia grigia della catena
+centrale, il numero 67 px sopra come il 6, e la freccia fr_corta dal 6 al 7
+a meta' strada, girata da L7_ARROW (calcolata dai due segnalini) e un po'
+piu' corta (0,75: fra due segnalini vicini toccava le icone). Una prima prova
+a (-150, -95), alla quota del 6, stava sopra la catena e quasi addosso
+all'elenco dei livelli. Prova: foto della mappa a 1280 x 720 e 1920 x 1080
+mandate all'autore per l'approvazione.
