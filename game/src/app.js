@@ -493,7 +493,8 @@ async function main() {
   };
   world.hooks.destroyed = (i) => {
     if (!(i.life <= 0) || !world.shown(i)) return;
-    if (i.parents.some((p) => BUILD_FAMILIES.includes(p))) audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y);
+    // [§9.175] il crollo si sente anche fuori dalla vista, lontano (audio.js far)
+    if (i.parents.some((p) => BUILD_FAMILIES.includes(p))) audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y, 1, false, true);
     else if (i.parents.some((p) => UNIT_FAMILIES.includes(p))) audio.play(deathSound(i), i.x, i.y);
   };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)

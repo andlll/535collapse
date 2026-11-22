@@ -594,7 +594,7 @@ export function catapultBullet(enemySide) {
         const b = w.nearest(i.x, i.y, build);
         if (!enemySide) { b.hit = 1; b.alarm.set(2, 50); }
         b.life -= 40;
-        if (b.visible !== false) audio.play("crollo", i.x, i.y); // §9.168: il sasso sull'edificio
+        if (b.visible !== false) audio.play("crollo", i.x, i.y, 1, false, true); // §9.168: il sasso sull'edificio (§9.175: anche lontano)
       }
       if (onUnit) {
         if (!enemySide) w.create("sfx_sangue", i.x, i.y);
@@ -606,7 +606,7 @@ export function catapultBullet(enemySide) {
       // [§9.168, §9.169, richiesta dell'autore] il sasso sul terreno o su
       // un'unita': il colpo della zappa (nella terra); su un edificio il
       // crollo (sopra). Su un'unita' se si vede
-      if (!onBuild && (!onUnit || w.nearest(i.x, i.y, unit).visible !== false)) audio.play("zappa", i.x, i.y);
+      if (!onBuild && (!onUnit || w.nearest(i.x, i.y, unit).visible !== false)) audio.play("zappa", i.x, i.y, 1, false, true); // §9.175: anche lontano
     },
     draw(i, w, d) {
       d.spriteExt("sasso", 0, i.x, i.y - i.deviance, 1, 1, i.rota, WHITE, 1);

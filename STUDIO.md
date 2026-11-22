@@ -12297,3 +12297,41 @@ nebbia -> niente, un guerriero tolto senza morire -> niente. Un file
 d'ascolto per l'autore: le nove varianti dopo un colpo di spada, poi una
 mischia simulata di 3 s (24 colpi di spada e 10 morti a caso, volumi e pan
 diversi). determinism.mjs, pvp.mjs, melee.mjs, garrison.mjs: passate.
+
+### 9.175 I crolli e il sasso lontani: attutiti e riverberati
+
+Domanda dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "il crollo degli edifici e il sasso della catapulta che colpisce,
+quando sono fuori schermo, possiamo riprodurre il suono attutito magari con
+un po' di riverbero? In modo simile a come succede in Age of Empires 4".
+
+**Prima.** Ogni suono del mondo cala dal bordo della vista fino a zero a 700
+px (audio.js FAR): un edificio che crolla piu' in la' non si sentiva.
+
+**Ora** (audio.js, play col nuovo argomento `far`): per i crolli degli
+edifici (app.js hooks.destroyed: rovina, rovina_piccola) e per il sasso
+della catapulta che cade (siege.js catapultBullet: crollo su un edificio,
+zappa sul terreno o su un'unita'), fuori dalla vista il suono non si
+spegne a 700 px ma si sente fino a DISTANT.range (3500 px dal bordo),
+sempre piu' lontano (t da 0 a 1 con la distanza):
+- volume da 0,7 a 0,25 (distantPlacement; oltre il fondo muto);
+- un passa-basso (BiquadFilter) da 4,5 kHz a 600 Hz: attutito, cupo;
+- il riverbero (ConvolverNode), mandato dal 30 al 75%, col segnale
+  diretto che cala di conseguenza; la risposta all'impulso e' generata
+  (2,2 s di rumore stereo che si spegne come (1-t)^3 e diventa piu' cupo
+  verso la fine), una volta sola al primo suono lontano;
+- il pan da che parte sta, come gli altri.
+Dentro la vista niente cambia. Gli altri suoni (spade, frecce, l'ariete)
+restano come prima: lontano tacciono. Le condizioni di prima restano (un
+edificio nemico nella nebbia non suona).
+
+**Prove.** test/sfx.test.mjs (nella vista niente filtro; senza far muto a
+1500 px dal bordo, con far suona col passa-basso fra i due estremi e il
+riverbero; il volume cala con la distanza; oltre il fondo muto). Nel
+browser, col motore audio del gioco in un OfflineAudioContext: rovina al
+bordo picco -14,2 dB, a 400 px -19,6, a 1500 -22,4, a 3000 -29,7; crollo e
+zappa a 1200 px 7-10 dB sotto (registrato in un file d'ascolto per
+l'autore). In partita, con l'audio vero: una casa distrutta a 2000 px dal
+bordo -> rovina_piccola (e il riverbero creato), il sasso nemico a 1500 px
+-> zappa, un colpo di spada a 1500 px -> muto. determinism.mjs,
+catapults.mjs, pvp.mjs: passate.

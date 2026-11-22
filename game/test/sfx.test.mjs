@@ -58,3 +58,33 @@ test("§9.171 il suono della chat", async () => {
     assert.equal(chat.log.length, 2);
   } finally { audio.ui = ui; }
 });
+
+// [§9.175] i suoni lontani: fuori dalla vista oltre i 700 px (dove gli altri
+// tacciono) si sentono, piu' piano, col passa-basso e il riverbero
+test("§9.175 i crolli lontani, attutiti e riverberati", async () => {
+  const { SoundBank, DISTANT } = await import("../src/audio.js");
+  const made = [];
+  const node = (kind) => () => { const n = { kind, connect: (m) => m, gain: { value: 1 }, pan: { value: 0 }, frequency: { value: 0 } }; made.push(n); return n; };
+  const ctx = {
+    state: "running", currentTime: 0, sampleRate: 8000,
+    createBufferSource: () => ({ connect: (m) => m, playbackRate: { value: 1 }, start() {}, buffer: null }),
+    createGain: node("gain"), createStereoPanner: node("pan"), createBiquadFilter: node("lp"),
+    createConvolver: node("conv"),
+    createBuffer: (ch, n) => ({ getChannelData: () => new Float32Array(n) }),
+  };
+  const b = new SoundBank();
+  b.ctx = ctx; b.master = node("master")();
+  b.sounds.set("rovina", { buffers: [{ duration: 1 }], gain: 0.3, last: -1, playing: 0, at: -1e9 });
+  b.cam = { x: 0, y: 0, w: 1000, h: 600 };
+  const at = (x) => { ctx.currentTime += 1; made.length = 0; return b.play("rovina", x, 300, 1, false, true); };
+  assert.equal(at(500), true); // nella vista: come sempre, niente filtro
+  assert.equal(made.some((n) => n.kind === "lp"), false);
+  assert.equal(b.play("rovina", 2500, 300), false); // senza far: muto a 1500 px dal bordo
+  assert.equal(at(2500), true); // con far: si sente, attutito e riverberato
+  const lp = made.find((n) => n.kind === "lp");
+  assert.ok(lp && lp.frequency.value < DISTANT.cutoff[0] && lp.frequency.value > DISTANT.cutoff[1]);
+  assert.ok(b.reverb);
+  const [gNear] = b.distantPlacement(1100, 300), [gFar] = b.distantPlacement(3500, 300);
+  assert.ok(gNear > gFar && gFar > 0);
+  assert.equal(at(1000 + DISTANT.range + 100), false); // oltre: muto
+});

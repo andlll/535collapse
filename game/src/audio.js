@@ -26,6 +26,18 @@ const GAIN_VAR = 0.15; // +- volume
 const FADE_TAU = 1;   // [§9.141] s: costante di tempo con cui un suono continuo segue il suo livello
 const MUSIC_TAU = 2.5; // [§9.143] s: con cui una parte della musica segue il suo volume
 const MUSIC_OUT = 1.5; // [§9.161] s: con cui sfumano le parti del brano che ha finito il turno
+// [§9.175, richiesta dell'autore] i suoni "lontani" (play con far: i crolli
+// degli edifici, il sasso della catapulta): fuori dalla vista non si
+// spengono a FAR px ma si sentono attutiti e riverberati fino a FAR_RANGE px
+// dal bordo; verso il fondo piu' piano, piu' cupi e piu' riverbero
+export const DISTANT = {
+  range: 3500,          // px di mondo oltre il bordo della vista: il piu' lontano
+  gain: [0.7, 0.25],    // volume (dry + wet) appena fuori e in fondo
+  cutoff: [4500, 600],  // Hz del passa-basso (attutito)
+  wet: [0.3, 0.75],     // quanto riverbero
+  reverbSec: 2.2,       // la coda del riverbero (risposta all'impulso generata)
+};
+const lerp = (a, b, t) => a + (b - a) * t;
 // [§9.161] senza scaletta (le prove, una room senza musicPlan): un brano solo
 // con le parti che arrivano
 const DEFAULT_PLAN = { segs: [["loop1", Infinity]], full: false, brani: {}, tau: {} };
@@ -60,6 +72,7 @@ export class SoundBank {
     this.musicPlan = null;
     this.brano = null;
     this.cam = null;         // la vista: { x, y, w, h }
+    this.reverb = null;      // [§9.175] il riverbero dei suoni lontani (ConvolverNode, creato al primo uso)
     this._manifest = null;
   }
 
@@ -283,14 +296,52 @@ export class SoundBank {
   // solo suoi)
   notice(name, w, i) { return w.mine(i) ? this.play(name) : false; }
 
-  play(name, x, y, vol = 1, ui = false) {
+  // [§9.175] dove sta un suono lontano: [volume, pan, t] con t 0 dentro la
+  // vista e da 0 a 1 fuori, fino a DISTANT.range px dal bordo (oltre: muto)
+  distantPlacement(x, y) {
+    const c = this.cam;
+    if (!c || x === undefined) return [1, 0, 0];
+    const dx = Math.max(c.x - x, 0, x - (c.x + c.w)), dy = Math.max(c.y - y, 0, y - (c.y + c.h));
+    const d = dhypot(dx, dy), pan = Math.max(-1, Math.min(1, (x - (c.x + c.w / 2)) / (c.w / 2))) * PAN;
+    if (d <= 0) return [1, pan, 0];
+    if (d > DISTANT.range) return [0, pan, 1];
+    const t = d / DISTANT.range;
+    return [lerp(DISTANT.gain[0], DISTANT.gain[1], t), pan, t];
+  }
+
+  // la risposta all'impulso del riverbero: rumore stereo che si spegne
+  // (esponenziale), un po' piu' cupo verso la fine (media mobile che cresce)
+  _reverb() {
+    if (this.reverb || !this.ctx.createConvolver) return this.reverb;
+    const ctx = this.ctx, sr = ctx.sampleRate, n = Math.floor(sr * DISTANT.reverbSec);
+    const buf = ctx.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let prev = 0;
+      for (let k = 0; k < n; k++) {
+        const t = k / n, smooth = 0.2 + 0.75 * t;
+        prev = prev * smooth + (vrand() * 2 - 1) * (1 - smooth);
+        const u = 1 - t;
+        d[k] = prev * u * u * u;
+      }
+    }
+    const conv = ctx.createConvolver();
+    conv.buffer = buf;
+    conv.connect(this.master);
+    this.reverb = conv;
+    return conv;
+  }
+
+  // far: [§9.175] un suono che fuori dalla vista si sente lontano (attutito e
+  // riverberato) invece di spegnersi a FAR px
+  play(name, x, y, vol = 1, ui = false, far = false) {
     const ctx = this.ctx;
     if (!this.enabled || !(this.world || ui) || !ctx || ctx.state !== "running") return false;
     const s = this.sounds.get(name);
     if (!s || !s.buffers.length || s.playing >= VOICES) return false;
     const now = ctx.currentTime * 1000;
     if (now - s.at < MIN_GAP) return false;
-    const [g, pan] = this.placement(x, y);
+    const [g, pan, dist] = far ? this.distantPlacement(x, y) : [...this.placement(x, y), 0];
     if (g <= 0.01) return false;
     let k = Math.floor(vrand() * s.buffers.length);
     if (s.buffers.length > 1 && k === s.last) k = (k + 1) % s.buffers.length;
@@ -301,6 +352,24 @@ export class SoundBank {
     const gain = ctx.createGain();
     gain.gain.value = g * vol * s.gain * (1 + (vrand() * 2 - 1) * GAIN_VAR);
     let node = src.connect(gain);
+    // [§9.175] lontano: un passa-basso sempre piu' basso e il riverbero
+    let wet = null;
+    if (dist > 0 && ctx.createBiquadFilter) {
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = lerp(DISTANT.cutoff[0], DISTANT.cutoff[1], dist);
+      node = node.connect(lp);
+      const rv = this._reverb();
+      if (rv) {
+        const w = lerp(DISTANT.wet[0], DISTANT.wet[1], dist);
+        wet = ctx.createGain();
+        wet.gain.value = w;
+        node.connect(wet).connect(rv);
+        const dry = ctx.createGain();
+        dry.gain.value = 1 - w * 0.6;
+        node = node.connect(dry);
+      }
+    }
     if (ctx.createStereoPanner) {
       const p = ctx.createStereoPanner();
       p.pan.value = pan;
