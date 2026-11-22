@@ -173,6 +173,8 @@ const SOLDIER = ["ally_warrior", "capoccia_a1", "Soldier 1"];
 const VILLAGER = ["ally_omino", "capoccia_o1"];
 const SOLDIER2 = ["ally_militare", "capoccia_a1", "Soldier"];
 const SPY = ["ally_militare", "capoccia_a2", "Soldier"];
+const ARCHER = ["ally_arciere", "capoccia_a2", "Archer"]; // §9.178
+const SIEGE = ["ally_unit", "capoccia_a1"]; // §9.178
 
 // parlante, ritratto, titolo, testo, arm, vanish (sparisce se muore chi
 // parla), next (creato nel Destroy), timeout (alarm 1: si chiude da solo),
@@ -288,6 +290,22 @@ export const DIALOGS = {
   dialogo_6_4: { who: SOLDIER2, arm: 30, timeout: 300, text: "Reinforcements have arrived!" },
   dialogo_6_5: { who: SOLDIER2, arm: 30, timeout: 300, text: "Tower recovered: now you can garrison it with archers" },
   dialogo_6_6: { who: SOLDIER2, arm: 30, timeout: 600, text: "The column is here! Stop them before they cross the eastern bridge!" },
+  // livello 7 [§9.178]: la regia e' in lvl07.js, che li crea (testi scritti
+  // per il porting dalla regia dell'autore, da rivedere con lui)
+  dialogo_7_0: { who: ARCHER, arm: 30, next: "dialogo_7_1",
+                 text: "This fog... in this season? I can barely see my own hands. But if I can't see them, they can't see me: I'll use it to slip past that patrol." },
+  dialogo_7_1: { who: ARCHER, arm: 30,
+                 text: "When the pikemen go down to the granary, I'll wait by the walls among the yellow flowers until they come back up. Stealth shot (F) kills an unaware enemy in silence; rapid shot (R) is fast, but noisy." },
+  dialogo_7_2: { who: ARCHER, arm: 30,
+                 text: "The gate is shut, and my arrows will never break it. I need siege engines: the invaders must be keeping some in these lands." },
+  dialogo_7_3: { who: [...SIEGE, "Siege crew"], arm: 30, next: "dialogo_7_4",
+                 text: "Thank you for freeing us! Our rams and catapults are yours." },
+  dialogo_7_4: { who: ARCHER, arm: 30,
+                 text: "Night is falling, and the fog is thicker than ever: in the dark they won't see the engines. Back to the gate, and break it down!" },
+  dialogo_7_5: { who: ARCHER, arm: 30, timeout: 600,
+                 text: "The gate is down! Their horsemen will come for the engines: I must slip into the city now and reach its highest point." },
+  dialogo_7_6: { who: ARCHER, arm: 30, timeout: 420,
+                 text: "Not even the towers can see me in this fog. I'll keep following the road." },
   // statue di lvl01: niente ritratto, titolo a 20 px
   dialogo_statua: { who: ["o_statua1_real", null, "Sacred statues"], arm: 30,
                     text: "Those monuments can heal your soldiers while they're nearby" },

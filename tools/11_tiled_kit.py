@@ -747,7 +747,16 @@ spostare un oggetto in un gruppo: tasto destro sull'oggetto,
   finale non conta). La polilinea e' un percorso aperto (dal primo
   all'ultimo punto), il poligono un giro chiuso. Cosa ci cammina sopra lo
   decide la regia del livello (nel livello 6: le pattuglie in giro e la
-  colonna fino al ponte).
+  colonna fino al ponte; nel 7 le pattuglie, che vanno e tornano per la
+  stessa strada: il giro chiuso passa due volte dagli stessi punti). I
+  nemici a meno di 300 px da un punto di un percorso `pattuglia` sono di
+  quella pattuglia.
+- Banchi di nebbia (livello 7, livello `regia`): una polilinea orizzontale
+  chiamata `nebbia` (anche `nebbia2`...) coi due capi fra cui il banco va e
+  viene; due proprieta' personalizzate: `velocita` (numero decimale, px a
+  passo: 0,5 lento, 1 svelto; il segno e' il verso con cui parte, meno
+  verso sinistra) e `nuvole` (intero, quante nuvole: 3 di solito). Dentro un
+  banco i nemici vedono a meta'.
 
 ## Consegnare una mappa
 

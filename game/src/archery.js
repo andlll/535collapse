@@ -78,7 +78,10 @@ export function arrowStopped(i, w) {
 // contano l'edificio stesso, mura e porte); null = non si tira. La freccia
 // creata qui (w.create con init) mira a lui e si ferma contro gli edifici.
 export function towerTarget(w, b, name, range) {
-  return shootable(w, b, name, (o) => w.distanceToInstance(b, o) < range, b);
+  // [§9.178] di notte, nel livello 7, le torri e le fortezze nemiche non
+  // vedono le macchine d'assedio (cloak, lvl07.js)
+  const hidden = (o) => w.g && w.g.cloakOn && o.cloak;
+  return shootable(w, b, name, (o) => w.distanceToInstance(b, o) < range && !hidden(o), b);
 }
 
 export function towerArrow(w, obj, x, y, b, t) {

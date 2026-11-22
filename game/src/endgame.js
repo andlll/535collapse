@@ -53,7 +53,7 @@ export function victoryManager() {
       w.destroy(i);
       const g = w.g;
       if (isSkirmish(w.room)) { w.gotoRoom("menu"); return; } // §9.118: la schermaglia finisce
-      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6, lvl06: 7 }[w.room];
+      const next = { lvl01: 2, lvl02: 3, lvl03: 4, lvl04: 5, lvl05: 6, lvl06: 7, lvl07: 8 }[w.room];
       if (next) {
         g.campagna = 1;
         if (g.unlock < next) { g.unlock = next; saveUnlock(next); }
@@ -81,12 +81,13 @@ export function victoryManager() {
       if (w.room === "lvl04") d.text(vw / 2, vh / 2 - 100, tr("The bridge is ours and the enemy town has fallen")); // §9.52
       if (w.room === "lvl05") d.text(vw / 2, vh / 2 - 100, tr("The invaders' city has fallen: the land is ours")); // §9.76
       if (w.room === "lvl06") d.text(vw / 2, vh / 2 - 100, tr("The column has been stopped: the city will rise again")); // §9.101
+      if (w.room === "lvl07") d.text(vw / 2, vh / 2 - 100, tr("Unseen, the archer has reached the heart of the enemy city")); // §9.178
       if (isSkirmish(w.room)) { // §9.118
         const g = w.g;
         d.text(vw / 2, vh / 2 - 100, g.skScore ? tr("Score: you {a}, the enemy {b}", { a: g.skScore[0], b: g.skScore[1] }) : tr("The enemy has been defeated"));
       }
       const code = { lvl01: "4 9 2 1 7", lvl02: "5 8 4 2 1", lvl03: "9 3 0 7 6", lvl04: "1 2 7 9 4", lvl05: "8 0 6 5 3",
-                     lvl06: "0 7 3 6 0" }[w.room];
+                     lvl06: "0 7 3 6 0", lvl07: "7 6 3 0 8" }[w.room];
       if (code) {
         d.text(vw / 2, vh / 2 + 200, tr("Code to unlock the next level:"));
         d.setFont("gui_sblocco");
@@ -163,11 +164,13 @@ export function gameoverManager() {
         : g.nomovesLost ? tr("You have no units left and cannot train new ones.")
         : w.room === "lvl03" ? tr("The monastery has fallen.")
         : w.room === "lvl06" && g.l6 && g.l6.lost ? tr("The enemy column broke through the eastern bridge.") // §9.101
+        : w.room === "lvl07" && g.l7 && g.l7.lost === "archer" ? tr("The archer has fallen.") // §9.178
+        : w.room === "lvl07" && g.l7 && g.l7.lost === "machines" ? tr("The siege engines were destroyed before the gate fell.")
         : tr("Your town hall was destroyed.")];
       if (w.room === "match" || w.room === "lvl03") {
         lines.push(tr("You resisted for {h} hours, {m} minutes and {s} seconds.", { h: g.hours, m: g.minutes, s: g.seconds }));
       }
-      if (!isSkirmish(w.room)) lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte })); // §9.118
+      if (!isSkirmish(w.room) && w.room !== "lvl07") lines.push(tr("{n} enemy bases were successfully destroyed.", { n: g.basidistrutte })); // §9.118, §9.178
       const B = buttons(w), bh = DEFEAT.btnH, pitch = bh + DEFEAT.gap;
       // tutto centrato in altezza: titolo, righe, spazio, pulsanti
       const blockH = 90 + lines.length * 50 + 40 + B.length * pitch;
@@ -369,6 +372,20 @@ export function objectiveLines(w, d) {
       towers(118);
     }
     sizing.push(tr("Optional: recover the towers, repair them above 60% ({n}/{m})", { n: digits(L.towers), m: digits(L.towers) }));
+  }
+  // [§9.178] livello 7: la citta', le macchine, la porta, la cima
+  if (w.room === "lvl07") {
+    const L = g.l7 || { phase: 0 };
+    if (L.gateDown) {
+      lines.push([58, tr("Break down the city gate"), 43]);
+      lines.push([88, tr("Reach the highest point of the city")]);
+    } else if (L.freed) {
+      lines.push([58, tr("Break down the city gate with the siege engines ({n} left)", { n: L.machines })]);
+      sizing.push(tr("Break down the city gate with the siege engines ({n} left)", { n: 88 }));
+    } else {
+      lines.push([58, tr("Slip through the fog and reach the enemy city"), L.gateSeen ? 43 : 0]);
+      if (L.gateSeen) lines.push([88, tr("Find siege engines to break down the gate")]);
+    }
   }
   // [§9.118] schermaglia: la condizione di vittoria, la tregua, il tempo
   // e (a punteggio) il punteggio dei due

@@ -47,6 +47,7 @@ import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
 import { enemyManagerMenu, fogController, fog01, VERSION } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
+import { enemyManagerLv7 } from "./lvl07.js"; // §9.178
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
 import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
@@ -63,11 +64,11 @@ import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", ...SK_ROOMS]; // lvl06: §9.100; SK_ROOMS: §9.118
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
-                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"],
+                lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"], lvl07: ["core", "gioco", "citta"],
                 ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])) }; // §9.118, §9.123: tiers
 
 const $ = (id) => document.getElementById(id);
@@ -262,6 +263,7 @@ async function main() {
   world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
   world.register("enemy_manager_lv5", enemyManagerLv5(path)); // §9.76
   world.register("enemy_manager_lv6", enemyManagerLv6(path)); // §9.101
+  world.register("enemy_manager_lv7", enemyManagerLv7()); // §9.178
   world.register("ally_cavaliere", cavaliere(path));
   world.register("ally_omino", { ...omino(path), ...controlGroups(true) });
   world.register("ally_warrior", infantry("ally_warrior", path));
@@ -459,6 +461,7 @@ async function main() {
     if (roomName === "lvl04") { world.create("enemy_manager_lv4", 0, 0); world.create("objective_button", 0, 0); } // §9.52
     if (roomName === "lvl05") { lvl05Setup(world); world.create("enemy_manager_lv5", 0, 0); world.create("objective_button", 0, 0); } // §9.75, §9.76
     if (roomName === "lvl06") { world.create("enemy_manager_lv6", 0, 0); world.create("objective_button", 0, 0); } // §9.101
+    if (roomName === "lvl07") { world.create("enemy_manager_lv7", 0, 0); world.create("objective_button", 0, 0); } // §9.178
     if (skStarts) skirmishStart(world, g, manager, fog, cam, skParams, skStarts); // §9.118
     if (world.mp) world.mp.truce = pvpTruce(g); // §9.156
   }

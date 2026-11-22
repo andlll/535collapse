@@ -292,7 +292,8 @@ export function levelStep(w) {
   if (w.room === "match") matchTutorial(w);
   if (w.room === "lvl01") lvl01Gates(w);
   // [§9.44] l'economia del nemico, dove c'e' un centro nemico
-  if (!w.exists("enemy_eco") && w.exists("enemy_centro")) w.create("enemy_eco", 0, 0);
+  // ([§9.178] non nel livello 7: tutto fermo, i lavoratori li manda la regia)
+  if (!w.exists("enemy_eco") && w.exists("enemy_centro") && w.room !== "lvl07") w.create("enemy_eco", 0, 0);
   noMovesCheck(w); // §9.39
 }
 
@@ -1449,6 +1450,13 @@ export function objectiveMarks(w) {
   if (w.room === "lvl06") {
     const L = g.l6 || { phase: 0 };
     if (L.phase === 2) { const b = w.all("ponte_dx2").next().value; if (b) at(b.x, b.y); } // fermare la colonna prima del ponte di destra
+  }
+  // [§9.178] livello 7: la porta, una volta vista (o con le macchine); poi il
+  // palo piu' in alto. Le macchine no: dove sono non si dice
+  if (w.room === "lvl07" && g.l7) {
+    const L = g.l7;
+    if ((L.gateSeen || L.freed) && !L.gateDown) at(L.gateX, L.gateY);
+    if (L.gateDown) at(L.topX, L.topY);
   }
   return out;
 }

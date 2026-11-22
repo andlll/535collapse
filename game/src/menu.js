@@ -46,7 +46,7 @@ import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
   "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
-const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06" }; // lvl06: §9.101
+const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06", 7: "lvl07" }; // lvl06: §9.101; lvl07: §9.178
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",
   2: "An army of survivors makes its way out of the city into the hills. Their priority is to free the citizens imprisoned by the invaders.",
@@ -58,6 +58,8 @@ export const STORY = {
   5: "The invaders struck right outside our town, but the attack broke against our soldiers. Chasing the survivors we reached their city: mighty walls, watchtowers, and no way in without siege engines. The only stone nearby lies in the ruins of an ancient acropolis.",
   // [§9.101] scritto per il porting dalla regia dell'autore, su sua richiesta
   6: "The invaders' city has fallen, and the road home crosses the City of a Hundred Towers. We find it in ruins: its garrison is dead, its armory looted, its towers crumbling. Enemy patrols still roam the streets, and a great column is marching to cross the eastern bridge. The citizens have only their bows left: with them, and with their towers, they must hold.",
+  // [§9.178] scritto per il porting dalla regia dell'autore, da rivedere con lui
+  7: "The column has been stopped, but the road home is lost in a fog that should not be there in this season. Alone and cut off from the others, an archer must slip past the enemy patrols, find the siege engines the invaders have seized and open the gates of their city.",
 };
 // i codici del lucchetto [C, Mouse_GlobalLeftReleased]: livello -> cifre
 export const CODES = { 2: [4, 9, 2, 1, 7], 3: [5, 8, 4, 2, 1], 4: [9, 3, 0, 7, 6], 5: [1, 2, 7, 9, 4], 6: [8, 0, 6, 5, 3],
@@ -116,7 +118,7 @@ function titleButtons(W, H, page = "title") {
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
 export function roomLabel(room) {
   if (room === "match") return tr("Tutorial");
-  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6 }[room];
+  const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6, lvl07: 7 }[room];
   return n ? n + ". " + tr(LEVELS[n - 1]) : room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;

@@ -11,7 +11,7 @@ const VERSION = 1;
 // livelli tutti sbloccati: almeno fino a UNLOCK_ALL (§9.74: anche il 5;
 // §9.103: anche il 6). Da
 // rimettere a 1 prima dell'uscita (STUDIO.md, "Cose da fare").
-export const UNLOCK_ALL = 6;
+export const UNLOCK_ALL = 7; // §9.178: anche il 7
 
 export function loadUnlock() {
   try {

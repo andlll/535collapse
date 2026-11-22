@@ -12371,3 +12371,122 @@ nuova, il lampeggio del pulsante della minimappa chiusa e il corno
 Prove: test/alarm.test.mjs (coi valori di ALARM); alarms.mjs aggiornato
 (22 s di attesa invece di 31) e passato, con le foto della minimappa;
 minimap.mjs passata.
+
+### 9.178 Livello 7: l'arciere nella nebbia (la mappa dell'autore e la regia)
+
+Richiesta dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614), con la mappa `lvl07.tmx`: "l'arciere solo si ritrova nella nebbia
+non capendo da dove arriva in quella stagione. Decide di usarla per
+aggirare la pattuglia nemica (i tre picchieri di poco alla sua destra). Il
+livello guida l'arciere in modo che, una volta che la pattuglia si e'
+spostata verso il granaio con le quattro fattorie sotto, lui si sposti
+sulla sinistra verso le mura dove ci sono i fiori gialli attendendo che
+tornino sopra, per poi proseguire dopo il granaio. Seguendo la strada si
+rende conto che anche dalle torri non possono vederlo. [...] pattuglie o
+unita' singole nemiche che si spostano e l'arciere deve evitarle o
+ucciderle furtivamente se sole. Arrivato davanti ai cancelli della citta'
+[...] capisce che deve trovare delle macchine d'assedio [...] Al giocatore
+non viene indicato dove sono, ma una volta raggiunte devono comparire con
+un messaggio tipo grazie per averci liberato (dopo che e' stata uccisa
+furtivamente la guardia entrano da sinistra). Una volta liberate le
+macchine d'assedio bisogna tornare in cima e, SOLO DURANTE LA NOTTE,
+attaccare la porta. [...] 5 cavalieri dalla zona dove sono le due stalle
+[...] Qui si ripetono le stesse dinamiche stealth."
+
+Le risposte dell'autore alle domande (in chat): l'arciere va in alto a
+destra (nel Tiled era accanto alla porta); pattuglie e nebbia le traccio
+io; fino alla liberazione delle macchine e' giorno, poi notte (fissi,
+"artificiali"); basta la nebbia per le torri, l'unica che lo vede e'
+quella in basso a sinistra; le macchine compaiono uccisa la guardia, con
+l'arciere vicino; i nemici le ignorano perche' c'e' nebbia ed e' notte; i
+cavalieri restano alle stalle, punitivi: attaccano le macchine troppo
+vicine (e, caduta la porta, comunque); si vince col palo piu' in alto, si
+perde se muore l'arciere o tutte le macchine con la porta in piedi; tutto
+fermo (niente economia nemica), ma lavoratori nemici sulle risorse o in
+giro che, avvicinati troppo, avvertono le guardie.
+
+**La mappa** (`mappe/lvl07.tmx`, `scenari/lvl07.json`). 151 oggetti
+(montagne, fiumi, piante) puntavano ai tileset di una copia vecchia del kit
+("../../261013/535-tiled-kit/"): gli id delle tile sono stabili fra le
+versioni (§9.40), rimappati (montagne_fiumi 243+k -> 13+k, natura 263+k ->
+33+k) e tolti i due tileset vecchi. L'arciere da (480, 1480) a (5100, 360);
+la vista iniziale in alto a destra; le quattro macchine nel livello
+"gruppo macchine" (tenuto da parte: scenario.js GROUPS.lvl07). I pali
+dell'autore disegnano il percorso (cima destra, strada a destra, citta' in
+basso, labirinto, macchine, risalita al centro, porta, il palo piu' in alto
+a (2109, 51)): li ho seguiti per pattuglie e nebbia. Restano i due avvisi
+dell'import (due tratti di mura con l'origine sotto il bordo).
+
+**Nel livello regia, tracciati da me** (da rivedere in Tiled):
+- sette percorsi `pattuglia` (avanti e indietro: il giro chiuso torna per
+  la stessa strada; i nemici a meno di 300 px da un punto ne fanno parte):
+  i tre picchieri della cima fino al granaio lungo la strada (passano a
+  ~200 px dalle mura coi fiori gialli); i tre picchieri al centro lungo la
+  strada degli ulivi; il cavaliere solo fra gli ulivi (col picchiere
+  vicino); due guerrieri soli nel labirinto; due giri nella citta' in alto
+  (una coppia di picchieri, un guerriero). 17 nemici in giro, gli altri
+  fermi;
+- diciassette banchi di nebbia (`nebbia`: nuovo in tools/12 e nel kit, una
+  polilinea orizzontale coi due capi e le proprieta' `velocita` e `nuvole`):
+  uno alla partenza, uno sulle mura coi fiori gialli (il nascondiglio), lungo
+  tutta la strada di destra (torri comprese), sulla citta' in basso, nel
+  labirinto, verso le macchine (lontano dalla torre in basso a sinistra),
+  sulla risalita al centro, alla porta e due in citta'.
+
+**La regia** (`game/src/lvl07.js`, enemy_manager_lv7):
+- *Partenza*: lo stealth (g.stealth, il "!"), l'arciere della nebbia
+  (hunter, tiro furtivo), i banchi dai percorsi `nebbia`, la guardia (i
+  nemici a meno di 450 px dalle macchine), i cavalieri (a meno di 700 px
+  dalle stalle), le pattuglie. Giorno fisso (manager.js: niente ciclo),
+  niente economia nemica (levels.js levelStep). Torri e fortezze nemiche
+  di vedetta (`watch`: non tirano; il messaggero ci corre lo stesso a dare
+  l'allarme), tranne la torre in basso a sinistra.
+- *Lavoratori* (13, LV7.workers): quattro al granaio (cibo), due alle
+  miniere, due agli ulivi (legna, col deposito), cinque in giro (fra le case
+  in basso e in citta'), con orderWork (civilians.js) come la regia
+  economica. Uno che vede l'arciere (davanti a 320 px, meta' nella nebbia e
+  di notte; sempre a meno di 90) corre dalla guardia piu' vicina (entro
+  2200 px; "!" arancione come il messaggero) e mette in allarme lei e chi
+  le sta a meno di 450 px, verso dove ha visto l'arciere.
+- *La porta*: l'arciere a meno di 650 px senza macchine: dialogo 7_2 e
+  l'obiettivo delle macchine (segnalino sulla minimappa sulla porta).
+- *Le macchine*: guardia morta e arciere a meno di 600 px: entrano dal
+  bordo sinistro una alla volta (prima quella che va piu' lontano), alla y
+  del loro posto, e ci vanno (l'ordine del clic destro); la prossima quando
+  l'entrata e' libera, o dopo 4 s accanto. (Nate tutte nello stesso punto,
+  la regola che separa le unita' sovrapposte le spingeva fuori dalla mappa.)
+  Dialogo 7_3 e 7_4; la notte scende in ~3 s e resta.
+- *Di notte* (fino alla porta giu') le macchine hanno `cloak`: nessun nemico
+  le prende come bersaglio (enemies.js `nearestFoe`/`seenFoe` al posto
+  dell'alleato piu' vicino, archery.js towerTarget, la difesa degli edifici),
+  tranne i cavalieri delle stalle (l7knight). Una macchina a meno di 800 px
+  dalle stalle: i cavalieri partono contro le macchine, e restano su di loro.
+- *Porta giu'*: dialogo 7_5, i cavalieri contro le macchine, le macchine di
+  nuovo visibili, l'obiettivo e il segnalino della cima.
+- *Fine*: l'arciere a meno di 130 px dal palo piu' in alto: vittoria (codice
+  del livello 8, 7 6 3 0 8). Sconfitta: l'arciere morto ("L'arciere e'
+  caduto."), o le macchine tutte perse con la porta in piedi.
+- *Dialoghi* (hints.js dialogo_7_0..7_6, oggetti in nuovi.json), obiettivi
+  (endgame.js), storia del livello (menu.js), testi della vittoria e della
+  sconfitta: scritti da me dalla regia, tradotti nelle sei lingue, da
+  rivedere con l'autore. Il titolo nel menu resta quello della lista
+  dell'originale ("Our old gods").
+- progress.js UNLOCK_ALL a 7 (provvisorio, per provarlo).
+
+**Prove.** `game/test/browser/lvl07.mjs` (nella CI): partenza (arciere in
+alto a destra, 17 banchi, 17 nemici di pattuglia, 1 guardia, 5 cavalieri, 13
+lavoratori, niente economia, giorno, 4 macchine tenute da parte, una sola
+torre che tira, in basso a sinistra); i tre picchieri della cima in cammino
+dopo 10 s; un lavoratore del granaio che vede l'arciere corre e mette in
+allarme 2 nemici; la porta (dialogo e obiettivo); con la guardia viva niente,
+uccisa le macchine entrano tutte e quattro, notte; un fante accanto a un
+ariete per 5 s: vita intatta; un ariete vicino alle stalle: i 5 cavalieri
+partono; porta giu' (dialogo, macchine visibili); vittoria al palo; le due
+sconfitte. soak.mjs e saves.mjs con lvl07 (anche nella CI), stealth.mjs,
+lvl06.mjs, orders.mjs lvl06, ui.mjs it, attackorder.mjs, melee.mjs:
+passate.
+
+**Da provare giocando e tarare** (numeri in LV7): quanto si vede la
+nebbia e dove stanno i banchi, i giri delle pattuglie, la vista dei
+lavoratori, la distanza dalle stalle, quanto e' facile la risalita con le
+macchine (i nemici lungo il centro le ignorano, ma vedono l'arciere).

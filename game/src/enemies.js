@@ -24,6 +24,7 @@ import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
 import { lmStep } from "./lastmile.js";
 import { stealthOn, sees, ST, messengerFor } from "./stealth.js"; // §9.148
+import { nearestFoe, seenFoe } from "./lvl07.js"; // §9.178: di notte le macchine non si vedono
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 
@@ -348,7 +349,7 @@ function retreatStep(i, w, p) {
 // fino in fondo e colpisce il suo bersaglio anche se si e' allontanato.
 function enemyStrike(i, w, T) {
   const io_x = i.x, io_y = i.y;
-  const near = w.nearest(i.x, i.y, "ally_unit");
+  const near = nearestFoe(w, i);
   if ((!near || w.distanceToInstance(i, near) > 10) && !swingOn(i)) { i.action = 0; i.warwork = 0; i.speed = 0; }
   if (i.action !== 2) { i.swing = 0; return; }
   if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
@@ -356,7 +357,7 @@ function enemyStrike(i, w, T) {
   if (i.step !== 2) return;
   i.step = 0;
   i.alarm.set(2, 13);
-  const v = swingVictim(w, i, w.nearest(i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction)), "ally_unit"));
+  const v = swingVictim(w, i, nearestFoe(w, i, i.x + 30 * dcos(degtorad(i.direction)), i.y - 30 * dsin(degtorad(i.direction))));
   if (!v) return;
   v.hit = 1;
   v.alarm.set(5, 47);
@@ -421,9 +422,9 @@ function noTargetLeft(i) {
 // Step, "attacco" [C]
 const NO_SLOT = 30; // §9.71: passi senza un posto libero attorno al bersaglio prima di fermarsi
 function enemyAttack(i, w, T) {
-  if (!w.exists("ally_unit")) { noTargetLeft(i); return null; } // §9.132
+  if (!w.exists("ally_unit") || !nearestFoe(w, i)) { noTargetLeft(i); return null; } // §9.132, §9.178
   const k = iso(i.direction), night = w.g.night;
-  const nearest = () => w.nearest(i.x, i.y, "ally_unit");
+  const nearest = () => nearestFoe(w, i);
   const n0 = nearest();
   if (w.distanceToInstance(i, n0) < (T.attackIso ? 10 * k : 10) && enemyUnstack(w, i, n0)) return "exit"; // §9.116
   if (w.distanceToInstance(i, n0) < (T.attackIso ? 10 * k : 10)) {
@@ -457,7 +458,7 @@ function enemyAttack(i, w, T) {
     // dietro le mura): un altro che si raggiunge, o fermo
     if (waiting(w, i) && (i.action === 0 || i.warwork !== 1)) return true;
     if (!canReach(w, i, n)) {
-      n = nearestReachable(w, i, "ally_unit", lim);
+      n = nearestReachable(w, i, "ally_unit", lim, seenFoe(w, i));
       if (!n) {
         if (i.warwork === 1) waitHere(w, w.path, i);
         else i.waitUntil = w._stepNo + WAIT_RETRY;
@@ -756,9 +757,9 @@ export function enemyArcher(p) {
     i.action = 1; i.warwork = 1; i.repos = 1; i.dirox = spot[0]; i.diroy = spot[1];
   };
   const attack = (i, w) => {
-    if (!w.exists("ally_unit")) { noTargetLeft(i); return; } // §9.132
+    if (!w.exists("ally_unit") || !nearestFoe(w, i)) { noTargetLeft(i); return; } // §9.132, §9.178
     const k = iso(i.direction), night = w.g.night;
-    const n0 = w.nearest(i.x, i.y, "ally_unit");
+    const n0 = nearestFoe(w, i);
     const fs = fogSight(w, i); // §9.80
     const range = 400 * (1 - 0.5 * night) * k * fs;
     if (stealthOn(w) && i.messenger) return; // §9.148: corre alla torre
@@ -769,7 +770,7 @@ export function enemyArcher(p) {
     }
     if (w.distanceToInstance(i, n0) < range && seen) {
       // §6.4: l'alleato piu' vicino a tiro con la linea libera
-      const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range);
+      const s = shootable(w, i, "ally_unit", (o) => w.distanceToInstance(i, o) < range && seenFoe(w, i)(o));
       if (!s) {
         if (i.warwork === 2) { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; }
         reposition(i, w, n0, 0.9 * range);
@@ -786,7 +787,7 @@ export function enemyArcher(p) {
     if (i.repos === 1) { i.repos = 0; if (i.action === 1) { i.action = 0; i.warwork = 0; i.speed = 0; } }
     if (w.distanceToInstance(i, n0) > 720 * (1 - 0.5 * night)) { i.anchorX = null; i.anchorY = null; }
     const chase = (needStill) => {
-      const n = w.nearest(i.x, i.y, "ally_unit");
+      const n = nearestFoe(w, i);
       if (!(w.distanceToInstance(i, n) < 600 * (1 - 0.5 * night) * k * fs && (!needStill || i.action !== 1))) return;
       if (stealthOn(w) && !sees(w, i, n, 600 * (1 - 0.5 * night) * k * fs)) return; // §9.148
       if (i.warwork === 0 || i.warwork === 1) {
@@ -815,7 +816,7 @@ export function enemyArcher(p) {
     // Alarm_2 [C]: fuori tiro (400 px fissi) smette; tre fasi (13, 30, 13),
     // poi la freccia a 20 px per passo
     alarm2(i, w) {
-      const n = w.nearest(i.x, i.y, "ally_unit");
+      const n = nearestFoe(w, i);
       if (!n || w.distanceToInstance(i, n) > 400) { i.action = 0; i.warwork = 0; i.speed = 0; }
       if (i.action !== 2) return;
       if (i.step === 0) { i.step = 1; i.alarm.set(2, 13); return; }
@@ -906,7 +907,7 @@ export function defendBuildings(w) {
     const was = b.defLife;
     b.defLife = b.life;
     if (was === undefined || !(b.life < was)) continue;
-    const a = w.nearest(b.x, b.y, "ally_unit");
+    const a = nearestFoe(w, b); // §9.178: non le macchine che di notte non si vedono
     if (!a || w.distanceToInstance(a, b) > DEFEND_ATT) continue;
     idle = idle || [...w.all("enemy_unit")].filter(canDefend);
     for (const e of idle) {

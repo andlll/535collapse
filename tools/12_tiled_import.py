@@ -301,7 +301,11 @@ def load_map(path, kit=None):
                     warn.append("%s: un percorso e' una polilinea o un poligono" % where)
                     continue
                 pts = pl or [[round(x, 1), round(y, 1)] for x, y in poly]
-                paths.append((oid, {"name": pname, "pts": pts, "loop": not pl}))
+                path = {"name": pname, "pts": pts, "loop": not pl}
+                pp = props(o)  # [§9.178] le proprieta' (i banchi di nebbia: velocita, nuvole)
+                if pp:
+                    path["props"] = pp
+                paths.append((oid, path))
                 continue
             # [§9.99] macchie: aree (rettangoli, ellissi, poligoni) nel livello macchie
             if layer == tk.PATCH_LAYER or cls == tk.PATCH_TYPE:

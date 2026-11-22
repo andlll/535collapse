@@ -47,6 +47,9 @@ export class Manager {
     // della notte), l'alba no (alarm 1).
     if (room === "lvl01") g.night = 1;
     if (room === "lvl02") { g.night = 1; this.al.set(1, 1); }
+    // [§9.178] il livello 7: giorno fisso; la notte la fa scendere la regia
+    // (lvl07.js) quando si liberano le macchine, e resta
+    if (room === "lvl07") { g.night = 0; this.al.set(0, -1); this.al.set(1, -1); }
     // startflagger (9), bordi solidi (10): con i loro sistemi
     this.minimHover = this.minimViewHover = this.minimPlusHover = this.minimMinusHover = 0;
     this.minimViewHoverBis = 0;

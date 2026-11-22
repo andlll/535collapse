@@ -65,7 +65,7 @@ delle varianti in `audio.json`, fonti e licenze in `CREDITI.md`, §9.137) li fa
 `python3 tools/18_audio.py` (serve ffmpeg) -> `game/assets/audio/`.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room. Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=lvl07` (l'arciere nella nebbia, §9.178), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room. Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
@@ -149,6 +149,7 @@ node game/test/browser/enemyarmy.mjs                   # economia nemica: soldat
 node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
 node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
 node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
+node game/test/browser/lvl07.mjs                       # livello 7: nebbia, pattuglie, lavoratori, macchine, notte, porta, cavalieri, vittoria e sconfitte (§9.178)
 node game/test/browser/pvp.mjs sk_padus 5 1500         # partita a due in una pagina: le due parti, stesse impronte
 node game/test/browser/netfake.mjs sk_padus 7 2400     # partita a due in rete, canale finto con ritardo e disordine (§9.156)
 node game/test/browser/rtc.mjs sk_padus 950            # partita a due con WebRTC vero fra due pagine, dal menu (§9.156)
