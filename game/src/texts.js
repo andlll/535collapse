@@ -1422,6 +1422,9 @@ export const TEXTS = {
     pt: "Escolha um objeto por categoria (unidades, edifícios, recursos, natureza, cidade…) e coloque-o no mapa.",
     de: "Wähle ein Objekt nach Kategorie (Einheiten, Gebäude, Ressourcen, Natur, Stadt…) und setze es auf die Karte.",
     fr: "Choisis un objet par catégorie (unités, bâtiments, ressources, nature, ville…) et place-le sur la carte." },
+  // [§9.181] "Apri mappa": una mappa che non si e' potuta aprire
+  "This map could not be opened": { it: "Non è stato possibile aprire questa mappa", es: "No se ha podido abrir este mapa",
+    pt: "Não foi possível abrir este mapa", de: "Diese Karte konnte nicht geöffnet werden", fr: "Impossible d'ouvrir cette carte" },
   "Arrows, middle button or Space + drag: move the view. Wheel: zoom. Esc: back to the menu.": {
     it: "Frecce, tasto centrale o Spazio + trascina: sposta la vista. Rotella: zoom. Esc: torna al menu.",
     es: "Flechas, botón central o Espacio + arrastrar: mueve la vista. Rueda: zoom. Esc: vuelve al menú.",

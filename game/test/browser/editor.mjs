@@ -2,7 +2,9 @@
 // "Single player" -> "Map editor" apre ?room=editor; la mappa vuota e la
 // colonna si disegnano senza errori; un clic su uno strumento lo sceglie, i
 // tasti 1-4 anche; la rotella fa lo zoom tenendo fermo il punto sotto il
-// puntatore; il tasto centrale trascina la vista; Esc torna al menu.
+// puntatore; il tasto centrale trascina la vista; [§9.181] "Apri mappa"
+// carica Padania col motore del gioco, e da lontano la si vede tutta; Esc
+// torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -60,6 +62,31 @@ await page.mouse.up({ button: "middle" });
 await page.waitForTimeout(150);
 const v1 = await page.evaluate(() => [window.__editor.view.x, window.__editor.view.y]);
 check("trascinata col centrale", Math.abs(v1[0] - v0[0] - 200 * v0[2]) < 2 && Math.abs(v1[1] - v0[1] - 100 * v0[2]) < 2);
+
+// [§9.181] "Apri mappa": Padania dal pannello, disegnata col motore; da
+// lontano tutta la mappa col suolo a risoluzione ridotta (pochi blocchi)
+await click(btn("open").x, btn("open").y);
+check("pannello aperto", await page.evaluate(() => !!window.__editor.ed.open));
+const O = await page.evaluate(() => window.__editor.openLayout());
+const row = O.rows.find((q) => q.room === "sk_padus");
+await click((row.x1 + row.x2) / 2, (row.y1 + row.y2) / 2);
+await page.waitForFunction(() => window.__editor.ed.label && !window.__editor.ed.loading, null, { timeout: 120000 });
+await page.waitForTimeout(500);
+const padus = await page.evaluate(() => {
+  const E = window.__editor, w = E.scene.world;
+  return { w: E.scene.map.width, n: w.instances.length, alberi: w.instances.filter((i) => i.object === "albero" && i.visible && i.sprite_index).length,
+           fiumi: w.rivers.length, strade: w.roads.length, saltati: E.scene.skipped.length };
+});
+res.padus = padus;
+check("Padania caricata", padus.w === 7000 && padus.n > 700 && padus.alberi > 500 && padus.fiumi === 1 && padus.strade > 5 && padus.saltati === 0);
+const far = await page.evaluate(async () => {
+  const E = window.__editor, v = E.view;
+  v.zoomAt(8, v.cssW / 2, v.cssH / 2); v.centre(3500, 3500);
+  for (let k = 0; k < 3; k++) { E.render(); await new Promise((r) => requestAnimationFrame(r)); }
+  return { tutta: v.x <= 0 && v.y <= 0 && v.x + v.w >= 7000 && v.y + v.h >= 7000, blocchi: E.scene.ground.chunks.size, disegnati: E.scene.world.drawn };
+});
+res.lontano = far;
+check("da lontano tutta la mappa, pochi blocchi", far.tutta && far.blocchi <= 48 && far.disegnati > 500);
 
 // Esc: di nuovo il menu
 await page.keyboard.press("Escape");

@@ -61,12 +61,14 @@ il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
 che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
 banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
 
-**Editor di mappe** (§9.180, roadmap R6): fatto lo scheletro (dal menu
-"Giocatore singolo" -> "Editor di mappe", `?room=editor`: la colonna degli
-strumenti e il riquadro dal disegno dell'autore, la vista con zoom e
-scorrimento). Da discutere con l'autore la proposta e le domande di §9.180
-("Da decidere"); poi le fasi F2-F5 (la mappa vera nell'editor; inserisci e
-sposta, salva e apri; polilinea e pennello; prova mappa e impostazioni).
+**Editor di mappe** (§9.180-§9.181, roadmap R6): fatto lo scheletro (dal
+menu "Giocatore singolo" -> "Editor di mappe", `?room=editor`: la colonna
+degli strumenti e il riquadro dal disegno dell'autore) e la mappa vera
+(disegnata col motore, anche tutta intera; "Apri mappa" con le mappe del
+gioco). Restano da decidere con l'autore il "controllo CPU", la password,
+la simmetria e le mappe dell'editor nella schermaglia (§9.180, "Da
+decidere"); poi le fasi F3-F5 (inserisci e sposta con annulla, salva e apri
+su browser e file; polilinea e pennello; prova mappa e impostazioni).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -12670,16 +12672,12 @@ con annulla e ripeti, salva e apri (browser e file); F4 polilinea e
 pennello; F5 prova mappa e impostazioni, le mappe dell'editor nella
 schermaglia; poi gli scenari con regia (R2) e la condivisione.
 
-**Da decidere con l'autore**
-- [ ] Che mappe: solo schermaglia per cominciare (raccomandato) o subito
-  anche scenari con regia?
-- [ ] Per chi: l'editor e' per i giocatori, o deve sostituire Tiled anche
-  per i livelli della campagna? (Raccomandazione: prima per i giocatori;
-  Tiled resta per la campagna finche' l'editor non ha la regia: gruppi,
-  percorsi, segnali.)
-- [ ] Il pennello dei boschi: alberi veri dipinti uno per uno
-  (raccomandato) o aree che il gioco riempie al caricamento (come il
-  livello `boschi` di Tiled)?
+**Da decidere con l'autore** (le prime tre decise in §9.181: "facciamo la
+cosa piu' comoda per noi")
+- [x] Che mappe: prima la schermaglia, poi gli scenari con regia (§9.181).
+- [x] Per chi: anche per noi; Tiled era un esempio, l'editor non lo imita
+  ne' resta compatibile con lui (§9.181).
+- [x] Il pennello dei boschi: alberi veri dipinti uno per uno (§9.181).
 - [ ] "Controllo CPU" nelle impostazioni: cosa intende l'autore? (Quale
   parte gioca la CPU, lo stile e la difficolta' consigliati per la mappa,
   altro?)
@@ -12690,3 +12688,81 @@ schermaglia; poi gli scenari con regia (R2) e la condivisione.
 - [ ] La simmetria automatica per le mappe della schermaglia: serve?
 - [ ] Le mappe fatte con l'editor nella schermata della schermaglia (e in
   quella della partita online)?
+
+### 9.181 L'editor di mappe, fase 2: la mappa vera e "Apri mappa"
+
+Risposta dell'autore alla proposta di §9.180 (22 novembre 2026, stessa PR,
+versione 0.2615): "Ovviamente Tiled era un esempio, facciamo la cosa piu'
+comoda per noi". Quindi:
+- **l'editor e' anche lo strumento nostro**, non solo dei giocatori: non
+  imita Tiled e non deve restare compatibile con lui (niente .tmx in
+  uscita). Le mappe che fa sono scenari (§9.3), il formato che il gioco gia'
+  carica: una mappa dell'editor puo' andare dritta in `scenari/` (la CI
+  rifa' solo gli scenari che vengono da un .tmx di `mappe/`). Tiled e il kit
+  restano per le mappe gia' fatte finche' servono;
+- **prima la schermaglia** (due centri, risorse, natura: subito giocabile),
+  poi gli scenari con regia, sopra lo stesso editor;
+- **i boschi si dipingono albero per albero** (istanze normali, come quelle
+  che tools/12 ricava dal livello `boschi`).
+Restano aperte le altre domande di §9.180 (controllo CPU, password,
+simmetria, mappe dell'editor nella schermaglia).
+
+**Fatto: la mappa vera nell'editor** (fase F2 di §9.180, senza il catalogo
+degli oggetti, che va con "Inserisci").
+- `mapfile.js` (nuovo): il formato delle mappe. `newMap` (spostato da
+  editor.js), `roomToScenario` (le room di `game/assets/rooms/` tornano
+  scenari: cosi' l'editor apre le mappe del gioco) e `scenarioToRoom` (la
+  conversione di tools/07_scene.py in JS, che servira' a "Prova mappa": per
+  tutti gli 11 scenari da' le stesse room di tools/07, a parte -0 e 0).
+- La scena (editor.js `buildScene`): un World senza comportamenti, solo per
+  disegnare: gli sprite in ordine di depth come in partita (World.draw),
+  tutti visibili (in partita alberi e rovine si scoprono); i soli
+  comportamenti che servono a disegnare: le macchie d'erba e di fiori (le
+  loro particelle, effects.js decorCreate), gli oggetti a fette (il
+  monastero, il fiume del livello 4: scenario.js sliced), le balaustre dei
+  ponti dipinti. La variante degli oggetti con piu' sprite (alb1..alb8) e'
+  quella scritta nella mappa o, se non c'e', una fissa dalla posizione
+  (`variantOf`: riaprendo la mappa non cambia; in partita la sceglie ancora
+  il gioco). Il suolo e' quello della partita (GroundCache: sfondo, macchie,
+  sprite del suolo, strade, fiumi e ponti). Si caricano i gruppi d'atlas del
+  gioco e quelli degli oggetti della mappa (la citta'); gli oggetti che il
+  gioco non conosce si saltano (con un avviso in console).
+- **Da lontano** (ground.js): la partita cuoce il suolo in blocchi da 512 px
+  di room a un texel per pixel, al piu' 48 (bastano fino allo zoom 1,7).
+  Ora la cache ha dei livelli di dettaglio: al livello L un blocco copre L x
+  L blocchi con gli stessi 514 x 514 texel; l'editor sceglie L dallo zoom
+  (`lodFor`: circa un texel per pixel dello schermo). La partita usa solo il
+  livello 1, con lo stesso codice di prima. Lo zoom dell'editor arriva a 8
+  (prima 4): Padania (7000 x 7000) si vede tutta in 12 blocchi.
+- Fuori dalla mappa il colore della pagina (i blocchi sbordano), sotto le
+  istanze: montagne, chiazze e alberi a cavallo del bordo si vedono interi,
+  come li ha messi l'autore.
+- **"Apri mappa"** (il primo pulsante delle azioni che fa qualcosa): un velo
+  scuro e le mappe del gioco in due colonne, il tutorial e i livelli 1-7 a
+  sinistra, le cinque schermaglie a destra, coi loro nomi tradotti; un clic
+  apre la mappa (la barra di caricamento del gioco), la vista va sulla sua
+  vista iniziale, il nome e le misure sotto il titolo. Esc o un clic fuori
+  chiudono il pannello. Per ora la mappa si guarda soltanto: gli strumenti
+  arrivano con le fasi F3-F4.
+- Testi nuovi nelle sei lingue: "Non e' stato possibile aprire questa
+  mappa".
+
+Prove: `editor.test.mjs` (scenario -> room -> scenario uguale per gli 11
+scenari, con gruppi, fiumi, strade, ponti, macchie e percorsi; il pannello
+in due colonne dentro la finestra a 1920 x 1080 e 1280 x 720; i nomi delle
+mappe; `variantOf` fisso; `lodFor`), `editor.mjs` (in piu': Padania dal
+pannello, 819 istanze, 598 alberi visibili, il fiume e 12 strade, niente
+saltato; da lontano la mappa intera in 12 blocchi), test unitari (125),
+`rivers.mjs` (fiumi, strade, ponti e macchie in partita come prima),
+`soak.mjs` su lvl06, sk_padus e lvl04 senza errori. Aperte nell'editor anche
+lvl03, lvl04, lvl06 e sk_silva (2947 istanze), senza errori: screenshot
+vicini e lontani (la citta' e i ponti dipinti del livello 6, il fiume e le
+montagne del livello 4). Caricare una mappa: ~3 s col rendering software
+delle prove.
+
+**Prossimo** (F3): il catalogo degli oggetti per categoria (un JSON scritto
+da tools/07, dalle categorie di tools/tiledkit.py), "Inserisci" col
+fantasma sotto il puntatore, "Sposta" (selezione, trascinare, copia e
+incolla, specchia, elimina), annulla e ripeti; "Nuova mappa" (misura,
+sfondo), "Salva" e "Apri" anche dal browser e da file.
+

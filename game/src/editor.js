@@ -19,36 +19,36 @@
 // [§9.180] Primo passo, lo scheletro: la mappa vuota (green1, 6000 x 6000),
 // la vista che scorre (frecce, tasto centrale o Spazio + trascina) e lo zoom
 // con la rotella attorno al puntatore, la colonna e il riquadro. Gli
-// strumenti si scelgono (clic o tasti 1-4) ma non fanno ancora niente; le
-// azioni sulla mappa dicono "Prossimamente". Esc o il cerchio in alto a
-// destra tornano al menu. Il resto si decide con l'autore (§9.180, "Da
-// decidere").
+// strumenti si scelgono (clic o tasti 1-4) ma non fanno ancora niente. Esc o
+// il cerchio in alto a destra tornano al menu.
+// [§9.181, decisione dell'autore: "Tiled era un esempio, facciamo la cosa
+// piu' comoda per noi"] Secondo passo, la mappa vera: disegnata col motore
+// del gioco (un World senza comportamenti, solo per disegnare: sprite in
+// ordine di depth, il suolo cotto coi fiumi, le strade, i ponti e le macchie,
+// le macchie d'erba e di fiori con le loro particelle), anche da lontano (il
+// suolo a risoluzione ridotta, ground.js lodFor). "Apri mappa" apre le mappe
+// del gioco (tutorial, livelli, schermaglie) come punto di partenza.
 //
-// Un ciclo suo, senza World ne' partita (app.js passa qui prima di creare la
-// partita): renderer, atlas, input e ciclo sono quelli del gioco.
+// Un ciclo suo, senza partita (app.js passa qui prima di crearla):
+// renderer, atlas, input e ciclo sono quelli del gioco.
 
 import { c } from "./colours.js";
 import { tr } from "./i18n.js";
 import { Input } from "./input.js";
 import { Loop } from "./loop.js";
 import { Draw } from "./draw.js";
-import { drawBackgrounds } from "./ground.js";
+import { bgrToRGB } from "./gl.js";
+import { GroundCache, lodFor } from "./ground.js";
+import { World } from "./world.js";
+import { Particles } from "./particles.js";
+import { DECOR_OBJECTS, decorCreate } from "./effects.js";
+import { sliced } from "./scenario.js";
+import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS } from "./rivers.js";
+import { SK_MAPS } from "./skirmish.js";
 import { audio } from "./audio.js";
-import { glowText } from "./menu.js";
+import { glowText, roomLabel } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
-
-// ----------------------------------------------------------------- mappa
-
-export const MAP_FORMAT = "535-scenario", MAP_VERSION = 1;
-// Una mappa vuota, nel formato degli scenari (§9.3, tools/12_tiled_import.py):
-// come la mappa vuota del kit (tools/11 --nuova: 6000 x 6000, sfondo green1,
-// colore della room 12632256 [C]). Manager e vista iniziale: li aggiungera'
-// l'editor salvando (§9.180, "Da decidere").
-export function newMap({ name = "", width = 6000, height = 6000, background = "green1" } = {}) {
-  return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: 12632256,
-           view: { x: 0, y: 0, w: 3000, h: 2000 },
-           instances: [], roads: [], rivers: [], bridges: [], patches: [] };
-}
+import { newMap, roomToScenario } from "./mapfile.js";
 
 // ----------------------------------------------------------------- vista
 
@@ -57,7 +57,7 @@ export function newMap({ name = "", width = 6000, height = 6000, background = "g
 // vicino che in partita) e VIEW_MAX (piu' lontano: la mappa intera, o
 // quasi), e un margine fuori dalla mappa per arrivare ai bordi da sotto la
 // colonna e il riquadro. scale: pixel di mappa per pixel CSS.
-export const VIEW_MIN = 0.5, VIEW_MAX = 4, VIEW_MARGIN = 400;
+export const VIEW_MIN = 0.5, VIEW_MAX = 8, VIEW_MARGIN = 400; // §9.181: VIEW_MAX da 4 a 8 (la mappa intera)
 export class EditorView {
   constructor(mapW, mapH) {
     Object.assign(this, { mapW, mapH, x: 0, y: 0, w: 1, h: 1, cssW: 1, cssH: 1, scale: 1.5 });
@@ -73,6 +73,9 @@ export class EditorView {
   }
 
   centre(x, y) { this.x = x - this.w / 2; this.y = y - this.h / 2; this.clamp(); }
+
+  // [§9.181] un'altra mappa (Apri)
+  setMap(mapW, mapH) { this.mapW = mapW; this.mapH = mapH; this.clamp(); }
 
   toRoom(px, py) { return [this.x + px * this.scale, this.y + py * this.scale]; }
 
@@ -124,7 +127,8 @@ export const DESC = {
   insert: "Choose an object by category (units, buildings, resources, nature, city…) and place it on the map.",
 };
 export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel: zoom. Esc: back to the menu.";
-export const EDITOR_TEXTS = ["Map editor", "Coming soon", HELP, ...Object.values(LABEL), ...Object.values(DESC)];
+export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP,
+                             ...Object.values(LABEL), ...Object.values(DESC)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
 const COL = { left: 20, top: 20, btn: 56, gap: 10, pad: 12, sep: 44 };
@@ -221,19 +225,108 @@ function drawIcon(d, key, x, y, s, ink) {
   }
 }
 
+// ------------------------------------------------------------ Apri mappa
+
+// [§9.181] Le mappe del gioco che si aprono nell'editor, come punto di
+// partenza: a sinistra il tutorial e i livelli della campagna, a destra le
+// schermaglie (le room di game/assets/rooms/, riportate a scenario).
+export const GAME_MAPS = [["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07"],
+                          SK_MAPS.filter((m) => m.room).map((m) => m.room)];
+export function mapLabel(room) {
+  const sk = SK_MAPS.find((m) => m.room === room);
+  return sk ? tr(sk.name) : roomLabel(room);
+}
+// Le righe del pannello (due colonne, x1 y1 x2 y2) e dove sta il titolo
+const OPEN = { w: 360, h: 46, gap: 10, colGap: 30 };
+export function openLayout(W, H) {
+  const n = Math.max(...GAME_MAPS.map((l) => l.length));
+  const h = n * OPEN.h + (n - 1) * OPEN.gap;
+  const top = Math.max(170, (H - h) / 2 + 20), left = W / 2 - OPEN.w - OPEN.colGap / 2;
+  const rows = [];
+  GAME_MAPS.forEach((list, ci) => list.forEach((room, k) => {
+    const x1 = left + ci * (OPEN.w + OPEN.colGap), y1 = top + k * (OPEN.h + OPEN.gap);
+    rows.push({ room, x1, y1, x2: x1 + OPEN.w, y2: y1 + OPEN.h });
+  }));
+  return { rows, title: [W / 2, top - 45] };
+}
+
+// ------------------------------------------------------------- la scena
+
+// [§9.181] La variante di un oggetto con piu' sprite (albero: alb1..alb8),
+// se la mappa non la dice: dalla posizione, sempre la stessa (in partita la
+// sceglie ancora il gioco, a caso)
+export const variantOf = (x, y, n) => (((Math.round(x) * 73856093) ^ (Math.round(y) * 19349663)) >>> 0) % n;
+
+// La mappa disegnata col motore: un World senza comportamenti (le istanze
+// sono sprite fermi), tranne quelli che servono a disegnare come in partita:
+// le macchie d'erba e di fiori (particelle, effects.js), gli oggetti a fette
+// (il monastero, scenario.js), le balaustre dei ponti dipinti. Tutto
+// visibile (in partita alberi e rovine si scoprono). Gli oggetti che non
+// conosce (una mappa di un'altra versione) si saltano.
+export async function buildScene({ r, assets, objects, masks, progress }, map) {
+  const used = new Set();
+  const want = (s) => { if (s && assets.sprites[s]) used.add(assets.sprites[s].group); };
+  for (const e of map.instances) {
+    const o = objects[e.object];
+    if (!o) continue;
+    want(e.sprite || o.sprite);
+    for (const s of o.choices || []) want(s);
+    for (const [s] of o.slices || []) want(s);
+  }
+  for (const rail of Object.values(BRIDGE_RAILS)) if (objects[rail]) want(objects[rail].sprite);
+  // come in partita: gli sprite del gioco (core e gioco) se la mappa ha
+  // qualcosa, e i gruppi in piu' dei suoi oggetti (la citta')
+  const groups = new Set(assets.groupsOfTier("core", ...(map.instances.length ? ["gioco"] : [])));
+  for (const g of used) groups.add(g);
+  const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", ...(map.patches || []).map((p) => p.bg || "city2")];
+  await assets.load([...groups], bgs.filter(Boolean), progress);
+
+  const world = new World({ objects, masks, assets, g: {}, roomW: map.width, roomH: map.height });
+  world.particles = new Particles();
+  for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
+  for (const [name, o] of Object.entries(objects)) if (o.slices) world.register(name, sliced(o));
+  for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
+    world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
+  }
+  const created = [], skipped = new Set();
+  for (const e of map.instances) {
+    const o = objects[e.object];
+    if (!o) { skipped.add(e.object); continue; }
+    const i = world._alloc(e.object, e.x, e.y, { sx: e.scale_x, sy: e.scale_y, rot: e.rotation, noChoice: true });
+    if (o.choices) i.sprite_index = o.choices.includes(e.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
+    if (o.reveal) i.visible = true;
+    created.push(i);
+  }
+  for (const i of created) world.fire(i, "create");
+  if (skipped.size) console.warn("[editor] oggetti sconosciuti saltati:", [...skipped]);
+  // fiumi, strade, ponti e macchie (come app.js useRivers)
+  const R = [map.width, map.height];
+  world.patches = (map.patches || []).map((p) => patchGeometry(p));
+  world.rivers = riverJoin(map.rivers || [], (rv) => riverGeometry({ ...rv, room: R }));
+  world.roads = (map.roads || []).map((rd) => roadGeometry({ ...rd, room: R }));
+  world.bridges = (map.bridges || []).map((b) => bridgeGeometry(b));
+  const room = { backgrounds: map.background ? [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] : [] };
+  const ground = new GroundCache(r, assets, room, world, bgrToRGB(map.colour));
+  return { map, world, ground, skipped: [...skipped] };
+}
+
 // ------------------------------------------------------------- l'editor
 
 // Avvio da app.js: r e assets gia' pronti (atlas e font), il canvas, le
 // opzioni del giocatore, toast e progress per i messaggi e la barra.
 export async function runEditor({ r, assets, canvas, settings, params, toast, progress }) {
-  const map = newMap();
-  await assets.load(assets.groupsOfTier("core"), [map.background], progress);
+  const [objects, masks] = await Promise.all(["objects.json", "masks.json"].map(async (f) => (await fetch("assets/" + f)).json()));
+  const ctx = { r, assets, objects, masks: masks.sprites, progress };
   const draw = new Draw(r, assets);
   const input = new Input(canvas);
-  const view = new EditorView(map.width, map.height);
-  const ed = { tool: "select", hover: null, drag: null, map, view };
+  let scene = await buildScene(ctx, newMap());
+  const view = new EditorView(scene.map.width, scene.map.height);
+  // open: il pannello "Apri mappa" (righe, riga sotto il puntatore);
+  // loading: una mappa che si sta caricando (niente comandi)
+  const ed = { tool: "select", hover: null, drag: null, view, label: "", open: null, loading: false };
   canvas.style.cursor = "none"; // il cursore del gioco, disegnato (come in partita)
   const clear = [0x1b / 255, 0x1d / 255, 0x17 / 255]; // fuori dalla mappa: il colore della pagina (index.html)
+  const OUTSIDE = 0x171d1b; // lo stesso, in BGR per Draw
 
   const resize = () => {
     const w = window.innerWidth, h = window.innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
@@ -243,14 +336,49 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
   window.addEventListener("resize", resize);
   resize();
-  view.centre(map.width / 2, map.height / 2);
+  view.centre(scene.map.width / 2, scene.map.height / 2);
 
   const toMenu = () => { location.search = "?room=menu"; };
   const clic = () => audio.ui("clic"); // §9.168
 
+  // [§9.181] un'altra mappa: la scena nuova, la vista sulla sua vista iniziale
+  const setScene = (s, label) => {
+    scene.ground.free();
+    scene = s;
+    ed.label = label;
+    view.setMap(s.map.width, s.map.height);
+    const v = s.map.view;
+    view.centre(v.x + v.w / 2, v.y + v.h / 2);
+  };
+  const openGameMap = async (room) => {
+    ed.open = null;
+    ed.loading = true;
+    try {
+      const data = await (await fetch(`assets/rooms/${room}.json`)).json();
+      setScene(await buildScene(ctx, roomToScenario(data)), mapLabel(room));
+    } catch (e) {
+      console.error(e);
+      toast(tr("This map could not be opened"), "warning");
+    } finally {
+      ed.loading = false;
+    }
+  };
+
   const step = () => {
     input.beginStep();
+    if (ed.loading) return;
     const W = view.cssW, H = view.cssH, L = editorLayout(W, H), mx = input.x, my = input.y;
+    // il pannello "Apri mappa" sopra tutto: Esc o un clic fuori lo chiudono
+    if (ed.open) {
+      const O = openLayout(W, H);
+      ed.open.hover = input.inside ? O.rows.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2])) || null : null;
+      if (input.pressed.has(27)) { ed.open = null; return; }
+      if (input.mouseReleased[0]) {
+        clic();
+        if (ed.open.hover) openGameMap(ed.open.hover.room); else ed.open = null;
+      }
+      return;
+    }
     const hit = input.inside ? hitTest(L, mx, my) : null;
     ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "back") ? hit : null;
     if (input.pressed.has(27)) { toMenu(); return; }
@@ -280,21 +408,36 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const b = ed.hover;
       if (b.kind === "back") { toMenu(); return; }
       if (b.kind === "tool") ed.tool = b.key;
+      else if (b.key === "open") ed.open = { hover: null }; // §9.181
       else toast(tr(LABEL[b.key]) + "  -  " + tr("Coming soon"));
     }
   };
 
   const drawMap = () => {
+    const map = scene.map;
     r.setProjection(view.x, view.y, view.w, view.h);
     draw.reset();
-    // lo sfondo ripetuto, solo dentro la mappa (fuori il colore della pagina)
+    // il suolo cotto (sfondo, macchie, strade, fiumi, ponti), solo dentro la
+    // mappa; da lontano a risoluzione ridotta (un texel per pixel dello
+    // schermo, circa)
     const x1 = Math.max(0, view.x), y1 = Math.max(0, view.y);
     const x2 = Math.min(map.width, view.x + view.w), y2 = Math.min(map.height, view.y + view.h);
-    if (x2 > x1 && y2 > y1) {
-      drawBackgrounds(r, assets, { backgrounds: [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] },
-                      { x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
-    }
+    const dpr = canvas.width / view.cssW;
+    if (x2 > x1 && y2 > y1) scene.ground.draw({ x: x1, y: y1, w: x2 - x1, h: y2 - y1 }, lodFor(view.scale / dpr));
+    // fuori dalla mappa il colore della pagina (i blocchi del suolo
+    // sbordano), sotto le istanze: montagne e chiazze a cavallo del bordo si
+    // vedono intere, come le ha messe l'autore
+    draw.reset();
+    draw.setColour(OUTSIDE);
+    const X0 = view.x - 1, Y0 = view.y - 1, X1 = view.x + view.w + 1, Y1 = view.y + view.h + 1;
+    if (X0 < 0) draw.rectangle(X0, Y0, 0, Y1);
+    if (X1 > map.width) draw.rectangle(map.width, Y0, X1, Y1);
+    if (Y0 < 0) draw.rectangle(X0, Y0, X1, 0);
+    if (Y1 > map.height) draw.rectangle(X0, map.height, X1, Y1);
+    draw.setColour(c.white);
+    scene.world.draw(r, draw, view);
     // il bordo della mappa, 2 px a schermo a ogni zoom
+    draw.reset();
     const w = 2 * view.scale;
     draw.setAlpha(0.6);
     draw.lineWidthColour(0, 0, map.width, 0, w, c.black, c.black);
@@ -305,7 +448,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   const drawUI = () => {
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H);
+    const W = view.cssW, H = view.cssH, L = editorLayout(W, H), map = scene.map;
     r.setProjection(0, 0, W, H);
     draw.reset();
     // il titolo, e la mappa: nome (o "Nuova mappa") e misure
@@ -314,7 +457,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     glowText(draw, W / 2, 45, tr("Map editor"));
     draw.setFont("overdue");
     // (il font non ha "·" ne' "×")
-    glowText(draw, W / 2, 92, (map.name || tr("New map")) + "  -  " + map.width + " x " + map.height);
+    glowText(draw, W / 2, 92, (ed.label || tr("New map")) + "  -  " + map.width + " x " + map.height);
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
@@ -339,11 +482,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // il riquadro dello strumento scelto
     drawPanel(L.panel);
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
-    if (ed.hover && ed.hover.kind !== "back") tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
+    if (ed.hover && ed.hover.kind !== "back" && !ed.open) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
+    if (ed.open) drawOpen(W, H);
     draw.setAlpha(1);
   };
 
   const drawPanel = ([x1, y1, x2, y2]) => {
+    const map = scene.map;
     draw.setAlpha(0.69);
     draw.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
     draw.setColour(c.black);
@@ -358,7 +503,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     draw.setAlpha(0.55);
     const [mx, my] = view.toRoom(input.x, input.y);
-    const onMap = input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y) && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
+    const onMap = input.inside && !ed.open && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)
+      && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     draw.text(x2 - 26, y1 + 30, (onMap ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + tr("Coming soon"));
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
@@ -385,6 +531,27 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setColour(c.white);
   };
 
+  // [§9.181] "Apri mappa": un velo scuro e le mappe del gioco in due colonne,
+  // pulsanti come quelli del menu
+  const drawOpen = (W, H) => {
+    const O = openLayout(W, H);
+    draw.setColour(c.black);
+    draw.setAlpha(0.35);
+    draw.rectangle(0, 0, W, H);
+    draw.setHalign("center"); draw.setValign("middle");
+    draw.setFont("gui_sblocco");
+    glowText(draw, O.title[0], O.title[1], tr("Open map"));
+    draw.setFont("GUI_1");
+    for (const q of O.rows) {
+      draw.setAlpha(ed.open.hover === q ? 0.99 : 0.69);
+      draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 46, 46, c.white, c.white, false);
+      draw.setColour(c.black);
+      draw.setAlpha(0.75);
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2, mapLabel(q.room));
+    }
+    draw.setColour(c.white);
+  };
+
   let shown = false;
   const render = () => {
     if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
@@ -392,6 +559,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     drawMap();
     drawUI();
     if (input.inside) { // il cursore, ultimo
+      r.setProjection(0, 0, view.cssW, view.cssH);
       draw.reset();
       draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
     }
@@ -404,6 +572,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   canvas.addEventListener("webglcontextrestored", async () => { r.init(); await assets.reload(progress); loop.start(); });
   if (!params.has("nostart")) loop.start();
   // per le prove nel browser (game/test/browser/editor.mjs)
-  window.__editor = { ready: true, ed, view, map, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
+  window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
+                      openLayout: () => openLayout(view.cssW, view.cssH), get scene() { return scene; }, openGameMap,
                       advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }
