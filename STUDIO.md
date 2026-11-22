@@ -12490,3 +12490,8 @@ passate.
 nebbia e dove stanno i banchi, i giri delle pattuglie, la vista dei
 lavoratori, la distanza dalle stalle, quanto e' facile la risalita con le
 macchine (i nemici lungo il centro le ignorano, ma vedono l'arciere).
+
+**Titolo e musica** (l'autore, 22 novembre 2026): il titolo del livello 7 e'
+"Fog" (menu.js LEVELS, al posto di "Our old gods" della lista
+dell'originale; tradotto: Nebbia, Niebla, Névoa, Nebel, Brouillard); la
+musica e' quella del livello 1, solo il brano 2 (music.js musicPlan).

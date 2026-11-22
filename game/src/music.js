@@ -16,7 +16,7 @@
 // Le parti di un brano girano insieme dallo stesso istante (audio.js): nel
 // brano 2 hanno giri di 4, 10 e 40 s, a tempo fra loro.
 //
-// La scaletta per room (musicPlan): lvl01 solo il brano 2; le schermaglie il
+// La scaletta per room (musicPlan): lvl01 (e lvl07, §9.178) solo il brano 2; le schermaglie il
 // brano 1 per circa SEGMENT s, poi il 2, poi di nuovo l'1, a turno; lvl03 il
 // 2 per primo, poi a turno; lvl05 come lvl03, ma col brano 2 gia' al pieno
 // (la battaglia e' in corso); le altre room solo il brano 1, come prima. Un
@@ -58,7 +58,7 @@ const turn = (b) => Math.max(1, Math.round(MUSIC.segment / BRANI[b].cycle)) * BR
 export function musicPlan(room) {
   const one = (b) => ({ segs: [[b, Infinity]], full: false, brani: BRANI, tau: PART_TAU });
   const alt = (first, second, full = false) => ({ segs: [[first, turn(first)], [second, turn(second)]], full, brani: BRANI, tau: PART_TAU });
-  if (room === "lvl01") return one("loop2");
+  if (room === "lvl01" || room === "lvl07") return one("loop2"); // §9.178: il 7 come l'1
   if (room === "lvl03") return alt("loop2", "loop1");
   if (room === "lvl05") return alt("loop2", "loop1", true);
   if (typeof room === "string" && room.startsWith("sk_")) return alt("loop1", "loop2");

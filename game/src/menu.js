@@ -45,7 +45,7 @@ import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
-  "One hundred towers", "Our old gods", "Escape from the city", "Allies", "The last day"];
+  "One hundred towers", "Fog", "Escape from the city", "Allies", "The last day"];
 const ROOMS = { 1: "lvl01", 2: "lvl02", 3: "lvl03", 4: "lvl04", 5: "lvl05", 6: "lvl06", 7: "lvl07" }; // lvl06: §9.101; lvl07: §9.178
 export const STORY = {
   1: "It's over. Someone betrayed our city and guided the enemy to a secret entrance. They claimed to come here to bring back the glory of the old empire, but they brought back only death and destruction. We must find our way out to survive and start a resistance.",

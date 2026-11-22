@@ -981,7 +981,7 @@ export const TEXTS = {
   "Crossing a bridge": { it: "Attraversare un ponte", es: "Cruzar un puente", pt: "Atravessar uma ponte", de: "Über eine Brücke", fr: "Traverser un pont" },
   "The siege": { it: "L'assedio", es: "El asedio", pt: "O cerco", de: "Die Belagerung", fr: "Le siège" },
   "One hundred towers": { it: "Cento torri", es: "Cien torres", pt: "Cem torres", de: "Hundert Türme", fr: "Cent tours" },
-  "Our old gods": { it: "I nostri antichi dei", es: "Nuestros viejos dioses", pt: "Nossos velhos deuses", de: "Unsere alten Götter", fr: "Nos anciens dieux" },
+  "Fog": { it: "Nebbia", es: "Niebla", pt: "Névoa", de: "Nebel", fr: "Brouillard" }, // §9.178: il titolo dell'autore (era "Our old gods")
   "Escape from the city": { it: "Fuga dalla città", es: "Huida de la ciudad", pt: "Fuga da cidade", de: "Flucht aus der Stadt", fr: "Fuite de la ville" },
   "Allies": { it: "Alleati", es: "Aliados", pt: "Aliados", de: "Verbündete", fr: "Alliés" },
   "The last day": { it: "L'ultimo giorno", es: "El último día", pt: "O último dia", de: "Der letzte Tag", fr: "Le dernier jour" },
