@@ -12253,3 +12253,47 @@ popolazione piena per 600 passi -> la popolazione lampeggia, un suono solo;
 liberato un posto il civile nasce (unita_pronta) e popHeld torna 0; di
 nuovo pieno col civile dopo pronto -> un altro suono. determinism.mjs,
 pvp.mjs, saves.mjs (lvl01, sk_padus): passate.
+
+### 9.174 La morte delle unita': la caduta, non la voce
+
+Domanda dell'autore (22 novembre 2026, stessa PR di §9.163, versione
+0.2614): "per le unita' che muoiono invece non saprei che suono mettere,
+suoni di umani che rantolano non mi hanno mai convinto del tutto negli rts
+e male si sposano con la rappresentazione concettuale dei personaggi del
+gioco, hai idee?". Proposta (in chat): niente voci, la caduta del corpo e
+dell'arma, coerente coi suoni fisici gia' nel gioco (la zappa, i crolli),
+bassa e breve perche' in una mischia ne muoiono tanti insieme; scartato un
+rintocco astratto (in battaglia una raffica di note sopra la musica, e il
+carattere degli avvisi). Risposta: "procedi col tonfo modificato".
+
+**I suoni**, dai file gia' caricati, a strati (tools/18 ora ha `strati`:
+per ogni variante una lista di pezzi di file d'origine, ognuno col suo
+filtro, velocita', volume e ritardo, sommati; poi il filtro del suono e le
+dissolvenze come per gli altri):
+- `morte` (soldati: guerrieri, picchieri, arcieri): il colpo della zappa
+  (§9.168) rallentato a 0,78 (piu' grave, 190 ms) e, 70 ms dopo, il
+  tintinnio dell'arma: un colpo di spade.wav con passa-alto a 1,5 kHz e
+  accelerato a 1,15 (un oggetto di metallo piccolo che cade, non lo
+  scontro), col picco ~15 dB sotto il tonfo (la registrazione delle spade
+  e' ~20 dB piu' debole di quella dei passi: misurati i picchi dei due
+  strati per variante; a -9 dB il metallo copriva il tonfo). Tre varianti
+  (i tre colpi di zappa, tre colpi di spada).
+- `morte_civile`: solo il tonfo, rallentato a 0,85.
+- `morte_cavaliere`: due tonfi, il cavallo (0,65) e 130 ms dopo il
+  cavaliere (0,72, 3 dB sotto), col tintinnio.
+- arieti e catapulte: `rovina_piccola` (§9.170), il legno che si rompe.
+- Volumi: ~ -36 dB nei primi 150 ms (gain 0,27, 0,21, 0,28), sotto la
+  spada (-31).
+
+**Dove** (app.js hooks.destroyed, come gli edifici, §9.170): un'istanza
+delle famiglie delle unita' (ally_unit, enemy_unit, p2_unit) distrutta a
+vita 0 (non chi entra in un presidio o una torre: ha vita), se chi guarda
+la vede; il suono dal nome (multiplayer.js baseOf per il blu).
+
+**Prove.** Nel browser (sk_padus, chiamate registrate): guerriero ->
+morte, civile -> morte_civile, cavaliere -> morte_cavaliere, ariete ->
+rovina_piccola, arciere nemico visibile -> morte, guerriero nemico nella
+nebbia -> niente, un guerriero tolto senza morire -> niente. Un file
+d'ascolto per l'autore: le nove varianti dopo un colpo di spada, poi una
+mischia simulata di 3 s (24 colpi di spada e 10 morti a caso, volumi e pan
+diversi). determinism.mjs, pvp.mjs, melee.mjs, garrison.mjs: passate.

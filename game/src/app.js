@@ -53,7 +53,7 @@ import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
-import { setupMultiplayer, pvpVisibility } from "./multiplayer.js"; // §9.155
+import { setupMultiplayer, pvpVisibility, baseOf } from "./multiplayer.js"; // §9.155, §9.174
 import { netParams, startNet, hostGame, joinMenu } from "./netgame.js"; // §9.156, §9.157
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
@@ -478,10 +478,23 @@ async function main() {
   // lo vede: i grandi (vita piena da 300 in su: caserma, stalla, centro,
   // castello, torre, chiesa, monastero) "rovina", gli altri (case,
   // magazzini, mulini, mura, cantieri) "rovina_piccola"
+  // [§9.174, richiesta dell'autore] e un'unita' che muore (a vita 0; non chi
+  // entra in una torre o un presidio): niente voci, la caduta. I civili il
+  // tonfo, i soldati il tonfo e l'arma, i cavalieri due tonfi (cavallo e
+  // cavaliere), arieti e catapulte il legno che si rompe (rovina_piccola)
   const BUILD_FAMILIES = ["ally_build", "enemy_build", "p2_build"];
+  const UNIT_FAMILIES = ["ally_unit", "enemy_unit", "p2_unit"];
+  const deathSound = (i) => {
+    const n = baseOf(i);
+    if (/omino$/.test(n)) return "morte_civile";
+    if (/cavaliere$/.test(n)) return "morte_cavaliere";
+    if (/ariete$|catapulta$/.test(n)) return "rovina_piccola";
+    return "morte";
+  };
   world.hooks.destroyed = (i) => {
-    if (!(i.life <= 0) || !i.parents.some((p) => BUILD_FAMILIES.includes(p)) || !world.shown(i)) return;
-    audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y);
+    if (!(i.life <= 0) || !world.shown(i)) return;
+    if (i.parents.some((p) => BUILD_FAMILIES.includes(p))) audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y);
+    else if (i.parents.some((p) => UNIT_FAMILIES.includes(p))) audio.play(deathSound(i), i.x, i.y);
   };
   // nebbia: scoperta (stato, aggiornata a ogni passo) e disegno (fog.js)
   fog.update(world.worldFor(null)); // §9.155: chi guarda (dal blu, i suoi)
