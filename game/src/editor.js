@@ -36,6 +36,12 @@
 // con un clic o un riquadro, trascinare, copia e incolla, specchia,
 // elimina), annulla e ripeti, "Nuova mappa" (vuota), e la conferma prima di
 // perdere le modifiche. La mappa e le modifiche stanno in editmap.js.
+// [§9.184] Quarto passo: salva (nel browser, IndexedDB, e su file
+// ".dvmap": mapstore.js) e apri (le proprie mappe, i modelli, un file, con
+// la convalida di mapfile.js validateMap), le impostazioni (nome,
+// descrizione, misure, sfondo, CPU con la "statica", simmetria) in pannelli
+// HTML (caselle di testo vere), e la simmetria in tutti i comandi di
+// "Inserisci" e "Sposta".
 //
 // Un ciclo suo, senza partita (app.js passa qui prima di crearla):
 // renderer, atlas, input e ciclo sono quelli del gioco.
@@ -47,12 +53,16 @@ import { Loop } from "./loop.js";
 import { Draw } from "./draw.js";
 import { lodFor } from "./ground.js";
 import { drawSprite } from "./sprites.js";
-import { SK_MAPS } from "./skirmish.js";
+import { SK_MAPS, SK_OPTIONS } from "./skirmish.js";
+import { NetPanel } from "./netui.js";
+import { setDomText } from "./domtext.js";
 import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
-import { newMap, roomToScenario } from "./mapfile.js";
-import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects } from "./editmap.js";
+import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX } from "./mapfile.js";
+import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
+         mirrorDelta } from "./editmap.js";
+import { saveMap, listMaps, loadMap, deleteMap, saveMapFile, openMapFile } from "./mapstore.js";
 
 // ----------------------------------------------------------------- vista
 
@@ -135,15 +145,23 @@ export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel
 export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
 export const READY = new Set(["select", "insert"]); // gli strumenti che funzionano (gli altri: "Prossimamente")
+// [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
+export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
+export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
                              "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "A skirmish map has two starting positions.",
                              "The changes to this map will be lost.", "Continue", "Cancel",
+                             // [§9.184] salva, apri, impostazioni, simmetria
+                             "Map settings", "Name", "Description", "Width", "Height", "Background", "Difficulty", "CPU style",
+                             "Static", "Symmetry", "Apply", "Save in the browser", "Save to file", "Give the map a name.", "Map saved",
+                             "Saving failed", "Your maps", "Templates", "Open a file…", "No saved maps yet", "This map will be deleted.",
+                             "Delete", "Symmetry: {mode}", ...Object.values(BG_NAMES), ...Object.values(SYM_NAMES),
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
 const COL = { left: 20, top: 20, btn: 56, gap: 10, pad: 12, sep: 44 };
-const PANEL = { h: 170, maxW: 980, margin: 30, bottom: 20 };
+const PANEL = { h: 196, maxW: 980, margin: 30, bottom: 20 }; // §9.184: 196 (prima 170: i comandi di "Sposta" su tre righe)
 export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (come menu.js FULL_BTN)
 
 // Dove sta tutto, per una finestra W x H: la colonna (col: x1, y1, x2, y2),
@@ -247,13 +265,27 @@ export function mapLabel(room) {
   const sk = SK_MAPS.find((m) => m.room === room);
   return sk ? tr(sk.name) : room;
 }
-// Le righe del pannello (x1 y1 x2 y2) e dove stanno titolo e sottotitolo
-const OPEN = { w: 420, h: 50, gap: 12 };
-export function openLayout(W, H) {
-  const n = TEMPLATES.length, h = n * OPEN.h + (n - 1) * OPEN.gap;
-  const top = Math.max(220, (H - h) / 2), x1 = W / 2 - OPEN.w / 2;
-  const rows = TEMPLATES.map((room, k) => ({ room, x1, y1: top + k * (OPEN.h + OPEN.gap), x2: x1 + OPEN.w, y2: top + k * (OPEN.h + OPEN.gap) + OPEN.h }));
-  return { rows, title: [W / 2, top - 85], sub: [W / 2, top - 40] };
+// [§9.184] Il pannello: a sinistra le mappe salvate nel browser (al piu'
+// OPEN.mine righe, la rotella scorre le altre; ognuna col cerchio per
+// eliminarla), a destra i modelli, sotto "Apri un file". Le righe: x1 y1 x2
+// y2; del: il cerchio [x, y, r]; i titoli delle colonne e del pannello.
+const OPEN = { w: 400, h: 46, gap: 10, colGap: 40, mine: 8 };
+export function openLayout(W, H, nMine = 0, scroll = 0) {
+  const n = Math.max(OPEN.mine, TEMPLATES.length), h = n * OPEN.h + (n - 1) * OPEN.gap;
+  const top = Math.max(200, (H - h) / 2 - 10), L = W / 2 - OPEN.w - OPEN.colGap / 2, R = W / 2 + OPEN.colGap / 2;
+  const row = (x, k) => ({ x1: x, y1: top + k * (OPEN.h + OPEN.gap), x2: x + OPEN.w, y2: top + k * (OPEN.h + OPEN.gap) + OPEN.h });
+  const first = Math.max(0, Math.min(scroll, nMine - OPEN.mine));
+  const mine = [];
+  for (let k = 0; k < Math.min(OPEN.mine, nMine - first); k++) {
+    const q = { ...row(L, k), index: first + k };
+    q.del = [q.x2 - OPEN.h / 2, (q.y1 + q.y2) / 2, 14];
+    mine.push(q);
+  }
+  const rows = TEMPLATES.map((room, k) => ({ room, ...row(R, k) }));
+  // "Apri un file" sotto le mappe salvate (o sotto "Ancora nessuna mappa")
+  const fy = top + Math.max(1, mine.length) * (OPEN.h + OPEN.gap) + 6;
+  return { mine, rows, first, file: [L + 40, fy, L + OPEN.w - 40, fy + OPEN.h], title: [W / 2, top - 95],
+           heads: [[L + OPEN.w / 2, top - 30], [R + OPEN.w / 2, top - 30]], left: [L, top, L + OPEN.w, top + h] };
 }
 
 // [§9.182] La conferma prima di perdere le modifiche: il testo e due
@@ -310,7 +342,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // incollare). Inserisci: cat e scroll (la tavolozza), pick (la casella
   // scelta: { cat, i }), style (lo stile scelto di ogni casella, §9.183).
   const ITEMS = CATALOG.map((k) => paletteItems(k, objects));
+  // [§9.184] mapId: la mappa nel browser (null: non ancora salvata li');
+  // saved: la versione della scena salvata; meta: impostazioni cambiate dopo;
+  // dom: un pannello HTML aperto (impostazioni, salva: l'editor aspetta)
   const ed = { tool: "select", hover: null, drag: null, view, label: "", open: null, confirm: null, loading: false,
+               mapId: null, saved: 0, meta: false, dom: null,
                sel: new Set(), over: null, move: null, box: null, clip: null,
                cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null };
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
@@ -333,7 +369,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
 
   const toMenu = () => { location.search = "?room=menu"; };
   const clic = () => audio.ui("clic"); // §9.168
-  const dirty = () => scene.version > 0;
+  const dirty = () => scene.version !== ed.saved || ed.meta;
+  const markSaved = () => { ed.saved = scene.version; ed.meta = false; };
   // [§9.182] prima di perdere le modifiche, la conferma
   const guard = (action) => { if (dirty()) ed.confirm = { action }; else action(); };
   const busy = async (fn) => {
@@ -341,21 +378,45 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     try { await fn(); } catch (e) { console.error(e); toast(tr("This map could not be opened"), "warning"); } finally { ed.loading = false; }
   };
 
-  // un'altra mappa: la scena nuova, la vista sulla sua vista iniziale
-  const setScene = (s, label) => {
+  // un'altra mappa: la scena nuova, la vista sulla sua vista iniziale; id:
+  // la mappa nel browser, se viene da li'
+  const setScene = (s, label, id = null) => {
     scene.ground.free();
     scene = s;
-    Object.assign(ed, { label, sel: new Set(), over: null, move: null, box: null });
+    Object.assign(ed, { label, sel: new Set(), over: null, move: null, box: null, mapId: id, saved: s.version, meta: false });
     view.setMap(s.map.width, s.map.height);
     const v = s.map.view;
     view.centre(v.x + v.w / 2, v.y + v.h / 2);
   };
+  // [§9.184] la stessa mappa con misure o sfondo nuovi: la scena rifatta,
+  // con la cronologia di annulla e ripeti (le voci sono le stesse)
+  const rebuildScene = () => busy(async () => {
+    const old = scene, s = await EditScene.load(ctx, old.map, progress);
+    Object.assign(s, { undoList: old.undoList, redoList: old.redoList, version: old.version });
+    old.ground.free();
+    scene = s;
+    Object.assign(ed, { sel: new Set(), over: null, move: null, box: null });
+    view.setMap(s.map.width, s.map.height);
+  });
+  // [§9.184] una mappa che arriva da fuori (il browser, un file): convalidata
+  const openData = async (data, id) => {
+    const v = validateMap(data, allowedObjects(), objects);
+    if (v.errors) { console.warn("[editor] mappa non valida:", v.errors); throw new Error("mappa non valida"); }
+    setScene(await EditScene.load(ctx, v.map, progress), v.map.name, id);
+  };
+  const openSaved = (id) => busy(async () => openData(await loadMap(id), id));
+  const openFile = async () => {
+    const res = await openMapFile();
+    if (!res) return;
+    if (res.invalid) { toast(tr("This map could not be opened"), "warning"); return; }
+    busy(() => openData(res.data, null));
+  };
   // [§9.182] un modello: la mappa della schermaglia diventa una mappa nuova
   const openTemplate = (room) => busy(async () => {
     const data = await (await fetch(`assets/rooms/${room}.json`)).json();
-    const sc = roomToScenario(data);
-    sc.name = "";
-    setScene(await EditScene.load(ctx, sc, progress), tr("New map from {map}", { map: mapLabel(room) }));
+    const v = validateMap({ ...roomToScenario(data), name: "" }, allowedObjects(), objects); // (anche i modelli: le informazioni di partenza)
+    if (v.errors) throw new Error("modello non valido: " + v.errors.join(", "));
+    setScene(await EditScene.load(ctx, v.map, progress), tr("New map from {map}", { map: mapLabel(room) }));
   });
   const newBlank = () => busy(async () => setScene(await EditScene.load(ctx, newMap(), progress), ""));
   // la tavolozza: gli sprite di tutti gli oggetti che si inseriscono (e le
@@ -375,13 +436,21 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // ---------------------------------------------------------- modifiche
   const inMap = (x, y) => x >= 0 && y >= 0 && x <= scene.map.width && y <= scene.map.height;
   const canStart = (n) => scene.starts() + n <= STARTS;
-  const place = (x, y) => {
+  // la voce che "Inserisci" mette in (x, y) e, con la simmetria, la gemella
+  const toPlace = (x, y) => {
     const st = pickedStyle();
-    if (!st || !inMap(x, y) || catalog !== "ready") return;
-    if (st.object === START && !canStart(1)) { toast(tr("A skirmish map has two starting positions."), "warning"); return; }
+    if (!st) return [];
     const e = { object: st.object, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
-    scene.add([e]);
+    const t = scene.twinAt(e);
+    return t ? [e, t] : [e];
+  };
+  const place = (x, y) => {
+    if (!inMap(x, y) || catalog !== "ready") return;
+    const list = toPlace(x, y);
+    if (!list.length) return;
+    if (list[0].object === START && !canStart(list.length)) { toast(tr("A skirmish map has two starting positions."), "warning"); return; }
+    scene.add(list);
   };
   // [§9.183] S (Maiusc+S all'indietro): lo stile dopo della casella scelta
   // ("Inserisci") o delle voci scelte ("Sposta", con annulla)
@@ -390,7 +459,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length;
       ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
     } else if (ed.tool === "select") {
-      const list = selected().filter((e) => stylesOf(e, objects));
+      const list = scene.withTwins(selected()).filter((e) => stylesOf(e, objects)); // §9.184: anche le gemelle
       scene.modify(list, (e) => {
         const S = stylesOf(e, objects), st = S.styles[(S.at + dir + S.styles.length) % S.styles.length];
         return st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
@@ -408,6 +477,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const paste = (x, y) => {
     if (!ed.clip) return;
     let list = ed.clip.map((e) => ({ ...e, x: Math.round(x + e.x), y: Math.round(y + e.y) }));
+    list = list.concat(list.map((e) => scene.twinAt(e)).filter(Boolean)); // §9.184: con la simmetria, le gemelle
     const st = list.filter((e) => e.object === START).length;
     if (st && !canStart(st)) { list = list.filter((e) => e.object !== START); toast(tr("A skirmish map has two starting positions."), "warning"); }
     if (!list.length) return;
@@ -415,9 +485,120 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     ed.sel = new Set(list);
   };
 
+  // ------------------------------------------- impostazioni e salvataggio
+  // [§9.184] pannelli HTML sopra l'editor (netui.js NetPanel, come quelli
+  // della partita online: caselle di testo vere), coi pulsanti a pillola;
+  // mentre sono aperti l'editor aspetta (ed.dom)
+  const INPUT = { display: "block", boxSizing: "border-box", width: "100%", padding: "8px 12px", border: "1px solid rgba(0, 0, 0, .22)",
+                  borderRadius: "12px", background: "rgba(255, 255, 255, .95)", font: "15px/1.35 system-ui, sans-serif", color: "#222",
+                  webkitUserSelect: "text", userSelect: "text" };
+  const panel = (titleText) => {
+    const p = new NetPanel({ onEscape: () => close() });
+    const close = () => { p.close(); ed.dom = null; };
+    ed.dom = p;
+    ed.hover = null;
+    // opaco (sotto ci sono i testi dell'editor), il titolo nel font dei pulsanti
+    Object.assign(p.panel.style, { background: "rgba(255, 255, 255, .97)", width: "min(720px, 94vw)" });
+    p.heading(titleText).style.margin = "2px 0 12px";
+    return [p, close];
+  };
+  // una riga: l'etichetta a sinistra, il resto a destra
+  const line = (p, label) => {
+    const row = p._add(document.createElement("div"));
+    Object.assign(row.style, { display: "flex", alignItems: "center", gap: "10px" });
+    const l = document.createElement("div");
+    Object.assign(l.style, { flex: "0 0 150px" });
+    setDomText(l, label, { font: "overdue", colour: "#222", width: 150 });
+    const right = document.createElement("div");
+    Object.assign(right.style, { flex: "1 1 auto", display: "flex", flexWrap: "wrap", gap: "6px" });
+    row.append(l, right);
+    return right;
+  };
+  const textField = (p, label, value, max, area = false) => {
+    const t = document.createElement(area ? "textarea" : "input");
+    line(p, label).append(t);
+    if (!area) t.type = "text";
+    t.maxLength = max; t.value = value; t.spellcheck = false;
+    Object.assign(t.style, INPUT, area ? { height: "64px", resize: "none" } : {});
+    return t;
+  };
+  // una scelta fra valori: pulsanti piccoli, quello scelto verde
+  // (data-net: "<chiave>-<valore>", per le prove nel browser)
+  const choice = (p, key, label, values, name, value, onPick) => {
+    const row = line(p, label), btns = [];
+    const mark = (cur) => { for (const [b, v] of btns) { b.classList.toggle("primary", v === cur); p.relabel(b, name(v), v === cur); } };
+    for (const v of values) {
+      const b = p.button(row, name(v), () => { onPick(v); mark(v); }, { name: key + "-" + v });
+      Object.assign(b.style, { minWidth: "0", height: "32px", padding: "0 12px" });
+      btns.push([b, v]);
+    }
+    mark(value);
+  };
+  const openSettings = () => {
+    const m = scene.map, v = { width: m.width, height: m.height, background: m.background, ...m.cpu, symmetry: m.symmetry };
+    const [p, close] = panel(tr("Map settings"));
+    const name = textField(p, tr("Name"), m.name, NAME_MAX);
+    const desc = textField(p, tr("Description"), m.description || "", DESC_MAX, true);
+    choice(p, "width", tr("Width"), MAP_SIZES, String, v.width, (x) => { v.width = x; });
+    choice(p, "height", tr("Height"), MAP_SIZES, String, v.height, (x) => { v.height = x; });
+    choice(p, "background", tr("Background"), MAP_BACKGROUNDS, (b) => tr(BG_NAMES[b]), v.background, (x) => { v.background = x; });
+    choice(p, "difficulty", tr("Difficulty"), CPU_DIFFICULTY, (d) => tr(SK_OPTIONS.difficulty.names[d]), v.difficulty, (x) => { v.difficulty = x; });
+    choice(p, "style", tr("CPU style"), CPU_STYLE, (q) => tr(q === "static" ? "Static" : SK_OPTIONS.style.names[q]), v.style, (x) => { v.style = x; });
+    choice(p, "symmetry", tr("Symmetry"), SYMMETRY, (q) => tr(SYM_NAMES[q]), v.symmetry, (x) => { v.symmetry = x; });
+    const row = p.row();
+    p.button(row, tr("Apply"), () => {
+      const resize = v.width !== m.width || v.height !== m.height || v.background !== m.background;
+      Object.assign(m, { name: name.value.trim().slice(0, NAME_MAX), description: desc.value.trim().slice(0, DESC_MAX),
+                         width: v.width, height: v.height, background: v.background,
+                         cpu: { difficulty: v.difficulty, style: v.style }, symmetry: v.symmetry });
+      ed.meta = true;
+      close();
+      if (resize) rebuildScene();
+    }, { primary: true, name: "apply" });
+    p.button(row, tr("Cancel"), close);
+    name.focus();
+  };
+  // salva: il nome, poi nel browser o su file
+  const openSave = () => {
+    const m = scene.map;
+    const [p, close] = panel(tr("Save map"));
+    const name = textField(p, tr("Name"), m.name, NAME_MAX);
+    const named = () => {
+      const n = name.value.trim().slice(0, NAME_MAX);
+      if (!n) { p.status(tr("Give the map a name."), "error"); name.focus(); return false; }
+      m.name = n;
+      return true;
+    };
+    const row = p.row();
+    p.button(row, tr("Save in the browser"), async () => {
+      if (!named()) return;
+      try { ed.mapId = await saveMap(m, ed.mapId); markSaved(); close(); toast(tr("Map saved")); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
+    }, { primary: true, name: "browser" });
+    p.button(row, tr("Save to file"), async () => {
+      if (!named()) return;
+      try { await saveMapFile(m); markSaved(); close(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
+    }, { name: "file" });
+    p.button(row, tr("Cancel"), close);
+    name.focus();
+    name.addEventListener("keydown", (e) => { if (e.key === "Enter") row.firstChild.click(); });
+  };
+  // Ctrl+S: di nuovo nel browser, se la mappa ha gia' nome e posto; se no il pannello
+  const quickSave = async () => {
+    const m = scene.map;
+    if (!ed.mapId || !m.name) { openSave(); return; }
+    try { await saveMap(m, ed.mapId); markSaved(); toast(tr("Map saved")); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
+  };
+  // (Ctrl+S nel browser apre "Salva pagina": qui no)
+  window.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.code === "KeyS") e.preventDefault(); }, true);
+  // "Apri mappa": il pannello, e le mappe del browser lette in sottofondo
+  const openPanel = () => {
+    ed.open = { hover: null, mine: null, scroll: 0 };
+    listMaps().then((l) => { if (ed.open) ed.open.mine = l; }, () => { if (ed.open) ed.open.mine = []; });
+  };
+
   const step = () => {
     input.beginStep();
-    if (ed.loading) return;
+    if (ed.loading || ed.dom) return;
     const W = view.cssW, H = view.cssH, L = editorLayout(W, H), mx = input.x, my = input.y;
     const [rx, ry] = view.toRoom(mx, my);
     const ctrl = input.down.has(17), shift = input.down.has(16), K = (k) => input.pressed.has(k);
@@ -428,22 +609,32 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (K(27)) { ed.confirm = null; return; }
       if (input.mouseReleased[0] && ed.confirm.hover) {
         clic();
-        const { action, hover } = ed.confirm;
+        const { action, hover, back } = ed.confirm;
         ed.confirm = null;
-        if (hover === "yes") action();
+        if (hover === "yes") action(); else if (back) back();
       }
       return;
     }
     // il pannello "Apri mappa": Esc o un clic fuori lo chiudono
     if (ed.open) {
-      const O = openLayout(W, H);
-      ed.open.hover = input.inside ? O.rows.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2])) || null : null;
+      const mine = ed.open.mine || [], O = openLayout(W, H, mine.length, ed.open.scroll);
+      const at = (q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]);
+      const del = O.mine.find((q) => dhypot(mx - q.del[0], my - q.del[1]) <= q.del[2]);
+      ed.open.hover = !input.inside ? null : del ? { remove: del.index } : O.mine.find(at) || O.rows.find(at)
+        || (inRect(mx, my, O.file) ? "file" : null);
+      if (input.wheelStep && inRect(mx, my, O.left)) ed.open.scroll = Math.max(0, O.first + Math.sign(input.wheelStep));
       if (K(27)) { ed.open = null; return; }
       if (input.mouseReleased[0]) {
         clic();
         const q = ed.open.hover;
         ed.open = null;
-        if (q) guard(() => openTemplate(q.room));
+        if (q === "file") guard(openFile);
+        else if (q && q.remove !== undefined) {
+          const rec = mine[q.remove];
+          ed.confirm = { text: "This map will be deleted.", yes: "Delete", back: openPanel,
+                         action: () => deleteMap(rec.id).then(openPanel, (e) => { console.error(e); openPanel(); }) };
+        } else if (q && q.index !== undefined) guard(() => openSaved(mine[q.index].id));
+        else if (q && q.room) guard(() => openTemplate(q.room));
       }
       return;
     }
@@ -462,9 +653,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // gli strumenti coi tasti 1-4
     if (!ctrl) TOOLS.forEach((t, k) => { if (K(49 + k) || K(97 + k)) setTool(t); });
     if (!ctrl && K(83)) nextStyle(shift ? -1 : 1); // §9.183
+    if (ctrl && K(83)) { quickSave(); return; } // §9.184
     if (ed.tool === "select") {
-      if (K(46) || K(8)) { scene.remove(selected()); ed.sel.clear(); }
-      if (K(77) && !ctrl && ed.sel.size) scene.modify(selected(), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
+      // (§9.184: con la simmetria anche le gemelle)
+      if (K(46) || K(8)) { scene.remove(scene.withTwins(selected())); ed.sel.clear(); }
+      if (K(77) && !ctrl && ed.sel.size) scene.modify(scene.withTwins(selected()), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
       if (ctrl && K(67)) copy();
       if (ctrl && K(86) && !hit) paste(rx, ry);
       if (ctrl && K(65)) ed.sel = new Set(scene.map.instances.filter((e) => !SYSTEM.has(e.object) && scene.instOf(e)));
@@ -500,8 +693,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const b = ed.hover;
       if (b.kind === "back") { guard(toMenu); return; }
       if (b.kind === "tool") setTool(b.key);
-      else if (b.key === "open") ed.open = { hover: null }; // §9.181
+      else if (b.key === "open") openPanel(); // §9.181, §9.184
       else if (b.key === "new") guard(newBlank); // §9.182
+      else if (b.key === "save") openSave(); // §9.184
+      else if (b.key === "settings") openSettings(); // §9.184
       else toast(tr(LABEL[b.key]) + "  -  " + tr("Coming soon"));
       return;
     }
@@ -540,7 +735,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (e) {
         if (shift) { if (ed.sel.has(e)) ed.sel.delete(e); else ed.sel.add(e); }
         else if (!ed.sel.has(e)) ed.sel = new Set([e]);
-        ed.move = { e, x0: rx, y0: ry, sx: mx, sy: my, dx: 0, dy: 0, on: false, list: ed.sel.has(e) ? selected() : [] };
+        const list = ed.sel.has(e) ? selected() : [];
+        // [§9.184] con la simmetria le gemelle si spostano a specchio
+        const twins = scene.withTwins(list).filter((t) => !list.includes(t));
+        ed.move = { e, x0: rx, y0: ry, sx: mx, sy: my, dx: 0, dy: 0, on: false, list, twins };
       } else {
         if (!shift) ed.sel.clear();
         ed.box = { x0: rx, y0: ry, x1: rx, y1: ry };
@@ -549,10 +747,15 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.move) {
       const M = ed.move;
       if (!M.on && dhypot(mx - M.sx, my - M.sy) > 4) M.on = true; // un clic non sposta
-      if (M.on) { M.dx = Math.round(rx - M.x0); M.dy = Math.round(ry - M.y0); scene.preview(M.list, M.dx, M.dy); }
+      if (M.on) {
+        M.dx = Math.round(rx - M.x0); M.dy = Math.round(ry - M.y0);
+        const [ux, uy] = mirrorDelta(scene.map.symmetry, M.dx, M.dy);
+        scene.preview(M.list, M.dx, M.dy); scene.preview(M.twins, ux, uy);
+      }
       if (!input.mouseDown[0]) {
-        if (M.on && (M.dx || M.dy)) scene.modify(M.list, (e) => ({ x: e.x + M.dx, y: e.y + M.dy }));
-        else if (M.on) scene.preview(M.list, 0, 0);
+        const tw = new Set(M.twins), [tdx, tdy] = mirrorDelta(scene.map.symmetry, M.dx, M.dy);
+        if (M.on && (M.dx || M.dy)) scene.modify([...M.list, ...M.twins], (e) => (tw.has(e) ? { x: e.x + tdx, y: e.y + tdy } : { x: e.x + M.dx, y: e.y + M.dy }));
+        else if (M.on) { scene.preview(M.list, 0, 0); scene.preview(M.twins, 0, 0); }
         else if (!shift && ed.sel.size > 1) ed.sel = new Set([M.e]); // un clic su una scelta di piu' voci: resta quella
         ed.move = null;
       }
@@ -619,8 +822,23 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.lineWidthColour(b[0], b[3], b[0], b[1], w, col, col);
     };
     const boxOf = (e) => scene.boundsOf(e) || [e.x - 12 * px, e.y - 12 * px, e.x + 12 * px, e.y + 12 * px];
+    // [§9.184] la simmetria: l'asse (o il centro, per la diagonale)
+    const sym = map.symmetry;
+    if (sym && sym !== "none" && (ed.tool === "select" || ed.tool === "insert")) {
+      draw.setAlpha(0.5);
+      if (sym === "horizontal") draw.dashedLine(map.width / 2, 0, map.width / 2, map.height, 2 * px, c.white, 24 * px, 16 * px);
+      else if (sym === "vertical") draw.dashedLine(0, map.height / 2, map.width, map.height / 2, 2 * px, c.white, 24 * px, 16 * px);
+      else {
+        const cx = map.width / 2, cy = map.height / 2, a = 30 * px;
+        draw.lineWidthColour(cx - a, cy, cx + a, cy, 2 * px, c.white, c.white);
+        draw.lineWidthColour(cx, cy - a, cx, cy + a, 2 * px, c.white, c.white);
+        draw.circleColour(cx, cy, a * 0.6, c.white, c.white, true);
+      }
+    }
     if (ed.tool === "select") {
       for (const e of ed.sel) { if (!scene.instOf(e)) continue; const b = boxOf(e); outline(b, 4 * px, c.black, 0.35); outline(b, 2 * px, c.white, 0.95); }
+      // le gemelle della scelta, che seguono ogni modifica: un riquadro sottile
+      if (sym && sym !== "none" && !ed.move) for (const t of scene.withTwins(selected())) if (!ed.sel.has(t)) outline(boxOf(t), 1.5 * px, c.white, 0.6);
       if (ed.over && !ed.sel.has(ed.over)) outline(boxOf(ed.over), 1.5 * px, c.white, 0.7);
       if (ed.box) {
         const b = [Math.min(ed.box.x0, ed.box.x1), Math.min(ed.box.y0, ed.box.y1), Math.max(ed.box.x0, ed.box.x1), Math.max(ed.box.y0, ed.box.y1)];
@@ -632,9 +850,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       const ok = inMap(gx, gy) && (st.object !== START || canStart(1));
       const spr = st.sprite || (o && o.sprite);
-      const col = ok ? c.white : 0x4040ff;
-      if (spr) drawSprite(r, assets, spr, 0, Math.round(gx), Math.round(gy), 1, 1, 0, col, 0.6);
-      else { draw.setAlpha(0.6); draw.circleColour(gx, gy, 10 * px, col, col, false); }
+      // [§9.184] con la simmetria anche il fantasma della gemella
+      const list = toPlace(gx, gy), col = ok && (st.object !== START || canStart(list.length)) ? c.white : 0x4040ff;
+      for (const e of list) {
+        if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, col, e === list[0] ? 0.6 : 0.4);
+        else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
+      }
     }
     draw.setAlpha(1);
     draw.setColour(c.white);
@@ -650,7 +871,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     glowText(draw, W / 2, 45, tr("Map editor"));
     draw.setFont("overdue");
     // (il font non ha "·" ne' "×")
-    glowText(draw, W / 2, 92, (ed.label || tr("New map")) + "  -  " + map.width + " x " + map.height);
+    const sym = map.symmetry && map.symmetry !== "none" ? "  -  " + tr("Symmetry: {mode}", { mode: tr(SYM_NAMES[map.symmetry]) }) : "";
+    glowText(draw, W / 2, 92, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height + sym);
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
@@ -675,7 +897,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // il riquadro dello strumento scelto
     drawPanel(L.panel);
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
-    if (ed.hover && ed.hover.kind !== "back" && !ed.open && !ed.confirm) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
+    if (ed.hover && ed.hover.kind !== "back" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
     if (ed.open) drawOpen(W, H);
     if (ed.confirm) drawConfirm(W, H);
     draw.setAlpha(1);
@@ -797,17 +1019,35 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(0.75);
     draw.text((R[0] + R[2]) / 2, (R[1] + R[3]) / 2, label);
   };
-  // "Apri mappa": un velo scuro e le mappe della schermaglia come modelli
+  // "Apri mappa": un velo scuro; a sinistra le mappe salvate nel browser (col
+  // cerchio per eliminarle), a destra le schermaglie come modelli, sotto
+  // "Apri un file" (§9.184)
   const drawOpen = (W, H) => {
-    const O = openLayout(W, H);
+    const mine = ed.open.mine, O = openLayout(W, H, mine ? mine.length : 0, ed.open.scroll), hov = ed.open.hover;
     veil(W, H);
     draw.setHalign("center"); draw.setValign("middle");
     draw.setFont("gui_sblocco");
     glowText(draw, O.title[0], O.title[1], tr("Open map"));
-    draw.setFont("overdue");
-    glowText(draw, O.sub[0], O.sub[1], tr("Skirmish maps, as templates for a new map"));
     draw.setFont("GUI_1");
-    for (const q of O.rows) button([q.x1, q.y1, q.x2, q.y2], mapLabel(q.room), ed.open.hover === q);
+    glowText(draw, O.heads[0][0], O.heads[0][1], tr("Your maps"));
+    glowText(draw, O.heads[1][0], O.heads[1][1], tr("Templates"));
+    if (!mine || !mine.length) {
+      draw.setFont("overdue");
+      glowText(draw, O.heads[0][0], O.left[1] + 25, mine ? tr("No saved maps yet") : t("loading"));
+      draw.setFont("GUI_1");
+    }
+    for (const q of O.mine) {
+      const rec = mine[q.index], on = hov === q;
+      button([q.x1, q.y1, q.x2, q.y2], rec.name || tr("New map"), on);
+      const [dx, dy, dr] = q.del, dh = hov && hov.remove === q.index;
+      draw.setAlpha(dh ? 0.9 : 0.35);
+      draw.circleColour(dx, dy, dr, dh ? 0x3030c0 : DARK, dh ? 0x3030c0 : DARK, false);
+      draw.setAlpha(1);
+      draw.lineWidthColour(dx - 5, dy - 5, dx + 5, dy + 5, 2, c.white, c.white);
+      draw.lineWidthColour(dx + 5, dy - 5, dx - 5, dy + 5, 2, c.white, c.white);
+    }
+    for (const q of O.rows) button([q.x1, q.y1, q.x2, q.y2], mapLabel(q.room), hov === q);
+    button(O.file, tr("Open a file…"), hov === "file");
     draw.setColour(c.white);
   };
   const drawConfirm = (W, H) => {
@@ -815,8 +1055,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     veil(W, H);
     draw.setHalign("center"); draw.setValign("middle");
     draw.setFont("GUI_1");
-    glowText(draw, C.text[0], C.text[1], tr("The changes to this map will be lost."));
-    button(C.yes, tr("Continue"), ed.confirm.hover === "yes");
+    glowText(draw, C.text[0], C.text[1], tr(ed.confirm.text || "The changes to this map will be lost."));
+    button(C.yes, tr(ed.confirm.yes || "Continue"), ed.confirm.hover === "yes");
     button(C.no, tr("Cancel"), ed.confirm.hover === "no");
     draw.setColour(c.white);
   };
@@ -842,7 +1082,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   if (!params.has("nostart")) loop.start();
   // per le prove nel browser (game/test/browser/editor.mjs)
   window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
-                      openLayout: () => openLayout(view.cssW, view.cssH), confirmLayout: () => confirmLayout(view.cssW, view.cssH),
+                      openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0), confirmLayout: () => confirmLayout(view.cssW, view.cssH),
                       palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
-                      get scene() { return scene; }, openTemplate, catalog: () => catalog, advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }

@@ -66,9 +66,11 @@ schermaglia. Fatti lo scheletro (dal menu "Giocatore singolo" -> "Editor di
 mappe", `?room=editor`, dal disegno dell'autore), la mappa vera (col motore,
 anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
 annulla e ripeti, "Nuova mappa" vuota, gli stili di case e alberi col tasto
-S (§9.183). Da fare (§9.182, "Prossimo"): salva
-e apri (browser e file), impostazioni (nome, descrizione, misura, sfondo,
-CPU, simmetria), polilinea e pennello, prova mappa, le mappe dell'editor
+S (§9.183), salva e apri (browser e file `.dvmap`, con la convalida), le
+impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica",
+simmetria) e la simmetria in tutti i comandi (§9.184). Da fare: il pennello
+(boschi con larghezza e densita', texture), la polilinea (fiumi, strade,
+ponti), "Prova mappa" (con la CPU statica nel gioco), le mappe dell'editor
 nella schermaglia e nella partita online. In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
@@ -12914,4 +12916,107 @@ dei prati e fiori con), `editor.mjs` (in piu': l'albero col terzo sprite
 dopo S due volte, la casa col secondo stile dopo S, Maiusc+S, S; con
 "Sposta" S cambia la casa scelta e Ctrl+Z la rimette), test unitari (127),
 screenshot della scheda delle case e di quella degli alberi.
+
+### 9.184 L'editor di mappe: salva e apri, impostazioni, simmetria
+
+Richiesta dell'autore (22 novembre 2026, stessa PR, versione 0.2615):
+"prosegui pure", dopo §9.183. Il passo dopo "Inserisci" e "Sposta": senza
+salvare l'editor non serviva a niente.
+
+**Il formato** (mapfile.js). Le mappe dell'editor restano scenari (§9.3) con
+in piu' tre campi che tools/07 e il gioco ignorano: `description`, `cpu`
+(`difficulty` come nella schermaglia, `style` come nella schermaglia piu'
+`static`, §9.182 punto 4) e `symmetry` (`none`, `diagonal`, `horizontal`,
+`vertical`). `newMap` li ha ai valori di partenza.
+
+**La convalida** (`validateMap`, roadmap R2: le mappe si scambiano fra
+sconosciuti). Una mappa che arriva dal browser o da un file passa solo se:
+formato e versione giusti; misure fra quelle dell'editor (4000-9000 a passi
+di 1000) e sfondo fra i tre; al piu' 20000 istanze, solo oggetti del
+catalogo, il manager e i ponti dipinti dei modelli (`allowedObjects`),
+posizioni entro 4000 px dalla mappa, scale e rotazioni finite (scala non
+zero, al piu' 8), la variante fra quelle del gioco o lo sprite dell'oggetto;
+al piu' 300 fiumi, strade, ponti e macchie, ognuno coi suoi punti (al piu'
+4000, dentro i limiti) e solo i campi che il gioco legge (le strade:
+larghezza, larghezza finale, tipo, densita'; le macchie: sfondo,
+sfumatura, opacita'); nome al piu' 40 caratteri, descrizione 600. I campi
+sconosciuti si perdono, quelli che mancano prendono i valori di partenza.
+Anche i modelli passano dalla convalida: le cinque schermaglie la
+superano. *Trovato cosi'*: gli alberi finti di Appennini (`sk_bardonis`)
+hanno come variante `alb1_F`, lo sprite dell'oggetto (la tile di Tiled),
+non uno degli 8 fra cui il gioco sceglie: accettato.
+
+**Salva** (mapstore.js, il pulsante col dischetto o Ctrl+S). Un pannello
+HTML (netui.js NetPanel, come quelli della partita online: le caselle di
+testo vere) col nome e tre pulsanti: "Salva nel browser" (IndexedDB, il
+database `535-maps`, la mappa compressa con gzip come i salvataggi), "Salva
+su file" (scarica `dustveil-<nome>.dvmap`, il JSON compresso con gzip; non
+mescolato come i `.dvgame`, §9.135: una mappa si scambia), "Annulla". Senza
+nome non salva ("Dai un nome alla mappa"). Ctrl+S dopo la prima volta salva
+di nuovo nel browser senza chiedere (il browser non apre "Salva pagina").
+Il titolo ha un asterisco finche' ci sono modifiche non salvate; la
+conferma prima di perderle (§9.182) guarda le modifiche dall'ultimo
+salvataggio, anche delle impostazioni.
+
+**Apri** (il pulsante con la cartella): a sinistra **le tue mappe** (quelle
+nel browser, dalla piu' recente; otto righe, la rotella scorre le altre;
+il cerchio con la x la elimina, dopo la conferma "Questa mappa sara'
+eliminata"), sotto **"Apri un file..."** (un `.dvmap`, o il `.json` di uno
+scenario); a destra **i modelli** (le cinque schermaglie, §9.182). Una mappa
+aperta dal file non e' ancora nel browser finche' non la si salva.
+
+**Impostazioni** (l'ingranaggio): un pannello HTML compatto (l'etichetta a
+sinistra, le scelte a destra; il primo, coi titoli sopra, non stava nello
+schermo a 1600 x 900 e lasciava vedere sotto i testi dell'editor): nome,
+descrizione, larghezza, altezza, sfondo (prato, selciato, pietra: green1,
+city2, city1), difficolta' e stile della CPU (con "Statica (non fa nulla)"),
+simmetria (spenta, diagonale, orizzontale, verticale). "Applica" li scrive
+nella mappa; misure o sfondo nuovi rifanno la scena (senza perdere annulla
+e ripeti). La CPU per ora si ricorda soltanto: servira' a "Prova mappa" (e
+la statica va fatta nel gioco).
+
+**La simmetria** (editmap.js `mirrorPoint`, `twinAt`, `twinOf`,
+`withTwins`), come confermata in §9.183: il gemello di un oggetto sta al
+posto specchiato del **centro della sua maschera** (come tools/16: l'ingombro
+nello stesso posto; le macchie, senza maschera, dal loro centro), con lo
+stesso sprite, non capovolto; chi cade sull'asse (o al centro, per la
+diagonale) non ha gemello. Con la simmetria accesa: "Inserisci" mette
+l'oggetto e il gemello (il fantasma mostra tutti e due; due partenze in un
+clic); "Sposta" sposta i gemelli a specchio (dal vivo e nella modifica, un
+solo passo da annullare), Canc, M e S valgono anche per loro, Ctrl+V incolla
+anche i gemelli. Il gemello si ritrova cercando lo stesso oggetto entro 2
+px dal posto specchiato: niente legami da tenere, funziona anche con le
+mappe fatte prima di accendere la simmetria. Sulla mappa l'asse tratteggiato
+(orizzontale e verticale) o una croce nel centro (diagonale); i gemelli
+della scelta col riquadro sottile; sotto il titolo "Simmetria: diagonale".
+
+*Trovato con la prova nel browser*: nell'elenco delle mappe un clic sulla
+riga veniva preso per il cerchio "elimina" (stesso nome di campo per la
+riga e per il cerchio) e apriva la conferma di eliminazione. Il riquadro in
+basso passa da 170 a 196 px: i comandi di "Sposta" in italiano, con "S:
+stile", andavano su tre righe e la terza copriva quella della vista.
+
+Testi nuovi nelle sei lingue (impostazioni, salva, apri, simmetria; "Spenta"
+al femminile, come la simmetria).
+
+Prove: `editor.test.mjs` (in piu': la simmetria, i punti e gli spostamenti
+nei tre modi; la convalida: le cinque schermaglie passano con le
+informazioni di partenza, una mappa con una CPU statica e la simmetria
+verticale passa perdendo un campo sconosciuto, non passano un cavaliere
+nemico, una posizione fuori, una variante sbagliata, misure e sfondo
+sbagliati, un fiume di un punto, un altro formato; i gemelli in una scena
+vera: al posto specchiato del centro della maschera, ritrovati, nessuno al
+centro, nessuno se la simmetria cambia; il nome del file; il pannello Apri
+con 12 mappe salvate, lo scorrimento e il file nella colonna giusta),
+`editor.mjs` (in piu': impostazioni con nome e simmetria diagonale; la
+miniera e la gemella, spostate a specchio, tolte insieme, rimesse con
+annulla; Ctrl+S col pannello, salvata nel browser; il `.dvmap` scaricato e
+decompresso; la pagina ricaricata, la mappa nell'elenco e riaperta; aperta
+dal file; eliminata dall'elenco), test unitari (130), screenshot
+(impostazioni, salva, apri, simmetria diagonale con le montagne).
+
+**Prossimo**: il pennello (boschi con larghezza e densita', le texture) e
+la polilinea (fiumi, strade, ponti); "Prova mappa" (lo scenario dal browser
+nel gioco, la CPU statica); le mappe dell'editor nella schermata della
+schermaglia, poi nella partita online.
 

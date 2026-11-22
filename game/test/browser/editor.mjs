@@ -5,7 +5,8 @@
 // puntatore; il tasto centrale trascina la vista; [§9.181] "Apri mappa"
 // carica Padania col motore del gioco, e da lontano la si vede tutta;
 // [§9.182] solo le schermaglie come modelli; Inserisci mette una miniera,
-// annulla e ripeti; [§9.183] gli stili col tasto S; Sposta la sceglie, la trascina, Canc la toglie; uscendo
+// annulla e ripeti; [§9.183] gli stili col tasto S; [§9.184] impostazioni,
+// simmetria, salva e apri (browser e file), elimina; Sposta la sceglie, la trascina, Canc la toglie; uscendo
 // con la mappa cambiata si chiede conferma; Esc torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -186,6 +187,89 @@ await page.keyboard.press("Escape");
 await page.waitForURL(/room=menu/, { timeout: 20000 });
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 check("Esc torna al menu", true);
+
+// [§9.184] impostazioni (nome, simmetria diagonale), la miniera e la sua
+// gemella, spostate e tolte insieme; salva nel browser (Ctrl+S), riapri dopo
+// aver ricaricato la pagina; salva su file e riapri il file; elimina dal browser
+const ED = () => window.__editor;
+await page.goto(`${base}/index.html?room=editor`);
+await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
+const L3 = await page.evaluate(() => window.__editor.layout()), btn3 = (k) => L3.buttons.find((b) => b.key === k);
+await click(btn3("settings").x, btn3("settings").y);
+await page.waitForSelector(".net-panel input");
+await page.fill(".net-panel input", "Prova editor");
+await page.locator('.net-panel [data-net="symmetry-diagonal"]').click();
+await page.locator('.net-panel [data-net="apply"]').click();
+await page.waitForTimeout(300);
+check("impostazioni applicate", await page.evaluate(() => { const m = window.__editor.scene.map; return m.name === "Prova editor" && m.symmetry === "diagonal" && !window.__editor.ed.dom; }));
+await click(btn3("insert").x, btn3("insert").y);
+await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[1]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[0]));
+await click(800, 380);
+const pair = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return { n: m.length, twin: S.twinOf(m[0]) === m[1] }; });
+check("con la simmetria la miniera e la gemella", pair.n === 2 && pair.twin);
+await click(btn3("select").x, btn3("select").y);
+const tw0 = await page.evaluate(() => { const m = window.__editor.scene.map.instances; return [m[1].x, m[1].y, window.__editor.view.scale]; });
+await page.mouse.move(800, 380); await page.waitForTimeout(100); await page.mouse.down();
+for (let k = 1; k <= 5; k++) { await page.mouse.move(800 + 20 * k, 380 + 10 * k); await page.waitForTimeout(50); }
+await page.mouse.up(); await page.waitForTimeout(200);
+const tw1 = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return [m[1].x, m[1].y, S.twinOf(m[0]) === m[1]]; });
+check("la gemella si sposta a specchio", Math.abs(tw1[0] - tw0[0] + 100 * tw0[2]) < 3 && Math.abs(tw1[1] - tw0[1] + 50 * tw0[2]) < 3 && tw1[2]);
+await page.keyboard.press("Delete"); await page.waitForTimeout(150);
+check("Canc toglie anche la gemella", (await page.evaluate(() => window.__editor.scene.map.instances.length)) === 0);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("annulla le rimette tutte e due", (await page.evaluate(() => window.__editor.scene.map.instances.length)) === 2);
+// Ctrl+S: la prima volta il pannello, "Salva nel browser"
+await page.mouse.move(700, 300);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyS"); await page.keyboard.up("Control");
+await page.waitForSelector('.net-panel [data-net="browser"]');
+await page.locator('.net-panel [data-net="browser"]').click();
+await page.waitForFunction(() => window.__editor.ed.mapId && !window.__editor.ed.dom && !window.__editor.dirty(), null, { timeout: 10000 });
+check("salvata nel browser", true);
+// su file: il download
+await click(btn3("save").x, btn3("save").y);
+await page.waitForSelector('.net-panel [data-net="file"]');
+const [dl] = await Promise.all([page.waitForEvent("download"), page.locator('.net-panel [data-net="file"]').click()]);
+const { tmpdir } = await import("node:os"), { join } = await import("node:path"), fs = await import("node:fs"), zlib = await import("node:zlib");
+const file = join(tmpdir(), "editor-prova-" + process.pid + ".dvmap");
+await dl.saveAs(file);
+const json = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8"));
+check("file .dvmap", dl.suggestedFilename() === "dustveil-Prova-editor.dvmap" && json.format === "535-scenario" && json.instances.length === 2 && json.symmetry === "diagonal");
+// la pagina ricaricata: "Apri mappa", "Le tue mappe"
+await page.goto(`${base}/index.html?room=editor`);
+await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
+await click(btn3("open").x, btn3("open").y);
+await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
+let O3 = await page.evaluate(() => window.__editor.openLayout());
+check("nell'elenco", O3.mine.length >= 1 && (await page.evaluate(() => window.__editor.ed.open.mine[0].name)) === "Prova editor");
+await click(...mid(O3.mine[0]));
+await page.waitForFunction(() => window.__editor.scene.map.name === "Prova editor" && !window.__editor.ed.loading, null, { timeout: 60000 });
+check("riaperta dal browser", await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.length === 2 && S.map.symmetry === "diagonal" && !!window.__editor.ed.mapId; }));
+// il file: "Apri un file…"
+await click(btn3("new").x, btn3("new").y);
+await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading, null, { timeout: 60000 });
+await click(btn3("open").x, btn3("open").y);
+await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
+O3 = await page.evaluate(() => window.__editor.openLayout());
+const [chooser] = await Promise.all([page.waitForEvent("filechooser"), click(...mid({ x1: O3.file[0], y1: O3.file[1], x2: O3.file[2], y2: O3.file[3] }))]);
+await chooser.setFiles(file);
+await page.waitForFunction(() => window.__editor.scene.map.name === "Prova editor" && !window.__editor.ed.loading, null, { timeout: 60000 });
+check("riaperta dal file", await page.evaluate(() => window.__editor.scene.map.instances.length === 2 && window.__editor.ed.mapId === null));
+fs.unlinkSync(file);
+// elimina dal browser: il cerchio della riga, "Elimina"
+await click(btn3("open").x, btn3("open").y);
+await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
+const before3 = await page.evaluate(() => window.__editor.ed.open.mine.length);
+O3 = await page.evaluate(() => window.__editor.openLayout());
+await click(O3.mine[0].del[0], O3.mine[0].del[1]);
+check("conferma per eliminare", await page.evaluate(() => window.__editor.ed.confirm && window.__editor.ed.confirm.yes === "Delete"));
+const C3 = await page.evaluate(() => window.__editor.confirmLayout());
+await click((C3.yes[0] + C3.yes[2]) / 2, (C3.yes[1] + C3.yes[3]) / 2);
+await page.waitForFunction((n) => window.__editor.ed.open && window.__editor.ed.open.mine && window.__editor.ed.open.mine.length === n - 1, before3, { timeout: 10000 });
+check("eliminata", true);
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));

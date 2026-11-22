@@ -7,8 +7,10 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout } from "../src/editor.js";
-import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects } from "../src/editmap.js";
-import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom } from "../src/mapfile.js";
+import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
+         mirrorPoint, mirrorDelta } from "../src/editmap.js";
+import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap } from "../src/mapfile.js";
+import { mapFileName } from "../src/mapstore.js";
 import { lodFor } from "../src/ground.js";
 import { setLanguage } from "../src/i18n.js";
 import { TEXTS } from "../src/texts.js";
@@ -112,9 +114,17 @@ test("§9.181 scenario e room: andata e ritorno", async () => {
 test("§9.182 Apri mappa: le cinque schermaglie come modelli", () => {
   assert.deepEqual(TEMPLATES, ["sk_padus", "sk_silva", "sk_rivo", "sk_urbs", "sk_bardonis"]);
   for (const [W, H] of [[1920, 1080], [1280, 720]]) {
-    const O = openLayout(W, H);
+    const O = openLayout(W, H, 12, 2);
     assert.equal(O.rows.length, TEMPLATES.length);
-    for (const q of O.rows) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.sub[1] && q.y2 <= H, `${q.room} ${W}x${H}`);
+    // [§9.184] le mappe salvate a sinistra (8 righe, dalla terza), il file sotto
+    assert.deepEqual(O.mine.map((q) => q.index), [2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.equal(openLayout(W, H, 12, 99).first, 4);
+    for (const q of [...O.rows, ...O.mine]) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.heads[0][1] && q.y2 <= H, `${W}x${H}`);
+    for (const q of O.mine) assert.ok(q.y2 < O.file[1]);
+    assert.ok(O.file[2] <= O.mine[0].x2 && O.file[0] >= O.mine[0].x1, "il file nella colonna di sinistra");
+    assert.ok(openLayout(W, H, 0).file[3] < H - 196 - 20, "senza mappe, il file sopra il riquadro in basso");
+    for (const q of O.mine) assert.ok(q.del[0] + q.del[2] <= q.x2 && q.del[0] - q.del[2] > q.x1 + 200);
+    assert.ok(O.mine[0].x2 < O.rows[0].x1 && O.file[3] <= H && O.title[1] < O.heads[0][1]);
     const C = confirmLayout(W, H);
     assert.ok(C.yes[2] < C.no[0] && C.no[2] <= W && C.yes[3] <= H);
   }
@@ -210,4 +220,77 @@ test("§9.182 modifiche, annulla e ripeti", { skip: !existsSync(new URL("../asse
   assert.deepEqual(S.inBox(0, 0, 2000, 2000), [a]);
   assert.equal(S.starts(), 0);
   assert.ok(S.version > 0);
+});
+
+// [§9.184] La simmetria: i punti gemelli e gli spostamenti a specchio
+test("§9.184 simmetria: punti e spostamenti", () => {
+  assert.deepEqual(mirrorPoint("diagonal", 7000, 6000, 1000, 500), [6000, 5500]);
+  assert.deepEqual(mirrorPoint("horizontal", 7000, 6000, 1000, 500), [6000, 500]);
+  assert.deepEqual(mirrorPoint("vertical", 7000, 6000, 1000, 500), [1000, 5500]);
+  assert.equal(mirrorPoint("none", 7000, 6000, 1000, 500), null);
+  assert.deepEqual(mirrorDelta("diagonal", 10, 20), [-10, -20]);
+  assert.deepEqual(mirrorDelta("horizontal", 10, 20), [-10, 20]);
+  assert.deepEqual(mirrorDelta("vertical", 10, 20), [10, -20]);
+  assert.equal(mapFileName("Valle d'Aosta: l'ultima!"), "dustveil-Valle-dAosta-lultima.dvmap");
+  assert.equal(mapFileName(""), "dustveil-map.dvmap");
+});
+
+const OBJECTS = new URL("../assets/objects.json", import.meta.url);
+const MASKS = new URL("../assets/masks.json", import.meta.url);
+
+// [§9.184] La convalida delle mappe che arrivano da fuori: i modelli (le
+// cinque schermaglie) passano; oggetti fuori dal catalogo, misure, posizioni
+// e varianti sbagliate no; i campi sconosciuti si perdono
+test("§9.184 convalida delle mappe", { skip: !existsSync(OBJECTS) }, async () => {
+  const { readdirSync } = await import("node:fs");
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), allowed = allowedObjects();
+  const dir = new URL("../../scenari/", import.meta.url);
+  for (const f of readdirSync(dir).filter((n) => n.startsWith("sk_"))) {
+    const sc = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
+    const v = validateMap(sc, allowed, objects);
+    assert.ok(v.map, `${f}: ${v.errors}`);
+    assert.equal(v.map.instances.length, sc.instances.length);
+    assert.deepEqual(v.map.rivers, sc.rivers || []);
+    assert.deepEqual(v.map.roads, sc.roads || []);
+    assert.equal(v.map.symmetry, "none");
+    assert.deepEqual(v.map.cpu, { difficulty: "normal", style: "balanced" });
+  }
+  const ok = { ...newMap(), instances: [{ object: "albero", x: 100, y: 100, sprite: objects.albero.choices[2] }],
+               cpu: { difficulty: "hard", style: "static" }, symmetry: "vertical", evil: "<script>" };
+  const v = validateMap(ok, allowed, objects);
+  assert.ok(v.map);
+  assert.equal(v.map.evil, undefined);
+  assert.deepEqual(v.map.instances[0], { object: "albero", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0, sprite: objects.albero.choices[2] });
+  assert.equal(v.map.cpu.style, "static");
+  const bad = (patch) => validateMap({ ...newMap(), ...patch }, allowed, objects).errors;
+  assert.ok(bad({ instances: [{ object: "enemy_cavaliere", x: 1, y: 1 }] }));
+  assert.ok(bad({ instances: [{ object: "albero", x: 1e9, y: 1 }] }));
+  assert.ok(bad({ instances: [{ object: "albero", x: 1, y: 1, sprite: "cr_01" }] }));
+  assert.ok(bad({ width: 123 }));
+  assert.ok(bad({ background: "nebbia" }));
+  assert.ok(bad({ rivers: [{ pts: [[0, 0]] }] }));
+  assert.ok(validateMap({ format: "altro" }, allowed, objects).errors);
+  assert.ok(validateMap(null, allowed, objects).errors);
+});
+
+// [§9.184] I gemelli nella scena: al posto specchiato del centro della
+// maschera, ritrovati entro 2 px; niente gemello per chi sta sull'asse
+test("§9.184 simmetria: gemelli nella scena", { skip: !existsSync(OBJECTS) || !existsSync(MASKS) }, () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), masks = JSON.parse(readFileSync(MASKS, "utf8")).sprites;
+  const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
+  const map = { ...newMap(), symmetry: "diagonal" };
+  const S = new EditScene({ r: null, assets, objects, masks }, map);
+  const e = { object: "miniera_oro", x: 1000, y: 800, scale_x: 1, scale_y: 1, rotation: 0 };
+  const t = S.twinAt(e), [ox, oy] = S.maskOffset(e);
+  assert.ok(ox || oy, "la miniera ha una maschera");
+  assert.ok(Math.abs(t.x + ox - (6000 - (e.x + ox))) <= 1 && Math.abs(t.y + oy - (6000 - (e.y + oy))) <= 1);
+  S.add([e, t]);
+  assert.equal(S.twinOf(e), t);
+  assert.equal(S.twinOf(t), e);
+  assert.deepEqual(S.withTwins([e]), [e, t]);
+  // sull'asse (il centro, per la diagonale): nessun gemello
+  assert.equal(S.twinAt({ object: "burst_erba1", x: 3000, y: 3000 }), null);
+  map.symmetry = "horizontal";
+  assert.equal(S.twinOf(e), null);
+  assert.equal(S.twinAt({ object: "burst_erba1", x: 1000, y: 3000 }).x, 5000);
 });

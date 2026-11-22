@@ -76,6 +76,10 @@ export function stylesOf(e, objects) {
   }
   return null;
 }
+// [§9.184] gli oggetti che una mappa dell'editor puo' avere (la convalida
+// dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
+// dipinti dei modelli
+export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES]);
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js
 // skirmishPrepare: due centri, uno per parte)
 export const START = "centro", STARTS = 2;
@@ -84,6 +88,25 @@ export const START = "centro", STARTS = 2;
 export const SYSTEM = new Set(["manager"]);
 // cuociono nel suolo (ground.js): se cambiano, il suolo si rifa'
 export const baked = (name) => GROUND.test(name) || PAINTED_BRIDGES.includes(name);
+
+// [§9.184] La simmetria (§9.182-§9.183, confermata dall'autore): il punto
+// gemello di (x, y) in una mappa W x H. Diagonale: la rotazione di 180 gradi
+// attorno al centro (le cinque schermaglie, tools/16); orizzontale: le meta'
+// a sinistra e a destra; verticale: sopra e sotto. Gli oggetti cambiano
+// posto, gli sprite non si capovolgono (le ombre degli edifici restano a
+// destra in basso).
+export function mirrorPoint(mode, W, H, x, y) {
+  if (mode === "diagonal") return [W - x, H - y];
+  if (mode === "horizontal") return [W - x, y];
+  if (mode === "vertical") return [x, H - y];
+  return null;
+}
+export function mirrorDelta(mode, dx, dy) {
+  if (mode === "diagonal") return [-dx, -dy];
+  if (mode === "horizontal") return [-dx, dy];
+  if (mode === "vertical") return [dx, -dy];
+  return [dx, dy];
+}
 
 // [§9.181] La variante di un oggetto con piu' sprite (albero: alb1..alb8),
 // se la mappa non la dice: dalla posizione, sempre la stessa
@@ -264,6 +287,43 @@ export class EditScene {
 
   // quante posizioni di partenza ci sono
   starts() { return this.map.instances.filter((e) => e.object === START).length; }
+
+  // [§9.184] dal punto d'origine al centro della maschera (come tools/16:
+  // il gemello ha l'ingombro nello stesso posto), per una voce; [0, 0]
+  // senza maschera (le macchie)
+  maskOffset(e) {
+    const o = this.objects[e.object];
+    if (!o) return [0, 0];
+    const name = o.mask || e.sprite || o.sprite || (o.choices && o.choices[0]), m = name && this.masks[name];
+    if (!m) return [0, 0];
+    const sx = e.scale_x ?? 1, sy = e.scale_y ?? 1;
+    return [((m.bbox[0] + m.bbox[2] + 1) / 2 - m.origin[0]) * sx, ((m.bbox[1] + m.bbox[3] + 1) / 2 - m.origin[1]) * sy];
+  }
+
+  // il gemello di una voce (i campi, al posto gemello), o null se la
+  // simmetria e' spenta o se cadrebbe su se stessa (al centro o sull'asse)
+  twinAt(e) {
+    const mode = this.map.symmetry, [ox, oy] = this.maskOffset(e);
+    const p = mirrorPoint(mode, this.map.width, this.map.height, e.x + ox, e.y + oy);
+    if (!p) return null;
+    const x = Math.round(p[0] - ox), y = Math.round(p[1] - oy);
+    if (Math.abs(x - e.x) <= 1 && Math.abs(y - e.y) <= 1) return null;
+    return { ...e, x, y };
+  }
+
+  // la voce gemella gia' nella mappa (stesso oggetto, entro 2 px), o null
+  twinOf(e) {
+    const t = this.twinAt(e);
+    if (!t) return null;
+    return this.map.instances.find((q) => q !== e && q.object === e.object && Math.abs(q.x - t.x) <= 2 && Math.abs(q.y - t.y) <= 2) || null;
+  }
+
+  // le voci e le loro gemelle (senza doppioni)
+  withTwins(entries) {
+    const out = new Set(entries);
+    if (this.map.symmetry && this.map.symmetry !== "none") for (const e of entries) { const t = this.twinOf(e); if (t) out.add(t); }
+    return [...out];
+  }
 
   // ------------------------------------------------------------- scelta
 

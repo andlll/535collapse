@@ -14,12 +14,94 @@ export const MAP_COLOUR = 12632256, MAP_BACKGROUND = "green1";
 // sono, come in tools/07
 export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths"];
 
+// [§9.184] Le informazioni delle mappe dell'editor, in piu' (tools/07 e il
+// gioco le ignorano): la descrizione (la schermata della schermaglia), la
+// CPU (come nella schermaglia, piu' "statica", che non fa nulla: §9.182) e
+// la simmetria (spenta, diagonale, orizzontale, verticale: §9.182-§9.183).
+export const MAP_SIZES = [4000, 5000, 6000, 7000, 8000, 9000];
+export const MAP_BACKGROUNDS = ["green1", "city2", "city1"];
+export const CPU_DIFFICULTY = ["easy", "normal", "hard", "rigged"];
+export const CPU_STYLE = ["balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
+export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
+export const NAME_MAX = 40, DESC_MAX = 600;
+
 // Una mappa vuota: 6000 x 6000, sfondo green1. Manager e vista iniziale: li
 // aggiunge l'editor (§9.180, "Da decidere").
 export function newMap({ name = "", width = 6000, height = 6000, background = MAP_BACKGROUND } = {}) {
   return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: MAP_COLOUR,
            view: { x: 0, y: 0, w: 3000, h: 2000 },
-           instances: [], roads: [], rivers: [], bridges: [], patches: [] };
+           instances: [], roads: [], rivers: [], bridges: [], patches: [],
+           description: "", cpu: { difficulty: "normal", style: "balanced" }, symmetry: "none" };
+}
+
+// [§9.184] La convalida di una mappa che arriva da fuori (un file, il
+// browser; roadmap R2: "saranno scambiati fra sconosciuti"): il formato,
+// misure e numeri dentro i limiti, solo oggetti di `allowed` (con la
+// variante fra le loro), niente campi sconosciuti. Restituisce { map } (una
+// copia pulita, con le informazioni che mancano ai valori di partenza) o
+// { errors }.
+const LIMITS = { instances: 20000, features: 300, points: 4000, margin: 4000 };
+export function validateMap(data, allowed, objects) {
+  const errors = [], bad = (m) => { if (errors.length < 20) errors.push(m); };
+  const num = (v) => typeof v === "number" && Number.isFinite(v);
+  const str = (v, max) => typeof v === "string" && v.length <= max;
+  if (!data || typeof data !== "object" || data.format !== MAP_FORMAT) return { errors: ["non e' una mappa"] };
+  if (!(Number.isInteger(data.version) && data.version >= 1 && data.version <= MAP_VERSION)) bad("versione " + data.version);
+  const W = data.width, H = data.height;
+  if (!MAP_SIZES.includes(W) || !MAP_SIZES.includes(H)) bad(`misure ${W} x ${H}`);
+  if (!MAP_BACKGROUNDS.includes(data.background)) bad("sfondo " + data.background);
+  if (!Array.isArray(data.instances) || data.instances.length > LIMITS.instances) return { errors: [...errors, "istanze"] };
+  const M = LIMITS.margin, inside = (x, y) => num(x) && num(y) && x >= -M && y >= -M && x <= W + M && y <= H + M;
+  const instances = [];
+  for (const e of data.instances) {
+    if (!e || !allowed.has(e.object) || !objects[e.object]) { bad("oggetto " + (e && e.object)); continue; }
+    const i = { object: e.object, x: e.x, y: e.y, scale_x: e.scale_x ?? 1, scale_y: e.scale_y ?? 1, rotation: e.rotation ?? 0 };
+    if (!inside(i.x, i.y) || ![i.scale_x, i.scale_y, i.rotation].every(num) || Math.abs(i.scale_x) > 8 || Math.abs(i.scale_y) > 8
+        || !i.scale_x || !i.scale_y) { bad("posizione di " + e.object); continue; }
+    if (e.sprite !== undefined) {
+      // le varianti del gioco, o lo sprite dell'oggetto (quello della tile di
+      // Tiled: tools/12 lo scrive per gli alberi finti, alb1_F)
+      const ch = [...(objects[e.object].choices || []), objects[e.object].sprite];
+      if (!ch.includes(e.sprite)) { bad("variante " + e.sprite); continue; }
+      i.sprite = e.sprite;
+    }
+    instances.push(i);
+  }
+  const pts = (p) => Array.isArray(p) && p.length >= 2 && p.length <= LIMITS.points && p.every((q) => Array.isArray(q) && q.length === 2 && inside(q[0], q[1]));
+  // le parti a linee e a forme: solo i campi che il gioco legge (tools/12),
+  // ognuno controllato
+  const list = (key, fields, check) => {
+    const l = data[key] === undefined ? [] : data[key];
+    if (!Array.isArray(l) || l.length > LIMITS.features) { bad(key); return []; }
+    const out = [];
+    for (const f of l) {
+      if (!f || typeof f !== "object" || !check(f)) { bad(key); continue; }
+      const c = { pts: f.pts.map((q) => [q[0], q[1]]) };
+      for (const k of fields) if (f[k] !== undefined) c[k] = f[k];
+      out.push(c);
+    }
+    return out;
+  };
+  const width = (f, k) => f[k] === undefined || (num(f[k]) && f[k] > 0 && f[k] <= 2000);
+  const unit = (f, k, max) => f[k] === undefined || (num(f[k]) && f[k] >= 0 && f[k] <= max);
+  const map = {
+    format: MAP_FORMAT, version: MAP_VERSION, name: str(data.name, NAME_MAX) ? data.name : "", width: W, height: H,
+    background: data.background, colour: num(data.colour) ? data.colour : MAP_COLOUR,
+    view: data.view && [data.view.x, data.view.y, data.view.w, data.view.h].every(num) ? { x: data.view.x, y: data.view.y, w: data.view.w, h: data.view.h }
+      : { x: 0, y: 0, w: 3000, h: 2000 },
+    instances,
+    roads: list("roads", ["width", "widthEnd", "kind", "density"],
+                (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd") && [1, 2].includes(f.kind ?? 1) && unit(f, "density", 5)),
+    rivers: list("rivers", ["width", "widthEnd"], (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd")),
+    bridges: list("bridges", [], (f) => pts(f.pts)),
+    patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || MAP_BACKGROUNDS.includes(f.bg))
+                  && unit(f, "feather", 400) && unit(f, "alpha", 1)),
+    description: str(data.description, DESC_MAX) ? data.description : "",
+    cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "normal",
+           style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "balanced" },
+    symmetry: SYMMETRY.includes(data.symmetry) ? data.symmetry : "none",
+  };
+  return errors.length ? { errors } : { map };
 }
 
 // Room del motore -> scenario. Le istanze: [oggetto, x, y, scala x, scala y,
