@@ -61,14 +61,14 @@ il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
 che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
 banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
 
-**Editor di mappe** (§9.180-§9.181, roadmap R6): fatto lo scheletro (dal
-menu "Giocatore singolo" -> "Editor di mappe", `?room=editor`: la colonna
-degli strumenti e il riquadro dal disegno dell'autore) e la mappa vera
-(disegnata col motore, anche tutta intera; "Apri mappa" con le mappe del
-gioco). Restano da decidere con l'autore il "controllo CPU", la password,
-la simmetria e le mappe dell'editor nella schermaglia (§9.180, "Da
-decidere"); poi le fasi F3-F5 (inserisci e sposta con annulla, salva e apri
-su browser e file; polilinea e pennello; prova mappa e impostazioni).
+**Editor di mappe** (§9.180-§9.182, roadmap R6): per i giocatori, mappe da
+schermaglia. Fatti lo scheletro (dal menu "Giocatore singolo" -> "Editor di
+mappe", `?room=editor`, dal disegno dell'autore), la mappa vera (col motore,
+anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
+annulla e ripeti, "Nuova mappa" vuota. Da fare (§9.182, "Prossimo"): salva
+e apri (browser e file), impostazioni (nome, descrizione, misura, sfondo,
+CPU, simmetria), polilinea e pennello, prova mappa, le mappe dell'editor
+nella schermaglia e nella partita online. In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -12672,22 +12672,20 @@ con annulla e ripeti, salva e apri (browser e file); F4 polilinea e
 pennello; F5 prova mappa e impostazioni, le mappe dell'editor nella
 schermaglia; poi gli scenari con regia (R2) e la condivisione.
 
-**Da decidere con l'autore** (le prime tre decise in §9.181: "facciamo la
-cosa piu' comoda per noi")
-- [x] Che mappe: prima la schermaglia, poi gli scenari con regia (§9.181).
-- [x] Per chi: anche per noi; Tiled era un esempio, l'editor non lo imita
-  ne' resta compatibile con lui (§9.181).
-- [x] Il pennello dei boschi: alberi veri dipinti uno per uno (§9.181).
-- [ ] "Controllo CPU" nelle impostazioni: cosa intende l'autore? (Quale
-  parte gioca la CPU, lo stile e la difficolta' consigliati per la mappa,
-  altro?)
-- [ ] "Password?": a cosa serve? Una mappa che si gioca ma non si modifica
-  non si puo' proteggere davvero (il file lo legge il gioco, quindi chiunque
-  puo' leggerlo); si puo' solo fare in modo che l'editor non la riapra senza
-  la password.
-- [ ] La simmetria automatica per le mappe della schermaglia: serve?
-- [ ] Le mappe fatte con l'editor nella schermata della schermaglia (e in
-  quella della partita online)?
+**Da decidere con l'autore** (decise in §9.181 e §9.182)
+- [x] Che mappe: solo mappe da schermaglia (§9.182).
+- [x] Per chi: solo per i giocatori, per ora; gli scenari della campagna non
+  si modificano, le mappe della schermaglia sono i modelli (§9.182, al posto
+  di §9.181).
+- [x] I boschi: tutti e due, alberi uno per uno con "Inserisci" e col
+  pennello, che regola larghezza e densita' (§9.182).
+- [x] "Controllo CPU": come nella schermaglia, piu' una CPU statica che non
+  fa nulla (§9.182).
+- [ ] "Password?": in sospeso (l'autore non ricorda a cosa servisse).
+- [x] Simmetria: spenta di partenza; si accende diagonale, orizzontale o
+  verticale rispetto alla mappa (§9.182).
+- [x] Le mappe dell'editor nella schermata della schermaglia, se caricate;
+  anche nella partita online, col blu che la riceve all'inizio (§9.182).
 
 ### 9.181 L'editor di mappe, fase 2: la mappa vera e "Apri mappa"
 
@@ -12765,4 +12763,117 @@ da tools/07, dalle categorie di tools/tiledkit.py), "Inserisci" col
 fantasma sotto il puntatore, "Sposta" (selezione, trascinare, copia e
 incolla, specchia, elimina), annulla e ripeti; "Nuova mappa" (misura,
 sfondo), "Salva" e "Apri" anche dal browser e da file.
+
+### 9.182 L'editor di mappe: le decisioni dell'autore, "Inserisci" e "Sposta"
+
+Risposte dell'autore alle domande di §9.180 (22 novembre 2026, stessa PR,
+versione 0.2615):
+1. **Solo mappe da schermaglia**, per cominciare.
+2. **Solo per i giocatori**, per ora: non modificano gli scenari esistenti
+   (i livelli della campagna, il tutorial), ma le mappe della schermaglia
+   sono disponibili come **modelli** per partire. Corregge §9.181 ("anche lo
+   strumento nostro", "Apri mappa" coi livelli): "Apri mappa" ora offre solo
+   le cinque schermaglie, e la mappa aperta e' una mappa nuova ("Nuova mappa
+   da Padania", senza nome).
+3. **I boschi: tutti e due**, alberi uno per uno con "Inserisci" e col
+   pennello, che regola **larghezza e densita'**.
+4. **Controllo CPU: come nella schermaglia** (difficolta', stile), **piu' una
+   CPU statica che non fa nulla** (per provare la mappa con calma).
+5. **Password: in sospeso** (l'autore non ricorda a cosa servisse).
+6. **Simmetria spenta di partenza**; si accende **diagonale, orizzontale o
+   verticale** rispetto alla mappa. Come la intendo (da confermare
+   all'autore): diagonale = la rotazione di 180 gradi attorno al centro
+   delle cinque schermaglie di oggi (basi in angoli opposti, tools/16);
+   orizzontale = le due meta' a sinistra e a destra (specchio sull'asse
+   verticale); verticale = sopra e sotto (specchio sull'asse orizzontale).
+   Come in tools/16 si sposta il centro della maschera e lo sprite resta
+   com'e' (uno specchiato o capovolto avrebbe le ombre dalla parte
+   sbagliata, a destra in basso negli edifici).
+7. **Le mappe dell'editor nella schermata della schermaglia**, se caricate;
+   e anche **nella partita online**, col blu che scarica la mappa da solo
+   all'inizio. Domanda dell'autore: "tanto e' un invio di un pacchetto dati
+   allo stesso modo dei comandi della partita, giusto?" *Si', nello stesso
+   canale diretto fra i due browser* (il DataChannel di WebRTC dei comandi,
+   rtc.js), con tre differenze: (a) la mappa e' molto piu' grande di un
+   comando (Padania 73 KB di scenario, Silva 290 KB; compressa come i
+   `.dvgame` qualche decina di KB, contro poche decine di byte di un
+   comando): va spezzata in pezzi da 16 KB, la misura che tutti i browser
+   accettano; (b) va mandata prima che parta la partita, con l'impronta
+   della mappa nel codice di invito, cosi' il blu controlla di aver
+   ricevuto proprio quella (le due partite devono partire identiche, §9.152)
+   e la convalida come ogni file che arriva da fuori; (c) oggi chi entra
+   apre la mappa (per nome) prima di collegarsi, e la partita nasce col
+   caricamento della pagina: con una mappa dell'editor il blu deve
+   collegarsi, ricevere la mappa e solo allora costruire la partita, nella
+   stessa pagina (ricaricarla chiuderebbe il collegamento). E' la parte piu'
+   lunga del lavoro.
+
+**Fatto: "Inserisci", "Sposta", annulla e ripeti** (fase F3, prima parte).
+- `editmap.js` (nuovo): la mappa che si modifica. La mappa (lo scenario) e'
+  la verita'; la scena la disegna (World senza comportamenti, il suolo cotto)
+  e tiene il legame voce -> istanza. Ogni modifica e' una lista di cambi
+  (voce, com'era, come diventa, il suo posto nella lista), quindi annulla e
+  ripeti (fino a 200) rimettono le voci anche al loro posto nell'ordine di
+  creazione. Un'istanza tolta si porta via le sue particelle (le macchie) e
+  i suoi "figli" (fette, balaustre); se cambia un oggetto cotto nel suolo
+  (strade e prati dipinti, chiazze, ponti dipinti) il suolo si rifa'.
+  `buildScene` di §9.181 e' diventato `EditScene`.
+- **Il catalogo** (`CATALOG`): gli oggetti delle cinque mappe della
+  schermaglia e i loro simili, in sei schede: partenze (il `centro`, al
+  piu' due: un terzo non si mette e un avviso lo dice), risorse (oro,
+  pietra grande e piccola, le tre rovine), alberi (albero e albero finto),
+  prati e fiori (le macchie d'erba, di grano e di fili, i fiori, l'erba alta
+  graa11-15, prati, erba e chiazze dipinti), montagne (le dieci), citta'
+  (gli edifici romani `ocr_*`, colonne, fontane, statue). Niente unita' ne'
+  edifici dei giocatori (si parte col centro e 3 lavoratori, §9.118). Fiumi,
+  strade e ponti saranno della polilinea. Il `manager` dei modelli resta
+  nella mappa ma non si sceglie ne' si tocca.
+- **"Inserisci"**: nel riquadro in basso le sei schede e gli oggetti della
+  scheda in caselle con la miniatura (lo sprite rimpicciolito; le macchie
+  senza sprite: un prato coi loro colori), le frecce o la rotella se non ci
+  stanno tutti (la citta' ha 34 oggetti). Scelto un oggetto, il suo
+  fantasma segue il puntatore (rosso fuori dalla mappa o se le partenze
+  sono gia' due); un clic lo mette, il destro o Esc lo lasciano. Gli alberi
+  hanno una variante a caso (alb1..alb8), scritta nella mappa (`sprite`,
+  come fa tools/12) e mostrata gia' nel fantasma. Gli sprite della
+  tavolozza si caricano in sottofondo la prima volta (la tavolozza scrive
+  "Caricamento"): prima bloccavano l'editor per qualche secondo, trovato con
+  la prova nel browser.
+- **"Sposta"**: un clic sceglie la voce piu' in alto sotto il puntatore
+  (dentro il riquadro dello sprite; le macchie, senza sprite, hanno un
+  segnaposto tondo dei loro colori), Maiusc aggiunge o toglie; trascinare
+  sposta la scelta (dal vivo, la modifica vera lasciando il tasto: un solo
+  passo da annullare); trascinare fuori dagli oggetti fa il riquadro di
+  scelta, e con Ctrl il riquadro c'e' sempre (in un bosco ogni clic cade su
+  un albero: trovato con la prova); Canc elimina, M specchia (scala x -1),
+  Ctrl+C e Ctrl+V copiano e incollano sotto il puntatore (senza passare le
+  due partenze), Ctrl+A sceglie tutto, il destro o Esc lasciano la scelta.
+  La scelta ha il riquadro bianco, la voce sotto il puntatore uno sottile.
+- Con ogni strumento: Ctrl+Z annulla, Ctrl+Y (o Ctrl+Maiusc+Z) ripete. Sul
+  Mac si usa Ctrl, non Cmd (il gioco non legge il tasto Cmd).
+- **"Nuova mappa"**: per ora la mappa vuota di partenza (6000 x 6000,
+  green1); misura e sfondo arriveranno con le impostazioni.
+- **La conferma**: uscendo (Indietro, Esc) o aprendo un'altra mappa con una
+  mappa cambiata, "Le modifiche a questa mappa andranno perse", Continua o
+  Annulla. Esc prima lascia l'oggetto o la scelta, poi esce.
+- Testi nuovi nelle sei lingue (schede, comandi, avvisi, conferma).
+
+Prove: `editor.test.mjs` (in piu': i modelli sono le cinque schermaglie; la
+conferma dentro la finestra; la tavolozza dentro il riquadro, le frecce e lo
+scorrimento; ogni oggetto del catalogo esiste fra gli oggetti del gioco; una
+scena vera in node (senza atlas): aggiungi, modifica, togli, annulla tre
+volte e ripeti tre volte, con le voci al loro posto, le particelle della
+macchia tolte con lei, il manager che non si sceglie), `editor.mjs` (in
+piu': i modelli, Padania come mappa nuova senza nome, la miniera messa dalla
+tavolozza sotto il puntatore, annulla e ripeti, il destro, la miniera
+scelta, trascinata e tolta con Canc, la conferma con Annulla e con
+Continua), test unitari (127), screenshot (tavolozza, fantasma, scelta,
+conferma, modelli).
+
+**Prossimo**: "Salva" e "Apri" (le proprie mappe nel browser, in IndexedDB
+come i salvataggi, e su file `.dvmap` da scambiare, con la convalida di
+R2); le impostazioni (nome, descrizione, misura, sfondo, CPU con la statica,
+simmetria); il pennello (boschi con larghezza e densita', texture) e la
+polilinea (fiumi, strade, ponti); "Prova mappa"; le mappe dell'editor nella
+schermata della schermaglia e poi nella partita online.
 

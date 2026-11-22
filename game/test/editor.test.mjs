@@ -4,9 +4,10 @@
 // tradotti.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
-         openLayout, GAME_MAPS, mapLabel, variantOf } from "../src/editor.js";
+         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout } from "../src/editor.js";
+import { EditScene, CATALOG, variantOf, SYSTEM, START } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom } from "../src/mapfile.js";
 import { lodFor } from "../src/ground.js";
 import { setLanguage } from "../src/i18n.js";
@@ -106,18 +107,40 @@ test("§9.181 scenario e room: andata e ritorno", async () => {
   }
 });
 
-test("§9.181 Apri mappa: tutorial, livelli e schermaglie in due colonne", () => {
-  assert.deepEqual(GAME_MAPS[0].slice(0, 2), ["match", "lvl01"]);
-  assert.ok(GAME_MAPS[1].includes("sk_padus"));
+// [§9.182, decisione dell'autore] "Apri mappa": solo le mappe della
+// schermaglia, come modelli (niente tutorial ne' livelli della campagna)
+test("§9.182 Apri mappa: le cinque schermaglie come modelli", () => {
+  assert.deepEqual(TEMPLATES, ["sk_padus", "sk_silva", "sk_rivo", "sk_urbs", "sk_bardonis"]);
   for (const [W, H] of [[1920, 1080], [1280, 720]]) {
     const O = openLayout(W, H);
-    assert.equal(O.rows.length, GAME_MAPS[0].length + GAME_MAPS[1].length);
-    for (const q of O.rows) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.title[1] && q.y2 <= H, `${q.room} ${W}x${H}`);
+    assert.equal(O.rows.length, TEMPLATES.length);
+    for (const q of O.rows) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.sub[1] && q.y2 <= H, `${q.room} ${W}x${H}`);
+    const C = confirmLayout(W, H);
+    assert.ok(C.yes[2] < C.no[0] && C.no[2] <= W && C.yes[3] <= H);
   }
   setLanguage("it");
-  assert.equal(mapLabel("match"), "Tutorial");
   assert.equal(mapLabel("sk_padus"), "Padania");
   setLanguage("en");
+});
+
+// [§9.182] la tavolozza: schede dentro il riquadro, caselle fra le frecce,
+// lo scorrimento limitato
+test("§9.182 la tavolozza di Inserisci", () => {
+  const L = editorLayout(1600, 900), [x1, y1, x2, y2] = L.panel;
+  CATALOG.forEach((cat, k) => {
+    const P = paletteLayout(L.panel, k, 0);
+    assert.equal(P.tabs.length, CATALOG.length);
+    for (const q of [...P.tabs, ...P.cells]) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y1 >= y1 + 54 && q.y2 <= y2, `${cat.key}`);
+    assert.equal(P.cells.length, Math.min(P.per, cat.objects.length));
+    assert.equal(P.max, Math.max(0, cat.objects.length - P.per));
+    assert.ok(!P.prev && (P.max > 0) === !!P.next);
+    const end = paletteLayout(L.panel, k, 999);
+    assert.equal(end.scroll, end.max);
+    if (end.max) assert.ok(end.prev && !end.next);
+  });
+  // la citta' (34 oggetti) non ci sta in una fila: si scorre
+  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "city"), 0).max > 0);
+  assert.deepEqual(CATALOG[0].objects, [START]);
 });
 
 test("§9.181 varianti fisse e livelli di dettaglio del suolo", () => {
@@ -127,4 +150,50 @@ test("§9.181 varianti fisse e livelli di dettaglio del suolo", () => {
     assert.equal(v, variantOf(k * 137.5, k * 91, 8));
   }
   assert.deepEqual([0.5, 1, 1.9, 2, 3.9, 4, 7, 8, 100].map(lodFor), [1, 1, 1, 2, 2, 4, 4, 8, 16]);
+});
+
+// [§9.182] Le modifiche della scena e annulla/ripeti, con gli oggetti veri
+// (game/assets/objects.json, scritto da tools/07: la CI lo fa prima delle
+// prove) e una scena senza sprite (niente atlas in node)
+test("§9.182 modifiche, annulla e ripeti", { skip: !existsSync(new URL("../assets/objects.json", import.meta.url)) }, () => {
+  const objects = JSON.parse(readFileSync(new URL("../assets/objects.json", import.meta.url), "utf8"));
+  for (const k of CATALOG) for (const n of k.objects) assert.ok(objects[n], `nel catalogo ma non fra gli oggetti: ${n}`);
+  const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
+  const map = newMap();
+  map.instances.push({ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 },
+                     { object: "albero", x: 500, y: 500, scale_x: 1, scale_y: 1, rotation: 0 });
+  const S = new EditScene({ r: null, assets, objects, masks: {} }, map);
+  const alive = () => S.world.instances.filter((i) => i.alive && i.src).length;
+  assert.equal(alive(), 2);
+  assert.equal(S.version, 0);
+  const [a, b] = S.add([{ object: "miniera_oro", x: 900, y: 900, scale_x: 1, scale_y: 1, rotation: 0 },
+                        { object: "burst_erba1", x: 1500, y: 1500, scale_x: 1, scale_y: 1, rotation: 0 }]);
+  assert.equal(map.instances.length, 4);
+  assert.ok(S.instOf(b).grass_rows.length > 0, "la macchia ha le sue particelle");
+  const systems = S.world.particles.systems.length;
+  S.modify([a], (e) => ({ x: e.x + 100, scale_x: -1 }));
+  assert.equal(S.instOf(a).x, 1000);
+  assert.equal(S.instOf(a).image_xscale, -1);
+  assert.equal(S.instOf(a).depth, -900);
+  S.remove([b, map.instances[1]]);
+  assert.deepEqual(map.instances.map((e) => e.object), ["manager", "miniera_oro"]);
+  assert.ok(S.world.particles.systems.filter((q) => q.alive !== false).length < systems, "via le particelle della macchia");
+  // annulla: tornano al loro posto, nell'ordine di prima
+  S.undo();
+  assert.deepEqual(map.instances.map((e) => e.object), ["manager", "albero", "miniera_oro", "burst_erba1"]);
+  S.undo();
+  assert.equal(a.x, 900);
+  assert.equal(S.instOf(a).image_xscale, 1);
+  S.undo();
+  assert.equal(map.instances.length, 2);
+  assert.equal(alive(), 2);
+  S.redo(); S.redo(); S.redo();
+  assert.deepEqual(map.instances.map((e) => e.object), ["manager", "miniera_oro"]);
+  assert.equal(a.x, 1000);
+  // la scelta: il manager non si prende, le macchie dal centro
+  assert.ok(SYSTEM.has("manager"));
+  assert.equal(S.pick(100, 100, 20), null);
+  assert.deepEqual(S.inBox(0, 0, 2000, 2000), [a]);
+  assert.equal(S.starts(), 0);
+  assert.ok(S.version > 0);
 });
