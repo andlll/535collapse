@@ -73,9 +73,12 @@ degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
 densita', texture) e la copertina (§9.185-§9.186), la polilinea per fiumi
 e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
 (Salva con nome, Ctrl+S sul file) e "Prova mappa" con la CPU statica
-(§9.188), che reagisce ma non ha economia ne' gestione (§9.189). Da fare: le mappe dell'editor nella schermaglia (con la
-copertina e la CPU a scelta o fissa) e nella partita online; i ponti
-(dopo, decisione dell'autore). In sospeso la password.
+(§9.188), che reagisce ma non ha economia ne' gestione (§9.189); le mappe
+dell'editor nella schermaglia (§9.190: dopo le cinque del gioco, dal
+browser o da file, con la copertina o il disegno della mappa e la CPU fissa
+o a scelta; la partita si salva con la mappa dentro). Da fare: la partita
+online sulle mappe dell'editor (da discutere con l'autore); i ponti (dopo,
+decisione dell'autore). In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13349,3 +13352,76 @@ lvl05), `saves.mjs`.
 
 **Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
 copertina, la CPU a scelta o fissa) e poi nella partita online.
+
+### 9.190 Le mappe dell'editor nella schermaglia
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "intanto terminiamo la
+parte offline, poi su come implementare la parte online in modo furbo
+discutiamo insieme". La parte offline: le mappe dell'editor nella schermata
+della schermaglia ("si, se caricate", §9.182), con la copertina e la CPU a
+scelta o fissa (§9.184-§9.186).
+
+**La schermata** (menu.js, skuser.js):
+- dopo le cinque mappe del gioco, con le stesse frecce, scorrono le mappe
+  dell'editor salvate nel browser (lette all'apertura della schermata; la
+  mappa mostrata si legge e si convalida la prima volta, come nell'editor:
+  mapfile.js validateMap) e quelle aperte con **"Apri un file…"** (sotto il
+  riquadro della mappa, a sinistra di "Inizia"): una `.dvmap` scelta col
+  sistema, che vale per quella volta (non entra fra le mappe del browser);
+- la foto e' la **copertina** della mappa (§9.185) o, senza, un **disegno
+  della mappa** (skuser.js `mapPreview`, 720 x 480 come le foto: vista
+  dall'alto coi colori medi degli sfondi, macchie, fiumi, strade, montagne,
+  alberi, risorse, citta' e le due partenze), messo in una texture del gioco
+  (`registerImage`: uno sprite con un suo gruppo d'atlas di una pagina; i
+  gruppi aggiunti non si ricaricano dopo la perdita del contesto WebGL);
+- il nome e la descrizione sono quelli dell'autore della mappa (non
+  tradotti); la descrizione si taglia a parole, coi puntini, all'altezza di
+  quelle delle mappe del gioco (le mappe dell'editor arrivano a 600
+  caratteri); il nome, se lungo, sulla riga fra le frecce;
+- **la CPU**: difficolta' e stile fissati dalla mappa si vedono col valore
+  della mappa, in grigio e col lucchetto (`ico_lock`), e non si cambiano; "a
+  scelta del giocatore" restano liberi. La statica ha la sua icona: il letto
+  (`ico_idle`). Le scelte del giocatore restano le sue (la mappa non le
+  sovrascrive);
+- una mappa senza due partenze (o che non si legge) si vede col motivo al
+  posto della descrizione, e "Inizia" e' spento;
+- si ricorda l'ultima mappa dell'editor scelta (localStorage
+  `535.skirmish.user`): riaprendo la schermata si riparte da quella;
+- nella partita online ("Create game") niente mappe dell'editor ne' "Apri
+  un file": e' la parte da discutere.
+
+**La partita** (app.js): "Inizia" mette la room (mapfile.js `testRoom`) e le
+opzioni (`skForMap`: quelle del giocatore con la CPU della mappa, la stessa
+funzione di "Prova mappa") nella voce di servizio `__play__` e apre
+`?room=custom&play=1`. E' la room `custom` di "Prova mappa" (§9.188), ma da
+partita vera: la pausa di sempre (con "Salva e carica"), il salvataggio
+automatico, la vittoria e la sconfitta tornano al menu, "Ricomincia" rigioca
+la stessa mappa.
+
+**I salvataggi**: la room non e' fra quelle del gioco, quindi la partita si
+salva con la mappa dentro (`custom`: room, opzioni, nome; poche decine di
+KB, compresse). Lo slot e' `custom` (uno, come per ogni room), nell'elenco
+dei salvataggi col nome della mappa ("Schermaglia: <nome>"; anche le
+schermaglie del gioco ora col nome della mappa, prima "sk_padus").
+Caricando (`?room=custom&load=slot` o da file) la room viene dal
+salvataggio, torna in `__play__` (per "Ricomincia") e l'indirizzo diventa
+`&play=1`. Trovato provando: skirmishPrepare cambia le istanze della room
+(il centro della CPU diventa `enemy_centro`) e la room cambiata finiva nel
+salvataggio, e "Ricomincia" dopo un caricamento partiva senza CPU; ora il
+gioco lavora su una copia.
+
+"Static" nelle lingue: "Statica (senza economia)" (era "non fa nulla",
+§9.189). Testo nuovo: "Mappa senza nome".
+
+Prove: `editor.test.mjs` (in piu': la CPU della mappa fissata o a scelta,
+le etichette degli slot; 139 test), `skcustom.mjs` (nuova, nel CI: tre
+mappe nel browser, l'elenco dopo le cinque; A col disegno, difficolta' e
+stile bloccati; B con la copertina e le opzioni libere; C con una partenza,
+"Inizia" spento; la partita su A con la CPU della mappa, non in prova;
+salvata col nome, caricata, "Ricomincia", il menu; riaperta su A; da file;
+online senza mappe dell'editor), `editor.mjs`, `saves.mjs`, `ui.mjs`,
+`netfake.mjs`, `pvp.mjs` (una volta instabile, poi a posto: anche senza
+queste modifiche); screenshot (la schermata con A, B e C, la partita).
+
+**Prossimo**: con l'autore, come fare la partita online sulle mappe
+dell'editor.

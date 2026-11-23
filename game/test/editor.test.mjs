@@ -15,6 +15,8 @@ import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
+import { skForMap, fixedBy, startsOf } from "../src/skuser.js";
+import { roomLabel } from "../src/menu.js";
 import { setLanguage } from "../src/i18n.js";
 import { TEXTS } from "../src/texts.js";
 
@@ -484,4 +486,21 @@ test("§9.189 la CPU statica: la regia passiva", () => {
   assert.equal(bal.passive, false);
   assert.equal(st.startWorkers, 3);
   assert.deepEqual(st.start, bal.start);
+});
+
+// [§9.190] le mappe dell'editor nella schermaglia: la CPU fissata dalla mappa
+// o a scelta del giocatore; le partite salvate col nome della mappa
+test("§9.190 la CPU della mappa e le etichette degli slot", () => {
+  const sk = { map: "sk_padus", difficulty: "easy", style: "balanced", victory: "conquest" };
+  assert.deepEqual(skForMap(sk, { difficulty: "hard", style: "static" }), { ...sk, map: TEST_ROOM, difficulty: "hard", style: "static" });
+  assert.deepEqual(skForMap(sk, { difficulty: "choice", style: "choice" }), { ...sk, map: TEST_ROOM });
+  assert.equal(fixedBy({ cpu: { difficulty: "choice", style: "raider" } }, "difficulty"), null);
+  assert.equal(fixedBy({ cpu: { difficulty: "choice", style: "raider" } }, "style"), "raider");
+  assert.equal(fixedBy(null, "style"), null);
+  assert.equal(startsOf({ instances: [{ object: "centro" }, { object: "albero" }, { object: "centro" }] }), 2);
+  setLanguage("en");
+  assert.equal(roomLabel("sk_padus"), "Skirmish: Padania");
+  assert.equal(roomLabel("custom", { name: "Pianura" }), "Skirmish: Pianura");
+  assert.equal(roomLabel("custom", {}), "Skirmish: Untitled map");
+  assert.equal(roomLabel("lvl01").startsWith("1. "), true);
 });

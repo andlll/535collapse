@@ -45,7 +45,7 @@ import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
-import { enemyManagerMenu, fogController, fog01, VERSION } from "./menu.js";
+import { enemyManagerMenu, fogController, fog01, VERSION, skLayout } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
 import { enemyManagerLv7 } from "./lvl07.js"; // §9.178
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
@@ -160,14 +160,36 @@ async function main() {
   if (params.has("seed")) simSeed(Number(params.get("seed")) >>> 0);
   else if (!params.has("nostart")) simSeed(freshSeed());
   // [§9.188] "Prova mappa": la room dell'editor dal browser (mapstore.js), con
-  // le opzioni della schermaglia; senza (la pagina ricaricata dopo), l'editor
-  let test = null;
+  // le opzioni della schermaglia; senza (la pagina ricaricata dopo), l'editor.
+  // [§9.190] Anche la partita vera su una mappa dell'editor, dalla schermata
+  // della schermaglia (&play=1, skuser.js): la room e le opzioni da "__play__";
+  // da una partita salvata (&load=...) dentro il salvataggio (custom), che
+  // torna in "__play__" (per "Ricomincia"). Senza: il menu.
+  let test = null, play = null, early = null;
   if (roomName === "custom") {
-    const { takeService } = await import("./mapstore.js");
-    test = await takeService("__test__", true).catch(() => null);
-    if (!test) { location.search = "?room=editor&resume=1"; return; }
+    const { takeService, putService } = await import("./mapstore.js");
+    const { PLAY } = await import("./skuser.js");
+    const lm = net ? null : params.get("load");
+    if (lm) {
+      early = lm === "slot" ? await loadSlot(roomName) : await takePending();
+      if (early && early.custom) {
+        play = early.custom;
+        await putService(PLAY, play).catch((e) => console.warn("[custom] Ricomincia non disponibile:", e));
+        params.set("play", "1");
+      } else early = null;
+    } else if (params.get("play") === "1") play = await takeService(PLAY, true).catch(() => null);
+    if (play) { const { id, ...rest } = play; play = rest; } // (la chiave della voce di servizio)
+    else test = await takeService("__test__", true).catch(() => null);
+    if (!test && !play) {
+      if (lm) toast(tr("Not a valid save file"), "warning");
+      location.search = lm || params.get("play") === "1" ? "?room=menu" : "?room=editor&resume=1";
+      return;
+    }
   }
-  const room = test ? test.room : await (await fetch(`assets/rooms/${roomName}.json`)).json();
+  const custom = test || play; // §9.190
+  // (una copia: skirmishPrepare cambia le istanze, e la room della mappa
+  // dell'editor va nei salvataggi com'era)
+  const room = custom ? JSON.parse(JSON.stringify(custom.room)) : await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
                     [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
@@ -429,7 +451,7 @@ async function main() {
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
   const skParams = net ? { ...net.sk, pvp } // §9.156: le opzioni di chi ha creato la partita
-    : test ? test.sk // §9.188: le opzioni della prova (editor.js)
+    : custom && !early ? custom.sk // §9.188: le opzioni della prova (editor.js); §9.190: della partita (skuser.js)
     : isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
   // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
   // sprite blu per il disegno (p2sprites.js)
@@ -449,7 +471,7 @@ async function main() {
   await loadSlotIndex(); // §9.107: le intestazioni degli slot in IndexedDB, per i menu
   let saved = null;
   if (loadMode) {
-    saved = loadMode === "slot" ? await loadSlot(roomName) : await takePending();
+    saved = early || (loadMode === "slot" ? await loadSlot(roomName) : await takePending()); // §9.190: early, la mappa dell'editor
     params.delete("load");
     history.replaceState(null, "", location.pathname + "?" + params.toString());
     if (!saved || saved.room !== roomName) { saved = null; toast(tr("Not a valid save file"), "warning"); }
@@ -577,7 +599,9 @@ async function main() {
     saveSettings(settings);
   };
   // Salvataggi (save.js, snapshot.js; menu di pausa, "Salva e carica")
-  const capture = () => captureGame({ world, g, manager, path, fog, cam, room: roomName });
+  // [§9.190] la partita su una mappa dell'editor si salva con la mappa (la
+  // room, le opzioni, il nome): la room non e' fra quelle del gioco
+  const capture = () => ({ ...captureGame({ world, g, manager, path, fog, cam, room: roomName }), ...(play ? { custom: play } : {}) });
   const campaignParam = () => (g.campagna === 1 ? "&campaign=1" : "");
   const saveGame = async (auto = false) => {
     try {
@@ -628,6 +652,7 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
+  world.hooks.toast = toast; // §9.190 (la schermata della schermaglia)
   // [§9.172] i pulsanti della sconfitta (endgame.js): ricomincia e carica,
   // non nella partita in rete
   if (!net) {
@@ -1048,6 +1073,7 @@ async function main() {
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+                    skLayout, // §9.190: la schermata della schermaglia, per le prove
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
     // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
     commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),

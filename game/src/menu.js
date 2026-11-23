@@ -41,6 +41,8 @@ import { saveUnlock } from "./progress.js";
 import { audio } from "./audio.js"; // §9.168
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
+import { userMapList, loadUserMap, openUserFile, playUserMap, registerImage, coverImage, skForMap, fixedBy, lastUserMap,
+         rememberUserMap } from "./skuser.js"; // §9.190
 import { Particles, partType } from "./particles.js";
 import { datan2, dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
@@ -118,10 +120,16 @@ function titleButtons(W, H, page = "title") {
 }
 // [Fase 4] il pannello delle partite salvate
 const ROW_H = 50, ROW_GAP = 12, PANEL_W = 640;
-export function roomLabel(room) {
+export function roomLabel(room, info = null) {
   if (room === "match") return tr("Tutorial");
   const n = { lvl01: 1, lvl02: 2, lvl03: 3, lvl04: 4, lvl05: 5, lvl06: 6, lvl07: 7 }[room];
-  return n ? n + ". " + tr(LEVELS[n - 1]) : room;
+  if (n) return n + ". " + tr(LEVELS[n - 1]);
+  // [§9.190] le schermaglie col nome della mappa (prima la room, "sk_padus");
+  // la mappa dell'editor col suo
+  const sk = SK_MAPS.find((m) => m.room === room);
+  if (sk) return tr("Skirmish") + ": " + tr(sk.name);
+  if (room === "custom") return tr("Skirmish") + ": " + ((info && info.name) || tr("Untitled map"));
+  return room;
 }
 // L'etichetta dello slot di una room (livello e data), o null se e' vuoto;
 // anche nel menu di pausa (pause.js, §9.39)
@@ -130,7 +138,7 @@ export function slotLabel(room) {
   if (!info) return null;
   let date = "";
   try { date = new Date(info.date).toLocaleString(getLanguage(), { dateStyle: "short", timeStyle: "short" }); } catch (e) { /* data non valida */ }
-  return roomLabel(room) + "  -  " + date;
+  return roomLabel(room, info) + "  -  " + date;
 }
 function loadRows(W, H) {
   const rows = [];
@@ -164,7 +172,7 @@ function loadRows(W, H) {
 const SK_KEYS = () => Object.keys(SK_OPTIONS);
 const skCardW = (W) => Math.min(440, W * 0.33);
 let skDescH = 150, skDescKey = "";
-function skLayout(W, H) {
+export function skLayout(W, H, net = false) { // (export: §9.190, le prove nel browser)
   const top = 110, gap = 18;
   const lx1 = Math.max(30, W * 0.05), LW = skCardW(W);
   const ch = Math.min(200, (H - top - 120 - 2 * gap) / 3);
@@ -192,6 +200,12 @@ function skLayout(W, H) {
   rows.push({ kind: "back", circle: [W - 50, 50, 30] });
   // (nella partita online, §9.157: "Create game", che apre la sala d'attesa)
   rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
+  // [§9.190] sotto il riquadro della mappa "Apri un file": una mappa
+  // dell'editor (.dvmap); non nella partita online
+  if (!net) {
+    const fy = Math.min(H - 59, Math.max(H - 100, card.y2 + 14));
+    rows.push({ kind: "file", x1: card.x1, y1: fy, x2: card.x2, y2: fy + 55 });
+  }
   return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
 // il valore dopo (dir 1) o prima (dir -1) di un parametro
@@ -199,13 +213,58 @@ function stepValue(key, v, dir) {
   const vs = SK_OPTIONS[key].values, k = vs.indexOf(v);
   return vs[((k < 0 ? 0 : k) + dir + vs.length) % vs.length];
 }
-// la mappa mostrata (anche quelle "in arrivo"): indice in SK_MAPS
-const shownMap = (i) => (i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
+// [§9.190] le mappe della schermata: quelle del gioco (anche quelle "in
+// arrivo") e, non nella partita online, quelle dell'editor (skuser.js: le
+// voci del browser, lette all'apertura, e quelle aperte da file)
+const skList = (i) => (i.skNet || !i.userMaps ? SK_MAPS : [...SK_MAPS, ...i.userMaps]);
+// la mappa mostrata: indice in skList
+const shownMap = (i) => Math.min(skList(i).length - 1, i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
+const mapAt = (i) => skList(i)[shownMap(i)];
+const playable = (m) => !!m.room || (!!m.user && m.state === "ok" && m.starts === 2);
 // [§9.156, decisione dell'autore] i parametri che valgono solo contro la CPU:
 // in grigio (e fermi) nella schermaglia della partita online ([§9.157]
 // i.skNet: "Multiplayer", "Create game")
 const CPU_ONLY = new Set(["difficulty", "style"]);
 const offline = (i, r) => !!i.skNet && r.kind === "opt" && CPU_ONLY.has(r.key);
+// [§9.190] difficolta' e stile fissati dalla mappa dell'editor mostrata (le
+// impostazioni della mappa, §9.184): in grigio col lucchetto, col valore
+// della mappa
+const userMapOf = (i) => { const m = mapAt(i); return m && m.user && m.state === "ok" ? m.map : null; };
+const locked = (i, r) => r.kind === "opt" && CPU_ONLY.has(r.key) && !!fixedBy(userMapOf(i), r.key);
+const held = (i, r) => offline(i, r) || locked(i, r);
+const optValue = (i, key) => (CPU_ONLY.has(key) && fixedBy(userMapOf(i), key)) || i.sk[key];
+// le misure dello sprite di un oggetto (il disegno delle mappe senza copertina)
+const sizeOf = (w) => (o) => { const ob = w.objects[o], s = ob && ob.sprite && w.assets.sprites[ob.sprite]; return s ? [s.width, s.height] : [100, 100]; };
+// la mappa dell'editor mostrata: letta (una volta) e la sua copertina in una
+// texture (una per mappa, "__skcover_N")
+let coverSeq = 0;
+function showUser(i, w) {
+  const m = mapAt(i);
+  if (!m || !m.user) return;
+  const cover = () => {
+    if (m.state !== "ok" || m.cover) return;
+    m.cover = "pending";
+    coverImage(m.map, sizeOf(w)).then((src) => registerImage(w.assets, "__skcover_" + coverSeq++, src))
+      .then((name) => { m.cover = name; }, (e) => { console.error(e); m.cover = "none"; });
+  };
+  if (m.state === "idle") loadUserMap(m, w.objects).then(cover); else cover();
+}
+// [§9.190] le mappe dell'editor del browser, all'apertura della schermata;
+// se l'ultima scelta e' fra loro (e non si e' gia' scelta un'altra mappa) si
+// mostra quella
+function loadUserMaps(i, w) {
+  i.userMaps = null;
+  userMapList().then((list) => {
+    if (!i.skmenu || i.skNet) return;
+    const shown = mapAt(i), files = (i.userMaps || []).filter((e) => e.file);
+    i.userMaps = [...list, ...files];
+    if (shown && shown.user) i.skMap = SK_MAPS.length + i.userMaps.indexOf(shown);
+    else if (i.skMap === null) {
+      const k = list.findIndex((e) => e.id === lastUserMap());
+      if (k >= 0) { i.skMap = SK_MAPS.length + k; showUser(i, w); }
+    }
+  });
+}
 
 export function enemyManagerMenu() {
   return {
@@ -268,10 +327,10 @@ export function enemyManagerMenu() {
       }
       i.skrow = -1;
       if (g.campagna === 0 && i.skmenu === 1) {
-        const L = skLayout(W, H);
+        const L = skLayout(W, H, i.skNet);
         L.rows.forEach((r, k) => {
-          if (r.kind === "start" && !SK_MAPS[shownMap(i)].room) return; // una mappa non ancora fatta
-          if (offline(i, r)) return; // §9.156
+          if (r.kind === "start" && !playable(mapAt(i))) return; // una mappa non ancora fatta (§9.190: o non giocabile)
+          if (held(i, r)) return; // §9.156, §9.190
           const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
         });
@@ -328,17 +387,41 @@ export function enemyManagerMenu() {
         return;
       }
       if (g.campagna === 0 && i.skmenu === 1) { // §9.118
-        const L = skLayout(w.cam.cssW, w.cam.cssH), r = L.rows[i.skrow];
-        if (!r || offline(i, r)) return;
+        const L = skLayout(w.cam.cssW, w.cam.cssH, i.skNet), r = L.rows[i.skrow];
+        if (!r || held(i, r)) return;
         clic();
         if (r.kind === "back") { i.skmenu = 0; return; }
         if (r.kind === "map") {
-          i.skMap = (shownMap(i) + r.dir + SK_MAPS.length) % SK_MAPS.length;
-          if (SK_MAPS[i.skMap].room) i.sk.map = SK_MAPS[i.skMap].room;
+          const list = skList(i);
+          i.skMap = (shownMap(i) + r.dir + list.length) % list.length;
+          const m = list[i.skMap];
+          // [§9.190] si ricorda la mappa dell'editor scelta (del browser)
+          if (m.room) { i.sk.map = m.room; rememberUserMap(null); }
+          else if (m.user) { rememberUserMap(m.id || null); showUser(i, w); }
+        }
+        if (r.kind === "file") { // §9.190: una mappa dell'editor da file, per questa volta
+          openUserFile(w.objects).then((e) => {
+            if (!e || !i.skmenu) return;
+            if (e.invalid) { if (w.hooks.toast) w.hooks.toast(tr("This map could not be opened"), "warning"); return; }
+            i.userMaps = [...(i.userMaps || []), e];
+            i.skMap = SK_MAPS.length + i.userMaps.length - 1;
+            showUser(i, w);
+          }, (e) => console.error(e));
+          return;
         }
         if (r.kind === "opt") i.sk[r.key] = stepValue(r.key, i.sk[r.key], r.dir);
         saveSkirmish(i.sk);
         if (r.kind === "start") {
+          const m = mapAt(i);
+          // [§9.190] una mappa dell'editor: la partita "custom" (skuser.js),
+          // con la CPU della mappa se e' fissata
+          if (m.user) {
+            playUserMap(m.map, skForMap(i.sk, m.map.cpu)).catch((e) => {
+              console.error(e);
+              if (w.hooks.toast) w.hooks.toast(tr("Saving failed"), "warning");
+            });
+            return;
+          }
           // [§9.157] nella partita online "Create game": la sala d'attesa coi
           // codici (netgame.js hostGame), nella partita della mappa scelta
           if (i.skNet) { if (w.hooks.hostGame) w.hooks.hostGame({ ...i.sk }); } else w.gotoRoom(i.sk.map);
@@ -360,7 +443,8 @@ export function enemyManagerMenu() {
         else if (k === "skirmish" || k === "create") {
           // la schermaglia (§9.118) o, da "Multiplayer", la sua versione per la
           // partita online (§9.157): le stesse opzioni salvate
-          Object.assign(i, { skmenu: 1, skNet: k === "create", sk: loadSkirmish(), skMap: null });
+          Object.assign(i, { skmenu: 1, skNet: k === "create", sk: loadSkirmish(), skMap: null, userMaps: null });
+          if (k === "skirmish") loadUserMaps(i, w); // §9.190
         } else if (k === "join" && w.hooks.joinGame) {
           // [§9.157] il pannello per il codice ricevuto, sopra il menu
           i.joinPanel = w.hooks.joinGame({ onClose: () => { i.joinPanel = null; } });
@@ -493,7 +577,7 @@ function drawSkirmish(i, d, W, H) {
     const h = Math.max(0, ...SK_MAPS.map((q) => (q.desc ? d.stringHeightExt(tr(q.desc), 30, dw) : 0)));
     if (h > 0) { skDescH = h; skDescKey = dkey; } // (0: il font non c'e' ancora)
   }
-  const L = skLayout(W, H), m = SK_MAPS[shownMap(i)];
+  const L = skLayout(W, H, i.skNet), m = mapAt(i);
   d.setHalign("center");
   d.setValign("middle");
   d.setFont("gui_sblocco");
@@ -507,29 +591,62 @@ function drawMapCard(i, d, L, m) {
   d.setAlpha(0.69);
   d.roundrectColourExt(card.x1, card.y1, card.x2, card.y2, 50, 50, c.white, c.white, false);
   const pw = photo[2] - photo[0], ph = photo[3] - photo[1];
-  const spr = m.room && d.a.sprites[m.room + "_cartolina"];
+  // [§9.190] la mappa dell'editor: la sua copertina, o il suo disegno
+  const name = m.room ? m.room + "_cartolina" : m.user && m.cover && m.cover !== "pending" && m.cover !== "none" ? m.cover : null;
+  const spr = name && d.a.sprites[name];
   if (spr) {
     const k = Math.min(pw / spr.width, ph / spr.height);
-    d.spriteExt(m.room + "_cartolina", 0, (photo[0] + photo[2]) / 2, (photo[1] + photo[3]) / 2, k, k, 0, c.white, 1);
+    d.spriteExt(name, 0, (photo[0] + photo[2]) / 2, (photo[1] + photo[3]) / 2, k, k, 0, c.white, 1);
   } else {
     d.setAlpha(0.35);
     d.roundrectColourExt(photo[0], photo[1], photo[2], photo[3], 30, 30, c.gray, c.gray, false);
   }
+  const live = !!m.room || !!m.user;
   d.setFont("GUI_1");
   d.setColour(c.black);
-  d.setAlpha(m.room ? 0.85 : 0.45);
-  d.text((card.x1 + card.x2) / 2, L.nameY, tr(m.name)); // §9.129: tradotto
+  d.setAlpha(live ? 0.85 : 0.45);
+  // §9.129: tradotto; [§9.190] le mappe dell'editor col nome dato dall'autore
+  d.text((card.x1 + card.x2) / 2, L.nameY, m.user ? fitLine(d, m.name || tr("Untitled map"), card.x2 - card.x1 - 130) : tr(m.name));
   d.setFont("overdue");
   d.setHalign("left");
   d.setValign("top");
   // [§9.136, richiesta dell'autore] giustificata e dritta (il corsivo finto
   // c'era solo qui)
   d.justify = true;
-  d.setAlpha(m.room ? 0.8 : 0.45);
-  d.textExt(card.x1 + 24, L.descY, tr(m.desc), 30, card.x2 - card.x1 - 48);
+  d.setAlpha(live ? 0.8 : 0.45);
+  d.textExt(card.x1 + 24, L.descY, m.user ? userDesc(d, m, card.x2 - card.x1 - 48) : tr(m.desc), 30, card.x2 - card.x1 - 48);
   d.justify = false;
   d.setHalign("center");
   d.setValign("middle");
+}
+// [§9.190] la descrizione di una mappa dell'editor (scritta dall'autore
+// della mappa, non tradotta), tagliata all'altezza delle descrizioni delle
+// mappe del gioco (skDescH); o perche' non si gioca
+function userDesc(d, m, w) {
+  if (m.state === "bad") return tr("This map could not be opened");
+  if (m.state !== "ok") return "";
+  if (m.starts !== 2) return tr("A skirmish map needs two starting positions (Insert, Starting positions).");
+  const key = skDescH + ":" + w + ":" + getLanguage();
+  if (!m.fit || m.fit.key !== key) m.fit = { key, text: fitText(d, m.desc, w, skDescH) };
+  return m.fit.text;
+}
+// il testo, tagliato a parole (con i puntini) per stare in `maxH` px
+function fitText(d, text, w, maxH) {
+  if (!text || d.stringHeightExt(text, 30, w) <= maxH) return text;
+  const words = text.split(/\s+/);
+  let lo = 0, hi = words.length;
+  while (lo < hi) { // il numero di parole piu' alto che ci sta
+    const mid = Math.ceil((lo + hi) / 2);
+    if (d.stringHeightExt(words.slice(0, mid).join(" ") + "...", 30, w) <= maxH) lo = mid; else hi = mid - 1;
+  }
+  return words.slice(0, lo).join(" ") + "...";
+}
+// una riga sola, tagliata (coi puntini) a `w` px
+function fitLine(d, text, w) {
+  if (d.stringWidth(text) <= w) return text;
+  let n = text.length;
+  while (n > 1 && d.stringWidth(text.slice(0, n) + "...") > w) n--;
+  return text.slice(0, n) + "...";
 }
 function drawGrid(i, d, W, H, L, m) {
   d.setHalign("center");
@@ -547,8 +664,17 @@ function drawGrid(i, d, W, H, L, m) {
       d.spriteExt("ico_indietro", 0, cx, cy, 0.6, 0.6, 0, c.white, 1);
       return;
     }
+    if (r.kind === "file") { // §9.190
+      d.setAlpha(i.skrow === k ? 0.99 : 0.69);
+      d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
+      d.setFont("GUI_1");
+      d.setColour(c.black);
+      d.setAlpha(0.8);
+      d.text((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, tr("Open a file…"));
+      return;
+    }
     if (r.kind === "start") {
-      const on = !!m.room;
+      const on = playable(m);
       d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
       d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
       d.setFont("GUI_1");
@@ -563,16 +689,17 @@ function drawGrid(i, d, W, H, L, m) {
     // [§9.156] nella partita online ([§9.157] "Create game") i parametri della
     // CPU sono in grigio: il riquadro piu' trasparente, niente frecce, l'icona
     // velata, le scritte tenui
-    const off = offline(i, r);
+    const off = held(i, r), value = optValue(i, r.key); // §9.190: o fissato dalla mappa
     d.setAlpha(off ? 0.3 : hov ? 0.9 : 0.69);
     d.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
+    if (locked(i, r)) d.spriteExt("ico_lock", 0, x2 - 26, y1 + 26, 0.38, 0.38, 0, c.white, 0.6);
     d.setFont("overdue");
     d.setColour(c.black);
     d.setAlpha(off ? 0.35 : 0.8);
     d.text(cx, y1 + 26, tr(SK_OPTIONS[r.key].label));
     const iy = (y1 + y2) / 2 + 2;
     iconFade = off ? 0.3 : 1;
-    drawOptIcon(d, r.key, i.sk[r.key], cx, iy, i);
+    drawOptIcon(d, r.key, value, cx, iy, i);
     iconFade = 1;
     if (!off) {
       arrow(d, x1 + 24, iy, 14, -1, i.skrow === k);
@@ -581,7 +708,7 @@ function drawGrid(i, d, W, H, L, m) {
     d.setFont("overdue");
     d.setColour(c.black);
     d.setAlpha(off ? 0.35 : 0.8);
-    d.text(cx, y2 - 24, optionLabel(r.key, i.sk[r.key]));
+    d.text(cx, y2 - 24, optionLabel(r.key, value));
     if (r.key === "rain") rainOnTop();
   });
   d.setAlpha(1);
@@ -621,6 +748,7 @@ function drawOptIcon(d, key, v, x, y, i) {
     for (let k = 0; k < n; k++) icon(d, "ico_attacco", x + (k - (n - 1) / 2) * 26, y, 0.62, v === "rigged" ? 1 : 0.85);
   } else if (key === "style") {
     if (v === "random") { d.setFont("gui_sblocco"); d.setColour(DARK); d.setAlpha(0.85 * iconFade); d.text(x, y, "?"); }
+    else if (v === "static") icon(d, "ico_idle", x, y, 0.95); // §9.190: la CPU statica (dall'editor), il letto
     else icon(d, { balanced: "ico_sk_equilibrio", aggressive: "ico_caserma", defensive: "ico_difesa", economic: "ico_sk_oro",
                    raider: "ico_cavaliere" }[v], x, y, { balanced: 0.85, aggressive: 0.8, defensive: 0.75, economic: 0.9, raider: 0.75 }[v]);
   } else if (key === "victory") {

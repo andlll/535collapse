@@ -1469,7 +1469,8 @@ export const TEXTS = {
   "Width": { it: "Larghezza", es: "Anchura", pt: "Largura", de: "Breite", fr: "Largeur" },
   "Height": { it: "Altezza", es: "Altura", pt: "Altura", de: "Höhe", fr: "Hauteur" },
   "Background": { it: "Sfondo", es: "Fondo", pt: "Fundo", de: "Hintergrund", fr: "Fond" },
-  "Static": { it: "Statica (non fa nulla)", es: "Estática (no hace nada)", pt: "Estática (não faz nada)", de: "Statisch (tut nichts)", fr: "Statique (ne fait rien)" },
+  // ([§9.189] la statica reagisce, le manca l'economia)
+  "Static": { it: "Statica (senza economia)", es: "Estática (sin economía)", pt: "Estática (sem economia)", de: "Statisch (ohne Wirtschaft)", fr: "Statique (sans économie)" },
   "Symmetry": { it: "Simmetria", es: "Simetría", pt: "Simetria", de: "Symmetrie", fr: "Symétrie" },
   "Apply": { it: "Applica", es: "Aplicar", pt: "Aplicar", de: "Übernehmen", fr: "Appliquer" },
   "Save in the browser": { it: "Salva nel browser", es: "Guardar en el navegador", pt: "Salvar no navegador", de: "Im Browser speichern", fr: "Enregistrer dans le navigateur" },
@@ -1518,4 +1519,6 @@ export const TEXTS = {
   "Choose at least one place.": { it: "Scegli almeno un posto.", es: "Elige al menos un sitio.", pt: "Escolha pelo menos um lugar.", de: "Wähle mindestens einen Ort.", fr: "Choisis au moins un endroit." },
   "A skirmish map needs two starting positions (Insert, Starting positions).": { it: "Una mappa della schermaglia ha bisogno di due posizioni di partenza (Inserisci, Partenze).", es: "Un mapa de escaramuza necesita dos posiciones de salida (Insertar, Salidas).", pt: "Um mapa de escaramuça precisa de duas posições de partida (Inserir, Partidas).", de: "Eine Gefechtskarte braucht zwei Startpositionen (Einfügen, Startpositionen).", fr: "Une carte d'escarmouche a besoin de deux positions de départ (Insérer, Départs)." },
   "Back to the editor": { it: "Torna all'editor", es: "Volver al editor", pt: "Voltar ao editor", de: "Zurück zum Editor", fr: "Retour à l'éditeur" },
+  // [§9.190] le mappe dell'editor nella schermaglia
+  "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
 };

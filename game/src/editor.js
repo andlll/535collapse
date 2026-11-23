@@ -67,6 +67,7 @@ import { Draw } from "./draw.js";
 import { lodFor } from "./ground.js";
 import { drawSprite } from "./sprites.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish } from "./skirmish.js";
+import { skForMap } from "./skuser.js";
 import { NetPanel } from "./netui.js";
 import { setDomText } from "./domtext.js";
 import { audio } from "./audio.js";
@@ -882,9 +883,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const testMap = async () => {
     const m = scene.map;
     if (scene.starts() !== STARTS) { toast(tr("A skirmish map needs two starting positions (Insert, Starting positions)."), "warning"); return; }
-    const sk0 = loadSkirmish();
-    const sk = { ...sk0, map: TEST_ROOM, difficulty: m.cpu.difficulty === "choice" ? sk0.difficulty : m.cpu.difficulty,
-                 style: m.cpu.style === "choice" ? sk0.style : m.cpu.style };
+    const sk = skForMap(loadSkirmish(), m.cpu); // (§9.190: come la schermaglia, skuser.js)
     try {
       await putService("__session__", { map: JSON.parse(JSON.stringify(m)), mapId: ed.mapId, label: ed.label, file: ed.file || null,
                                          dirty: dirty(), tool: ed.tool, view: { x: view.x + view.w / 2, y: view.y + view.h / 2, scale: view.scale } });
