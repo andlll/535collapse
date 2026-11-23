@@ -13989,3 +13989,29 @@ Il limite passa a 90 minuti (build.yml). Nessuna prova tolta o accorciata.
 Dopo il merge il lavoro su main pubblica la 0.2616 (con tutto quello della
 0.2614 e della 0.2615).
 
+**Il doppio clic** (la CI di questa PR, esecuzione su b6f16a5): `editor.mjs`
+e' caduta su "un punto nuovo col doppio clic" (tutto il resto passato). Lo
+stesso male di §9.199: l'editor decideva il doppio clic al passo, col tempo
+del passo (`performance.now()` < 350 ms dal clic prima). Con i fotogrammi
+lenti della CI i due clic risultavano lontani; e due clic di seguito nello
+stesso passo contano come una pressione sola, che non era doppia. Provato in
+locale con uno script che fa il doppio clic vero di Playwright (`dblclick`)
+e allunga ogni fotogramma di 300 ms: col codice di prima il punto nuovo non
+c'e' e la linea non si chiude col doppio clic, anche a velocita' normale
+(le due pressioni nello stesso fotogramma); con la correzione si', in
+tutti e due i casi. Correzioni:
+- input.js: il doppio clic si decide al `pointerdown` (tempo dell'evento,
+  350 ms e 8 px CSS come prima; il terzo clic ricomincia) e il passo lo
+  legge in `pressDbl`, vero anche se le due pressioni cadono nello stesso
+  passo;
+- editor.js: la polilinea usa `pressDbl`; il doppio clic che chiude la
+  linea mette prima il punto se il primo clic non l'ha messo (pressioni
+  nello stesso passo);
+- `editor.mjs`: dopo il clic che sceglie la linea aspetta 400 ms (fuori dal
+  doppio clic) e poi fa il doppio clic vero (`page.mouse.dblclick`, prima
+  erano due `click` separati da 40 ms); `click` e `dblclick` aspettano la
+  lettura dell'input come le altre azioni (anche in `skcustom.mjs`).
+
+Prove: test unitari (146), `editor.mjs` (due volte), `skcustom.mjs`,
+`ui.mjs`, lo script dei fotogrammi lenti.
+
