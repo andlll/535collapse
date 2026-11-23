@@ -507,6 +507,38 @@ res.unita = units;
 check("guerriero rosso, gemella blu col suo sprite", units.length === 2 && units[0].side === "red" && units[1].side === "blue" && units[1].sprite === "bww11");
 await page.mouse.move(760, 330); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
 check("S: la casella del guerriero blu", await page.evaluate(() => { const p = window.__editor.ed.pick; return p.cat === 1 && /* TAB.units */ p.i === 3; }));
+// [§9.194] le mura (senza simmetria): il muro rosso (Edifici, in fondo), un
+// tratto; il "+" di destra e un tratto dritto; il pulsante della porta; la
+// gomma (tasto 5) che li toglie in una passata; annulla li rimette insieme
+await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none"; E.ed.scroll[2] = 99; E.view.zoomAt(1.6, 800, 400); E.view.centre(3000, 1500); });
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.buildings]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells.find((q) => q.i === 18)));
+const toScreen = ([x, y]) => page.evaluate(([x, y]) => { const v = window.__editor.view; return [(x - v.x) / v.scale, (y - v.y) / v.scale]; }, [x, y]);
+const wallsNow = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => /^(mura|porta)_/.test(e.object)).map((e) => ({ o: e.object, x: e.x, y: e.y, side: e.side })));
+await click(...(await toScreen([2800, 1500])));
+const w1 = (await wallsNow())[0];
+check("un tratto di muro rosso", !!w1 && w1.o === "mura_ori" && w1.side === "red");
+await page.mouse.move(...(await toScreen([w1.x + 207, w1.y]))); await page.waitForTimeout(200);
+await click(...(await toScreen([w1.x + 207, w1.y])));
+check("il + di destra: il prolungamento", await page.evaluate(() => !!window.__editor.ed.wall));
+await click(...(await toScreen([w1.x + 650, w1.y])));
+let ws = await wallsNow();
+res.mura = ws;
+check("un tratto dritto, 424 px a destra", ws.length === 2 && ws[1].o === "mura_ori" && ws[1].x === w1.x + 424 && ws[1].y === w1.y);
+await page.mouse.move(...(await toScreen([w1.x - 7, w1.y + 1]))); await page.waitForTimeout(200);
+await click(...(await toScreen([w1.x - 7, w1.y + 1])));
+check("il pulsante: muro -> porta", (await wallsNow())[0].o === "porta_ori");
+await page.keyboard.press("Digit5"); await page.waitForTimeout(150);
+check("tasto 5: la gomma", (await page.evaluate(() => window.__editor.ed.tool)) === "erase");
+await page.mouse.move(...(await toScreen([w1.x, w1.y]))); await page.waitForTimeout(100);
+await page.mouse.down();
+for (let k = 1; k <= 6; k++) { await page.mouse.move(...(await toScreen([w1.x + k * 75, w1.y]))); await page.waitForTimeout(60); }
+await page.mouse.up(); await page.waitForTimeout(200);
+check("la gomma: via i due tratti", (await wallsNow()).length === 0);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("annulla: tornano tutti e due", (await wallsNow()).length === 2);
 await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
 await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
   .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });

@@ -9,7 +9,7 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout,
          lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorPoint, mirrorDelta } from "../src/editmap.js";
+         mirrorPoint, mirrorDelta, freePluses, wallStep, wallPluses, GATE_SWAP } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
          startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF } from "../src/mapfile.js";
 import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
@@ -583,4 +583,36 @@ test("§9.193 unita' ed edifici delle due parti", () => {
   const S = Object.create(EditScene.prototype);
   Object.assign(S, { map: { ...newMap(), instances: [] }, objects: { ally_warrior: {} }, masks: {} });
   assert.equal(S.twinAt(I("ally_warrior", 1000, 1000, "red"), "horizontal").side, "blue");
+});
+
+// [§9.194] le mura come nel gioco (walls.js): i "+" alle estremita', i tratti
+// che proseguono dritti o ad angolo, i "+" liberi, muro <-> porta
+test("§9.194 mura e porte", () => {
+  const W = (object, x, y, side = "red") => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, side });
+  const a = W("mura_ori", 2000, 2000);
+  assert.deepEqual(wallPluses(a).map((p) => [p.key, p.x, p.y]), [["os", 1781, 2000], ["od", 2207, 2000]]);
+  const [os, od] = wallPluses(a);
+  assert.deepEqual(wallStep(od, 2600, 2000), { object: "mura_ori", x: 2424, y: 2000 }); // dritto a destra
+  assert.deepEqual(wallStep(os, 1400, 2010), { object: "mura_ori", x: 1573, y: 2000 }); // dritto a sinistra
+  assert.deepEqual(wallStep(od, 2210, 1600), { object: "mura_vert", x: 2207, y: 2000 }); // ad angolo, in su
+  assert.deepEqual(wallStep(od, 2200, 2400), { object: "mura_vert", x: 2207, y: 2246 }); // ad angolo, in giu'
+  assert.equal(wallStep(od, 1500, 2000), null); // indietro: niente
+  const v = W("mura_vert", 3000, 3000), [vb, va] = wallPluses(v);
+  assert.deepEqual(wallStep(va, 3000, 2000), { object: "mura_vert", x: 3000, y: 2754 });
+  assert.deepEqual(wallStep(vb, 3000, 3600), { object: "mura_vert", x: 3000, y: 3246 });
+  // i "+" liberi: due tratti di fila ne hanno due (le estremita'), con l'angolo pure
+  const b = W("mura_ori", 2424, 2000), c = W("mura_vert", 2631, 2000);
+  assert.deepEqual(freePluses([a, b]).map((p) => [p.key, p.x]), [["os", 1781], ["od", 2631]]);
+  assert.deepEqual(freePluses([a, b, c]).map((p) => [p.e.object, p.key]), [["mura_ori", "os"], ["mura_vert", "va"]]);
+  assert.equal(freePluses([W("albero", 0, 0)]).length, 0);
+  assert.equal(GATE_SWAP.mura_vert, "porta_vert");
+  assert.equal(GATE_SWAP.porta_ori, "mura_ori");
+  // la tavolozza: il muro rosso e il blu, coi due versi (S)
+  const items = paletteItems(CATALOG.find((k) => k.key === "buildings"), { mura_ori: {}, mura_vert: {}, casa: {} });
+  const walls = items.filter((q) => q.key.startsWith("wall"));
+  assert.deepEqual(walls.map((q) => [q.side, q.styles.map((st) => st.object).join()]), [["red", "mura_ori,mura_vert"], ["blue", "mura_ori,mura_vert"]]);
+  // le porte si possono avere in una mappa; il blu e' della CPU
+  assert.ok(allowedObjects().has("porta_ori") && allowedObjects().has("porta_vert"));
+  const room = testRoom({ ...newMap(), instances: [W("porta_ori", 100, 100, "blue"), W("mura_vert", 200, 200)] });
+  assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "enemy_porta_ori", "mura_vert"]);
 });

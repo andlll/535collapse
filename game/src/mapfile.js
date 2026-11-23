@@ -41,13 +41,16 @@ export const SIDES = ["red", "blue"];
 // testRoom) e, online, quello del secondo giocatore (app.js: i gemelli p2_*)
 export const UNITS = ["ally_omino", "ally_warrior", "ally_picchiere", "ally_arciere", "ally_cavaliere", "ally_ariete", "ally_catapulta"];
 export const BUILDINGS = ["casa", "caserma", "stalla", "torre", "magazzino", "barn", "campo", "chiesa", "castello"];
-export const SIDED = new Set([START, ...UNITS, ...BUILDINGS]);
+// [§9.194] mura e porte (orizzontali e verticali), delle due parti
+export const WALLS = ["mura_ori", "mura_vert", "porta_ori", "porta_vert"];
+export const SIDED = new Set([START, ...UNITS, ...BUILDINGS, ...WALLS]);
 // l'oggetto della CPU corrispondente (multiplayer.js ENEMY_EQ, al contrario)
 export const BLUE_OF = {
   centro: "enemy_centro", casa: "enemy_house", caserma: "enemy_caserma", stalla: "enemy_stalla", torre: "enemy_torre",
   magazzino: "enemy_magazzino", barn: "enemy_mulino", campo: "enemy_campo", chiesa: "enemy_chiesa", castello: "enemy_castello",
   ally_omino: "enemy_omino", ally_warrior: "enemy_warrior", ally_picchiere: "enemy_picchiere", ally_arciere: "enemy_arciere",
   ally_cavaliere: "enemy_cavaliere", ally_ariete: "enemy_ariete", ally_catapulta: "enemy_catapulta",
+  mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori", porta_vert: "enemy_porta_vert", // §9.194
 };
 export const otherSide = (s) => (s === "red" ? "blue" : "red");
 export function assignSides(instances) {

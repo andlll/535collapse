@@ -134,7 +134,7 @@ node game/test/browser/catapults.mjs                    # catapulte che tirano o
 node game/test/browser/enemygarrison.mjs                # presidio nemico in torri e fortezze; nemici nella nebbia
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
 node game/test/browser/hover.mjs                        # pulsanti col puntatore evidenziati anche sotto i pannelli di vetro
-node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri (file collegati), pennello, copertina, polilinea, Prova mappa
+node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri (file collegati), pennello, copertina, polilinea, Prova mappa, schieramenti, mura, gomma
 node game/test/browser/skcustom.mjs                     # le mappe dell'editor nella schermaglia: elenco, copertina o disegno, CPU fissata, partita, salvataggio, Ricomincia, file
 node game/test/browser/netmap.mjs                       # la partita online su una mappa dell'editor (WebRTC vero): chi entra la riceve, la tiene, la seconda volta no
 node game/test/browser/alarms.mjs                       # allarmi d'attacco sulla minimappa: per zona, anelli, J, suggerimento

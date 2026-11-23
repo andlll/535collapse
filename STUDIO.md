@@ -80,8 +80,8 @@ o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
 blu (§9.191: la gemella simmetrica e' dell'altro schieramento), la partita
 online sulle mappe dell'editor (§9.192: chi entra senza la mappa la riceve
 da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
-(§9.193). Da fare: mura e porte; i ponti (dopo, decisione dell'autore). In
-sospeso la password.
+(§9.193), mura e porte coi "+" come nel gioco e la gomma ad area (§9.194).
+Da fare: i ponti (dopo, decisione dell'autore). In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13617,3 +13617,65 @@ una caserma blu: nella partita il guerriero del giocatore, quello della CPU
 e la caserma della CPU), `netmap.mjs` (online: la caserma rossa del rosso,
 il guerriero blu e' p2_warrior, nessun oggetto della CPU, impronte
 uguali); screenshot (la scheda Edifici).
+
+### 9.194 Mura e porte in "Inserisci", la gomma ad area
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "c'e' lo strumento
+mura, con tasto cambio stile per impostarlo sul suo ruotato di 90 gradi e
+viceversa. Una volta piazzato il primo blocco, solo se lo strumento piazza
+oggetto e' attivo, compaiono le due "+" ai lati per aggiungere pezzi, allo
+stesso modo della schermata di gioco. Inoltre sul pezzo di muro, anche li'
+solo con lo strumento aggiungi oggetto attivo, compare un tasto per
+convertire il muro inserito in porta e viceversa. [...] aggiungiamo anche
+uno strumento gomma ad area tipo il pennello per cancellare oggetti in
+blocco".
+
+**Le mura** (Inserisci, scheda Edifici, in fondo):
+- il muro rosso e il blu (come unita' ed edifici, §9.193), ognuno coi due
+  versi: **S** passa dall'orizzontale (mura_ori) al verticale (mura_vert) e
+  viceversa ("Schieramento rosso (S: orizzontale / verticale)"); il blu col
+  muro della CPU (le bandierine azzurre);
+- messo un tratto, **con "Inserisci" attivo** compaiono i **"+"** alle sue
+  estremita' libere, col simbolo del gioco (ico_muraplus), a misura di
+  schermo (da lontano, oltre 4 px di mappa per pixel, niente pulsanti):
+  dove sono quelli del gioco (walls.js KIND.plus: l'orizzontale a -219 e
+  +207, il verticale all'origine e 300 px sopra); i "+" di due tratti che si
+  toccano (di fila a 2-3 px, ad angolo o in verticale a 54) non si vedono
+  (editmap.js `freePluses`);
+- **un clic sul "+"** e il tratto nuovo segue il puntatore come nel gioco:
+  dritto, o girato di 90 gradi in su o in giu' (o a destra e a sinistra da
+  un verticale), con gli scostamenti dei placer del gioco (walls.js
+  SECTORS: -208, +217/+218, 246, 54; editmap.js `wallStep`, il verso piu'
+  vicino entro 60 gradi; indietro niente); un clic lo mette, il destro o
+  Esc lasciano. Il tratto nuovo e' dello schieramento di quello da cui
+  parte; con la simmetria anche il gemello;
+- **su ogni tratto**, sempre solo con "Inserisci", il **pulsante della
+  porta** (ico_gate; su una porta ico_mura): muro -> porta e viceversa,
+  nello stesso punto (porta_ori, porta_vert; con la simmetria anche il
+  gemello; si annulla);
+- nella partita come le altre voci dello schieramento: il rosso del
+  giocatore, il blu della CPU (enemy_mura_*, enemy_porta_*) o, online, del
+  secondo giocatore (p2_mura_*, p2_porta_*).
+
+**La gomma ad area**: un quinto strumento nella colonna (tasto 5), dopo
+"Inserisci" (per non cambiare i tasti degli altri): l'ovale assonometrico
+del pennello (§9.186) con la sua larghezza ("-" e "+" nel riquadro, o
+Maiusc + rotella); col sinistro tenuto toglie **tutti gli oggetti** con
+l'origine nell'ovale (alberi, montagne, edifici, unita', risorse,
+prati...; non fiumi, strade e macchie, che hanno la polilinea e il
+pennello); con la simmetria anche nell'ovale gemello; una passata e' un
+passo solo da annullare. L'ovale e' rosso.
+
+Testi nuovi nelle sei lingue: la gomma (nome, descrizione, comandi), lo
+schieramento delle mura con S, i comandi del prolungamento.
+
+Prove: `editor.test.mjs` (in piu': i "+" e i tratti dritti e ad angolo con
+le misure del gioco, indietro niente, i "+" liberi di fila e ad angolo,
+muro <-> porta, le caselle del muro coi due versi, le porte ammesse e del
+blu della CPU; 143 test), `editor.mjs` (il muro rosso, il "+" di destra e
+il tratto dritto a 424 px, il pulsante della porta, la gomma col tasto 5
+che toglie i due tratti in una passata, annulla che li rimette),
+`skcustom.mjs` (il muro rosso del giocatore e la porta blu della CPU nella
+partita), `netmap.mjs` (online il muro blu e' p2_mura_vert, la porta rossa
+del rosso, impronte uguali); screenshot (il prolungamento, l'angolo, la
+porta).

@@ -76,7 +76,7 @@ import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
          testRoom, TEST_ROOM, sidesOk, SIDES } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook } from "./editmap.js";
+         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
@@ -139,13 +139,14 @@ export class EditorView {
 // staccate), nell'ordine del disegno dell'autore. label: il suggerimento a
 // destra della colonna e il titolo del riquadro; desc: cosa fara' (nel
 // riquadro, finche' lo strumento non c'e').
-export const TOOLS = ["select", "line", "brush", "insert"];
+export const TOOLS = ["select", "line", "brush", "insert", "erase"]; // §9.194: la gomma, quinta (tasto 5)
 export const ACTIONS = ["new", "open", "save", "test", "settings"];
 export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
   brush: "Area brush: forests, textures",
   insert: "Insert: units, resources, buildings…",
+  erase: "Area eraser: delete objects",
   new: "New map",
   open: "Open map",
   save: "Save map",
@@ -157,18 +158,21 @@ export const DESC = {
   line: "Draw rivers and roads point by point, with their width; drag the points to change their course. Bridges go across rivers.",
   brush: "Paint forests and ground textures (city paving, stone, meadow) with a round brush; the eraser removes them.",
   insert: "Choose an object by category (units, buildings, resources, nature, city…) and place it on the map.",
+  erase: "Delete all the objects under the brush, holding the left button down.",
 };
 export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel: zoom. Esc: back to the menu.";
 // [§9.182] i comandi degli strumenti che ci sono
 export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
-export const READY = new Set(["select", "insert", "brush", "line"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
+export const READY = new Set(["select", "insert", "brush", "line", "erase"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
 // [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
 export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
                              "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.", "Red side (S: blue)", "Blue side (S: red)", "Units",
+                             "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
+                             "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
                              "Map settings", "Name", "Description", "Width", "Height", "Background", "Difficulty", "CPU style",
@@ -239,6 +243,8 @@ export const SIDE_COLOUR = { red: 0x3830c8, blue: 0xe87030 };
 export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Starting positions).";
 // [§9.193] lo schieramento della casella scelta (S: l'altro)
 export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)" };
+// [§9.194] le mura: la parte e S che le gira di 90 gradi
+export const WALL_HINT = { red: "Red side (S: horizontal / vertical)", blue: "Blue side (S: horizontal / vertical)" };
 function drawIcon(d, key, x, y, s, ink) {
   const L = (x1, y1, x2, y2, w = 3) => d.lineWidthColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, w * s, ink, ink);
   const T = (x1, y1, x2, y2, x3, y3) => d.triangleColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, x + x3 * s, y + y3 * s, ink, ink, ink, false);
@@ -262,6 +268,19 @@ function drawIcon(d, key, x, y, s, ink) {
     C(-4, -8, 5.5);
     d.roundrectColourExt(x - 14 * s, y - 1 * s, x + 6 * s, y + 15 * s, 14 * s, 14 * s, ink, ink, false);
     L(6, -9, 16, -9); L(11, -14, 11, -4);
+  } else if (key === "erase") { // [§9.194] la gomma: un parallelepipedo inclinato con la fascia, e l'ovale
+    d.setAlpha(d.alpha * 0.5);
+    d.ellipseColour(x - 15 * s, y + 8 * s, x + 9 * s, y + 16 * s, ink, ink, false);
+    d.setAlpha(d.alpha / 0.5);
+    const Q = (pts) => {
+      T(pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]);
+      T(pts[0][0], pts[0][1], pts[2][0], pts[2][1], pts[3][0], pts[3][1]);
+    };
+    Q([[-12, 4], [4, -12], [15, -1], [-1, 15]]);
+    d.setAlpha(d.alpha * 0.45);
+    const W = (px1, py1, px2, py2) => d.lineWidthColour(x + px1 * s, y + py1 * s, x + px2 * s, y + py2 * s, 3 * s, c.white, c.white);
+    W(-4, -4, 7, 7);
+    d.setAlpha(d.alpha / 0.45);
   } else if (key === "new") { // un foglio con l'angolo piegato e il "+"
     L(-11, -14, 3, -14, 2.5); L(3, -14, 10, -7, 2.5); L(10, -7, 10, 14, 2.5); L(10, 14, -11, 14, 2.5); L(-11, 14, -11, -14, 2.5);
     L(3, -14, 3, -7, 2); L(3, -7, 10, -7, 2);
@@ -401,7 +420,7 @@ export function segDist(px, py, a, b) {
 // [§9.186, richiesta dell'autore] La simmetria e' un'impostazione degli
 // strumenti (Sposta, Inserisci, Pennello), non della mappa: una riga in fondo
 // al loro riquadro, "Simmetria" e le quattro modalita'
-export const SYM_TOOLS = new Set(["select", "insert", "brush", "line"]); // §9.187: anche la polilinea
+export const SYM_TOOLS = new Set(["select", "insert", "brush", "line", "erase"]); // §9.187: anche la polilinea; §9.194: la gomma
 export function symLayout(panel) {
   const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
   return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
@@ -441,7 +460,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
                brush: { kind: "forest", w: 3, d: 3 }, stroke: null,
                // [§9.186] la simmetria di ogni strumento (spenta di partenza)
-               sym: { select: "none", insert: "none", brush: "none", line: "none" }, symHover: null,
+               sym: { select: "none", insert: "none", brush: "none", line: "none", erase: "none" }, symHover: null,
+               // [§9.194] la gomma (larghezza: indice di BRUSH_WIDTHS, cancellando); le mura:
+               // il "+" da cui si prolunga (wall) e il pulsante sotto il puntatore
+               erase: { w: 3 }, erasing: false, wall: null, wallHover: null,
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -540,8 +562,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
   const setTool = (t) => {
-    if (ed.stroke || ed.ldrag) return;
-    if (t !== ed.tool) Object.assign(ed, { drawing: null, lsel: null }); // §9.187
+    if (ed.stroke || ed.ldrag || ed.erasing) return;
+    if (t !== ed.tool) Object.assign(ed, { drawing: null, lsel: null, wall: null }); // §9.187; §9.194: il prolungamento delle mura
     ed.tool = t;
     if (t === "insert" || t === "brush") ensureCatalog();
   };
@@ -578,7 +600,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.tool === "insert" && ed.pick) {
       const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length, it = ITEMS[cat][i];
       // [§9.193] una casella di uno schieramento: la stessa dell'altro
-      if (it.side) {
+      // ([§9.194] le mura hanno anche gli stili, i due versi: S li gira)
+      if (it.side && n === 1) {
         const j = ITEMS[cat].findIndex((q) => q.side && q.side !== it.side && q.styles[0].object === it.styles[0].object);
         if (j >= 0) ed.pick = { cat, i: j };
         return;
@@ -679,6 +702,50 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     scene.end();
   };
+
+  // --------------------------------------------------------------- gomma
+  // [§9.194, richiesta dell'autore] la gomma ad area: col sinistro tenuto via
+  // tutti gli oggetti (le voci, non fiumi, strade e macchie) con l'origine
+  // nell'ovale (assonometrico, largo come il pennello), e con la simmetria
+  // anche nell'ovale gemello; una passata e' un passo solo da annullare
+  const eraseR = () => BRUSH_WIDTHS[ed.erase.w] / 2;
+  const eraseAt = (x, y) => {
+    const r = eraseR(), ry = r * ISO, spots = [[x, y]];
+    if (symOn()) spots.push(twinPoint(x, y));
+    const list = scene.map.instances.filter((e) => !SYSTEM.has(e.object) && spots.some(([sx, sy]) => inOval(e.x, e.y, sx, sy, r, ry)));
+    if (list.length) { scene.remove(list); tidySel(); }
+  };
+
+  // ---------------------------------------------------------------- mura
+  // [§9.194] con "Inserisci": i "+" liberi delle mura e il pulsante
+  // muro/porta di ogni tratto (a scala di schermo; da lontano, piu' di
+  // WALL_ZOOM px di mappa per pixel, niente pulsanti), il tratto che
+  // prolunga dal "+" scelto verso il puntatore
+  const WALL_ZOOM = 4, WALL_BTN = 22;
+  const wallButtons = () => {
+    if (ed.tool !== "insert" || view.scale > WALL_ZOOM || catalog !== "ready") return [];
+    const out = freePluses(scene.map.instances).map((p) => ({ kind: "plus", p, x: p.x, y: p.y }));
+    for (const e of scene.map.instances) {
+      if (!WALL_KIND[e.object]) continue;
+      const [ox, oy] = scene.maskOffset(e);
+      out.push({ kind: "gate", e, x: e.x + ox, y: e.y + oy });
+    }
+    return out;
+  };
+  const wallButtonAt = (x, y) => {
+    const R = (WALL_BTN + 4) * view.scale;
+    return wallButtons().find((b) => dhypot(b.x - x, b.y - y) <= R) || null;
+  };
+  // il tratto nuovo (e, con la simmetria, il gemello) dal "+" ed.wall verso (x, y)
+  const wallPieces = (x, y) => {
+    const w = ed.wall, st = w && wallStep(w.p, x, y);
+    if (!st) return [];
+    const e = { object: st.object, x: Math.round(st.x), y: Math.round(st.y), scale_x: 1, scale_y: 1, rotation: 0, side: w.p.e.side || "red" };
+    const t = scene.twinAt(e, symMode());
+    return t ? [e, t] : [e];
+  };
+  // un tratto diventa porta e viceversa (col gemello, con la simmetria)
+  const toggleGate = (e) => scene.modify(scene.withTwins([e], symMode()).filter((q) => GATE_SWAP[q.object]), (q) => ({ object: GATE_SWAP[q.object] }));
 
   // ------------------------------------------------------------ polilinea
   // [§9.187] le larghezze (di partenza, o della linea scelta), la linea nuova
@@ -984,6 +1051,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (!input.mouseDown[st.erase ? 1 : 0]) strokeEnd();
       return;
     }
+    if (ed.erasing) { // §9.194: la passata della gomma
+      if (input.inside) eraseAt(rx, ry);
+      if (!input.mouseDown[0]) { ed.erasing = false; scene.end(); }
+      return;
+    }
     // [§9.187] la polilinea: la linea scelta che non c'e' piu' (annullata); i tasti
     if (ed.lsel && !(scene.map[ed.lsel.key] || []).includes(ed.lsel.e)) ed.lsel = null;
     if (ed.tool === "line" && ed.drawing) {
@@ -1002,7 +1074,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     // Esc: prima si lascia l'oggetto o la scelta, poi si esce
     if (K(27)) {
-      if (ed.tool === "insert" && ed.pick) ed.pick = null;
+      if (ed.wall) ed.wall = null; // §9.194: via il prolungamento delle mura
+      else if (ed.tool === "insert" && ed.pick) ed.pick = null;
       else if (ed.sel.size) ed.sel.clear();
       else guard(toMenu);
       return;
@@ -1029,8 +1102,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const dx = (input.down.has(39) ? 1 : 0) - (input.down.has(37) ? 1 : 0), dy = (input.down.has(40) ? 1 : 0) - (input.down.has(38) ? 1 : 0);
     if ((dx || dy) && !ctrl) view.pan(dx * sp, dy * sp);
     const P = ed.tool === "insert" ? paletteLayout(L.panel, ed.cat, ed.scroll[ed.cat]) : null;
-    if (input.inside && input.wheelStep && shift && ed.tool === "brush" && !hit) { // §9.185: Maiusc+rotella, la larghezza
-      ed.brush.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, ed.brush.w - Math.sign(input.wheelStep)));
+    if (input.inside && input.wheelStep && shift && (ed.tool === "brush" || ed.tool === "erase") && !hit) { // §9.185: Maiusc+rotella, la larghezza (§9.194: anche la gomma)
+      const B = ed.tool === "brush" ? ed.brush : ed.erase;
+      B.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, B.w - Math.sign(input.wheelStep)));
     } else if (input.inside && (input.wheelStep || input.wheelFine)) {
       if (P && inRect(mx, my, P.strip)) {
         if (input.wheelStep) ed.scroll[ed.cat] = Math.max(0, Math.min(P.max, P.scroll + Math.sign(input.wheelStep)));
@@ -1116,6 +1190,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
       return;
     }
+    // [§9.194] il riquadro della gomma: la larghezza coi "-" e "+"
+    if (ed.tool === "erase" && hit && hit.kind === "ui") {
+      const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
+      ed.palHover = on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : null;
+      if (input.mouseReleased[0] && ed.palHover) {
+        clic();
+        ed.erase.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, ed.erase.w + (ed.palHover === "w+" ? 1 : -1)));
+      }
+      return;
+    }
     // [§9.185] il riquadro del pennello: le schede, i "-" e "+"
     if (ed.tool === "brush" && hit && hit.kind === "ui") {
       const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
@@ -1172,7 +1256,32 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (onMap && catalog === "ready" && (input.mousePressed[0] || input.mousePressed[1])) { strokeStart(!input.mousePressed[0]); strokeStep(rx, ry); }
       return;
     }
+    if (ed.tool === "erase") { // §9.194
+      if (onMap && input.mousePressed[0]) { scene.begin(); ed.erasing = true; eraseAt(rx, ry); }
+      return;
+    }
     if (ed.tool === "insert") {
+      // [§9.194] le mura: il prolungamento in corso (un clic mette il tratto,
+      // il destro o Esc lo lasciano), poi i pulsanti "+" e muro/porta
+      if (ed.wall && !scene.instOf(ed.wall.p.e)) ed.wall = null; // (il tratto non c'e' piu': annullato)
+      if (ed.wall) {
+        if (input.mousePressed[1]) { ed.wall = null; return; }
+        if (onMap && input.mousePressed[0]) {
+          const list = wallPieces(rx, ry);
+          if (list.length && inMap(list[0].x, list[0].y)) { scene.add(list); clic(); }
+          ed.wall = null;
+        }
+        return;
+      }
+      ed.wallHover = onMap ? wallButtonAt(rx, ry) : null;
+      if (ed.wallHover && input.mousePressed[0]) {
+        const b = ed.wallHover;
+        clic();
+        if (b.kind === "plus") ed.wall = { p: b.p };
+        else toggleGate(b.e);
+        ed.wallHover = null;
+        return;
+      }
       if (onMap && input.mousePressed[0]) place(rx, ry);
       if (input.mousePressed[1]) ed.pick = null; // il destro lascia l'oggetto
       return;
@@ -1356,7 +1465,42 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         }
       }
     }
-    if (ed.tool === "insert" && ed.pick && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
+    // [§9.194] la gomma: l'ovale sotto il puntatore (col gemello), rosso
+    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y))) {
+      const r = eraseR(), ry = r * ISO, [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
+      if (symOn()) spots.push(twinPoint(bx, by));
+      for (const [x, y] of spots) {
+        if (ed.erasing) { draw.setAlpha(0.18); draw.ellipseColour(x - r, y - ry, x + r, y + ry, 0x4040ff, 0x4040ff, false); }
+        draw.setAlpha(0.85);
+        for (let k = 0; k < 48; k++) {
+          const a0 = (k / 48) * Math.PI * 2, a1 = ((k + 0.5) / 48) * Math.PI * 2;
+          draw.lineWidthColour(x + dcos(a0) * r, y + dsin(a0) * ry, x + dcos(a1) * r, y + dsin(a1) * ry, 2 * px, 0x4040ff, 0x4040ff);
+        }
+      }
+    }
+    // [§9.194] le mura con "Inserisci": i "+" liberi e i pulsanti muro/porta
+    // (a scala di schermo); prolungando, il tratto fantasma verso il puntatore
+    const WB = ed.tool === "insert" ? wallButtons() : [];
+    for (const b of WB) {
+      if (ed.wall && b.p !== ed.wall.p) continue;
+      const on = ed.wallHover === b || (ed.wall && b.p === ed.wall.p), R = WALL_BTN * px;
+      if (b.kind === "plus") {
+        drawSprite(r, assets, "ico_muraplus", 0, b.x, b.y, (2 * R) / 65, (2 * R) / 65, 0, c.white, on ? 1 : 0.75);
+      } else {
+        draw.setAlpha(on ? 0.95 : 0.7);
+        draw.circleColour(b.x, b.y, R, c.white, c.white, false);
+        const icon = b.e.object.startsWith("porta") ? "ico_mura" : "ico_gate";
+        drawSprite(r, assets, icon, 0, b.x, b.y, (1.3 * R) / 65, (1.3 * R) / 65, 0, c.white, 1);
+      }
+    }
+    if (ed.wall && input.inside) {
+      const [gx, gy] = view.toRoom(input.x, input.y), list = wallPieces(gx, gy);
+      for (const e of list) {
+        const spr = sideLook(objects, e) || objects[e.object].sprite;
+        drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, inMap(e.x, e.y) ? c.white : 0x4040ff, e === list[0] ? 0.6 : 0.4);
+      }
+    }
+    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       // [§9.184] con la simmetria anche il fantasma della gemella ([§9.191]
       // dell'altro schieramento: col suo sprite)
@@ -1432,11 +1576,14 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
+      : ed.tool === "erase" ? tr("Left: erase. Shift + wheel: width.") // §9.194
+      : ed.tool === "insert" && ed.wall ? tr("Move the pointer: straight or around the corner. Click: place. Right click: cancel.")
       : ed.tool === "line" ? tr(ed.drawing ? "Click: add a point. Right click or Enter: finish. Esc: cancel."
         : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
         : "Click: new line. Click on a line: select it.")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
-      : ed.pick ? (pickedItem().side ? tr(SIDE_HINT[pickedItem().side]) + "     " // §9.193
+      : ed.pick ? (pickedItem().side && pickedItem().styles.length > 1 ? tr(WALL_HINT[pickedItem().side]) + "     " // §9.194: le mura
+        : pickedItem().side ? tr(SIDE_HINT[pickedItem().side]) + "     " // §9.193
         : pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
         + tr("Click: place. Right click: stop.") : tr("Choose an object");
     // (le coordinate solo se c'e' posto: i comandi della polilinea sono lunghi;
@@ -1452,6 +1599,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
+    if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, tr("Width"), BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
     if (ed.tool === "line") { drawLinePanel(panel); draw.setColour(c.white); return; }
     draw.setHalign("left");
     draw.setValign("top");

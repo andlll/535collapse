@@ -56,7 +56,9 @@ const ids = await page.evaluate(async () => {
                           I("montagna_3", 3000, 3000), I("ocr_01", 3600, 2000), ...trees,
                           // [§9.193] unita' ed edifici delle due parti
                           { ...I("ally_warrior", 4500, 4400), side: "red" }, { ...I("ally_warrior", 1500, 1600), side: "blue" },
-                          { ...I("caserma", 1700, 1000), side: "blue" }],
+                          { ...I("caserma", 1700, 1000), side: "blue" },
+                          // [§9.194] un muro rosso, una porta blu
+                          { ...I("mura_ori", 4300, 3900), side: "red" }, { ...I("porta_ori", 1700, 2100), side: "blue" }],
               rivers: [{ pts: [[0, 3500], [2500, 3300], [6000, 2600]], width: 260 }],
               roads: [{ pts: [[1200, 1300], [3000, 2400], [4800, 4700]], width: 120, kind: 1 }],
               patches: [{ pts: [[3300, 1700], [4000, 1700], [4000, 2300], [3300, 2300]], bg: "city2", alpha: 1 }],
@@ -133,9 +135,11 @@ let game = await page.evaluate(() => { const G = window.__game, w = G.world, at 
 res.partita = game;
 check("la partita: custom, CPU della mappa, non in prova", game.room === "custom" && game.sk.d === "hard" && game.sk.s === "static" && !game.test && game.eco && game.centro && game.mine && game.omini === 3 && game.mines === 1);
 check("il giocatore alla partenza rossa, la CPU alla blu", game.mine.join() === "4800,4800" && game.centro.join() === "1200,1200");
-const sided = await page.evaluate(() => { const w = window.__game.world; return { warrior: w.number("ally_warrior"), enemyWarrior: w.number("enemy_warrior"), barracks: w.number("enemy_caserma"), mine: w.number("caserma") }; });
+const sided = await page.evaluate(() => { const w = window.__game.world; return { warrior: w.number("ally_warrior"), enemyWarrior: w.number("enemy_warrior"), barracks: w.number("enemy_caserma"), mine: w.number("caserma"),
+  wall: w.number("mura_ori"), enemyGate: w.number("enemy_porta_ori"), gate: w.number("porta_ori") }; });
 res.schieramenti = sided;
 check("le unita' e gli edifici: rossi del giocatore, blu della CPU", sided.warrior === 1 && sided.enemyWarrior === 1 && sided.barracks === 1 && sided.mine === 0);
+check("mura e porte: il muro del giocatore, la porta della CPU", sided.wall === 1 && sided.enemyGate === 1 && sided.gate === 0);
 if (shots) await page.screenshot({ path: shots + "/sk_editor_partita.png" });
 // salvata, caricata
 await page.evaluate(async () => { const G = window.__game; G.advance(120); await G.pause.actions.saveGame(); });

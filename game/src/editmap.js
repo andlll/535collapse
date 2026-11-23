@@ -18,8 +18,8 @@ import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
 import { bgrToRGB } from "./gl.js";
-import { dcos, dsin, dhypot } from "./dmath.js";
-import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF } from "./mapfile.js";
+import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
+import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS } from "./mapfile.js";
 
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
 // quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
@@ -39,7 +39,8 @@ export const CATALOG = [
   { key: "start", label: "Starting positions", objects: ["centro"] },
   // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
   { key: "units", label: "Units", objects: UNITS },
-  { key: "buildings", label: "Buildings", objects: BUILDINGS },
+  // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
+  { key: "buildings", label: "Buildings", objects: [...BUILDINGS, { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
   { key: "meadows", label: "Meadows and flowers",
@@ -60,6 +61,9 @@ export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q)
 // parte, rossa e blu
 export function paletteItems(cat, objects) {
   return cat.objects.flatMap((q) => {
+    if (typeof q !== "string" && q.sided) { // §9.194: le mura, per parte, coi loro stili (i due versi)
+      return SIDES.map((side) => ({ key: q.family + ":" + side, side, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object, side })) }));
+    }
     if (typeof q !== "string") return [{ key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) }];
     if (SIDED.has(q)) return SIDES.map((side) => ({ key: q + ":" + side, side, styles: [{ object: q, side }] }));
     const o = objects[q];
@@ -68,7 +72,7 @@ export function paletteItems(cat, objects) {
 }
 
 // quante caselle ha una scheda (§9.191: le partenze, una per parte)
-export const paletteCount = (cat) => cat.objects.reduce((n, q) => n + (typeof q === "string" && SIDED.has(q) ? SIDES.length : 1), 0);
+export const paletteCount = (cat) => cat.objects.reduce((n, q) => n + ((typeof q === "string" && SIDED.has(q)) || q.sided ? SIDES.length : 1), 0);
 
 // [§9.183] Gli stili di una voce gia' messa (per cambiarli con "Sposta"):
 // la lista e quale ha ora, o null se ne ha uno solo
@@ -91,7 +95,44 @@ export function stylesOf(e, objects) {
 // [§9.184] gli oggetti che una mappa dell'editor puo' avere (la convalida
 // dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
 // dipinti dei modelli
-export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES]);
+export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte
+
+// [§9.194, richiesta dell'autore] Mura e porte, come nel gioco (walls.js):
+// un tratto ha due "+" alle estremita' (KIND.plus: l'orizzontale a -219 e
+// +207, il verticale all'origine e 300 px sopra); dal "+" il tratto nuovo
+// prosegue dritto o gira di 90 gradi, secondo la direzione del puntatore,
+// con gli scostamenti dei placer del gioco (SECTORS: oodl -208, oosl +217 o
+// +218, ovbl sul "+", oval 246 sotto; dal "+" di sopra di un verticale 54
+// px piu' giu'). Un tratto diventa porta e viceversa (stessa posizione).
+export const WALL_KIND = { mura_ori: "ori", porta_ori: "ori", mura_vert: "vert", porta_vert: "vert" };
+export const WALL_OF = { ori: "mura_ori", vert: "mura_vert" };
+export const GATE_SWAP = { mura_ori: "porta_ori", porta_ori: "mura_ori", mura_vert: "porta_vert", porta_vert: "mura_vert" };
+const WALL_PLUS = { ori: [["os", -219, 0], ["od", 207, 0]], vert: [["vb", 0, 0], ["va", 0, -300]] };
+// per "+": [direzione (gradi come pointDirection: 0 a destra, 90 in su), verso, dx, dy]
+const WALL_STEPS = {
+  os: [[180, "ori", -208, 0], [90, "vert", 0, 0], [270, "vert", 0, 246]],
+  od: [[0, "ori", 217, 0], [90, "vert", 0, 0], [270, "vert", 0, 246]],
+  va: [[180, "ori", -208, 54], [90, "vert", 0, 54], [0, "ori", 218, 54]],
+  vb: [[180, "ori", -208, 0], [0, "ori", 218, 0], [270, "vert", 0, 246]],
+};
+export const wallPluses = (e) => (WALL_KIND[e.object] ? WALL_PLUS[WALL_KIND[e.object]].map(([key, dx, dy]) => ({ key, e, x: e.x + dx, y: e.y + dy })) : []);
+// i "+" liberi: quelli senza il "+" di un altro tratto vicino (entro `near`
+// px: due tratti di fila li hanno a 2-3 px, ad angolo o in verticale a 54)
+export function freePluses(instances, near = 64) {
+  const all = instances.flatMap(wallPluses);
+  return all.filter((p) => !all.some((q) => q.e !== p.e && Math.abs(q.x - p.x) <= near && Math.abs(q.y - p.y) <= near));
+}
+// il tratto che prosegue dal "+" p verso il punto (x, y) (il verso piu'
+// vicino entro 60 gradi), o null: { object, x, y }
+export function wallStep(p, x, y) {
+  const deg = (((datan2(p.y - y, x - p.x) * 180) / Math.PI) % 360 + 360) % 360;
+  let best = null, bd = 60.5;
+  for (const [dir, kind, dx, dy] of WALL_STEPS[p.key]) {
+    const d = Math.abs((((deg - dir) % 360) + 540) % 360 - 180);
+    if (d < bd) { bd = d; best = { object: WALL_OF[kind], x: p.x + dx, y: p.y + dy }; }
+  }
+  return best;
+}
 // [§9.185] gli alberi (il pennello li dipinge e li cancella)
 export const TREES = new Set(["albero", "albero_fake"]);
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js

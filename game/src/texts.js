@@ -1522,6 +1522,23 @@ export const TEXTS = {
   "Units": { it: "Unità", es: "Unidades", pt: "Unidades", de: "Einheiten", fr: "Unités" },
   "Red side (S: blue)": { it: "Schieramento rosso (S: blu)", es: "Bando rojo (S: azul)", pt: "Lado vermelho (S: azul)", de: "Rote Seite (S: blau)", fr: "Camp rouge (S : bleu)" },
   "Blue side (S: red)": { it: "Schieramento blu (S: rosso)", es: "Bando azul (S: rojo)", pt: "Lado azul (S: vermelho)", de: "Blaue Seite (S: rot)", fr: "Camp bleu (S : rouge)" },
+  // [§9.194] la gomma ad area, le mura
+  "Area eraser: delete objects": { it: "Gomma ad area: cancella oggetti", es: "Goma de área: borra objetos", pt: "Borracha de área: apaga objetos", de: "Flächenradierer: Objekte löschen", fr: "Gomme de zone : efface des objets" },
+  "Delete all the objects under the brush, holding the left button down.": {
+    it: "Cancella tutti gli oggetti sotto il pennello, tenendo premuto il tasto sinistro.",
+    es: "Borra todos los objetos bajo el pincel, manteniendo pulsado el botón izquierdo.",
+    pt: "Apaga todos os objetos sob o pincel, mantendo o botão esquerdo pressionado.",
+    de: "Löscht alle Objekte unter dem Pinsel, solange die linke Taste gedrückt ist.",
+    fr: "Efface tous les objets sous le pinceau, en maintenant le bouton gauche enfoncé." },
+  "Left: erase. Shift + wheel: width.": { it: "Sinistro: cancella. Maiusc + rotella: larghezza.", es: "Izquierdo: borrar. Mayús + rueda: anchura.", pt: "Esquerdo: apagar. Shift + roda: largura.", de: "Links: löschen. Umschalt + Mausrad: Breite.", fr: "Gauche : effacer. Maj + molette : largeur." },
+  "Red side (S: horizontal / vertical)": { it: "Schieramento rosso (S: orizzontale / verticale)", es: "Bando rojo (S: horizontal / vertical)", pt: "Lado vermelho (S: horizontal / vertical)", de: "Rote Seite (S: waagrecht / senkrecht)", fr: "Camp rouge (S : horizontal / vertical)" },
+  "Blue side (S: horizontal / vertical)": { it: "Schieramento blu (S: orizzontale / verticale)", es: "Bando azul (S: horizontal / vertical)", pt: "Lado azul (S: horizontal / vertical)", de: "Blaue Seite (S: waagrecht / senkrecht)", fr: "Camp bleu (S : horizontal / vertical)" },
+  "Move the pointer: straight or around the corner. Click: place. Right click: cancel.": {
+    it: "Muovi il puntatore: dritto o ad angolo. Clic: metti. Destro: annulla.",
+    es: "Mueve el puntero: recto o en esquina. Clic: colocar. Derecho: cancelar.",
+    pt: "Mova o ponteiro: reto ou em ângulo. Clique: colocar. Direito: cancelar.",
+    de: "Zeiger bewegen: gerade oder ums Eck. Klick: setzen. Rechts: abbrechen.",
+    fr: "Bouge le pointeur : tout droit ou en angle. Clic : placer. Droit : annuler." },
   "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
   // [§9.192] la mappa dell'editor nella partita online
   "You don't have this map: it will be downloaded when you connect, and kept among your maps.": {
