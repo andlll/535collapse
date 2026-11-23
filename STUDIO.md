@@ -13966,3 +13966,26 @@ in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
 
 Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
 scelta), test unitari, `editor.mjs`.
+
+### 9.201 La CI su main annullata per il tempo: il limite a 90 minuti
+
+Domanda dell'autore (23 novembre 2026, dopo il merge della PR #25):
+"continuo a vedere online la 0.2613 e sono passate ore". Versione 0.2616,
+PR nuova.
+
+Online c'era ancora la 0.2613 perche' gli ultimi due lavori su main non
+sono arrivati a Pages:
+- merge della #24 (0.2614, 22 novembre, esecuzione 419): un test unitario
+  fallito; nella 0.2615 i test passano tutti (146);
+- merge della #25 (0.2615, esecuzione 450): annullato al minuto 45, il
+  limite del lavoro (`timeout-minutes`, alzato da 30 a 45 in §9.153), durante
+  il determinismo fra browser, l'ultimo passo prima del sito. Tutto il resto
+  era passato. Le prove dell'editor (§9.181-§9.199: `editor.mjs`,
+  `skcustom.mjs`, `netmap.mjs`) hanno allungato le prove nel browser: sulla
+  PR il lavoro durava gia' 44 minuti e mezzo, e su main gli effetti sonori
+  (tools/18) ci hanno messo 10 minuti invece di 2.
+
+Il limite passa a 90 minuti (build.yml). Nessuna prova tolta o accorciata.
+Dopo il merge il lavoro su main pubblica la 0.2616 (con tutto quello della
+0.2614 e della 0.2615).
+

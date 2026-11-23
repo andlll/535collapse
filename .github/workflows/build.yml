@@ -23,7 +23,9 @@ jobs:
   build:
     # ubuntu-latest e' passato a 26.04, dove Playwright 1.56.1 non installa Chromium
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # [§9.201] 45 non bastava piu' (con le prove dell'editor ~44 minuti; un
+    # passo lento in piu' e il lavoro su main veniva annullato prima di Pages)
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
