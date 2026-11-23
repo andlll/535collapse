@@ -70,10 +70,11 @@ S (§9.183), salva e apri (browser e file `.dvmap`, con la convalida), le
 impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica" e "a
 scelta del giocatore") e la simmetria in tutti i comandi, come impostazione
 degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
-densita', texture) e la copertina (§9.185-§9.186). Da fare: la
-polilinea (fiumi, strade, ponti), "Prova mappa" (con la CPU statica nel
-gioco), le mappe dell'editor nella schermaglia (con la copertina) e nella
-partita online. In sospeso la password.
+densita', texture) e la copertina (§9.185-§9.186), la polilinea per fiumi
+e strade e "Salvare le modifiche?" all'uscita (§9.187). Da fare: "Prova
+mappa" (con la CPU statica nel gioco), le mappe dell'editor nella
+schermaglia (con la copertina e la CPU a scelta o fissa) e nella partita
+online; i ponti (dopo, decisione dell'autore). In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13144,4 +13145,76 @@ diagonale scelta nella riga di "Inserisci" e poi in quella di "Sposta",
 senza toccare la mappa), test unitari (134), screenshot (il bosco e la
 pietra con la simmetria orizzontale, l'ovale e il gemello sotto il
 puntatore; le impostazioni della CPU).
+
+### 9.187 L'editor di mappe: la polilinea, niente titolo, "Salvare le modifiche?"
+
+Richieste dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui. Per ora non implementare i ponti. Togli la scritta 'editor di
+mappe' in alto (e' grande ed e' un'informazione ovvia). Se la mappa e'
+stata modificata quando l'utente preme il tasto indietro deve comparire un
+warning che chiede se salvare le modifiche".
+
+**Niente titolo.** In alto resta solo la riga della mappa (nome, asterisco
+se cambiata, misure), dove prima stava il titolo.
+
+**"Salvare le modifiche?"** Con la mappa cambiata dall'ultimo salvataggio,
+"Indietro" (o Esc, o aprire un'altra mappa, o "Nuova mappa") chiede
+"Salvare le modifiche a questa mappa?" con tre pulsanti: **Salva** (nel
+browser se la mappa ci sta gia'; se no il pannello di §9.184 per il nome e
+il posto, e dopo il salvataggio si esce; "Annulla" nel pannello resta
+nell'editor), **Non salvare** (esce perdendo le modifiche, come il "Continua"
+di prima), **Annulla** (resta). La conferma ora ha un numero qualsiasi di
+pulsanti (`confirmLayout(W, H, n)`; anche quella per eliminare una mappa).
+
+**La polilinea** (il secondo strumento). Fiumi e strade come le polilinee di
+Tiled (§9.97), disegnati dal motore del gioco con le loro rive, l'acqua, i
+sassolini; i ponti no, per ora (decisione dell'autore). Nel riquadro tre
+schede, **Fiume**, **Strada** (la marcata, `strada1`) e **Sentiero** (la
+secondaria, `strada2`), la **larghezza** e la **larghezza finale** (quella
+all'ultimo punto: la linea si allarga o si stringe piano, `widthEnd`;
+"Uguale" se e' la stessa) fra 40 e 440 px, di partenza 150 per i fiumi e 110
+per le strade (tools/tiledkit.py), e la riga della simmetria (§9.186).
+- *Disegnare*: un clic fuori dalle linee comincia una linea nuova, ogni clic
+  aggiunge un punto (anche nel margine fuori dalla mappa: i fiumi entrano
+  dal bordo); il destro, Invio o un doppio clic la finiscono; Backspace
+  toglie l'ultimo punto, Esc la lascia. Durante il disegno una fascia larga
+  quanto la linea col tratto fino al puntatore.
+- *Cambiare*: un clic su una linea la sceglie (i suoi punti e il tracciato
+  in bianco; i punti delle altre linee piccoli); i punti si trascinano (la
+  modifica vera lasciando il tasto, un solo annulla); un doppio clic su un
+  tratto della linea scelta aggiunge un punto; Backspace toglie il punto
+  scelto (se ne restano almeno due), Canc toglie la linea; i "-" e "+"
+  cambiano larghezza e larghezza finale della linea scelta (senza linea
+  scelta, quelle delle linee nuove).
+- *Simmetria*: la linea finita ha anche la gemella specchiata; spostare,
+  aggiungere e togliere punti, cambiare larghezza e togliere la linea
+  valgono anche per la gemella, ritrovata dai punti (EditScene `twinLine`:
+  gli stessi punti specchiati, nello stesso ordine, entro 2 px).
+- Le linee sono forme della mappa (`rivers`, `roads`) con annulla e ripeti
+  (§9.185, EditScene `modifyFeatures` in piu'); cambiate, il motore rifa' la
+  geometria, l'acqua (e i suoi ostacoli) e il suolo.
+- I comandi in alto a destra nel riquadro cambiano con quello che si sta
+  facendo; se non stanno accanto al titolo si rimpiccioliscono (prima, con
+  una linea scelta, coprivano il titolo); le etichette dei "-" e "+" hanno
+  piu' spazio ("Larghezza finale" toccava il "-").
+
+Testi nuovi nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': il riquadro della polilinea, la conferma a
+tre pulsanti in fila nella finestra, la distanza da un tratto, il tipo di
+una linea; le linee in una scena vera: il motore ha i fiumi e le strade
+aggiunti, la gemella ritrovata con la diagonale e non con l'orizzontale,
+punti e larghezza finale cambiati e annullati, tolte), `editor.mjs` (in piu':
+"Salvare le modifiche?" coi tre pulsanti; Annulla resta; Salva col pannello,
+poi il menu; un fiume di tre punti finito col destro, piu' largo, un punto
+trascinato e annullato, un punto nuovo col doppio clic tolto con Backspace;
+un sentiero finito con Invio; con la simmetria diagonale una strada e la
+gemella, tolte insieme con Canc; Non salvare: il menu), test unitari (136),
+screenshot (una strada in disegno sopra un fiume, il fiume scelto coi suoi
+punti, l'avviso coi tre pulsanti).
+
+**Prossimo**: "Prova mappa" (la mappa dell'editor giocata nel gioco: lo
+scenario dal browser invece che da `assets/rooms/`, la CPU statica); le
+mappe dell'editor nella schermata della schermaglia (con la copertina, la
+CPU a scelta o fissa).
 

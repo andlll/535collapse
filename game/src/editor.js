@@ -48,6 +48,9 @@
 // come il suolo); la simmetria e' un'impostazione degli strumenti (Sposta,
 // Inserisci, Pennello: una riga in fondo al riquadro), non della mappa;
 // difficolta' e stile della CPU anche "a scelta del giocatore".
+// [§9.187] Sesto passo: la polilinea (fiumi e strade; i ponti no, per ora);
+// niente titolo in alto; con la mappa cambiata, prima di uscire (o di
+// aprirne un'altra) "Salvare le modifiche?".
 //
 // Un ciclo suo, senza partita (app.js passa qui prima di crearla):
 // renderer, atlas, input e ciclo sono quelli del gioco.
@@ -153,7 +156,7 @@ export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel
 // [§9.182] i comandi degli strumenti che ci sono
 export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
-export const READY = new Set(["select", "insert", "brush"]); // gli strumenti che funzionano (gli altri: "Prossimamente"; §9.185: il pennello)
+export const READY = new Set(["select", "insert", "brush", "line"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
 // [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
 export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
@@ -169,6 +172,10 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              // [§9.185] il pennello, la copertina
                              "Forest", "Density", "Left: paint. Right: erase.", "Cover", "No cover", "Load an image…", "Remove",
                              "This image could not be read.",
+                             // [§9.187] la polilinea, l'avviso prima di uscire
+                             "River", "Road", "Track", "End width", "Same", "Save the changes to this map?", "Save", "Don't save",
+                             "Click: new line. Click on a line: select it.", "Click: add a point. Right click or Enter: finish. Esc: cancel.",
+                             "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point.",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
@@ -301,11 +308,13 @@ export function openLayout(W, H, nMine = 0, scroll = 0) {
            heads: [[L + OPEN.w / 2, top - 30], [R + OPEN.w / 2, top - 30]], left: [L, top, L + OPEN.w, top + h] };
 }
 
-// [§9.182] La conferma prima di perdere le modifiche: il testo e due
-// pulsanti, "Continua" e "Annulla"
-export function confirmLayout(W, H) {
-  const bw = 220, bh = 56, y = H / 2 + 20;
-  return { text: [W / 2, H / 2 - 50], yes: [W / 2 - bw - 10, y, W / 2 - 10, y + bh], no: [W / 2 + 10, y, W / 2 + bw + 10, y + bh] };
+// [§9.182] La conferma: il testo e i pulsanti in fila, al centro. [§9.187]
+// n pulsanti (tre per "Salvare le modifiche?": Salva, Non salvare, Annulla)
+export function confirmLayout(W, H, n = 2) {
+  const bw = 220, bh = 56, gap = 20, y = H / 2 + 20, x0 = W / 2 - (n * bw + (n - 1) * gap) / 2;
+  const buttons = [];
+  for (let k = 0; k < n; k++) buttons.push([x0 + k * (bw + gap), y, x0 + k * (bw + gap) + bw, y + bh]);
+  return { text: [W / 2, H / 2 - 50], buttons, yes: buttons[0], no: buttons[n - 1] };
 }
 
 // ------------------------------------------------------- la tavolozza
@@ -344,14 +353,40 @@ const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest:
 export function brushLayout(panel) {
   const [x1, y1, x2] = panel, n = BRUSH_KINDS.length, tw = (x2 - x1 - 40) / n;
   const tabs = BRUSH_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
-  const cy = y1 + 128, group = (x) => ({ label: [x, cy], minus: [x + 170, cy, 16], value: [x + 230, cy], plus: [x + 290, cy, 16] });
+  // (§9.187: piu' spazio per l'etichetta, "Larghezza finale" toccava il "-")
+  const cy = y1 + 128, group = (x) => ({ label: [x, cy], minus: [x + 200, cy, 16], value: [x + 262, cy], plus: [x + 324, cy, 16] });
   return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
+}
+
+// [§9.187] La polilinea: fiumi e strade (le due di §9.97, la marcata e la
+// secondaria) disegnati punto per punto, come le polilinee di Tiled; i ponti
+// no, per ora (decisione dell'autore). Larghezza e larghezza finale (px,
+// quella all'ultimo punto: la linea si allarga o si stringe piano), come le
+// proprieta' `larghezza` e `larghezza_fine` di Tiled; di partenza 150 per i
+// fiumi e 110 per le strade (tools/tiledkit.py).
+export const LINE_KINDS = ["river", "road1", "road2"];
+export const LINE_KEY = { river: "rivers", road1: "roads", road2: "roads" };
+export const LINE_LABEL = { river: "River", road1: "Road", road2: "Track" };
+export const LINE_WIDTHS = [40, 60, 80, 110, 150, 200, 260, 340, 440];
+const LINE_TINT = { river: 0xa8783c, road1: 0x88b4c8, road2: 0x8cb0a0 };
+export const lineKind = (key, e) => (key === "rivers" ? "river" : e.kind === 2 ? "road2" : "road1");
+// il riquadro: le tre schede, larghezza e larghezza finale coi "-" e "+"
+export function lineLayout(panel) {
+  const B = brushLayout(panel), [x1, y1, x2] = panel, n = LINE_KINDS.length, tw = (x2 - x1 - 40) / n;
+  const tabs = LINE_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
+  return { tabs, width: B.width, end: B.density };
+}
+// la distanza di (px, py) dal segmento a-b, e il punto piu' vicino
+export function segDist(px, py, a, b) {
+  const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1;
+  const t = Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / L2)), qx = a[0] + t * vx, qy = a[1] + t * vy;
+  return [dhypot(px - qx, py - qy), qx, qy];
 }
 
 // [§9.186, richiesta dell'autore] La simmetria e' un'impostazione degli
 // strumenti (Sposta, Inserisci, Pennello), non della mappa: una riga in fondo
 // al loro riquadro, "Simmetria" e le quattro modalita'
-export const SYM_TOOLS = new Set(["select", "insert", "brush"]);
+export const SYM_TOOLS = new Set(["select", "insert", "brush", "line"]); // §9.187: anche la polilinea
 export function symLayout(panel) {
   const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
   return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
@@ -391,7 +426,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
                brush: { kind: "forest", w: 3, d: 3 }, stroke: null,
                // [§9.186] la simmetria di ogni strumento (spenta di partenza)
-               sym: { select: "none", insert: "none", brush: "none" }, symHover: null };
+               sym: { select: "none", insert: "none", brush: "none", line: "none" }, symHover: null,
+               // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
+               // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
+               line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
+               drawing: null, lsel: null, ldrag: null, lastClick: null };
   const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
@@ -416,7 +455,15 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const dirty = () => scene.version !== ed.saved || ed.meta;
   const markSaved = () => { ed.saved = scene.version; ed.meta = false; };
   // [§9.182] prima di perdere le modifiche, la conferma
-  const guard = (action) => { if (dirty()) ed.confirm = { action }; else action(); };
+  // [§9.187, richiesta dell'autore] con la mappa cambiata, prima di uscire (o
+  // di aprirne un'altra): "Salvare le modifiche?" Salva (poi esce: dal
+  // pannello se la mappa non e' ancora nel browser), Non salvare, Annulla
+  const guard = (action) => {
+    if (!dirty()) { action(); return; }
+    ed.confirm = { text: "Save the changes to this map?", esc: null,
+                   buttons: [{ label: "Save", action: () => saveThen(action) }, { label: "Don't save", action }, { label: "Cancel", action: null }] };
+  };
+  const saveThen = async (action) => { if (await quickSave()) action(); else if (ed.dom) ed.afterSave = action; };
   const busy = async (fn) => {
     ed.loading = true;
     try { await fn(); } catch (e) { console.error(e); toast(tr("This map could not be opened"), "warning"); } finally { ed.loading = false; }
@@ -475,7 +522,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], BRUSH_KINDS.slice(1)) // §9.185: gli sfondi delle texture
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
-  const setTool = (t) => { if (ed.stroke) return; ed.tool = t; if (t === "insert" || t === "brush") ensureCatalog(); };
+  const setTool = (t) => {
+    if (ed.stroke || ed.ldrag) return;
+    if (t !== ed.tool) Object.assign(ed, { drawing: null, lsel: null }); // §9.187
+    ed.tool = t;
+    if (t === "insert" || t === "brush") ensureCatalog();
+  };
 
   // ---------------------------------------------------------- modifiche
   const inMap = (x, y) => x >= 0 && y >= 0 && x <= scene.map.width && y <= scene.map.height;
@@ -596,6 +648,51 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     scene.end();
   };
 
+  // ------------------------------------------------------------ polilinea
+  // [§9.187] le larghezze (di partenza, o della linea scelta), la linea nuova
+  // finita (con la gemella), la linea e il punto sotto il puntatore
+  const lineW = (kind) => LINE_WIDTHS[ed.line.w[kind]], lineWE = (kind) => LINE_WIDTHS[ed.line.we[kind]];
+  const nearestW = (v) => LINE_WIDTHS.reduce((b, w, k) => (Math.abs(w - v) < Math.abs(LINE_WIDTHS[b] - v) ? k : b), 0);
+  const lineEntry = (kind, pts) => {
+    const w = lineW(kind), we = lineWE(kind), e = { pts, width: w };
+    if (we !== w) e.widthEnd = we;
+    if (kind !== "river") e.kind = kind === "road2" ? 2 : 1;
+    return e;
+  };
+  const mirrorPts = (pts) => pts.map(([x, y]) => mirrorPoint(symMode(), scene.map.width, scene.map.height, x, y).map(Math.round));
+  const lineFinish = () => {
+    const d = ed.drawing;
+    ed.drawing = null;
+    if (!d || d.pts.length < 2) return;
+    const key = LINE_KEY[d.kind], e = lineEntry(d.kind, d.pts), list = [e];
+    if (symOn()) {
+      const t = { ...e, pts: mirrorPts(e.pts) };
+      if (!t.pts.every(([x, y], k) => Math.abs(x - e.pts[k][0]) <= 1 && Math.abs(y - e.pts[k][1]) <= 1)) list.push(t);
+    }
+    scene.addFeatures(key, list);
+    ed.lsel = { key, e, vi: null };
+  };
+  const linePick = (x, y) => {
+    const tol = 10 * view.scale, lists = ["rivers", "roads"].map((key) => [key, scene.map[key] || []]);
+    for (const [key, l] of lists) for (const e of l) for (let k = 0; k < e.pts.length; k++) if (dhypot(x - e.pts[k][0], y - e.pts[k][1]) <= tol) return { key, e, vi: k };
+    for (const [key, l] of lists) {
+      for (const e of l) {
+        for (let k = 1; k < e.pts.length; k++) {
+          const [d, qx, qy] = segDist(x, y, e.pts[k - 1], e.pts[k]);
+          if (d <= Math.max(tol, (e.width || 100) / 2)) return { key, e, vi: null, seg: k, at: [Math.round(qx), Math.round(qy)] };
+        }
+      }
+    }
+    return null;
+  };
+  // la linea scelta e la gemella (con la simmetria dello strumento)
+  const lineAndTwin = (key, e) => { const t = scene.twinLine(key, e, symMode()); return t ? [e, t] : [e]; };
+  // un cambio ai punti: alla linea e, a specchio, alla gemella
+  const linePts = (key, e, fn) => {
+    const t = scene.twinLine(key, e, symMode());
+    scene.modifyFeatures(key, t ? [e, t] : [e], (f) => ({ pts: fn(f.pts.map((q) => q.slice()), f === t) }));
+  };
+
   // ------------------------------------------- impostazioni e salvataggio
   // [§9.184] pannelli HTML sopra l'editor (netui.js NetPanel, come quelli
   // della partita online: caselle di testo vere), coi pulsanti a pillola;
@@ -706,7 +803,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // salva: il nome, poi nel browser o su file
   const openSave = () => {
     const m = scene.map;
+    ed.afterSave = null;
     const [p, close] = panel(tr("Save map"));
+    // [§9.187] cosa fare dopo aver salvato (uscire, aprire un'altra mappa)
+    const after = () => { const a = ed.afterSave; ed.afterSave = null; if (a) a(); };
     const name = textField(p, tr("Name"), m.name, NAME_MAX);
     const named = () => {
       const n = name.value.trim().slice(0, NAME_MAX);
@@ -717,21 +817,22 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const row = p.row();
     p.button(row, tr("Save in the browser"), async () => {
       if (!named()) return;
-      try { ed.mapId = await saveMap(m, ed.mapId); markSaved(); close(); toast(tr("Map saved")); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
+      try { ed.mapId = await saveMap(m, ed.mapId); markSaved(); close(); toast(tr("Map saved")); after(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
     }, { primary: true, name: "browser" });
     p.button(row, tr("Save to file"), async () => {
       if (!named()) return;
-      try { await saveMapFile(m); markSaved(); close(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
+      try { await saveMapFile(m); markSaved(); close(); after(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
     }, { name: "file" });
-    p.button(row, tr("Cancel"), close);
+    p.button(row, tr("Cancel"), () => { ed.afterSave = null; close(); });
     name.focus();
     name.addEventListener("keydown", (e) => { if (e.key === "Enter") row.firstChild.click(); });
   };
   // Ctrl+S: di nuovo nel browser, se la mappa ha gia' nome e posto; se no il pannello
+  // (true se ha salvato; con il pannello aperto, false: decide il pannello)
   const quickSave = async () => {
     const m = scene.map;
-    if (!ed.mapId || !m.name) { openSave(); return; }
-    try { await saveMap(m, ed.mapId); markSaved(); toast(tr("Map saved")); } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); }
+    if (!ed.mapId || !m.name) { openSave(); return false; }
+    try { await saveMap(m, ed.mapId); markSaved(); toast(tr("Map saved")); return true; } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); return false; }
   };
   // (Ctrl+S nel browser apre "Salva pagina": qui no)
   window.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.code === "KeyS") e.preventDefault(); }, true);
@@ -749,14 +850,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const ctrl = input.down.has(17), shift = input.down.has(16), K = (k) => input.pressed.has(k);
     // la conferma, sopra tutto
     if (ed.confirm) {
-      const C = confirmLayout(W, H);
-      ed.confirm.hover = inRect(mx, my, C.yes) ? "yes" : inRect(mx, my, C.no) ? "no" : null;
-      if (K(27)) { ed.confirm = null; return; }
-      if (input.mouseReleased[0] && ed.confirm.hover) {
+      const B = ed.confirm.buttons, C = confirmLayout(W, H, B.length), k = C.buttons.findIndex((R) => inRect(mx, my, R));
+      ed.confirm.hover = k >= 0 ? k : null;
+      if (K(27)) { const esc = ed.confirm.esc; ed.confirm = null; if (esc) esc(); return; }
+      if (input.mouseReleased[0] && k >= 0) {
         clic();
-        const { action, hover, back } = ed.confirm;
         ed.confirm = null;
-        if (hover === "yes") action(); else if (back) back();
+        if (B[k].action) B[k].action();
       }
       return;
     }
@@ -776,8 +876,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         if (q === "file") guard(openFile);
         else if (q && q.remove !== undefined) {
           const rec = mine[q.remove];
-          ed.confirm = { text: "This map will be deleted.", yes: "Delete", back: openPanel,
-                         action: () => deleteMap(rec.id).then(openPanel, (e) => { console.error(e); openPanel(); }) };
+          ed.confirm = { text: "This map will be deleted.", esc: openPanel,
+                         buttons: [{ label: "Delete", action: () => deleteMap(rec.id).then(openPanel, (e) => { console.error(e); openPanel(); }) },
+                                   { label: "Cancel", action: openPanel }] };
         } else if (q && q.index !== undefined) guard(() => openSaved(mine[q.index].id));
         else if (q && q.room) guard(() => openTemplate(q.room));
       }
@@ -791,6 +892,22 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (input.inside) strokeStep(rx, ry);
       if (!input.mouseDown[st.erase ? 1 : 0]) strokeEnd();
       return;
+    }
+    // [§9.187] la polilinea: la linea scelta che non c'e' piu' (annullata); i tasti
+    if (ed.lsel && !(scene.map[ed.lsel.key] || []).includes(ed.lsel.e)) ed.lsel = null;
+    if (ed.tool === "line" && ed.drawing) {
+      if (K(27)) { ed.drawing = null; return; } // Esc: via la linea che si disegna
+      if (K(13)) { lineFinish(); return; } // Invio: finita
+      if (K(8)) { ed.drawing.pts.pop(); if (!ed.drawing.pts.length) ed.drawing = null; return; } // Backspace: via l'ultimo punto
+    } else if (ed.tool === "line" && ed.lsel) {
+      const { key, e, vi } = ed.lsel;
+      if (K(27)) { ed.lsel = null; return; }
+      if (K(46)) { scene.removeFeatures(key, lineAndTwin(key, e)); ed.lsel = null; return; } // Canc: via la linea
+      if (K(8) && vi !== null && e.pts.length > 2) { // Backspace: via il punto
+        linePts(key, e, (pts) => { pts.splice(vi, 1); return pts; });
+        ed.lsel = { key, e, vi: null };
+        return;
+      }
     }
     // Esc: prima si lascia l'oggetto o la scelta, poi si esce
     if (K(27)) {
@@ -882,6 +999,32 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
       return;
     }
+    // [§9.187] il riquadro della polilinea: le schede, larghezza e larghezza
+    // finale (della linea scelta, o di quelle nuove)
+    if (ed.tool === "line" && hit && hit.kind === "ui") {
+      const B = lineLayout(L.panel), on = (q) => dhypot(mx - q[0], my - q[1]) <= q[2] + 4;
+      const tab = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
+      ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : on(B.end.minus) ? "e-" : on(B.end.plus) ? "e+" : null);
+      if (input.mouseReleased[0] && ed.palHover) {
+        clic();
+        const q = ed.palHover, dir = q[1] === "+" ? 1 : -1, step = (k) => Math.max(0, Math.min(LINE_WIDTHS.length - 1, k + dir));
+        if (q.kind) { ed.line.kind = q.kind; ed.lsel = null; ed.drawing = null; }
+        else if (ed.lsel) {
+          const { key, e } = ed.lsel;
+          scene.modifyFeatures(key, lineAndTwin(key, e), (f) => {
+            const w = f.width, we = f.widthEnd ?? f.width;
+            if (q[0] === "w") { const nw = LINE_WIDTHS[step(nearestW(w))]; return we === w ? { width: nw } : { width: nw, widthEnd: we }; }
+            const ne = LINE_WIDTHS[step(nearestW(we))];
+            return ne === w ? { widthEnd: undefined } : { widthEnd: ne };
+          });
+          for (const f of lineAndTwin(key, e)) if (f.widthEnd === undefined) delete f.widthEnd;
+        } else {
+          const k = ed.line.kind, W0 = ed.line.w, E0 = ed.line.we;
+          if (q[0] === "w") { const linked = E0[k] === W0[k]; W0[k] = step(W0[k]); if (linked) E0[k] = W0[k]; } else E0[k] = step(E0[k]);
+        }
+      }
+      return;
+    }
     // [§9.185] il riquadro del pennello: le schede, i "-" e "+"
     if (ed.tool === "brush" && hit && hit.kind === "ui") {
       const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
@@ -899,6 +1042,41 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     // sulla mappa
     const onMap = !hit && input.inside;
+    if (ed.tool === "line") { // §9.187
+      const now = performance.now(), dbl = !!ed.lastClick && now - ed.lastClick.t < 350 && dhypot(mx - ed.lastClick.x, my - ed.lastClick.y) < 8;
+      if (input.mousePressed[0]) ed.lastClick = { t: now, x: mx, y: my };
+      const M = VIEW_MARGIN, px0 = Math.round(Math.max(-M, Math.min(scene.map.width + M, rx))), py0 = Math.round(Math.max(-M, Math.min(scene.map.height + M, ry)));
+      if (ed.drawing) { // un punto a clic; il destro o il doppio clic finiscono
+        if (onMap && input.mousePressed[1]) { lineFinish(); return; }
+        if (onMap && input.mousePressed[0]) {
+          if (dbl) { lineFinish(); return; } // (il primo clic del doppio ha gia' messo il punto)
+          const pts = ed.drawing.pts, last = pts[pts.length - 1];
+          if (!last || dhypot(px0 - last[0], py0 - last[1]) > 6 * view.scale) pts.push([px0, py0]);
+        }
+        return;
+      }
+      if (ed.ldrag) { // un punto trascinato: la modifica vera lasciando il tasto
+        const D = ed.ldrag;
+        if (!D.on && dhypot(mx - D.sx, my - D.sy) > 4) D.on = true;
+        if (D.on) D.cur = [px0, py0];
+        if (!input.mouseDown[0]) {
+          ed.ldrag = null;
+          if (D.on) linePts(D.key, D.e, (pts, twin) => { pts[D.vi] = twin ? mirrorPts([D.cur])[0] : D.cur; return pts; });
+        }
+        return;
+      }
+      if (onMap && input.mousePressed[1]) { ed.lsel = null; return; }
+      if (onMap && input.mousePressed[0]) {
+        const h = linePick(rx, ry);
+        if (h && h.vi !== null) { ed.lsel = h; ed.ldrag = { ...h, sx: mx, sy: my, on: false, cur: null }; }
+        else if (h && dbl && ed.lsel && ed.lsel.e === h.e) { // doppio clic su un tratto della linea scelta: un punto nuovo
+          linePts(h.key, h.e, (pts, twin) => { pts.splice(h.seg, 0, twin ? mirrorPts([h.at])[0] : h.at); return pts; });
+          ed.lsel = { key: h.key, e: h.e, vi: h.seg };
+        } else if (h) ed.lsel = { key: h.key, e: h.e, vi: null };
+        else { ed.lsel = null; ed.drawing = { kind: ed.line.kind, pts: [[px0, py0]] }; } // fuori dalle linee: una linea nuova
+      }
+      return;
+    }
     if (ed.tool === "brush") { // §9.185: il sinistro dipinge, il destro cancella
       if (onMap && catalog === "ready" && (input.mousePressed[0] || input.mousePressed[1])) { strokeStart(!input.mousePressed[0]); strokeStep(rx, ry); }
       return;
@@ -1029,6 +1207,42 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         outline(b, 1.5 * px, c.white, 0.9);
       }
     }
+    // [§9.187] la polilinea: i punti delle linee, la linea scelta, quella che
+    // si disegna (una fascia larga quanto la linea, col tratto fino al
+    // puntatore) e il punto trascinato; con la simmetria anche a specchio
+    if (ed.tool === "line") {
+      const band = (pts, kind, w0, w1, a) => {
+        const tint = LINE_TINT[kind];
+        draw.setAlpha(a);
+        for (let k = 1; k < pts.length; k++) {
+          const t = (k - 0.5) / Math.max(1, pts.length - 1);
+          draw.lineWidthColour(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], w0 + (w1 - w0) * t, tint, tint);
+        }
+      };
+      const dots = (pts, r, col, a) => { draw.setAlpha(a); for (const [x, y] of pts) draw.circleColour(x, y, r * px, col, col, false); };
+      for (const key of ["rivers", "roads"]) for (const e of scene.map[key] || []) dots(e.pts, 4, c.white, 0.55);
+      if (ed.lsel) {
+        const { key, e, vi } = ed.lsel;
+        for (const f of lineAndTwin(key, e)) {
+          draw.setAlpha(0.9);
+          for (let k = 1; k < f.pts.length; k++) draw.lineWidthColour(f.pts[k - 1][0], f.pts[k - 1][1], f.pts[k][0], f.pts[k][1], 2 * px, c.white, c.white);
+          dots(f.pts, 6, c.white, 0.95);
+          if (vi !== null && f === e) dots([f.pts[vi]], 4, DARK, 1);
+        }
+      }
+      if (ed.ldrag && ed.ldrag.cur) {
+        const D = ed.ldrag, pts = D.e.pts.map((q) => q.slice());
+        pts[D.vi] = D.cur;
+        band(pts, lineKind(D.key, D.e), D.e.width, D.e.widthEnd ?? D.e.width, 0.4);
+        dots([D.cur], 6, c.white, 1);
+      }
+      if (ed.drawing) {
+        const d = ed.drawing, pts = [...d.pts], [gx, gy] = view.toRoom(input.x, input.y);
+        if (input.inside) pts.push([gx, gy]);
+        const all = symOn() ? [pts, mirrorPts(pts)] : [pts];
+        for (const q of all) { band(q, d.kind, lineW(d.kind), lineWE(d.kind), 0.4); dots(q.slice(0, d.pts.length), 6, c.white, 0.95); }
+      }
+    }
     // [§9.185] il pennello: la pennellata di texture in corso e il cerchio
     // sotto il puntatore (col gemello, se c'e' la simmetria)
     if (ed.tool === "brush") {
@@ -1072,11 +1286,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.reset();
     // il titolo, e la mappa: nome (o "Nuova mappa") e misure
     draw.setHalign("center"); draw.setValign("middle");
-    draw.setFont("gui_sblocco");
-    glowText(draw, W / 2, 45, tr("Map editor"));
+    // ([§9.187, richiesta dell'autore] niente titolo "Editor di mappe": grande
+    // e ovvio; resta la riga della mappa. Il font non ha "·" ne' "×")
     draw.setFont("overdue");
-    // (il font non ha "·" ne' "×")
-    glowText(draw, W / 2, 92, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height);
+    glowText(draw, W / 2, 36, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height);
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
@@ -1127,15 +1340,26 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
+      : ed.tool === "line" ? tr(ed.drawing ? "Click: add a point. Right click or Enter: finish. Esc: cancel."
+        : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
+        : "Click: new line. Click on a line: select it.")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
       : ed.pick ? (pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
         + tr("Click: place. Right click: stop.") : tr("Choose an object");
-    draw.text(x2 - 26, y1 + 30, (onMap ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + state);
+    // (le coordinate solo se c'e' posto: i comandi della polilinea sono lunghi;
+    // [§9.187] se non stanno accanto al titolo, rimpiccioliti)
+    const right = (onMap && state.length < 48 ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + state;
+    draw.setFont("GUI_1");
+    const room = x2 - x1 - 52 - draw.stringWidth(tr(LABEL[ed.tool])) - 30;
+    draw.setFont("overdue");
+    const wide = draw.stringWidth(right), k = wide > room ? Math.max(0.55, room / wide) : 1;
+    if (k < 1) draw.textTransformed(x2 - 26, y1 + 30, right, k); else draw.text(x2 - 26, y1 + 30, right);
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
     if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
+    if (ed.tool === "line") { drawLinePanel(panel); draw.setColour(c.white); return; }
     draw.setHalign("left");
     draw.setValign("top");
     draw.setAlpha(0.8);
@@ -1206,6 +1430,43 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(1);
   };
 
+  // un valore coi suoi "-" e "+" (pennello, polilinea)
+  const pmGroup = (G, label, value, key) => {
+    draw.setFont("overdue");
+    draw.setColour(c.black); draw.setAlpha(0.8);
+    draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
+    draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
+    for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
+      const hov = ed.palHover === key + sign;
+      draw.setAlpha(hov ? 0.95 : 0.6);
+      draw.circleColour(C[0], C[1], C[2], DARK, DARK, false);
+      draw.setAlpha(1);
+      draw.lineWidthColour(C[0] - 7, C[1], C[0] + 7, C[1], 3, c.white, c.white);
+      if (sign === "+") draw.lineWidthColour(C[0], C[1] - 7, C[0], C[1] + 7, 3, c.white, c.white);
+    }
+  };
+
+  // [§9.187] il riquadro della polilinea: fiume, strada, sentiero; larghezza
+  // e larghezza finale della linea scelta (o di quelle nuove)
+  const drawLinePanel = (panel) => {
+    const B = lineLayout(panel), sel = ed.lsel, kind = sel ? lineKind(sel.key, sel.e) : ed.line.kind;
+    draw.setFont("overdue");
+    draw.setHalign("center");
+    draw.setValign("middle");
+    for (const q of B.tabs) {
+      const on = q.kind === kind, hov = ed.palHover === q;
+      draw.setAlpha(on ? 0.85 : hov ? 0.9 : 0.45);
+      draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
+      draw.setColour(on ? c.white : c.black);
+      draw.setAlpha(on ? 1 : 0.8);
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(LINE_LABEL[q.kind]));
+    }
+    const w = sel ? sel.e.width : lineW(kind), we = sel ? sel.e.widthEnd ?? sel.e.width : lineWE(kind);
+    pmGroup(B.width, tr("Width"), w + " px", "w");
+    pmGroup(B.end, tr("End width"), we === w ? tr("Same") : we + " px", "e");
+    draw.setAlpha(1);
+  };
+
   // [§9.185] il riquadro del pennello: le schede (bosco e texture), larghezza
   // e densita' (solo per il bosco) coi loro "-" e "+"
   const drawBrushPanel = (panel) => {
@@ -1221,21 +1482,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(on ? 1 : 0.8);
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : BG_NAMES[q.kind]));
     }
-    const group = (G, label, value, key) => {
-      draw.setColour(c.black); draw.setAlpha(0.8);
-      draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
-      draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
-      for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
-        const hov = ed.palHover === key + sign;
-        draw.setAlpha(hov ? 0.95 : 0.6);
-        draw.circleColour(C[0], C[1], C[2], DARK, DARK, false);
-        draw.setAlpha(1);
-        draw.lineWidthColour(C[0] - 7, C[1], C[0] + 7, C[1], 3, c.white, c.white);
-        if (sign === "+") draw.lineWidthColour(C[0], C[1] - 7, C[0], C[1] + 7, 3, c.white, c.white);
-      }
-    };
-    group(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
-    if (b.kind === "forest") group(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
+    pmGroup(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
+    if (b.kind === "forest") pmGroup(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
     draw.setAlpha(1);
   };
 
@@ -1313,13 +1561,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setColour(c.white);
   };
   const drawConfirm = (W, H) => {
-    const C = confirmLayout(W, H);
+    const B = ed.confirm.buttons, C = confirmLayout(W, H, B.length);
     veil(W, H);
     draw.setHalign("center"); draw.setValign("middle");
     draw.setFont("GUI_1");
-    glowText(draw, C.text[0], C.text[1], tr(ed.confirm.text || "The changes to this map will be lost."));
-    button(C.yes, tr(ed.confirm.yes || "Continue"), ed.confirm.hover === "yes");
-    button(C.no, tr("Cancel"), ed.confirm.hover === "no");
+    glowText(draw, C.text[0], C.text[1], tr(ed.confirm.text));
+    B.forEach((b, k) => button(C.buttons[k], tr(b.label), ed.confirm.hover === k));
     draw.setColour(c.white);
   };
 
@@ -1344,9 +1591,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   if (!params.has("nostart")) loop.start();
   // per le prove nel browser (game/test/browser/editor.mjs)
   window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
-                      openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0), confirmLayout: () => confirmLayout(view.cssW, view.cssH),
+                      openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
+                      confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
                       palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel,
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel),
-                      symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel),
+                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }

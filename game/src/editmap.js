@@ -328,6 +328,23 @@ export class EditScene {
     this.edit(list.map((e, k) => ({ key, e, from: null, to: JSON.parse(JSON.stringify(e)), at: n + k })));
     return list;
   }
+  // [§9.187] forme cambiate (i punti, le larghezze): fn(e) da' i campi nuovi
+  modifyFeatures(key, list, fn) {
+    const all = this.map[key] || [], copy = (x) => JSON.parse(JSON.stringify(x));
+    this.edit(list.map((e) => ({ key, e, from: copy(e), to: copy({ ...e, ...fn(e) }), at: all.indexOf(e) })));
+  }
+
+  // [§9.187] la linea gemella (fiumi, strade) con la simmetria `mode`: stessi
+  // punti specchiati, nello stesso ordine, entro 2 px
+  twinLine(key, e, mode) {
+    if (!mode || mode === "none") return null;
+    const W = this.map.width, H = this.map.height;
+    const want = e.pts.map(([x, y]) => mirrorPoint(mode, W, H, x, y));
+    if (want.every(([x, y], k) => Math.abs(x - e.pts[k][0]) <= 1 && Math.abs(y - e.pts[k][1]) <= 1)) return null; // (gemella di se stessa)
+    return (this.map[key] || []).find((f) => f !== e && f.pts.length === want.length
+      && f.pts.every(([x, y], k) => Math.abs(x - want[k][0]) <= 2 && Math.abs(y - want[k][1]) <= 2)) || null;
+  }
+
   removeFeatures(key, list) {
     const all = this.map[key] || [];
     const cs = list.map((e) => ({ key, e, from: JSON.parse(JSON.stringify(e)), to: null, at: all.indexOf(e) })).filter((c) => c.at >= 0);

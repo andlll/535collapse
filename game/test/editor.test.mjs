@@ -6,7 +6,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
-         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout } from "../src/editor.js";
+         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout,
+         lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap } from "../src/mapfile.js";
@@ -402,4 +403,52 @@ test("§9.185 forme e gruppi con annulla", { skip: !existsSync(OBJECTS) || !exis
   S.add([{ object: "miniera_oro", x: 3000, y: 3000, scale_x: 1, scale_y: 1, rotation: 0 }]);
   assert.ok(S.blocks(3000, 3000));
   assert.ok(!S.blocks(1000, 4000));
+});
+
+// [§9.187] La polilinea: il riquadro, la distanza da un tratto, il tipo di
+// una linea; la conferma a tre pulsanti
+test("§9.187 polilinea e avviso", () => {
+  for (const [W, H] of [[1920, 1080], [1280, 720]]) {
+    const L = editorLayout(W, H), B = lineLayout(L.panel), S = symLayout(L.panel);
+    assert.equal(B.tabs.length, 3);
+    for (const q of B.tabs) assert.ok(q.x1 >= L.panel[0] && q.x2 <= L.panel[2]);
+    for (const c of [B.width.minus, B.width.plus, B.end.minus, B.end.plus]) assert.ok(c[1] + c[2] < S.opts[0].y1 && c[0] + c[2] <= L.panel[2]);
+    const C = confirmLayout(W, H, 3);
+    assert.equal(C.buttons.length, 3);
+    for (let k = 1; k < 3; k++) assert.ok(C.buttons[k][0] > C.buttons[k - 1][2]);
+    assert.ok(C.buttons[0][0] >= 0 && C.buttons[2][2] <= W);
+  }
+  assert.deepEqual(segDist(5, 5, [0, 0], [10, 0]), [5, 5, 0]);
+  assert.deepEqual(segDist(-5, 0, [0, 0], [10, 0]), [5, 0, 0]);
+  assert.ok(LINE_WIDTHS.includes(150) && LINE_WIDTHS.includes(110)); // di partenza: fiumi 150, strade 110 (tools/tiledkit.py)
+  assert.equal(LINE_KEY.river, "rivers");
+  assert.equal(lineKind("roads", { kind: 2 }), "road2");
+  assert.equal(lineKind("roads", {}), "road1");
+  assert.equal(lineKind("rivers", {}), "river");
+});
+
+// [§9.187] le linee: modifica dei punti con annulla, la gemella specchiata
+test("§9.187 linee: modifiche e gemelle", { skip: !existsSync(OBJECTS) || !existsSync(MASKS) }, () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), masks = JSON.parse(readFileSync(MASKS, "utf8")).sprites;
+  const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
+  const map = newMap();
+  const S = new EditScene({ r: null, assets, objects, masks }, map);
+  S.ground = { reset() {}, free() {} };
+  const a = { pts: [[100, 100], [900, 400], [1500, 300]], width: 150 };
+  const b = { pts: a.pts.map(([x, y]) => [6000 - x, 6000 - y]), width: 150 };
+  S.addFeatures("rivers", [a, b]);
+  assert.equal(S.world.rivers.length, 2, "il motore ha i due fiumi");
+  assert.equal(S.twinLine("rivers", a, "diagonal"), b);
+  assert.equal(S.twinLine("rivers", a, "horizontal"), null);
+  assert.equal(S.twinLine("rivers", a, "none"), null);
+  S.modifyFeatures("rivers", [a], (f) => ({ pts: f.pts.map(([x, y]) => [x + 10, y]), widthEnd: 80 }));
+  assert.deepEqual(a.pts[0], [110, 100]);
+  assert.equal(a.widthEnd, 80);
+  S.undo();
+  assert.deepEqual(a.pts[0], [100, 100]);
+  assert.equal(a.widthEnd, undefined);
+  S.addFeatures("roads", [{ pts: [[0, 0], [500, 0]], width: 110, kind: 2 }]);
+  assert.equal(S.world.roads.length, 1);
+  S.removeFeatures("rivers", [a, b]);
+  assert.equal(S.world.rivers.length, 0);
 });

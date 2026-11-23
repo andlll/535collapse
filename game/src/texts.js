@@ -1499,4 +1499,16 @@ export const TEXTS = {
   "This image could not be read.": { it: "Non è stato possibile leggere questa immagine.", es: "No se ha podido leer esta imagen.", pt: "Não foi possível ler esta imagem.", de: "Dieses Bild konnte nicht gelesen werden.", fr: "Impossible de lire cette image." },
   // [§9.186] difficolta' e stile della CPU lasciati a chi lancia la partita
   "Player's choice": { it: "A scelta del giocatore", es: "A elección del jugador", pt: "À escolha do jogador", de: "Wahl des Spielers", fr: "Au choix du joueur" },
+  // [§9.187] la polilinea, l'avviso prima di uscire
+  "River": { it: "Fiume", es: "Río", pt: "Rio", de: "Fluss", fr: "Rivière" },
+  "Road": { it: "Strada", es: "Camino", pt: "Estrada", de: "Straße", fr: "Route" },
+  "Track": { it: "Sentiero", es: "Sendero", pt: "Trilha", de: "Pfad", fr: "Sentier" },
+  "End width": { it: "Larghezza finale", es: "Anchura final", pt: "Largura final", de: "Endbreite", fr: "Largeur finale" },
+  "Same": { it: "Uguale", es: "Igual", pt: "Igual", de: "Gleich", fr: "Identique" },
+  "Save the changes to this map?": { it: "Salvare le modifiche a questa mappa?", es: "¿Guardar los cambios de este mapa?", pt: "Salvar as alterações deste mapa?", de: "Änderungen an dieser Karte speichern?", fr: "Enregistrer les modifications de cette carte ?" },
+  "Save": { it: "Salva", es: "Guardar", pt: "Salvar", de: "Speichern", fr: "Enregistrer" },
+  "Don't save": { it: "Non salvare", es: "No guardar", pt: "Não salvar", de: "Nicht speichern", fr: "Ne pas enregistrer" },
+  "Click: new line. Click on a line: select it.": { it: "Clic: nuova linea. Clic su una linea: sceglila.", es: "Clic: nueva línea. Clic en una línea: elígela.", pt: "Clique: nova linha. Clique numa linha: selecione-a.", de: "Klick: neue Linie. Klick auf eine Linie: auswählen.", fr: "Clic : nouvelle ligne. Clic sur une ligne : la choisir." },
+  "Click: add a point. Right click or Enter: finish. Esc: cancel.": { it: "Clic: un punto. Destro o Invio: fine. Esc: annulla.", es: "Clic: un punto. Derecho o Intro: fin. Esc: cancelar.", pt: "Clique: um ponto. Direito ou Enter: fim. Esc: cancelar.", de: "Klick: ein Punkt. Rechts oder Enter: fertig. Esc: abbrechen.", fr: "Clic : un point. Droit ou Entrée : fin. Échap : annuler." },
+  "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point.": { it: "Trascina i punti. Doppio clic: nuovo punto. Canc: via la linea. Backspace: via il punto.", es: "Arrastra los puntos. Doble clic: punto nuevo. Supr: quita la línea. Retroceso: quita el punto.", pt: "Arraste os pontos. Duplo clique: novo ponto. Del: apaga a linha. Backspace: apaga o ponto.", de: "Punkte ziehen. Doppelklick: neuer Punkt. Entf: Linie löschen. Rücktaste: Punkt löschen.", fr: "Fais glisser les points. Double clic : nouveau point. Suppr : efface la ligne. Retour : efface le point." },
 };

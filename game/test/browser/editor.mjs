@@ -7,7 +7,8 @@
 // [§9.182] solo le schermaglie come modelli; Inserisci mette una miniera,
 // annulla e ripeti; [§9.183] gli stili col tasto S; [§9.184] impostazioni,
 // simmetria, salva e apri (browser e file), elimina; [§9.185] il pennello
-// (bosco, gomma, selciato) e la copertina; Sposta la sceglie, la trascina, Canc la toglie; uscendo
+// (bosco, gomma, selciato) e la copertina; [§9.187] la polilinea, "salvare
+// le modifiche?"; Sposta la sceglie, la trascina, Canc la toglie; uscendo
 // con la mappa cambiata si chiede conferma; Esc torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -166,18 +167,24 @@ check("trascinata", Math.abs(after2[0] - pos0[0] - 100 * after2[2]) < 3 && Math.
 await page.keyboard.press("Delete"); await page.waitForTimeout(150);
 check("Canc la toglie", (await count()) === n0);
 
-// la mappa e' cambiata: "Indietro" chiede conferma; Annulla resta, Continua esce
+// la mappa e' cambiata: "Indietro" chiede se salvare (§9.187): Salva, Non
+// salvare, Annulla. Annulla resta; Salva apre il pannello (la mappa non e'
+// ancora nel browser) e, salvata, esce
 const L2 = await page.evaluate(() => window.__editor.layout());
 await click(L2.back[0], L2.back[1]);
-check("conferma prima di uscire", await page.evaluate(() => !!window.__editor.ed.confirm));
+check("salvare le modifiche?", await page.evaluate(() => { const c = window.__editor.ed.confirm; return !!c && c.buttons.map((b) => b.label).join() === "Save,Don't save,Cancel"; }));
 const C = await page.evaluate(() => window.__editor.confirmLayout());
-await click((C.no[0] + C.no[2]) / 2, (C.no[1] + C.no[3]) / 2);
+const at = (R) => [(R[0] + R[2]) / 2, (R[1] + R[3]) / 2];
+await click(...at(C.buttons[2]));
 check("Annulla: si resta", await page.evaluate(() => !window.__editor.ed.confirm && window.__editor.ready));
 await click(L2.back[0], L2.back[1]);
-await click((C.yes[0] + C.yes[2]) / 2, (C.yes[1] + C.yes[3]) / 2);
+await click(...at(C.buttons[0]));
+await page.waitForSelector('.net-panel [data-net="browser"]');
+await page.fill(".net-panel input", "Uscita");
+await page.locator('.net-panel [data-net="browser"]').click();
 await page.waitForURL(/room=menu/, { timeout: 20000 });
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
-check("Continua: il menu", true);
+check("Salva: salvata, poi il menu", true);
 
 // Esc dall'editor senza modifiche: il menu
 await page.goto(`${base}/index.html?room=editor`);
@@ -275,7 +282,7 @@ await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.o
 const before3 = await page.evaluate(() => window.__editor.ed.open.mine.length);
 O3 = await page.evaluate(() => window.__editor.openLayout());
 await click(O3.mine[0].del[0], O3.mine[0].del[1]);
-check("conferma per eliminare", await page.evaluate(() => window.__editor.ed.confirm && window.__editor.ed.confirm.yes === "Delete"));
+check("conferma per eliminare", await page.evaluate(() => window.__editor.ed.confirm && window.__editor.ed.confirm.buttons[0].label === "Delete"));
 const C3 = await page.evaluate(() => window.__editor.confirmLayout());
 await click((C3.yes[0] + C3.yes[2]) / 2, (C3.yes[1] + C3.yes[3]) / 2);
 await page.waitForFunction((n) => window.__editor.ed.open && window.__editor.ed.open.mine && window.__editor.ed.open.mine.length === n - 1, before3, { timeout: 10000 });
@@ -351,6 +358,55 @@ const row4 = await page.evaluate((id) => window.__editor.ed.open.mine.findIndex(
 await click(...mid(O4.mine[row4]));
 await page.waitForFunction(() => window.__editor.scene.map.name === "Con copertina" && !window.__editor.ed.loading, null, { timeout: 60000 });
 check("la copertina resta", await page.evaluate((c) => (window.__editor.scene.map.cover || "").startsWith(c), cover));
+
+// [§9.187] la polilinea: un fiume di tre punti (destro: fine), piu' largo,
+// un punto trascinato (e annullato), un punto nuovo col doppio clic e tolto
+// con Backspace; un sentiero (Invio: fine); con la simmetria diagonale una
+// strada e la gemella, tolte insieme con Canc
+await click(btn3("new").x, btn3("new").y);
+await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading && !window.__editor.ed.confirm, null, { timeout: 60000 });
+await click(btn3("line").x, btn3("line").y);
+const LL = await page.evaluate(() => window.__editor.lineLayout());
+for (const [x, y] of [[500, 300], [700, 350], [900, 300]]) await click(x, y);
+await click(1000, 300, "right");
+const river = await page.evaluate(() => { const m = window.__editor.scene.map; return { n: m.rivers.length, pts: m.rivers[0] && m.rivers[0].pts.length, w: m.rivers[0] && m.rivers[0].width, geo: window.__editor.scene.world.rivers.length }; });
+check("un fiume di tre punti", river.n === 1 && river.pts === 3 && river.w === 150 && river.geo === 1);
+await click(LL.width.plus[0], LL.width.plus[1]);
+check("piu' largo", (await page.evaluate(() => window.__editor.scene.map.rivers[0].width)) === 200);
+const p1 = await page.evaluate(() => window.__editor.scene.map.rivers[0].pts[1].slice());
+await page.mouse.move(700, 350); await page.waitForTimeout(100); await page.mouse.down();
+for (let k = 1; k <= 5; k++) { await page.mouse.move(700 + 4 * k, 350 + 14 * k); await page.waitForTimeout(40); }
+await page.mouse.up(); await page.waitForTimeout(200);
+const p1b = await page.evaluate(() => window.__editor.scene.map.rivers[0].pts[1].slice());
+const sc = await page.evaluate(() => window.__editor.view.scale);
+check("un punto trascinato", Math.abs(p1b[0] - p1[0] - 20 * sc) < 3 && Math.abs(p1b[1] - p1[1] - 70 * sc) < 3);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("annullato il punto", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts[1][1])) === p1[1]);
+await click(600, 325);
+await page.mouse.click(600, 325, { clickCount: 1 }); await page.waitForTimeout(40); await page.mouse.click(600, 325); await page.waitForTimeout(200);
+check("un punto nuovo col doppio clic", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts.length)) === 4);
+await page.keyboard.press("Backspace"); await page.waitForTimeout(150);
+check("Backspace toglie il punto", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts.length)) === 3);
+await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+await click(...mid(LL.tabs[2]));
+for (const [x, y] of [[500, 500], [800, 520]]) await click(x, y);
+await page.keyboard.press("Enter"); await page.waitForTimeout(200);
+check("un sentiero", await page.evaluate(() => { const r = window.__editor.scene.map.roads; return r.length === 1 && r[0].kind === 2 && r[0].width === 110; }));
+await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+const SYL = await page.evaluate(() => window.__editor.symLayout());
+await click(...mid(SYL.opts.find((q) => q.mode === "diagonal")));
+await click(...mid(LL.tabs[1]));
+for (const [x, y] of [[450, 200], [650, 230]]) await click(x, y);
+await page.keyboard.press("Enter"); await page.waitForTimeout(200);
+check("con la simmetria la strada e la gemella", await page.evaluate(() => { const S = window.__editor.scene, r = S.map.roads; return r.length === 3 && S.twinLine("roads", r[1], "diagonal") === r[2]; }));
+await page.keyboard.press("Delete"); await page.waitForTimeout(150);
+check("Canc toglie strada e gemella", (await page.evaluate(() => window.__editor.scene.map.roads.length)) === 1);
+// Indietro, Non salvare: il menu
+await click(L3.back[0], L3.back[1]);
+const C5 = await page.evaluate(() => window.__editor.confirmLayout());
+await click(...at(C5.buttons[1]));
+await page.waitForURL(/room=menu/, { timeout: 20000 });
+check("Non salvare: il menu", true);
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));
