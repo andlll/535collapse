@@ -12,7 +12,7 @@
 // mappa dentro: la room non e' fra quelle del gioco), il ritorno al menu.
 
 import { listMaps, loadMap, openMapFile, putService } from "./mapstore.js";
-import { validateMap, testRoom, TEST_ROOM } from "./mapfile.js";
+import { validateMap, testRoom, TEST_ROOM, sidesOk, redStart, START } from "./mapfile.js";
 
 // l'ultima mappa dell'editor scelta nella schermaglia (il suo id nel browser)
 const USER_KEY = "535.skirmish.user";
@@ -23,20 +23,20 @@ export function rememberUserMap(id) {
 
 // Le opzioni della partita su una mappa dell'editor: quelle della
 // schermaglia del giocatore, con difficolta' e stile della CPU della mappa
-// se sono fissati (anche "Prova mappa", editor.js)
-export function skForMap(sk, cpu) {
+// se sono fissati (anche "Prova mappa", editor.js); [§9.191] la partenza
+// del giocatore e' quella rossa (non a caso come nelle mappe del gioco)
+export function skForMap(sk, map) {
+  const cpu = map && map.cpu;
   return { ...sk, map: TEST_ROOM, difficulty: !cpu || cpu.difficulty === "choice" ? sk.difficulty : cpu.difficulty,
-           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style };
+           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style, ...(map ? { start: redStart(map) } : {}) };
 }
 // il parametro `key` fissato dalla mappa (null: a scelta del giocatore)
 export const fixedBy = (map, key) => (map && map.cpu && map.cpu[key] && map.cpu[key] !== "choice" ? map.cpu[key] : null);
 
-export const START = "centro";
-export const startsOf = (map) => map.instances.filter((e) => e.object === START).length;
-
 // Le voci della schermata: { user: true, id (nel browser) o file, name,
-// state: "idle" | "loading" | "ok" | "bad", map, starts, desc }
-const entry = (fields) => ({ user: true, state: "idle", map: null, starts: 0, desc: "", ...fields });
+// state: "idle" | "loading" | "ok" | "bad", map, sides (§9.191: una
+// partenza rossa e una blu), desc }
+const entry = (fields) => ({ user: true, state: "idle", map: null, sides: false, desc: "", ...fields });
 export async function userMapList() {
   try {
     return (await listMaps()).map(({ id, name }) => entry({ id, name }));
@@ -52,7 +52,7 @@ async function check(data, objects) {
 }
 function fill(e, v) {
   if (v.errors) { e.state = "bad"; console.warn("[schermaglia] mappa non valida:", v.errors); return e; }
-  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", starts: startsOf(v.map) });
+  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", sides: sidesOk(v.map) });
   return e;
 }
 // la mappa di una voce del browser, letta e convalidata (una volta)
@@ -114,7 +114,7 @@ export const PREVIEW = {
   bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95" },
   water: "#6a9ec0", road: "#8a7a5e", path: "#9c8c6c",
   tree: "#4f6b45", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
-  start: "#ffffff", startRing: "#3c3c3c",
+  start: { red: "#c83038", blue: "#3070e8" }, startRing: "#ffffff",
 };
 const kindOf = (o) => (o === START ? "start" : /^albero/.test(o) ? "tree" : /^montagna_/.test(o) ? "mountain"
   : o === "miniera_oro" ? "gold" : /^pietr/.test(o) ? "stone" : /ruin$/.test(o) ? "ruin" : /^(ocr_|o_)/.test(o) ? "city" : null);
@@ -159,7 +159,7 @@ export function mapPreview(map, sizeOf = () => [100, 100]) {
   for (const e of groups.tree) dot(e.x, e.y, treeR, P.tree);
   for (const e of groups.gold) dot(e.x, e.y, Math.max(2.5, 70 * s), P.gold);
   for (const e of groups.stone) dot(e.x, e.y, Math.max(2.5, 60 * s), P.stone);
-  for (const e of groups.start) { dot(e.x, e.y, 10, P.startRing); dot(e.x, e.y, 7, P.start); }
+  for (const e of groups.start) { dot(e.x, e.y, 10, P.startRing); dot(e.x, e.y, 7, P.start[e.side] || "#808080"); } // §9.191: del suo colore
   g.restore();
   g.strokeStyle = "rgba(40, 40, 40, 0.6)"; g.lineWidth = 2;
   g.strokeRect(ox, oy, map.width * s, map.height * s);

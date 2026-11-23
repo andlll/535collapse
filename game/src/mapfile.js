@@ -27,6 +27,35 @@ export const CPU_DIFFICULTY = ["choice", "easy", "normal", "hard", "rigged"];
 export const CPU_STYLE = ["choice", "balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
 export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
 export const NAME_MAX = 40, DESC_MAX = 600;
+// [§9.191, richiesta dell'autore] Gli schieramenti: le partenze (il centro)
+// sono del rosso o del blu (`side` nella voce). Il rosso e' il giocatore (o,
+// online, chi crea la partita), il blu la CPU (o chi entra). Una mappa da
+// giocare ha una partenza per parte. Le mappe senza (i modelli, le mappe
+// salvate prima): la partenza A (in alto a sinistra, x + y piu' piccolo,
+// come skirmish.js skirmishPrepare) rossa, l'altra blu (assignSides).
+export const START = "centro";
+export const SIDES = ["red", "blue"];
+export const SIDED = new Set([START]);
+export const otherSide = (s) => (s === "red" ? "blue" : "red");
+export function assignSides(instances) {
+  const starts = instances.filter((i) => SIDED.has(i.object));
+  const free = starts.filter((i) => !i.side).sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  for (const i of free) {
+    const used = new Set(starts.map((q) => q.side).filter(Boolean));
+    i.side = !used.has("red") ? "red" : !used.has("blue") ? "blue" : "red";
+  }
+  return instances;
+}
+// le partenze di una parte
+export const startsOf = (map, side) => map.instances.filter((e) => e.object === START && e.side === side).length;
+// una partenza rossa e una blu: si puo' giocare
+export const sidesOk = (map) => startsOf(map, "red") === 1 && startsOf(map, "blue") === 1;
+// la partenza del rosso come la chiama skirmishPrepare (A: x + y piu'
+// piccolo fra le due, a pari l'ordine della mappa): l'opzione `start`
+export function redStart(map) {
+  const cc = map.instances.filter((e) => e.object === START).sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  return cc.length === 2 && cc[1].side === "red" ? "B" : "A";
+}
 // [§9.185, richiesta dell'autore] la copertina: un'immagine 720 x 480 come
 // le foto delle mappe della schermaglia (§9.121), WebP o JPEG in base64
 // dentro la mappa (al piu' ~500 KB)
@@ -66,6 +95,10 @@ export function validateMap(data, allowed, objects) {
     const i = { object: e.object, x: e.x, y: e.y, scale_x: e.scale_x ?? 1, scale_y: e.scale_y ?? 1, rotation: e.rotation ?? 0 };
     if (!inside(i.x, i.y) || ![i.scale_x, i.scale_y, i.rotation].every(num) || Math.abs(i.scale_x) > 8 || Math.abs(i.scale_y) > 8
         || !i.scale_x || !i.scale_y) { bad("posizione di " + e.object); continue; }
+    if (e.side !== undefined) { // §9.191
+      if (!SIDED.has(e.object) || !SIDES.includes(e.side)) { bad("schieramento di " + e.object); continue; }
+      i.side = e.side;
+    }
     if (e.sprite !== undefined) {
       // le varianti del gioco, o lo sprite dell'oggetto (quello della tile di
       // Tiled: tools/12 lo scrive per gli alberi finti, alb1_F)
@@ -92,6 +125,7 @@ export function validateMap(data, allowed, objects) {
   };
   const width = (f, k) => f[k] === undefined || (num(f[k]) && f[k] > 0 && f[k] <= 2000);
   const unit = (f, k, max) => f[k] === undefined || (num(f[k]) && f[k] >= 0 && f[k] <= max);
+  assignSides(instances); // §9.191
   const map = {
     format: MAP_FORMAT, version: MAP_VERSION, name: str(data.name, NAME_MAX) ? data.name : "", width: W, height: H,
     background: data.background, colour: num(data.colour) ? data.colour : MAP_COLOUR,

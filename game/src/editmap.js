@@ -19,6 +19,7 @@ import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, 
 import { GroundCache, GROUND } from "./ground.js";
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
+import { START, SIDED, SIDES, otherSide } from "./mapfile.js";
 
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
 // quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
@@ -52,18 +53,26 @@ export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q)
 // [§9.183] Le caselle di una scheda: ognuna con i suoi stili ({ object,
 // sprite? }): uno solo, gli sprite fra cui il gioco sceglie (gli alberi), o
 // gli oggetti di una famiglia (le case)
+// [§9.191] gli oggetti di uno schieramento (le partenze): una casella per
+// parte, rossa e blu
 export function paletteItems(cat, objects) {
-  return cat.objects.map((q) => {
-    if (typeof q !== "string") return { key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) };
+  return cat.objects.flatMap((q) => {
+    if (typeof q !== "string") return [{ key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) }];
+    if (SIDED.has(q)) return SIDES.map((side) => ({ key: q + ":" + side, side, styles: [{ object: q, side }] }));
     const o = objects[q];
-    return { key: q, styles: o && o.choices ? o.choices.map((sprite) => ({ object: q, sprite })) : [{ object: q }] };
+    return [{ key: q, styles: o && o.choices ? o.choices.map((sprite) => ({ object: q, sprite })) : [{ object: q }] }];
   });
 }
+
+// quante caselle ha una scheda (§9.191: le partenze, una per parte)
+export const paletteCount = (cat) => cat.objects.reduce((n, q) => n + (typeof q === "string" && SIDED.has(q) ? SIDES.length : 1), 0);
 
 // [§9.183] Gli stili di una voce gia' messa (per cambiarli con "Sposta"):
 // la lista e quale ha ora, o null se ne ha uno solo
 export function stylesOf(e, objects) {
   const o = objects[e.object];
+  // [§9.191] le partenze: lo schieramento (S lo cambia)
+  if (SIDED.has(e.object)) return { styles: SIDES.map((side) => ({ object: e.object, side })), at: Math.max(0, SIDES.indexOf(e.side)) };
   if (o && o.choices) {
     const styles = o.choices.map((sprite) => ({ object: e.object, sprite }));
     // (senza `sprite` la voce mostra la variante della sua posizione)
@@ -84,7 +93,16 @@ export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...
 export const TREES = new Set(["albero", "albero_fake"]);
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js
 // skirmishPrepare: due centri, uno per parte)
-export const START = "centro", STARTS = 2;
+export { START }; // (mapfile.js, §9.191)
+export const STARTS = 2;
+// [§9.191] come si vede una voce del blu: lo sprite del suo corrispondente
+// della CPU (il centro blu: enemy_centro, cc_b), o null
+export const BLUE_OF = { centro: "enemy_centro" };
+export function sideLook(objects, e) {
+  if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
+  const b = objects[BLUE_OF[e.object]];
+  return (b && b.sprite) || null;
+}
 // oggetti della mappa che non si toccano (il gioco ne ha bisogno: lo mette
 // l'editor dove manca)
 export const SYSTEM = new Set(["manager"]);
@@ -127,6 +145,7 @@ export function groupsFor(assets, objects, names) {
     for (const s of o.choices || []) want(s);
     for (const [s] of o.slices || []) want(s);
     if (BRIDGE_RAILS[n] && objects[BRIDGE_RAILS[n]]) want(objects[BRIDGE_RAILS[n]].sprite);
+    if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
   }
   return out;
 }
@@ -195,6 +214,8 @@ export class EditScene {
     const w = this.world, n0 = w.instances.length;
     const i = w._alloc(e.object, e.x, e.y, { sx: e.scale_x ?? 1, sy: e.scale_y ?? 1, rot: e.rotation ?? 0, noChoice: true });
     if (o.choices) i.sprite_index = o.choices.includes(e.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
+    const look = sideLook(this.objects, e); // §9.191: il blu col suo sprite
+    if (look) i.sprite_index = look;
     if (o.reveal) i.visible = true;
     w.fire(i, "create");
     i.kids = w.instances.slice(n0 + 1);
@@ -372,8 +393,8 @@ export class EditScene {
   // gli alberi della mappa (le voci), per il pennello
   trees() { return this.map.instances.filter((e) => TREES.has(e.object)); }
 
-  // quante posizioni di partenza ci sono
-  starts() { return this.map.instances.filter((e) => e.object === START).length; }
+  // quante posizioni di partenza ci sono ([§9.191] di una parte, o in tutto)
+  starts(side = null) { return this.map.instances.filter((e) => e.object === START && (!side || e.side === side)).length; }
 
   // [§9.184] dal punto d'origine al centro della maschera (come tools/16:
   // il gemello ha l'ingombro nello stesso posto), per una voce; [0, 0]
@@ -396,7 +417,9 @@ export class EditScene {
     if (!p) return null;
     const x = Math.round(p[0] - ox), y = Math.round(p[1] - oy);
     if (Math.abs(x - e.x) <= 1 && Math.abs(y - e.y) <= 1) return null;
-    return { ...e, x, y };
+    // [§9.191, richiesta dell'autore] la gemella di una voce di uno
+    // schieramento e' dell'altro
+    return e.side ? { ...e, x, y, side: otherSide(e.side) } : { ...e, x, y };
   }
 
   // la voce gemella gia' nella mappa (stesso oggetto, entro 2 px), o null

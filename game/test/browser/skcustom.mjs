@@ -50,7 +50,8 @@ const ids = await page.evaluate(async () => {
   const trees = [];
   for (let k = 0; k < 40; k++) trees.push(I("albero", 2200 + (k % 8) * 90, 1500 + Math.floor(k / 8) * 90));
   const A = { ...mf.newMap({ name: "Pianura di prova" }),
-              instances: [I("centro", 1200, 1200), I("centro", 4800, 4800), I("miniera_oro", 1800, 1500), I("pietra_grande", 4200, 4500),
+              // [§9.191] la partenza rossa (del giocatore) in basso a destra
+              instances: [{ ...I("centro", 1200, 1200), side: "blue" }, { ...I("centro", 4800, 4800), side: "red" }, I("miniera_oro", 1800, 1500), I("pietra_grande", 4200, 4500),
                           I("montagna_3", 3000, 3000), I("ocr_01", 3600, 2000), ...trees],
               rivers: [{ pts: [[0, 3500], [2500, 3300], [6000, 2600]], width: 260 }],
               roads: [{ pts: [[1200, 1300], [3000, 2400], [4800, 4700]], width: 120, kind: 1 }],
@@ -75,7 +76,7 @@ const menu = () => page.evaluate(() => {
   const list = i.skNet || !i.userMaps ? null : i.userMaps;
   const shown = i.skMap ?? 0, m = shown >= 5 && list ? list[shown - 5] : null;
   return { skmenu: i.skmenu, skNet: i.skNet, n: list ? list.length : 0, names: list ? list.map((e) => e.name) : [], shown,
-           user: m ? { name: m.name, state: m.state, starts: m.starts, cover: m.cover, sprite: !!(m.cover && window.__game.assets.sprites[m.cover]),
+           user: m ? { name: m.name, state: m.state, sides: m.sides, cover: m.cover, sprite: !!(m.cover && window.__game.assets.sprites[m.cover]),
                        cpu: m.map && m.map.cpu, file: !!m.file } : null, sk: { ...i.sk } };
 });
 await click(W / 2, colTop(4) + 90 + 35); // "Single player"
@@ -91,7 +92,7 @@ await click(...at(row("map", undefined, -1)));
 await page.waitForFunction(() => { const i = window.__game.world.all("enemy_manager_menu").next().value; const m = i.userMaps[i.skMap - 5]; return m && m.cover && m.cover.startsWith("__"); }, null, { timeout: 20000 });
 s = await menu();
 res.A = s.user;
-check("A: il disegno, partenze 2, CPU fissata", s.user.name === "Pianura di prova" && s.user.sprite && s.user.starts === 2 && s.user.cpu.style === "static");
+check("A: il disegno, partenze rossa e blu, CPU fissata", s.user.name === "Pianura di prova" && s.user.sprite && s.user.sides && s.user.cpu.style === "static");
 await click(...at(row("opt", "difficulty", 1)));
 await click(...at(row("opt", "style", 1)));
 s = await menu();
@@ -113,7 +114,7 @@ await page.waitForFunction(() => { const i = window.__game.world.all("enemy_mana
 await click(...at(row("start")));
 await page.waitForTimeout(500);
 s = await menu();
-check("C: una partenza, Inizia spento", s.user.name === "Una partenza" && s.user.starts === 1 && page.url().includes("room=menu"));
+check("C: una partenza, Inizia spento", s.user.name === "Una partenza" && !s.user.sides && page.url().includes("room=menu"));
 if (shots) await page.screenshot({ path: shots + "/sk_editor_C.png" });
 // "Inizia" su A
 await click(...at(row("map", undefined, 1)));
@@ -124,9 +125,10 @@ await click(...at(row("start")));
 await page.waitForURL(/room=custom&play=1/, { timeout: 30000 });
 await ready();
 await page.waitForTimeout(1000);
-let game = await page.evaluate(() => { const G = window.__game, w = G.world; return { room: w.room, sk: G.g.sk && { d: G.g.sk.difficulty, s: G.g.sk.style }, test: G.pause.testMode, eco: w.exists("enemy_eco"), centro: w.exists("enemy_centro"), mine: w.exists("centro"), omini: w.number("ally_omino"), mines: w.number("miniera_oro") }; });
+let game = await page.evaluate(() => { const G = window.__game, w = G.world, at = (o) => { const i = w.all(o).next().value; return i ? [i.x, i.y] : null; }; return { room: w.room, sk: G.g.sk && { d: G.g.sk.difficulty, s: G.g.sk.style }, test: G.pause.testMode, eco: w.exists("enemy_eco"), centro: at("enemy_centro"), mine: at("centro"), omini: w.number("ally_omino"), mines: w.number("miniera_oro") }; });
 res.partita = game;
 check("la partita: custom, CPU della mappa, non in prova", game.room === "custom" && game.sk.d === "hard" && game.sk.s === "static" && !game.test && game.eco && game.centro && game.mine && game.omini === 3 && game.mines === 1);
+check("il giocatore alla partenza rossa, la CPU alla blu", game.mine.join() === "4800,4800" && game.centro.join() === "1200,1200");
 if (shots) await page.screenshot({ path: shots + "/sk_editor_partita.png" });
 // salvata, caricata
 await page.evaluate(async () => { const G = window.__game; G.advance(120); await G.pause.actions.saveGame(); });

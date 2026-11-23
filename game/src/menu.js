@@ -220,7 +220,7 @@ const skList = (i) => (i.skNet || !i.userMaps ? SK_MAPS : [...SK_MAPS, ...i.user
 // la mappa mostrata: indice in skList
 const shownMap = (i) => Math.min(skList(i).length - 1, i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
 const mapAt = (i) => skList(i)[shownMap(i)];
-const playable = (m) => !!m.room || (!!m.user && m.state === "ok" && m.starts === 2);
+const playable = (m) => !!m.room || (!!m.user && m.state === "ok" && m.sides); // §9.191: una partenza rossa e una blu
 // [§9.156, decisione dell'autore] i parametri che valgono solo contro la CPU:
 // in grigio (e fermi) nella schermaglia della partita online ([§9.157]
 // i.skNet: "Multiplayer", "Create game")
@@ -416,7 +416,7 @@ export function enemyManagerMenu() {
           // [§9.190] una mappa dell'editor: la partita "custom" (skuser.js),
           // con la CPU della mappa se e' fissata
           if (m.user) {
-            playUserMap(m.map, skForMap(i.sk, m.map.cpu)).catch((e) => {
+            playUserMap(m.map, skForMap(i.sk, m.map)).catch((e) => {
               console.error(e);
               if (w.hooks.toast) w.hooks.toast(tr("Saving failed"), "warning");
             });
@@ -625,7 +625,7 @@ function drawMapCard(i, d, L, m) {
 function userDesc(d, m, w) {
   if (m.state === "bad") return tr("This map could not be opened");
   if (m.state !== "ok") return "";
-  if (m.starts !== 2) return tr("A skirmish map needs two starting positions (Insert, Starting positions).");
+  if (!m.sides) return tr("A skirmish map needs a red and a blue starting position (Insert, Starting positions)."); // §9.191
   const key = skDescH + ":" + w + ":" + getLanguage();
   if (!m.fit || m.fit.key !== key) m.fit = { key, text: fitText(d, m.desc, w, skDescH) };
   return m.fit.text;

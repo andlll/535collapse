@@ -76,9 +76,11 @@ e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
 (§9.188), che reagisce ma non ha economia ne' gestione (§9.189); le mappe
 dell'editor nella schermaglia (§9.190: dopo le cinque del gioco, dal
 browser o da file, con la copertina o il disegno della mappa e la CPU fissa
-o a scelta; la partita si salva con la mappa dentro). Da fare: la partita
-online sulle mappe dell'editor (da discutere con l'autore); i ponti (dopo,
-decisione dell'autore). In sospeso la password.
+o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
+blu (§9.191: la gemella simmetrica e' dell'altro schieramento). Da fare: la
+partita online sulle mappe dell'editor (§9.192); unita' ed edifici degli
+schieramenti in "Inserisci"; i ponti (dopo, decisione dell'autore). In
+sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13425,3 +13427,59 @@ queste modifiche); screenshot (la schermata con A, B e C, la partita).
 
 **Prossimo**: con l'autore, come fare la partita online sulle mappe
 dell'editor.
+
+### 9.191 Gli schieramenti: le partenze rossa e blu
+
+Risposta dell'autore alla proposta per la partita online (23 novembre 2026,
+stessa PR): "Ovviamente per essere giocata online la mappa deve avere almeno
+un elemento del giocatore rosso e uno del giocatore blu. [...] quando
+nell'editor inserisco un oggetto ad esempio dello schieramento rosso e ho la
+simmetria attiva, dall'altro lato il suo simmetrico viene creato come
+appartenente allo schieramento blu".
+
+Non era cosi': le partenze (il centro) erano neutre e chi prendeva quale lo
+decideva l'avvio a caso, come nelle mappe del gioco (skirmish.js
+skirmishPrepare, l'opzione nascosta `start`); "Inserisci" non ha ancora
+unita' ne' edifici delle due parti. Ora:
+- **le partenze hanno uno schieramento** (`side: "red" | "blue"` nella voce
+  della mappa, mapfile.js): in "Inserisci", scheda "Partenze", due caselle,
+  la rossa e la blu, col pallino del loro colore; la blu si vede col centro
+  blu (lo sprite di `enemy_centro`, cc_b) nella tavolozza, nella mappa e nel
+  fantasma;
+- **la gemella di una voce di uno schieramento e' dell'altro** (editmap.js
+  twinAt): con la simmetria la partenza rossa mette la blu dall'altra parte,
+  e cosi' con "Incolla" e con S;
+- **una partenza per parte**: un'altra partenza della stessa parte non si
+  mette ("Ogni schieramento ha una sola partenza."), anche incollando o
+  cambiando parte con S su una partenza scelta (S cambia lo schieramento);
+- **da giocare** una mappa ha una partenza rossa e una blu (mapfile.js
+  `sidesOk`): "Prova mappa", la schermata della schermaglia ("Una mappa
+  della schermaglia ha bisogno di una partenza rossa e di una blu");
+- **all'avvio il rosso e' il giocatore** (online sara' chi crea la
+  partita), **il blu la CPU** (online chi entra): `skForMap` mette nelle
+  opzioni `start` la lettera della partenza rossa come la conta
+  skirmishPrepare (A: x + y piu' piccolo), al posto del caso. Le mappe del
+  gioco restano a caso;
+- le mappe senza schieramenti (i modelli, le mappe salvate prima) li
+  ricevono nella convalida (`assignSides`): la partenza A rossa, l'altra
+  blu; con una gia' data, l'altra l'opposta. La convalida accetta `side`
+  solo sulle partenze e solo rosso o blu;
+- il disegno delle mappe senza copertina (§9.190) mette le partenze del loro
+  colore.
+
+Lo schieramento e' un campo della voce, pensato per le unita' e gli edifici
+delle due parti in "Inserisci" (il disegno dell'autore, §9.180: "unita',
+risorse, edifici"): il gioco ha gia' le corrispondenze fra gli oggetti del
+giocatore, della CPU e del secondo giocatore (multiplayer.js ENEMY_EQ e i
+gemelli p2_*). Da decidere con l'autore.
+
+Testi: "Ogni schieramento ha una sola partenza." e la richiesta della
+partenza rossa e blu, al posto di quelli delle "due partenze".
+
+Prove: `editor.test.mjs` (in piu': gli schieramenti assegnati, la partenza
+del giocatore per skirmishPrepare, la convalida, la tavolozza con due
+caselle, S, la gemella dell'altra parte; 140 test), `editor.mjs` (la
+partenza rossa con la simmetria e la gemella blu col suo sprite; un'altra
+rossa no), `skcustom.mjs` (la mappa A con la partenza rossa in basso a
+destra: il giocatore li', la CPU in alto a sinistra); screenshot (la
+tavolozza e le due partenze).

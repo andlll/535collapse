@@ -476,6 +476,23 @@ check("Canc toglie strada e gemella", (await page.evaluate(() => window.__editor
 await click(btn3("test").x, btn3("test").y);
 await page.waitForTimeout(300);
 check("Prova mappa: servono due partenze", await page.evaluate(() => location.search.includes("room=editor")));
+// [§9.191] gli schieramenti: la partenza rossa con la simmetria e la gemella
+// blu (col suo sprite, cc_b); un'altra partenza rossa no
+await click(btn3("insert").x, btn3("insert").y);
+await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+const SY2 = await page.evaluate(() => window.__editor.symLayout());
+if ((await page.evaluate(() => window.__editor.ed.sym.insert)) !== "diagonal") await click(...mid(SY2.opts.find((q) => q.mode === "diagonal")));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[0]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[0]));
+await click(640, 300);
+const startsNow = () => page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.object === "centro").map((e) => ({ side: e.side, sprite: S.instOf(e).sprite_index })); });
+const sides = await startsNow();
+res.schieramenti = sides;
+check("partenza rossa, gemella blu col suo sprite", sides.length === 2 && sides[0].side === "red" && sides[1].side === "blue" && sides[0].sprite === "cc_spr" && sides[1].sprite === "cc_b");
+await click(900, 420);
+check("un'altra partenza rossa no", (await startsNow()).length === 2);
 await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
 await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
   .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });

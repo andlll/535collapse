@@ -10,12 +10,13 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
          lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
-import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM } from "../src/mapfile.js";
+import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
+         startsOf } from "../src/mapfile.js";
 import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
-import { skForMap, fixedBy, startsOf } from "../src/skuser.js";
+import { skForMap, fixedBy } from "../src/skuser.js";
 import { roomLabel } from "../src/menu.js";
 import { setLanguage } from "../src/i18n.js";
 import { TEXTS } from "../src/texts.js";
@@ -146,8 +147,9 @@ test("§9.182 la tavolozza di Inserisci", () => {
     const P = paletteLayout(L.panel, k, 0);
     assert.equal(P.tabs.length, CATALOG.length);
     for (const q of [...P.tabs, ...P.cells]) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y1 >= y1 + 54 && q.y2 <= y2, `${cat.key}`);
-    assert.equal(P.cells.length, Math.min(P.per, cat.objects.length));
-    assert.equal(P.max, Math.max(0, cat.objects.length - P.per));
+    const n = paletteItems(cat, {}).length; // (§9.191: le partenze, una casella per parte)
+    assert.equal(P.cells.length, Math.min(P.per, n));
+    assert.equal(P.max, Math.max(0, n - P.per));
     assert.ok(!P.prev && (P.max > 0) === !!P.next);
     const end = paletteLayout(L.panel, k, 999);
     assert.equal(end.scroll, end.max);
@@ -155,7 +157,7 @@ test("§9.182 la tavolozza di Inserisci", () => {
   });
   // i prati e fiori (16 caselle) non ci stanno in una fila: si scorre
   assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "meadows"), 0).max > 0);
-  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0]);
+  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0, 1]); // §9.191: la partenza rossa e la blu
   assert.deepEqual(CATALOG[0].objects, [START]);
 });
 
@@ -492,15 +494,47 @@ test("§9.189 la CPU statica: la regia passiva", () => {
 // o a scelta del giocatore; le partite salvate col nome della mappa
 test("§9.190 la CPU della mappa e le etichette degli slot", () => {
   const sk = { map: "sk_padus", difficulty: "easy", style: "balanced", victory: "conquest" };
-  assert.deepEqual(skForMap(sk, { difficulty: "hard", style: "static" }), { ...sk, map: TEST_ROOM, difficulty: "hard", style: "static" });
-  assert.deepEqual(skForMap(sk, { difficulty: "choice", style: "choice" }), { ...sk, map: TEST_ROOM });
+  const I = (side, x, y) => ({ object: "centro", x, y, side });
+  const m = (cpu) => ({ cpu, instances: [I("red", 1000, 1000), I("blue", 5000, 5000)] });
+  assert.deepEqual(skForMap(sk, m({ difficulty: "hard", style: "static" })), { ...sk, map: TEST_ROOM, difficulty: "hard", style: "static", start: "A" });
+  assert.deepEqual(skForMap(sk, m({ difficulty: "choice", style: "choice" })), { ...sk, map: TEST_ROOM, start: "A" });
   assert.equal(fixedBy({ cpu: { difficulty: "choice", style: "raider" } }, "difficulty"), null);
   assert.equal(fixedBy({ cpu: { difficulty: "choice", style: "raider" } }, "style"), "raider");
   assert.equal(fixedBy(null, "style"), null);
-  assert.equal(startsOf({ instances: [{ object: "centro" }, { object: "albero" }, { object: "centro" }] }), 2);
+
   setLanguage("en");
   assert.equal(roomLabel("sk_padus"), "Skirmish: Padania");
   assert.equal(roomLabel("custom", { name: "Pianura" }), "Skirmish: Pianura");
   assert.equal(roomLabel("custom", {}), "Skirmish: Untitled map");
   assert.equal(roomLabel("lvl01").startsWith("1. "), true);
+});
+
+// [§9.191] gli schieramenti: le partenze rossa e blu, la gemella dell'altra
+// parte, le mappe senza schieramenti (A rossa), la partenza del giocatore
+test("§9.191 gli schieramenti delle partenze", () => {
+  const C = (x, y, side) => ({ object: "centro", x, y, scale_x: 1, scale_y: 1, rotation: 0, ...(side ? { side } : {}) });
+  // senza: A (x + y piu' piccolo) rossa, l'altra blu; con una gia' data, l'altra l'opposta
+  const a = assignSides([C(5000, 5000), C(1000, 1000)]);
+  assert.deepEqual(a.map((e) => e.side), ["blue", "red"]);
+  assert.deepEqual(assignSides([C(1000, 1000), C(5000, 5000, "red")]).map((e) => e.side), ["blue", "red"]);
+  // la partenza del giocatore per skirmishPrepare: A se la rossa e' A
+  assert.equal(redStart({ instances: [C(1000, 1000, "red"), C(5000, 5000, "blue")] }), "A");
+  assert.equal(redStart({ instances: [C(1000, 1000, "blue"), C(5000, 5000, "red")] }), "B");
+  // la convalida: lo schieramento solo sulle partenze, e solo rosso o blu
+  const objects = { centro: { sprite: "cc_spr" }, albero: { sprite: "alb1", choices: ["alb1"] } }, allowed = new Set(["centro", "albero"]);
+  const v = validateMap({ ...newMap(), instances: [C(1000, 1000), C(5000, 5000)] }, allowed, objects);
+  assert.ok(v.map && sidesOk(v.map) && startsOf(v.map, "red") === 1);
+  assert.ok(validateMap({ ...newMap(), instances: [C(1000, 1000, "green")] }, allowed, objects).errors);
+  assert.ok(validateMap({ ...newMap(), instances: [{ ...C(1000, 1000), object: "albero", side: "red" }] }, allowed, objects).errors);
+  assert.ok(!sidesOk({ instances: [C(1000, 1000, "red"), C(5000, 5000, "red")] }));
+  // la tavolozza: una casella per parte; S cambia lo schieramento
+  const items = paletteItems(CATALOG.find((k) => k.key === "start"), { centro: {} });
+  assert.deepEqual(items.map((q) => q.side), ["red", "blue"]);
+  assert.deepEqual(stylesOf(C(0, 0, "blue"), { centro: {} }), { styles: [{ object: "centro", side: "red" }, { object: "centro", side: "blue" }], at: 1 });
+  // la gemella (simmetria) e' dell'altra parte
+  const map = { ...newMap(), instances: [] };
+  const S = Object.create(EditScene.prototype);
+  Object.assign(S, { map, objects: { centro: {} }, masks: {} });
+  const t = S.twinAt(C(1000, 1000, "red"), "diagonal");
+  assert.deepEqual([t.x, t.y, t.side], [5000, 5000, "blue"]);
 });

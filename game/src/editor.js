@@ -74,9 +74,9 @@ import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
-         testRoom, TEST_ROOM } from "./mapfile.js";
+         testRoom, TEST_ROOM, sidesOk, SIDES } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta, mirrorPoint, TREES } from "./editmap.js";
+         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
@@ -168,7 +168,7 @@ export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
-                             "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "A skirmish map has two starting positions.",
+                             "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
                              "Map settings", "Name", "Description", "Width", "Height", "Background", "Difficulty", "CPU style",
@@ -184,7 +184,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point.",
                              // [§9.188] i salvataggi su file, "Prova mappa"
                              "Where", "In the browser", "To a file", "Choose at least one place.",
-                             "A skirmish map needs two starting positions (Insert, Starting positions).",
+                             "A skirmish map needs a red and a blue starting position (Insert, Starting positions).",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
@@ -234,6 +234,9 @@ export function hitTest(L, mx, my) {
 // schermo intero (menu.js drawFullButton), in un riquadro di +-16 px a scala
 // 1. ink: il colore del segno.
 const DARK = 0x3c3c3c;
+// [§9.191] i colori dei due schieramenti (BGR, come Draw)
+export const SIDE_COLOUR = { red: 0x3830c8, blue: 0xe87030 };
+export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Starting positions).";
 function drawIcon(d, key, x, y, s, ink) {
   const L = (x1, y1, x2, y2, w = 3) => d.lineWidthColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, w * s, ink, ink);
   const T = (x1, y1, x2, y2, x3, y3) => d.triangleColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, x + x3 * s, y + y3 * s, ink, ink, ink, false);
@@ -340,7 +343,7 @@ export function paletteLayout(panel, cat, scroll) {
   const tabs = CATALOG.map((_, k) => ({ k, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
   const left = x1 + 20 + ARROW, right = x2 - 20 - ARROW, top = y1 + 98;
   const per = Math.max(1, Math.floor((right - left + CELL_GAP) / (CELL + CELL_GAP)));
-  const n2 = CATALOG[cat].objects.length, max = Math.max(0, n2 - per), s = Math.max(0, Math.min(scroll, max));
+  const n2 = paletteCount(CATALOG[cat]), max = Math.max(0, n2 - per), s = Math.max(0, Math.min(scroll, max)); // §9.191
   const cells = [];
   for (let k = 0; k < Math.min(per, n2 - s); k++) {
     cells.push({ i: s + k, x1: left + k * (CELL + CELL_GAP), y1: top, x2: left + k * (CELL + CELL_GAP) + CELL, y2: top + CELL });
@@ -543,13 +546,20 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
 
   // ---------------------------------------------------------- modifiche
   const inMap = (x, y) => x >= 0 && y >= 0 && x <= scene.map.width && y <= scene.map.height;
-  const canStart = (n) => scene.starts() + n <= STARTS;
+  // [§9.191] una partenza per parte: si possono aggiungere le partenze di
+  // `list` (voci), togliendo prima quelle di `minus`?
+  const canStart = (list, minus = []) => SIDES.every((side) => {
+    const n = (l) => l.filter((e) => e.object === START && e.side === side).length;
+    return scene.starts(side) - n(minus) + n(list) <= 1;
+  });
+  const ONE_START = "Each side has one starting position.";
   // la voce che "Inserisci" mette in (x, y) e, con la simmetria, la gemella
   const toPlace = (x, y) => {
     const st = pickedStyle();
     if (!st) return [];
     const e = { object: st.object, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
+    if (st.side) e.side = st.side; // §9.191
     const t = scene.twinAt(e, symMode());
     return t ? [e, t] : [e];
   };
@@ -557,7 +567,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!inMap(x, y) || catalog !== "ready") return;
     const list = toPlace(x, y);
     if (!list.length) return;
-    if (list[0].object === START && !canStart(list.length)) { toast(tr("A skirmish map has two starting positions."), "warning"); return; }
+    if (!canStart(list)) { toast(tr(ONE_START), "warning"); return; }
     scene.add(list);
   };
   // [§9.183] S (Maiusc+S all'indietro): lo stile dopo della casella scelta
@@ -568,9 +578,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
     } else if (ed.tool === "select") {
       const list = scene.withTwins(selected(), symMode()).filter((e) => stylesOf(e, objects)); // §9.184: anche le gemelle
+      const next = (e) => { const S = stylesOf(e, objects); return S.styles[(S.at + dir + S.styles.length) % S.styles.length]; };
+      // [§9.191] lo schieramento di una partenza: sempre una per parte
+      if (!canStart(list.map((e) => ({ ...e, ...next(e) })), list)) { toast(tr(ONE_START), "warning"); return; }
       scene.modify(list, (e) => {
-        const S = stylesOf(e, objects), st = S.styles[(S.at + dir + S.styles.length) % S.styles.length];
-        return st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
+        const st = next(e);
+        return st.side ? { object: st.object, side: st.side } : st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
       });
     }
   };
@@ -586,8 +599,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!ed.clip) return;
     let list = ed.clip.map((e) => ({ ...e, x: Math.round(x + e.x), y: Math.round(y + e.y) }));
     list = list.concat(list.map((e) => scene.twinAt(e, symMode())).filter(Boolean)); // §9.184: con la simmetria, le gemelle
-    const st = list.filter((e) => e.object === START).length;
-    if (st && !canStart(st)) { list = list.filter((e) => e.object !== START); toast(tr("A skirmish map has two starting positions."), "warning"); }
+    if (!canStart(list)) { list = list.filter((e) => e.object !== START); toast(tr(ONE_START), "warning"); } // §9.191
     if (!list.length) return;
     scene.add(list);
     ed.sel = new Set(list);
@@ -882,8 +894,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // della schermaglia del giocatore, con la CPU della mappa se e' fissata
   const testMap = async () => {
     const m = scene.map;
-    if (scene.starts() !== STARTS) { toast(tr("A skirmish map needs two starting positions (Insert, Starting positions)."), "warning"); return; }
-    const sk = skForMap(loadSkirmish(), m.cpu); // (§9.190: come la schermaglia, skuser.js)
+    if (!sidesOk(scene.map)) { toast(tr(NEED_SIDES), "warning"); return; } // §9.191
+    const sk = skForMap(loadSkirmish(), m); // (§9.190: come la schermaglia, skuser.js)
     try {
       await putService("__session__", { map: JSON.parse(JSON.stringify(m)), mapId: ed.mapId, label: ed.label, file: ed.file || null,
                                          dirty: dirty(), tool: ed.tool, view: { x: view.x + view.w / 2, y: view.y + view.h / 2, scale: view.scale } });
@@ -1338,11 +1350,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     if (ed.tool === "insert" && ed.pick && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
-      const ok = inMap(gx, gy) && (st.object !== START || canStart(1));
-      const spr = st.sprite || (o && o.sprite);
-      // [§9.184] con la simmetria anche il fantasma della gemella
-      const list = toPlace(gx, gy), col = ok && (st.object !== START || canStart(list.length)) ? c.white : 0x4040ff;
+      // [§9.184] con la simmetria anche il fantasma della gemella ([§9.191]
+      // dell'altro schieramento: col suo sprite)
+      const list = toPlace(gx, gy), col = inMap(gx, gy) && canStart(list) ? c.white : 0x4040ff;
       for (const e of list) {
+        const spr = sideLook(objects, e) || st.sprite || (o && o.sprite);
         if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, col, e === list[0] ? 0.6 : 0.4);
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
@@ -1462,6 +1474,14 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(on ? 0.85 : hov ? 0.95 : 0.55);
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 18, 18, on ? DARK : c.white, on ? DARK : c.white, false);
       thumb(styleOfCell(ed.cat, q.i), (q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2, CELL - 10);
+      // [§9.191] lo schieramento: il pallino del suo colore, in alto a sinistra
+      const side = ITEMS[ed.cat][q.i].side;
+      if (side) {
+        const col = SIDE_COLOUR[side];
+        draw.setAlpha(1);
+        draw.circleColour(q.x1 + 13, q.y1 + 13, 8, c.white, c.white, false);
+        draw.circleColour(q.x1 + 13, q.y1 + 13, 6, col, col, false);
+      }
       // [§9.183] piu' stili: quale e quanti, in basso a destra
       const n = ITEMS[ed.cat][q.i].styles.length;
       if (n > 1) {
@@ -1562,7 +1582,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // la miniatura di uno stile ({ object, sprite? }), dentro un quadrato di
   // lato `size` (centro cx, cy)
   const thumb = (st, cx, cy, size) => {
-    const name = st.object, o = objects[name], spr = st.sprite || (o && (o.sprite || (o.choices && o.choices[0])));
+    const name = st.object, o = objects[name], spr = sideLook(objects, st) || st.sprite || (o && (o.sprite || (o.choices && o.choices[0]))); // §9.191
     const b = spr && tightBounds(assets, spr, 0, 0);
     if (b) {
       const s = Math.min(size / (b[2] - b[0]), size / (b[3] - b[1]), 1);
