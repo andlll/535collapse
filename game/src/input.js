@@ -155,8 +155,11 @@ export class Input {
     if (this.locked && document.exitPointerLock) document.exitPointerLock();
   }
 
-  // Chiamato all'inizio di ogni passo: fotografa lo stato.
+  // Chiamato all'inizio di ogni passo: fotografa lo stato. ([§9.199] reads:
+  // quante volte; le prove nel browser aspettano che l'input mandato sia
+  // stato letto, perche' in CI un fotogramma puo' durare centinaia di ms)
   beginStep() {
+    this.reads = (this.reads || 0) + 1;
     this.down = new Set(this._down);
     this.pressed = this._pressed; this._pressed = new Set();
     this.pressedShift = this._pressedShift; this._pressedShift = new Set();

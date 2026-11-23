@@ -13932,3 +13932,17 @@ chi gioca su una macchina lenta):
 - editor.js: Ctrl vale anche se gia' lasciato, per un tasto premuto con
   Ctrl tenuto; il trascinamento della vista parte da `pressPos` e si
   applica fino all'ultima posizione prima di chiudersi.
+
+Con questa correzione la CI ha passato il punto di Ctrl+S (esecuzione 444)
+ed e' caduta piu' avanti, alla polilinea: tre clic per un fiume, ma due
+clic nello stesso fotogramma contano come uno (un solo `mousePressed` per
+passo), e il fiume restava di un punto. In locale (anche col processore
+rallentato di 6 volte, o coi fotogrammi allungati a 250 ms da uno script)
+non si riproduceva. Qui il limite e' della prova, che manda le azioni piu'
+in fretta di quanto la CI disegni: input.js conta le letture dell'input
+(`reads`, esposto in `window.__editor` e `window.__game`), e `editor.mjs` e
+`skcustom.mjs` dopo ogni azione del mouse e della tastiera aspettano che
+la pagina l'abbia letto almeno una volta in piu' (`syncInput`; nessun
+controllo tolto o saltato). Le due prove passano in locale (la schermaglia
+piu' lenta: il menu disegna ~6 fotogrammi al secondo con la grafica
+emulata).

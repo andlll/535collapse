@@ -38,6 +38,25 @@ await page.addInitScript(() => {
   window.showSaveFilePicker = async ({ suggestedName }) => { fail(); return handle(suggestedName); };
   window.showOpenFilePicker = async () => { fail(); return [handle(window.__fs.openName)]; };
 });
+// [§9.199] In CI (grafica emulata, pochi core) un fotogramma puo' durare
+// centinaia di ms: due clic o un clic e un tasto potevano finire nello
+// stesso passo e contare come uno. Dopo ogni azione del mouse e della
+// tastiera si aspetta che la pagina abbia letto l'input (reads) almeno una
+// volta in piu' (window.__editor o window.__game; senza, niente attesa).
+const syncInput = (page) => {
+  const reads = () => page.evaluate(() => { const o = window.__editor || window.__game; return o && o.ready && typeof o.reads === "number" ? o.reads : null; }).catch(() => null);
+  const after = async (n0) => {
+    if (n0 === null) return;
+    await page.waitForFunction((n) => { const o = window.__editor || window.__game; return !o || typeof o.reads !== "number" || o.reads > n; }, n0, { timeout: 15000, polling: 10 }).catch(() => {});
+  };
+  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel"]], [page.keyboard, ["down", "up", "press"]]]) {
+    for (const m of names) {
+      const orig = obj[m].bind(obj);
+      obj[m] = async (...a) => { const n0 = await reads(); const r = await orig(...a); await after(n0); return r; };
+    }
+  }
+};
+syncInput(page);
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
 const logs = []; page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") logs.push(m.text()); });
 const click = async (x, y, button = "left") => {

@@ -1112,6 +1112,7 @@ async function main() {
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
                     skLayout, // §9.190: la schermata della schermaglia, per le prove
+                    get reads() { return input.reads || 0; }, // §9.199: le letture dell'input, per le prove
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
     // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
     commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),

@@ -2053,7 +2053,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   canvas.addEventListener("webglcontextrestored", async () => { r.init(); await assets.reload(progress); loop.start(); });
   if (!params.has("nostart")) loop.start();
   // per le prove nel browser (game/test/browser/editor.mjs)
-  window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH, ed.colScroll),
+  window.__editor = { ready: true, ed, view, input, loop, get reads() { return input.reads || 0; }, // §9.199
+                      layout: () => editorLayout(view.cssW, view.cssH, ed.colScroll),
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
                       confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
                       palette: () => paletteNow(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
