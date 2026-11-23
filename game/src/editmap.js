@@ -371,9 +371,10 @@ export class EditScene {
   }
 
   // il gemello di una voce (i campi, al posto gemello), o null se la
-  // simmetria e' spenta o se cadrebbe su se stessa (al centro o sull'asse)
-  twinAt(e) {
-    const mode = this.map.symmetry, [ox, oy] = this.maskOffset(e);
+  // simmetria e' spenta o se cadrebbe su se stessa (al centro o sull'asse).
+  // [§9.186] mode: la simmetria dello strumento (non piu' della mappa)
+  twinAt(e, mode) {
+    const [ox, oy] = this.maskOffset(e);
     const p = mirrorPoint(mode, this.map.width, this.map.height, e.x + ox, e.y + oy);
     if (!p) return null;
     const x = Math.round(p[0] - ox), y = Math.round(p[1] - oy);
@@ -382,16 +383,16 @@ export class EditScene {
   }
 
   // la voce gemella gia' nella mappa (stesso oggetto, entro 2 px), o null
-  twinOf(e) {
-    const t = this.twinAt(e);
+  twinOf(e, mode) {
+    const t = this.twinAt(e, mode);
     if (!t) return null;
     return this.map.instances.find((q) => q !== e && q.object === e.object && Math.abs(q.x - t.x) <= 2 && Math.abs(q.y - t.y) <= 2) || null;
   }
 
   // le voci e le loro gemelle (senza doppioni)
-  withTwins(entries) {
+  withTwins(entries, mode) {
     const out = new Set(entries);
-    if (this.map.symmetry && this.map.symmetry !== "none") for (const e of entries) { const t = this.twinOf(e); if (t) out.add(t); }
+    if (mode && mode !== "none") for (const e of entries) { const t = this.twinOf(e, mode); if (t) out.add(t); }
     return [...out];
   }
 

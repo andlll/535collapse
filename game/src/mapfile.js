@@ -15,13 +15,16 @@ export const MAP_COLOUR = 12632256, MAP_BACKGROUND = "green1";
 export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths"];
 
 // [§9.184] Le informazioni delle mappe dell'editor, in piu' (tools/07 e il
-// gioco le ignorano): la descrizione (la schermata della schermaglia), la
-// CPU (come nella schermaglia, piu' "statica", che non fa nulla: §9.182) e
-// la simmetria (spenta, diagonale, orizzontale, verticale: §9.182-§9.183).
+// gioco le ignorano): la descrizione (la schermata della schermaglia) e la
+// CPU (come nella schermaglia, piu' "statica", che non fa nulla: §9.182).
+// [§9.186, richiesta dell'autore] difficolta' e stile anche "a scelta del
+// giocatore" (`choice`, la scelta di partenza): li sceglie chi lancia la
+// partita; la simmetria non e' piu' della mappa ma degli strumenti (SYMMETRY
+// resta qui: le modalita').
 export const MAP_SIZES = [4000, 5000, 6000, 7000, 8000, 9000];
 export const MAP_BACKGROUNDS = ["green1", "city2", "city1"];
-export const CPU_DIFFICULTY = ["easy", "normal", "hard", "rigged"];
-export const CPU_STYLE = ["balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
+export const CPU_DIFFICULTY = ["choice", "easy", "normal", "hard", "rigged"];
+export const CPU_STYLE = ["choice", "balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
 export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
 export const NAME_MAX = 40, DESC_MAX = 600;
 // [§9.185, richiesta dell'autore] la copertina: un'immagine 720 x 480 come
@@ -36,7 +39,7 @@ export function newMap({ name = "", width = 6000, height = 6000, background = MA
   return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: MAP_COLOUR,
            view: { x: 0, y: 0, w: 3000, h: 2000 },
            instances: [], roads: [], rivers: [], bridges: [], patches: [],
-           description: "", cpu: { difficulty: "normal", style: "balanced" }, symmetry: "none" };
+           description: "", cpu: { difficulty: "choice", style: "choice" } };
 }
 
 // [§9.184] La convalida di una mappa che arriva da fuori (un file, il
@@ -102,9 +105,8 @@ export function validateMap(data, allowed, objects) {
     patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || MAP_BACKGROUNDS.includes(f.bg))
                   && unit(f, "feather", 400) && unit(f, "alpha", 1)),
     description: str(data.description, DESC_MAX) ? data.description : "",
-    cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "normal",
-           style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "balanced" },
-    symmetry: SYMMETRY.includes(data.symmetry) ? data.symmetry : "none",
+    cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "choice",
+           style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "choice" },
   };
   if (data.cover !== undefined) {
     if (typeof data.cover === "string" && data.cover.length <= COVER_MAX && COVER_RE.test(data.cover)) map.cover = data.cover;

@@ -1481,7 +1481,6 @@ export const TEXTS = {
   "No saved maps yet": { it: "Ancora nessuna mappa salvata", es: "Aún no hay mapas guardados", pt: "Ainda não há mapas salvos", de: "Noch keine gespeicherten Karten", fr: "Aucune carte enregistrée pour l'instant" },
   "This map will be deleted.": { it: "Questa mappa sarà eliminata.", es: "Este mapa se eliminará.", pt: "Este mapa será excluído.", de: "Diese Karte wird gelöscht.", fr: "Cette carte sera supprimée." },
   "Delete": { it: "Elimina", es: "Eliminar", pt: "Excluir", de: "Löschen", fr: "Supprimer" },
-  "Symmetry: {mode}": { it: "Simmetria: {mode}", es: "Simetría: {mode}", pt: "Simetria: {mode}", de: "Symmetrie: {mode}", fr: "Symétrie : {mode}" },
   "Meadow": { it: "Prato", es: "Prado", pt: "Prado", de: "Wiese", fr: "Prairie" },
   "Paving": { it: "Selciato", es: "Empedrado", pt: "Calçamento", de: "Pflaster", fr: "Pavés" },
   "Stone": { it: "Pietra", es: "Piedra", pt: "Pedra", de: "Stein", fr: "Pierre" },
@@ -1498,4 +1497,6 @@ export const TEXTS = {
   "Load an image…": { it: "Carica un'immagine…", es: "Cargar una imagen…", pt: "Carregar uma imagem…", de: "Bild laden…", fr: "Charger une image…" },
   "Remove": { it: "Togli", es: "Quitar", pt: "Remover", de: "Entfernen", fr: "Retirer" },
   "This image could not be read.": { it: "Non è stato possibile leggere questa immagine.", es: "No se ha podido leer esta imagen.", pt: "Não foi possível ler esta imagem.", de: "Dieses Bild konnte nicht gelesen werden.", fr: "Impossible de lire cette image." },
+  // [§9.186] difficolta' e stile della CPU lasciati a chi lancia la partita
+  "Player's choice": { it: "A scelta del giocatore", es: "A elección del jugador", pt: "À escolha do jogador", de: "Wahl des Spielers", fr: "Au choix du joueur" },
 };

@@ -67,9 +67,10 @@ mappe", `?room=editor`, dal disegno dell'autore), la mappa vera (col motore,
 anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
 annulla e ripeti, "Nuova mappa" vuota, gli stili di case e alberi col tasto
 S (§9.183), salva e apri (browser e file `.dvmap`, con la convalida), le
-impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica",
-simmetria) e la simmetria in tutti i comandi (§9.184), il pennello (boschi
-con larghezza e densita', texture) e la copertina (§9.185). Da fare: la
+impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica" e "a
+scelta del giocatore") e la simmetria in tutti i comandi, come impostazione
+degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
+densita', texture) e la copertina (§9.185-§9.186). Da fare: la
 polilinea (fiumi, strade, ponti), "Prova mappa" (con la CPU statica nel
 gioco), le mappe dell'editor nella schermaglia (con la copertina) e nella
 partita online. In sospeso la password.
@@ -12684,10 +12685,11 @@ schermaglia; poi gli scenari con regia (R2) e la condivisione.
 - [x] I boschi: tutti e due, alberi uno per uno con "Inserisci" e col
   pennello, che regola larghezza e densita' (§9.182).
 - [x] "Controllo CPU": come nella schermaglia, piu' una CPU statica che non
-  fa nulla (§9.182).
+  fa nulla (§9.182), e "a scelta del giocatore" al lancio (§9.186).
 - [ ] "Password?": in sospeso (l'autore non ricorda a cosa servisse).
 - [x] Simmetria: spenta di partenza; si accende diagonale, orizzontale o
-  verticale rispetto alla mappa (§9.182).
+  verticale rispetto alla mappa (§9.182); e' un'impostazione degli strumenti,
+  non della mappa (§9.186).
 - [x] Le mappe dell'editor nella schermata della schermaglia, se caricate;
   anche nella partita online, col blu che la riceve all'inizio (§9.182).
 
@@ -13093,4 +13095,53 @@ impostazioni con la copertina).
 **Prossimo**: la polilinea (fiumi, strade, ponti); "Prova mappa" (lo
 scenario dal browser nel gioco, la CPU statica); le mappe dell'editor nella
 schermata della schermaglia, con la copertina.
+
+### 9.186 Il pennello ovale, la simmetria degli strumenti, la CPU a scelta
+
+Richieste dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Occhio che l'area del bosco deve essere ovale 'assonometrica' e non tonda.
+Simmetria deve essere un'impostazione di tool come pennello o piazza
+oggetto, non della mappa. Per difficolta' o stile CPU deve anche esserci
+l'opzione di lasciare al giocatore la scelta al momento di lancio della
+partita."
+
+**Il pennello ovale.** L'area del pennello e' un ovale schiacciato in
+verticale come il suolo del gioco: largo quanto la larghezza scelta, alto
+0,62 volte (`ISO` di rivers.js, lo stesso dei fiumi e delle strade, ora
+esportato). Valgono l'ovale: i punti del bosco (`forestStep` con `ry`), la
+gomma degli alberi e delle macchie, la sagoma delle texture (`strokeOutlines`
+con gli ovali al posto dei cerchi), i cerchi della pennellata in corso e il
+bordo tratteggiato sotto il puntatore. La distanza minima fra gli alberi
+resta quella di prima (in pixel della mappa, come i boschi di Tiled e di
+tools/12).
+
+**La simmetria degli strumenti.** Non e' piu' un campo della mappa (ne' delle
+impostazioni): ogni strumento che la usa ha la sua, spenta di partenza, in
+una riga in fondo al suo riquadro, "Simmetria: Spenta, Diagonale,
+Orizzontale, Verticale" (`symLayout`; il riquadro passa da 196 a 226 px per
+farle posto). "Sposta" la usa per spostare, eliminare, specchiare, cambiare
+stile e incollare anche i gemelli; "Inserisci" per mettere anche il gemello;
+il pennello per dipingere e cancellare anche al posto specchiato. Il
+gemello e' sempre ritrovato dalla posizione (§9.184), quindi la stessa mappa
+si puo' lavorare con simmetrie diverse. L'asse (o il centro) si vede quando
+lo strumento in uso ha la simmetria accesa. Le mappe salvate prima con
+`symmetry` lo perdono alla convalida (campo sconosciuto).
+
+**La CPU a scelta del giocatore.** Difficolta' e stile hanno in piu' "A
+scelta del giocatore" (`choice`), che e' anche la scelta di partenza delle
+mappe nuove: li sceglie chi lancia la partita, nella schermata della
+schermaglia; con una difficolta' o uno stile fissati la schermata li
+mostrera' fermi (come quelli della CPU nella partita online, §9.156). Lo
+stile ha sempre anche "Statica (non fa nulla)".
+
+Prove: `editor.test.mjs` (in piu': la sagoma di un ovale largo 600 e alto
+372; il bosco dentro l'ovale e largo; la riga della simmetria dentro il
+riquadro, sotto la tavolozza e i "-" e "+"; i gemelli con la modalita'
+passata dallo strumento, nessuno con "none"; le mappe convalidate senza
+`symmetry` e con la CPU "a scelta"), `editor.mjs` (in piu': la CPU "a scelta
+del giocatore" di partenza, la statica scelta e salvata; la simmetria
+diagonale scelta nella riga di "Inserisci" e poi in quella di "Sposta",
+senza toccare la mappa), test unitari (134), screenshot (il bosco e la
+pietra con la simmetria orizzontale, l'ovale e il gemello sotto il
+puntatore; le impostazioni della CPU).
 

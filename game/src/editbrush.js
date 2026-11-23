@@ -37,15 +37,18 @@ export class TreeGrid {
   }
 }
 
-// Un passo del pennello dei boschi: fino a `tries` punti a caso nel cerchio
-// (cx, cy, r), tenuti se `ok(x, y)` e se non c'e' un albero (della griglia,
-// anche quelli appena messi) piu' vicino di `spacing`. rand(): [0, 1).
-export function forestStep({ cx, cy, r, spacing, grid, rand, ok = () => true, tries = 10 }) {
+// Un passo del pennello dei boschi: fino a `tries` punti a caso nell'ovale
+// (cx, cy, r, ry), tenuti se `ok(x, y)` e se non c'e' un albero (della
+// griglia, anche quelli appena messi) piu' vicino di `spacing`. rand(): [0, 1).
+// [§9.186, richiesta dell'autore] l'area del pennello e' un ovale
+// "assonometrico", schiacciato in verticale come il suolo (ry = r x ISO,
+// rivers.js), non un cerchio
+export function forestStep({ cx, cy, r, ry = r, spacing, grid, rand, ok = () => true, tries = 10 }) {
   const out = [];
   for (let k = 0; k < tries; k++) {
-    // uniforme nel cerchio: raggio con la radice
-    const a = rand() * Math.PI * 2, d = r * Math.sqrt(rand());
-    const x = Math.round(cx + dcos(a) * d), y = Math.round(cy + dsin(a) * d);
+    // uniforme nell'ovale: raggio con la radice
+    const a = rand() * Math.PI * 2, d = Math.sqrt(rand());
+    const x = Math.round(cx + dcos(a) * d * r), y = Math.round(cy + dsin(a) * d * ry);
     if (grid.near(x, y, spacing) || !ok(x, y)) continue;
     grid.add(x, y);
     out.push([x, y]);
@@ -91,24 +94,25 @@ export function simplify(pts, eps) {
   return out;
 }
 
-// I contorni dell'unione dei cerchi `dabs` ([x, y]) di raggio r: una griglia
-// di lato `cell` (dentro: a meno di r da un cerchio), marching squares sui
-// punti di mezzo dei lati, i segmenti uniti in anelli; via i buchi (anelli
-// dentro un altro anello) e i pezzetti, semplificati a cell * 0,75.
-export function strokeOutlines(dabs, r, cell = Math.max(12, r / 8)) {
+// I contorni dell'unione degli ovali `dabs` ([x, y]) di semiassi r e ry
+// (§9.186: ovali assonometrici; ry = r: cerchi): una griglia di lato `cell`
+// (dentro: in un ovale), marching squares sui punti di mezzo dei lati, i
+// segmenti uniti in anelli; via i buchi (anelli dentro un altro anello) e i
+// pezzetti, semplificati a cell * 0,75.
+export function strokeOutlines(dabs, r, ry = r, cell = Math.max(12, Math.min(r, ry) / 8)) {
   if (!dabs.length) return [];
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of dabs) { x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - r); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + r); }
+  for (const [x, y] of dabs) { x0 = Math.min(x0, x - r); y0 = Math.min(y0, y - ry); x1 = Math.max(x1, x + r); y1 = Math.max(y1, y + ry); }
   x0 -= 2 * cell; y0 -= 2 * cell; x1 += 2 * cell; y1 += 2 * cell;
   const nx = Math.ceil((x1 - x0) / cell) + 1, ny = Math.ceil((y1 - y0) / cell) + 1;
-  const v = new Uint8Array(nx * ny), r2 = r * r;
+  const v = new Uint8Array(nx * ny);
   for (const [dx, dy] of dabs) {
     const i0 = Math.max(0, Math.floor((dx - r - x0) / cell)), i1 = Math.min(nx - 1, Math.ceil((dx + r - x0) / cell));
-    const j0 = Math.max(0, Math.floor((dy - r - y0) / cell)), j1 = Math.min(ny - 1, Math.ceil((dy + r - y0) / cell));
+    const j0 = Math.max(0, Math.floor((dy - ry - y0) / cell)), j1 = Math.min(ny - 1, Math.ceil((dy + ry - y0) / cell));
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
-        const px = x0 + i * cell - dx, py = y0 + j * cell - dy;
-        if (px * px + py * py <= r2) v[j * nx + i] = 1;
+        const px = (x0 + i * cell - dx) / r, py = (y0 + j * cell - dy) / ry;
+        if (px * px + py * py <= 1) v[j * nx + i] = 1;
       }
     }
   }
@@ -153,8 +157,8 @@ export function strokeOutlines(dabs, r, cell = Math.max(12, r / 8)) {
     }
     if (loop.length >= 4) loops.push(loop.map((k) => { const [a, b] = k.split(",").map(Number); return [x0 + (a / 2) * cell, y0 + (b / 2) * cell]; }));
   }
-  // via i buchi e i pezzetti (meno di un cerchio di raggio r/3)
-  const min = Math.PI * (r / 3) * (r / 3);
+  // via i buchi e i pezzetti (meno di un ovale coi semiassi a un terzo)
+  const min = Math.PI * (r / 3) * (ry / 3);
   const outer = loops.filter((p, k) => Math.abs(polyArea(p)) >= min
     && !loops.some((q, h) => h !== k && Math.abs(polyArea(q)) > Math.abs(polyArea(p)) && pointInPoly(p[0][0], p[0][1], q)));
   return outer.map((p) => simplify(p, cell * 0.75).map(([x, y]) => [Math.round(x), Math.round(y)]));

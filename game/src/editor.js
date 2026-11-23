@@ -44,6 +44,10 @@
 // "Inserisci" e "Sposta".
 // [§9.185] Quinto passo: il pennello (boschi e texture, editbrush.js) e la
 // copertina della mappa nelle impostazioni.
+// [§9.186, richieste dell'autore] il pennello e' un ovale assonometrico (ISO,
+// come il suolo); la simmetria e' un'impostazione degli strumenti (Sposta,
+// Inserisci, Pennello: una riga in fondo al riquadro), non della mappa;
+// difficolta' e stile della CPU anche "a scelta del giocatore".
 //
 // Un ciclo suo, senza partita (app.js passa qui prima di crearla):
 // renderer, atlas, input e ciclo sono quelli del gioco.
@@ -65,6 +69,7 @@ import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DI
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, saveMapFile, openMapFile, makeCover } from "./mapstore.js";
+import { ISO } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -160,7 +165,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Map settings", "Name", "Description", "Width", "Height", "Background", "Difficulty", "CPU style",
                              "Static", "Symmetry", "Apply", "Save in the browser", "Save to file", "Give the map a name.", "Map saved",
                              "Saving failed", "Your maps", "Templates", "Open a file…", "No saved maps yet", "This map will be deleted.",
-                             "Delete", "Symmetry: {mode}", ...Object.values(BG_NAMES), ...Object.values(SYM_NAMES),
+                             "Delete", "Player's choice", ...Object.values(BG_NAMES), ...Object.values(SYM_NAMES),
                              // [§9.185] il pennello, la copertina
                              "Forest", "Density", "Left: paint. Right: erase.", "Cover", "No cover", "Load an image…", "Remove",
                              "This image could not be read.",
@@ -168,7 +173,8 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
 const COL = { left: 20, top: 20, btn: 56, gap: 10, pad: 12, sep: 44 };
-const PANEL = { h: 196, maxW: 980, margin: 30, bottom: 20 }; // §9.184: 196 (prima 170: i comandi di "Sposta" su tre righe)
+// (§9.184: 196, prima 170: i comandi di "Sposta" su tre righe; §9.186: 226, la riga della simmetria)
+const PANEL = { h: 226, maxW: 980, margin: 30, bottom: 20 };
 export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (come menu.js FULL_BTN)
 
 // Dove sta tutto, per una finestra W x H: la colonna (col: x1, y1, x2, y2),
@@ -342,6 +348,15 @@ export function brushLayout(panel) {
   return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
 }
 
+// [§9.186, richiesta dell'autore] La simmetria e' un'impostazione degli
+// strumenti (Sposta, Inserisci, Pennello), non della mappa: una riga in fondo
+// al loro riquadro, "Simmetria" e le quattro modalita'
+export const SYM_TOOLS = new Set(["select", "insert", "brush"]);
+export function symLayout(panel) {
+  const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
+  return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
+}
+
 // Il colore di una macchia senza sprite nella tavolozza e nei segnaposto
 // (BGR): erba, grano, fili d'erba, fiori
 const DECOR_TINT = { burst_erba1: [0x3c7a46], burst_grano1: [0x4fb0c8], chiazzaparticellare: [0x5a8a6a],
@@ -374,7 +389,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                sel: new Set(), over: null, move: null, box: null, clip: null,
                cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null,
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
-               brush: { kind: "forest", w: 3, d: 3 }, stroke: null };
+               brush: { kind: "forest", w: 3, d: 3 }, stroke: null,
+               // [§9.186] la simmetria di ogni strumento (spenta di partenza)
+               sym: { select: "none", insert: "none", brush: "none" }, symHover: null };
+  const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
   const styleOfCell = (cat, i) => ITEMS[cat][i].styles[ed.style[cat][i]];
@@ -468,7 +486,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!st) return [];
     const e = { object: st.object, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
-    const t = scene.twinAt(e);
+    const t = scene.twinAt(e, symMode());
     return t ? [e, t] : [e];
   };
   const place = (x, y) => {
@@ -485,7 +503,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length;
       ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
     } else if (ed.tool === "select") {
-      const list = scene.withTwins(selected()).filter((e) => stylesOf(e, objects)); // §9.184: anche le gemelle
+      const list = scene.withTwins(selected(), symMode()).filter((e) => stylesOf(e, objects)); // §9.184: anche le gemelle
       scene.modify(list, (e) => {
         const S = stylesOf(e, objects), st = S.styles[(S.at + dir + S.styles.length) % S.styles.length];
         return st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
@@ -503,7 +521,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const paste = (x, y) => {
     if (!ed.clip) return;
     let list = ed.clip.map((e) => ({ ...e, x: Math.round(x + e.x), y: Math.round(y + e.y) }));
-    list = list.concat(list.map((e) => scene.twinAt(e)).filter(Boolean)); // §9.184: con la simmetria, le gemelle
+    list = list.concat(list.map((e) => scene.twinAt(e, symMode())).filter(Boolean)); // §9.184: con la simmetria, le gemelle
     const st = list.filter((e) => e.object === START).length;
     if (st && !canStart(st)) { list = list.filter((e) => e.object !== START); toast(tr("A skirmish map has two starting positions."), "warning"); }
     if (!list.length) return;
@@ -514,9 +532,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // ------------------------------------------------------------- pennello
   // [§9.185] la pennellata: comincia (un gruppo: un passo solo da annullare),
   // va avanti a ogni passo col tasto tenuto, finisce lasciandolo
+  // [§9.186] l'area e' un ovale assonometrico: largo brushR, alto brushR x ISO
   const brushR = () => BRUSH_WIDTHS[ed.brush.w] / 2;
-  const symOn = () => scene.map.symmetry && scene.map.symmetry !== "none";
-  const twinPoint = (x, y) => mirrorPoint(scene.map.symmetry, scene.map.width, scene.map.height, x, y);
+  const brushRY = () => brushR() * ISO;
+  const inOval = (x, y, cx, cy, r, ry) => ((x - cx) / r) * ((x - cx) / r) + ((y - cy) / ry) * ((y - cy) / ry) <= 1;
+  const symOn = () => symMode() !== "none";
+  const twinPoint = (x, y) => mirrorPoint(symMode(), scene.map.width, scene.map.height, x, y);
   const strokeStart = (erase) => {
     scene.begin();
     const st = ed.stroke = { erase, dabs: [], kind: ed.brush.kind };
@@ -534,10 +555,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const st = ed.stroke, r = brushR();
     if (st.kind === "forest" && !st.erase) {
       const ok = (px, py) => inMap(px, py) && !scene.blocks(px, py);
-      const list = forestStep({ cx: x, cy: y, r, spacing: st.spacing, grid: st.grid, rand: vrand, ok }).map(treeAt);
+      const list = forestStep({ cx: x, cy: y, r, ry: brushRY(), spacing: st.spacing, grid: st.grid, rand: vrand, ok }).map(treeAt);
       // con la simmetria il gemello di ogni albero, se c'e' posto
       for (const e of list.slice()) {
-        const t = scene.twinAt(e);
+        const t = scene.twinAt(e, symMode());
         if (t && inMap(t.x, t.y) && !st.grid.near(t.x, t.y, st.spacing) && !scene.blocks(t.x, t.y)) { st.grid.add(t.x, t.y); list.push(t); }
       }
       if (list.length) scene.add(list);
@@ -545,28 +566,29 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     const spots = [[x, y]];
     if (symOn()) spots.push(twinPoint(x, y));
-    if (st.kind === "forest") { // gomma: via gli alberi nel cerchio
-      const r2 = r * r, list = scene.trees().filter((e) => spots.some(([sx, sy]) => (e.x - sx) * (e.x - sx) + (e.y - sy) * (e.y - sy) <= r2));
+    const ry = brushRY();
+    if (st.kind === "forest") { // gomma: via gli alberi nell'ovale
+      const list = scene.trees().filter((e) => spots.some(([sx, sy]) => inOval(e.x, e.y, sx, sy, r, ry)));
       if (list.length) { scene.remove(list); tidySel(); }
       return;
     }
-    if (st.erase) { // gomma: via le macchie di questa texture toccate dal cerchio
-      const hit = (p) => spots.some(([sx, sy]) => pointInPoly(sx, sy, p.pts) || p.pts.some(([px, py]) => (px - sx) * (px - sx) + (py - sy) * (py - sy) <= r * r));
+    if (st.erase) { // gomma: via le macchie di questa texture toccate dall'ovale
+      const hit = (p) => spots.some(([sx, sy]) => pointInPoly(sx, sy, p.pts) || p.pts.some(([px, py]) => inOval(px, py, sx, sy, r, ry)));
       const list = (scene.map.patches || []).filter((p) => (p.bg || "city2") === st.kind && hit(p));
       if (list.length) scene.removeFeatures("patches", list);
       return;
     }
     // texture: un cerchio ogni tanto lungo la pennellata (quando la si lascia, la sagoma)
     const last = st.dabs[st.dabs.length - 1];
-    if (!last || dhypot(x - last[0], y - last[1]) >= r * 0.3) st.dabs.push([Math.round(x), Math.round(y)]);
+    if (!last || dhypot(x - last[0], y - last[1]) >= ry * 0.3) st.dabs.push([Math.round(x), Math.round(y)]);
   };
   const strokeEnd = () => {
     const st = ed.stroke;
     ed.stroke = null;
     if (st.dabs.length) {
-      const r = brushR(), polys = strokeOutlines(st.dabs, r);
+      const r = brushR(), ry = brushRY(), polys = strokeOutlines(st.dabs, r, ry);
       if (symOn()) {
-        const mirrored = strokeOutlines(st.dabs.map(([x, y]) => twinPoint(x, y)), r);
+        const mirrored = strokeOutlines(st.dabs.map(([x, y]) => twinPoint(x, y)), r, ry);
         polys.push(...mirrored);
       }
       scene.addFeatures("patches", polys.map((pts) => ({ pts, bg: st.kind, feather: 40 })));
@@ -624,7 +646,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     mark(value);
   };
   const openSettings = () => {
-    const m = scene.map, v = { width: m.width, height: m.height, background: m.background, ...m.cpu, symmetry: m.symmetry };
+    const m = scene.map, v = { width: m.width, height: m.height, background: m.background, ...m.cpu };
     const [p, close] = panel(tr("Map settings"));
     const name = textField(p, tr("Name"), m.name, NAME_MAX);
     const desc = textField(p, tr("Description"), m.description || "", DESC_MAX, true);
@@ -663,15 +685,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     choice(p, "width", tr("Width"), MAP_SIZES, String, v.width, (x) => { v.width = x; });
     choice(p, "height", tr("Height"), MAP_SIZES, String, v.height, (x) => { v.height = x; });
     choice(p, "background", tr("Background"), MAP_BACKGROUNDS, (b) => tr(BG_NAMES[b]), v.background, (x) => { v.background = x; });
-    choice(p, "difficulty", tr("Difficulty"), CPU_DIFFICULTY, (d) => tr(SK_OPTIONS.difficulty.names[d]), v.difficulty, (x) => { v.difficulty = x; });
-    choice(p, "style", tr("CPU style"), CPU_STYLE, (q) => tr(q === "static" ? "Static" : SK_OPTIONS.style.names[q]), v.style, (x) => { v.style = x; });
-    choice(p, "symmetry", tr("Symmetry"), SYMMETRY, (q) => tr(SYM_NAMES[q]), v.symmetry, (x) => { v.symmetry = x; });
+    // [§9.186] "a scelta del giocatore": li sceglie chi lancia la partita
+    const cpuName = (names) => (q) => tr(q === "choice" ? "Player's choice" : q === "static" ? "Static" : names[q]);
+    choice(p, "difficulty", tr("Difficulty"), CPU_DIFFICULTY, cpuName(SK_OPTIONS.difficulty.names), v.difficulty, (x) => { v.difficulty = x; });
+    choice(p, "style", tr("CPU style"), CPU_STYLE, cpuName(SK_OPTIONS.style.names), v.style, (x) => { v.style = x; });
     const row = p.row();
     p.button(row, tr("Apply"), () => {
       const resize = v.width !== m.width || v.height !== m.height || v.background !== m.background;
       Object.assign(m, { name: name.value.trim().slice(0, NAME_MAX), description: desc.value.trim().slice(0, DESC_MAX),
                          width: v.width, height: v.height, background: v.background,
-                         cpu: { difficulty: v.difficulty, style: v.style }, symmetry: v.symmetry });
+                         cpu: { difficulty: v.difficulty, style: v.style } });
       if (v.cover) m.cover = v.cover; else delete m.cover;
       ed.meta = true;
       close();
@@ -785,8 +808,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ctrl && K(83)) { quickSave(); return; } // §9.184
     if (ed.tool === "select") {
       // (§9.184: con la simmetria anche le gemelle)
-      if (K(46) || K(8)) { scene.remove(scene.withTwins(selected())); ed.sel.clear(); }
-      if (K(77) && !ctrl && ed.sel.size) scene.modify(scene.withTwins(selected()), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
+      if (K(46) || K(8)) { scene.remove(scene.withTwins(selected(), symMode())); ed.sel.clear(); }
+      if (K(77) && !ctrl && ed.sel.size) scene.modify(scene.withTwins(selected(), symMode()), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
       if (ctrl && K(67)) copy();
       if (ctrl && K(86) && !hit) paste(rx, ry);
       if (ctrl && K(65)) ed.sel = new Set(scene.map.instances.filter((e) => !SYSTEM.has(e.object) && scene.instOf(e)));
@@ -830,6 +853,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       else if (b.key === "settings") openSettings(); // §9.184
       else toast(tr(LABEL[b.key]) + "  -  " + tr("Coming soon"));
       return;
+    }
+    // [§9.186] la riga della simmetria (Sposta, Inserisci, Pennello)
+    ed.symHover = null;
+    if (SYM_TOOLS.has(ed.tool) && hit && hit.kind === "ui") {
+      const o = symLayout(L.panel).opts.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
+      if (o) {
+        ed.symHover = o.mode;
+        if (input.mouseReleased[0]) { clic(); ed.sym[ed.tool] = o.mode; }
+        return;
+      }
     }
     // la tavolozza (Inserisci)
     ed.palHover = null;
@@ -887,7 +920,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         else if (!ed.sel.has(e)) ed.sel = new Set([e]);
         const list = ed.sel.has(e) ? selected() : [];
         // [§9.184] con la simmetria le gemelle si spostano a specchio
-        const twins = scene.withTwins(list).filter((t) => !list.includes(t));
+        const twins = scene.withTwins(list, symMode()).filter((t) => !list.includes(t));
         ed.move = { e, x0: rx, y0: ry, sx: mx, sy: my, dx: 0, dy: 0, on: false, list, twins };
       } else {
         if (!shift) ed.sel.clear();
@@ -899,11 +932,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (!M.on && dhypot(mx - M.sx, my - M.sy) > 4) M.on = true; // un clic non sposta
       if (M.on) {
         M.dx = Math.round(rx - M.x0); M.dy = Math.round(ry - M.y0);
-        const [ux, uy] = mirrorDelta(scene.map.symmetry, M.dx, M.dy);
+        const [ux, uy] = mirrorDelta(symMode(), M.dx, M.dy);
         scene.preview(M.list, M.dx, M.dy); scene.preview(M.twins, ux, uy);
       }
       if (!input.mouseDown[0]) {
-        const tw = new Set(M.twins), [tdx, tdy] = mirrorDelta(scene.map.symmetry, M.dx, M.dy);
+        const tw = new Set(M.twins), [tdx, tdy] = mirrorDelta(symMode(), M.dx, M.dy);
         if (M.on && (M.dx || M.dy)) scene.modify([...M.list, ...M.twins], (e) => (tw.has(e) ? { x: e.x + tdx, y: e.y + tdy } : { x: e.x + M.dx, y: e.y + M.dy }));
         else if (M.on) { scene.preview(M.list, 0, 0); scene.preview(M.twins, 0, 0); }
         else if (!shift && ed.sel.size > 1) ed.sel = new Set([M.e]); // un clic su una scelta di piu' voci: resta quella
@@ -973,8 +1006,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     };
     const boxOf = (e) => scene.boundsOf(e) || [e.x - 12 * px, e.y - 12 * px, e.x + 12 * px, e.y + 12 * px];
     // [§9.184] la simmetria: l'asse (o il centro, per la diagonale)
-    const sym = map.symmetry;
-    if (sym && sym !== "none" && (ed.tool === "select" || ed.tool === "insert")) {
+    const sym = symMode();
+    if (sym !== "none") {
       draw.setAlpha(0.5);
       if (sym === "horizontal") draw.dashedLine(map.width / 2, 0, map.width / 2, map.height, 2 * px, c.white, 24 * px, 16 * px);
       else if (sym === "vertical") draw.dashedLine(0, map.height / 2, map.width, map.height / 2, 2 * px, c.white, 24 * px, 16 * px);
@@ -988,7 +1021,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.tool === "select") {
       for (const e of ed.sel) { if (!scene.instOf(e)) continue; const b = boxOf(e); outline(b, 4 * px, c.black, 0.35); outline(b, 2 * px, c.white, 0.95); }
       // le gemelle della scelta, che seguono ogni modifica: un riquadro sottile
-      if (sym && sym !== "none" && !ed.move) for (const t of scene.withTwins(selected())) if (!ed.sel.has(t)) outline(boxOf(t), 1.5 * px, c.white, 0.6);
+      if (sym !== "none" && !ed.move) for (const t of scene.withTwins(selected(), sym)) if (!ed.sel.has(t)) outline(boxOf(t), 1.5 * px, c.white, 0.6);
       if (ed.over && !ed.sel.has(ed.over)) outline(boxOf(ed.over), 1.5 * px, c.white, 0.7);
       if (ed.box) {
         const b = [Math.min(ed.box.x0, ed.box.x1), Math.min(ed.box.y0, ed.box.y1), Math.max(ed.box.x0, ed.box.x1), Math.max(ed.box.y0, ed.box.y1)];
@@ -999,11 +1032,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // [§9.185] il pennello: la pennellata di texture in corso e il cerchio
     // sotto il puntatore (col gemello, se c'e' la simmetria)
     if (ed.tool === "brush") {
-      const r = brushR(), st = ed.stroke, tint = BRUSH_TINT[st ? st.kind : ed.brush.kind];
+      const r = brushR(), ry = brushRY(), st = ed.stroke, tint = BRUSH_TINT[st ? st.kind : ed.brush.kind];
       if (st && st.dabs.length) {
         const all = symOn() ? [...st.dabs, ...st.dabs.map(([x, y]) => twinPoint(x, y))] : st.dabs;
         draw.setAlpha(0.45);
-        for (const [x, y] of all) draw.circleColour(x, y, r, tint, tint, false);
+        for (const [x, y] of all) draw.ellipseColour(x - r, y - ry, x + r, y + ry, tint, tint, false);
       }
       if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y))) {
         const [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
@@ -1011,9 +1044,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         for (const [x, y] of spots) {
           const erase = st ? st.erase : input.mouseDown[1], col = erase ? 0x4040ff : c.white;
           draw.setAlpha(0.8);
-          for (let k = 0; k < 48; k++) { // il bordo a tratti, 2 px a schermo
+          for (let k = 0; k < 48; k++) { // il bordo a tratti, 2 px a schermo (l'ovale, §9.186)
             const a0 = (k / 48) * Math.PI * 2, a1 = ((k + 0.5) / 48) * Math.PI * 2;
-            draw.lineWidthColour(x + dcos(a0) * r, y + dsin(a0) * r, x + dcos(a1) * r, y + dsin(a1) * r, 2 * px, col, col);
+            draw.lineWidthColour(x + dcos(a0) * r, y + dsin(a0) * ry, x + dcos(a1) * r, y + dsin(a1) * ry, 2 * px, col, col);
           }
         }
       }
@@ -1043,8 +1076,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     glowText(draw, W / 2, 45, tr("Map editor"));
     draw.setFont("overdue");
     // (il font non ha "·" ne' "×")
-    const sym = map.symmetry && map.symmetry !== "none" ? "  -  " + tr("Symmetry: {mode}", { mode: tr(SYM_NAMES[map.symmetry]) }) : "";
-    glowText(draw, W / 2, 92, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height + sym);
+    glowText(draw, W / 2, 92, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height);
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
@@ -1101,6 +1133,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.text(x2 - 26, y1 + 30, (onMap ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + state);
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
+    if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
     draw.setHalign("left");
@@ -1148,6 +1181,28 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(hov ? 0.95 : 0.6);
       draw.triangleColour(cx - 7 * dir, cy - 12, cx + 7 * dir, cy, cx - 7 * dir, cy + 12, c.black, c.black, c.black, false);
     }
+    draw.setAlpha(1);
+  };
+
+  // [§9.186] la riga della simmetria dello strumento: l'etichetta e le
+  // quattro modalita' (la scelta scura)
+  const drawSymRow = (panel) => {
+    const S = symLayout(panel), cur = symMode();
+    draw.setFont("overdue");
+    draw.setValign("middle");
+    draw.setHalign("left");
+    draw.setColour(c.black); draw.setAlpha(0.8);
+    draw.text(S.label[0], S.label[1], tr("Symmetry"));
+    draw.setHalign("center");
+    for (const q of S.opts) {
+      const on = q.mode === cur, hov = ed.symHover === q.mode;
+      draw.setAlpha(on ? 0.85 : hov ? 0.9 : 0.45);
+      draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
+      draw.setColour(on ? c.white : c.black);
+      draw.setAlpha(on ? 1 : 0.8);
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(SYM_NAMES[q.mode]));
+    }
+    draw.setColour(c.black);
     draw.setAlpha(1);
   };
 
@@ -1292,5 +1347,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0), confirmLayout: () => confirmLayout(view.cssW, view.cssH),
                       palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel,
-                      brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel),
+                      symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }

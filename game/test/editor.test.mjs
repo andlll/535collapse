@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
-         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING } from "../src/editor.js";
+         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap } from "../src/mapfile.js";
@@ -123,7 +123,7 @@ test("§9.182 Apri mappa: le cinque schermaglie come modelli", () => {
     for (const q of [...O.rows, ...O.mine]) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.heads[0][1] && q.y2 <= H, `${W}x${H}`);
     for (const q of O.mine) assert.ok(q.y2 < O.file[1]);
     assert.ok(O.file[2] <= O.mine[0].x2 && O.file[0] >= O.mine[0].x1, "il file nella colonna di sinistra");
-    assert.ok(openLayout(W, H, 0).file[3] < H - 196 - 20, "senza mappe, il file sopra il riquadro in basso");
+    assert.ok(openLayout(W, H, 0).file[3] < H - 226 - 20, "senza mappe, il file sopra il riquadro in basso");
     for (const q of O.mine) assert.ok(q.del[0] + q.del[2] <= q.x2 && q.del[0] - q.del[2] > q.x1 + 200);
     assert.ok(O.mine[0].x2 < O.rows[0].x1 && O.file[3] <= H && O.title[1] < O.heads[0][1]);
     const C = confirmLayout(W, H);
@@ -253,14 +253,15 @@ test("§9.184 convalida delle mappe", { skip: !existsSync(OBJECTS) }, async () =
     assert.equal(v.map.instances.length, sc.instances.length);
     assert.deepEqual(v.map.rivers, sc.rivers || []);
     assert.deepEqual(v.map.roads, sc.roads || []);
-    assert.equal(v.map.symmetry, "none");
-    assert.deepEqual(v.map.cpu, { difficulty: "normal", style: "balanced" });
+    assert.equal(v.map.symmetry, undefined); // §9.186: la simmetria e' degli strumenti
+    assert.deepEqual(v.map.cpu, { difficulty: "choice", style: "choice" }); // §9.186: a scelta del giocatore
   }
   const ok = { ...newMap(), instances: [{ object: "albero", x: 100, y: 100, sprite: objects.albero.choices[2] }],
-               cpu: { difficulty: "hard", style: "static" }, symmetry: "vertical", evil: "<script>" };
+               cpu: { difficulty: "hard", style: "static" }, symmetry: "vertical", evil: "<script>" }; // (symmetry: d'ora in poi si perde)
   const v = validateMap(ok, allowed, objects);
   assert.ok(v.map);
   assert.equal(v.map.evil, undefined);
+  assert.equal(v.map.symmetry, undefined);
   assert.deepEqual(v.map.instances[0], { object: "albero", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0, sprite: objects.albero.choices[2] });
   assert.equal(v.map.cpu.style, "static");
   const bad = (patch) => validateMap({ ...newMap(), ...patch }, allowed, objects).errors;
@@ -279,21 +280,22 @@ test("§9.184 convalida delle mappe", { skip: !existsSync(OBJECTS) }, async () =
 test("§9.184 simmetria: gemelli nella scena", { skip: !existsSync(OBJECTS) || !existsSync(MASKS) }, () => {
   const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), masks = JSON.parse(readFileSync(MASKS, "utf8")).sprites;
   const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
-  const map = { ...newMap(), symmetry: "diagonal" };
+  const map = newMap(), D = "diagonal"; // [§9.186] la simmetria arriva dallo strumento
   const S = new EditScene({ r: null, assets, objects, masks }, map);
   const e = { object: "miniera_oro", x: 1000, y: 800, scale_x: 1, scale_y: 1, rotation: 0 };
-  const t = S.twinAt(e), [ox, oy] = S.maskOffset(e);
+  const t = S.twinAt(e, D), [ox, oy] = S.maskOffset(e);
   assert.ok(ox || oy, "la miniera ha una maschera");
   assert.ok(Math.abs(t.x + ox - (6000 - (e.x + ox))) <= 1 && Math.abs(t.y + oy - (6000 - (e.y + oy))) <= 1);
   S.add([e, t]);
-  assert.equal(S.twinOf(e), t);
-  assert.equal(S.twinOf(t), e);
-  assert.deepEqual(S.withTwins([e]), [e, t]);
+  assert.equal(S.twinOf(e, D), t);
+  assert.equal(S.twinOf(t, D), e);
+  assert.deepEqual(S.withTwins([e], D), [e, t]);
+  assert.deepEqual(S.withTwins([e], "none"), [e]);
+  assert.equal(S.twinAt(e, "none"), null);
   // sull'asse (il centro, per la diagonale): nessun gemello
-  assert.equal(S.twinAt({ object: "burst_erba1", x: 3000, y: 3000 }), null);
-  map.symmetry = "horizontal";
-  assert.equal(S.twinOf(e), null);
-  assert.equal(S.twinAt({ object: "burst_erba1", x: 1000, y: 3000 }).x, 5000);
+  assert.equal(S.twinAt({ object: "burst_erba1", x: 3000, y: 3000 }, D), null);
+  assert.equal(S.twinOf(e, "horizontal"), null);
+  assert.equal(S.twinAt({ object: "burst_erba1", x: 1000, y: 3000 }, "horizontal").x, 5000);
 });
 
 // [§9.185] Il pennello: la sagoma di una pennellata (un contorno per pezzo,
@@ -313,14 +315,20 @@ test("§9.185 pennello: sagome e boschi", () => {
   assert.equal(r.length, 1);
   assert.ok(pointInPoly(3000, 3000, r[0]), "il buco riempito");
   assert.equal(strokeOutlines([], 100).length, 0);
+  // [§9.186] l'ovale assonometrico: alto 0,62 volte la larghezza
+  const oval = strokeOutlines([[2000, 2000]], 300, 186)[0];
+  const ys = oval.map((q) => q[1]), xs = oval.map((q) => q[0]);
+  assert.ok(Math.abs(Math.max(...xs) - Math.min(...xs) - 600) < 40 && Math.abs(Math.max(...ys) - Math.min(...ys) - 372) < 40);
   // il bosco: mai due alberi piu' vicini della distanza
   let seed = 7;
   const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const grid = new TreeGrid(90), pts = [];
-  for (let k = 0; k < 300; k++) pts.push(...forestStep({ cx: 500, cy: 500, r: 300, spacing: 90, grid, rand }));
-  assert.ok(pts.length > 20);
+  for (let k = 0; k < 300; k++) pts.push(...forestStep({ cx: 500, cy: 500, r: 300, ry: 186, spacing: 90, grid, rand }));
+  assert.ok(pts.length > 15);
+  assert.ok(pts.some((q) => Math.abs(q[0] - 500) > 250), "largo");
   for (let i = 0; i < pts.length; i++) {
-    assert.ok(Math.hypot(pts[i][0] - 500, pts[i][1] - 500) <= 301);
+    const ex = (pts[i][0] - 500) / 300, ey = (pts[i][1] - 500) / 186;
+    assert.ok(ex * ex + ey * ey <= 1.02, "dentro l'ovale");
     for (let j = i + 1; j < pts.length; j++) assert.ok(Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) >= 89.5);
   }
   assert.equal(forestStep({ cx: 0, cy: 0, r: 300, spacing: 90, grid: new TreeGrid(90), rand, ok: () => false }).length, 0);
@@ -338,6 +346,15 @@ test("§9.185 il riquadro del pennello", () => {
     assert.ok(B.width.plus[0] + 20 < B.density.label[0], "larghezza e densita' non si toccano");
   }
   assert.equal(BRUSH_SPACING[3], 90); // la densita' di partenza, come il pennello bosco di Tiled
+  // [§9.186] la riga della simmetria: dentro il riquadro, sotto la tavolozza e i "-" "+"
+  for (const [W, H] of [[1920, 1080], [1280, 720]]) {
+    const L = editorLayout(W, H), S = symLayout(L.panel), B = brushLayout(L.panel), P = paletteLayout(L.panel, 0, 0);
+    assert.equal(S.opts.length, 4);
+    for (const q of S.opts) {
+      assert.ok(q.x1 > S.label[0] && q.x2 <= L.panel[2] && q.y2 < L.panel[3] - 20, `${W}x${H}`);
+      assert.ok(q.y1 > B.width.minus[1] + B.width.minus[2] && q.y1 > P.cells[0].y2);
+    }
+  }
   assert.ok(BRUSH_WIDTHS.includes(600));
 });
 

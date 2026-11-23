@@ -199,25 +199,34 @@ const L3 = await page.evaluate(() => window.__editor.layout()), btn3 = (k) => L3
 await click(btn3("settings").x, btn3("settings").y);
 await page.waitForSelector(".net-panel input");
 await page.fill(".net-panel input", "Prova editor");
-await page.locator('.net-panel [data-net="symmetry-diagonal"]').click();
+// [§9.186] la CPU: "a scelta del giocatore" di partenza; qui la statica
+check("CPU a scelta del giocatore", await page.locator('.net-panel [data-net="difficulty-choice"].primary').count() === 1
+      && await page.locator('.net-panel [data-net="style-choice"].primary').count() === 1);
+await page.locator('.net-panel [data-net="style-static"]').click();
 await page.locator('.net-panel [data-net="apply"]').click();
 await page.waitForTimeout(300);
-check("impostazioni applicate", await page.evaluate(() => { const m = window.__editor.scene.map; return m.name === "Prova editor" && m.symmetry === "diagonal" && !window.__editor.ed.dom; }));
+check("impostazioni applicate", await page.evaluate(() => { const m = window.__editor.scene.map; return m.name === "Prova editor" && m.cpu.style === "static" && m.cpu.difficulty === "choice" && !window.__editor.ed.dom; }));
 await click(btn3("insert").x, btn3("insert").y);
 await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+// [§9.186] la simmetria e' dello strumento: la riga in fondo al riquadro
+const SY = await page.evaluate(() => window.__editor.symLayout());
+const symClick = (mode) => click(...mid(SY.opts.find((q) => q.mode === mode)));
+await symClick("diagonal");
+check("simmetria dello strumento, non della mappa", await page.evaluate(() => window.__editor.ed.sym.insert === "diagonal" && window.__editor.ed.sym.select === "none" && window.__editor.scene.map.symmetry === undefined));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.tabs[1]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
 await click(800, 380);
-const pair = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return { n: m.length, twin: S.twinOf(m[0]) === m[1] }; });
+const pair = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return { n: m.length, twin: S.twinOf(m[0], "diagonal") === m[1] }; });
 check("con la simmetria la miniera e la gemella", pair.n === 2 && pair.twin);
 await click(btn3("select").x, btn3("select").y);
+await symClick("diagonal"); // (anche per "Sposta")
 const tw0 = await page.evaluate(() => { const m = window.__editor.scene.map.instances; return [m[1].x, m[1].y, window.__editor.view.scale]; });
 await page.mouse.move(800, 380); await page.waitForTimeout(100); await page.mouse.down();
 for (let k = 1; k <= 5; k++) { await page.mouse.move(800 + 20 * k, 380 + 10 * k); await page.waitForTimeout(50); }
 await page.mouse.up(); await page.waitForTimeout(200);
-const tw1 = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return [m[1].x, m[1].y, S.twinOf(m[0]) === m[1]]; });
+const tw1 = await page.evaluate(() => { const S = window.__editor.scene, m = S.map.instances; return [m[1].x, m[1].y, S.twinOf(m[0], "diagonal") === m[1]]; });
 check("la gemella si sposta a specchio", Math.abs(tw1[0] - tw0[0] + 100 * tw0[2]) < 3 && Math.abs(tw1[1] - tw0[1] + 50 * tw0[2]) < 3 && tw1[2]);
 await page.keyboard.press("Delete"); await page.waitForTimeout(150);
 check("Canc toglie anche la gemella", (await page.evaluate(() => window.__editor.scene.map.instances.length)) === 0);
@@ -238,7 +247,7 @@ const { tmpdir } = await import("node:os"), { join } = await import("node:path")
 const file = join(tmpdir(), "editor-prova-" + process.pid + ".dvmap");
 await dl.saveAs(file);
 const json = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8"));
-check("file .dvmap", dl.suggestedFilename() === "dustveil-Prova-editor.dvmap" && json.format === "535-scenario" && json.instances.length === 2 && json.symmetry === "diagonal");
+check("file .dvmap", dl.suggestedFilename() === "dustveil-Prova-editor.dvmap" && json.format === "535-scenario" && json.instances.length === 2 && json.symmetry === undefined && json.cpu.style === "static");
 // la pagina ricaricata: "Apri mappa", "Le tue mappe"
 await page.goto(`${base}/index.html?room=editor`);
 await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
@@ -248,7 +257,7 @@ let O3 = await page.evaluate(() => window.__editor.openLayout());
 check("nell'elenco", O3.mine.length >= 1 && (await page.evaluate(() => window.__editor.ed.open.mine[0].name)) === "Prova editor");
 await click(...mid(O3.mine[0]));
 await page.waitForFunction(() => window.__editor.scene.map.name === "Prova editor" && !window.__editor.ed.loading, null, { timeout: 60000 });
-check("riaperta dal browser", await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.length === 2 && S.map.symmetry === "diagonal" && !!window.__editor.ed.mapId; }));
+check("riaperta dal browser", await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.length === 2 && S.map.cpu.style === "static" && !!window.__editor.ed.mapId; }));
 // il file: "Apri un file…"
 await click(btn3("new").x, btn3("new").y);
 await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading, null, { timeout: 60000 });
