@@ -198,6 +198,11 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "A skirmish map needs a red and a blue starting position (Insert, Setup).",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
+// [§9.197] la freccina nera col bordo bianco, 24 x 24, punta in (2, 2)
+const ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">'
+  + '<path d="M2.5 2.5 L2.5 18.5 L6.6 14.6 L9.4 21 L12 19.9 L9.3 13.6 L14.8 13.6 Z" fill="#000" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+export const ARROW_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(ARROW_SVG)}") 2 2, default`;
+
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
 const COL = { left: 20, top: 20, btn: 56, gap: 10, pad: 12, sep: 44 };
 // (§9.184: 196, prima 170: i comandi di "Sposta" su tre righe; §9.186: 226, la riga della simmetria;
@@ -534,7 +539,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // parte scelta), o null: tutte
   const shownIdx = (cat) => (SIDE_TABS.has(CATALOG[cat].key) ? ITEMS[cat].map((q, i) => (q.side && q.side !== ed.sideFilter ? -1 : i)).filter((i) => i >= 0) : null);
   const paletteNow = (panel) => paletteLayout(panel, ed.cat, ed.scroll[ed.cat], shownIdx(ed.cat));
-  canvas.style.cursor = "none"; // il cursore del gioco, disegnato (come in partita)
+  // [§9.197, richiesta dell'autore] nell'editor la freccina nera classica
+  // (stile Mac, col bordo bianco) al posto della spada del gioco: un cursore
+  // CSS (SVG), disegnato dal sistema; la punta e' il punto caldo
+  canvas.style.cursor = ARROW_CURSOR;
   const clear = [0x1b / 255, 0x1d / 255, 0x17 / 255]; // fuori dalla mappa: il colore della pagina (index.html)
   const OUTSIDE = 0x171d1b; // lo stesso, in BGR per Draw
 
@@ -1969,12 +1977,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     r.beginFrame(view, clear);
     drawMap();
     drawUI();
-    if (input.inside) { // il cursore, ultimo
-      r.setProjection(0, 0, view.cssW, view.cssH);
-      draw.reset();
-      draw.sprite("cursore", 0, Math.round(input.x), Math.round(input.y));
-    }
-    r.flush();
+    r.flush(); // (§9.197: il cursore e' quello del sistema, la freccina)
   };
 
   if (params.get("resume")) await busy(resume); // §9.188

@@ -80,8 +80,10 @@ o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
 blu (§9.191: la gemella simmetrica e' dell'altro schieramento), la partita
 online sulle mappe dell'editor (§9.192: chi entra senza la mappa la riceve
 da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
-(§9.193), mura e porte coi "+" come nel gioco e la gomma ad area (§9.194).
-Da fare: i ponti (dopo, decisione dell'autore). In sospeso la password.
+(§9.193), mura e porte coi "+" come nel gioco e la gomma ad area (§9.194),
+le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
+i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
+freccina). Da fare: l'elenco di §9.197.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13762,3 +13764,55 @@ in fondo il contrario, i pulsanti nascosti non si toccano; "Regia"; 145
 test), `editor.mjs` (le partenze rflag e bflag; a 1024 x 600 la colonna
 scorre con la rotella e torna su con la freccia); screenshot (1280 x 720:
 la colonna con le frecce, la scheda, le due bandierine).
+
+### 9.197 La freccina nell'editor; cosa resta da fare
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Nel prossimo prompt
+ti passo delle icone in PNG da sostituire a quelle che hai messo tu, e
+anche al posto del puntatore a forma di spada solo nell'editor vorrei la
+classica freccina nera stile Mac. Intanto fammi l'elenco di cio' che rimane
+da fare".
+
+**La freccina**: nell'editor il cursore e' la freccina nera col bordo
+bianco (un cursore CSS in SVG, 24 x 24, punta in 2, 2), disegnata dal
+sistema; prima l'editor disegnava la spada del gioco (`cursore`) come la
+partita. Il gioco resta con la spada. (Negli screenshot delle prove il
+cursore di sistema non si vede: controllato che il browser lo accetti.)
+
+**Cosa resta da fare, editor di mappe** (al 23 novembre 2026):
+1. Le icone PNG dell'autore al posto di quelle disegnate a linee (la
+   colonna; il prossimo passo).
+2. I ponti (rimandati dall'autore, §9.187): nei modelli ci sono i ponti
+   dipinti, ma non se ne aggiungono di nuovi; anche i sentieri (`paths`)
+   non si disegnano.
+3. La password (in sospeso: l'autore non ricorda a cosa servisse).
+4. La scheda "Regia" per gli scenari piu' complessi (obiettivi, eventi,
+   dialoghi, rinforzi...): da progettare con l'autore.
+5. Da decidere o rifinire, piccole:
+   - un solo salvataggio per le partite sulle mappe dell'editor (lo slot
+     `custom`: una partita nuova su un'altra mappa sostituisce la prima);
+   - le mappe aperte da file nella schermata della schermaglia valgono per
+     quella volta (non entrano fra quelle del browser);
+   - nessun controllo degli ingombri: oggetti ed edifici si possono mettere
+     uno sopra l'altro o sull'acqua (nella partita le unita' possono restare
+     incastrate);
+   - con lavoratori blu nella mappa la CPU non riceve i suoi 3 di partenza
+     (il giocatore si');
+   - S su un muro gia' messo ("Sposta") cambia lo schieramento, non il
+     verso; Ripeti solo con Ctrl+Y (nessun pulsante);
+   - i pulsanti delle mura spariscono da lontano (oltre 4 px di mappa per
+     pixel);
+   - la partita online sulle mappe dell'editor e' provata solo col canale
+     vero (`netmap.mjs`), non con quello finto.
+6. La PR: questa branch non ha ancora una pull request (la versione e' gia'
+   0.2615).
+
+**Fuori dall'editor** (le voci aperte qui sopra, "Cose da fare"):
+l'audio da riesportare (§9.137-§9.145); il multigiocatore da provare fra
+reti diverse, TURN, codici piu' corti, ritardo adattivo, riconnessione
+(§9.156); il livello 7 (copertura del bosco, mura che nascondono,
+prigionieri, banchi e pattuglie da Tiled, la mappa, la regia a fasi,
+§9.148); il movimento in mischia e i posti di lavoro dei civili (§9.147);
+prima dell'uscita `UNLOCK_ALL` a 1 (progress.js, §9.53).
+
+Prove: test unitari (145), `editor.mjs`.
