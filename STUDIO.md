@@ -48,10 +48,10 @@ cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
 nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
-provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere"). I codici piu'
-corti (da ~600-780 a ~150-250 caratteri) l'autore li vuole: in un'altra
-sessione, con una PR a parte (§9.200). Nel menu
+provare su due computer in reti diverse; restano TURN, ritardo adattivo,
+riconnessione: §9.156 "Come riprendere"). I codici piu' corti: fatti
+(§9.201, versione 0.2616: ~130-250 caratteri invece di ~600-780), da
+provare anche fra browser diversi (Chrome con Firefox o Safari). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
@@ -11356,7 +11356,7 @@ sinistra nella GUI tra il pannello risorse e la minimappa".
 3. *Codici piu' corti*: un SDP ridotto ai campi necessari (ufrag, pwd,
    fingerprint, indirizzi: ~150 caratteri) ricostruito dall'altra parte,
    oppure un piccolo servizio di presentazione con codici di 6 lettere
-   (§9.152).
+   (§9.152). [Fatto in §9.201, la prima strada.]
 4. *Il ritardo adattivo*: oggi D si misura una volta all'avvio; si
    potrebbe rimisurare (i turni portano gia' il passo) e cambiarlo d'accordo
    a un passo futuro.
@@ -13966,3 +13966,126 @@ in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
 
 Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
 scelta), test unitari, `editor.mjs`.
+
+### 9.201 I codici piu' corti del multigiocatore
+
+Richiesta dell'autore (23 novembre 2026, nuova PR, versione 0.2616):
+"accorciare i codici di handshake del multiplayer. Ti sono state lasciate
+delle indicazioni, valuta tu se l'operazione e' fattibile senza fare danni,
+una volta valutato esegui. Prendi in considerazione tutto, anche il fatto
+delle mappe custom che abbiamo introdotto con l'editor". Le indicazioni:
+"Cose da fare" (da ~600-780 a ~150-250 caratteri) e §9.156 "Come
+riprendere", punto 3: un SDP ridotto ai campi necessari, ricostruito
+dall'altra parte (l'altra strada, un servizio con codici di 6 lettere,
+vorrebbe un server: l'autore ha deciso senza, §9.156).
+
+**La valutazione: si puo', senza danni.** Dei ~780 caratteri del codice di
+chi crea, cio' che serve davvero all'altro browser per collegarsi sono
+~100 byte: nome utente e password ICE, l'impronta del certificato DTLS
+(SHA-256, 32 byte), il ruolo DTLS, gli indirizzi (tipo, protocollo,
+indirizzo, porta, priorita'). Il resto e' uguale in ogni browser
+(intestazioni, la riga del canale dati, porta SCTP) o sono annotazioni di
+Chrome che l'altra parte non usa. I rischi che ho visto, e cosa ho fatto:
+- *un browser che scrive l'SDP in un modo non previsto* (Firefox, Safari,
+  una versione nuova di Chrome): il codice corto si fa solo da un SDP in
+  cui ogni riga e' fra quelle conosciute, e solo se, riletto, da' lo stesso
+  modello (`packShort` lo rilegge prima di darlo). Se no si da' il codice
+  lungo di prima, che funziona come sempre: nel caso peggiore il codice e'
+  lungo, mai sbagliato;
+- *un codice rovinato per strada* (una chat che cambia un carattere): prima
+  il JSON compresso non si decomprimeva, ora c'e' una somma di controllo (16
+  bit): "Questo codice non e' valido", come prima, invece di una
+  connessione che non si apre senza dire perche';
+- *versioni diverse*: la versione del gioco e' all'inizio del codice corto,
+  in un posto che non cambiera' (dopo il byte della forma), e una forma che
+  non si conosce (una versione futura) dice "un'altra versione del gioco".
+  Un codice corto incollato in una 0.2615 o prima dice "non valido" (quella
+  versione non sa leggerlo): le due versioni non potrebbero comunque
+  giocare insieme, e la versione si legge nel menu;
+- *le cause dei collegamenti non riusciti* (§9.158) si leggono dagli
+  indirizzi dei due codici: tipo, indirizzo, porta e protocollo restano
+  tutti, quindi le stesse cause (provato);
+- *le mappe dell'editor* (§9.192): nel codice corto ci sono il nome (fino a
+  40 caratteri, anche accentati) e l'impronta (8 byte); la mappa continua
+  a passare sul canale dopo i codici. Costa ~30 caratteri per un nome
+  corto, ~65 per uno di 40;
+- *mappa e opzioni* si scrivono come numeri (la mappa fra le cinque, o 63
+  per quella dell'editor; ogni opzione l'indice nel suo elenco): vale perche'
+  i due giocatori hanno la stessa versione, e lo si controlla prima.
+
+**Le forme del codice** (netcode.js): "DV" + O/A + la forma + base64url.
+- "c", il corto, in byte: la forma (2), la versione; un byte di bit (ruolo
+  DTLS, BUNDLE, trickle, end-of-candidates, misura massima dei messaggi:
+  niente, quella di Chrome e Safari, quella di Firefox o il numero; c'e' la
+  partita); ufrag e password a 6 bit per carattere; l'impronta; gli
+  indirizzi, ognuno con un byte (tipo, tcp, tcptype, forma
+  dell'indirizzo), l'indirizzo (IPv4 4 byte, IPv6 16, il nome mDNS
+  "uuid.local" di Chrome, Firefox e Safari 16, lo stesso di un indirizzo
+  prima 1, se no il testo), la porta e la priorita'; poi, nella risposta,
+  l'offerta a cui risponde (§9.158) e, nell'offerta, la partita (mappa,
+  opzioni a 4 bit, seme, la mappa dell'editor); la somma di controllo.
+- "z" e "p": il JSON con l'SDP intero, come prima (§9.156): si danno solo
+  quando il corto non si puo', e si leggono sempre.
+Il testo incollato dopo il codice corto ("...grazie!") non conta piu'.
+
+**Cosa resta dell'SDP e cosa no.** Restano: ufrag, password, impronta,
+ruolo DTLS, i candidati con tipo, protocollo, tcptype, indirizzo, porta e
+priorita' (tutti: anche i TCP e gli IPv6), BUNDLE, trickle,
+end-of-candidates, max-message-size. Si lasciano: la riga o= (si rifa'
+dall'impronta), i "foundation" dei candidati (si rifanno, uno per
+candidato: servono solo a raggruppare i controlli), raddr e rport (solo
+diagnostica: si rimettono 0.0.0.0 o "::" e 0, come fa gia' Chrome: la
+regola dell'SDP, RFC 8839, li vuole nei candidati non host), generation 0, network-id e
+network-cost (preferenze di Chrome fra due reti dello stesso computer: la
+priorita', che resta, porta gia' l'ordine delle reti), extmap-allow-mixed,
+msid-semantic, sendrecv, porta e indirizzo nelle righe m= e c= (i browser
+usano i candidati). L'SDP ricostruito ha la forma di quello di Chrome
+(sdpFromModel), che Firefox e Safari accettano nelle chiamate fra browser
+diversi.
+
+**Le misure** (caratteri, offerta / risposta; prima ~780 / ~600):
+- Chromium in questa macchina (rtc.mjs, WebRTC vero, un indirizzo mDNS):
+  139 / 130 (prima 775 / 606);
+- Chrome con STUN su una rete mobile (NAT simmetrico, due indirizzi
+  esterni, TCP): 216 / 207; su un computer con due reti, TCP e IPv6 (7
+  indirizzi, il caso piu' lungo delle prove): 247 / 238;
+- Firefox (con un TCP passivo in piu'): 187 / 178; Safari: 168 / 159;
+- su una mappa dell'editor ("La mia isola") l'offerta ~28 in piu'.
+
+**I file**: `netcode.js` (sdpModel, sdpFromModel, il codice corto,
+decodeCode che legge le tre forme), `skirmish.js` (`skValues`: i valori di
+ogni opzione, anche di quelle nascoste; cleanSkirmish lo usa), `menu.js`
+(0.2616). Nessun testo nuovo: gli errori sono quelli di prima.
+
+**Prove.**
+- `test/netcode.test.mjs` (nuova): SDP di Chromium (di questa macchina, e
+  con STUN, due reti, TCP, IPv6, NAT simmetrico), di Firefox e di Safari:
+  il modello, l'SDP ricostruito che riletto da' lo stesso; le righe che il
+  modello non conosce (ice-lite, un'altra impronta, un altro mid, un
+  secondo componente...) danno il codice lungo; le misure; le cause di
+  netdiag uguali dai codici e dagli SDP veri; ogni mappa e ogni valore di
+  ogni opzione, il seme piu' grande, le mappe dell'editor col nome vuoto,
+  accentato, con simboli, di 40 lettere; quello che il codice corto non sa
+  dire va nel codice lungo, uguale; incollato con testo attorno; tagliato
+  (non valido, ma si sa se era un'offerta); ogni carattere cambiato
+  (non valido); un'altra forma (un'altra versione, con la versione); il
+  codice di prima ancora leggibile; ruoli DTLS, misure dei messaggi,
+  indirizzi in tutte le forme. Test unitari: 151.
+- Nel browser (WebRTC vero, Chromium): `rtc.mjs` (collegati, i confronti
+  uguali, codice 139 e risposta 130), `rtcfail.mjs` (i codici cambiati
+  dalla prova, la risposta per un altro codice, la guida), `netmap.mjs` (la
+  mappa dell'editor: il nome letto dal codice corto, la mappa scaricata,
+  ritrovata dall'impronta la seconda volta), `skcustom.mjs`, `netfake.mjs`.
+  In piu' una prova a mano: due collegamenti nella stessa pagina con
+  offerta e risposta passate dai codici corti, il canale aperto.
+- Non provati qui (c'e' solo Chromium): Firefox e Safari veri. Gli SDP di
+  prova sono scritti come li fanno quei browser; se uno ha qualcosa che il
+  modello non conosce si torna al codice lungo. Da provare con il resto
+  (§9.156 "Come riprendere", punto 1): due computer, meglio se uno con
+  Chrome e uno con Firefox.
+
+**Come andare oltre** (se servisse): la priorita' in 3 byte invece di 4
+(l'ultimo e' quasi sempre 255), i candidati ripetuti (lo stesso indirizzo
+dai due server STUN, raro) come un byte: pochi caratteri. Un codice di 6
+lettere vorrebbe un server di presentazione (§9.152), che l'autore non ha
+voluto.

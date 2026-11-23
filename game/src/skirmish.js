@@ -77,6 +77,9 @@ export const SK_OPTIONS = {
 const HIDDEN = { start: ["random", "A", "B"] };
 export const SK_DEFAULTS = { map: "sk_padus", difficulty: "normal", style: "balanced", victory: "conquest", resources: "normal",
                              pop: 75, truce: 0, fog: "normal", daynight: "cycle", rain: "normal", start: "random" };
+// i valori validi di un parametro (anche di quelli nascosti), o null (la
+// mappa): [§9.201] il codice corto della partita online li scrive come indici
+export const skValues = (k) => (SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k]) || null;
 const KEY = "535.skirmish";
 
 export function loadSkirmish() {
@@ -92,7 +95,7 @@ export function cleanSkirmish(s) {
   if (!s || typeof s !== "object") return out;
   for (const k of Object.keys(SK_DEFAULTS)) {
     if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
-    const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
+    const vs = skValues(k);
     if (vs && vs.includes(s[k])) out[k] = s[k];
   }
   return out;
