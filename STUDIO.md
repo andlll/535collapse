@@ -12515,3 +12515,21 @@ piu' corta (0,75: fra due segnalini vicini toccava le icone). Una prima prova
 a (-150, -95), alla quota del 6, stava sopra la catena e quasi addosso
 all'elenco dei livelli. Prova: foto della mappa a 1280 x 720 e 1920 x 1080
 mandate all'autore per l'approvazione.
+
+### 9.180 Il sito fermo alla 0.2613: la build di main non passava
+
+Domanda dell'autore (23 novembre 2026, versione 0.2615): "come mai se
+carico il sito continuo a vedere la 0.2613? e' passato quasi un giorno".
+
+Il sito (GitHub Pages) si pubblica solo se il job build di main passa
+tutto. Dopo l'unione della PR #24 (0.2614) la build si e' fermata ai test
+unitari: la prova §9.152 sulla matematica deterministica trovava
+`Math.atan2` in menu.js, nella freccia dal 6 al 7 sulla mappa della
+campagna (L7_ARROW, §9.179, aggiunta dopo l'ultimo giro dei test). Il
+deploy non e' partito, e il sito e' rimasto alla 0.2613 (PR #23).
+
+Correzione: L7_ARROW usa `datan2` di dmath.js (stesso angolo; la freccia
+non tocca la partita, ma la regola vale per tutto fuori dal disegno).
+Prova: `npm test` (117 passate) e, in locale, gli stessi passi della CI
+(pipeline, bundle, zip, prove nel browser). Lezione: dopo ogni ritocco,
+anche solo del menu, `npm test` prima di spingere.

@@ -41,7 +41,7 @@ import { audio } from "./audio.js"; // §9.168
 import { irandomRange } from "./gm.js";
 import { SK_MAPS, SK_OPTIONS, loadSkirmish, saveSkirmish, optionLabel } from "./skirmish.js";
 import { Particles, partType } from "./particles.js";
-import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
+import { datan2, dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
 export const LEVELS = ["Shove the sun aside", "A long walk", "The monastery", "Crossing a bridge", "The siege",
@@ -403,7 +403,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2614";
+export const VERSION = "0.2615";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna
@@ -729,7 +729,7 @@ const L7_LABEL = [L7_MARK[0], L7_MARK[1] - 85]; // (a -67, come il 6, cadeva sul
 // la freccia: a meta' fra il 6 e il 7, girata dal 6 al 7 (fr_corta punta a
 // sinistra: angolo = direzione - 180)
 const L7_ARROW = (() => {
-  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (Math.atan2(-(y7 - y6), x7 - x6) * 180) / Math.PI;
+  const [x6, y6] = L6_MARK, [x7, y7] = L7_MARK, dir = (datan2(-(y7 - y6), x7 - x6) * 180) / Math.PI;
   return [Math.round((x6 + x7) / 2), Math.round((y6 + y7) / 2), 0.75, 1.0, Math.round(dir - 180)];
 })();
 
