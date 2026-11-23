@@ -1518,6 +1518,10 @@ export const TEXTS = {
   "A skirmish map needs a red and a blue starting position (Insert, Starting positions).": { it: "Una mappa della schermaglia ha bisogno di una partenza rossa e di una blu (Inserisci, Partenze).", es: "Un mapa de escaramuza necesita una salida roja y una azul (Insertar, Salidas).", pt: "Um mapa de escaramuça precisa de uma partida vermelha e de uma azul (Inserir, Partidas).", de: "Eine Gefechtskarte braucht eine rote und eine blaue Startposition (Einfügen, Startpositionen).", fr: "Une carte d'escarmouche a besoin d'un départ rouge et d'un départ bleu (Insérer, Départs)." },
   "Back to the editor": { it: "Torna all'editor", es: "Volver al editor", pt: "Voltar ao editor", de: "Zurück zum Editor", fr: "Retour à l'éditeur" },
   // [§9.190] le mappe dell'editor nella schermaglia
+  // [§9.193] unita' ed edifici degli schieramenti in "Inserisci"
+  "Units": { it: "Unità", es: "Unidades", pt: "Unidades", de: "Einheiten", fr: "Unités" },
+  "Red side (S: blue)": { it: "Schieramento rosso (S: blu)", es: "Bando rojo (S: azul)", pt: "Lado vermelho (S: azul)", de: "Rote Seite (S: blau)", fr: "Camp rouge (S : bleu)" },
+  "Blue side (S: red)": { it: "Schieramento blu (S: rosso)", es: "Bando azul (S: rojo)", pt: "Lado azul (S: vermelho)", de: "Blaue Seite (S: rot)", fr: "Camp bleu (S : rouge)" },
   "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
   // [§9.192] la mappa dell'editor nella partita online
   "You don't have this map: it will be downloaded when you connect, and kept among your maps.": {

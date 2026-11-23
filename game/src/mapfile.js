@@ -35,10 +35,25 @@ export const NAME_MAX = 40, DESC_MAX = 600;
 // come skirmish.js skirmishPrepare) rossa, l'altra blu (assignSides).
 export const START = "centro";
 export const SIDES = ["red", "blue"];
-export const SIDED = new Set([START]);
+// [§9.193, richiesta dell'autore] anche unita' ed edifici delle due parti in
+// "Inserisci": nella mappa coi nomi del giocatore (gli oggetti alleati) e lo
+// schieramento; il blu diventa all'avvio l'oggetto della CPU (BLUE_OF,
+// testRoom) e, online, quello del secondo giocatore (app.js: i gemelli p2_*)
+export const UNITS = ["ally_omino", "ally_warrior", "ally_picchiere", "ally_arciere", "ally_cavaliere", "ally_ariete", "ally_catapulta"];
+export const BUILDINGS = ["casa", "caserma", "stalla", "torre", "magazzino", "barn", "campo", "chiesa", "castello"];
+export const SIDED = new Set([START, ...UNITS, ...BUILDINGS]);
+// l'oggetto della CPU corrispondente (multiplayer.js ENEMY_EQ, al contrario)
+export const BLUE_OF = {
+  centro: "enemy_centro", casa: "enemy_house", caserma: "enemy_caserma", stalla: "enemy_stalla", torre: "enemy_torre",
+  magazzino: "enemy_magazzino", barn: "enemy_mulino", campo: "enemy_campo", chiesa: "enemy_chiesa", castello: "enemy_castello",
+  ally_omino: "enemy_omino", ally_warrior: "enemy_warrior", ally_picchiere: "enemy_picchiere", ally_arciere: "enemy_arciere",
+  ally_cavaliere: "enemy_cavaliere", ally_ariete: "enemy_ariete", ally_catapulta: "enemy_catapulta",
+};
 export const otherSide = (s) => (s === "red" ? "blue" : "red");
 export function assignSides(instances) {
-  const starts = instances.filter((i) => SIDED.has(i.object));
+  // §9.193: unita' ed edifici senza schieramento: del rosso
+  for (const i of instances) if (SIDED.has(i.object) && i.object !== START && !i.side) i.side = "red";
+  const starts = instances.filter((i) => i.object === START);
   const free = starts.filter((i) => !i.side).sort((a, b) => (a.x + a.y) - (b.x + b.y));
   for (const i of free) {
     const used = new Set(starts.map((q) => q.side).filter(Boolean));
@@ -192,8 +207,11 @@ export function scenarioToRoom(sc) {
 // copertina; il nome e' quello della room di prova del gioco
 export const TEST_ROOM = "custom";
 export function testRoom(map) {
-  const instances = map.instances.some((e) => e.object === "manager") ? map.instances
-    : [{ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 }, ...map.instances];
+  // [§9.193] unita' ed edifici del blu: gli oggetti della CPU (le partenze
+  // no: le sceglie skirmishPrepare, con l'opzione start)
+  const own = map.instances.map((e) => (e.side === "blue" && e.object !== START && BLUE_OF[e.object] ? { ...e, object: BLUE_OF[e.object] } : e));
+  const instances = own.some((e) => e.object === "manager") ? own
+    : [{ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 }, ...own];
   const room = scenarioToRoom({ ...map, instances });
   room.name = TEST_ROOM;
   return room;

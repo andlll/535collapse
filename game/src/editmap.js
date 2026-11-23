@@ -19,7 +19,7 @@ import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, 
 import { GroundCache, GROUND } from "./ground.js";
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
-import { START, SIDED, SIDES, otherSide } from "./mapfile.js";
+import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF } from "./mapfile.js";
 
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
 // quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
@@ -37,6 +37,9 @@ export const HOUSES = range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "
                                      "31", "32", "33", "34", "35", "41", "42", "43", "44", "45"]);
 export const CATALOG = [
   { key: "start", label: "Starting positions", objects: ["centro"] },
+  // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
+  { key: "units", label: "Units", objects: UNITS },
+  { key: "buildings", label: "Buildings", objects: BUILDINGS },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
   { key: "meadows", label: "Meadows and flowers",
@@ -96,10 +99,13 @@ export const TREES = new Set(["albero", "albero_fake"]);
 export { START }; // (mapfile.js, §9.191)
 export const STARTS = 2;
 // [§9.191] come si vede una voce del blu: lo sprite del suo corrispondente
-// della CPU (il centro blu: enemy_centro, cc_b), o null
-export const BLUE_OF = { centro: "enemy_centro" };
+// della CPU (il centro blu: enemy_centro, cc_b), o null. [§9.193] Il
+// lavoratore della CPU ha lo sprite del civile: quello blu e' b_ (economy.js)
+export { BLUE_OF };
+const BLUE_LOOK = { ally_omino: "b_ow11" };
 export function sideLook(objects, e) {
   if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
+  if (BLUE_LOOK[e.object]) return BLUE_LOOK[e.object];
   const b = objects[BLUE_OF[e.object]];
   return (b && b.sprite) || null;
 }
@@ -146,6 +152,7 @@ export function groupsFor(assets, objects, names) {
     for (const [s] of o.slices || []) want(s);
     if (BRIDGE_RAILS[n] && objects[BRIDGE_RAILS[n]]) want(objects[BRIDGE_RAILS[n]].sprite);
     if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
+    if (BLUE_LOOK[n]) want(BLUE_LOOK[n]); // §9.193
   }
   return out;
 }

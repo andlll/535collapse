@@ -79,8 +79,9 @@ browser o da file, con la copertina o il disegno della mappa e la CPU fissa
 o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
 blu (§9.191: la gemella simmetrica e' dell'altro schieramento), la partita
 online sulle mappe dell'editor (§9.192: chi entra senza la mappa la riceve
-da chi crea e la tiene). Da fare: unita' ed edifici degli schieramenti in
-"Inserisci"; i ponti (dopo, decisione dell'autore). In sospeso la password.
+da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
+(§9.193). Da fare: mura e porte; i ponti (dopo, decisione dell'autore). In
+sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13565,3 +13566,54 @@ prima partita sotto swiftshader), `skcustom.mjs` (online ora con le mappe
 dell'editor e "Apri un file"), `rtc.mjs`, `rtcfail.mjs`, `netfake.mjs`,
 `pvp.mjs`, `editor.mjs`; screenshot (il pannello "Entra" con l'avviso, la
 sala d'attesa di chi entra prima della partita).
+
+### 9.193 Unita' ed edifici delle due parti in "Inserisci"
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Si', aggiungi unita'
+ed edifici degli schieramenti in Inserisci" (proposta in §9.191).
+
+- **Due schede nuove** in "Inserisci", dopo le partenze: **Unita'**
+  (lavoratore, guerriero, picchiere, arciere, cavaliere, ariete, catapulta)
+  ed **Edifici** (casa, caserma, stalla, torre, magazzino, mulino, campo,
+  monastero, fortezza). Come le partenze (§9.191), **una casella rossa e una
+  blu per oggetto**, una accanto all'altra, col pallino del colore; il blu
+  si vede con lo sprite della CPU (il lavoratore: b_ow11, come lo disegna
+  economy.js). Le schede sono otto: la scritta di una scheda che non ci sta
+  si rimpicciolisce.
+- **S** con una casella scelta passa a quella dell'altra parte; in alto
+  "Schieramento rosso (S: blu)". Su unita' ed edifici gia' messi ("Sposta")
+  S cambia lo schieramento, come per le partenze.
+- **La simmetria**: la gemella e' dell'altra parte (la regola di §9.191,
+  generale per ogni voce con lo schieramento). Nessun limite di numero (solo
+  le partenze sono una per parte).
+- **Nella mappa** le voci hanno i nomi del giocatore (gli oggetti alleati) e
+  `side`; senza schieramento (una mappa scritta a mano) sono del rosso.
+- **All'avvio** (mapfile.js testRoom): il rosso resta l'oggetto del
+  giocatore; il blu diventa **l'oggetto della CPU** (BLUE_OF: casa ->
+  enemy_house, barn -> enemy_mulino, ally_warrior -> enemy_warrior...; il
+  contrario di multiplayer.js ENEMY_EQ) e, **online, quello del secondo
+  giocatore** (app.js, dopo skirmishPrepare: la tabella m1, enemy_warrior ->
+  p2_warrior...; uguale nelle due pagine, l'impronta della mappa non cambia).
+- Contro la CPU gli oggetti blu della mappa sono come quelli delle mappe
+  della campagna: i soldati sono di guardia (inseguono chi arriva a 400 px,
+  accorrono all'edificio attaccato, enemies.js), non partono con le ondate
+  della regia (sono suoi solo quelli che produce); caserme e stalle blu
+  producono con la regia (con la CPU statica, §9.189, no). Se la mappa ha
+  lavoratori blu la regia non aggiunge i 3 di partenza (economy.js, come nei
+  livelli); il giocatore ha sempre i suoi 3.
+
+Mura e porte restano fuori: si mettono a pezzi allineati e hanno la loro
+logica (porte, collegamenti); da fare con l'autore.
+
+Testi: "Unita'" (gli "Edifici" c'erano gia'), "Schieramento rosso (S: blu)",
+"Schieramento blu (S: rosso)".
+
+Prove: `editor.test.mjs` (in piu': gli oggetti delle due parti esistono,
+la room col blu della CPU, lo schieramento di partenza rosso, due caselle
+per unita', la gemella dell'altra parte; 142 test), `editor.mjs` (il
+guerriero rosso con la simmetria e la gemella blu, bww11; S passa alla
+casella blu; le schede per nome), `skcustom.mjs` (un guerriero per parte e
+una caserma blu: nella partita il guerriero del giocatore, quello della CPU
+e la caserma della CPU), `netmap.mjs` (online: la caserma rossa del rosso,
+il guerriero blu e' p2_warrior, nessun oggetto della CPU, impronte
+uguali); screenshot (la scheda Edifici).

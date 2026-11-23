@@ -168,7 +168,7 @@ export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
-                             "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.",
+                             "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.", "Red side (S: blue)", "Blue side (S: red)", "Units",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
                              "Map settings", "Name", "Description", "Width", "Height", "Background", "Difficulty", "CPU style",
@@ -237,6 +237,8 @@ const DARK = 0x3c3c3c;
 // [§9.191] i colori dei due schieramenti (BGR, come Draw)
 export const SIDE_COLOUR = { red: 0x3830c8, blue: 0xe87030 };
 export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Starting positions).";
+// [§9.193] lo schieramento della casella scelta (S: l'altro)
+export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)" };
 function drawIcon(d, key, x, y, s, ink) {
   const L = (x1, y1, x2, y2, w = 3) => d.lineWidthColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, w * s, ink, ink);
   const T = (x1, y1, x2, y2, x3, y3) => d.triangleColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, x + x3 * s, y + y3 * s, ink, ink, ink, false);
@@ -574,7 +576,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // ("Inserisci") o delle voci scelte ("Sposta", con annulla)
   const nextStyle = (dir) => {
     if (ed.tool === "insert" && ed.pick) {
-      const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length;
+      const { cat, i } = ed.pick, n = ITEMS[cat][i].styles.length, it = ITEMS[cat][i];
+      // [§9.193] una casella di uno schieramento: la stessa dell'altro
+      if (it.side) {
+        const j = ITEMS[cat].findIndex((q) => q.side && q.side !== it.side && q.styles[0].object === it.styles[0].object);
+        if (j >= 0) ed.pick = { cat, i: j };
+        return;
+      }
       ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
     } else if (ed.tool === "select") {
       const list = scene.withTwins(selected(), symMode()).filter((e) => stylesOf(e, objects)); // §9.184: anche le gemelle
@@ -1428,7 +1436,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
         : "Click: new line. Click on a line: select it.")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
-      : ed.pick ? (pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
+      : ed.pick ? (pickedItem().side ? tr(SIDE_HINT[pickedItem().side]) + "     " // §9.193
+        : pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
         + tr("Click: place. Right click: stop.") : tr("Choose an object");
     // (le coordinate solo se c'e' posto: i comandi della polilinea sono lunghi;
     // [§9.187] se non stanno accanto al titolo, rimpiccioliti)
@@ -1466,7 +1475,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
       draw.setColour(on ? c.white : c.black);
       draw.setAlpha(on ? 1 : 0.8);
-      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(CATALOG[q.k].label));
+      // [§9.193] otto schede: la scritta rimpicciolita se non ci sta
+      const label = tr(CATALOG[q.k].label), lw = draw.stringWidth(label), room = q.x2 - q.x1 - 12;
+      if (lw > room) draw.textTransformed((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, label, room / lw);
+      else draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, label);
     }
     if (catalog !== "ready") { draw.setColour(c.black); draw.setAlpha(0.6); draw.text((P.strip[0] + P.strip[2]) / 2, (P.strip[1] + P.strip[3]) / 2, t("loading")); return; }
     for (const q of P.cells) {

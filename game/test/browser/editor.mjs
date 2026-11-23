@@ -55,6 +55,8 @@ const saveIn = async ({ browser: inBrowser, file }) => {
   await page.locator('.net-panel [data-net="save"]').click();
 };
 let ok = true;
+// le schede di "Inserisci" (editmap.js CATALOG; §9.193: unita' ed edifici dopo le partenze)
+const TAB = { start: 0, units: 1, buildings: 2, resources: 3, trees: 4, meadows: 5, mountains: 6, city: 7 };
 const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 
 // il menu: la colonna dei pulsanti (menu.js titleButtons: alti 70, 20 fra
@@ -135,10 +137,10 @@ await click(btn("insert").x, btn("insert").y);
 await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
 let P = await page.evaluate(() => window.__editor.palette());
 const mid = (q) => [(q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2];
-await click(...mid(P.tabs[1]));
+await click(...mid(P.tabs[TAB.resources]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
-check("scelta la miniera", await page.evaluate(() => { const E = window.__editor, p = E.ed.pick; return !!p && p.cat === 1 && p.i === 0; }));
+check("scelta la miniera", await page.evaluate(() => { const E = window.__editor, p = E.ed.pick; return !!p && p.cat === 3 && /* TAB.resources */ p.i === 0; }));
 await click(800, 380);
 const placed = await page.evaluate(() => { const m = window.__editor.scene.map.instances; return m[m.length - 1]; });
 check("miniera messa sotto il puntatore", (await count()) === n0 + 1 && placed.object === "miniera_oro"
@@ -152,7 +154,7 @@ check("ripeti", (await count()) === n0 + 1);
 const last = () => page.evaluate(() => { const m = window.__editor.scene.map.instances; return { ...m[m.length - 1] }; });
 const choices = await page.evaluate(() => window.__editor.scene.objects.albero.choices);
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.tabs[2]));
+await click(...mid(P.tabs[TAB.trees]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
 await page.mouse.move(700, 330);
@@ -161,7 +163,7 @@ await click(700, 330);
 const tree = await last();
 check("albero col terzo stile", tree.object === "albero" && tree.sprite === choices[2]);
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.tabs[5]));
+await click(...mid(P.tabs[TAB.city]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
 await page.mouse.move(1000, 300);
@@ -250,7 +252,7 @@ const symClick = (mode) => click(...mid(SY.opts.find((q) => q.mode === mode)));
 await symClick("diagonal");
 check("simmetria dello strumento, non della mappa", await page.evaluate(() => window.__editor.ed.sym.insert === "diagonal" && window.__editor.ed.sym.select === "none" && window.__editor.scene.map.symmetry === undefined));
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.tabs[1]));
+await click(...mid(P.tabs[TAB.resources]));
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[0]));
 await click(800, 380);
@@ -493,6 +495,18 @@ res.schieramenti = sides;
 check("partenza rossa, gemella blu col suo sprite", sides.length === 2 && sides[0].side === "red" && sides[1].side === "blue" && sides[0].sprite === "cc_spr" && sides[1].sprite === "cc_b");
 await click(900, 420);
 check("un'altra partenza rossa no", (await startsNow()).length === 2);
+// [§9.193] le unita': il guerriero rosso con la gemella blu (bww11); S passa
+// alla casella dell'altra parte
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.units]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[2]));
+await click(760, 330);
+const units = await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.object === "ally_warrior").map((e) => ({ side: e.side, sprite: S.instOf(e).sprite_index })); });
+res.unita = units;
+check("guerriero rosso, gemella blu col suo sprite", units.length === 2 && units[0].side === "red" && units[1].side === "blue" && units[1].sprite === "bww11");
+await page.mouse.move(760, 330); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+check("S: la casella del guerriero blu", await page.evaluate(() => { const p = window.__editor.ed.pick; return p.cat === 1 && /* TAB.units */ p.i === 3; }));
 await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
 await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
   .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });

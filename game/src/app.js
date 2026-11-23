@@ -487,6 +487,15 @@ async function main() {
     world.p2Sprites = p2SpriteMap(assets.sprites);
   }
   const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
+  // [§9.193] online, le unita' e gli edifici blu di una mappa dell'editor
+  // (gli oggetti della CPU, mapfile.js testRoom) diventano quelli del secondo
+  // giocatore (i gemelli p2_*: la tabella del nemico, multiplayer.js m1)
+  if (pvp && custom && world.mp) {
+    for (const e of all) {
+      const t = e[0].startsWith("enemy_") ? world.mp.m1[e[0]] : null;
+      if (t && world.objects[t]) e[0] = t;
+    }
+  }
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);

@@ -53,7 +53,10 @@ const ids = await page.evaluate(async () => {
   const A = { ...mf.newMap({ name: "Pianura di prova" }),
               // [§9.191] la partenza rossa (del giocatore) in basso a destra
               instances: [{ ...I("centro", 1200, 1200), side: "blue" }, { ...I("centro", 4800, 4800), side: "red" }, I("miniera_oro", 1800, 1500), I("pietra_grande", 4200, 4500),
-                          I("montagna_3", 3000, 3000), I("ocr_01", 3600, 2000), ...trees],
+                          I("montagna_3", 3000, 3000), I("ocr_01", 3600, 2000), ...trees,
+                          // [§9.193] unita' ed edifici delle due parti
+                          { ...I("ally_warrior", 4500, 4400), side: "red" }, { ...I("ally_warrior", 1500, 1600), side: "blue" },
+                          { ...I("caserma", 1700, 1000), side: "blue" }],
               rivers: [{ pts: [[0, 3500], [2500, 3300], [6000, 2600]], width: 260 }],
               roads: [{ pts: [[1200, 1300], [3000, 2400], [4800, 4700]], width: 120, kind: 1 }],
               patches: [{ pts: [[3300, 1700], [4000, 1700], [4000, 2300], [3300, 2300]], bg: "city2", alpha: 1 }],
@@ -130,6 +133,9 @@ let game = await page.evaluate(() => { const G = window.__game, w = G.world, at 
 res.partita = game;
 check("la partita: custom, CPU della mappa, non in prova", game.room === "custom" && game.sk.d === "hard" && game.sk.s === "static" && !game.test && game.eco && game.centro && game.mine && game.omini === 3 && game.mines === 1);
 check("il giocatore alla partenza rossa, la CPU alla blu", game.mine.join() === "4800,4800" && game.centro.join() === "1200,1200");
+const sided = await page.evaluate(() => { const w = window.__game.world; return { warrior: w.number("ally_warrior"), enemyWarrior: w.number("enemy_warrior"), barracks: w.number("enemy_caserma"), mine: w.number("caserma") }; });
+res.schieramenti = sided;
+check("le unita' e gli edifici: rossi del giocatore, blu della CPU", sided.warrior === 1 && sided.enemyWarrior === 1 && sided.barracks === 1 && sided.mine === 0);
 if (shots) await page.screenshot({ path: shots + "/sk_editor_partita.png" });
 // salvata, caricata
 await page.evaluate(async () => { const G = window.__game; G.advance(120); await G.pause.actions.saveGame(); });

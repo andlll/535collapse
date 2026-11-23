@@ -11,7 +11,7 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
-         startsOf, mapHash } from "../src/mapfile.js";
+         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF } from "../src/mapfile.js";
 import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
@@ -555,4 +555,32 @@ test("§9.192 l'impronta della mappa", () => {
   const v1 = validateMap(m, allowed, objects).map, v2 = validateMap(JSON.parse(JSON.stringify(v1)), allowed, objects).map;
   assert.equal(mapHash(v1), mapHash(v2));
   assert.equal(mapHash(v1), h);
+});
+
+// [§9.193] unita' ed edifici degli schieramenti: nella mappa coi nomi del
+// giocatore e lo schieramento; nella room il blu e' l'oggetto della CPU
+test("§9.193 unita' ed edifici delle due parti", () => {
+  const objects = JSON.parse(readFileSync(new URL("../assets/objects.json", import.meta.url), "utf8"));
+  for (const n of [...UNITS, ...BUILDINGS]) {
+    assert.ok(objects[n], n);
+    assert.ok(objects[BLUE_OF[n]], BLUE_OF[n]);
+  }
+  const I = (object, x, y, side) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...(side ? { side } : {}) });
+  const map = { ...newMap(), instances: [I("centro", 1000, 1000, "red"), I("centro", 5000, 5000, "blue"),
+                                          I("ally_warrior", 1200, 1200, "red"), I("ally_warrior", 4800, 4800, "blue"),
+                                          I("caserma", 4500, 4500, "blue"), I("albero", 3000, 3000)] };
+  const room = testRoom(map);
+  assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "centro", "centro", "ally_warrior", "enemy_warrior", "enemy_caserma", "albero"]);
+  // senza schieramento: del rosso; la convalida lo accetta su unita' ed edifici
+  const allowed = new Set(["centro", "ally_warrior", "caserma", "albero"]);
+  const v = validateMap({ ...map, instances: [I("centro", 1000, 1000), I("centro", 5000, 5000), I("ally_warrior", 100, 100), I("caserma", 200, 200, "blue")] }, allowed, objects);
+  assert.deepEqual(v.map.instances.map((e) => e.side), ["red", "blue", "red", "blue"]);
+  // la tavolozza: due caselle per unita', rossa e blu
+  const items = paletteItems(CATALOG.find((k) => k.key === "units"), objects);
+  assert.equal(items.length, UNITS.length * 2);
+  assert.deepEqual(items.slice(0, 2).map((q) => [q.styles[0].object, q.side]), [["ally_omino", "red"], ["ally_omino", "blue"]]);
+  // la gemella di un'unita' e' dell'altra parte
+  const S = Object.create(EditScene.prototype);
+  Object.assign(S, { map: { ...newMap(), instances: [] }, objects: { ally_warrior: {} }, masks: {} });
+  assert.equal(S.twinAt(I("ally_warrior", 1000, 1000, "red"), "horizontal").side, "blue");
 });
