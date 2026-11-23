@@ -73,7 +73,7 @@ degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
 densita', texture) e la copertina (§9.185-§9.186), la polilinea per fiumi
 e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
 (Salva con nome, Ctrl+S sul file) e "Prova mappa" con la CPU statica
-(§9.188). Da fare: le mappe dell'editor nella schermaglia (con la
+(§9.188), che reagisce ma non ha economia ne' gestione (§9.189). Da fare: le mappe dell'editor nella schermaglia (con la
 copertina e la CPU a scelta o fissa) e nella partita online; i ponti
 (dopo, decisione dell'autore). In sospeso la password.
 
@@ -12687,7 +12687,9 @@ schermaglia; poi gli scenari con regia (R2) e la condivisione.
 - [x] I boschi: tutti e due, alberi uno per uno con "Inserisci" e col
   pennello, che regola larghezza e densita' (§9.182).
 - [x] "Controllo CPU": come nella schermaglia, piu' una CPU statica che non
-  fa nulla (§9.182), e "a scelta del giocatore" al lancio (§9.186).
+  fa nulla (§9.182), e "a scelta del giocatore" al lancio (§9.186); la
+  statica reagisce comunque (difesa, frecce, fuga): le manca solo
+  l'economia e la gestione (§9.189).
 - [ ] "Password?": in sospeso (l'autore non ricorda a cosa servisse).
 - [x] Simmetria: spenta di partenza; si accende diagonale, orizzontale o
   verticale rispetto alla mappa (§9.182); e' un'impostazione degli strumenti,
@@ -13301,3 +13303,49 @@ partita di prova e la sua pausa).
 **Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
 copertina, la CPU a scelta o fissa) e poi nella partita online.
 
+### 9.189 La CPU statica reagisce: le manca solo l'economia
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Chiaramente non l'ho
+specificato ma la CPU statica deve comunque reagire agli stimoli come
+attaccare nemici molto vicini, semplicemente manca economia e parte
+gestionale".
+
+Prima (§9.188) con lo stile "statica" la regia della CPU (`enemy_eco`) non
+nasceva: la CPU aveva il suo centro e basta, senza i 3 lavoratori di
+partenza (li fa nascere la regia) e senza la difesa della base; e senza
+regia le caserme nemiche, se una mappa ne avesse, avrebbero fatto soldati da
+sole (enemybuild.js, la produzione dell'originale).
+
+Ora la regia nasce sempre, anche per la CPU statica, **passiva**
+(skirmish.js `skirmishEco`: `passive` con lo stile `static`; ECO.default
+`passive: false`):
+- come le altre: le risorse e i 3 lavoratori di partenza attorno al centro;
+- le reazioni restano: il centro tira frecce all'unita' del giocatore piu'
+  vicina entro 600 px (enemybuild.js, del centro, non della regia); il
+  lavoratore colpito scappa verso il centro (economy.js `flee`, del
+  lavoratore); i soldati nemici inseguono chi arriva entro 400 px e
+  accorrono all'edificio attaccato (enemies.js, delle unita'); la difesa
+  della base della regia (§9.50: i soldati della regia in attesa contro chi
+  entra entro `defendR` da un edificio) e' ora una funzione a parte
+  (economy.js `defend`), che la regia passiva fa e basta;
+- non c'e' l'economia ne' la gestione: i lavoratori non vanno a lavorare,
+  niente lavoratori e soldati nuovi, edifici, depositi, riparazioni,
+  ricostruzioni, ondate.
+
+levels.js non ha piu' l'eccezione per la statica (la regia c'e' gia').
+Oggi nelle mappe dell'editor la CPU ha solo il centro e i lavoratori: i
+soldati (della regia o della mappa) reagiranno come quelli delle altre CPU
+quando si potranno mettere unita' con "Inserisci".
+
+Prove: `editor.test.mjs` (in piu': la statica ha la regia passiva, coi
+lavoratori e le risorse di partenza delle altre; 138 test), `editor.mjs`
+(la partita di prova con la statica: la regia c'e', dopo 1800 passi 3
+lavoratori senza lavoro, nessuna spesa, nessun cantiere, nessuna
+produzione, nessun soldato; un guerriero alleato a 300 px dal centro e'
+colpito dalle frecce, il lavoratore colpito scappa), `economy.mjs`,
+`truce.mjs`, `enemydefense.mjs` (la difesa e le ondate della regia normale
+come prima), `soak.mjs` (menu, match, lvl01, lvl02, sk_padus, lvl04,
+lvl05), `saves.mjs`.
+
+**Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
+copertina, la CPU a scelta o fissa) e poi nella partita online.

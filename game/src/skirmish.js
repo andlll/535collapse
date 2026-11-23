@@ -143,7 +143,7 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
     Object.assign(g.p2, START_RES[params.resources]);
     const [qx, qy] = starts.cpu;
     for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
-  } else if (params.style !== "static") world.create("enemy_eco", 0, 0); // [§9.188] la CPU statica non fa nulla (niente regia)
+  } else world.create("enemy_eco", 0, 0); // [§9.189] anche per la CPU statica: la regia passiva (economy.js)
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
   if (params.truce > 0 && !params.pvp) g.en.hold = 1;
   world.create("sk_manager", 0, 0);
@@ -311,7 +311,7 @@ export function skirmishEco(sk) {
   return { ...D, startWorkers: 3, start: { food: r.food * k, wood: r.wood * k, gold: r.gold * k, stone: r.stone * k },
            buildOrder: S.buildOrder, troops: S.troops, raid: !!S.raid, houses: true, popMax: sk.pop,
            mix: { wood: 3, gold: 2, food: 3, stone: 1 }, rebuild: true, newDeposits: 3, stoneWork: true, armyEco: false,
-           anyTroop: true, defendR: 700 };
+           anyTroop: true, defendR: 700, passive: sk.style === "static" };
 }
 
 // [§9.122, richiesta dell'autore] Un po' di nebbia sulla mappa: sk_nebbia

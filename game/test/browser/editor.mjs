@@ -469,8 +469,10 @@ check("con la simmetria la strada e la gemella", await page.evaluate(() => { con
 await page.keyboard.press("Delete"); await page.waitForTimeout(150);
 check("Canc toglie strada e gemella", (await page.evaluate(() => window.__editor.scene.map.roads.length)) === 1);
 // [§9.188] "Prova mappa": senza due partenze no; Padania con la CPU statica,
-// la partita (niente regia della CPU, la pausa senza salvataggi), "Torna
-// all'editor": la mappa com'era, cambiata
+// la partita (la pausa senza salvataggi), "Torna all'editor": la mappa
+// com'era, cambiata. [§9.189] La CPU statica: la regia passiva coi suoi 3
+// lavoratori, che non lavorano; niente spese, cantieri, produzione; reagisce:
+// il centro tira a un guerriero vicino, il lavoratore colpito scappa
 await click(btn3("test").x, btn3("test").y);
 await page.waitForTimeout(300);
 check("Prova mappa: servono due partenze", await page.evaluate(() => location.search.includes("room=editor")));
@@ -486,7 +488,25 @@ await page.waitForFunction(() => window.__game && window.__game.ready, null, { t
 await page.waitForTimeout(1500);
 const game = await page.evaluate(() => { const G = window.__game, w = G.world; return { room: w.room, enemy: w.exists("enemy_centro"), eco: w.exists("enemy_eco"), omini: [...w.all("ally_omino")].length, test: G.pause.testMode, style: G.g.sk && G.g.sk.style }; });
 res.prova = game;
-check("la partita di prova", game.room === "custom" && game.enemy && !game.eco && game.omini === 3 && game.test && game.style === "static");
+check("la partita di prova", game.room === "custom" && game.enemy && game.eco && game.omini === 3 && game.test && game.style === "static");
+const still = await page.evaluate(() => {
+  const G = window.__game, w = G.world, c = w.all("enemy_centro").next().value, en0 = { ...G.g.en };
+  G.advance(1800);
+  const workers = [...w.all("enemy_omino")];
+  const out = { workers: workers.length, jobs: workers.filter((o) => o.woodwork || o.goldwork || o.stonework || o.foodwork || o.buildwork || o.fieldwork).length,
+                spent: ["food", "wood", "gold", "stone"].filter((k) => G.g.en[k] !== en0[k]), sites: w.number("enemy_fondamenta"), prod: !!c.prodUntil,
+                soldiers: [...w.all("enemy_unit")].length - workers.length };
+  // le reazioni: un guerriero alleato a 300 px dal centro, un lavoratore colpito
+  const a = w.create("ally_warrior", c.x + 300, c.y + 60), life0 = a.life, o = workers[0];
+  o.hit = 1;
+  G.advance(240);
+  out.arrows = !a.alive || a.life < life0;
+  out.fled = o.fleeUntil > 0;
+  return out;
+});
+res.statica = still;
+check("CPU statica: 3 lavoratori fermi, niente economia", still.workers === 3 && still.jobs === 0 && !still.spent.length && !still.sites && !still.prod && !still.soldiers);
+check("CPU statica: reagisce (frecce del centro, fuga)", still.arrows && still.fled);
 await page.evaluate(() => window.__game.pause.actions.menu());
 await page.waitForURL(/room=editor/, { timeout: 30000 });
 await page.waitForFunction(() => window.__editor && window.__editor.ready && !window.__editor.ed.loading && window.__editor.scene.map.width === 7000, null, { timeout: 120000 });

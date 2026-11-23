@@ -11,7 +11,7 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM } from "../src/mapfile.js";
-import { isSkirmish, SK_OPTIONS } from "../src/skirmish.js";
+import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
@@ -473,4 +473,15 @@ test("§9.188 la room di prova", () => {
   assert.ok(isSkirmish(TEST_ROOM) && isSkirmish("sk_padus") && !isSkirmish("lvl01"));
   assert.equal(SK_OPTIONS.style.names.static, "Static");
   assert.ok(!SK_OPTIONS.style.values.includes("static"), "non fra le scelte della schermata della schermaglia");
+});
+
+// [§9.189] la CPU statica ha la regia, passiva (economy.js: solo la difesa),
+// coi lavoratori di partenza come le altre
+test("§9.189 la CPU statica: la regia passiva", () => {
+  const sk = { difficulty: "normal", resources: "normal", pop: 75 };
+  const st = skirmishEco({ ...sk, style: "static" }), bal = skirmishEco({ ...sk, style: "balanced" });
+  assert.equal(st.passive, true);
+  assert.equal(bal.passive, false);
+  assert.equal(st.startWorkers, 3);
+  assert.deepEqual(st.start, bal.start);
 });
