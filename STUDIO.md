@@ -68,10 +68,11 @@ anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
 annulla e ripeti, "Nuova mappa" vuota, gli stili di case e alberi col tasto
 S (§9.183), salva e apri (browser e file `.dvmap`, con la convalida), le
 impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica",
-simmetria) e la simmetria in tutti i comandi (§9.184). Da fare: il pennello
-(boschi con larghezza e densita', texture), la polilinea (fiumi, strade,
-ponti), "Prova mappa" (con la CPU statica nel gioco), le mappe dell'editor
-nella schermaglia e nella partita online. In sospeso la password.
+simmetria) e la simmetria in tutti i comandi (§9.184), il pennello (boschi
+con larghezza e densita', texture) e la copertina (§9.185). Da fare: la
+polilinea (fiumi, strade, ponti), "Prova mappa" (con la CPU statica nel
+gioco), le mappe dell'editor nella schermaglia (con la copertina) e nella
+partita online. In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13019,4 +13020,77 @@ dal file; eliminata dall'elenco), test unitari (130), screenshot
 la polilinea (fiumi, strade, ponti); "Prova mappa" (lo scenario dal browser
 nel gioco, la CPU statica); le mappe dell'editor nella schermata della
 schermaglia, poi nella partita online.
+
+### 9.185 L'editor di mappe: il pennello e la copertina
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui. Nelle impostazioni deve esserci anche la possibilita' di
+caricare un'immagine come copertina della mappa, tipo quelle della
+schermaglia".
+
+**La copertina** (impostazioni). Una riga "Copertina" con l'anteprima
+(180 x 120), "Carica un'immagine..." e "Togli". L'immagine scelta (qualsiasi
+formato che il browser legge) e' ritagliata al centro alle proporzioni 3:2 e
+ridotta a **720 x 480**, come le foto delle mappe della schermaglia (§9.121),
+poi compressa in WebP (JPEG dove il browser non sa scrivere WebP) e messa
+nella mappa come `cover` (mapstore.js `makeCover`): viaggia col salvataggio
+nel browser e col `.dvmap`. Convalida (mapfile.js): solo WebP o JPEG in
+base64 (niente SVG ne' altri indirizzi), al piu' ~500 KB. Si vedra' nella
+schermata della schermaglia quando ci saranno le mappe dell'editor.
+*Trovato con lo screenshot*: il riquadro "Nessuna copertina" restava accanto
+all'immagine (lo stile `display: flex` vince sull'attributo `hidden`).
+
+**Il pennello** (il terzo strumento; editbrush.js per la geometria). Nel
+riquadro quattro schede, **Bosco**, **Selciato**, **Pietra**, **Prato** (gli
+sfondi delle macchie di §9.99: city2, city1, green1), la **larghezza** (il
+diametro: 200-1600 px, 600 di partenza; anche Maiusc+rotella sulla mappa) e,
+per il bosco, la **densita'** (1-6: la distanza minima fra gli alberi, da
+180 a 60 px; 4 = 90 px, come il pennello bosco di Tiled, tools/12). Il
+**sinistro dipinge, il destro cancella**; sulla mappa il cerchio tratteggiato
+del pennello (rosso cancellando). Una pennellata intera e' **un passo solo**
+da annullare (EditScene `begin`/`end`).
+- *Bosco*: alberi veri, uno per uno (decisione dell'autore, §9.182), con una
+  variante a caso fra le 8: a ogni passo una decina di punti a caso nel
+  cerchio, tenuti se lontani almeno la distanza dagli alberi gia' messi
+  (`TreeGrid`, celle grandi quanto la distanza; `forestStep`) e se i piedi
+  dell'albero non toccano l'acqua o la maschera di un oggetto (miniere,
+  centri, montagne...; i prati e le strade dipinti e le macchie no:
+  EditScene `blocks`). La gomma toglie gli alberi nel cerchio.
+- *Texture*: la pennellata e' una fila di cerchi (uno ogni 30% del raggio);
+  lasciato il tasto, la loro unione diventa il contorno di una macchia
+  (`strokeOutlines`: una griglia fine, marching squares, gli anelli, via i
+  buchi e i pezzetti, Douglas-Peucker), sfumatura 40 px come in Tiled, che il
+  gioco disegna come sempre (rivers.js patchGeometry). Durante la pennellata
+  i cerchi semitrasparenti del colore della texture. La gomma toglie le
+  macchie di quella texture toccate dal cerchio (intere).
+- *Simmetria*: il bosco mette anche il gemello di ogni albero (se c'e'
+  posto), la texture anche la sagoma specchiata, la gomma cancella anche al
+  posto specchiato; il cerchio del pennello si vede tutte e due le volte.
+- Per farlo il modello ha imparato le forme: annulla e ripeti valgono anche
+  per le macchie (e varranno per fiumi, strade e ponti della polilinea:
+  EditScene `addFeatures`, `removeFeatures`, i cambi con `key`); cambiate
+  le forme, il motore ne rifa' la geometria e il suolo si ricuoce.
+
+Testi nuovi nelle sei lingue (bosco, densita', i comandi del pennello, la
+copertina).
+
+Prove: `editor.test.mjs` (in piu': la sagoma di una pennellata contiene i
+suoi centri e non i punti lontani, due pezzi staccati fanno due macchie, un
+anello di cerchi si riempie; il bosco mai sotto la distanza, mai fuori dal
+cerchio, niente dove non sta; area e semplificazione di un poligono; il
+riquadro del pennello a 1920 x 1080 e 1280 x 720; la copertina: WebP e
+JPEG si', SVG, PNG, indirizzi, testo con spazi e immagini troppo grandi no;
+le macchie con annulla e ripeti e la geometria rifatta, cinque pennellate
+in un gruppo = un annulla, gli alberi non stanno su una miniera),
+`editor.mjs` (in piu': un bosco in una pennellata, 53 alberi a non meno di
+90 px fra loro, 8 varianti, un passo solo; la gomma col destro; annullate
+gomma e pennellata; una pennellata di selciato = una macchia; la gomma la
+toglie; la copertina da un'immagine 1200 x 600 diventa 720 x 480, salvata
+nel browser e riaperta dopo aver ricaricato la pagina), test unitari (134),
+screenshot (bosco e selciato, la pennellata in corso, la gomma, le
+impostazioni con la copertina).
+
+**Prossimo**: la polilinea (fiumi, strade, ponti); "Prova mappa" (lo
+scenario dal browser nel gioco, la CPU statica); le mappe dell'editor nella
+schermata della schermaglia, con la copertina.
 

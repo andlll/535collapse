@@ -1489,4 +1489,13 @@ export const TEXTS = {
   "Diagonal": { it: "Diagonale", es: "Diagonal", pt: "Diagonal", de: "Diagonal", fr: "Diagonale" },
   "Horizontal": { it: "Orizzontale", es: "Horizontal", pt: "Horizontal", de: "Horizontal", fr: "Horizontale" },
   "Vertical": { it: "Verticale", es: "Vertical", pt: "Vertical", de: "Vertikal", fr: "Verticale" },
+  // [§9.185] il pennello, la copertina della mappa
+  "Forest": { it: "Bosco", es: "Bosque", pt: "Floresta", de: "Wald", fr: "Forêt" },
+  "Density": { it: "Densità", es: "Densidad", pt: "Densidade", de: "Dichte", fr: "Densité" },
+  "Left: paint. Right: erase.": { it: "Sinistro: dipingi. Destro: cancella.", es: "Izquierdo: pintar. Derecho: borrar.", pt: "Esquerdo: pintar. Direito: apagar.", de: "Links: malen. Rechts: radieren.", fr: "Gauche : peindre. Droit : effacer." },
+  "Cover": { it: "Copertina", es: "Portada", pt: "Capa", de: "Titelbild", fr: "Couverture" },
+  "No cover": { it: "Nessuna copertina", es: "Sin portada", pt: "Sem capa", de: "Kein Titelbild", fr: "Pas de couverture" },
+  "Load an image…": { it: "Carica un'immagine…", es: "Cargar una imagen…", pt: "Carregar uma imagem…", de: "Bild laden…", fr: "Charger une image…" },
+  "Remove": { it: "Togli", es: "Quitar", pt: "Remover", de: "Entfernen", fr: "Retirer" },
+  "This image could not be read.": { it: "Non è stato possibile leggere questa immagine.", es: "No se ha podido leer esta imagen.", pt: "Não foi possível ler esta imagem.", de: "Dieses Bild konnte nicht gelesen werden.", fr: "Impossible de lire cette image." },
 };

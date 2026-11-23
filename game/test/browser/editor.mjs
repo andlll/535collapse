@@ -6,7 +6,8 @@
 // carica Padania col motore del gioco, e da lontano la si vede tutta;
 // [§9.182] solo le schermaglie come modelli; Inserisci mette una miniera,
 // annulla e ripeti; [§9.183] gli stili col tasto S; [§9.184] impostazioni,
-// simmetria, salva e apri (browser e file), elimina; Sposta la sceglie, la trascina, Canc la toglie; uscendo
+// simmetria, salva e apri (browser e file), elimina; [§9.185] il pennello
+// (bosco, gomma, selciato) e la copertina; Sposta la sceglie, la trascina, Canc la toglie; uscendo
 // con la mappa cambiata si chiede conferma; Esc torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -270,6 +271,77 @@ const C3 = await page.evaluate(() => window.__editor.confirmLayout());
 await click((C3.yes[0] + C3.yes[2]) / 2, (C3.yes[1] + C3.yes[3]) / 2);
 await page.waitForFunction((n) => window.__editor.ed.open && window.__editor.ed.open.mine && window.__editor.ed.open.mine.length === n - 1, before3, { timeout: 10000 });
 check("eliminata", true);
+
+// [§9.185] il pennello: un bosco in una pennellata (un passo solo da
+// annullare), la gomma col destro, una pennellata di selciato (una macchia)
+await page.keyboard.press("Escape"); // (il pannello "Apri mappa", riaperto dopo l'eliminazione)
+await page.waitForTimeout(100);
+await click(btn3("new").x, btn3("new").y);
+await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading, null, { timeout: 60000 });
+await click(btn3("brush").x, btn3("brush").y);
+await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+const undo0 = await page.evaluate(() => window.__editor.scene.undoList.length);
+await page.mouse.move(500, 300); await page.mouse.down();
+for (let k = 0; k <= 30; k++) { await page.mouse.move(500 + k * 12, 300); await page.waitForTimeout(30); }
+await page.mouse.up(); await page.waitForTimeout(200);
+const forest = await page.evaluate(() => {
+  const S = window.__editor.scene, t = S.trees();
+  let min = Infinity;
+  for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) min = Math.min(min, Math.hypot(t[i].x - t[j].x, t[i].y - t[j].y));
+  return { n: t.length, min, steps: S.undoList.length, sprites: new Set(t.map((e) => e.sprite)).size };
+});
+res.bosco = forest;
+check("un bosco in una pennellata", forest.n > 15 && forest.min >= 89 && forest.steps === undo0 + 1 && forest.sprites > 1);
+await page.mouse.move(650, 300); await page.mouse.down({ button: "right" });
+for (let k = 0; k <= 5; k++) { await page.mouse.move(650 + k * 10, 300); await page.waitForTimeout(30); }
+await page.mouse.up({ button: "right" }); await page.waitForTimeout(200);
+const left = await page.evaluate(() => window.__editor.scene.trees().length);
+check("la gomma col destro", left < forest.n && left > 0);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(200);
+check("annullate gomma e pennellata", (await page.evaluate(() => window.__editor.scene.trees().length)) === 0);
+const BL = await page.evaluate(() => window.__editor.brushLayout());
+await click((BL.tabs[1].x1 + BL.tabs[1].x2) / 2, (BL.tabs[1].y1 + BL.tabs[1].y2) / 2);
+await page.mouse.move(600, 400); await page.mouse.down();
+for (let k = 0; k <= 20; k++) { await page.mouse.move(600 + k * 15, 400 - k * 3); await page.waitForTimeout(30); }
+await page.mouse.up(); await page.waitForTimeout(300);
+const patch = await page.evaluate(() => { const m = window.__editor.scene.map; return { n: m.patches.length, bg: m.patches[0] && m.patches[0].bg, pts: m.patches[0] && m.patches[0].pts.length, geo: window.__editor.scene.world.patches.length }; });
+check("una pennellata di selciato: una macchia", patch.n === 1 && patch.bg === "city2" && patch.pts >= 6 && patch.geo === 1);
+await page.mouse.move(700, 380); await page.mouse.down({ button: "right" }); await page.waitForTimeout(80); await page.mouse.up({ button: "right" }); await page.waitForTimeout(200);
+check("la gomma toglie la macchia", (await page.evaluate(() => window.__editor.scene.map.patches.length)) === 0);
+
+// [§9.185] la copertina: un'immagine 1200 x 600 caricata nelle impostazioni,
+// ritagliata a 720 x 480; salvata e riaperta resta
+const png = await page.evaluate(() => {
+  const c = document.createElement("canvas"); c.width = 1200; c.height = 600;
+  const g = c.getContext("2d"); g.fillStyle = "#3a6"; g.fillRect(0, 0, 1200, 600); g.fillStyle = "#c33"; g.fillRect(500, 200, 200, 200);
+  return c.toDataURL("image/png").split(",")[1];
+});
+await click(btn3("settings").x, btn3("settings").y);
+await page.waitForSelector(".net-panel input");
+await page.fill(".net-panel input", "Con copertina");
+const [chooser2] = await Promise.all([page.waitForEvent("filechooser"), page.locator('.net-panel [data-net="cover-load"]').click()]);
+await chooser2.setFiles({ name: "prova.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+await page.waitForFunction(() => { const i = document.querySelector('.net-panel img[data-net="cover"]'); return i && !i.hidden && i.naturalWidth > 0; }, null, { timeout: 10000 });
+const coverDims = await page.evaluate(() => { const i = document.querySelector('.net-panel img[data-net="cover"]'); return [i.naturalWidth, i.naturalHeight]; });
+await page.locator('.net-panel [data-net="apply"]').click();
+await page.waitForTimeout(200);
+const cover = await page.evaluate(() => (window.__editor.scene.map.cover || "").slice(0, 30));
+check("la copertina 720 x 480", coverDims[0] === 720 && coverDims[1] === 480 && /^data:image\/(webp|jpeg);base64,/.test(cover));
+await page.mouse.move(700, 300);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyS"); await page.keyboard.up("Control");
+await page.waitForSelector('.net-panel [data-net="browser"]');
+await page.locator('.net-panel [data-net="browser"]').click();
+await page.waitForFunction(() => window.__editor.ed.mapId && !window.__editor.ed.dom, null, { timeout: 10000 });
+const id4 = await page.evaluate(() => window.__editor.ed.mapId);
+await page.goto(`${base}/index.html?room=editor`);
+await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
+await click(btn3("open").x, btn3("open").y);
+await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
+const O4 = await page.evaluate(() => window.__editor.openLayout());
+const row4 = await page.evaluate((id) => window.__editor.ed.open.mine.findIndex((m) => m.id === id), id4);
+await click(...mid(O4.mine[row4]));
+await page.waitForFunction(() => window.__editor.scene.map.name === "Con copertina" && !window.__editor.ed.loading, null, { timeout: 60000 });
+check("la copertina resta", await page.evaluate((c) => (window.__editor.scene.map.cover || "").startsWith(c), cover));
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));

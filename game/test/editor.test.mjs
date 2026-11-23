@@ -6,11 +6,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
-         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout } from "../src/editor.js";
+         openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap } from "../src/mapfile.js";
 import { mapFileName } from "../src/mapstore.js";
+import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
 import { setLanguage } from "../src/i18n.js";
 import { TEXTS } from "../src/texts.js";
@@ -293,4 +294,95 @@ test("§9.184 simmetria: gemelli nella scena", { skip: !existsSync(OBJECTS) || !
   map.symmetry = "horizontal";
   assert.equal(S.twinOf(e), null);
   assert.equal(S.twinAt({ object: "burst_erba1", x: 1000, y: 3000 }).x, 5000);
+});
+
+// [§9.185] Il pennello: la sagoma di una pennellata (un contorno per pezzo,
+// i buchi riempiti, dentro i cerchi), il bosco a distanza minima
+test("§9.185 pennello: sagome e boschi", () => {
+  const dabs = [];
+  for (let k = 0; k <= 20; k++) dabs.push([1000 + k * 40, 1000 + (k % 5) * 20]);
+  const one = strokeOutlines(dabs, 150);
+  assert.equal(one.length, 1);
+  for (const [x, y] of dabs) assert.ok(pointInPoly(x, y, one[0]), "i centri dentro");
+  assert.ok(!pointInPoly(1000, 1300, one[0]) && !pointInPoly(700, 1000, one[0]), "fuori dai cerchi, fuori");
+  assert.ok(one[0].length < 60, "semplificata");
+  assert.equal(strokeOutlines([[0, 0], [2000, 0]], 100).length, 2);
+  const ring = [];
+  for (let k = 0; k < 36; k++) ring.push([3000 + Math.round(500 * Math.cos(k / 36 * 2 * Math.PI)), 3000 + Math.round(500 * Math.sin(k / 36 * 2 * Math.PI))]);
+  const r = strokeOutlines(ring, 120);
+  assert.equal(r.length, 1);
+  assert.ok(pointInPoly(3000, 3000, r[0]), "il buco riempito");
+  assert.equal(strokeOutlines([], 100).length, 0);
+  // il bosco: mai due alberi piu' vicini della distanza
+  let seed = 7;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const grid = new TreeGrid(90), pts = [];
+  for (let k = 0; k < 300; k++) pts.push(...forestStep({ cx: 500, cy: 500, r: 300, spacing: 90, grid, rand }));
+  assert.ok(pts.length > 20);
+  for (let i = 0; i < pts.length; i++) {
+    assert.ok(Math.hypot(pts[i][0] - 500, pts[i][1] - 500) <= 301);
+    for (let j = i + 1; j < pts.length; j++) assert.ok(Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) >= 89.5);
+  }
+  assert.equal(forestStep({ cx: 0, cy: 0, r: 300, spacing: 90, grid: new TreeGrid(90), rand, ok: () => false }).length, 0);
+  // poligoni: area, semplificazione di un quadrato con punti in mezzo ai lati
+  assert.equal(Math.abs(polyArea([[0, 0], [10, 0], [10, 10], [0, 10]])), 100);
+  assert.deepEqual(simplify([[0, 0], [5, 0], [10, 0], [10, 5], [10, 10], [5, 10], [0, 10], [0, 5]], 1), [[0, 0], [10, 0], [10, 10], [0, 10]]);
+});
+
+test("§9.185 il riquadro del pennello", () => {
+  for (const [W, H] of [[1920, 1080], [1280, 720]]) {
+    const L = editorLayout(W, H), B = brushLayout(L.panel), [x1, y1, x2, y2] = L.panel;
+    assert.equal(B.tabs.length, 4);
+    for (const q of B.tabs) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y2 <= y2);
+    for (const G of [B.width, B.density]) for (const c of [G.minus, G.plus]) assert.ok(c[0] + c[2] <= x2 && c[1] + c[2] <= y2 && c[1] - c[2] > y1 + 90);
+    assert.ok(B.width.plus[0] + 20 < B.density.label[0], "larghezza e densita' non si toccano");
+  }
+  assert.equal(BRUSH_SPACING[3], 90); // la densita' di partenza, come il pennello bosco di Tiled
+  assert.ok(BRUSH_WIDTHS.includes(600));
+});
+
+// [§9.185] la copertina nella convalida: WebP o JPEG in base64, non troppo grande
+test("§9.185 la copertina", { skip: !existsSync(OBJECTS) }, () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), allowed = allowedObjects();
+  const ok = validateMap({ ...newMap(), cover: "data:image/webp;base64,UklGRg==" }, allowed, objects);
+  assert.equal(ok.map.cover, "data:image/webp;base64,UklGRg==");
+  assert.equal(validateMap(newMap(), allowed, objects).map.cover, undefined);
+  for (const cover of ["data:image/svg+xml;base64,PHN2Zz4=", "javascript:alert(1)", "data:image/png;base64,iVBORw==", 12,
+                       "data:image/jpeg;base64," + "A".repeat(800000), "data:image/jpeg;base64,AB C"]) {
+    assert.ok(validateMap({ ...newMap(), cover }, allowed, objects).errors, String(cover).slice(0, 30));
+  }
+});
+
+// [§9.185] le forme (macchie) con annulla e ripeti, e una pennellata = un passo
+test("§9.185 forme e gruppi con annulla", { skip: !existsSync(OBJECTS) || !existsSync(MASKS) }, () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8")), masks = JSON.parse(readFileSync(MASKS, "utf8")).sprites;
+  const assets = { sprites: {}, frame: () => null, groupsOfTier: () => [] };
+  const map = newMap();
+  const S = new EditScene({ r: null, assets, objects, masks }, map);
+  S.ground = { reset() { S.resets = (S.resets || 0) + 1; }, free() {} };
+  const [p1] = S.addFeatures("patches", [{ pts: [[0, 0], [400, 0], [400, 300]], bg: "city2", feather: 40 }]);
+  assert.equal(map.patches.length, 1);
+  assert.equal(S.world.patches.length, 1, "la geometria del gioco rifatta");
+  assert.ok(S.resets >= 1, "il suolo si ricuoce");
+  S.removeFeatures("patches", [p1]);
+  assert.equal(map.patches.length, 0);
+  S.undo();
+  assert.deepEqual(map.patches[0].pts, [[0, 0], [400, 0], [400, 300]]);
+  S.undo();
+  assert.equal(map.patches.length, 0);
+  S.redo();
+  assert.equal(map.patches.length, 1);
+  // una pennellata: tanti add in un gruppo, un annulla solo
+  const before = S.undoList.length;
+  S.begin();
+  for (let k = 0; k < 5; k++) S.add([{ object: "albero", x: 1000 + k * 100, y: 1000, scale_x: 1, scale_y: 1, rotation: 0, sprite: "alb1" }]);
+  S.end();
+  assert.equal(S.undoList.length, before + 1);
+  assert.equal(S.trees().length, 5);
+  S.undo();
+  assert.equal(S.trees().length, 0);
+  // dove un albero non sta: sulla miniera si', a meta' mappa no
+  S.add([{ object: "miniera_oro", x: 3000, y: 3000, scale_x: 1, scale_y: 1, rotation: 0 }]);
+  assert.ok(S.blocks(3000, 3000));
+  assert.ok(!S.blocks(1000, 4000));
 });

@@ -24,6 +24,11 @@ export const CPU_DIFFICULTY = ["easy", "normal", "hard", "rigged"];
 export const CPU_STYLE = ["balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
 export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
 export const NAME_MAX = 40, DESC_MAX = 600;
+// [§9.185, richiesta dell'autore] la copertina: un'immagine 720 x 480 come
+// le foto delle mappe della schermaglia (§9.121), WebP o JPEG in base64
+// dentro la mappa (al piu' ~500 KB)
+export const COVER_W = 720, COVER_H = 480, COVER_MAX = 700000;
+export const COVER_RE = /^data:image\/(webp|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 
 // Una mappa vuota: 6000 x 6000, sfondo green1. Manager e vista iniziale: li
 // aggiunge l'editor (§9.180, "Da decidere").
@@ -101,6 +106,10 @@ export function validateMap(data, allowed, objects) {
            style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "balanced" },
     symmetry: SYMMETRY.includes(data.symmetry) ? data.symmetry : "none",
   };
+  if (data.cover !== undefined) {
+    if (typeof data.cover === "string" && data.cover.length <= COVER_MAX && COVER_RE.test(data.cover)) map.cover = data.cover;
+    else bad("copertina");
+  }
   return errors.length ? { errors } : { map };
 }
 

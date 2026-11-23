@@ -42,6 +42,8 @@
 // descrizione, misure, sfondo, CPU con la "statica", simmetria) in pannelli
 // HTML (caselle di testo vere), e la simmetria in tutti i comandi di
 // "Inserisci" e "Sposta".
+// [§9.185] Quinto passo: il pennello (boschi e texture, editbrush.js) e la
+// copertina della mappa nelle impostazioni.
 //
 // Un ciclo suo, senza partita (app.js passa qui prima di crearla):
 // renderer, atlas, input e ciclo sono quelli del gioco.
@@ -61,8 +63,10 @@ import { glowText } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta } from "./editmap.js";
-import { saveMap, listMaps, loadMap, deleteMap, saveMapFile, openMapFile } from "./mapstore.js";
+         mirrorDelta, mirrorPoint, TREES } from "./editmap.js";
+import { saveMap, listMaps, loadMap, deleteMap, saveMapFile, openMapFile, makeCover } from "./mapstore.js";
+import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
+import { vrand } from "./rng.js";
 
 // ----------------------------------------------------------------- vista
 
@@ -144,7 +148,7 @@ export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel
 // [§9.182] i comandi degli strumenti che ci sono
 export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
-export const READY = new Set(["select", "insert"]); // gli strumenti che funzionano (gli altri: "Prossimamente")
+export const READY = new Set(["select", "insert", "brush"]); // gli strumenti che funzionano (gli altri: "Prossimamente"; §9.185: il pennello)
 // [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
 export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
@@ -157,6 +161,9 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Static", "Symmetry", "Apply", "Save in the browser", "Save to file", "Give the map a name.", "Map saved",
                              "Saving failed", "Your maps", "Templates", "Open a file…", "No saved maps yet", "This map will be deleted.",
                              "Delete", "Symmetry: {mode}", ...Object.values(BG_NAMES), ...Object.values(SYM_NAMES),
+                             // [§9.185] il pennello, la copertina
+                             "Forest", "Density", "Left: paint. Right: erase.", "Cover", "No cover", "Load an image…", "Remove",
+                             "This image could not be read.",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
@@ -318,6 +325,23 @@ export function paletteLayout(panel, cat, scroll) {
            next: s < max ? [x2 - 20 - ARROW + 6, top, x2 - 20, top + CELL] : null };
 }
 
+// [§9.185] Il pennello: cosa dipinge (il bosco, o una texture: lo sfondo
+// della macchia, rivers.js drawPatch), quanto e' largo (il diametro, px di
+// mappa), quanto e' fitto il bosco (la distanza minima fra gli alberi: 90
+// px come il pennello bosco di Tiled, tools/12)
+export const BRUSH_KINDS = ["forest", "city2", "city1", "green1"];
+export const BRUSH_WIDTHS = [200, 300, 400, 600, 800, 1200, 1600];
+export const BRUSH_SPACING = [180, 140, 110, 90, 75, 60]; // densita' 1..6
+const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46 };
+// Il riquadro del pennello: le schede (come la tavolozza) e, sotto, i "-" e
+// "+" di larghezza e densita' (cerchi [x, y, r]) coi loro valori
+export function brushLayout(panel) {
+  const [x1, y1, x2] = panel, n = BRUSH_KINDS.length, tw = (x2 - x1 - 40) / n;
+  const tabs = BRUSH_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
+  const cy = y1 + 128, group = (x) => ({ label: [x, cy], minus: [x + 170, cy, 16], value: [x + 230, cy], plus: [x + 290, cy, 16] });
+  return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
+}
+
 // Il colore di una macchia senza sprite nella tavolozza e nei segnaposto
 // (BGR): erba, grano, fili d'erba, fiori
 const DECOR_TINT = { burst_erba1: [0x3c7a46], burst_grano1: [0x4fb0c8], chiazzaparticellare: [0x5a8a6a],
@@ -348,7 +372,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const ed = { tool: "select", hover: null, drag: null, view, label: "", open: null, confirm: null, loading: false,
                mapId: null, saved: 0, meta: false, dom: null,
                sel: new Set(), over: null, move: null, box: null, clip: null,
-               cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null };
+               cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null,
+               // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
+               brush: { kind: "forest", w: 3, d: 3 }, stroke: null };
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
   const styleOfCell = (cat, i) => ITEMS[cat][i].styles[ed.style[cat][i]];
@@ -428,10 +454,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (catalog !== "no") return;
     catalog = "loading";
     const names = catalogObjects();
-    assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], [])
+    assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], BRUSH_KINDS.slice(1)) // §9.185: gli sfondi delle texture
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
-  const setTool = (t) => { ed.tool = t; if (t === "insert") ensureCatalog(); };
+  const setTool = (t) => { if (ed.stroke) return; ed.tool = t; if (t === "insert" || t === "brush") ensureCatalog(); };
 
   // ---------------------------------------------------------- modifiche
   const inMap = (x, y) => x >= 0 && y >= 0 && x <= scene.map.width && y <= scene.map.height;
@@ -483,6 +509,69 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!list.length) return;
     scene.add(list);
     ed.sel = new Set(list);
+  };
+
+  // ------------------------------------------------------------- pennello
+  // [§9.185] la pennellata: comincia (un gruppo: un passo solo da annullare),
+  // va avanti a ogni passo col tasto tenuto, finisce lasciandolo
+  const brushR = () => BRUSH_WIDTHS[ed.brush.w] / 2;
+  const symOn = () => scene.map.symmetry && scene.map.symmetry !== "none";
+  const twinPoint = (x, y) => mirrorPoint(scene.map.symmetry, scene.map.width, scene.map.height, x, y);
+  const strokeStart = (erase) => {
+    scene.begin();
+    const st = ed.stroke = { erase, dabs: [], kind: ed.brush.kind };
+    if (st.kind === "forest" && !erase) {
+      st.spacing = BRUSH_SPACING[ed.brush.d];
+      st.grid = new TreeGrid(st.spacing);
+      for (const e of scene.trees()) st.grid.add(e.x, e.y);
+    }
+  };
+  const treeAt = ([x, y]) => {
+    const ch = objects.albero.choices;
+    return { object: "albero", x, y, scale_x: 1, scale_y: 1, rotation: 0, sprite: ch[Math.floor(vrand() * ch.length)] };
+  };
+  const strokeStep = (x, y) => {
+    const st = ed.stroke, r = brushR();
+    if (st.kind === "forest" && !st.erase) {
+      const ok = (px, py) => inMap(px, py) && !scene.blocks(px, py);
+      const list = forestStep({ cx: x, cy: y, r, spacing: st.spacing, grid: st.grid, rand: vrand, ok }).map(treeAt);
+      // con la simmetria il gemello di ogni albero, se c'e' posto
+      for (const e of list.slice()) {
+        const t = scene.twinAt(e);
+        if (t && inMap(t.x, t.y) && !st.grid.near(t.x, t.y, st.spacing) && !scene.blocks(t.x, t.y)) { st.grid.add(t.x, t.y); list.push(t); }
+      }
+      if (list.length) scene.add(list);
+      return;
+    }
+    const spots = [[x, y]];
+    if (symOn()) spots.push(twinPoint(x, y));
+    if (st.kind === "forest") { // gomma: via gli alberi nel cerchio
+      const r2 = r * r, list = scene.trees().filter((e) => spots.some(([sx, sy]) => (e.x - sx) * (e.x - sx) + (e.y - sy) * (e.y - sy) <= r2));
+      if (list.length) { scene.remove(list); tidySel(); }
+      return;
+    }
+    if (st.erase) { // gomma: via le macchie di questa texture toccate dal cerchio
+      const hit = (p) => spots.some(([sx, sy]) => pointInPoly(sx, sy, p.pts) || p.pts.some(([px, py]) => (px - sx) * (px - sx) + (py - sy) * (py - sy) <= r * r));
+      const list = (scene.map.patches || []).filter((p) => (p.bg || "city2") === st.kind && hit(p));
+      if (list.length) scene.removeFeatures("patches", list);
+      return;
+    }
+    // texture: un cerchio ogni tanto lungo la pennellata (quando la si lascia, la sagoma)
+    const last = st.dabs[st.dabs.length - 1];
+    if (!last || dhypot(x - last[0], y - last[1]) >= r * 0.3) st.dabs.push([Math.round(x), Math.round(y)]);
+  };
+  const strokeEnd = () => {
+    const st = ed.stroke;
+    ed.stroke = null;
+    if (st.dabs.length) {
+      const r = brushR(), polys = strokeOutlines(st.dabs, r);
+      if (symOn()) {
+        const mirrored = strokeOutlines(st.dabs.map(([x, y]) => twinPoint(x, y)), r);
+        polys.push(...mirrored);
+      }
+      scene.addFeatures("patches", polys.map((pts) => ({ pts, bg: st.kind, feather: 40 })));
+    }
+    scene.end();
   };
 
   // ------------------------------------------- impostazioni e salvataggio
@@ -539,6 +628,38 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const [p, close] = panel(tr("Map settings"));
     const name = textField(p, tr("Name"), m.name, NAME_MAX);
     const desc = textField(p, tr("Description"), m.description || "", DESC_MAX, true);
+    // [§9.185, richiesta dell'autore] la copertina, come la foto delle
+    // mappe della schermaglia (720 x 480, §9.121): un'immagine caricata,
+    // ritagliata al centro e compressa (mapstore.js makeCover)
+    v.cover = m.cover || null;
+    const cov = line(p, tr("Cover"));
+    const img = document.createElement("img"), none = document.createElement("div");
+    Object.assign(img.style, { width: "180px", height: "120px", objectFit: "cover", borderRadius: "10px", border: "1px solid rgba(0, 0, 0, .2)" });
+    Object.assign(none.style, { width: "180px", height: "120px", borderRadius: "10px", border: "1px dashed rgba(0, 0, 0, .3)",
+                                display: "flex", alignItems: "center", justifyContent: "center" });
+    setDomText(none, tr("No cover"), { font: "overdue", colour: "#666", width: 170, center: true });
+    img.dataset.net = "cover";
+    // (con display: flex nello stile l'attributo hidden non basta)
+    const showCover = () => { img.hidden = !v.cover; none.style.display = v.cover ? "none" : "flex"; if (v.cover) img.src = v.cover; };
+    const coverBtns = document.createElement("div");
+    Object.assign(coverBtns.style, { display: "flex", flexDirection: "column", gap: "6px", justifyContent: "center" });
+    cov.append(img, none, coverBtns);
+    const load = p.button(coverBtns, tr("Load an image…"), () => {
+      const input = document.createElement("input");
+      input.type = "file"; input.accept = "image/*";
+      input.style.cssText = "position:fixed;left:-9999px;top:-9999px;";
+      document.body.append(input);
+      input.onchange = async () => {
+        const file = input.files && input.files[0];
+        input.remove();
+        if (!file) return;
+        try { v.cover = await makeCover(file); showCover(); p.status(""); } catch (e) { console.error(e); p.status(tr("This image could not be read."), "error"); }
+      };
+      input.click();
+    }, { name: "cover-load" });
+    const drop = p.button(coverBtns, tr("Remove"), () => { v.cover = null; showCover(); }, { name: "cover-remove" });
+    for (const b of [load, drop]) Object.assign(b.style, { minWidth: "0", height: "32px", padding: "0 12px" });
+    showCover();
     choice(p, "width", tr("Width"), MAP_SIZES, String, v.width, (x) => { v.width = x; });
     choice(p, "height", tr("Height"), MAP_SIZES, String, v.height, (x) => { v.height = x; });
     choice(p, "background", tr("Background"), MAP_BACKGROUNDS, (b) => tr(BG_NAMES[b]), v.background, (x) => { v.background = x; });
@@ -551,6 +672,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       Object.assign(m, { name: name.value.trim().slice(0, NAME_MAX), description: desc.value.trim().slice(0, DESC_MAX),
                          width: v.width, height: v.height, background: v.background,
                          cpu: { difficulty: v.difficulty, style: v.style }, symmetry: v.symmetry });
+      if (v.cover) m.cover = v.cover; else delete m.cover;
       ed.meta = true;
       close();
       if (resize) rebuildScene();
@@ -640,6 +762,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     const hit = input.inside ? hitTest(L, mx, my) : null;
     ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "back") ? hit : null;
+    // [§9.185] la pennellata in corso: solo lei (e la vista)
+    if (ed.stroke) {
+      const st = ed.stroke;
+      if (input.inside) strokeStep(rx, ry);
+      if (!input.mouseDown[st.erase ? 1 : 0]) strokeEnd();
+      return;
+    }
     // Esc: prima si lascia l'oggetto o la scelta, poi si esce
     if (K(27)) {
       if (ed.tool === "insert" && ed.pick) ed.pick = null;
@@ -669,7 +798,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const dx = (input.down.has(39) ? 1 : 0) - (input.down.has(37) ? 1 : 0), dy = (input.down.has(40) ? 1 : 0) - (input.down.has(38) ? 1 : 0);
     if ((dx || dy) && !ctrl) view.pan(dx * sp, dy * sp);
     const P = ed.tool === "insert" ? paletteLayout(L.panel, ed.cat, ed.scroll[ed.cat]) : null;
-    if (input.inside && (input.wheelStep || input.wheelFine)) {
+    if (input.inside && input.wheelStep && shift && ed.tool === "brush" && !hit) { // §9.185: Maiusc+rotella, la larghezza
+      ed.brush.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, ed.brush.w - Math.sign(input.wheelStep)));
+    } else if (input.inside && (input.wheelStep || input.wheelFine)) {
       if (P && inRect(mx, my, P.strip)) {
         if (input.wheelStep) ed.scroll[ed.cat] = Math.max(0, Math.min(P.max, P.scroll + Math.sign(input.wheelStep)));
       } else {
@@ -718,8 +849,27 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
       return;
     }
+    // [§9.185] il riquadro del pennello: le schede, i "-" e "+"
+    if (ed.tool === "brush" && hit && hit.kind === "ui") {
+      const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
+      const tab = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
+      ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : ed.brush.kind === "forest" && on(B.density.minus) ? "d-"
+        : ed.brush.kind === "forest" && on(B.density.plus) ? "d+" : null);
+      if (input.mouseReleased[0] && ed.palHover) {
+        clic();
+        const q = ed.palHover, b = ed.brush;
+        if (q.kind) b.kind = q.kind;
+        else if (q[0] === "w") b.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, b.w + (q[1] === "+" ? 1 : -1)));
+        else b.d = Math.max(0, Math.min(BRUSH_SPACING.length - 1, b.d + (q[1] === "+" ? 1 : -1)));
+      }
+      return;
+    }
     // sulla mappa
     const onMap = !hit && input.inside;
+    if (ed.tool === "brush") { // §9.185: il sinistro dipinge, il destro cancella
+      if (onMap && catalog === "ready" && (input.mousePressed[0] || input.mousePressed[1])) { strokeStart(!input.mousePressed[0]); strokeStep(rx, ry); }
+      return;
+    }
     if (ed.tool === "insert") {
       if (onMap && input.mousePressed[0]) place(rx, ry);
       if (input.mousePressed[1]) ed.pick = null; // il destro lascia l'oggetto
@@ -846,6 +996,28 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         outline(b, 1.5 * px, c.white, 0.9);
       }
     }
+    // [§9.185] il pennello: la pennellata di texture in corso e il cerchio
+    // sotto il puntatore (col gemello, se c'e' la simmetria)
+    if (ed.tool === "brush") {
+      const r = brushR(), st = ed.stroke, tint = BRUSH_TINT[st ? st.kind : ed.brush.kind];
+      if (st && st.dabs.length) {
+        const all = symOn() ? [...st.dabs, ...st.dabs.map(([x, y]) => twinPoint(x, y))] : st.dabs;
+        draw.setAlpha(0.45);
+        for (const [x, y] of all) draw.circleColour(x, y, r, tint, tint, false);
+      }
+      if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y))) {
+        const [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
+        if (symOn()) spots.push(twinPoint(bx, by));
+        for (const [x, y] of spots) {
+          const erase = st ? st.erase : input.mouseDown[1], col = erase ? 0x4040ff : c.white;
+          draw.setAlpha(0.8);
+          for (let k = 0; k < 48; k++) { // il bordo a tratti, 2 px a schermo
+            const a0 = (k / 48) * Math.PI * 2, a1 = ((k + 0.5) / 48) * Math.PI * 2;
+            draw.lineWidthColour(x + dcos(a0) * r, y + dsin(a0) * r, x + dcos(a1) * r, y + dsin(a1) * r, 2 * px, col, col);
+          }
+        }
+      }
+    }
     if (ed.tool === "insert" && ed.pick && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       const ok = inMap(gx, gy) && (st.object !== START || canStart(1));
@@ -922,6 +1094,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
+      : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
       : ed.pick ? (pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
         + tr("Click: place. Right click: stop.") : tr("Choose an object");
@@ -929,6 +1102,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
+    if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
     draw.setHalign("left");
     draw.setValign("top");
     draw.setAlpha(0.8);
@@ -974,6 +1148,39 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(hov ? 0.95 : 0.6);
       draw.triangleColour(cx - 7 * dir, cy - 12, cx + 7 * dir, cy, cx - 7 * dir, cy + 12, c.black, c.black, c.black, false);
     }
+    draw.setAlpha(1);
+  };
+
+  // [§9.185] il riquadro del pennello: le schede (bosco e texture), larghezza
+  // e densita' (solo per il bosco) coi loro "-" e "+"
+  const drawBrushPanel = (panel) => {
+    const B = brushLayout(panel), b = ed.brush;
+    draw.setFont("overdue");
+    draw.setHalign("center");
+    draw.setValign("middle");
+    for (const q of B.tabs) {
+      const on = q.kind === b.kind, hov = ed.palHover === q;
+      draw.setAlpha(on ? 0.85 : hov ? 0.9 : 0.45);
+      draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
+      draw.setColour(on ? c.white : c.black);
+      draw.setAlpha(on ? 1 : 0.8);
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : BG_NAMES[q.kind]));
+    }
+    const group = (G, label, value, key) => {
+      draw.setColour(c.black); draw.setAlpha(0.8);
+      draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
+      draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
+      for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
+        const hov = ed.palHover === key + sign;
+        draw.setAlpha(hov ? 0.95 : 0.6);
+        draw.circleColour(C[0], C[1], C[2], DARK, DARK, false);
+        draw.setAlpha(1);
+        draw.lineWidthColour(C[0] - 7, C[1], C[0] + 7, C[1], 3, c.white, c.white);
+        if (sign === "+") draw.lineWidthColour(C[0], C[1] - 7, C[0], C[1] + 7, 3, c.white, c.white);
+      }
+    };
+    group(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
+    if (b.kind === "forest") group(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
     draw.setAlpha(1);
   };
 
@@ -1084,5 +1291,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0), confirmLayout: () => confirmLayout(view.cssW, view.cssH),
                       palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
-                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel,
+                      brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }

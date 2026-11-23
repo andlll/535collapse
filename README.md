@@ -65,7 +65,7 @@ delle varianti in `audio.json`, fonti e licenze in `CREDITI.md`, §9.137) li fa
 `python3 tools/18_audio.py` (serve ffmpeg) -> `game/assets/audio/`.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=lvl07` (l'arciere nella nebbia, §9.178), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room; `?room=editor` apre l'editor di mappe (§9.180-§9.184: mappe da schermaglia; modelli, "Inserisci", "Sposta", annulla e ripeti, salva e apri nel browser o su file `.dvmap`, impostazioni, simmetria; pennello, polilinea e "Prova mappa" in arrivo). Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=lvl07` (l'arciere nella nebbia, §9.178), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room; `?room=editor` apre l'editor di mappe (§9.180-§9.184: mappe da schermaglia; modelli, "Inserisci", "Sposta", annulla e ripeti, salva e apri nel browser o su file `.dvmap`, impostazioni con la copertina, simmetria, pennello per boschi e texture; polilinea e "Prova mappa" in arrivo). Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,
@@ -134,7 +134,7 @@ node game/test/browser/catapults.mjs                    # catapulte che tirano o
 node game/test/browser/enemygarrison.mjs                # presidio nemico in torri e fortezze; nemici nella nebbia
 node game/test/browser/hintgap.mjs                      # suggerimenti del tutorial a 20 px dalle finestre dell'interfaccia
 node game/test/browser/hover.mjs                        # pulsanti col puntatore evidenziati anche sotto i pannelli di vetro
-node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri
+node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri, pennello, copertina
 node game/test/browser/alarms.mjs                       # allarmi d'attacco sulla minimappa: per zona, anelli, J, suggerimento
 node game/test/browser/minimap.mjs                      # clic sulla minimappa: sposta la view, ordini col destro, riquadro della view
 node game/test/browser/zoom.mjs                         # zoom morbido con rotella, touchpad e X/Z, punto sotto il puntatore fermo

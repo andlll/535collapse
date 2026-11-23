@@ -10,6 +10,7 @@
 // (mapfile.js validateMap).
 
 import { gzipBytes, gunzipBytes, bytesText } from "./save.js";
+import { COVER_W, COVER_H } from "./mapfile.js";
 
 export const MAP_EXT = ".dvmap";
 const DB_NAME = "535-maps", STORE = "maps";
@@ -106,4 +107,21 @@ export function openMapFile() {
     };
     input.click();
   });
+}
+
+// [§9.185] La copertina da un file d'immagine: ritagliata al centro alle
+// proporzioni 3:2 e ridotta a 720 x 480 (come le foto delle mappe della
+// schermaglia), WebP (JPEG dove il browser non sa scrivere WebP)
+export async function makeCover(file) {
+  const bmp = await createImageBitmap(file);
+  const c = document.createElement("canvas");
+  c.width = COVER_W; c.height = COVER_H;
+  const g = c.getContext("2d");
+  g.imageSmoothingQuality = "high";
+  const s = Math.max(COVER_W / bmp.width, COVER_H / bmp.height), w = bmp.width * s, h = bmp.height * s;
+  g.drawImage(bmp, (COVER_W - w) / 2, (COVER_H - h) / 2, w, h);
+  if (bmp.close) bmp.close();
+  let url = c.toDataURL("image/webp", 0.8);
+  if (!url.startsWith("data:image/webp")) url = c.toDataURL("image/jpeg", 0.85);
+  return url;
 }

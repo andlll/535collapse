@@ -15,7 +15,7 @@ import { World } from "./world.js";
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate } from "./effects.js";
 import { sliced } from "./scenario.js";
-import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES } from "./rivers.js";
+import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
@@ -80,12 +80,16 @@ export function stylesOf(e, objects) {
 // dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
 // dipinti dei modelli
 export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES]);
+// [§9.185] gli alberi (il pennello li dipinge e li cancella)
+export const TREES = new Set(["albero", "albero_fake"]);
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js
 // skirmishPrepare: due centri, uno per parte)
 export const START = "centro", STARTS = 2;
 // oggetti della mappa che non si toccano (il gioco ne ha bisogno: lo mette
 // l'editor dove manca)
 export const SYSTEM = new Set(["manager"]);
+// [§9.185] le liste di forme della mappa, che il suolo disegna
+export const FEATURES = ["patches", "rivers", "roads", "bridges"];
 // cuociono nel suolo (ground.js): se cambiano, il suolo si rifa'
 export const baked = (name) => GROUND.test(name) || PAINTED_BRIDGES.includes(name);
 
@@ -163,11 +167,7 @@ export class EditScene {
     for (const e of map.instances) this.spawn(e);
     if (this.skipped.size) console.warn("[editor] oggetti sconosciuti saltati:", [...this.skipped]);
     // fiumi, strade, ponti e macchie (come app.js useRivers)
-    const R = [map.width, map.height];
-    world.patches = (map.patches || []).map((p) => patchGeometry(p));
-    world.rivers = riverJoin(map.rivers || [], (rv) => riverGeometry({ ...rv, room: R }));
-    world.roads = (map.roads || []).map((rd) => roadGeometry({ ...rd, room: R }));
-    world.bridges = (map.bridges || []).map((b) => bridgeGeometry(b));
+    for (const k of FEATURES) this._features(k);
     const room = { backgrounds: map.background ? [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] : [] };
     this.ground = new GroundCache(ctx.r, ctx.assets, room, world, bgrToRGB(map.colour));
   }
@@ -215,12 +215,32 @@ export class EditScene {
 
   instOf(e) { return this.byEntry.get(e) || null; }
 
+  // [§9.185] le forme di una lista della mappa (macchie, fiumi, strade,
+  // ponti) ridisegnate dal motore (come app.js useRivers)
+  _features(key) {
+    const map = this.map, w = this.world, R = [map.width, map.height];
+    if (!map[key]) map[key] = [];
+    if (key === "patches") w.patches = map.patches.map((p) => patchGeometry(p));
+    if (key === "rivers") { w.rivers = riverJoin(map.rivers, (rv) => riverGeometry({ ...rv, room: R })); w._riverCells = undefined; w._water = undefined; }
+    if (key === "roads") w.roads = map.roads.map((rd) => roadGeometry({ ...rd, room: R }));
+    if (key === "bridges") w.bridges = map.bridges.map((b) => bridgeGeometry(b));
+  }
+
   // ------------------------------------------------------------ modifiche
 
   // I cambi: { e: la voce, from: com'era (null: non c'era), to: come diventa
   // (null: tolta), at: il suo posto nella lista }. L'ordine della lista e'
-  // l'ordine di creazione delle istanze in partita.
+  // l'ordine di creazione delle istanze in partita. [§9.185] Con `key` il
+  // cambio e' di una forma (macchie, fiumi, strade, ponti: map[key]).
   _apply(c, back) {
+    if (c.key) {
+      const want = back ? c.from : c.to, list = this.map[c.key], at = list.indexOf(c.e);
+      if (!want) { if (at >= 0) list.splice(at, 1); return; }
+      for (const k of Object.keys(c.e)) delete c.e[k];
+      Object.assign(c.e, JSON.parse(JSON.stringify(want)));
+      if (at < 0) list.splice(Math.min(c.at, list.length), 0, c.e);
+      return;
+    }
     const want = back ? c.from : c.to, list = this.map.instances, at = list.indexOf(c.e);
     this.despawn(c.e);
     if (!want) { if (at >= 0) list.splice(at, 1); return; }
@@ -234,17 +254,33 @@ export class EditScene {
     const w = this.world;
     w.instances = w.instances.filter((i) => i.alive);
     w._compact();
-    if (changes.some((c) => baked((c.from || c.to).object) || (c.to && baked(c.to.object)))) this.ground.reset();
+    const keys = new Set(changes.filter((c) => c.key).map((c) => c.key));
+    for (const k of keys) this._features(k);
+    if (keys.size || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
     this.version++;
   }
 
   edit(changes) {
     if (!changes.length) return;
     for (const c of changes) this._apply(c, false);
+    // [§9.185] dentro un gruppo (una pennellata) i cambi diventano un passo solo
+    if (this.group) this.group.push(...changes);
+    else this._push(changes);
+    this._after(changes);
+  }
+
+  _push(changes) {
     this.undoList.push(changes);
     if (this.undoList.length > 200) this.undoList.shift();
     this.redoList.length = 0;
-    this._after(changes);
+  }
+
+  // [§9.185] un gruppo di modifiche (una pennellata): annulla le toglie tutte
+  begin() { this.group = []; }
+  end() {
+    const g = this.group;
+    this.group = null;
+    if (g && g.length) this._push(g);
   }
 
   undo() {
@@ -284,6 +320,40 @@ export class EditScene {
     const list = this.map.instances;
     this.edit(entries.map((e) => ({ e, from: { ...e }, to: { ...e, ...fn(e) }, at: list.indexOf(e) })));
   }
+
+  // [§9.185] forme nuove (macchie, fiumi, strade, ponti) in fondo alla lista
+  // `key`, e forme tolte (annullando tornano al loro posto)
+  addFeatures(key, list) {
+    const n = (this.map[key] || []).length;
+    this.edit(list.map((e, k) => ({ key, e, from: null, to: JSON.parse(JSON.stringify(e)), at: n + k })));
+    return list;
+  }
+  removeFeatures(key, list) {
+    const all = this.map[key] || [];
+    const cs = list.map((e) => ({ key, e, from: JSON.parse(JSON.stringify(e)), to: null, at: all.indexOf(e) })).filter((c) => c.at >= 0);
+    this.edit(cs.sort((a, b) => b.at - a.at));
+  }
+
+  // [§9.185] il pennello dei boschi: in (x, y) un albero non sta se i piedi
+  // (w x h px attorno al punto) toccano l'acqua o la maschera di un oggetto
+  // della mappa; i prati e le strade dipinti nel suolo e le macchie no
+  blocks(x, y, w = 10, h = 5) {
+    const W = this.world, rc = riverCells(W);
+    if (rc && riverIn(rc, x - w, y - h, x + w, y + h)) return true;
+    const rect = [x - w, y - h, x + w, y + h];
+    for (const o of W._nearList(rect)) {
+      if (!o.alive || GROUND.test(o.object)) continue;
+      const bb = W.bbox(o);
+      if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
+      for (let yy = Math.floor(Math.max(rect[1], bb[1])); yy <= Math.min(rect[3], bb[3]); yy++) {
+        if (W._spans(o, o.x, o.y, bb, yy, rect[0], rect[2] + 1, [])) return true;
+      }
+    }
+    return false;
+  }
+
+  // gli alberi della mappa (le voci), per il pennello
+  trees() { return this.map.instances.filter((e) => TREES.has(e.object)); }
 
   // quante posizioni di partenza ci sono
   starts() { return this.map.instances.filter((e) => e.object === START).length; }
