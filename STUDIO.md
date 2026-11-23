@@ -13966,3 +13966,52 @@ in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
 
 Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
 scelta), test unitari, `editor.mjs`.
+
+### 9.201 La CI su main annullata per il tempo: il limite a 90 minuti
+
+Domanda dell'autore (23 novembre 2026, dopo il merge della PR #25):
+"continuo a vedere online la 0.2613 e sono passate ore". Versione 0.2616,
+PR nuova.
+
+Online c'era ancora la 0.2613 perche' gli ultimi due lavori su main non
+sono arrivati a Pages:
+- merge della #24 (0.2614, 22 novembre, esecuzione 419): un test unitario
+  fallito; nella 0.2615 i test passano tutti (146);
+- merge della #25 (0.2615, esecuzione 450): annullato al minuto 45, il
+  limite del lavoro (`timeout-minutes`, alzato da 30 a 45 in §9.153), durante
+  il determinismo fra browser, l'ultimo passo prima del sito. Tutto il resto
+  era passato. Le prove dell'editor (§9.181-§9.199: `editor.mjs`,
+  `skcustom.mjs`, `netmap.mjs`) hanno allungato le prove nel browser: sulla
+  PR il lavoro durava gia' 44 minuti e mezzo, e su main gli effetti sonori
+  (tools/18) ci hanno messo 10 minuti invece di 2.
+
+Il limite passa a 90 minuti (build.yml). Nessuna prova tolta o accorciata.
+Dopo il merge il lavoro su main pubblica la 0.2616 (con tutto quello della
+0.2614 e della 0.2615).
+
+**Il doppio clic** (la CI di questa PR, esecuzione su b6f16a5): `editor.mjs`
+e' caduta su "un punto nuovo col doppio clic" (tutto il resto passato). Lo
+stesso male di §9.199: l'editor decideva il doppio clic al passo, col tempo
+del passo (`performance.now()` < 350 ms dal clic prima). Con i fotogrammi
+lenti della CI i due clic risultavano lontani; e due clic di seguito nello
+stesso passo contano come una pressione sola, che non era doppia. Provato in
+locale con uno script che fa il doppio clic vero di Playwright (`dblclick`)
+e allunga ogni fotogramma di 300 ms: col codice di prima il punto nuovo non
+c'e' e la linea non si chiude col doppio clic, anche a velocita' normale
+(le due pressioni nello stesso fotogramma); con la correzione si', in
+tutti e due i casi. Correzioni:
+- input.js: il doppio clic si decide al `pointerdown` (tempo dell'evento,
+  350 ms e 8 px CSS come prima; il terzo clic ricomincia) e il passo lo
+  legge in `pressDbl`, vero anche se le due pressioni cadono nello stesso
+  passo;
+- editor.js: la polilinea usa `pressDbl`; il doppio clic che chiude la
+  linea mette prima il punto se il primo clic non l'ha messo (pressioni
+  nello stesso passo);
+- `editor.mjs`: dopo il clic che sceglie la linea aspetta 400 ms (fuori dal
+  doppio clic) e poi fa il doppio clic vero (`page.mouse.dblclick`, prima
+  erano due `click` separati da 40 ms); `click` e `dblclick` aspettano la
+  lettura dell'input come le altre azioni (anche in `skcustom.mjs`).
+
+Prove: test unitari (146), `editor.mjs` (due volte), `skcustom.mjs`,
+`ui.mjs`, lo script dei fotogrammi lenti.
+

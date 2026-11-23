@@ -547,7 +547,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
-               drawing: null, lsel: null, ldrag: null, lastClick: null };
+               drawing: null, lsel: null, ldrag: null };
   const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
@@ -1395,15 +1395,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // sulla mappa
     const onMap = !hit && input.inside;
     if (ed.tool === "line") { // §9.187
-      const now = performance.now(), dbl = !!ed.lastClick && now - ed.lastClick.t < 350 && dhypot(mx - ed.lastClick.x, my - ed.lastClick.y) < 8;
-      if (input.mousePressed[0]) ed.lastClick = { t: now, x: mx, y: my };
+      const dbl = !!input.pressDbl[0]; // [§9.201] deciso all'evento (input.js), non al passo
       const M = VIEW_MARGIN, px0 = Math.round(Math.max(-M, Math.min(scene.map.width + M, rx))), py0 = Math.round(Math.max(-M, Math.min(scene.map.height + M, ry)));
       if (ed.drawing) { // un punto a clic; il destro o il doppio clic finiscono
         if (onMap && input.mousePressed[1]) { lineFinish(); return; }
         if (onMap && input.mousePressed[0]) {
-          if (dbl) { lineFinish(); return; } // (il primo clic del doppio ha gia' messo il punto)
           const pts = ed.drawing.pts, last = pts[pts.length - 1];
           if (!last || dhypot(px0 - last[0], py0 - last[1]) > 6 * view.scale) pts.push([px0, py0]);
+          // il doppio clic finisce: il punto l'ha gia' messo il primo clic
+          // (qui sopra non si ripete), o questo se i due clic sono caduti nello
+          // stesso passo (§9.201)
+          if (dbl) { lineFinish(); return; }
         }
         return;
       }

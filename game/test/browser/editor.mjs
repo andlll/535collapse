@@ -49,7 +49,7 @@ const syncInput = (page) => {
     if (n0 === null) return;
     await page.waitForFunction((n) => { const o = window.__editor || window.__game; return !o || typeof o.reads !== "number" || o.reads > n; }, n0, { timeout: 15000, polling: 10 }).catch(() => {});
   };
-  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel"]], [page.keyboard, ["down", "up", "press"]]]) {
+  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel", "click", "dblclick"]], [page.keyboard, ["down", "up", "press"]]]) {
     for (const m of names) {
       const orig = obj[m].bind(obj);
       obj[m] = async (...a) => { const n0 = await reads(); const r = await orig(...a); await after(n0); return r; };
@@ -470,8 +470,10 @@ const sc = await page.evaluate(() => window.__editor.view.scale);
 check("un punto trascinato", Math.abs(p1b[0] - p1[0] - 20 * sc) < 3 && Math.abs(p1b[1] - p1[1] - 70 * sc) < 3);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
 check("annullato il punto", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts[1][1])) === p1[1]);
-await click(600, 325);
-await page.mouse.click(600, 325, { clickCount: 1 }); await page.waitForTimeout(40); await page.mouse.click(600, 325); await page.waitForTimeout(200);
+// (§9.201: il clic che sceglie la linea, poi, fuori dal tempo del doppio
+// clic, il doppio clic vero: due pressioni di seguito, anche nello stesso passo)
+await click(600, 325); await page.waitForTimeout(400);
+await page.mouse.dblclick(600, 325); await page.waitForTimeout(200);
 check("un punto nuovo col doppio clic", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts.length)) === 4);
 await page.keyboard.press("Backspace"); await page.waitForTimeout(150);
 check("Backspace toglie il punto", (await page.evaluate(() => window.__editor.scene.map.rivers[0].pts.length)) === 3);
