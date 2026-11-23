@@ -14,7 +14,8 @@
 //   ricordata  = riaprendo la schermata si vede A
 //   file       = "Apri un file" (la finestra finta) aggiunge la mappa e la
 //                mostra
-//   online     = in "Create game" niente mappe dell'editor ne' "Apri un file"
+//   online     = [§9.192] in "Create game" anche le mappe dell'editor e "Apri
+//                un file"
 // Esce con codice 1 se qualcosa non torna; SHOTS=dir: gli screenshot.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -73,7 +74,7 @@ const ids = await page.evaluate(async () => {
 });
 const menu = () => page.evaluate(() => {
   const i = window.__game.world.all("enemy_manager_menu").next().value;
-  const list = i.skNet || !i.userMaps ? null : i.userMaps;
+  const list = !i.userMaps ? null : i.userMaps;
   const shown = i.skMap ?? 0, m = shown >= 5 && list ? list[shown - 5] : null;
   return { skmenu: i.skmenu, skNet: i.skNet, n: list ? list.length : 0, names: list ? list.map((e) => e.name) : [], shown,
            user: m ? { name: m.name, state: m.state, sides: m.sides, cover: m.cover, sprite: !!(m.cover && window.__game.assets.sprites[m.cover]),
@@ -172,7 +173,7 @@ await click(W / 2, colTop(2) + 35); // "Create game"
 await page.waitForTimeout(300);
 s = await menu();
 const LN = await page.evaluate(([w, h]) => window.__game.skLayout(w, h, true), [W, H]);
-check("online: solo le mappe del gioco, niente file", s.skmenu === 1 && s.skNet && s.n === 0 && !LN.rows.some((r) => r.kind === "file"));
+check("online: anche le mappe dell'editor e Apri un file (§9.192)", s.skmenu === 1 && s.skNet && s.n === 3 && LN.rows.some((r) => r.kind === "file"));
 // pulizia
 await page.evaluate(async (ids) => { const ms = await import("/src/mapstore.js"); for (const id of [ids.a, ids.b, ids.c]) await ms.deleteMap(id); }, ids);
 

@@ -11,7 +11,7 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
-         startsOf } from "../src/mapfile.js";
+         startsOf, mapHash } from "../src/mapfile.js";
 import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
@@ -537,4 +537,22 @@ test("§9.191 gli schieramenti delle partenze", () => {
   Object.assign(S, { map, objects: { centro: {} }, masks: {} });
   const t = S.twinAt(C(1000, 1000, "red"), "diagonal");
   assert.deepEqual([t.x, t.y, t.side], [5000, 5000, "blue"]);
+});
+
+// [§9.192] l'impronta della mappa (la partita online): la stessa per la
+// stessa partita (nome, descrizione, copertina e CPU non contano), un'altra
+// se cambia qualcosa della room
+test("§9.192 l'impronta della mappa", () => {
+  const C = (x, y, side) => ({ object: "centro", x, y, scale_x: 1, scale_y: 1, rotation: 0, side });
+  const m = { ...newMap(), instances: [C(1000, 1000, "red"), C(5000, 5000, "blue")] };
+  const h = mapHash(m);
+  assert.match(h, /^[0-9a-f]{16}$/);
+  assert.equal(mapHash({ ...m, name: "Altro", description: "x", cover: "data:image/webp;base64,AAAA", cpu: { difficulty: "hard", style: "static" } }), h);
+  assert.notEqual(mapHash({ ...m, instances: [C(1000, 1001, "red"), C(5000, 5000, "blue")] }), h);
+  assert.notEqual(mapHash({ ...m, rivers: [{ pts: [[0, 0], [100, 100]], width: 200 }] }), h);
+  // una mappa convalidata due volte: la stessa impronta (chi entra la ricontrolla)
+  const objects = { centro: { sprite: "cc_spr" } }, allowed = new Set(["centro"]);
+  const v1 = validateMap(m, allowed, objects).map, v2 = validateMap(JSON.parse(JSON.stringify(v1)), allowed, objects).map;
+  assert.equal(mapHash(v1), mapHash(v2));
+  assert.equal(mapHash(v1), h);
 });

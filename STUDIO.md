@@ -77,10 +77,10 @@ e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
 dell'editor nella schermaglia (§9.190: dopo le cinque del gioco, dal
 browser o da file, con la copertina o il disegno della mappa e la CPU fissa
 o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
-blu (§9.191: la gemella simmetrica e' dell'altro schieramento). Da fare: la
-partita online sulle mappe dell'editor (§9.192); unita' ed edifici degli
-schieramenti in "Inserisci"; i ponti (dopo, decisione dell'autore). In
-sospeso la password.
+blu (§9.191: la gemella simmetrica e' dell'altro schieramento), la partita
+online sulle mappe dell'editor (§9.192: chi entra senza la mappa la riceve
+da chi crea e la tiene). Da fare: unita' ed edifici degli schieramenti in
+"Inserisci"; i ponti (dopo, decisione dell'autore). In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13483,3 +13483,85 @@ partenza rossa con la simmetria e la gemella blu col suo sprite; un'altra
 rossa no), `skcustom.mjs` (la mappa A con la partenza rossa in basso a
 destra: il giocatore li', la CPU in alto a sinistra); screenshot (la
 tavolozza e le due partenze).
+
+### 9.192 La partita online sulle mappe dell'editor
+
+Decisioni dell'autore sulla proposta di §9.190 (23 novembre 2026, stessa
+PR): "la tua proposta mi sembra ottima, anche ci volessero 10-20 secondi per
+caricare la mappa mi sembra un'attesa sensata"; 1) la mappa ricevuta entra
+fra le mappe di chi entra, di partenza; 2) con la copertina; 3) nel
+pannello "Entra" il nome della mappa e l'avviso che verra' scaricata. In
+piu': da giocare online una mappa ha un elemento del rosso e uno del blu
+(§9.191: una partenza per parte).
+
+**Perche' non nel codice d'invito**: una mappa compressa sono 6-18 KB
+(misurate le cinque del gioco: 5,9-17,6 KB con gzip), 8-24 mila caratteri
+in base64: troppi da incollare in una chat (Discord si ferma a 2000). Il
+codice porta solo il nome e l'impronta della mappa; la mappa passa sul
+canale della partita, dopo i codici.
+
+**L'impronta** (mapfile.js `mapHash`): due FNV-1a a 32 bit del JSON della
+room di testRoom, 16 cifre esadecimali. Conta solo cio' che fa la partita
+(nome, descrizione, copertina, CPU no). Una mappa convalidata di nuovo ha la
+stessa impronta.
+
+**Chi crea** ("Multiplayer", "Create game"): nella schermata ora ci sono
+anche le mappe dell'editor e "Apri un file…" (difficolta' e stile della CPU
+restano in grigio). "Create game" su una mappa dell'editor (netgame.js
+`hostGame`): la mappa (con la copertina), la sua room e l'impronta nel
+browser (voce di servizio `__net__`), nome e impronta nella sessione; la
+pagina della partita (`?room=custom&net=host`) prende la room da li', e il
+codice d'invito porta `custom: { name, hash }`.
+
+**Chi entra** ("Join game"): incollato il codice, il pannello cerca fra le
+mappe del browser quella con la stessa impronta (`findMap`) e dice la mappa
+col suo nome; se non c'e': "Non hai questa mappa: verra' scaricata quando
+vi collegate e restera' fra le tue mappe." Con "Entra":
+- **se la mappa ce l'ha**: va in `__net__` e la pagina della partita si
+  costruisce subito, come per le mappe del gioco;
+- **se no**: la pagina mostra subito la sala d'attesa (col codice di
+  risposta), senza partita: la sala d'attesa e il canale nascono prima
+  (netgame.js `netEarly`; la sala d'attesa e' ora una funzione a parte,
+  `lobby`, che le due strade usano uguale). Aperto il canale chiede la mappa
+  (`{t: "mapreq"}`) e chi crea la manda a pezzi (`{t: "map0", n}` poi `{t:
+  "mapc", k, d}`: il JSON compresso con gzip in base64url, 16000 caratteri a
+  pezzo, al piu' 400 pezzi, aspettando che il canale si svuoti), con
+  l'avanzamento nelle due sale d'attesa ("Invio della mappa: N%", "Arriva la
+  mappa: N%"). Chi entra la convalida (come ogni mappa che arriva da fuori,
+  validateMap), controlla l'impronta (una mappa diversa: "Non e' stato
+  possibile ricevere la mappa di questa partita."), **la salva fra le sue
+  mappe** con la copertina ("La mappa e' stata salvata fra le tue mappe.") e
+  costruisce la partita.
+
+**L'avvio**: con una mappa dell'editor il lockstep (i saluti, la misura del
+ritardo) parte solo quando chi entra ha la partita pronta: chi entra manda
+`{t: "mapok"}` (subito all'apertura del canale se aveva la mappa, dopo
+averla ricevuta e costruita la partita se no), chi crea aspetta quello per
+cominciare (startNet). Cosi' il tempo di caricamento non entra nella misura
+del ritardo dei comandi. Il rosso (chi crea) e' alla partenza rossa, il blu
+alla blu (§9.191; `start` dalla mappa, uguale nelle due pagine).
+
+Le mappe del gioco online vanno come prima (nessun messaggio in piu'). Le
+prove col canale finto (`?net=fake`) restano sulle mappe del gioco.
+
+Testi nuovi nelle sei lingue: l'avviso del pannello "Entra", "Collegati:
+arriva la mappa...", "Arriva la mappa: {p}%", "Invio della mappa: {p}%",
+"Mappa inviata: l'altro giocatore la sta caricando...", "Mappa arrivata:
+si carica la partita...", "Mappa arrivata: la partita comincia.", "La mappa
+e' stata salvata fra le tue mappe.", "Non e' stato possibile ricevere la
+mappa di questa partita.".
+
+Prove: `editor.test.mjs` (in piu': l'impronta, uguale senza nome,
+descrizione, copertina e CPU, diversa con un'istanza spostata o un fiume,
+uguale dopo una seconda convalida; 141 test), `netmap.mjs` (nuova, nel CI:
+WebRTC vero fra due pagine con browser diversi; A crea su una sua mappa
+dell'editor, B incolla il codice e il pannello dice nome e download; la
+pagina di B mostra la sala d'attesa senza partita; collegati, B riceve la
+mappa e la tiene con la copertina e gli schieramenti, le due partite
+uguali (istanze, il rosso a 4800,4800), le impronte confrontate uguali;
+poi una seconda partita: B ha la mappa, niente avviso di download, partita
+pronta prima di collegarsi, la mappa non salvata due volte; ~35 s per la
+prima partita sotto swiftshader), `skcustom.mjs` (online ora con le mappe
+dell'editor e "Apri un file"), `rtc.mjs`, `rtcfail.mjs`, `netfake.mjs`,
+`pvp.mjs`, `editor.mjs`; screenshot (il pannello "Entra" con l'avviso, la
+sala d'attesa di chi entra prima della partita).

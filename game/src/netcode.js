@@ -20,12 +20,12 @@ export class CodeError extends Error {
   constructor(reason, extra = {}) { super(reason); this.reason = reason; Object.assign(this, extra); }
 }
 
-const b64url = (bytes) => {
+export const b64url = (bytes) => { // (export: §9.192, la mappa sul canale)
   let s = "";
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
-const unb64url = (s) => {
+export const unb64url = (s) => {
   const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4));
   const out = new Uint8Array(b.length);
   for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);

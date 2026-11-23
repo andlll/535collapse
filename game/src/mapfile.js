@@ -199,3 +199,19 @@ export function testRoom(map) {
   return room;
 }
 
+// [§9.192] L'impronta di una mappa (la partita online): due FNV-1a a 32 bit
+// (semi diversi) del JSON della room di testRoom, 16 cifre esadecimali. Due
+// mappe con la stessa impronta fanno la stessa partita (nome, descrizione,
+// copertina e CPU non contano: non sono nella room). Non e' una protezione
+// (la mappa che arriva si convalida sempre): dice a chi entra se ha gia' la
+// mappa e controlla che quella ricevuta sia quella della partita.
+export function mapHash(map) {
+  const s = JSON.stringify(testRoom(map));
+  let a = 0x811c9dc5, b = 0x050c5d1f;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ c, 0x01000193) >>> 0;
+  }
+  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
+}

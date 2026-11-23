@@ -1519,4 +1519,19 @@ export const TEXTS = {
   "Back to the editor": { it: "Torna all'editor", es: "Volver al editor", pt: "Voltar ao editor", de: "Zurück zum Editor", fr: "Retour à l'éditeur" },
   // [§9.190] le mappe dell'editor nella schermaglia
   "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
+  // [§9.192] la mappa dell'editor nella partita online
+  "You don't have this map: it will be downloaded when you connect, and kept among your maps.": {
+    it: "Non hai questa mappa: verrà scaricata quando vi collegate e resterà fra le tue mappe.",
+    es: "No tienes este mapa: se descargará al conectaros y se quedará entre tus mapas.",
+    pt: "Você não tem este mapa: ele será baixado quando vocês se conectarem e ficará entre os seus mapas.",
+    de: "Du hast diese Karte nicht: Sie wird beim Verbinden heruntergeladen und bleibt bei deinen Karten.",
+    fr: "Tu n'as pas cette carte : elle sera téléchargée à la connexion et restera parmi tes cartes." },
+  "Connected: receiving the map...": { it: "Collegati: arriva la mappa...", es: "Conectados: llega el mapa...", pt: "Conectados: o mapa está chegando...", de: "Verbunden: Die Karte kommt...", fr: "Connectés : la carte arrive..." },
+  "Receiving the map: {p}%": { it: "Arriva la mappa: {p}%", es: "Llega el mapa: {p}%", pt: "Recebendo o mapa: {p}%", de: "Karte wird empfangen: {p}%", fr: "Réception de la carte : {p} %" },
+  "Sending the map: {p}%": { it: "Invio della mappa: {p}%", es: "Enviando el mapa: {p}%", pt: "Enviando o mapa: {p}%", de: "Karte wird gesendet: {p}%", fr: "Envoi de la carte : {p} %" },
+  "Map sent: the other player is loading it...": { it: "Mappa inviata: l'altro giocatore la sta caricando...", es: "Mapa enviado: el otro jugador lo está cargando...", pt: "Mapa enviado: o outro jogador está carregando...", de: "Karte gesendet: Der andere Spieler lädt sie...", fr: "Carte envoyée : l'autre joueur la charge..." },
+  "Map received: loading the game...": { it: "Mappa arrivata: si carica la partita...", es: "Mapa recibido: cargando la partida...", pt: "Mapa recebido: carregando a partida...", de: "Karte empfangen: Das Spiel wird geladen...", fr: "Carte reçue : chargement de la partie..." },
+  "Map received: the game is starting.": { it: "Mappa arrivata: la partita comincia.", es: "Mapa recibido: la partida empieza.", pt: "Mapa recebido: a partida está começando.", de: "Karte empfangen: Das Spiel beginnt.", fr: "Carte reçue : la partie commence." },
+  "The map was saved among your maps.": { it: "La mappa è stata salvata fra le tue mappe.", es: "El mapa se ha guardado entre tus mapas.", pt: "O mapa foi salvo entre os seus mapas.", de: "Die Karte wurde bei deinen Karten gespeichert.", fr: "La carte a été enregistrée parmi tes cartes." },
+  "The map of this game could not be received.": { it: "Non è stato possibile ricevere la mappa di questa partita.", es: "No se ha podido recibir el mapa de esta partida.", pt: "Não foi possível receber o mapa desta partida.", de: "Die Karte dieses Spiels konnte nicht empfangen werden.", fr: "Impossible de recevoir la carte de cette partie." },
 };

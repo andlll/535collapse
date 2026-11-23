@@ -201,11 +201,9 @@ export function skLayout(W, H, net = false) { // (export: §9.190, le prove nel 
   // (nella partita online, §9.157: "Create game", che apre la sala d'attesa)
   rows.push({ kind: "start", x1: gx2 - 300, y1: H - 100, x2: gx2, y2: H - 45 });
   // [§9.190] sotto il riquadro della mappa "Apri un file": una mappa
-  // dell'editor (.dvmap); non nella partita online
-  if (!net) {
-    const fy = Math.min(H - 59, Math.max(H - 100, card.y2 + 14));
-    rows.push({ kind: "file", x1: card.x1, y1: fy, x2: card.x2, y2: fy + 55 });
-  }
+  // dell'editor (.dvmap); [§9.192] anche nella partita online
+  const fy = Math.min(H - 59, Math.max(H - 100, card.y2 + 14));
+  rows.push({ kind: "file", x1: card.x1, y1: fy, x2: card.x2, y2: fy + 55 });
   return { rows, card, photo, nameY, descY: nameY + 40, cw, ch };
 }
 // il valore dopo (dir 1) o prima (dir -1) di un parametro
@@ -216,7 +214,8 @@ function stepValue(key, v, dir) {
 // [§9.190] le mappe della schermata: quelle del gioco (anche quelle "in
 // arrivo") e, non nella partita online, quelle dell'editor (skuser.js: le
 // voci del browser, lette all'apertura, e quelle aperte da file)
-const skList = (i) => (i.skNet || !i.userMaps ? SK_MAPS : [...SK_MAPS, ...i.userMaps]);
+// ([§9.192] anche nella partita online: chi entra la riceve)
+const skList = (i) => (!i.userMaps ? SK_MAPS : [...SK_MAPS, ...i.userMaps]);
 // la mappa mostrata: indice in skList
 const shownMap = (i) => Math.min(skList(i).length - 1, i.skMap ?? Math.max(0, SK_MAPS.findIndex((m) => m.room === i.sk.map)));
 const mapAt = (i) => skList(i)[shownMap(i)];
@@ -255,7 +254,7 @@ function showUser(i, w) {
 function loadUserMaps(i, w) {
   i.userMaps = null;
   userMapList().then((list) => {
-    if (!i.skmenu || i.skNet) return;
+    if (!i.skmenu) return;
     const shown = mapAt(i), files = (i.userMaps || []).filter((e) => e.file);
     i.userMaps = [...list, ...files];
     if (shown && shown.user) i.skMap = SK_MAPS.length + i.userMaps.indexOf(shown);
@@ -415,13 +414,15 @@ export function enemyManagerMenu() {
           const m = mapAt(i);
           // [§9.190] una mappa dell'editor: la partita "custom" (skuser.js),
           // con la CPU della mappa se e' fissata
-          if (m.user) {
+          if (m.user && !i.skNet) {
             playUserMap(m.map, skForMap(i.sk, m.map)).catch((e) => {
               console.error(e);
               if (w.hooks.toast) w.hooks.toast(tr("Saving failed"), "warning");
             });
             return;
           }
+          // [§9.192] online con una mappa dell'editor: chi crea la manda
+          if (m.user) { if (w.hooks.hostGame) w.hooks.hostGame(skForMap(i.sk, m.map), m.map); return; }
           // [§9.157] nella partita online "Create game": la sala d'attesa coi
           // codici (netgame.js hostGame), nella partita della mappa scelta
           if (i.skNet) { if (w.hooks.hostGame) w.hooks.hostGame({ ...i.sk }); } else w.gotoRoom(i.sk.map);
@@ -444,7 +445,7 @@ export function enemyManagerMenu() {
           // la schermaglia (§9.118) o, da "Multiplayer", la sua versione per la
           // partita online (§9.157): le stesse opzioni salvate
           Object.assign(i, { skmenu: 1, skNet: k === "create", sk: loadSkirmish(), skMap: null, userMaps: null });
-          if (k === "skirmish") loadUserMaps(i, w); // §9.190
+          loadUserMaps(i, w); // §9.190, §9.192: anche online
         } else if (k === "join" && w.hooks.joinGame) {
           // [§9.157] il pannello per il codice ricevuto, sopra il menu
           i.joinPanel = w.hooks.joinGame({ onClose: () => { i.joinPanel = null; } });
