@@ -13889,3 +13889,17 @@ lavoratori; solo su file: la pausa senza slot, il salvataggio con la mappa
 dentro ricaricato da file), `netmap.mjs`, `saves.mjs`, `soak.mjs`
 (sk_padus coi 3 lavoratori come prima, lvl04), `pvp.mjs`; screenshot (la
 colonna con le icone dell'autore).
+
+### 9.199 Le icone dell'autore anche per i comandi
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, #25): "sostituisci anche
+queste 4 icone" (incolla, copia, taglia, annulla; PNG nere 48-64 px).
+
+In `nuovi/sprites/` come `ed_incolla.png`, `ed_copia.png`, `ed_taglia.png`,
+`ed_annulla.png` (arrivate senza nome), e in `nuovi.json` come derivati
+`ico_ed_paste`, `ico_ed_copy`, `ico_ed_cut`, `ico_ed_undo` (64 px, bianchi,
+come quelli di §9.198): l'editor le usa al posto dei disegni a linee. Restano
+disegnate a linee solo Inserisci e Gomma.
+
+Prove: atlas rifatto (tools/05), screenshot della colonna (i comandi spenti
+attenuati come prima).

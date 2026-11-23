@@ -1954,6 +1954,50 @@
         255
       ],
       "nota": "[§9.198] icona della colonna dell'editor di mappe (settings): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_paste": {
+      "da": "ed_incolla",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.199] icona della colonna dell'editor di mappe (paste): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero)"
+    },
+    "ico_ed_copy": {
+      "da": "ed_copia",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.199] icona della colonna dell'editor di mappe (copy): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero)"
+    },
+    "ico_ed_cut": {
+      "da": "ed_taglia",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.199] icona della colonna dell'editor di mappe (cut): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero)"
+    },
+    "ico_ed_undo": {
+      "da": "ed_annulla",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.199] icona della colonna dell'editor di mappe (undo): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero)"
     }
   }
 }
