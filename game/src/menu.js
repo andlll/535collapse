@@ -626,7 +626,7 @@ function drawMapCard(i, d, L, m) {
 function userDesc(d, m, w) {
   if (m.state === "bad") return tr("This map could not be opened");
   if (m.state !== "ok") return "";
-  if (!m.sides) return tr("A skirmish map needs a red and a blue starting position (Insert, Starting positions)."); // §9.191
+  if (!m.sides) return tr("A skirmish map needs a red and a blue starting position (Insert, Setup)."); // §9.191
   const key = skDescH + ":" + w + ":" + getLanguage();
   if (!m.fit || m.fit.key !== key) m.fit = { key, text: fitText(d, m.desc, w, skDescH) };
   return m.fit.text;

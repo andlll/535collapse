@@ -13726,3 +13726,39 @@ filtrata per parte con l'interruttore, "Natura"; 144 test), `editor.mjs`
 Copia e Incolla dai pulsanti, Annulla, Taglia, Annulla; il campo con
 campo_grano e 13 file di spighe), `skcustom.mjs`; screenshot (la colonna,
 l'interruttore, i campi).
+
+### 9.196 Le partenze come bandierine, la scheda "Regia", la colonna che scorre
+
+Richieste dell'autore (23 novembre 2026, stessa PR): "metti le partenze
+usando gli sprites delle bandierine, fai uno scroller per i pulsanti per
+gli schermi piccoli, chiama la loro scheda "regia" o una parola simile
+breve, ci servira' in futuro se decidiamo di mettere anche scenari piu'
+complessi".
+
+- **Le partenze sono bandierine**: nell'editor (scena, casella, fantasma) la
+  partenza rossa e' la bandierina rossa del punto di raccolta del gioco
+  (rflag) e la blu la blu (bflag), grandi il doppio (FLAG_SCALE) perche' si
+  vedano da lontano; nella mappa restano il centro (`centro` con `side`): la
+  bandierina segna dove nascera' il centro di quella parte. La gemella
+  simmetrica si calcola sempre sull'ingombro del centro (la maschera), come
+  prima.
+- **La scheda "Regia"** (in inglese "Setup") al posto di "Partenze": per ora
+  le due bandierine; piu' avanti cio' che servira' agli scenari. Anche
+  l'avviso "Una mappa della schermaglia ha bisogno di una partenza rossa e
+  di una blu (Inserisci, Regia)".
+- **La colonna che scorre**: la colonna non si rimpicciolisce piu' sotto
+  0,85 (prima fino a 0,5); quando non ci sta (sotto ~880 px di altezza)
+  scorre, con una freccia su in cima e una giu' in fondo (spente quando non
+  c'e' altro), e con la rotella sopra la colonna (uno scatto: un pulsante).
+  I pulsanti fuori dalla parte che si vede non si disegnano e non si
+  toccano. A 1280 x 720 si vedono dieci pulsanti su quattordici.
+
+Testi: "Regia" (Setup) nelle sei lingue (Dirección, Direção, Regie,
+Régie), l'avviso delle partenze.
+
+Prove: `editor.test.mjs` (in piu': la colonna senza scorrere sugli schermi
+grandi; a 1024 x 600 le frecce, il primo pulsante in vista e l'ultimo no,
+in fondo il contrario, i pulsanti nascosti non si toccano; "Regia"; 145
+test), `editor.mjs` (le partenze rflag e bflag; a 1024 x 600 la colonna
+scorre con la rotella e torna su con la freccia); screenshot (1280 x 720:
+la colonna con le frecce, la scheda, le due bandierine).

@@ -41,7 +41,7 @@ test("§9.180 la colonna e il riquadro stanno nella finestra e non si toccano", 
     assert.ok(x1 >= 0 && y1 >= 0 && x2 < W && y2 <= H, `colonna ${W}x${H}`);
     assert.equal(L.buttons.length, TOOLS.length + EDITS.length + ACTIONS.length); // §9.195: i comandi in mezzo
     assert.deepEqual(L.buttons.map((b) => b.key), [...TOOLS, ...EDITS, ...ACTIONS]);
-    for (const b of L.buttons) assert.ok(b.y - b.r >= y1 && b.y + b.r <= y2, `${b.key} dentro la colonna`);
+    for (const b of L.buttons) if (!b.hidden) assert.ok(b.y - b.r >= y1 && b.y + b.r <= y2, `${b.key} dentro la colonna`); // §9.196: quelli che si vedono
     for (let k = 1; k < L.buttons.length; k++) assert.ok(L.buttons[k].y - L.buttons[k].r > L.buttons[k - 1].y + L.buttons[k - 1].r);
     // gli strumenti e le azioni staccati piu' dei pulsanti fra loro
     const gap = (k) => L.buttons[k].y - L.buttons[k - 1].y;
@@ -628,4 +628,26 @@ test("§9.195 la tavolozza filtrata per parte", () => {
   assert.ok(red.cells[0].x1 > all.cells[0].x1 - 1, "le caselle dopo l'interruttore");
   assert.equal(paletteLayout(L.panel, 0, 0).side, null, "le partenze senza interruttore");
   assert.equal(CATALOG.find((k) => k.key === "meadows").label, "Nature");
+});
+
+// [§9.196] su uno schermo basso la colonna non si rimpicciolisce oltre 0,85:
+// scorre, con le frecce; in cima si vede il primo pulsante, in fondo l'ultimo
+test("§9.196 la colonna che scorre", () => {
+  const big = editorLayout(1920, 1080);
+  assert.equal(big.maxScroll, 0);
+  assert.ok(!big.up && !big.down && big.buttons.every((b) => !b.hidden));
+  const top = editorLayout(1024, 600, 0);
+  assert.ok(top.k >= 0.85 && top.maxScroll > 0 && top.up && top.down);
+  assert.ok(!top.buttons[0].hidden && top.buttons[top.buttons.length - 1].hidden);
+  assert.equal(hitTest(top, top.down[0], top.down[1]).kind, "colscroll");
+  assert.equal(hitTest(top, top.up[0], top.up[1]).kind, "ui", "in cima la freccia su non fa niente");
+  const end = editorLayout(1024, 600, 99999);
+  assert.equal(end.scroll, end.maxScroll);
+  assert.ok(!end.buttons[end.buttons.length - 1].hidden && end.buttons[0].hidden);
+  for (const b of end.buttons) if (!b.hidden) assert.ok(b.y - b.r >= end.up[1] + end.up[2] - 1 && b.y + b.r <= end.down[1] - end.down[2] + 1, b.key);
+  // il pulsante nascosto non si tocca
+  const hid = top.buttons.find((b) => b.hidden);
+  assert.notEqual((hitTest(top, hid.x, hid.y) || {}).key, hid.key);
+  // la scheda delle partenze: "Regia"
+  assert.equal(CATALOG[0].label, "Setup");
 });

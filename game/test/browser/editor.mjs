@@ -492,7 +492,8 @@ await click(640, 300);
 const startsNow = () => page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.object === "centro").map((e) => ({ side: e.side, sprite: S.instOf(e).sprite_index })); });
 const sides = await startsNow();
 res.schieramenti = sides;
-check("partenza rossa, gemella blu col suo sprite", sides.length === 2 && sides[0].side === "red" && sides[1].side === "blue" && sides[0].sprite === "cc_spr" && sides[1].sprite === "cc_b");
+// ([§9.196] le partenze come bandierine: rflag, bflag)
+check("partenza rossa, gemella blu col suo sprite", sides.length === 2 && sides[0].side === "red" && sides[1].side === "blue" && sides[0].sprite === "rflag" && sides[1].sprite === "bflag");
 await click(900, 420);
 check("un'altra partenza rossa no", (await startsNow()).length === 2);
 // [§9.193] le unita': il guerriero rosso con la gemella blu (bww11); S passa
@@ -605,6 +606,19 @@ await page.evaluate(() => window.__game.pause.actions.menu());
 await page.waitForURL(/room=editor/, { timeout: 30000 });
 await page.waitForFunction(() => window.__editor && window.__editor.ready && !window.__editor.ed.loading && window.__editor.scene.map.width === 7000, null, { timeout: 120000 });
 check("Torna all'editor: la mappa com'era", await page.evaluate((n) => { const E = window.__editor; return E.scene.map.instances.length === n && E.dirty() && E.scene.map.cpu.style === "static"; }, nTest));
+
+// [§9.196] su uno schermo basso la colonna scorre: la rotella sopra la
+// colonna, poi la freccia su
+await page.setViewportSize({ width: 1024, height: 600 }); await page.waitForTimeout(400);
+const LS = await page.evaluate(() => window.__editor.layout());
+check("schermo basso: la colonna scorre", LS.maxScroll > 0 && !!LS.down && LS.buttons.some((b) => b.hidden));
+await page.mouse.move((LS.col[0] + LS.col[2]) / 2, (LS.col[1] + LS.col[3]) / 2);
+await page.mouse.wheel(0, 120); await page.waitForTimeout(200);
+const sc1 = await page.evaluate(() => window.__editor.ed.colScroll);
+await click(LS.up[0], LS.up[1]);
+const sc2 = await page.evaluate(() => window.__editor.ed.colScroll);
+check("la rotella e la freccia su", sc1 > 0 && sc2 < sc1);
+await page.setViewportSize({ width: W, height: H }); await page.waitForTimeout(400);
 
 // Indietro, Non salvare: il menu
 const L5 = await page.evaluate(() => window.__editor.layout());

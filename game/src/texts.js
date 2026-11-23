@@ -1447,7 +1447,8 @@ export const TEXTS = {
     es: "Los cambios en este mapa se perderán.", pt: "As alterações neste mapa serão perdidas.",
     de: "Die Änderungen an dieser Karte gehen verloren.", fr: "Les modifications de cette carte seront perdues." },
   "Continue": { it: "Continua", es: "Continuar", pt: "Continuar", de: "Weiter", fr: "Continuer" },
-  "Starting positions": { it: "Partenze", es: "Salidas", pt: "Partidas", de: "Startpositionen", fr: "Départs" },
+  // [§9.196] la scheda delle partenze (e, piu' avanti, di cio' che serve agli scenari)
+  "Setup": { it: "Regia", es: "Dirección", pt: "Direção", de: "Regie", fr: "Régie" },
   "Trees": { it: "Alberi", es: "Árboles", pt: "Árvores", de: "Bäume", fr: "Arbres" },
   "Nature": { it: "Natura", es: "Naturaleza", pt: "Natureza", de: "Natur", fr: "Nature" }, // §9.195: era "Prati e fiori"
   "Mountains": { it: "Montagne", es: "Montañas", pt: "Montanhas", de: "Berge", fr: "Montagnes" },
@@ -1515,7 +1516,7 @@ export const TEXTS = {
   "In the browser": { it: "Nel browser", es: "En el navegador", pt: "No navegador", de: "Im Browser", fr: "Dans le navigateur" },
   "To a file": { it: "Su file", es: "En un archivo", pt: "Num arquivo", de: "In eine Datei", fr: "Dans un fichier" },
   "Choose at least one place.": { it: "Scegli almeno un posto.", es: "Elige al menos un sitio.", pt: "Escolha pelo menos um lugar.", de: "Wähle mindestens einen Ort.", fr: "Choisis au moins un endroit." },
-  "A skirmish map needs a red and a blue starting position (Insert, Starting positions).": { it: "Una mappa della schermaglia ha bisogno di una partenza rossa e di una blu (Inserisci, Partenze).", es: "Un mapa de escaramuza necesita una salida roja y una azul (Insertar, Salidas).", pt: "Um mapa de escaramuça precisa de uma partida vermelha e de uma azul (Inserir, Partidas).", de: "Eine Gefechtskarte braucht eine rote und eine blaue Startposition (Einfügen, Startpositionen).", fr: "Une carte d'escarmouche a besoin d'un départ rouge et d'un départ bleu (Insérer, Départs)." },
+  "A skirmish map needs a red and a blue starting position (Insert, Setup).": { it: "Una mappa della schermaglia ha bisogno di una partenza rossa e di una blu (Inserisci, Regia).", es: "Un mapa de escaramuza necesita una salida roja y una azul (Insertar, Dirección).", pt: "Um mapa de escaramuça precisa de uma partida vermelha e de uma azul (Inserir, Direção).", de: "Eine Gefechtskarte braucht eine rote und eine blaue Startposition (Einfügen, Regie).", fr: "Une carte d'escarmouche a besoin d'un départ rouge et d'un départ bleu (Insérer, Régie)." },
   "Back to the editor": { it: "Torna all'editor", es: "Volver al editor", pt: "Voltar ao editor", de: "Zurück zum Editor", fr: "Retour à l'éditeur" },
   // [§9.190] le mappe dell'editor nella schermaglia
   // [§9.193] unita' ed edifici degli schieramenti in "Inserisci"

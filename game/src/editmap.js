@@ -36,7 +36,9 @@ const range = (pre, list) => list.map((n) => pre + n);
 export const HOUSES = range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25",
                                      "31", "32", "33", "34", "35", "41", "42", "43", "44", "45"]);
 export const CATALOG = [
-  { key: "start", label: "Starting positions", objects: ["centro"] },
+  // [§9.196, richiesta dell'autore] la scheda "Regia": per ora le partenze
+  // (le bandierine), piu' avanti cio' che servira' agli scenari
+  { key: "start", label: "Setup", objects: ["centro"] },
   // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
   { key: "units", label: "Units", objects: UNITS },
   // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
@@ -148,7 +150,12 @@ const BLUE_LOOK = { ally_omino: "b_ow11" };
 // col grano (campo_grano; nella scena anche le file di spighe, campoCreate),
 // per tutte e due le parti (il campo della CPU e' uguale)
 export const EDIT_LOOK = { campo: "campo_grano" };
+// [§9.196, richiesta dell'autore] le partenze come bandierine (quelle del
+// punto di raccolta del gioco, rossa e blu), grandi FLAG_SCALE volte: dove
+// nascera' il centro di quella parte
+export const FLAG = { red: "rflag", blue: "bflag" }, FLAG_SCALE = 2;
 export function sideLook(objects, e) {
+  if (e.object === START) return FLAG[e.side] || FLAG.red;
   if (EDIT_LOOK[e.object]) return EDIT_LOOK[e.object];
   if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
   if (BLUE_LOOK[e.object]) return BLUE_LOOK[e.object];
@@ -200,6 +207,7 @@ export function groupsFor(assets, objects, names) {
     if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
     if (BLUE_LOOK[n]) want(BLUE_LOOK[n]); // §9.193
     if (EDIT_LOOK[n]) { want(EDIT_LOOK[n]); want("spiga"); } // §9.195: il campo col grano
+    if (n === START) { want(FLAG.red); want(FLAG.blue); } // §9.196: le bandierine
   }
   return out;
 }
@@ -271,6 +279,7 @@ export class EditScene {
     if (o.choices) i.sprite_index = o.choices.includes(e.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
     const look = sideLook(this.objects, e); // §9.191: il blu col suo sprite
     if (look) i.sprite_index = look;
+    if (e.object === START) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
     if (o.reveal) i.visible = true;
     w.fire(i, "create");
     i.kids = w.instances.slice(n0 + 1);

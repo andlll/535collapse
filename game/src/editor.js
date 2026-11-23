@@ -76,7 +76,7 @@ import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
          testRoom, TEST_ROOM, sidesOk, SIDES } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND } from "./editmap.js";
+         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
@@ -195,7 +195,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point.",
                              // [§9.188] i salvataggi su file, "Prova mappa"
                              "Where", "In the browser", "To a file", "Choose at least one place.",
-                             "A skirmish map needs a red and a blue starting position (Insert, Starting positions).",
+                             "A skirmish map needs a red and a blue starting position (Insert, Setup).",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
@@ -209,25 +209,40 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // i suoi pulsanti tondi ({kind, key, x, y, r}), il riquadro dello strumento
 // (panel) e il cerchio "Indietro" (back: x, y, r). Con una finestra bassa
 // la colonna si rimpicciolisce tutta (k) per starci.
-export function editorLayout(W, H) {
+// [§9.196, richiesta dell'autore] non piu' sotto COL_MIN: oltre, la colonna
+// scorre (scroll: px dall'alto, gia' limitato; maxScroll). Le frecce su e
+// giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
+// parte che si vede hanno hidden e non si toccano.
+const COL_MIN = 0.85, COL_ARROW = 30;
+export function editorLayout(W, H, scroll = 0) {
   const n = TOOLS.length + EDITS.length + ACTIONS.length;
   const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
-  const k = Math.max(0.5, Math.min(1, (H - 2 * COL.top) / full));
+  const room = H - 2 * COL.top;
+  const k = Math.max(COL_MIN, Math.min(1, room / full));
   const b = COL.btn * k, gap = COL.gap * k, pad = COL.pad * k, sep = COL.sep * k;
   const x1 = COL.left, x2 = x1 + b + 2 * pad, y1 = COL.top;
+  const tall = full * k > room, arrow = tall ? COL_ARROW : 0;
+  // (la parte che si vede: fra le due frecce)
+  const vy1 = y1 + arrow, vy2 = tall ? y1 + room - arrow : Infinity;
+  const maxScroll = tall ? Math.ceil(full * k - (vy2 - vy1)) : 0;
+  scroll = Math.max(0, Math.min(maxScroll, scroll));
   const buttons = [];
-  let y = y1 + pad;
+  let y = y1 + pad + arrow - scroll;
   for (const key of TOOLS) { buttons.push({ kind: "tool", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
   y += sep - gap;
   for (const key of EDITS) { buttons.push({ kind: "edit", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
   y += sep - gap;
   for (const key of ACTIONS) { buttons.push({ kind: "action", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
-  const col = [x1, y1, x2, y - gap + pad];
+  for (const bt of buttons) bt.hidden = bt.y - bt.r < vy1 - 1 || bt.y + bt.r > vy2 + 1;
+  const col = tall ? [x1, y1, x2, y1 + room] : [x1, y1, x2, y - gap + pad];
+  const cx = (x1 + x2) / 2;
+  const up = tall ? [cx, y1 + arrow / 2 + 2, arrow / 2 - 2] : null, down = tall ? [cx, y1 + room - arrow / 2 - 2, arrow / 2 - 2] : null;
   // il riquadro: in basso, centrato nello spazio a destra della colonna
   const left = x2 + PANEL.margin, right = W - PANEL.margin, pw = Math.max(200, Math.min(PANEL.maxW, right - left));
   const px1 = left + Math.max(0, (right - left - pw) / 2);
   const panel = [px1, H - PANEL.bottom - PANEL.h, px1 + pw, H - PANEL.bottom];
-  return { k, col, buttons, panel, back: [W - BACK_BTN[0], BACK_BTN[1], BACK_BTN[2]] };
+  return { k, col, buttons, panel, back: [W - BACK_BTN[0], BACK_BTN[1], BACK_BTN[2]], scroll, maxScroll, up, down,
+           step: b + gap }; // (step: di quanto scorre uno scatto)
 }
 
 const inRect = (x, y, R) => x >= R[0] && y >= R[1] && x <= R[2] && y <= R[3];
@@ -235,7 +250,10 @@ const inRect = (x, y, R) => x >= R[0] && y >= R[1] && x <= R[2] && y <= R[3];
 // Cosa c'e' sotto il puntatore: un pulsante della colonna, "back", "ui"
 // (la colonna o il riquadro, fuori dai pulsanti) o null (la mappa)
 export function hitTest(L, mx, my) {
-  for (const b of L.buttons) if (dhypot(mx - b.x, my - b.y) <= b.r) return b;
+  for (const b of L.buttons) if (!b.hidden && dhypot(mx - b.x, my - b.y) <= b.r) return b;
+  // [§9.196] le frecce della colonna che scorre
+  if (L.up && L.scroll > 0 && dhypot(mx - L.up[0], my - L.up[1]) <= L.up[2] + 4) return { kind: "colscroll", key: "up", dir: -1 };
+  if (L.down && L.scroll < L.maxScroll && dhypot(mx - L.down[0], my - L.down[1]) <= L.down[2] + 4) return { kind: "colscroll", key: "down", dir: 1 };
   if (dhypot(mx - L.back[0], my - L.back[1]) <= L.back[2]) return { kind: "back", key: "back" };
   if (inRect(mx, my, L.col) || inRect(mx, my, L.panel)) return { kind: "ui", key: null };
   return null;
@@ -249,7 +267,7 @@ export function hitTest(L, mx, my) {
 const DARK = 0x3c3c3c;
 // [§9.191] i colori dei due schieramenti (BGR, come Draw)
 export const SIDE_COLOUR = { red: 0x3830c8, blue: 0xe87030 };
-export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Starting positions).";
+export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Setup).";
 // [§9.193] lo schieramento della casella scelta (S: l'altro)
 export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)" };
 // [§9.194] le mura: la parte e S che le gira di 90 gradi
@@ -502,6 +520,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                erase: { w: 3 }, erasing: false, wall: null, wallHover: null,
                // [§9.195] la parte che si vede in Unita' ed Edifici
                sideFilter: "red",
+               colScroll: 0, // [§9.196] la colonna che scorre (schermi bassi)
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -1065,7 +1084,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const step = () => {
     input.beginStep();
     if (ed.loading || ed.dom) return;
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H), mx = input.x, my = input.y;
+    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), mx = input.x, my = input.y;
     const [rx, ry] = view.toRoom(mx, my);
     const ctrl = input.down.has(17), shift = input.down.has(16), K = (k) => input.pressed.has(k);
     // la conferma, sopra tutto
@@ -1105,7 +1124,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       return;
     }
     const hit = input.inside ? hitTest(L, mx, my) : null;
-    ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "edit" || hit.kind === "back") ? hit : null;
+    ed.colScroll = L.scroll; // §9.196: (limitato dalla disposizione: la finestra cambia)
+    ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "edit" || hit.kind === "back" || hit.kind === "colscroll") ? hit : null;
     // [§9.185] la pennellata in corso: solo lei (e la vista)
     if (ed.stroke) {
       const st = ed.stroke;
@@ -1168,6 +1188,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (input.inside && input.wheelStep && shift && (ed.tool === "brush" || ed.tool === "erase") && !hit) { // §9.185: Maiusc+rotella, la larghezza (§9.194: anche la gomma)
       const B = ed.tool === "brush" ? ed.brush : ed.erase;
       B.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, B.w - Math.sign(input.wheelStep)));
+    } else if (input.inside && input.wheelStep && L.maxScroll > 0 && inRect(mx, my, L.col)) { // §9.196: la colonna scorre
+      ed.colScroll = L.scroll + Math.sign(input.wheelStep) * L.step; // (rotella in giu': i pulsanti piu' in basso)
     } else if (input.inside && (input.wheelStep || input.wheelFine)) {
       if (P && inRect(mx, my, P.strip)) {
         if (input.wheelStep) ed.scroll[ed.cat] = Math.max(0, Math.min(P.max, P.scroll + Math.sign(input.wheelStep)));
@@ -1191,6 +1213,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       clic();
       const b = ed.hover;
       if (b.kind === "back") { guard(toMenu); return; }
+      if (b.kind === "colscroll") { ed.colScroll = L.scroll + b.dir * L.step; return; } // §9.196
       if (b.kind === "edit") { editAction(b.key); return; } // §9.195
       if (b.kind === "tool") setTool(b.key);
       else if (b.key === "open") openPanel(); // §9.181, §9.184
@@ -1531,7 +1554,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.setAlpha(0.45);
         for (const [x, y] of all) draw.ellipseColour(x - r, y - ry, x + r, y + ry, tint, tint, false);
       }
-      if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y))) {
+      if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
         const [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
         if (symOn()) spots.push(twinPoint(bx, by));
         for (const [x, y] of spots) {
@@ -1545,7 +1568,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
     }
     // [§9.194] la gomma: l'ovale sotto il puntatore (col gemello), rosso
-    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y))) {
+    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
       const r = eraseR(), ry = r * ISO, [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
       if (symOn()) spots.push(twinPoint(bx, by));
       for (const [x, y] of spots) {
@@ -1579,14 +1602,14 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, inMap(e.x, e.y) ? c.white : 0x4040ff, e === list[0] ? 0.6 : 0.4);
       }
     }
-    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)) {
+    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       // [§9.184] con la simmetria anche il fantasma della gemella ([§9.191]
       // dell'altro schieramento: col suo sprite)
       const list = toPlace(gx, gy), col = inMap(gx, gy) && canStart(list) ? c.white : 0x4040ff;
       for (const e of list) {
-        const spr = sideLook(objects, e) || st.sprite || (o && o.sprite);
-        if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, col, e === list[0] ? 0.6 : 0.4);
+        const spr = sideLook(objects, e) || st.sprite || (o && o.sprite), k = e.object === START ? FLAG_SCALE : 1; // §9.196: la bandierina
+        if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, k, k, 0, col, e === list[0] ? 0.6 : 0.4);
         if (spr && e.object === "campo") cropThumb(e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.195
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
@@ -1596,7 +1619,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   const drawUI = () => {
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H), map = scene.map;
+    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), map = scene.map;
     r.setProjection(0, 0, W, H);
     draw.reset();
     // il titolo, e la mappa: nome (o "Nuova mappa") e misure
@@ -1611,6 +1634,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(0.35);
     draw.roundrectColourExt(cx1, cy1, cx2, cy2, 40 * L.k, 40 * L.k, c.white, c.white, false);
     for (const b of L.buttons) {
+      if (b.hidden) continue; // §9.196: fuori dalla parte che si vede
       const on = b.kind === "tool" && ed.tool === b.key, hov = ed.hover && ed.hover.key === b.key;
       const off = b.kind === "edit" && !editEnabled(b.key); // §9.195: niente da annullare, copiare, incollare
       draw.setAlpha(on ? 0.85 : off ? 0.4 : hov ? 0.99 : 0.69);
@@ -1621,8 +1645,20 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // fra gli strumenti, i comandi (§9.195) e le azioni, una lineetta
     for (const at of [TOOLS.length, TOOLS.length + EDITS.length]) {
       const last = L.buttons[at - 1], next = L.buttons[at], ym = (last.y + last.r + next.y - next.r) / 2;
+      if (last.hidden && next.hidden) continue;
+      if (L.up && (ym < L.up[1] + L.up[2] + 6 || ym > L.down[1] - L.down[2] - 6)) continue;
       draw.setAlpha(0.35);
       draw.lineWidthColour(cx1 + 16 * L.k, ym, cx2 - 16 * L.k, ym, 2, c.black, c.black);
+    }
+    // [§9.196] le frecce della colonna che scorre (spente in cima e in fondo)
+    for (const [A, dir, can] of [[L.up, -1, L.scroll > 0], [L.down, 1, L.scroll < L.maxScroll]]) {
+      if (!A) continue;
+      const [ax, ay, ar] = A, hov = ed.hover && ed.hover.kind === "colscroll" && ed.hover.dir === dir;
+      draw.setAlpha(!can ? 0.15 : hov ? 0.95 : 0.6);
+      draw.circleColour(ax, ay, ar, c.white, c.white, false);
+      draw.setAlpha(!can ? 0.2 : 0.8);
+      const t = ar * 0.5;
+      draw.triangleColour(ax - t, ay - dir * t * 0.5, ax + t, ay - dir * t * 0.5, ax, ay + dir * t * 0.7, DARK, DARK, DARK, false);
     }
     // il cerchio "Indietro" (come nelle schermate del menu, §9.158)
     const [bx, by, br] = L.back;
@@ -1633,7 +1669,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // il riquadro dello strumento scelto
     drawPanel(L.panel);
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
-    if (ed.hover && ed.hover.kind !== "back" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
+    if (ed.hover && ed.hover.kind !== "back" && ed.hover.kind !== "colscroll" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
     if (ed.open) drawOpen(W, H);
     if (ed.confirm) drawConfirm(W, H);
     draw.setAlpha(1);
@@ -1655,7 +1691,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     draw.setAlpha(0.55);
     const [mx, my] = view.toRoom(input.x, input.y);
-    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(editorLayout(view.cssW, view.cssH), input.x, input.y)
+    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
@@ -1948,12 +1984,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   canvas.addEventListener("webglcontextrestored", async () => { r.init(); await assets.reload(progress); loop.start(); });
   if (!params.has("nostart")) loop.start();
   // per le prove nel browser (game/test/browser/editor.mjs)
-  window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
+  window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH, ed.colScroll),
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
                       confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
-                      palette: () => paletteNow(editorLayout(view.cssW, view.cssH).panel),
+                      palette: () => paletteNow(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap,
-                      brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel),
-                      symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel),
-                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
+                      symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
+                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
 }
