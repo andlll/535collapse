@@ -9,10 +9,11 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, EDITS, LABEL, DESC, 
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout,
          lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorPoint, mirrorDelta, freePluses, wallStep, wallPluses, GATE_SWAP } from "../src/editmap.js";
+         mirrorPoint, mirrorDelta, freePluses, wallStep, wallPluses, GATE_SWAP, sideLook, paletteCount } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
-         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF, sha256, lockOf, lockOpens } from "../src/mapfile.js";
-import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
+         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF, sha256, lockOf, lockOpens, isStart, HALL, HOME_STYLES, blueHome } from "../src/mapfile.js";
+import { isSkirmish, SK_OPTIONS, skirmishEco, skirmishPrepare } from "../src/skirmish.js";
+import { splitGroups } from "../src/scenario.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
@@ -672,4 +673,73 @@ test("§9.198 password, ponti, lavoratori, salvataggi", async () => {
   assert.equal(skirmishEco({ ...sk, map: "sk_padus" }).startWorkers, 3);
   const { SAVE_ROOMS } = await import("../src/save.js");
   assert.ok(!SAVE_ROOMS.includes("custom"));
+});
+
+// [§9.203, richieste dell'autore] il municipio come edificio (oltre alle
+// partenze), gli stili della casa, lo stile scelto che arriva nella partita
+test("§9.203 municipio, stili della casa, stili nella partita", { skip: !existsSync(OBJECTS) }, () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8"));
+  const I = (object, x, y, more = {}) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...more });
+  // la tavolozza degli edifici: in testa il municipio (rosso e blu, `hall`),
+  // la casa coi sei stili per parte, in fondo le mura
+  const items = paletteItems(CATALOG.find((k) => k.key === "buildings"), objects);
+  assert.deepEqual(items.slice(0, 2).map((q) => [q.key, q.side, q.styles]),
+                   [["hall:red", "red", [{ object: "centro", side: "red", hall: true }]], ["hall:blue", "blue", [{ object: "centro", side: "blue", hall: true }]]]);
+  const home = items.find((q) => q.key === "home:blue");
+  assert.deepEqual(home.styles.map((s) => s.sprite), HOME_STYLES);
+  assert.ok(home.styles.every((s) => s.object === "casa" && s.side === "blue"));
+  assert.equal(items.length, paletteCount(CATALOG.find((k) => k.key === "buildings")));
+  assert.equal(items.findIndex((q) => q.key === "wall:red"), 20);
+  // ogni stile della casa e' uno sprite del gioco, rosso e blu
+  for (const s of HOME_STYLES) {
+    assert.ok([...objects.casa.choices, objects.casa.sprite].includes(s), s);
+    assert.ok([...objects.enemy_house.choices, objects.enemy_house.sprite].includes(blueHome(s)), blueHome(s));
+  }
+  // con "Sposta": S cambia lo stile della casa (nello stesso schieramento);
+  // il blu si vede col suo stile blu
+  const S1 = stylesOf(I("casa", 100, 100, { side: "blue", sprite: "c4s" }), objects);
+  assert.equal(S1.at, 3);
+  assert.ok(S1.styles.every((s) => s.side === "blue"));
+  assert.equal(sideLook(objects, I("casa", 0, 0, { side: "blue", sprite: "c4s" })), "c4b");
+  assert.equal(sideLook(objects, I("casa", 0, 0, { side: "blue" })), "c3b");
+  assert.equal(sideLook(objects, I("centro", 0, 0, { side: "blue", hall: true })), "cc_b");
+  assert.equal(sideLook(objects, I("centro", 0, 0, { side: "red", hall: true })), null);
+  assert.equal(sideLook(objects, I("centro", 0, 0, { side: "blue" })), "bflag");
+  // le partenze non contano i municipi
+  const map = { ...newMap(), instances: [I("centro", 1000, 1000, { side: "red" }), I("centro", 5000, 5000, { side: "blue" }),
+                                          I("centro", 400, 400, { side: "red", hall: true }), I("centro", 5600, 600, { side: "blue", hall: true }),
+                                          I("casa", 1300, 1000, { side: "red", sprite: "c1s" }), I("casa", 4700, 5000, { side: "blue", sprite: "c5s" }),
+                                          I("albero", 3000, 3000, { sprite: "alb6" }), I("albero_fake", 3200, 3000, { sprite: "alb1_F" })] };
+  assert.ok(isStart(map.instances[0]) && !isStart(map.instances[2]));
+  assert.equal(startsOf(map, "red"), 1);
+  assert.ok(sidesOk(map));
+  assert.equal(redStart(map), "A");
+  // la convalida: `hall` solo vero e solo sul centro
+  const allowed = allowedObjects();
+  const v = validateMap(map, allowed, objects);
+  assert.deepEqual(v.errors, undefined);
+  assert.deepEqual(v.map.instances.map((e) => !!e.hall), [false, false, true, true, false, false, false, false]);
+  assert.ok(validateMap({ ...map, instances: [I("casa", 1, 1, { side: "red", hall: true })] }, allowed, objects).errors);
+  assert.ok(validateMap({ ...map, instances: [I("centro", 1, 1, { side: "red", hall: 1 })] }, allowed, objects).errors);
+  // la room: i municipi nel gruppo HALL (il blu e' quello della CPU), lo
+  // stile dopo il gruppo (la casa blu col suo sprite blu)
+  const room = testRoom(map);
+  const row = (o, x) => room.instances.find((e) => e[0] === o && e[1] === x);
+  assert.equal(row("centro", 1000).length, 7);
+  assert.equal(row("centro", 400)[7], HALL);
+  assert.equal(row("enemy_centro", 5600)[7], HALL);
+  assert.deepEqual(row("casa", 1300).slice(7), [null, "c1s"]);
+  assert.deepEqual(row("enemy_house", 4700).slice(7), [null, "c5b"]);
+  assert.deepEqual(row("albero", 3000).slice(7), [null, "alb6"]);
+  // skirmishPrepare sceglie le due partenze, non i municipi
+  const all = room.instances.map((e) => e.slice());
+  const st = skirmishPrepare({ start: "A" }, all);
+  assert.deepEqual([st.player, st.cpu], [[1000, 1000], [5000, 5000]]);
+  assert.deepEqual(all.filter((e) => /centro$/.test(e[0])).map((e) => [e[0], e[1]]),
+                   [["centro", 1000], ["enemy_centro", 5000], ["centro", 400], ["enemy_centro", 5600]]);
+  // splitGroups tiene lo stile (il gruppo HALL non e' una regia: si crea subito)
+  const { now } = splitGroups(TEST_ROOM, all);
+  assert.equal(now.length, all.length);
+  assert.deepEqual(now.find((e) => e[0] === "albero").slice(7), [null, "alb6"]);
+  assert.equal(now.find((e) => e[0] === "centro" && e[1] === 400).length, 7);
 });

@@ -50,7 +50,7 @@ resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, ritardo adattivo,
 riconnessione: §9.156 "Come riprendere"). I codici piu' corti: fatti
-(§9.201, versione 0.2616: ~130-250 caratteri invece di ~600-780), da
+(§9.202, versione 0.2616: ~130-250 caratteri invece di ~600-780), da
 provare anche fra browser diversi (Chrome con Firefox o Safari). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
@@ -11356,7 +11356,7 @@ sinistra nella GUI tra il pannello risorse e la minimappa".
 3. *Codici piu' corti*: un SDP ridotto ai campi necessari (ufrag, pwd,
    fingerprint, indirizzi: ~150 caratteri) ricostruito dall'altra parte,
    oppure un piccolo servizio di presentazione con codici di 6 lettere
-   (§9.152). [Fatto in §9.201, la prima strada.]
+   (§9.152). [Fatto in §9.202, la prima strada.]
 4. *Il ritardo adattivo*: oggi D si misura una volta all'avvio; si
    potrebbe rimisurare (i turni portano gia' il passo) e cambiarlo d'accordo
    a un passo futuro.
@@ -13967,7 +13967,7 @@ in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
 Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
 scelta), test unitari, `editor.mjs`.
 
-### 9.201 I codici piu' corti del multigiocatore
+### 9.202 I codici piu' corti del multigiocatore
 
 Richiesta dell'autore (23 novembre 2026, nuova PR, versione 0.2616):
 "accorciare i codici di handshake del multiplayer. Ti sono state lasciate

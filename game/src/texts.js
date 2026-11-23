@@ -1534,6 +1534,9 @@ export const TEXTS = {
   "Left: erase. Shift + wheel: width.": { it: "Sinistro: cancella. Maiusc + rotella: larghezza.", es: "Izquierdo: borrar. Mayús + rueda: anchura.", pt: "Esquerdo: apagar. Shift + roda: largura.", de: "Links: löschen. Umschalt + Mausrad: Breite.", fr: "Gauche : effacer. Maj + molette : largeur." },
   "Red side (S: horizontal / vertical)": { it: "Schieramento rosso (S: orizzontale / verticale)", es: "Bando rojo (S: horizontal / vertical)", pt: "Lado vermelho (S: horizontal / vertical)", de: "Rote Seite (S: waagrecht / senkrecht)", fr: "Camp rouge (S : horizontal / vertical)" },
   "Blue side (S: horizontal / vertical)": { it: "Schieramento blu (S: orizzontale / verticale)", es: "Bando azul (S: horizontal / vertical)", pt: "Lado azul (S: horizontal / vertical)", de: "Blaue Seite (S: waagrecht / senkrecht)", fr: "Camp bleu (S : horizontal / vertical)" },
+  // [§9.203] la casa: lo schieramento e S che ne cambia lo stile
+  "Red side (S: style {i}/{n})": { it: "Schieramento rosso (S: stile {i}/{n})", es: "Bando rojo (S: estilo {i}/{n})", pt: "Lado vermelho (S: estilo {i}/{n})", de: "Rote Seite (S: Stil {i}/{n})", fr: "Camp rouge (S : style {i}/{n})" },
+  "Blue side (S: style {i}/{n})": { it: "Schieramento blu (S: stile {i}/{n})", es: "Bando azul (S: estilo {i}/{n})", pt: "Lado azul (S: estilo {i}/{n})", de: "Blaue Seite (S: Stil {i}/{n})", fr: "Camp bleu (S : style {i}/{n})" },
   "Move the pointer: straight or around the corner. Click: place. Right click: cancel.": {
     it: "Muovi il puntatore: dritto o ad angolo. Clic: metti. Destro: annulla.",
     es: "Mueve el puntero: recto o en esquina. Clic: colocar. Derecho: cancelar.",

@@ -1706,6 +1706,15 @@ export function resource(p, kind) {
       }
       if (kind === "pietra_grande") i.fase = 1;
     },
+    // [§9.203] la variante scelta nell'editor (world.js loadRoom): il tipo
+    // anche (l'albero che muore lo usa); alb1_F (la F dell'editor) no
+    restyle(i, w, sprite) {
+      const k = ALB.indexOf(sprite);
+      if ((kind !== "albero" && kind !== "albero_fake") || k < 0) return;
+      i.type = k + 1;
+      i.sprite_index = sprite;
+      w.moved(i);
+    },
     step(i, w) {
       if (kind === "pietra_grande" && i.fase === 1 && i.stone < 425) {
         i.fase = 2;

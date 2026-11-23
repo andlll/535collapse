@@ -115,6 +115,16 @@ export class World {
       this._alloc(object, x, y, { sx, sy, rot, colour: colour & 0xffffff, alpha: (colour >>> 24) / 255 }));
     if (beforeCreate) beforeCreate();
     for (const i of created) if (i.alive) this.fire(i, "create");
+    // [§9.203] lo stile scelto nell'editor (mappe dell'editor: lo sprite dopo
+    // il gruppo, mapfile.js scenarioToRoom), dopo il Create che ne tira uno a
+    // caso (il generatore della partita consuma gli stessi numeri): l'evento
+    // "restyle" di chi ha altro da sistemare (gli alberi: il tipo), se no lo sprite
+    list.forEach((e, k) => {
+      const i = created[k], sprite = e[8];
+      if (!sprite || !i.alive || this.fire(i, "restyle", sprite)) return;
+      i.sprite_index = sprite;
+      this.moved(i);
+    });
     for (const i of created) if (i.alive) this.fire(i, "roomStart");
   }
 

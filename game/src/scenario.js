@@ -51,7 +51,8 @@ export function splitGroups(room, instances) {
     const grp = e[7], mode = grp && modes[grp];
     if (mode === "nascosto") (held[grp] || (held[grp] = [])).push(e.slice(0, 7));
     else if (mode === "neutrale") neutrals.push(e);
-    else now.push(e.length > 7 ? e.slice(0, 7) : e);
+    // ([§9.203] lo stile delle mappe dell'editor, dopo il gruppo, resta)
+    else now.push(e.length > 7 ? (e[8] ? [...e.slice(0, 7), null, e[8]] : e.slice(0, 7)) : e);
   }
   return { now, held, neutrals };
 }

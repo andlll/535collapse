@@ -142,7 +142,7 @@ export function mapPreview(map, sizeOf = () => [100, 100]) {
   for (const r of map.rivers || []) line(r, P.water, ((r.width ?? 200) + (r.widthEnd ?? r.width ?? 200)) / 2);
   const dot = (x, y, r, colour) => { g.fillStyle = colour; g.beginPath(); g.arc(X(x), Y(y), r, 0, Math.PI * 2); g.fill(); };
   const groups = { mountain: [], ruin: [], city: [], tree: [], gold: [], stone: [], start: [] };
-  for (const e of map.instances) { const k = kindOf(e.object); if (k) groups[k].push(e); }
+  for (const e of map.instances) { const k = e.hall ? null : kindOf(e.object); if (k) groups[k].push(e); } // (§9.203: i municipi no)
   for (const e of groups.mountain) {
     const [w, h] = sizeOf(e.object);
     g.fillStyle = P.mountain;

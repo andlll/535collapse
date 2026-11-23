@@ -91,7 +91,7 @@ Il menu principale (§9.157): "Gioca il tutorial", "Giocatore singolo"
 **Multigiocatore online** (§9.152-§9.158): "Multigiocatore", "Crea partita":
 mappa e opzioni come nella schermaglia (difficolta' e stile della CPU in
 grigio), poi "Crea partita" in basso a destra. Chi crea la partita (il
-rosso) manda all'altro il codice che compare (~130-250 caratteri, §9.201); l'altro va in
+rosso) manda all'altro il codice che compare (~130-250 caratteri, §9.202); l'altro va in
 "Multigiocatore", "Partecipa", lo incolla ("Entra", il blu) e rimanda il suo
 codice di risposta, che il primo incolla ("Collega"). Se il collegamento
 non riesce la sala d'attesa dice la causa che si legge nei codici (rete che

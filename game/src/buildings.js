@@ -836,7 +836,9 @@ export function centro(p) {
         // [§9.118] nella schermaglia solo con la vittoria "Municipio" (le
         // altre le decide sk_manager, skirmish.js)
         // [§9.155] nella partita a due lo decide sk_manager (pvpCheck)
-        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall") && !(g.sk && g.sk.pvp);
+        // [§9.203] con piu' municipi (le mappe dell'editor) si perde con l'ultimo
+        const lose = w.room !== "lvl03" && (!g.sk || g.sk.victory === "townhall") && !(g.sk && g.sk.pvp)
+          && ![...w.all("centro")].some((c) => c !== i && c.alive && c.life > 0);
         if (lose) g.gameover = 1;
         const flag = w.nearest(i.x, i.y - 100, "flag_r");
         if (flag) w.destroy(flag);

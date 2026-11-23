@@ -19,7 +19,9 @@ import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, 
 import { GroundCache, GROUND } from "./ground.js";
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
-import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS } from "./mapfile.js";
+import { makeColourRgb } from "./colours.js";
+import { spriteBounds } from "./sprites.js";
+import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS, isStart, HOME_STYLES, blueHome } from "./mapfile.js";
 
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
 // quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
@@ -42,7 +44,13 @@ export const CATALOG = [
   // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
   { key: "units", label: "Units", objects: UNITS },
   // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
-  { key: "buildings", label: "Buildings", objects: [...BUILDINGS, { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
+  // [§9.203, richieste dell'autore] in testa il municipio (il centro con
+  // `hall`: non una partenza); la casa coi suoi sei stili (S li cambia, come
+  // per le mura; lo schieramento con l'interruttore)
+  { key: "buildings", label: "Buildings",
+    objects: [{ family: "hall", objects: [START], sided: true, extra: { hall: true } },
+              ...BUILDINGS.map((b) => (b === "casa" ? { family: "home", objects: ["casa"], sided: true, sprites: HOME_STYLES } : b)),
+              { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
   { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
@@ -68,7 +76,10 @@ export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q)
 export function paletteItems(cat, objects) {
   return cat.objects.flatMap((q) => {
     if (typeof q !== "string" && q.sided) { // §9.194: le mura, per parte, coi loro stili (i due versi)
-      return SIDES.map((side) => ({ key: q.family + ":" + side, side, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object, side })) }));
+      // ([§9.203] la casa: gli stili sono gli sprite; il municipio: `hall`)
+      const styles = (side) => q.objects.filter((n) => objects[n])
+        .flatMap((object) => (q.sprites || [null]).map((sprite) => ({ object, side, ...(sprite ? { sprite } : {}), ...q.extra })));
+      return SIDES.map((side) => ({ key: q.family + ":" + side, side, styles: styles(side) }));
     }
     if (typeof q !== "string") return [{ key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) }];
     if (SIDED.has(q)) return SIDES.map((side) => ({ key: q + ":" + side, side, styles: [{ object: q, side }] }));
@@ -84,6 +95,12 @@ export const paletteCount = (cat) => cat.objects.reduce((n, q) => n + ((typeof q
 // la lista e quale ha ora, o null se ne ha uno solo
 export function stylesOf(e, objects) {
   const o = objects[e.object];
+  // [§9.203] la casa: i suoi sei stili, nello stesso schieramento (come gli
+  // alberi e le case della citta'; senza `sprite` mostra quello della posizione)
+  if (e.object === "casa") {
+    const styles = HOME_STYLES.map((sprite) => ({ object: e.object, side: e.side || "red", sprite }));
+    return { styles, at: HOME_STYLES.includes(e.sprite) ? HOME_STYLES.indexOf(e.sprite) : HOME_STYLES.indexOf(homeOf(e, o)) };
+  }
   // [§9.191] le partenze: lo schieramento (S lo cambia)
   if (SIDED.has(e.object)) return { styles: SIDES.map((side) => ({ object: e.object, side })), at: Math.max(0, SIDES.indexOf(e.side)) };
   if (o && o.choices) {
@@ -141,6 +158,23 @@ export function wallStep(p, x, y) {
 }
 // [§9.185] gli alberi (il pennello li dipinge e li cancella)
 export const TREES = new Set(["albero", "albero_fake"]);
+// [§9.203, richiesta dell'autore] l'albero finto con la F, solo nell'editor
+// (come nell'editor di GameMaker e nel kit di Tiled: la F arancione di
+// alb1_F, tools/11 fake_mark), per distinguerlo da quello vero; il gioco lo
+// disegna come gli altri. I rettangoli della F in pixel dello sprite rispetto
+// all'origine (tutti gli alb* hanno la stessa; in alb1_F x 66..97, y
+// 62..137, origine 78, 164): l'asta, la sbarra in alto, quella in mezzo
+export const FAKE = "albero_fake";
+const FAKE_F = [[-12, -102, 7, -26], [-12, -102, 20, -86], [-12, -72, 19, -58]];
+const FAKE_F_COLOUR = makeColourRgb(255, 128, 0);
+export function fakeMark(d, x, y, k = 1, alpha = 1) {
+  const a0 = d.alpha, c0 = d.colour;
+  d.setColour(FAKE_F_COLOUR);
+  d.setAlpha(alpha);
+  for (const [a, b, c, e] of FAKE_F) d.rectangle(x + a * k, y + b * k, x + c * k, y + e * k);
+  d.setColour(c0);
+  d.setAlpha(a0);
+}
 // le posizioni di partenza di una mappa da schermaglia (skirmish.js
 // skirmishPrepare: due centri, uno per parte)
 export { START }; // (mapfile.js, §9.191)
@@ -159,7 +193,8 @@ export const EDIT_LOOK = { campo: "campo_grano" };
 // nascera' il centro di quella parte
 export const FLAG = { red: "rflag", blue: "bflag" }, FLAG_SCALE = 2;
 export function sideLook(objects, e) {
-  if (e.object === START) return FLAG[e.side] || FLAG.red;
+  if (isStart(e)) return FLAG[e.side] || FLAG.red;
+  if (e.side === "blue" && blueHome(e.sprite)) return blueHome(e.sprite); // §9.203: la casa blu del suo stile
   if (EDIT_LOOK[e.object]) return EDIT_LOOK[e.object];
   if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
   if (BLUE_LOOK[e.object]) return BLUE_LOOK[e.object];
@@ -196,6 +231,9 @@ export function mirrorDelta(mode, dx, dy) {
 // [§9.181] La variante di un oggetto con piu' sprite (albero: alb1..alb8),
 // se la mappa non la dice: dalla posizione, sempre la stessa
 export const variantOf = (x, y, n) => (((Math.round(x) * 73856093) ^ (Math.round(y) * 19349663)) >>> 0) % n;
+// [§9.203] lo stile che mostra una casa senza `sprite` (come spawn)
+// (il blu: lo sprite di enemy_house, c3b)
+const homeOf = (e, o) => (e.side === "blue" ? HOME_STYLES[2] : o && o.choices ? o.choices[variantOf(e.x, e.y, o.choices.length)] : HOME_STYLES[0]);
 
 // I gruppi d'atlas che servono a disegnare questi oggetti
 export function groupsFor(assets, objects, names) {
@@ -208,10 +246,11 @@ export function groupsFor(assets, objects, names) {
     for (const s of o.choices || []) want(s);
     for (const [s] of o.slices || []) want(s);
     if (BRIDGE_RAILS[n] && objects[BRIDGE_RAILS[n]]) want(objects[BRIDGE_RAILS[n]].sprite);
-    if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
+    if (BLUE_OF[n] && objects[BLUE_OF[n]]) { want(objects[BLUE_OF[n]].sprite); for (const s of objects[BLUE_OF[n]].choices || []) want(s); } // §9.191, §9.203
     if (BLUE_LOOK[n]) want(BLUE_LOOK[n]); // §9.193
     if (EDIT_LOOK[n]) { want(EDIT_LOOK[n]); want("spiga"); } // §9.195: il campo col grano
     if (n === START) { want(FLAG.red); want(FLAG.blue); } // §9.196: le bandierine
+    want("ed_natura_" + n); // §9.203: la foto di una macchia a particelle
   }
   return out;
 }
@@ -244,6 +283,14 @@ export class EditScene {
     world.particles = new Particles();
     for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
     world.register("campo", { create: campoCreate }); // §9.195: le file di spighe, come nel gioco
+    // [§9.203] l'albero finto con la F, alla sua depth (dietro gli alberi
+    // davanti); fuori dalla vista (drawView, editor.js) niente
+    world.register(FAKE, { draw(i, w, d) {
+      const v = w.drawView, b = v && spriteBounds(w.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
+      if (v && (!b || b[2] < v.x || b[0] > v.x + v.w || b[3] < v.y || b[1] > v.y + v.h)) return;
+      d.spriteExt(i.sprite_index, 0, i.x, i.y, i.image_xscale, i.image_yscale, i.image_angle, i.image_blend, i.image_alpha);
+      if (i.sprite_index !== "alb1_F") fakeMark(d, i.x, i.y, i.image_xscale);
+    } });
     for (const [name, o] of Object.entries(ctx.objects)) if (o.slices) world.register(name, sliced(o));
     for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
       world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
@@ -280,10 +327,11 @@ export class EditScene {
     if (!o) { this.skipped.add(e.object); return null; }
     const w = this.world, n0 = w.instances.length;
     const i = w._alloc(e.object, e.x, e.y, { sx: e.scale_x ?? 1, sy: e.scale_y ?? 1, rot: e.rotation ?? 0, noChoice: true });
-    if (o.choices) i.sprite_index = o.choices.includes(e.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
+    // ([§9.203] anche lo sprite dell'oggetto: il primo stile della casa, c1s)
+    if (o.choices) i.sprite_index = o.choices.includes(e.sprite) || (e.sprite && e.sprite === o.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
     const look = sideLook(this.objects, e); // §9.191: il blu col suo sprite
     if (look) i.sprite_index = look;
-    if (e.object === START) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
+    if (isStart(e)) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
     if (o.reveal) i.visible = true;
     w.fire(i, "create");
     i.kids = w.instances.slice(n0 + 1);
@@ -463,7 +511,7 @@ export class EditScene {
   trees() { return this.map.instances.filter((e) => TREES.has(e.object)); }
 
   // quante posizioni di partenza ci sono ([§9.191] di una parte, o in tutto)
-  starts(side = null) { return this.map.instances.filter((e) => e.object === START && (!side || e.side === side)).length; }
+  starts(side = null) { return this.map.instances.filter((e) => isStart(e) && (!side || e.side === side)).length; }
 
   // [§9.184] dal punto d'origine al centro della maschera (come tools/16:
   // il gemello ha l'ingombro nello stesso posto), per una voce; [0, 0]

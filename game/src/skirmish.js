@@ -17,6 +17,7 @@
 
 import { tr } from "./i18n.js";
 import { simRandom } from "./rng.js"; // §9.152
+import { HALL } from "./mapfile.js"; // §9.203
 
 // Le mappe: room -> nome e descrizione. [§9.129, decisione dell'autore] I
 // nomi in italiano (prima erano quelli storici in latino: Padus, Silva
@@ -78,7 +79,7 @@ const HIDDEN = { start: ["random", "A", "B"] };
 export const SK_DEFAULTS = { map: "sk_padus", difficulty: "normal", style: "balanced", victory: "conquest", resources: "normal",
                              pop: 75, truce: 0, fog: "normal", daynight: "cycle", rain: "normal", start: "random" };
 // i valori validi di un parametro (anche di quelli nascosti), o null (la
-// mappa): [§9.201] il codice corto della partita online li scrive come indici
+// mappa): [§9.202] il codice corto della partita online li scrive come indici
 export const skValues = (k) => (SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k]) || null;
 const KEY = "535.skirmish";
 
@@ -118,8 +119,10 @@ const STYLES = ["balanced", "aggressive", "defensive", "economic", "raider"];
 
 // Prima che le istanze nascano (app.js): il centro della CPU diventa
 // enemy_centro. `all`: le istanze della room ([obj, x, y, ...]).
+// ([§9.203] i municipi in piu' delle mappe dell'editor, nel gruppo HALL, non
+// sono partenze)
 export function skirmishPrepare(params, all) {
-  const cc = all.filter((e) => e[0] === "centro").sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
+  const cc = all.filter((e) => e[0] === "centro" && e[7] !== HALL).sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
   if (cc.length !== 2) return null;
   const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
   const [mine, cpu] = side === "A" ? cc : [cc[1], cc[0]];

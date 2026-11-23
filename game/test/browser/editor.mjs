@@ -541,7 +541,7 @@ await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none";
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.tabs[TAB.buildings]));
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.cells.find((q) => q.i === 18)));
+await click(...mid(P.cells.find((q) => q.i === 20))); // (§9.203: dopo il municipio, rosso e blu, in testa)
 const toScreen = ([x, y]) => page.evaluate(([x, y]) => { const v = window.__editor.view; return [(x - v.x) / v.scale, (y - v.y) / v.scale]; }, [x, y]);
 const wallsNow = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => /^(mura|porta)_/.test(e.object)).map((e) => ({ o: e.object, x: e.x, y: e.y, side: e.side })));
 await click(...(await toScreen([2800, 1500])));
@@ -672,6 +672,41 @@ await page.locator('.net-panel [data-net="unlock"]').click();
 await page.waitForFunction(() => window.__editor.scene.map.name === "Chiusa" && !window.__editor.ed.loading, null, { timeout: 60000 });
 check("password giusta: si apre, col lucchetto", await page.evaluate(() => !!window.__editor.scene.map.lock && !document.querySelector(".net-panel")));
 await page.evaluate(async (id) => { await (await import("/src/mapstore.js")).deleteMap(id); }, lockedId);
+
+// [§9.203] in Edifici il municipio (rosso, non una partenza) e la casa coi
+// suoi stili: S due volte, il terzo (c3s); con "Sposta" S passa al quarto;
+// la tavolozza "Natura" con le foto delle macchie
+const L6 = await page.evaluate(() => window.__editor.layout());
+const b6 = (key) => L6.buttons.find((q) => q.key === key);
+await click(b6("insert").x, b6("insert").y);
+await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none"; E.ed.sideFilter = "red"; E.view.zoomAt(1.6, 640, 360); E.view.centre(3000, 3000); });
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.buildings]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells.find((q) => q.i === 0)));
+await click(640, 300);
+await click(...mid(P.cells.find((q) => q.i === 2)));
+await page.mouse.move(820, 300); await page.keyboard.press("KeyS"); await page.keyboard.press("KeyS");
+await click(820, 300);
+const placed6 = () => page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.hall || e.object === "casa").map((e) => ({ o: e.object, hall: !!e.hall, side: e.side, sprite: e.sprite || null, look: S.instOf(e).sprite_index })); });
+const p6 = await placed6();
+res.edifici = p6;
+check("il municipio rosso: un centro con hall, non una partenza", p6.some((e) => e.o === "centro" && e.hall && e.side === "red" && e.look === "cc_spr")
+  && (await page.evaluate(() => window.__editor.scene.starts())) === 2);
+check("la casa: S, S, il terzo stile", p6.some((e) => e.o === "casa" && e.sprite === "c3s" && e.look === "c3s"));
+await click(b6("select").x, b6("select").y);
+await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => e.object === "casa")); });
+await page.mouse.move(640, 600); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+check("Sposta: S cambia lo stile della casa", (await placed6()).some((e) => e.o === "casa" && e.sprite === "c4s" && e.side === "red"));
+await click(b6("insert").x, b6("insert").y);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.meadows]));
+check("Natura: le foto delle macchie nell'atlas", await page.evaluate(async () => {
+  const m = await (await fetch("assets/atlas.json")).json();
+  return ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba"].every((n) => m.sprites["ed_natura_" + n]);
+}));
+if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + "/natura.png" });
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));

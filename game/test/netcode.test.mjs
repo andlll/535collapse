@@ -1,4 +1,4 @@
-// [§9.201] I codici corti della partita online (netcode.js), senza browser:
+// [§9.202] I codici corti della partita online (netcode.js), senza browser:
 // descrizioni WebRTC come le scrivono Chromium (questa macchina, e un
 // computer con STUN, due reti, TCP e IPv6), Firefox e Safari; la partita
 // (mappe del gioco e dell'editor, opzioni, seme); gli errori.
@@ -59,7 +59,7 @@ const SAFARI = crlf("v=0", "o=- 2946347620939587048 2 IN IP4 127.0.0.1", "s=-", 
 const SK = cleanSkirmish({ map: "sk_bardonis", victory: "score40", resources: "high", pop: 99, truce: 10, fog: "explored", daynight: "night", rain: "frequent", start: "B" });
 const offerOf = (sdp, extra = {}) => ({ v: "0.2616", sdp, setup: { map: SK.map, sk: SK, seed: 3141592653 }, ...extra });
 
-test("§9.201 il modello dell'SDP: cosa resta e cosa no", () => {
+test("§9.202 il modello dell'SDP: cosa resta e cosa no", () => {
   const M = sdpModel(CHROME_HOME);
   assert.equal(M.ufrag, "Hk3J");
   assert.equal(M.setup, "actpass");
@@ -92,7 +92,7 @@ test("§9.201 il modello dell'SDP: cosa resta e cosa no", () => {
   assert.equal(sdpModel(CHROME_LOCAL.replace(" 1 udp ", " 2 udp ")), null); // un componente RTCP
 });
 
-test("§9.201 i codici corti: andata e ritorno, misure", async (t) => {
+test("§9.202 i codici corti: andata e ritorno, misure", async (t) => {
   const lens = {};
   for (const [name, sdp] of Object.entries({ CHROME_LOCAL, CHROME_HOME, CHROME_MOBILE, FIREFOX, SAFARI })) {
     const code = await encodeCode("offer", offerOf(sdp));
@@ -125,7 +125,7 @@ test("§9.201 i codici corti: andata e ritorno, misure", async (t) => {
   }
 });
 
-test("§9.201 la partita nel codice corto: mappe, opzioni, seme, mappa dell'editor", async () => {
+test("§9.202 la partita nel codice corto: mappe, opzioni, seme, mappa dell'editor", async () => {
   // ogni mappa, ogni valore di ogni opzione
   for (const map of SK_ROOMS) {
     for (const k of Object.keys(SK_DEFAULTS).filter((x) => x !== "map")) {
@@ -171,7 +171,7 @@ test("§9.201 la partita nel codice corto: mappe, opzioni, seme, mappa dell'edit
   }
 });
 
-test("§9.201 i codici corti incollati: testo attorno, tagliati, rovinati, di un'altra versione", async () => {
+test("§9.202 i codici corti incollati: testo attorno, tagliati, rovinati, di un'altra versione", async () => {
   const code = await encodeCode("offer", offerOf(CHROME_HOME));
   const want = (await decodeCode(code)).data;
   // con a capo, spazi, virgolette, e del testo prima e dopo
@@ -209,7 +209,7 @@ test("§9.201 i codici corti incollati: testo attorno, tagliati, rovinati, di un
   assert.equal((await decodeCode(old)).data.v, "0.2615");
 });
 
-test("§9.201 i codici corti: il ruolo DTLS, i messaggi, gli indirizzi", async () => {
+test("§9.202 i codici corti: il ruolo DTLS, i messaggi, gli indirizzi", async () => {
   const one = (cands, more = {}) => sdpFromModel({ ufrag: "abcd", pwd: "0123456789abcdefghijkl", fp: FP, setup: "passive", bundle: false, trickle: false,
     eoc: false, mms: null, cands, ...more });
   const c = (addr, more = {}) => ({ type: "host", proto: "udp", tcptype: null, addr, port: 1, prio: 1, ...more });

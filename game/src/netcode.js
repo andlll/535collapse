@@ -13,7 +13,7 @@
 // spazi, a capo, virgolette della chat: si tiene solo cio' che sta
 // nell'alfabeto del codice.
 //
-// [§9.201, richiesta dell'autore: i codici piu' corti] Le forme:
+// [§9.202, richiesta dell'autore: i codici piu' corti] Le forme:
 // - "c", il codice corto (~130-250 caratteri invece di ~600-780): dell'SDP
 //   solo cio' che serve all'altro browser per collegarsi (ufrag e password
 //   ICE, impronta DTLS, ruolo DTLS, gli indirizzi con tipo, protocollo,
@@ -96,7 +96,7 @@ export async function decodeCode(text) {
 }
 
 // ------------------------------------------------------ l'SDP in breve
-// [§9.201] Il modello di una descrizione WebRTC con un solo canale dati (la
+// [§9.202] Il modello di una descrizione WebRTC con un solo canale dati (la
 // nostra): cio' che l'altro browser usa per collegarsi. Null se l'SDP ha
 // qualcosa che il modello non dice (allora il codice resta quello lungo).
 // Si lasciano (non servono all'altra parte): la riga o=, i "foundation" dei

@@ -12,6 +12,7 @@ import { Camera } from "./camera.js";
 import { Input } from "./input.js";
 import { Loop } from "./loop.js";
 import { RenderScale } from "./renderscale.js";
+import { glassBackdrop as makeGlassBackdrop, copyTarget } from "./glass.js"; // §9.203
 import { Diagnostics } from "./diag.js";
 import { World } from "./world.js";
 import { Pathing } from "./pathing.js";
@@ -490,10 +491,16 @@ async function main() {
   // [§9.193] online, le unita' e gli edifici blu di una mappa dell'editor
   // (gli oggetti della CPU, mapfile.js testRoom) diventano quelli del secondo
   // giocatore (i gemelli p2_*: la tabella del nemico, multiplayer.js m1)
+  // ([§9.203] i gemelli hanno gli sprite del giocatore, ridisegnati blu:
+  // lo stile della casa blu, c3b, torna c3s)
   if (pvp && custom && world.mp) {
+    const red = Object.fromEntries(Object.entries(world.p2Sprites || {}).map(([a, b]) => [b, a]));
     for (const e of all) {
       const t = e[0].startsWith("enemy_") ? world.mp.m1[e[0]] : null;
-      if (t && world.objects[t]) e[0] = t;
+      if (t && world.objects[t]) {
+        e[0] = t;
+        if (e[8] && red[e[8]]) e[8] = red[e[8]];
+      }
     }
   }
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
@@ -889,29 +896,9 @@ async function main() {
     draw.setGlass(null);
   };
 
-  // [§7.14] Sfondo dei pannelli di vetro: una copia del mondo appena
-  // disegnato (dalla superficie corrente: il canvas, o quella della pausa) a
-  // meta' risoluzione, poi a un quarto, sfocata con una gaussiana. Superfici
-  // ricreate solo se cambia la misura o il contesto.
-  const GLASS_SIGMA = 3; // texel a un quarto di risoluzione
-  let glassT = null;
-  const glassBackdrop = () => {
-    const cur = r.targets && r.targets.length ? r.targets[r.targets.length - 1].t : null;
-    const W = cur ? cur.width : canvas.width, H = cur ? cur.height : canvas.height;
-    if (!(glassT && glassT.gen === r.generation && glassT.W === W && glassT.H === H)) {
-      if (glassT && glassT.gen === r.generation) for (const t of glassT.t) r.deleteTarget(t);
-      const hw = Math.max(1, Math.ceil(W / 2)), hh = Math.max(1, Math.ceil(H / 2));
-      const qw = Math.max(1, Math.ceil(W / 4)), qh = Math.max(1, Math.ceil(H / 4));
-      glassT = { gen: r.generation, W, H, t: [r.createTarget(hw, hh), r.createTarget(qw, qh), r.createTarget(qw, qh), r.createTarget(qw, qh)] };
-    }
-    const [half, q, tmp, out] = glassT.t;
-    const proj = r.proj;
-    r.grab(half);
-    copy(half, q);
-    r.blur(q, tmp, out, GLASS_SIGMA);
-    r.setProjection(...proj);
-    return out;
-  };
+  // [§7.14] Sfondo dei pannelli di vetro: il mondo appena disegnato,
+  // ridotto e sfocato (glass.js, §9.203: lo usa anche l'editor)
+  const glassBackdrop = makeGlassBackdrop(r, canvas);
 
   // [§9.56] Sfocatura della vittoria: la superficie corrente (la scena con
   // l'interfaccia) copiata a meta' risoluzione e sfocata come lo sfondo
@@ -960,12 +947,7 @@ async function main() {
     if (blur && blur.gen === r.generation) for (const t of blur.t) r.deleteTarget(t);
     blur = null;
   };
-  const copy = (src, dst) => {
-    r.beginTarget(dst, 0, 0, 1, 1, [0, 0, 0]);
-    r.setBlend("normal");
-    r.quad(src, 0, 0, 1, 0, 1, 1, 0, 1, 0, src.height, src.width, 0, 0xffffffff);
-    r.endTarget();
-  };
+  const copy = (src, dst) => copyTarget(r, src, dst);
 
   // il cursore, ultimo, in pixel CSS (non nello sfondo sfumato della pausa)
   const drawCursor = () => {

@@ -999,6 +999,41 @@
       "origin": "centro",
       "gruppo": "campagna",
       "nota": "la foto di Mons Bardonis nella schermata della schermaglia (§9.127): generata da tools/17_cartoline.mjs"
+    },
+    "ed_natura_burst_erba1": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia burst_erba1 nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_burst_grano1": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia burst_grano1 nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_chiazzaparticellare": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia chiazzaparticellare nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_fiori_prato": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia fiori_prato nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_fiori_papaveri": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia fiori_papaveri nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_fiori_papaveri_erba": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia fiori_papaveri_erba nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
+    },
+    "ed_natura_fiori_gialli_erba": {
+      "origin": "centro",
+      "gruppo": "ambiente",
+      "nota": "la foto della macchia fiori_gialli_erba nella tavolozza dell'editor di mappe, scheda Natura (§9.203): generata da tools/19_natura.mjs"
     }
   },
   "objects": {
