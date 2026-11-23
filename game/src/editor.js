@@ -221,8 +221,9 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
 // parte che si vede hanno hidden e non si toccano.
 const COL_MIN = 0.8, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti: a 900 px stanno ancora tutti)
-// (§9.203: la freccia della schermaglia, alta come quelle della mappa: menu.js arrow con r 22)
-const COL_ARROW_SCALE = (22 * 0.45 * 2.6) / 24;
+// (§9.203: la freccia della schermaglia, alta come quelle della mappa, menu.js
+// arrow con r 22, poi il 40% piu' piccola: richiesta dell'autore)
+const COL_ARROW_SCALE = ((22 * 0.45 * 2.6) / 24) * 0.6;
 export function editorLayout(W, H, scroll = 0) {
   const n = TOOLS.length + EDITS.length + ACTIONS.length;
   const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
