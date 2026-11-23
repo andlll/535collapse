@@ -71,10 +71,11 @@ impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica" e "a
 scelta del giocatore") e la simmetria in tutti i comandi, come impostazione
 degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
 densita', texture) e la copertina (§9.185-§9.186), la polilinea per fiumi
-e strade e "Salvare le modifiche?" all'uscita (§9.187). Da fare: "Prova
-mappa" (con la CPU statica nel gioco), le mappe dell'editor nella
-schermaglia (con la copertina e la CPU a scelta o fissa) e nella partita
-online; i ponti (dopo, decisione dell'autore). In sospeso la password.
+e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
+(Salva con nome, Ctrl+S sul file) e "Prova mappa" con la CPU statica
+(§9.188). Da fare: le mappe dell'editor nella schermaglia (con la
+copertina e la CPU a scelta o fissa) e nella partita online; i ponti
+(dopo, decisione dell'autore). In sospeso la password.
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13217,4 +13218,86 @@ punti, l'avviso coi tre pulsanti).
 scenario dal browser invece che da `assets/rooms/`, la CPU statica); le
 mappe dell'editor nella schermata della schermaglia (con la copertina, la
 CPU a scelta o fissa).
+
+### 9.188 L'editor di mappe: i file collegati e "Prova mappa"
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui, considera pero' che i salvataggi sarebbe meglio gestirli su
+file come ci eravamo detti nelle scorse sessioni oltre che all'interno dei
+file del browser". Nelle sessioni passate: le mappe si scambiano su file
+(R6; `.dvmap`, §9.134), come le partite. Fin qui il file era un ripiego:
+Ctrl+S e il "Salva" dell'uscita scrivevano solo nel browser, e "Salva su
+file" scaricava ogni volta una copia nuova.
+
+**I file collegati** (mapstore.js). Dove il browser lo permette (File System
+Access: Chrome, Edge) "Su file" apre la finestra **"Salva con nome"** del
+sistema (nome e cartella a scelta) e "Apri un file..." quella per aprire;
+la mappa resta **collegata al suo file** (il FileSystemFileHandle), che i
+salvataggi dopo riscrivono, chiedendo il permesso se serve. Il nome del
+file si vede in alto, accanto alla mappa. Dove non si puo' (Firefox,
+Safari, la pagina dentro l'iframe di un portale, dove il browser rifiuta la
+finestra) si scarica come prima e si apre col solito `<input type=file>`:
+il file non resta collegato.
+- *Il pannello "Salva mappa"*: il nome, **Dove**: "Nel browser" e "Su file"
+  (tutti e due accesi di partenza, si spengono con un clic; col file
+  collegato "Su file: <nome>"), Salva e Annulla. Il file prima: se "Salva
+  con nome" viene annullata non si salva niente e il pannello resta.
+- *Ctrl+S e il "Salva" dell'uscita*: riscrivono dove la mappa e' collegata,
+  il suo posto nel browser e il suo file, senza pannello; il pannello solo
+  se non e' ancora collegata a niente.
+- *Trovato con la prova*: aprendo il pannello con Ctrl+S, il rilascio di
+  Ctrl e S avveniva dentro il pannello, che ferma i tasti perche' non
+  arrivino all'editor (netui.js): l'editor li credeva tenuti e il Ctrl+S
+  dopo non scattava piu'. Chiudendo un pannello ora i tasti si lasciano
+  tutti (input.js `releaseAll`, come quando la finestra perde il fuoco).
+
+**"Prova mappa"** (il triangolo). Con due posizioni di partenza (se no un
+avviso: "Inserisci, Partenze") la mappa si gioca come una schermaglia:
+- l'editor mette nel browser (IndexedDB, mapstore.js `putService`) la sua
+  sessione (la mappa com'e', il posto nel browser, il file collegato dove
+  il browser lo conserva, se era cambiata, la vista, lo strumento) e la
+  room di prova (mapfile.js `testRoom`: come le room di tools/07, col
+  manager se manca, senza la copertina) con le opzioni della schermaglia:
+  quelle che il giocatore ha scelto l'ultima volta, con difficolta' e stile
+  della CPU della mappa se sono fissati;
+- il gioco apre la room `custom` (app.js): la room dal browser invece che da
+  `assets/rooms/`, una schermaglia per skirmish.js (`isSkirmish`), ma non
+  online ne' fra i salvataggi; niente salvataggio automatico; nel menu di
+  pausa niente "Salva e carica" e **"Torna all'editor"** al posto di "Torna
+  al menu" (pause.js `testMode`); anche la vittoria e la sconfitta tornano
+  all'editor; "Ricomincia livello" rigioca la prova;
+- tornando (`?room=editor&resume=1`) l'editor riapre la sessione: la mappa
+  com'era (cambiata se lo era, col suo posto e il suo file), la vista e lo
+  strumento di prima. Annulla e ripeti ripartono da zero.
+- **La CPU statica**: con lo stile "statica" la regia della CPU non nasce
+  (skirmish.js, e levels.js che la faceva nascere dove c'e' un centro
+  nemico): la CPU ha il suo centro e non fa nulla. "Static" ha un nome fra
+  gli stili (gli obiettivi lo scrivono) ma non e' fra le scelte della
+  schermata della schermaglia.
+
+Il riquadro in basso passa da 226 a 246 px: in "Sposta" la riga della
+simmetria toccava quella dei comandi della vista.
+
+Testi nuovi nelle sei lingue (dove, nel browser, su file, "Torna
+all'editor", l'avviso delle partenze).
+
+Prove: `editor.test.mjs` (in piu': la room di prova col manager una volta
+sola e senza copertina, `custom` e' una schermaglia, la statica ha un nome
+e non e' fra le scelte; la riga della simmetria sopra quella dei comandi),
+`editor.mjs` (in piu', con le finestre di File System Access finte, perche'
+quelle vere sono del sistema: il pannello con tutti e due i posti accesi;
+"Salva con nome" rifiutata come nell'iframe di un portale: il download, non
+collegato; "Salva con nome" riuscita: collegato, Ctrl+S riscrive il file
+(una miniera in piu' nel file) senza pannello; annullata: il pannello resta
+e non si scrive; aperto dalla finestra "Apri": collegato; aperto da `<input
+type=file>`: non collegato; "Prova mappa" senza due partenze no; Padania
+con la CPU statica: la partita `custom` col centro nemico, senza regia, 3
+lavoratori, la pausa in modo prova; "Torna all'editor": la mappa con la
+miniera in piu', cambiata, la CPU statica), test unitari (137), `soak.mjs`
+(menu, sk_padus, lvl04, lvl05), `saves.mjs` (sk_padus, lvl02),
+`economy.mjs`, `truce.mjs`; screenshot (il pannello "Salva mappa", la
+partita di prova e la sua pausa).
+
+**Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
+copertina, la CPU a scelta o fissa) e poi nella partita online.
 

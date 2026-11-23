@@ -51,6 +51,10 @@
 // [§9.187] Sesto passo: la polilinea (fiumi e strade; i ponti no, per ora);
 // niente titolo in alto; con la mappa cambiata, prima di uscire (o di
 // aprirne un'altra) "Salvare le modifiche?".
+// [§9.188] Settimo passo: i file come salvataggio vero (la mappa resta
+// collegata al suo file, Ctrl+S lo riscrive oltre al browser; "Salva con
+// nome" dove si puo', se no il download) e "Prova mappa" (la mappa giocata
+// come schermaglia, "custom" in app.js, poi di nuovo l'editor com'era).
 //
 // Un ciclo suo, senza partita (app.js passa qui prima di crearla):
 // renderer, atlas, input e ciclo sono quelli del gioco.
@@ -62,16 +66,17 @@ import { Loop } from "./loop.js";
 import { Draw } from "./draw.js";
 import { lodFor } from "./ground.js";
 import { drawSprite } from "./sprites.js";
-import { SK_MAPS, SK_OPTIONS } from "./skirmish.js";
+import { SK_MAPS, SK_OPTIONS, loadSkirmish } from "./skirmish.js";
 import { NetPanel } from "./netui.js";
 import { setDomText } from "./domtext.js";
 import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
-import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX } from "./mapfile.js";
+import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
+         testRoom, TEST_ROOM } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES } from "./editmap.js";
-import { saveMap, listMaps, loadMap, deleteMap, saveMapFile, openMapFile, makeCover } from "./mapstore.js";
+import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
@@ -176,12 +181,16 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "River", "Road", "Track", "End width", "Same", "Save the changes to this map?", "Save", "Don't save",
                              "Click: new line. Click on a line: select it.", "Click: add a point. Right click or Enter: finish. Esc: cancel.",
                              "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point.",
+                             // [§9.188] i salvataggi su file, "Prova mappa"
+                             "Where", "In the browser", "To a file", "Choose at least one place.",
+                             "A skirmish map needs two starting positions (Insert, Starting positions).",
                              ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // Misure della colonna (a scala 1) e del riquadro, in pixel CSS
 const COL = { left: 20, top: 20, btn: 56, gap: 10, pad: 12, sep: 44 };
-// (§9.184: 196, prima 170: i comandi di "Sposta" su tre righe; §9.186: 226, la riga della simmetria)
-const PANEL = { h: 226, maxW: 980, margin: 30, bottom: 20 };
+// (§9.184: 196, prima 170: i comandi di "Sposta" su tre righe; §9.186: 226, la riga della simmetria;
+// §9.188: 246, in "Sposta" la riga della simmetria toccava quella dei comandi della vista)
+const PANEL = { h: 246, maxW: 980, margin: 30, bottom: 20 };
 export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (come menu.js FULL_BTN)
 
 // Dove sta tutto, per una finestra W x H: la colonna (col: x1, y1, x2, y2),
@@ -420,7 +429,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // saved: la versione della scena salvata; meta: impostazioni cambiate dopo;
   // dom: un pannello HTML aperto (impostazioni, salva: l'editor aspetta)
   const ed = { tool: "select", hover: null, drag: null, view, label: "", open: null, confirm: null, loading: false,
-               mapId: null, saved: 0, meta: false, dom: null,
+               mapId: null, file: null, saved: 0, meta: false, dom: null, // §9.188: file, il file collegato
                sel: new Set(), over: null, move: null, box: null, clip: null,
                cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null,
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
@@ -471,10 +480,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
 
   // un'altra mappa: la scena nuova, la vista sulla sua vista iniziale; id:
   // la mappa nel browser, se viene da li'
-  const setScene = (s, label, id = null) => {
+  // [§9.188] file: il file collegato (FileSystemFileHandle), se viene da li'
+  const setScene = (s, label, id = null, file = null) => {
     scene.ground.free();
     scene = s;
-    Object.assign(ed, { label, sel: new Set(), over: null, move: null, box: null, mapId: id, saved: s.version, meta: false });
+    Object.assign(ed, { label, sel: new Set(), over: null, move: null, box: null, mapId: id, file, saved: s.version, meta: false,
+                        drawing: null, lsel: null });
     view.setMap(s.map.width, s.map.height);
     const v = s.map.view;
     view.centre(v.x + v.w / 2, v.y + v.h / 2);
@@ -490,17 +501,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     view.setMap(s.map.width, s.map.height);
   });
   // [§9.184] una mappa che arriva da fuori (il browser, un file): convalidata
-  const openData = async (data, id) => {
+  const openData = async (data, id, file = null) => {
     const v = validateMap(data, allowedObjects(), objects);
     if (v.errors) { console.warn("[editor] mappa non valida:", v.errors); throw new Error("mappa non valida"); }
-    setScene(await EditScene.load(ctx, v.map, progress), v.map.name, id);
+    setScene(await EditScene.load(ctx, v.map, progress), v.map.name, id, file);
   };
   const openSaved = (id) => busy(async () => openData(await loadMap(id), id));
   const openFile = async () => {
     const res = await openMapFile();
     if (!res) return;
     if (res.invalid) { toast(tr("This map could not be opened"), "warning"); return; }
-    busy(() => openData(res.data, null));
+    busy(() => openData(res.data, null, res.handle || null)); // §9.188: collegata al file, dove si puo'
   };
   // [§9.182] un modello: la mappa della schermaglia diventa una mappa nuova
   const openTemplate = (room) => busy(async () => {
@@ -702,7 +713,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                   webkitUserSelect: "text", userSelect: "text" };
   const panel = (titleText) => {
     const p = new NetPanel({ onEscape: () => close() });
-    const close = () => { p.close(); ed.dom = null; };
+    // ([§9.188] chiudendo, i tasti tenuti si lasciano: il pannello ha fermato
+    // il loro rilascio, e il Ctrl+S dopo non scattava piu')
+    const close = () => { p.close(); ed.dom = null; input.releaseAll(); };
     ed.dom = p;
     ed.hover = null;
     // opaco (sotto ci sono i testi dell'editor), il titolo nel font dei pulsanti
@@ -800,7 +813,28 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     p.button(row, tr("Cancel"), close);
     name.focus();
   };
-  // salva: il nome, poi nel browser o su file
+  // [§9.188] Salvare: dove la mappa e' collegata (il suo posto nel browser,
+  // il suo file) o, la prima volta, dove si sceglie. where: { browser, file }.
+  // Il file: riscritto se e' collegato, se no "Salva con nome" (che lo
+  // collega) o lo scarica dove non si puo'. Il file prima: se lo si annulla
+  // non si salva niente ("annullato").
+  const saveTo = async (where) => {
+    const m = scene.map;
+    if (where.file) {
+      if (ed.file) await writeMapFile(ed.file, m);
+      else {
+        const h = await saveMapAs(m);
+        if (h === null) return "annullato";
+        if (h !== "download") ed.file = h;
+      }
+    }
+    if (where.browser) ed.mapId = await saveMap(m, ed.mapId);
+    markSaved();
+    toast(tr("Map saved"));
+    return "salvato";
+  };
+  // il pannello: il nome, dove (nel browser, su file: tutti e due di
+  // partenza), Salva e Annulla
   const openSave = () => {
     const m = scene.map;
     ed.afterSave = null;
@@ -808,32 +842,70 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // [§9.187] cosa fare dopo aver salvato (uscire, aprire un'altra mappa)
     const after = () => { const a = ed.afterSave; ed.afterSave = null; if (a) a(); };
     const name = textField(p, tr("Name"), m.name, NAME_MAX);
-    const named = () => {
-      const n = name.value.trim().slice(0, NAME_MAX);
-      if (!n) { p.status(tr("Give the map a name."), "error"); name.focus(); return false; }
-      m.name = n;
-      return true;
-    };
+    const where = { browser: true, file: true };
+    const places = line(p, tr("Where")), btns = [];
+    const mark = () => { for (const [b, k, label] of btns) { b.classList.toggle("primary", where[k]); p.relabel(b, label, where[k]); } };
+    for (const [k, label] of [["browser", tr("In the browser")], ["file", tr("To a file") + (ed.file && ed.file.name ? ": " + ed.file.name : "")]]) {
+      const b = p.button(places, label, () => { where[k] = !where[k]; mark(); }, { name: "where-" + k });
+      Object.assign(b.style, { minWidth: "0", height: "32px", padding: "0 12px" });
+      btns.push([b, k, label]);
+    }
+    mark();
     const row = p.row();
-    p.button(row, tr("Save in the browser"), async () => {
-      if (!named()) return;
-      try { ed.mapId = await saveMap(m, ed.mapId); markSaved(); close(); toast(tr("Map saved")); after(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
-    }, { primary: true, name: "browser" });
-    p.button(row, tr("Save to file"), async () => {
-      if (!named()) return;
-      try { await saveMapFile(m); markSaved(); close(); after(); } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
-    }, { name: "file" });
+    p.button(row, tr("Save"), async () => {
+      const n = name.value.trim().slice(0, NAME_MAX);
+      if (!n) { p.status(tr("Give the map a name."), "error"); name.focus(); return; }
+      if (!where.browser && !where.file) { p.status(tr("Choose at least one place."), "error"); return; }
+      m.name = n;
+      try {
+        if ((await saveTo(where)) === "annullato") return;
+        close();
+        after();
+      } catch (e) { console.error(e); p.status(tr("Saving failed"), "error"); }
+    }, { primary: true, name: "save" });
     p.button(row, tr("Cancel"), () => { ed.afterSave = null; close(); });
     name.focus();
     name.addEventListener("keydown", (e) => { if (e.key === "Enter") row.firstChild.click(); });
   };
-  // Ctrl+S: di nuovo nel browser, se la mappa ha gia' nome e posto; se no il pannello
-  // (true se ha salvato; con il pannello aperto, false: decide il pannello)
+  // Ctrl+S: di nuovo dove la mappa e' collegata (browser, file); se non lo e'
+  // ancora, il pannello. (true se ha salvato; con il pannello aperto, false:
+  // decide il pannello)
   const quickSave = async () => {
     const m = scene.map;
-    if (!ed.mapId || !m.name) { openSave(); return false; }
-    try { await saveMap(m, ed.mapId); markSaved(); toast(tr("Map saved")); return true; } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); return false; }
+    if ((!ed.mapId && !ed.file) || !m.name) { openSave(); return false; }
+    try { return (await saveTo({ browser: !!ed.mapId, file: !!ed.file })) === "salvato"; } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); return false; }
   };
+  // [§9.188] "Prova mappa": la mappa giocata come schermaglia ("custom", app.js).
+  // Prima la sessione dell'editor (la mappa com'e', il suo posto, il file, se
+  // era cambiata, la vista) per tornarci, poi la room e le opzioni: quelle
+  // della schermaglia del giocatore, con la CPU della mappa se e' fissata
+  const testMap = async () => {
+    const m = scene.map;
+    if (scene.starts() !== STARTS) { toast(tr("A skirmish map needs two starting positions (Insert, Starting positions)."), "warning"); return; }
+    const sk0 = loadSkirmish();
+    const sk = { ...sk0, map: TEST_ROOM, difficulty: m.cpu.difficulty === "choice" ? sk0.difficulty : m.cpu.difficulty,
+                 style: m.cpu.style === "choice" ? sk0.style : m.cpu.style };
+    try {
+      await putService("__session__", { map: JSON.parse(JSON.stringify(m)), mapId: ed.mapId, label: ed.label, file: ed.file || null,
+                                         dirty: dirty(), tool: ed.tool, view: { x: view.x + view.w / 2, y: view.y + view.h / 2, scale: view.scale } });
+      await putService("__test__", { room: testRoom(m), sk });
+    } catch (e) { console.error(e); toast(tr("Saving failed"), "warning"); return; }
+    location.search = "?room=" + TEST_ROOM;
+  };
+  // [§9.188] tornando dalla prova (?resume=1): la mappa com'era, coi suoi
+  // collegamenti, cambiata se lo era; la vista e lo strumento di prima
+  const resume = async () => {
+    const rec = await takeService("__session__").catch(() => null);
+    takeService("__test__").catch(() => null);
+    if (!rec) return;
+    const v = validateMap(rec.map, allowedObjects(), objects);
+    if (v.errors) { console.warn("[editor] sessione non valida:", v.errors); return; }
+    setScene(await EditScene.load(ctx, v.map, progress), rec.label || v.map.name, rec.mapId || null, rec.file || null);
+    ed.meta = !!rec.dirty;
+    if (rec.view) { view.zoomAt(rec.view.scale, view.cssW / 2, view.cssH / 2); view.centre(rec.view.x, rec.view.y); }
+    if (rec.tool) setTool(rec.tool);
+  };
+
   // (Ctrl+S nel browser apre "Salva pagina": qui no)
   window.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.code === "KeyS") e.preventDefault(); }, true);
   // "Apri mappa": il pannello, e le mappe del browser lette in sottofondo
@@ -968,7 +1040,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       else if (b.key === "new") guard(newBlank); // §9.182
       else if (b.key === "save") openSave(); // §9.184
       else if (b.key === "settings") openSettings(); // §9.184
-      else toast(tr(LABEL[b.key]) + "  -  " + tr("Coming soon"));
+      else if (b.key === "test") testMap(); // §9.188
       return;
     }
     // [§9.186] la riga della simmetria (Sposta, Inserisci, Pennello)
@@ -1289,7 +1361,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // ([§9.187, richiesta dell'autore] niente titolo "Editor di mappe": grande
     // e ovvio; resta la riga della mappa. Il font non ha "·" ne' "×")
     draw.setFont("overdue");
-    glowText(draw, W / 2, 36, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height);
+    glowText(draw, W / 2, 36, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height
+      + (ed.file && ed.file.name ? "  -  " + ed.file.name : "")); // §9.188: il file collegato
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
@@ -1584,6 +1657,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     r.flush();
   };
 
+  if (params.get("resume")) await busy(resume); // §9.188
   const loop = new Loop({ speed: 60, step, render });
   loop.fpsCap = settings.fpsCap;
   canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); loop.stop(); });
@@ -1594,7 +1668,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
                       confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
                       palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
-                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel,
+                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap,
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel),
                       lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };

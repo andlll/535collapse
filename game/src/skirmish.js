@@ -45,7 +45,9 @@ export const SK_MAPS = [
     desc: "Monte Bardone, the pass of the Via Francigena. A mountain ridge splits the two valleys: only three passes cross it." },
 ];
 export const SK_ROOMS = SK_MAPS.filter((m) => m.room).map((m) => m.room);
-export const isSkirmish = (room) => SK_ROOMS.includes(room);
+// [§9.188] "custom": la mappa dell'editor giocata con "Prova mappa" (app.js),
+// una schermaglia anche lei (ma non online ne' nei salvataggi: SK_ROOMS no)
+export const isSkirmish = (room) => SK_ROOMS.includes(room) || room === "custom";
 
 // I parametri: chiave -> valori (il primo e' quello di partenza, salvo
 // DEFAULTS) ed etichette
@@ -54,7 +56,7 @@ export const SK_OPTIONS = {
                 names: { easy: "Easy", normal: "Normal", hard: "Hard", rigged: "Rigged" } },
   style: { label: "CPU style", values: ["balanced", "aggressive", "defensive", "economic", "raider", "random"],
            names: { balanced: "Balanced", aggressive: "Aggressive", defensive: "Defensive", economic: "Economic",
-                    raider: "Raider", random: "Random" } },
+                    raider: "Raider", random: "Random", static: "Static" } }, // §9.188: static, solo dall'editor
   victory: { label: "Victory", values: ["conquest", "townhall", "score20", "score40", "score60"],
              names: { conquest: "Conquest", townhall: "Town hall", score20: "Score, 20 min", score40: "Score, 40 min",
                       score60: "Score, 60 min" } },
@@ -141,7 +143,7 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
     Object.assign(g.p2, START_RES[params.resources]);
     const [qx, qy] = starts.cpu;
     for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
-  } else world.create("enemy_eco", 0, 0);
+  } else if (params.style !== "static") world.create("enemy_eco", 0, 0); // [§9.188] la CPU statica non fa nulla (niente regia)
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
   if (params.truce > 0 && !params.pvp) g.en.hold = 1;
   world.create("sk_manager", 0, 0);

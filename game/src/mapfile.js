@@ -152,3 +152,16 @@ export function scenarioToRoom(sc) {
   for (const k of MAP_FEATURES) if (sc[k] && sc[k].length) room[k] = sc[k];
   return room;
 }
+
+// [§9.188] La room per "Prova mappa": la mappa dell'editor come le room di
+// tools/07, col manager se manca (il gioco ne ha bisogno, §9.3), senza la
+// copertina; il nome e' quello della room di prova del gioco
+export const TEST_ROOM = "custom";
+export function testRoom(map) {
+  const instances = map.instances.some((e) => e.object === "manager") ? map.instances
+    : [{ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 }, ...map.instances];
+  const room = scenarioToRoom({ ...map, instances });
+  room.name = TEST_ROOM;
+  return room;
+}
+

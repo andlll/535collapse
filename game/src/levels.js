@@ -293,7 +293,8 @@ export function levelStep(w) {
   if (w.room === "lvl01") lvl01Gates(w);
   // [§9.44] l'economia del nemico, dove c'e' un centro nemico
   // ([§9.178] non nel livello 7: tutto fermo, i lavoratori li manda la regia)
-  if (!w.exists("enemy_eco") && w.exists("enemy_centro") && w.room !== "lvl07") w.create("enemy_eco", 0, 0);
+  // ([§9.188] ne' con la CPU statica della schermaglia, "Prova mappa" dell'editor)
+  if (!w.exists("enemy_eco") && w.exists("enemy_centro") && w.room !== "lvl07" && !(g.sk && g.sk.style === "static")) w.create("enemy_eco", 0, 0);
   noMovesCheck(w); // §9.39
 }
 

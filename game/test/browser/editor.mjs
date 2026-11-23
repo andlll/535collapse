@@ -8,7 +8,8 @@
 // annulla e ripeti; [§9.183] gli stili col tasto S; [§9.184] impostazioni,
 // simmetria, salva e apri (browser e file), elimina; [§9.185] il pennello
 // (bosco, gomma, selciato) e la copertina; [§9.187] la polilinea, "salvare
-// le modifiche?"; Sposta la sceglie, la trascina, Canc la toglie; uscendo
+// le modifiche?"; [§9.188] i file collegati ("Salva con nome" finta), "Prova
+// mappa" e ritorno; Sposta la sceglie, la trascina, Canc la toglie; uscendo
 // con la mappa cambiata si chiede conferma; Esc torna al menu.
 // Esce con codice 1 se qualcosa non torna.
 //
@@ -20,12 +21,39 @@ const base = process.env.BASE || "http://localhost:8123";
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const W = 1600, H = 900;
 const page = await browser.newPage({ viewport: { width: W, height: H } });
+// [§9.188] le finestre "Salva con nome" e "Apri" di File System Access, finte
+// (quelle vere sono del sistema): un file in memoria per nome; mode "ok",
+// "deny" (come nell'iframe di un portale: si scarica), "abort" (annullata)
+await page.addInitScript(() => {
+  window.__fs = { mode: "ok", files: {}, writes: 0, openName: null };
+  const handle = (name) => ({
+    kind: "file", name, queryPermission: async () => "granted", requestPermission: async () => "granted",
+    createWritable: async () => { const parts = []; return { write: async (d) => { parts.push(d); }, close: async () => { window.__fs.files[name] = new Blob(parts); window.__fs.writes++; } }; },
+    getFile: async () => new File([window.__fs.files[name] || new Blob([])], name),
+  });
+  const fail = () => {
+    if (window.__fs.mode === "deny") throw new DOMException("Cross origin sub frames aren't allowed to show a file picker.", "SecurityError");
+    if (window.__fs.mode === "abort") throw new DOMException("The user aborted a request.", "AbortError");
+  };
+  window.showSaveFilePicker = async ({ suggestedName }) => { fail(); return handle(suggestedName); };
+  window.showOpenFilePicker = async () => { fail(); return [handle(window.__fs.openName)]; };
+});
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
+const logs = []; page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") logs.push(m.text()); });
 const click = async (x, y, button = "left") => {
   await page.mouse.move(x, y); await page.waitForTimeout(150);
   await page.mouse.down({ button }); await page.waitForTimeout(80); await page.mouse.up({ button }); await page.waitForTimeout(150);
 };
 const res = {};
+// [§9.188] il pannello "Salva mappa": dove (nel browser, su file), poi Salva
+const saveIn = async ({ browser: inBrowser, file }) => {
+  await page.waitForSelector('.net-panel [data-net="save"]');
+  for (const [k, want] of [["browser", inBrowser], ["file", file]]) {
+    const b = page.locator(`.net-panel [data-net="where-${k}"]`);
+    if ((await b.evaluate((el) => el.classList.contains("primary"))) !== want) await b.click();
+  }
+  await page.locator('.net-panel [data-net="save"]').click();
+};
 let ok = true;
 const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 
@@ -63,6 +91,7 @@ const v0 = await page.evaluate(() => [window.__editor.view.x, window.__editor.vi
 await page.mouse.move(900, 500); await page.waitForTimeout(100);
 await page.mouse.down({ button: "middle" });
 for (let k = 1; k <= 5; k++) { await page.mouse.move(900 - 40 * k, 500 - 20 * k); await page.waitForTimeout(60); }
+await page.waitForTimeout(120); // (l'ultimo spostamento letto da un passo prima di lasciare il tasto)
 await page.mouse.up({ button: "middle" });
 await page.waitForTimeout(150);
 const v1 = await page.evaluate(() => [window.__editor.view.x, window.__editor.view.y]);
@@ -179,9 +208,9 @@ await click(...at(C.buttons[2]));
 check("Annulla: si resta", await page.evaluate(() => !window.__editor.ed.confirm && window.__editor.ready));
 await click(L2.back[0], L2.back[1]);
 await click(...at(C.buttons[0]));
-await page.waitForSelector('.net-panel [data-net="browser"]');
+await page.waitForSelector('.net-panel [data-net="save"]');
 await page.fill(".net-panel input", "Uscita");
-await page.locator('.net-panel [data-net="browser"]').click();
+await saveIn({ browser: true, file: false });
 await page.waitForURL(/room=menu/, { timeout: 20000 });
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 check("Salva: salvata, poi il menu", true);
@@ -239,22 +268,60 @@ await page.keyboard.press("Delete"); await page.waitForTimeout(150);
 check("Canc toglie anche la gemella", (await page.evaluate(() => window.__editor.scene.map.instances.length)) === 0);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
 check("annulla le rimette tutte e due", (await page.evaluate(() => window.__editor.scene.map.instances.length)) === 2);
-// Ctrl+S: la prima volta il pannello, "Salva nel browser"
+// Ctrl+S: la prima volta il pannello, solo nel browser
 await page.mouse.move(700, 300);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyS"); await page.keyboard.up("Control");
-await page.waitForSelector('.net-panel [data-net="browser"]');
-await page.locator('.net-panel [data-net="browser"]').click();
+check("il pannello: nel browser e su file, di partenza", await page.waitForSelector('.net-panel [data-net="save"]').then(() => page.evaluate(() =>
+  ["browser", "file"].every((k) => document.querySelector(`.net-panel [data-net="where-${k}"]`).classList.contains("primary")))));
+await saveIn({ browser: true, file: false });
 await page.waitForFunction(() => window.__editor.ed.mapId && !window.__editor.ed.dom && !window.__editor.dirty(), null, { timeout: 10000 });
 check("salvata nel browser", true);
-// su file: il download
+// [§9.188] su file dove "Salva con nome" e' rifiutata (l'iframe di un portale): il download
+await page.evaluate(() => { window.__fs.mode = "deny"; });
 await click(btn3("save").x, btn3("save").y);
-await page.waitForSelector('.net-panel [data-net="file"]');
-const [dl] = await Promise.all([page.waitForEvent("download"), page.locator('.net-panel [data-net="file"]').click()]);
+await page.waitForSelector('.net-panel [data-net="save"]');
+const [dl] = await Promise.all([page.waitForEvent("download"), saveIn({ browser: false, file: true })]);
 const { tmpdir } = await import("node:os"), { join } = await import("node:path"), fs = await import("node:fs"), zlib = await import("node:zlib");
 const file = join(tmpdir(), "editor-prova-" + process.pid + ".dvmap");
 await dl.saveAs(file);
 const json = JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString("utf8"));
 check("file .dvmap", dl.suggestedFilename() === "dustveil-Prova-editor.dvmap" && json.format === "535-scenario" && json.instances.length === 2 && json.symmetry === undefined && json.cpu.style === "static");
+check("scaricato: non collegato", await page.evaluate(() => !window.__editor.ed.file));
+// [§9.188] "Salva con nome": il file resta collegato; Ctrl+S lo riscrive (e il
+// browser), senza pannello; il file si riapre collegato
+await page.evaluate(() => { window.__fs.mode = "ok"; });
+await click(btn3("save").x, btn3("save").y);
+await saveIn({ browser: true, file: true });
+await page.waitForFunction(() => window.__editor.ed.file && !window.__editor.ed.dom && !window.__editor.dirty(), null, { timeout: 20000 });
+check("Salva con nome: collegato", await page.evaluate(() => window.__editor.ed.file.name === "dustveil-Prova-editor.dvmap" && window.__fs.writes === 1));
+await page.evaluate(() => window.__editor.scene.add([{ object: "miniera_oro", x: 3000, y: 1000, scale_x: 1, scale_y: 1, rotation: 0 }]));
+await page.mouse.move(700, 300);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyS"); await page.keyboard.up("Control");
+await page.waitForFunction(() => window.__fs.writes === 2 && !window.__editor.dirty(), null, { timeout: 20000 })
+  .catch((e) => { console.log(logs.filter((l) => !/GL Driver/.test(l)).slice(-5)); throw e; });
+const written = await page.evaluate(async () => {
+  const blob = window.__fs.files["dustveil-Prova-editor.dvmap"];
+  const text = await new Response(blob.stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  return { n: JSON.parse(text).instances.length, panel: !!window.__editor.ed.dom };
+});
+check("Ctrl+S riscrive il file collegato", written.n === 3 && !written.panel);
+await page.evaluate(() => { window.__fs.mode = "abort"; window.__editor.ed.file = null; });
+await click(btn3("save").x, btn3("save").y);
+await saveIn({ browser: false, file: true });
+await page.waitForTimeout(300);
+check("Salva con nome annullata: il pannello resta", await page.evaluate(() => !!window.__editor.ed.dom && window.__fs.writes === 2));
+await page.keyboard.press("Escape"); await page.waitForTimeout(150);
+await page.evaluate(() => { window.__fs.mode = "ok"; window.__fs.openName = "dustveil-Prova-editor.dvmap"; });
+await click(btn3("new").x, btn3("new").y);
+await page.waitForFunction(() => !window.__editor.ed.loading && (window.__editor.ed.confirm || window.__editor.scene.map.instances.length === 0), null, { timeout: 60000 });
+if (await page.evaluate(() => !!window.__editor.ed.confirm)) { const C6 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C6.buttons[1])); }
+await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading, null, { timeout: 60000 });
+await click(btn3("open").x, btn3("open").y);
+await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
+let O6 = await page.evaluate(() => window.__editor.openLayout());
+await click(...mid({ x1: O6.file[0], y1: O6.file[1], x2: O6.file[2], y2: O6.file[3] }));
+await page.waitForFunction(() => window.__editor.scene.map.instances.length === 3 && !window.__editor.ed.loading, null, { timeout: 60000 });
+check("aperto dal file: collegato", await page.evaluate(() => !!window.__editor.ed.file && window.__editor.ed.file.name === "dustveil-Prova-editor.dvmap"));
 // la pagina ricaricata: "Apri mappa", "Le tue mappe"
 await page.goto(`${base}/index.html?room=editor`);
 await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
@@ -264,17 +331,18 @@ let O3 = await page.evaluate(() => window.__editor.openLayout());
 check("nell'elenco", O3.mine.length >= 1 && (await page.evaluate(() => window.__editor.ed.open.mine[0].name)) === "Prova editor");
 await click(...mid(O3.mine[0]));
 await page.waitForFunction(() => window.__editor.scene.map.name === "Prova editor" && !window.__editor.ed.loading, null, { timeout: 60000 });
-check("riaperta dal browser", await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.length === 2 && S.map.cpu.style === "static" && !!window.__editor.ed.mapId; }));
+check("riaperta dal browser", await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.length === 3 && S.map.cpu.style === "static" && !!window.__editor.ed.mapId; })); // (3: la miniera del Ctrl+S, §9.188)
 // il file: "Apri un file…"
 await click(btn3("new").x, btn3("new").y);
 await page.waitForFunction(() => window.__editor.scene.map.instances.length === 0 && !window.__editor.ed.loading, null, { timeout: 60000 });
 await click(btn3("open").x, btn3("open").y);
 await page.waitForFunction(() => window.__editor.ed.open && window.__editor.ed.open.mine, null, { timeout: 10000 });
 O3 = await page.evaluate(() => window.__editor.openLayout());
+await page.evaluate(() => { window.__fs.mode = "deny"; }); // (senza la finestra di File System Access: <input type=file>)
 const [chooser] = await Promise.all([page.waitForEvent("filechooser"), click(...mid({ x1: O3.file[0], y1: O3.file[1], x2: O3.file[2], y2: O3.file[3] }))]);
 await chooser.setFiles(file);
 await page.waitForFunction(() => window.__editor.scene.map.name === "Prova editor" && !window.__editor.ed.loading, null, { timeout: 60000 });
-check("riaperta dal file", await page.evaluate(() => window.__editor.scene.map.instances.length === 2 && window.__editor.ed.mapId === null));
+check("riaperta dal file", await page.evaluate(() => window.__editor.scene.map.instances.length === 2 && window.__editor.ed.mapId === null && !window.__editor.ed.file));
 fs.unlinkSync(file);
 // elimina dal browser: il cerchio della riga, "Elimina"
 await click(btn3("open").x, btn3("open").y);
@@ -345,8 +413,7 @@ const cover = await page.evaluate(() => (window.__editor.scene.map.cover || "").
 check("la copertina 720 x 480", coverDims[0] === 720 && coverDims[1] === 480 && /^data:image\/(webp|jpeg);base64,/.test(cover));
 await page.mouse.move(700, 300);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyS"); await page.keyboard.up("Control");
-await page.waitForSelector('.net-panel [data-net="browser"]');
-await page.locator('.net-panel [data-net="browser"]').click();
+await saveIn({ browser: true, file: false });
 await page.waitForFunction(() => window.__editor.ed.mapId && !window.__editor.ed.dom, null, { timeout: 10000 });
 const id4 = await page.evaluate(() => window.__editor.ed.mapId);
 await page.goto(`${base}/index.html?room=editor`);
@@ -401,8 +468,33 @@ await page.keyboard.press("Enter"); await page.waitForTimeout(200);
 check("con la simmetria la strada e la gemella", await page.evaluate(() => { const S = window.__editor.scene, r = S.map.roads; return r.length === 3 && S.twinLine("roads", r[1], "diagonal") === r[2]; }));
 await page.keyboard.press("Delete"); await page.waitForTimeout(150);
 check("Canc toglie strada e gemella", (await page.evaluate(() => window.__editor.scene.map.roads.length)) === 1);
+// [§9.188] "Prova mappa": senza due partenze no; Padania con la CPU statica,
+// la partita (niente regia della CPU, la pausa senza salvataggi), "Torna
+// all'editor": la mappa com'era, cambiata
+await click(btn3("test").x, btn3("test").y);
+await page.waitForTimeout(300);
+check("Prova mappa: servono due partenze", await page.evaluate(() => location.search.includes("room=editor")));
+await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
+await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
+  .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });
+await page.waitForFunction(() => window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 });
+await page.evaluate(() => { const E = window.__editor; E.scene.map.cpu.style = "static"; E.scene.add([{ object: "miniera_oro", x: 2000, y: 3000, scale_x: 1, scale_y: 1, rotation: 0 }]); });
+const nTest = await page.evaluate(() => window.__editor.scene.map.instances.length);
+await click(btn3("test").x, btn3("test").y);
+await page.waitForURL(/room=custom/, { timeout: 30000 });
+await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
+await page.waitForTimeout(1500);
+const game = await page.evaluate(() => { const G = window.__game, w = G.world; return { room: w.room, enemy: w.exists("enemy_centro"), eco: w.exists("enemy_eco"), omini: [...w.all("ally_omino")].length, test: G.pause.testMode, style: G.g.sk && G.g.sk.style }; });
+res.prova = game;
+check("la partita di prova", game.room === "custom" && game.enemy && !game.eco && game.omini === 3 && game.test && game.style === "static");
+await page.evaluate(() => window.__game.pause.actions.menu());
+await page.waitForURL(/room=editor/, { timeout: 30000 });
+await page.waitForFunction(() => window.__editor && window.__editor.ready && !window.__editor.ed.loading && window.__editor.scene.map.width === 7000, null, { timeout: 120000 });
+check("Torna all'editor: la mappa com'era", await page.evaluate((n) => { const E = window.__editor; return E.scene.map.instances.length === n && E.dirty() && E.scene.map.cpu.style === "static"; }, nTest));
+
 // Indietro, Non salvare: il menu
-await click(L3.back[0], L3.back[1]);
+const L5 = await page.evaluate(() => window.__editor.layout());
+await click(L5.back[0], L5.back[1]);
 const C5 = await page.evaluate(() => window.__editor.confirmLayout());
 await click(...at(C5.buttons[1]));
 await page.waitForURL(/room=menu/, { timeout: 20000 });

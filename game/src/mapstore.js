@@ -8,6 +8,14 @@
 // gzip, senza mescolare i byte come i ".dvgame" (§9.135): una mappa si
 // scambia, non c'e' niente da proteggere. Chi la apre la convalida sempre
 // (mapfile.js validateMap).
+//
+// [§9.188, richiesta dell'autore: "i salvataggi sarebbe meglio gestirli su
+// file, oltre che nel browser"] Dove il browser lo permette (File System
+// Access: Chrome, Edge) "Salva su file" apre la finestra "Salva con nome" e
+// "Apri un file" quella per aprire: la mappa resta collegata al suo file
+// (FileSystemFileHandle) e i salvataggi dopo lo riscrivono. Dove non si puo'
+// (Firefox, Safari, la pagina dentro l'iframe di un portale) si scarica
+// come prima, e si apre col solito <input type=file>.
 
 import { gzipBytes, gunzipBytes, bytesText } from "./save.js";
 import { COVER_W, COVER_H } from "./mapfile.js";
@@ -53,9 +61,28 @@ export async function saveMap(map, id = null) {
 }
 
 // le mappe salvate, dalla piu' recente: { id, name, date, width, height }
+// (non le voci di servizio, "__...": la sessione e la mappa di prova)
 export async function listMaps() {
   const all = (await tx("readonly", (st) => st.getAll())) || [];
-  return all.map(({ id, name, date, width, height }) => ({ id, name, date, width, height })).sort((a, b) => b.date - a.date);
+  return all.filter((r) => !String(r.id).startsWith("__")).map(({ id, name, date, width, height }) => ({ id, name, date, width, height }))
+    .sort((a, b) => b.date - a.date);
+}
+
+// [§9.188] Le voci di servizio: la sessione dell'editor (la mappa com'era,
+// per tornarci dopo "Prova mappa": il suo posto nel browser, il file
+// collegato, se era cambiata) e la mappa di prova (la room per il gioco e le
+// opzioni della schermaglia). Il file collegato si conserva dove il browser
+// sa conservarlo (Chromium); se no si salva senza.
+export async function putService(id, value) {
+  try { await tx("readwrite", (st) => st.put({ id, ...value })); } catch (e) {
+    if (!value.file) throw e;
+    await tx("readwrite", (st) => st.put({ id, ...value, file: null }));
+  }
+}
+export async function takeService(id, keep = false) {
+  const rec = await tx("readonly", (st) => st.get(id));
+  if (rec && !keep) await tx("readwrite", (st) => st.delete(id));
+  return rec || null;
 }
 
 // il JSON della mappa (da convalidare), o null se non c'e'
@@ -76,10 +103,41 @@ export function mapFileName(name) {
   return "dustveil-" + (base || "map") + MAP_EXT;
 }
 
+const mapBytes = async (map) => { const json = JSON.stringify(map); return (await gzipBytes(json)) || new TextEncoder().encode(json); };
+const PICKER = { types: [{ description: "Dust Veil map", accept: { "application/octet-stream": [MAP_EXT] } }] };
+export const filePicker = () => typeof window !== "undefined" && typeof window.showSaveFilePicker === "function";
+
+// [§9.188] "Salva su file": la finestra "Salva con nome" (il file resta
+// collegato: restituisce il FileSystemFileHandle), o, dove non c'e' o il
+// browser la rifiuta (l'iframe di un portale), lo scarica ("download").
+// null: annullato.
+export async function saveMapAs(map) {
+  if (filePicker()) {
+    try {
+      const handle = await window.showSaveFilePicker({ ...PICKER, suggestedName: mapFileName(map.name) });
+      await writeMapFile(handle, map);
+      return handle;
+    } catch (e) {
+      if (e && e.name === "AbortError") return null;
+      console.warn("[editor] Salva con nome non disponibile, scarico il file:", e);
+    }
+  }
+  await saveMapFile(map);
+  return "download";
+}
+
+// riscrive il file collegato (chiede il permesso, se serve)
+export async function writeMapFile(handle, map) {
+  if (handle.requestPermission && (await handle.queryPermission({ mode: "readwrite" })) !== "granted"
+      && (await handle.requestPermission({ mode: "readwrite" })) !== "granted") throw new Error("permesso negato");
+  const w = await handle.createWritable();
+  await w.write(await mapBytes(map));
+  await w.close();
+}
+
 // lo scarica come ".dvmap"
 export async function saveMapFile(map) {
-  const json = JSON.stringify(map);
-  const bytes = (await gzipBytes(json)) || new TextEncoder().encode(json);
+  const bytes = await mapBytes(map);
   const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
   const a = document.createElement("a");
   a.href = url;
@@ -90,9 +148,20 @@ export async function saveMapFile(map) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// la finestra per scegliere un file; il JSON letto (da convalidare), null se
-// annullato, { invalid: true } se non si legge
-export function openMapFile() {
+// la finestra per scegliere un file; il JSON letto (da convalidare) e, con
+// la finestra di File System Access, il file collegato ({ data, handle });
+// null se annullato, { invalid: true } se non si legge
+export async function openMapFile() {
+  if (typeof window !== "undefined" && typeof window.showOpenFilePicker === "function") {
+    try {
+      const [handle] = await window.showOpenFilePicker({ types: [{ description: "Dust Veil map", accept: { "application/octet-stream": [MAP_EXT, ".json"] } }] });
+      const file = await handle.getFile();
+      try { return { data: JSON.parse(await bytesText(new Uint8Array(await file.arrayBuffer()))), handle }; } catch (e) { return { invalid: true }; }
+    } catch (e) {
+      if (e && e.name === "AbortError") return null;
+      console.warn("[editor] la finestra per aprire non c'e', uso <input type=file>:", e);
+    }
+  }
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";

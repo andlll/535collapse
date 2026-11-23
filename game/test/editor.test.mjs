@@ -10,7 +10,8 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_
          lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta } from "../src/editmap.js";
-import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap } from "../src/mapfile.js";
+import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM } from "../src/mapfile.js";
+import { isSkirmish, SK_OPTIONS } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
@@ -124,7 +125,7 @@ test("§9.182 Apri mappa: le cinque schermaglie come modelli", () => {
     for (const q of [...O.rows, ...O.mine]) assert.ok(q.x1 >= 0 && q.x2 <= W && q.y1 > O.heads[0][1] && q.y2 <= H, `${W}x${H}`);
     for (const q of O.mine) assert.ok(q.y2 < O.file[1]);
     assert.ok(O.file[2] <= O.mine[0].x2 && O.file[0] >= O.mine[0].x1, "il file nella colonna di sinistra");
-    assert.ok(openLayout(W, H, 0).file[3] < H - 226 - 20, "senza mappe, il file sopra il riquadro in basso");
+    assert.ok(openLayout(W, H, 0).file[3] < H - 246 - 20, "senza mappe, il file sopra il riquadro in basso");
     for (const q of O.mine) assert.ok(q.del[0] + q.del[2] <= q.x2 && q.del[0] - q.del[2] > q.x1 + 200);
     assert.ok(O.mine[0].x2 < O.rows[0].x1 && O.file[3] <= H && O.title[1] < O.heads[0][1]);
     const C = confirmLayout(W, H);
@@ -354,6 +355,7 @@ test("§9.185 il riquadro del pennello", () => {
     for (const q of S.opts) {
       assert.ok(q.x1 > S.label[0] && q.x2 <= L.panel[2] && q.y2 < L.panel[3] - 20, `${W}x${H}`);
       assert.ok(q.y1 > B.width.minus[1] + B.width.minus[2] && q.y1 > P.cells[0].y2);
+      assert.ok(q.y2 + 30 <= L.panel[3] - 14, "sopra la riga dei comandi della vista (in basso, alta ~20)");
     }
   }
   assert.ok(BRUSH_WIDTHS.includes(600));
@@ -451,4 +453,24 @@ test("§9.187 linee: modifiche e gemelle", { skip: !existsSync(OBJECTS) || !exis
   assert.equal(S.world.roads.length, 1);
   S.removeFeatures("rivers", [a, b]);
   assert.equal(S.world.rivers.length, 0);
+});
+
+// [§9.188] "Prova mappa": la room di prova (col manager, senza copertina) e
+// la schermaglia che la riconosce; la CPU statica ha un nome
+test("§9.188 la room di prova", () => {
+  const map = { ...newMap(), cover: "data:image/webp;base64,UklGRg==",
+                instances: [{ object: "centro", x: 1000, y: 1000, scale_x: 1, scale_y: 1, rotation: 0 },
+                            { object: "centro", x: 5000, y: 5000, scale_x: 1, scale_y: 1, rotation: 0 }] };
+  const room = testRoom(map);
+  assert.equal(room.name, TEST_ROOM);
+  assert.equal(room.instances.length, 3);
+  assert.deepEqual(room.instances[0].slice(0, 3), ["manager", 100, 100]);
+  assert.equal(room.cover, undefined);
+  assert.equal(room.backgrounds[0].name, "green1");
+  // col manager gia' nella mappa (i modelli) non se ne aggiunge un altro
+  const withManager = testRoom({ ...map, instances: [{ object: "manager", x: 50, y: 50, scale_x: 1, scale_y: 1, rotation: 0 }, ...map.instances] });
+  assert.equal(withManager.instances.filter((e) => e[0] === "manager").length, 1);
+  assert.ok(isSkirmish(TEST_ROOM) && isSkirmish("sk_padus") && !isSkirmish("lvl01"));
+  assert.equal(SK_OPTIONS.style.names.static, "Static");
+  assert.ok(!SK_OPTIONS.style.values.includes("static"), "non fra le scelte della schermata della schermaglia");
 });

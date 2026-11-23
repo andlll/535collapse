@@ -124,6 +124,14 @@ export class Input {
     });
   }
 
+  // [§9.188] tutti i tasti rilasciati (come perdendo il fuoco): un pannello
+  // HTML sopra il gioco ferma i tasti battuti (netui.js), anche il rilascio
+  // di quelli premuti prima di aprirlo, che restavano "tenuti"
+  releaseAll() {
+    for (const k of this._down) this._released.add(k);
+    this._down.clear();
+  }
+
   // Pointer Lock (solo da un gesto del giocatore: clic). Il browser puo'
   // rifiutare (subito dopo un Esc, o in un iframe senza permesso): si
   // riprova al clic successivo.

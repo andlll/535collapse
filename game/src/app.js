@@ -64,12 +64,13 @@ import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor", "custom"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180; custom: §9.188
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
                 lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"], lvl07: ["core", "gioco", "citta"],
-                ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])) }; // §9.118, §9.123: tiers
+                ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])), // §9.118, §9.123: tiers
+                custom: ["core", "gioco"] }; // §9.188 (gli altri gruppi dagli oggetti della mappa, sotto)
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -158,7 +159,15 @@ async function main() {
   // prove nel browser, che fissano Math.random a mano) Math.random come prima
   if (params.has("seed")) simSeed(Number(params.get("seed")) >>> 0);
   else if (!params.has("nostart")) simSeed(freshSeed());
-  const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
+  // [§9.188] "Prova mappa": la room dell'editor dal browser (mapstore.js), con
+  // le opzioni della schermaglia; senza (la pagina ricaricata dopo), l'editor
+  let test = null;
+  if (roomName === "custom") {
+    const { takeService } = await import("./mapstore.js");
+    test = await takeService("__test__", true).catch(() => null);
+    if (!test) { location.search = "?room=editor&resume=1"; return; }
+  }
+  const room = test ? test.room : await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
                     [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
@@ -219,6 +228,7 @@ async function main() {
   if (params.get("campaign") === "1") g.campagna = 1;
   world.hooks.roomGoto = (name) => {
     if (netGame) netGame.leave(); // §9.156: il saluto all'altro giocatore
+    if (test && name === "menu") { location.search = "?room=editor&resume=1"; return; } // §9.188: dalla prova si torna all'editor
     location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
   };
   let netGame = null; // §9.156: la partita in rete (startNet, sotto)
@@ -419,6 +429,7 @@ async function main() {
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
   const skParams = net ? { ...net.sk, pvp } // §9.156: le opzioni di chi ha creato la partita
+    : test ? test.sk // §9.188: le opzioni della prova (editor.js)
     : isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
   // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
   // sprite blu per il disegno (p2sprites.js)
@@ -609,6 +620,7 @@ async function main() {
     },
   });
   pause.netMode = !!net;
+  pause.testMode = !!test; // §9.188
   // puntatore liberato (Esc, cambio di finestra) a gioco in corso: pausa
   // (in rete: chiesta all'altro giocatore, §9.156)
   input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) { if (netGame) netGame.requestPause(); else pause.open(); } };
@@ -632,7 +644,7 @@ async function main() {
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
   const autosave = () => {
-    if (roomName === "menu" || net || !settings.autosave || --autosaveAt > 0) return;
+    if (roomName === "menu" || test || net || !settings.autosave || --autosaveAt > 0) return; // §9.188: non le prove
     autosaveAt = AUTOSAVE_STEPS;
     if (world.exists("victory_manager") || world.exists("gameover_manager")) return;
     saveGame(true);
