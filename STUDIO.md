@@ -53,13 +53,11 @@ ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
-**Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
-nebbia, di giorno e pieno di nebbia. Fatto il prototipo
-(`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
-allarme e "!", tiro furtivo e rapido, il messaggero che corre alla torre e
-il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
-che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
-banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+**Livello 7, "Lost in the Fog"** (§9.148, §9.178): uno stealth con l'arciere
+della nebbia. Fatto: la mappa dell'autore e la regia (§9.178, nella 0.2614).
+Da rivedere in Tiled: le pattuglie e i banchi di nebbia tracciati da me nel
+livello regia (§9.178). (Le voci di §9.148 su bosco, mura e prigionieri
+erano del prototipo: §9.198.)
 
 **Editor di mappe** (§9.180-§9.182, roadmap R6): per i giocatori, mappe da
 schermaglia. Fatti lo scheletro (dal menu "Giocatore singolo" -> "Editor di
@@ -83,7 +81,9 @@ da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
 (§9.193), mura e porte coi "+" come nel gioco e la gomma ad area (§9.194),
 le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
 i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
-freccina). Da fare: l'elenco di §9.197.
+freccina), le icone dell'autore, i ponti, la password, le partite solo su
+file e senza lavoratori di partenza (§9.198). Da fare: la scheda "Regia"
+per gli scenari (per ora no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13816,3 +13816,76 @@ prigionieri, banchi e pattuglie da Tiled, la mappa, la regia a fasi,
 prima dell'uscita `UNLOCK_ALL` a 1 (progress.js, §9.53).
 
 Prove: test unitari (145), `editor.mjs`.
+
+### 9.198 Icone dell'autore, ponti, password, partite solo su file, niente lavoratori di partenza; la PR
+
+Risposte dell'autore all'elenco di §9.197 (23 novembre 2026, stessa PR),
+con le icone in PNG: "2) interrompi i sentieri in corrispondenza dei fiumi,
+per i ponti inserisci solo quelli caricati da me 3) la password serve a
+editare la mappa: chi una volta impostata la mappa la carica nell'editor la
+puo' editare solo se azzecca la password (se e' stata impostata), mentre il
+caricamento per giocarci e' consentito a tutti 4) lascialo stare 5) il
+salvataggio facciamolo solo su file, ok se non entra tra le mappe, [...]
+nessuno dei due li riceve, il giocatore deve disegnarli a mano nell'editor
+se li vuole, ok sullo spostamento dei muri, [...] pazienza se i pulsanti
+spariscono a vista lontana [...] 6) apri la pr".
+
+- **Le icone dell'autore** (8 PNG di Icons8: sposta, polilinea, pennello,
+  file nuovo, cartella, dischetto, play, ingranaggio) in `nuovi/sprites/`
+  coi loro nomi, e in `nuovi.json` come derivati `ico_ed_*` (64 px, gruppo
+  gui) col `colore` bianco: l'editor le tinge di nero, o le lascia bianche
+  sullo strumento scelto (il cerchio scuro). Dove non c'e' un'icona
+  dell'autore (Inserisci, Gomma, Annulla, Taglia, Copia, Incolla) resta il
+  disegno a linee. Nota: le icone gratuite di Icons8 chiedono il link
+  "Icons by Icons8" nei crediti (da decidere con l'autore).
+- **I sentieri sui fiumi**: provato (un sentiero e una strada che
+  attraversano un fiume, nell'editor): l'acqua li copre gia', i pixel dentro
+  il fiume sono gli stessi con e senza strada; niente da cambiare. Nel mio
+  elenco "sentieri" erano i `paths`, che pero' non si vedono: sono i
+  percorsi della regia della campagna (§9.101). Una prova di togliere i
+  sassi dentro l'acqua e' stata scartata (non cambiava niente).
+- **I ponti**: una scheda "Ponti" in Inserisci coi due ponti dipinti
+  dall'autore (ponte_dx con la sua balaustra, ponte_dx2; rivers.js
+  PAINTED_BRIDGES, cotti nel suolo sopra il fiume, gli stessi dei modelli);
+  M li specchia per l'altro verso del fiume. Nessun ponte "a linee".
+- **La password** (impostazioni della mappa): un campo password (vuoto:
+  resta quella di prima; "Togli": nessuna). Nella mappa solo l'impronta,
+  `lock: { salt, hash }` (SHA-256 di sale e password, mapfile.js `sha256`,
+  scritto in JavaScript: uguale a quello di Node e del browser anche dove il
+  browser non da' la crittografia, per esempio fuori da https). Aprire
+  nell'editor una mappa con la password (dal browser, da file) la chiede:
+  sbagliata, "Password sbagliata." e resta la mappa di prima. Giocarla
+  (schermaglia, online, "Prova mappa") resta libero, e la password non
+  cambia l'impronta della partita. Non e' una cifratura: la mappa resta
+  leggibile per giocarla, e chi modifica il file a mano puo' togliere il
+  lucchetto; ferma chi usa l'editor.
+- **Le partite sulle mappe dell'editor si salvano solo su file**: nella
+  pausa niente "Salva partita" ne' "Salvataggio automatico" (pause.js
+  `fileOnly`), niente salvataggio automatico, lo slot `custom` tolto
+  dall'elenco dei salvataggi; "Salva su file" e "Carica da file" come
+  prima (il file porta la mappa, §9.190).
+- **Nessuno dei due riceve i 3 lavoratori di partenza** sulle mappe
+  dell'editor (ne' il giocatore, ne' la CPU, ne' online il blu): chi li vuole
+  li mette nella mappa (Inserisci, Unita'). Le mappe del gioco come prima.
+- Confermati: i muri con S in "Sposta" (lo schieramento), i pulsanti delle
+  mura che spariscono da lontano, le mappe aperte da file solo per quella
+  volta, nessun controllo degli ingombri. La scheda "Regia" per gli scenari:
+  per ora no.
+- **La 0.2614** (la PR #24, livello 7) e' su main ed e' il punto da cui
+  parte questa branch: niente da conciliare.
+- **La PR** di questa branch: aperta (editor di mappe, §9.180-§9.198).
+
+Testi nuovi: "Ponti", la password (campo, nota, richiesta, "Password
+sbagliata.", "Apri", "Nessuna password").
+
+Prove: `editor.test.mjs` (in piu': SHA-256 coi valori di riferimento, la
+password giusta e sbagliata, niente password in chiaro, la convalida del
+lucchetto, l'impronta della partita uguale, la scheda dei ponti, nessun
+lavoratore di partenza sulle mappe dell'editor, lo slot `custom` tolto; 146
+test), `editor.mjs` (la partita di prova senza lavoratori, i 2 lavoratori
+blu messi a mano per la CPU statica; una mappa con la password: sbagliata
+resta chiusa, giusta si apre col lucchetto), `skcustom.mjs` (senza i 3
+lavoratori; solo su file: la pausa senza slot, il salvataggio con la mappa
+dentro ricaricato da file), `netmap.mjs`, `saves.mjs`, `soak.mjs`
+(sk_padus coi 3 lavoratori come prima, lvl04), `pvp.mjs`; screenshot (la
+colonna con le icone dell'autore).

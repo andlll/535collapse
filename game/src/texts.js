@@ -1545,6 +1545,15 @@ export const TEXTS = {
   "Cut (Ctrl+X)": { it: "Taglia (Ctrl+X)", es: "Cortar (Ctrl+X)", pt: "Recortar (Ctrl+X)", de: "Ausschneiden (Strg+X)", fr: "Couper (Ctrl+X)" },
   "Copy (Ctrl+C)": { it: "Copia (Ctrl+C)", es: "Copiar (Ctrl+C)", pt: "Copiar (Ctrl+C)", de: "Kopieren (Strg+C)", fr: "Copier (Ctrl+C)" },
   "Paste (Ctrl+V)": { it: "Incolla (Ctrl+V)", es: "Pegar (Ctrl+V)", pt: "Colar (Ctrl+V)", de: "Einfügen (Strg+V)", fr: "Coller (Ctrl+V)" },
+  "Bridges": { it: "Ponti", es: "Puentes", pt: "Pontes", de: "Brücken", fr: "Ponts" }, // §9.198
+  // [§9.198] la password della mappa
+  "Password": { it: "Password", es: "Contraseña", pt: "Senha", de: "Passwort", fr: "Mot de passe" },
+  "Set (leave empty to keep it)": { it: "Impostata (vuota: resta quella)", es: "Puesta (vacía: se mantiene)", pt: "Definida (vazia: fica a mesma)", de: "Gesetzt (leer: bleibt)", fr: "Définie (vide : on la garde)" },
+  "Only who knows it can edit the map in the editor; anyone can play it.": { it: "Solo chi la conosce può modificare la mappa nell'editor; giocarla possono tutti.", es: "Solo quien la conoce puede editar el mapa en el editor; jugarlo, todos.", pt: "Só quem a conhece pode editar o mapa no editor; jogá-lo, todos podem.", de: "Nur wer es kennt, kann die Karte im Editor bearbeiten; spielen kann sie jeder.", fr: "Seul qui le connaît peut modifier la carte dans l'éditeur ; tout le monde peut y jouer." },
+  "This map is protected by a password": { it: "Questa mappa è protetta da una password", es: "Este mapa está protegido con una contraseña", pt: "Este mapa está protegido por uma senha", de: "Diese Karte ist mit einem Passwort geschützt", fr: "Cette carte est protégée par un mot de passe" },
+  "No password": { it: "Nessuna password", es: "Sin contraseña", pt: "Sem senha", de: "Kein Passwort", fr: "Pas de mot de passe" },
+  "Wrong password.": { it: "Password sbagliata.", es: "Contraseña incorrecta.", pt: "Senha errada.", de: "Falsches Passwort.", fr: "Mot de passe incorrect." },
+  "Open": { it: "Apri", es: "Abrir", pt: "Abrir", de: "Öffnen", fr: "Ouvrir" },
   "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
   // [§9.192] la mappa dell'editor nella partita online
   "You don't have this map: it will be downloaded when you connect, and kept among your maps.": {

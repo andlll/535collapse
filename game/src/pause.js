@@ -61,6 +61,9 @@ export class PauseMenu {
     // [§9.188] la partita di "Prova mappa" dell'editor: niente salvataggi,
     // "Torna all'editor" al posto di "Torna al menu"
     this.testMode = false;
+    // [§9.198, decisione dell'autore] la partita su una mappa dell'editor si
+    // salva solo su file (niente slot nel browser ne' salvataggio automatico)
+    this.fileOnly = false;
     this.net = null;
   }
 
@@ -239,11 +242,11 @@ export class PauseMenu {
     } else if (this.submenu === "saves") {
       title = tr("SAVE AND LOAD");
       before = [
-        [tr("Save game"), "saveGame"],
+        ...(this.fileOnly ? [] : [[tr("Save game"), "saveGame"]]),
         [tr("Load game"), "loadGame"],
         [tr("Save to file"), "saveFile"],
         [tr("Load from file"), "loadFile"],
-        [tr("Autosave: {state}", { state: onOff(s.autosave) }), "autosave"],
+        ...(this.fileOnly ? [] : [[tr("Autosave: {state}", { state: onOff(s.autosave) }), "autosave"]]),
       ];
       segs = null;
       after = [[tr("Back"), "back"]];

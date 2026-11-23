@@ -74,7 +74,7 @@ import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
-         testRoom, TEST_ROOM, sidesOk, SIDES } from "./mapfile.js";
+         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
@@ -278,6 +278,15 @@ export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)"
 // [§9.194] le mura: la parte e S che le gira di 90 gradi
 export const WALL_HINT = { red: "Red side (S: horizontal / vertical)", blue: "Blue side (S: horizontal / vertical)" };
 function drawIcon(d, key, x, y, s, ink) {
+  // [§9.198, richiesta dell'autore] le icone disegnate dall'autore (PNG,
+  // nuovi.json: ico_ed_*, bianche), tinte col colore del segno; dove non
+  // ce n'e' una, il disegno a linee qui sotto
+  const png = "ico_ed_" + key;
+  if (d.a.sprites[png] && d.a.frame(png, 0)) {
+    const k = (32 * s) / 64;
+    d.spriteExt(png, 0, x, y, k, k, 0, ink, d.alpha);
+    return;
+  }
   const L = (x1, y1, x2, y2, w = 3) => d.lineWidthColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, w * s, ink, ink);
   const T = (x1, y1, x2, y2, x3, y3) => d.triangleColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, x + x3 * s, y + y3 * s, ink, ink, ink, false);
   const C = (cx, cy, r, col = ink) => d.circleColour(x + cx * s, y + cy * s, r * s, col, col, false);
@@ -601,8 +610,29 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const openData = async (data, id, file = null) => {
     const v = validateMap(data, allowedObjects(), objects);
     if (v.errors) { console.warn("[editor] mappa non valida:", v.errors); throw new Error("mappa non valida"); }
+    if (v.map.lock && !(await askPassword(v.map))) return; // §9.198
     setScene(await EditScene.load(ctx, v.map, progress), v.map.name, id, file);
   };
+  // [§9.198] una mappa con la password: si apre solo con quella giusta
+  // (true), se no resta la mappa di prima (false)
+  const askPassword = (map) => new Promise((resolve) => {
+    const [p, close] = panel(tr("This map is protected by a password"));
+    const done = (ok) => { close(); resolve(ok); };
+    p.onEscape = () => done(false);
+    const t = document.createElement("div");
+    setDomText(t, map.name || tr("Untitled map"), { font: "overdue", colour: "#222", width: 600 });
+    p._add(t);
+    const pw = document.createElement("input");
+    pw.type = "password"; pw.maxLength = 64; pw.dataset.net = "password";
+    Object.assign(pw.style, INPUT);
+    line(p, tr("Password")).append(pw);
+    const row = p.row();
+    const go = () => { if (lockOpens(map.lock, pw.value)) done(true); else { p.status(tr("Wrong password."), "error"); pw.select(); } };
+    p.button(row, tr("Open"), go, { primary: true, name: "unlock" });
+    p.button(row, tr("Cancel"), () => done(false), { name: "cancel" });
+    pw.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+    setTimeout(() => pw.focus(), 0);
+  });
   const openSaved = (id) => busy(async () => openData(await loadMap(id), id));
   const openFile = async () => {
     const res = await openMapFile();
@@ -976,6 +1006,24 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const cpuName = (names) => (q) => tr(q === "choice" ? "Player's choice" : q === "static" ? "Static" : names[q]);
     choice(p, "difficulty", tr("Difficulty"), CPU_DIFFICULTY, cpuName(SK_OPTIONS.difficulty.names), v.difficulty, (x) => { v.difficulty = x; });
     choice(p, "style", tr("CPU style"), CPU_STYLE, cpuName(SK_OPTIONS.style.names), v.style, (x) => { v.style = x; });
+    // [§9.198, richiesta dell'autore] la password per modificarla (vuota:
+    // resta quella di prima; "Togli": nessuna); giocarla resta libero
+    v.lock = m.lock || null;
+    const pwRow = line(p, tr("Password"));
+    const pw = document.createElement("input");
+    pw.type = "password"; pw.maxLength = 64; pw.autocomplete = "new-password"; pw.dataset.net = "password";
+    Object.assign(pw.style, INPUT, { flex: "1 1 160px" });
+    const pwNote = document.createElement("div");
+    Object.assign(pwNote.style, { flex: "1 1 100%" });
+    const showLock = () => {
+      pw.placeholder = tr(v.lock ? "Set (leave empty to keep it)" : "No password");
+      setDomText(pwNote, tr("Only who knows it can edit the map in the editor; anyone can play it."), { font: "overdue", colour: "#666", width: 420 });
+    };
+    const pwDrop = p.button(pwRow, tr("Remove"), () => { v.lock = null; pw.value = ""; showLock(); }, { name: "password-remove" });
+    Object.assign(pwDrop.style, { minWidth: "0", height: "32px", padding: "0 12px" });
+    pwRow.prepend(pw);
+    pwRow.append(pwNote);
+    showLock();
     const row = p.row();
     p.button(row, tr("Apply"), () => {
       const resize = v.width !== m.width || v.height !== m.height || v.background !== m.background;
@@ -983,6 +1031,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                          width: v.width, height: v.height, background: v.background,
                          cpu: { difficulty: v.difficulty, style: v.style } });
       if (v.cover) m.cover = v.cover; else delete m.cover;
+      if (pw.value) v.lock = lockOf(pw.value); // §9.198
+      if (v.lock) m.lock = v.lock; else delete m.lock;
       ed.meta = true;
       close();
       if (resize) rebuildScene();
@@ -1991,7 +2041,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
                       confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
                       palette: () => paletteNow(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
-                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap,
+                      get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap, openSaved, // (§9.198: openSaved)
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };

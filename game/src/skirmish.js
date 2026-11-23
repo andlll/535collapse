@@ -135,14 +135,17 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
            mult: params.difficulty === "rigged" ? RIGGED : 1 };
   // 3 lavoratori del giocatore davanti al centro (quelli della CPU li fa
   // nascere la sua regia, ECO startWorkers)
+  // [§9.198, decisione dell'autore] sulle mappe dell'editor nessuno dei due
+  // li riceve: chi li vuole li mette nella mappa (Inserisci, Unita')
+  const own = world.room !== "custom";
   const [px, py] = starts.player;
-  for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
+  if (own) for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
   if (params.pvp) {
     // [§9.155] la partita a due: il giocatore 2 come il giocatore 1, con la
     // sua cassa (global.p2) e i suoi 3 lavoratori; niente regia della CPU
     Object.assign(g.p2, START_RES[params.resources]);
     const [qx, qy] = starts.cpu;
-    for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
+    if (own) for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
   } else world.create("enemy_eco", 0, 0); // [§9.189] anche per la CPU statica: la regia passiva (economy.js)
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
   if (params.truce > 0 && !params.pvp) g.en.hold = 1;
@@ -308,7 +311,7 @@ export function skirmishEco(sk) {
     D[key] = ["firstAttack", "attackEvery"].includes(key) ? Math.round(D[key] * v) : Math.max(key === "attackAt" ? 3 : 0, D[key] + v);
   }
   const k = sk.difficulty === "rigged" ? RIGGED_START : 1, r = START_RES[sk.resources] || START_RES.normal;
-  return { ...D, startWorkers: 3, start: { food: r.food * k, wood: r.wood * k, gold: r.gold * k, stone: r.stone * k },
+  return { ...D, startWorkers: sk.map === "custom" ? 0 : 3, start: { food: r.food * k, wood: r.wood * k, gold: r.gold * k, stone: r.stone * k }, // §9.198: sulle mappe dell'editor nessuno
            buildOrder: S.buildOrder, troops: S.troops, raid: !!S.raid, houses: true, popMax: sk.pop,
            mix: { wood: 3, gold: 2, food: 3, stone: 1 }, rebuild: true, newDeposits: 3, stoneWork: true, armyEco: false,
            anyTroop: true, defendR: 700, passive: sk.style === "static" };

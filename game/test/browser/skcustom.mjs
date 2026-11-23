@@ -133,7 +133,7 @@ await ready();
 await page.waitForTimeout(1000);
 let game = await page.evaluate(() => { const G = window.__game, w = G.world, at = (o) => { const i = w.all(o).next().value; return i ? [i.x, i.y] : null; }; return { room: w.room, sk: G.g.sk && { d: G.g.sk.difficulty, s: G.g.sk.style }, test: G.pause.testMode, eco: w.exists("enemy_eco"), centro: at("enemy_centro"), mine: at("centro"), omini: w.number("ally_omino"), mines: w.number("miniera_oro") }; });
 res.partita = game;
-check("la partita: custom, CPU della mappa, non in prova", game.room === "custom" && game.sk.d === "hard" && game.sk.s === "static" && !game.test && game.eco && game.centro && game.mine && game.omini === 3 && game.mines === 1);
+check("la partita: custom, CPU della mappa, non in prova (§9.198: senza i 3 lavoratori)", game.room === "custom" && game.sk.d === "hard" && game.sk.s === "static" && !game.test && game.eco && game.centro && game.mine && game.omini === 0 && game.mines === 1);
 check("il giocatore alla partenza rossa, la CPU alla blu", game.mine.join() === "4800,4800" && game.centro.join() === "1200,1200");
 const sided = await page.evaluate(() => { const w = window.__game.world; return { warrior: w.number("ally_warrior"), enemyWarrior: w.number("enemy_warrior"), barracks: w.number("enemy_caserma"), mine: w.number("caserma"),
   wall: w.number("mura_ori"), enemyGate: w.number("enemy_porta_ori"), gate: w.number("porta_ori") }; });
@@ -141,18 +141,25 @@ res.schieramenti = sided;
 check("le unita' e gli edifici: rossi del giocatore, blu della CPU", sided.warrior === 1 && sided.enemyWarrior === 1 && sided.barracks === 1 && sided.mine === 0);
 check("mura e porte: il muro del giocatore, la porta della CPU", sided.wall === 1 && sided.enemyGate === 1 && sided.gate === 0);
 if (shots) await page.screenshot({ path: shots + "/sk_editor_partita.png" });
-// salvata, caricata
-await page.evaluate(async () => { const G = window.__game; G.advance(120); await G.pause.actions.saveGame(); });
-await page.waitForTimeout(500);
-const head = await page.evaluate(() => JSON.parse(localStorage.getItem("535.save.custom") || "null"));
-check("salvata nello slot custom col nome", !!head && head.room === "custom" && head.name === "Pianura di prova");
-await page.evaluate(() => { location.search = "?room=custom&load=slot"; });
-await page.waitForURL(/load=slot/, { timeout: 30000 });
+// [§9.198] solo su file: nella pausa niente "Salva partita" ne' salvataggio
+// automatico; il file (la partita con la mappa dentro) si ricarica
+const fileOnly = await page.evaluate(() => window.__game.pause.fileOnly);
+check("solo su file", fileOnly === true);
+await page.evaluate(async () => {
+  const G = window.__game; G.advance(120);
+  const data = G.capture(), sv = await import("/src/save.js");
+  window.__saved = { custom: !!data.custom, name: data.custom && data.custom.name };
+  await sv.setPending(data);
+});
+const saved = await page.evaluate(() => window.__saved);
+check("il salvataggio porta la mappa", saved.custom && saved.name === "Pianura di prova");
+await page.evaluate(() => { location.search = "?room=custom&load=file"; });
+await page.waitForURL(/load=file/, { timeout: 30000 });
 await ready();
 await page.waitForTimeout(500);
 game = await page.evaluate(() => { const G = window.__game, w = G.world; return { room: w.room, url: location.search, step: w._stepNo, sk: G.g.sk && G.g.sk.style, mines: w.number("miniera_oro") }; });
 res.caricata = game;
-check("caricata: la mappa dal salvataggio, poi &play=1", game.room === "custom" && game.url.includes("play=1") && !game.url.includes("load") && game.step >= 120 && game.sk === "static" && game.mines === 1);
+check("caricata dal file: la mappa dal salvataggio, poi &play=1", game.room === "custom" && game.url.includes("play=1") && !game.url.includes("load") && game.step >= 120 && game.sk === "static" && game.mines === 1);
 // Ricomincia: una partita nuova sulla stessa mappa
 await page.evaluate(() => { window.__old = 1; window.__game.pause.actions.restart(); });
 await page.waitForFunction(() => !window.__old && window.__game && window.__game.ready, null, { timeout: 120000 });

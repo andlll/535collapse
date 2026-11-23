@@ -11,7 +11,7 @@ import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, EDITS, LABEL, DESC, 
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta, freePluses, wallStep, wallPluses, GATE_SWAP } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
-         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF } from "../src/mapfile.js";
+         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF, sha256, lockOf, lockOpens } from "../src/mapfile.js";
 import { isSkirmish, SK_OPTIONS, skirmishEco } from "../src/skirmish.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
@@ -650,4 +650,25 @@ test("§9.196 la colonna che scorre", () => {
   assert.notEqual((hitTest(top, hid.x, hid.y) || {}).key, hid.key);
   // la scheda delle partenze: "Regia"
   assert.equal(CATALOG[0].label, "Setup");
+});
+
+// [§9.198] la password della mappa (SHA-256 di sale e password: solo
+// l'impronta nella mappa), i ponti dell'autore, le partite sulle mappe
+// dell'editor senza i lavoratori di partenza e senza slot nel browser
+test("§9.198 password, ponti, lavoratori, salvataggi", async () => {
+  assert.equal(sha256(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  assert.equal(sha256("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  const L = lockOf("segreto", "00112233445566778899aabbccddeeff");
+  assert.ok(lockOpens(L, "segreto") && !lockOpens(L, "Segreto") && !lockOpens(null, "segreto"));
+  assert.ok(!JSON.stringify(L).includes("segreto"), "niente password in chiaro");
+  const objects = { centro: {} }, allowed = new Set(["centro"]);
+  assert.deepEqual(validateMap({ ...newMap(), lock: L }, allowed, objects).map.lock, L);
+  assert.ok(validateMap({ ...newMap(), lock: { salt: "x", hash: "y" } }, allowed, objects).errors);
+  assert.equal(mapHash({ ...newMap(), lock: L }), mapHash(newMap()), "la password non cambia la partita");
+  assert.deepEqual(CATALOG.find((k) => k.key === "bridges").objects, ["ponte_dx", "ponte_dx2"]);
+  const sk = { difficulty: "normal", resources: "normal", pop: 75, style: "balanced" };
+  assert.equal(skirmishEco({ ...sk, map: "custom" }).startWorkers, 0);
+  assert.equal(skirmishEco({ ...sk, map: "sk_padus" }).startWorkers, 3);
+  const { SAVE_ROOMS } = await import("../src/save.js");
+  assert.ok(!SAVE_ROOMS.includes("custom"));
 });

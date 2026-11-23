@@ -56,7 +56,7 @@ const saveIn = async ({ browser: inBrowser, file }) => {
 };
 let ok = true;
 // le schede di "Inserisci" (editmap.js CATALOG; §9.193: unita' ed edifici dopo le partenze)
-const TAB = { start: 0, units: 1, buildings: 2, resources: 3, trees: 4, meadows: 5, mountains: 6, city: 7 };
+const TAB = { start: 0, units: 1, buildings: 2, resources: 3, trees: 4, meadows: 5, mountains: 6, bridges: 7, city: 8 }; // (§9.198: i ponti)
 const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 
 // il menu: la colonna dei pulsanti (menu.js titleButtons: alti 70, 20 fra
@@ -575,7 +575,13 @@ await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
 await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
   .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });
 await page.waitForFunction(() => window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 });
-await page.evaluate(() => { const E = window.__editor; E.scene.map.cpu.style = "static"; E.scene.add([{ object: "miniera_oro", x: 2000, y: 3000, scale_x: 1, scale_y: 1, rotation: 0 }]); });
+// ([§9.198] sulle mappe dell'editor nessuno riceve i 3 lavoratori: due lavoratori blu messi a mano)
+await page.evaluate(() => {
+  const E = window.__editor, b = E.scene.map.instances.find((e) => e.object === "centro" && e.side === "blue");
+  E.scene.map.cpu.style = "static";
+  const I = (object, x, y, extra = {}) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...extra });
+  E.scene.add([I("miniera_oro", 2000, 3000), I("ally_omino", b.x - 60, b.y + 230, { side: "blue" }), I("ally_omino", b.x + 60, b.y + 230, { side: "blue" })]);
+});
 const nTest = await page.evaluate(() => window.__editor.scene.map.instances.length);
 await click(btn3("test").x, btn3("test").y);
 await page.waitForURL(/room=custom/, { timeout: 30000 });
@@ -583,7 +589,7 @@ await page.waitForFunction(() => window.__game && window.__game.ready, null, { t
 await page.waitForTimeout(1500);
 const game = await page.evaluate(() => { const G = window.__game, w = G.world; return { room: w.room, enemy: w.exists("enemy_centro"), eco: w.exists("enemy_eco"), omini: [...w.all("ally_omino")].length, test: G.pause.testMode, style: G.g.sk && G.g.sk.style }; });
 res.prova = game;
-check("la partita di prova", game.room === "custom" && game.enemy && game.eco && game.omini === 3 && game.test && game.style === "static");
+check("la partita di prova (§9.198: senza i 3 lavoratori)", game.room === "custom" && game.enemy && game.eco && game.omini === 0 && game.test && game.style === "static");
 const still = await page.evaluate(() => {
   const G = window.__game, w = G.world, c = w.all("enemy_centro").next().value, en0 = { ...G.g.en };
   G.advance(1800);
@@ -600,7 +606,7 @@ const still = await page.evaluate(() => {
   return out;
 });
 res.statica = still;
-check("CPU statica: 3 lavoratori fermi, niente economia", still.workers === 3 && still.jobs === 0 && !still.spent.length && !still.sites && !still.prod && !still.soldiers);
+check("CPU statica: i 2 lavoratori della mappa fermi, niente economia", still.workers === 2 && still.jobs === 0 && !still.spent.length && !still.sites && !still.prod && !still.soldiers);
 check("CPU statica: reagisce (frecce del centro, fuga)", still.arrows && still.fled);
 await page.evaluate(() => window.__game.pause.actions.menu());
 await page.waitForURL(/room=editor/, { timeout: 30000 });
@@ -627,6 +633,26 @@ const C5 = await page.evaluate(() => window.__editor.confirmLayout());
 await click(...at(C5.buttons[1]));
 await page.waitForURL(/room=menu/, { timeout: 20000 });
 check("Non salvare: il menu", true);
+
+// [§9.198] la password: una mappa protetta nel browser; aprendola nell'editor
+// la chiede (sbagliata: resta fuori; giusta: si apre)
+await page.goto(`${base}/index.html?room=editor`);
+await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
+const lockedId = await page.evaluate(async () => {
+  const ms = await import("/src/mapstore.js"), mf = await import("/src/mapfile.js");
+  const I = (side, x, y) => ({ object: "centro", x, y, scale_x: 1, scale_y: 1, rotation: 0, side });
+  return ms.saveMap({ ...mf.newMap({ name: "Chiusa" }), instances: [I("red", 1000, 1000), I("blue", 5000, 5000)], lock: mf.lockOf("segreto") });
+});
+await page.evaluate((id) => { window.__editor.openSaved(id); }, lockedId);
+await page.waitForSelector('.net-panel [data-net="unlock"]');
+await page.fill('.net-panel [data-net="password"]', "sbagliata");
+await page.locator('.net-panel [data-net="unlock"]').click(); await page.waitForTimeout(200);
+check("password sbagliata: resta chiusa", await page.evaluate(() => !!document.querySelector('.net-panel [data-net="unlock"]') && window.__editor.scene.map.name !== "Chiusa"));
+await page.fill('.net-panel [data-net="password"]', "segreto");
+await page.locator('.net-panel [data-net="unlock"]').click();
+await page.waitForFunction(() => window.__editor.scene.map.name === "Chiusa" && !window.__editor.ed.loading, null, { timeout: 60000 });
+check("password giusta: si apre, col lucchetto", await page.evaluate(() => !!window.__editor.scene.map.lock && !document.querySelector(".net-panel")));
+await page.evaluate(async (id) => { await (await import("/src/mapstore.js")).deleteMap(id); }, lockedId);
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));

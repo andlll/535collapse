@@ -681,6 +681,7 @@ async function main() {
   });
   pause.netMode = !!net;
   pause.testMode = !!test; // §9.188
+  pause.fileOnly = !!play; // §9.198: le partite sulle mappe dell'editor, solo su file
   // puntatore liberato (Esc, cambio di finestra) a gioco in corso: pausa
   // (in rete: chiesta all'altro giocatore, §9.156)
   input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) { if (netGame) netGame.requestPause(); else pause.open(); } };
@@ -705,7 +706,7 @@ async function main() {
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
   const autosave = () => {
-    if (roomName === "menu" || test || net || !settings.autosave || --autosaveAt > 0) return; // §9.188: non le prove
+    if (roomName === "menu" || test || play || net || !settings.autosave || --autosaveAt > 0) return; // §9.188: non le prove; §9.198: ne' le mappe dell'editor
     autosaveAt = AUTOSAVE_STEPS;
     if (world.exists("victory_manager") || world.exists("gameover_manager")) return;
     saveGame(true);

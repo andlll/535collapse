@@ -1297,7 +1297,8 @@
       "solid": false,
       "depth": -9999,
       "kit": false
-    },    "dialogo_7_0": {
+    },
+    "dialogo_7_0": {
       "sprite": null,
       "parents": [
         "parent_hint"
@@ -1360,7 +1361,6 @@
       "depth": -9999,
       "kit": false
     },
-
     "hint_lavoratori": {
       "sprite": null,
       "parents": [
@@ -1866,6 +1866,94 @@
       "gruppo": "gui",
       "alpha": 0.7,
       "nota": "[§9.162] la partita online non piu' sincronizzata (il globo), al posto del segno 'diverso' provvisorio di §9.158: l'icona tonda sotto gli inattivi (netgame.js drawDesync): disegno caricato dall'autore (nero, 96 x 96), al 70% come le icone dell'originale"
+    },
+    "ico_ed_select": {
+      "da": "icons8-move-100",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (select): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_line": {
+      "da": "icons8-polyline-100",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (line): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_brush": {
+      "da": "icons8-brush-100",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (brush): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_new": {
+      "da": "icons8-file-96",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (new): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_open": {
+      "da": "icons8-opened-folder-96",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (open): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_save": {
+      "da": "icons8-save-96",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (save): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_test": {
+      "da": "icons8-play-96",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (test): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_settings": {
+      "da": "icons8-settings-96",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.198] icona della colonna dell'editor di mappe (settings): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
     }
   }
 }

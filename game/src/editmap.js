@@ -49,6 +49,10 @@ export const CATALOG = [
     objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
               "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01"] },
   { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
+  // [§9.198, richiesta dell'autore] i ponti: solo quelli dipinti dall'autore
+  // (cotti nel suolo sopra il fiume, rivers.js PAINTED_BRIDGES; il primo con
+  // la sua balaustra); M li specchia (l'altro verso del fiume)
+  { key: "bridges", label: "Bridges", objects: [...PAINTED_BRIDGES] },
   { key: "city", label: "City",
     objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
               "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
