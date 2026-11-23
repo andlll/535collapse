@@ -13903,3 +13903,32 @@ disegnate a linee solo Inserisci e Gomma.
 
 Prove: atlas rifatto (tools/05), screenshot della colonna (i comandi spenti
 attenuati come prima).
+
+**Ripeti** (richiesta dell'autore, stessa sera: "inserisci anche il tasto
+ripeti, usa la stessa freccia ma specchiata verso destra"): un quinto
+comando dopo Annulla, con l'icona di Annulla specchiata (Ctrl+Y nel
+suggerimento), spento quando non c'e' niente da ripetere. Con quindici
+pulsanti la colonna si rimpicciolisce fino a 0,8 (era 0,85, §9.196): a 900
+px di altezza stanno ancora tutti senza scorrere. L'icona della gomma
+dell'autore e' arrivata dentro un messaggio mandato mentre lavoravo, e non
+come file: da rimandare.
+
+**La CI rossa** (trovata seguendo la PR #25): da §9.181 la prova
+`editor.mjs` falliva in CI (le esecuzioni non annullate: 421, 422, 424-426,
+428, 430, 432, 434-437, 439), sempre in un punto di tasti o mouse veloci:
+"trascinata col centrale" (421), poi il pannello "Salva mappa" che dopo
+Ctrl+S non compariva (dal §9.184 in poi). In locale passava sempre. La
+causa: nella CI (grafica emulata, pochi core) un fotogramma dura centinaia
+di millisecondi, e "Ctrl giu', S, Ctrl su" arrivano tutti fra un
+fotogramma e l'altro: quando l'editor legge i tasti (una volta per
+fotogramma, input.js beginStep) Ctrl e' gia' lasciato e S diventa "stile";
+il trascinamento col centrale partiva dal punto in cui stava il puntatore
+al fotogramma dopo la pressione, non da dove si era premuto, e perdeva
+l'ultimo tratto se il tasto era gia' lasciato. Correzioni (servono anche a
+chi gioca su una macchina lenta):
+- input.js: i tasti premuti con Ctrl (o Cmd) tenuto si ricordano al
+  keydown (`pressedCtrl`, come `pressedShift` per i gruppi di unita'), e il
+  punto in cui si preme ogni pulsante del mouse (`pressPos`);
+- editor.js: Ctrl vale anche se gia' lasciato, per un tasto premuto con
+  Ctrl tenuto; il trascinamento della vista parte da `pressPos` e si
+  applica fino all'ultima posizione prima di chiudersi.

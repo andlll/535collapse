@@ -33,6 +33,13 @@ export class Input {
     // controlGroups); presi al keydown, perche' Shift puo' essere gia'
     // rilasciato al passo che legge il tasto
     this._pressedShift = new Set(); this.pressedShift = new Set();
+    // [§9.199] lo stesso per Ctrl (o Cmd): Ctrl+S, Ctrl+Z... premuti in fretta
+    // su una macchina lenta arrivano col Ctrl gia' lasciato al passo che li legge
+    this._pressedCtrl = new Set(); this.pressedCtrl = new Set();
+    // [§9.199] dove si e' premuto ogni pulsante del mouse (pixel CSS): il
+    // trascinamento parte da li', anche se il passo arriva dopo che il
+    // puntatore si e' gia' mosso
+    this._pressPos = [[0, 0], [0, 0], [0, 0]]; this.pressPos = [[0, 0], [0, 0], [0, 0]];
     this.down = new Set(); this.pressed = new Set(); this.released = new Set();
     this._mdown = [false, false, false];
     this._mp = [false, false, false]; this._mr = [false, false, false];
@@ -81,6 +88,7 @@ export class Input {
       const b = BUTTON[e.button];
       if (b === undefined) return;
       this._mdown[b] = true; this._mp[b] = true;
+      this._pressPos[b] = [this.x, this.y];
     });
     const up = (e) => {
       const b = BUTTON[e.button];
@@ -107,7 +115,7 @@ export class Input {
       // l'Esc che libera il puntatore e' del browser, non del gioco (a
       // seconda del browser arriva prima o dopo pointerlockchange)
       if (k === 27 && (this.locked || performance.now() - this._unlockedAt < 300)) return;
-      if (!this._down.has(k)) { this._pressed.add(k); if (e.shiftKey) this._pressedShift.add(k); }
+      if (!this._down.has(k)) { this._pressed.add(k); if (e.shiftKey) this._pressedShift.add(k); if (e.ctrlKey || e.metaKey) this._pressedCtrl.add(k); }
       this._down.add(k);
       if (PREVENT.has(k)) e.preventDefault();
     });
@@ -152,6 +160,8 @@ export class Input {
     this.down = new Set(this._down);
     this.pressed = this._pressed; this._pressed = new Set();
     this.pressedShift = this._pressedShift; this._pressedShift = new Set();
+    this.pressedCtrl = this._pressedCtrl; this._pressedCtrl = new Set();
+    this.pressPos = this._pressPos.map((p) => p.slice());
     this.released = this._released; this._released = new Set();
     this.mouseDown = this._mdown.slice();
     this.mousePressed = this._mp; this._mp = [false, false, false];

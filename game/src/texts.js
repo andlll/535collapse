@@ -1542,6 +1542,7 @@ export const TEXTS = {
     fr: "Bouge le pointeur : tout droit ou en angle. Clic : placer. Droit : annuler." },
   // [§9.195] i comandi nella colonna dell'editor
   "Undo (Ctrl+Z)": { it: "Annulla (Ctrl+Z)", es: "Deshacer (Ctrl+Z)", pt: "Desfazer (Ctrl+Z)", de: "Rückgängig (Strg+Z)", fr: "Annuler (Ctrl+Z)" },
+  "Redo (Ctrl+Y)": { it: "Ripeti (Ctrl+Y)", es: "Rehacer (Ctrl+Y)", pt: "Refazer (Ctrl+Y)", de: "Wiederholen (Strg+Y)", fr: "Rétablir (Ctrl+Y)" },
   "Cut (Ctrl+X)": { it: "Taglia (Ctrl+X)", es: "Cortar (Ctrl+X)", pt: "Recortar (Ctrl+X)", de: "Ausschneiden (Strg+X)", fr: "Couper (Ctrl+X)" },
   "Copy (Ctrl+C)": { it: "Copia (Ctrl+C)", es: "Copiar (Ctrl+C)", pt: "Copiar (Ctrl+C)", de: "Kopieren (Strg+C)", fr: "Copier (Ctrl+C)" },
   "Paste (Ctrl+V)": { it: "Incolla (Ctrl+V)", es: "Pegar (Ctrl+V)", pt: "Colar (Ctrl+V)", de: "Einfügen (Strg+V)", fr: "Coller (Ctrl+V)" },

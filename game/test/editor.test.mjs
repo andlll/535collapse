@@ -637,7 +637,8 @@ test("§9.196 la colonna che scorre", () => {
   assert.equal(big.maxScroll, 0);
   assert.ok(!big.up && !big.down && big.buttons.every((b) => !b.hidden));
   const top = editorLayout(1024, 600, 0);
-  assert.ok(top.k >= 0.85 && top.maxScroll > 0 && top.up && top.down);
+  assert.ok(top.k >= 0.8 && top.maxScroll > 0 && top.up && top.down); // (§9.199: 0,8 con Ripeti)
+  assert.equal(editorLayout(1600, 900).maxScroll, 0, "a 900 px stanno tutti");
   assert.ok(!top.buttons[0].hidden && top.buttons[top.buttons.length - 1].hidden);
   assert.equal(hitTest(top, top.down[0], top.down[1]).kind, "colscroll");
   assert.equal(hitTest(top, top.up[0], top.up[1]).kind, "ui", "in cima la freccia su non fa niente");

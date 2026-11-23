@@ -143,7 +143,7 @@ export const TOOLS = ["select", "line", "brush", "insert", "erase"]; // §9.194:
 export const ACTIONS = ["new", "open", "save", "test", "settings"];
 // [§9.195, richiesta dell'autore] il secondo gruppo, fra gli strumenti e le
 // azioni: annulla, taglia, copia, incolla (oltre ai tasti)
-export const EDITS = ["undo", "cut", "copy", "paste"];
+export const EDITS = ["undo", "redo", "cut", "copy", "paste"]; // §9.199: anche Ripeti
 export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
@@ -151,6 +151,7 @@ export const LABEL = {
   insert: "Insert: units, resources, buildings…",
   erase: "Area eraser: delete objects",
   undo: "Undo (Ctrl+Z)",
+  redo: "Redo (Ctrl+Y)",
   cut: "Cut (Ctrl+X)",
   copy: "Copy (Ctrl+C)",
   paste: "Paste (Ctrl+V)",
@@ -218,7 +219,7 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // scorre (scroll: px dall'alto, gia' limitato; maxScroll). Le frecce su e
 // giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
 // parte che si vede hanno hidden e non si toccano.
-const COL_MIN = 0.85, COL_ARROW = 30;
+const COL_MIN = 0.8, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti: a 900 px stanno ancora tutti)
 export function editorLayout(W, H, scroll = 0) {
   const n = TOOLS.length + EDITS.length + ACTIONS.length;
   const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
@@ -281,10 +282,11 @@ function drawIcon(d, key, x, y, s, ink) {
   // [§9.198, richiesta dell'autore] le icone disegnate dall'autore (PNG,
   // nuovi.json: ico_ed_*, bianche), tinte col colore del segno; dove non
   // ce n'e' una, il disegno a linee qui sotto
-  const png = "ico_ed_" + key;
+  // ([§9.199] Ripeti: la freccia di Annulla specchiata verso destra)
+  const mirror = key === "redo", png = "ico_ed_" + (mirror ? "undo" : key);
   if (d.a.sprites[png] && d.a.frame(png, 0)) {
     const k = (32 * s) / 64;
-    d.spriteExt(png, 0, x, y, k, k, 0, ink, d.alpha);
+    d.spriteExt(png, 0, x, y, mirror ? -k : k, k, 0, ink, d.alpha);
     return;
   }
   const L = (x1, y1, x2, y2, w = 3) => d.lineWidthColour(x + x1 * s, y + y1 * s, x + x2 * s, y + y2 * s, w * s, ink, ink);
@@ -328,6 +330,12 @@ function drawIcon(d, key, x, y, s, ink) {
     L(12, 12, 12, 2);
     for (let k = 1; k < P.length; k++) L(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]);
     T(-14, 0, -2, 0, -8, 9);
+  } else if (key === "redo") { // [§9.199] la freccia di Annulla, specchiata
+    const P = [];
+    for (let k = 0; k <= 10; k++) { const t = (k / 10) * Math.PI; P.push([-2 - dcos(t) * 10, 2 - dsin(t) * 10]); }
+    L(-12, 12, -12, 2);
+    for (let k = 1; k < P.length; k++) L(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]);
+    T(14, 0, 2, 0, 8, 9);
   } else if (key === "cut") { // le forbici: due anelli e le lame incrociate
     L(-5, 6, 7, -14, 2.5); L(5, 6, -7, -14, 2.5);
     for (const sx of [-6, 6]) { C(sx, 10, 5.5); C(sx, 10, 2.8, c.white); }
@@ -734,10 +742,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
   // [§9.195] i pulsanti della colonna: annulla, taglia, copia, incolla (al
   // centro della vista, scelto, con "Sposta": si trascina dove serve)
-  const editEnabled = (key) => (key === "undo" ? scene.undoList.length > 0 : key === "paste" ? !!ed.clip : selected().length > 0);
+  const editEnabled = (key) => (key === "undo" ? scene.undoList.length > 0 : key === "redo" ? scene.redoList.length > 0
+    : key === "paste" ? !!ed.clip : selected().length > 0);
   const editAction = (key) => {
     if (!editEnabled(key)) return;
     if (key === "undo") { if (scene.undo()) tidySel(); }
+    else if (key === "redo") { if (scene.redo()) tidySel(); } // §9.199
     else if (key === "cut") cut();
     else if (key === "copy") copy();
     else if (key === "paste") {
@@ -1144,7 +1154,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.loading || ed.dom) return;
     const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), mx = input.x, my = input.y;
     const [rx, ry] = view.toRoom(mx, my);
-    const ctrl = input.down.has(17), shift = input.down.has(16), K = (k) => input.pressed.has(k);
+    // ([§9.199] Ctrl anche se gia' lasciato, se il tasto e' stato premuto con
+    // Ctrl tenuto: su una macchina lenta Ctrl+S arriva cosi')
+    const K = (k) => input.pressed.has(k);
+    const ctrl = input.down.has(17) || [...input.pressed].some((k) => input.pressedCtrl.has(k)), shift = input.down.has(16);
     // la conferma, sopra tutto
     if (ed.confirm) {
       const B = ed.confirm.buttons, C = confirmLayout(W, H, B.length), k = C.buttons.findIndex((R) => inRect(mx, my, R));
@@ -1260,10 +1273,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
     }
     const grab = input.mousePressed[2] || (input.mousePressed[0] && input.down.has(32) && !hit);
-    if (grab) ed.drag = { x: mx, y: my, button: input.mousePressed[2] ? 2 : 0 };
+    // ([§9.199] dal punto in cui si e' premuto, e fino all'ultima posizione
+    // anche se il tasto e' gia' stato lasciato: su una macchina lenta pressione,
+    // movimento e rilascio possono stare in un passo solo)
+    if (grab) { const b = input.mousePressed[2] ? 2 : 0, [px, py] = input.pressPos[b]; ed.drag = { x: px, y: py, button: b }; }
     if (ed.drag) {
+      view.pan(ed.drag.x - mx, ed.drag.y - my); ed.drag.x = mx; ed.drag.y = my;
       if (!input.mouseDown[ed.drag.button]) ed.drag = null;
-      else { view.pan(ed.drag.x - mx, ed.drag.y - my); ed.drag.x = mx; ed.drag.y = my; }
       return;
     }
     // la colonna e il cerchio "Indietro"
