@@ -221,6 +221,8 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
 // parte che si vede hanno hidden e non si toccano.
 const COL_MIN = 0.8, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti: a 900 px stanno ancora tutti)
+// (§9.203: la freccia della schermaglia, alta come quelle della mappa: menu.js arrow con r 22)
+const COL_ARROW_SCALE = (22 * 0.45 * 2.6) / 24;
 export function editorLayout(W, H, scroll = 0) {
   const n = TOOLS.length + EDITS.length + ACTIONS.length;
   const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
@@ -1731,15 +1733,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.lineWidthColour(cx1 + 16 * L.k, ym, cx2 - 16 * L.k, ym, 2, c.black, c.black);
     }
     // [§9.196] le frecce della colonna che scorre (spente in cima e in fondo)
+    // [§9.203, richiesta dell'autore] le stesse della schermata della
+    // schermaglia (menu.js arrow: ico_sk_freccia, il disegno dell'autore,
+    // della stessa misura e con le stesse trasparenze), girate in su e in
+    // giu', senza il cerchio intorno
     for (const [A, dir, can] of [[L.up, -1, L.scroll > 0], [L.down, 1, L.scroll < L.maxScroll]]) {
       if (!A) continue;
-      const [ax, ay, ar] = A, hov = ed.hover && ed.hover.kind === "colscroll" && ed.hover.dir === dir;
-      draw.setAlpha(!can ? 0.15 : hov ? 0.95 : 0.6);
-      draw.circleColour(ax, ay, ar, c.white, c.white, false);
-      draw.setAlpha(!can ? 0.2 : 0.8);
-      const t = ar * 0.5;
-      draw.triangleColour(ax - t, ay - dir * t * 0.5, ax + t, ay - dir * t * 0.5, ax, ay + dir * t * 0.7, DARK, DARK, DARK, false);
+      const [ax, ay] = A, hov = ed.hover && ed.hover.kind === "colscroll" && ed.hover.dir === dir;
+      draw.spriteExt("ico_sk_freccia", 0, ax, ay, COL_ARROW_SCALE, COL_ARROW_SCALE, dir * 90, c.white, !can ? 0.15 : hov ? 0.95 : 0.55);
     }
+    draw.setAlpha(1);
     // il cerchio "Indietro" (come nelle schermate del menu, §9.158)
     const [bx, by, br] = L.back;
     draw.setAlpha(ed.hover && ed.hover.kind === "back" ? 0.99 : 0.69);

@@ -14211,6 +14211,13 @@ un po' in un ambiente silenzioso come quello dell'editor."
   Il disegno di prima resta se la foto mancasse.
 - **Niente clic** dei pulsanti nell'editor (i dieci `clic()` di §9.168 tolti;
   nel gioco restano).
+- **Le frecce della colonna che scorre** (§9.196), richiesta successiva
+  dell'autore: "usiamo le stesse del menu della schermaglia, non metterci il
+  cerchio intorno". Ora sono `ico_sk_freccia` (la freccia disegnata
+  dall'autore per la schermata della schermaglia, §9.131), della misura delle
+  frecce della mappa li', girate in su e in giu', con le stesse trasparenze
+  (0,55; 0,95 col puntatore; 0,15 spente in cima e in fondo), al posto del
+  cerchio bianco col triangolo. Il punto in cui si cliccano non cambia.
 
 Testi nuovi: "Schieramento rosso / blu (S: stile {i}/{n})" nelle sei lingue.
 
