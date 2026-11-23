@@ -60,7 +60,8 @@ acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (do
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
 (poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della
 schermaglia (`nuovi/sprites/sk_*_cartolina.png`, §9.121) la fa `node tools/17_cartoline.mjs` col gioco
-in esecuzione (e poi `tools/05`). Gli effetti sonori (`nuovi/audio/`: i file d'origine, i tagli
+in esecuzione (e poi `tools/05`). Le foto delle macchie a particelle nella scheda "Natura" dell'editor
+(`nuovi/sprites/ed_natura_*.png`, §9.203) le fa `node tools/19_natura.mjs` allo stesso modo (poi `tools/05`). Gli effetti sonori (`nuovi/audio/`: i file d'origine, i tagli
 delle varianti in `audio.json`, fonti e licenze in `CREDITI.md`, §9.137) li fa
 `python3 tools/18_audio.py` (serve ffmpeg) -> `game/assets/audio/`.
 
@@ -136,6 +137,7 @@ node game/test/browser/hintgap.mjs                      # suggerimenti del tutor
 node game/test/browser/hover.mjs                        # pulsanti col puntatore evidenziati anche sotto i pannelli di vetro
 node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri (file collegati), pennello, copertina, polilinea, Prova mappa, schieramenti, mura, gomma
 node game/test/browser/skcustom.mjs                     # le mappe dell'editor nella schermaglia: elenco, copertina o disegno, CPU fissata, partita, salvataggio, Ricomincia, file
+node game/test/browser/edstyles.mjs                     # le mappe dell'editor nella partita: stili di case e alberi, municipi in piu', la sconfitta con l'ultimo
 node game/test/browser/netmap.mjs                       # la partita online su una mappa dell'editor (WebRTC vero): chi entra la riceve, la tiene, la seconda volta no
 node game/test/browser/alarms.mjs                       # allarmi d'attacco sulla minimappa: per zona, anelli, J, suggerimento
 node game/test/browser/minimap.mjs                      # clic sulla minimappa: sposta la view, ordini col destro, riquadro della view

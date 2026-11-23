@@ -85,8 +85,11 @@ le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
 i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
 freccina), le icone dell'autore, i ponti, la password, le partite solo su
 file e senza lavoratori di partenza (§9.198), anche per i comandi e la
-gomma (§9.199-§9.200). Da fare: la scheda "Regia" per gli scenari (per ora
-no, decisione dell'autore, §9.198).
+gomma (§9.199-§9.200); il vetro, gli stili della casa, la F dell'albero
+finto, il municipio come edificio, le foto della Natura, niente clic
+(§9.203; lo stile scelto nell'editor ora arriva anche nella partita). Da
+fare: la scheda "Regia" per gli scenari (per ora no, decisione
+dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -14138,3 +14141,90 @@ prima di questa). Nessun testo nuovo: gli errori sono quelli di prima.
 dai due server STUN, raro) come un byte: pochi caratteri. Un codice di 6
 lettere vorrebbe un server di presentazione (§9.152), che l'autore non ha
 voluto.
+
+### 9.203 Correzioni dell'editor: vetro, stili della casa, la F, il municipio, le foto della Natura, niente clic
+
+Richieste dell'autore (23 novembre 2026, stessa PR #27, 0.2617): "nell'editor
+bisogna applicare l'effetto vetro sull'interfaccia (per qualche motivo non e'
+stato fatto), deve essere possibile cambiare stile alle case come si fa con
+gli alberi e gli elementi della citta', sull'albero "fake" va disegnata
+temporaneamente la "f" per far capire la differenza all'utente dell'editor
+tra quello normale e quello fake. l'edificio centro deve essere
+posizionabile come gli altri edifici, al di la' del punto di partenza.
+anteprima oggetti natura particellari: sostituire l'immagine che c'e' ora
+concettuale con uno screenshot, come fatto per il campo di grano.
+Nell'editor disattiviamo il suono di clic della GUI, diventa fastidioso dopo
+un po' in un ambiente silenzioso come quello dell'editor."
+
+- **Il vetro** ("Glass interface", §7.14). *Perche' mancava*: lo sfondo
+  sfocato dei pannelli lo cattura app.js dopo aver disegnato il mondo, nel
+  ciclo del gioco; l'editor ha il suo ciclo (editor.js render) e non lo
+  catturava mai, quindi Draw disegnava i pannelli bianchi semplici. Ora la
+  cattura e' in `glass.js` (spostata da app.js, uguale) e l'editor la fa
+  dopo la mappa e prima dell'interfaccia, se l'opzione e' accesa: colonna,
+  pannello, caselle, pulsanti e suggerimenti di vetro come nel gioco.
+- **Gli stili della casa** (Edifici). La casa del gioco ha sei stili (c1s..c6s,
+  quelli della CPU c1b..c6b, buildings.js): la casella della casa (rossa e
+  blu) li ha tutti, S li cambia ("Schieramento rosso (S: stile 3/6)"), come le
+  mura (§9.194: lo schieramento con l'interruttore rosso / blu). Con "Sposta"
+  S cambia lo stile di una casa gia' messa nel suo schieramento, come per
+  alberi e case della citta' (prima ne cambiava lo schieramento: per una casa
+  dell'altra parte la si rimette). Nella voce lo stile e' `sprite` (il nome
+  rosso; il blu si vede col suo, c3s -> c3b).
+- **Lo stile scelto arriva nella partita** (trovato per strada). La room delle
+  mappe dell'editor non portava lo `sprite` delle voci: il gioco tirava a
+  caso lo stile di alberi e case, anche quello scelto nell'editor con S o col
+  pennello. Ora (mapfile.js scenarioToRoom) lo sprite va nella room dopo il
+  gruppo, solo per le mappe dell'editor (le room del gioco sono di
+  tools/07, senza), e world.js `loadRoom` lo mette dopo il Create: il Create
+  tira comunque il suo numero a caso (il generatore della partita consuma
+  gli stessi numeri), poi lo sprite scelto; gli alberi (civilians.js
+  `restyle`) anche il tipo, che usa l'albero che muore. La casa blu della
+  CPU col suo sprite blu; online quella del secondo giocatore torna al nome
+  rosso (i gemelli si disegnano blu da soli, p2sprites.js). L'albero finto
+  dei modelli con `alb1_F` (la F) resta a caso fra gli otto. Le mappe del
+  gioco non cambiano: col seme fisso le impronte di determinism.mjs
+  (sk_padus, 3000 passi) sono le stesse di main.
+- **La F sull'albero finto**, solo nell'editor: la F arancione di `alb1_F`
+  (lo sprite dell'editor di GameMaker; nel kit di Tiled gia' su tutte le
+  varianti, §9.78) disegnata sull'albero alla sua profondita' (editmap.js,
+  l'evento draw di `albero_fake` nel mondo dell'editor: dietro gli alberi
+  davanti), anche nel fantasma sotto il puntatore e nella casella della
+  tavolozza. Nel gioco l'albero finto resta uguale a quello vero.
+- **Il municipio come edificio**: in testa alla scheda Edifici, rosso e blu,
+  quanti se ne vogliono, oltre alle partenze (scheda Regia, una per parte).
+  Nella mappa e' la voce "centro" con `hall: true` (la partenza e' il centro
+  senza: mapfile.js `isStart`; la convalida accetta `hall` solo vero e solo
+  sul centro); nella room (testRoom) e' nel gruppo `hall`, che
+  skirmishPrepare non conta fra le partenze; il blu e' quello della CPU
+  (enemy_centro) o, online, del secondo giocatore. Con la vittoria
+  "Municipio" il giocatore perdeva al primo centro distrutto: ora con
+  l'ultimo (buildings.js; la CPU e la partita online contavano gia' tutti i
+  centri). Il disegno della mappa nella schermaglia (skuser.js) non lo
+  scambia per una partenza.
+- **Le foto della Natura**: le sette macchie a particelle (erba, grano, fili
+  d'erba, i quattro prati fioriti) nella tavolozza avevano un disegno a
+  pallini; ora una foto: `tools/19_natura.mjs` (come tools/17 per le
+  cartoline) mette ogni macchia da sola su una mappa vuota dell'editor (il
+  prato), la inquadra intera, la fotografa e la sfuma con un'ellisse
+  (`nuovi/sprites/ed_natura_*.png`, 320 px, gruppo ambiente, nuovi.json).
+  Il disegno di prima resta se la foto mancasse.
+- **Niente clic** dei pulsanti nell'editor (i dieci `clic()` di §9.168 tolti;
+  nel gioco restano).
+
+Testi nuovi: "Schieramento rosso / blu (S: stile {i}/{n})" nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': la scheda Edifici col municipio e la casa
+a sei stili, gli stili rossi e blu del gioco, S con "Sposta" nello stesso
+schieramento, l'aspetto del blu, le partenze che non contano i municipi, la
+convalida di `hall`, la room coi municipi nel gruppo e gli stili dopo,
+skirmishPrepare che sceglie le due partenze, splitGroups che tiene lo stile;
+152 test), `editor.mjs` (in piu': il municipio rosso messo dalla tavolozza,
+la casa col terzo stile con S, S con "Sposta", le foto nell'atlas),
+`edstyles.mjs` (nuova, nella CI: una partita su una mappa dell'editor con
+la casa rossa c1s, quella blu c5b, l'albero alb6 col tipo 6, il finto
+`alb1_F` che resta uno degli otto, due centri per parte, 600 passi della
+CPU con due centri; vittoria "Municipio": perso il municipio si gioca,
+persa anche la partenza si perde), `determinism.mjs` (sk_padus, 3000 passi:
+le impronte di main), screenshot (la tavolozza Natura con le foto, gli
+alberi finti con la F, le case, i municipi, il vetro).
