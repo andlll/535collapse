@@ -45,7 +45,7 @@ import { newGlobals } from "./state.js";
 import { loadSettings, saveSettings } from "./settings.js";
 import { setLanguage, t, tr } from "./i18n.js";
 import { PauseMenu } from "./pause.js";
-import { enemyManagerMenu, fogController, fog01, VERSION } from "./menu.js";
+import { enemyManagerMenu, fogController, fog01, VERSION, skLayout } from "./menu.js";
 import { fogBank, stealthMarks, shotClicker, shotAction, provaNebbia } from "./stealth.js"; // §9.148
 import { enemyManagerLv7 } from "./lvl07.js"; // §9.178
 import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
@@ -55,7 +55,7 @@ import { fiumeGrande, ponte } from "./bridge.js";
 import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility, baseOf } from "./multiplayer.js"; // §9.155, §9.174
-import { netParams, startNet, hostGame, joinMenu } from "./netgame.js"; // §9.156, §9.157
+import { netParams, startNet, hostGame, joinMenu, netEarly, checkMap, NET_MAP } from "./netgame.js"; // §9.156, §9.157, §9.192
 import { p2SpriteMap } from "./p2sprites.js";
 import { saveSlot, loadSlot, loadSlotIndex, takePending, setPending, saveFile, openFile } from "./save.js";
 import { toggleFullscreen } from "./fullscreen.js";
@@ -64,12 +64,13 @@ import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
-const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118
+const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor", "custom"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180; custom: §9.188
 // Gruppi d'atlas per room (tools/05_atlas.py, tier).
 const TIERS = { menu: ["core", "menu", "gioco"], match: ["core", "gioco"],
                 lvl01: ["core", "gioco", "citta"], lvl02: ["core", "gioco", "citta"], lvl03: ["core", "gioco"],
                 lvl04: ["core", "gioco"], lvl05: ["core", "gioco"], lvl06: ["core", "gioco", "citta"], lvl07: ["core", "gioco", "citta"],
-                ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])) }; // §9.118, §9.123: tiers
+                ...Object.fromEntries(SK_MAPS.filter((m) => m.room).map((m) => [m.room, ["core", "gioco", ...(m.tiers || [])]])), // §9.118, §9.123: tiers
+                custom: ["core", "gioco"] }; // §9.188 (gli altri gruppi dagli oggetti della mappa, sotto)
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -142,6 +143,12 @@ async function main() {
     params.set("room", "menu");
     history.replaceState(null, "", location.pathname + "?room=menu");
   }
+  // [§9.180] l'editor di mappe: un ciclo suo, senza partita (editor.js, in
+  // un pezzo a parte del bundle: si scarica solo quando lo si apre)
+  if (roomName === "editor") {
+    const { runEditor } = await import("./editor.js");
+    return runEditor({ r, assets, canvas, settings, params, toast, progress });
+  }
   // [§9.156, multiplayer, fase 4] la partita a due in rete (?net=host|join,
   // netgame.js): chi crea e' il rosso, chi entra il blu; mappa, opzioni e
   // seme sono quelli di chi crea
@@ -152,7 +159,64 @@ async function main() {
   // prove nel browser, che fissano Math.random a mano) Math.random come prima
   if (params.has("seed")) simSeed(Number(params.get("seed")) >>> 0);
   else if (!params.has("nostart")) simSeed(freshSeed());
-  const room = await (await fetch(`assets/rooms/${roomName}.json`)).json();
+  // [§9.188] "Prova mappa": la room dell'editor dal browser (mapstore.js), con
+  // le opzioni della schermaglia; senza (la pagina ricaricata dopo), l'editor.
+  // [§9.190] Anche la partita vera su una mappa dell'editor, dalla schermata
+  // della schermaglia (&play=1, skuser.js): la room e le opzioni da "__play__";
+  // da una partita salvata (&load=...) dentro il salvataggio (custom), che
+  // torna in "__play__" (per "Ricomincia"). Senza: il menu.
+  let test = null, play = null, early = null, netMap = null, netPre = null;
+  const toMenu = () => { location.search = "?room=menu"; };
+  if (roomName === "custom") {
+    const { takeService, putService, saveMap } = await import("./mapstore.js");
+    const { PLAY } = await import("./skuser.js");
+    const { mapHash, testRoom: roomOf } = await import("./mapfile.js");
+    const lm = net ? null : params.get("load");
+    if (!net && params.get("net")) { toMenu(); return; } // (una partita online senza la sua sessione)
+    if (net) {
+      // [§9.192] la partita online su una mappa dell'editor: chi crea (e chi
+      // entra che l'aveva gia') la trova nel browser (NET_MAP, con la stessa
+      // impronta del codice); chi entra senza la riceve da chi crea, prima
+      // della partita (netEarly: la sala d'attesa e il canale nascono qui),
+      // la convalida, controlla l'impronta e la tiene fra le sue mappe
+      const rec = await takeService(NET_MAP, true).catch(() => null);
+      if (rec && rec.hash === net.custom.hash) netMap = { room: rec.room, map: rec.map };
+      else if (net.local === 1) {
+        netPre = netEarly({ net, version: VERSION, toMenu });
+        try {
+          const data = await netPre.data;
+          const v = await checkMap(data, await (await fetch("assets/objects.json")).json());
+          if (v.errors || mapHash(v.map) !== net.custom.hash) throw new Error("mappa diversa: " + (v.errors || []).join(", "));
+          netMap = { room: roomOf(v.map), map: v.map };
+          netPre.say(tr("Map received: loading the game..."), "ok");
+          saveMap(v.map).then(() => toast(tr("The map was saved among your maps.")), (e) => console.warn("[535 rete] mappa non salvata:", e));
+        } catch (e) {
+          console.error("[535 rete] la mappa non e' arrivata:", e);
+          netPre.say(tr("The map of this game could not be received."), "error");
+          return;
+        }
+      } else { toMenu(); return; }
+    } else if (lm) {
+      early = lm === "slot" ? await loadSlot(roomName) : await takePending();
+      if (early && early.custom) {
+        play = early.custom;
+        await putService(PLAY, play).catch((e) => console.warn("[custom] Ricomincia non disponibile:", e));
+        params.set("play", "1");
+      } else early = null;
+    } else if (params.get("play") === "1") play = await takeService(PLAY, true).catch(() => null);
+    if (play) { const { id, ...rest } = play; play = rest; } // (la chiave della voce di servizio)
+    else test = await takeService("__test__", true).catch(() => null);
+    if (!test && !play && !netMap) {
+      if (lm) toast(tr("Not a valid save file"), "warning");
+      location.search = lm || params.get("play") === "1" ? "?room=menu" : "?room=editor&resume=1";
+      return;
+    }
+  }
+  const custom = test || play || netMap; // §9.190, §9.192
+  if (netMap) net.sk.start = (await import("./mapfile.js")).redStart(netMap.map); // §9.191: il rosso (chi crea) alla partenza rossa
+  // (una copia: skirmishPrepare cambia le istanze, e la room della mappa
+  // dell'editor va nei salvataggi com'era)
+  const room = custom ? JSON.parse(JSON.stringify(custom.room)) : await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
                     [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
@@ -213,6 +277,7 @@ async function main() {
   if (params.get("campaign") === "1") g.campagna = 1;
   world.hooks.roomGoto = (name) => {
     if (netGame) netGame.leave(); // §9.156: il saluto all'altro giocatore
+    if (test && name === "menu") { location.search = "?room=editor&resume=1"; return; } // §9.188: dalla prova si torna all'editor
     location.search = "?room=" + name + (g.campagna === 1 ? "&campaign=1" : "");
   };
   let netGame = null; // §9.156: la partita in rete (startNet, sotto)
@@ -413,6 +478,7 @@ async function main() {
   // [§9.118] schermaglia: il centro della CPU diventa nemico (non per una
   // partita salvata: lo stato arriva gia' fatto)
   const skParams = net ? { ...net.sk, pvp } // §9.156: le opzioni di chi ha creato la partita
+    : custom && !early ? custom.sk // §9.188: le opzioni della prova (editor.js); §9.190: della partita (skuser.js)
     : isSkirmish(roomName) && !params.get("load") ? (pvp ? { ...loadSkirmish(), pvp } : loadSkirmish()) : null;
   // [§9.155] i gemelli del giocatore 2 e gli specchi (multiplayer.js); gli
   // sprite blu per il disegno (p2sprites.js)
@@ -421,6 +487,15 @@ async function main() {
     world.p2Sprites = p2SpriteMap(assets.sprites);
   }
   const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
+  // [§9.193] online, le unita' e gli edifici blu di una mappa dell'editor
+  // (gli oggetti della CPU, mapfile.js testRoom) diventano quelli del secondo
+  // giocatore (i gemelli p2_*: la tabella del nemico, multiplayer.js m1)
+  if (pvp && custom && world.mp) {
+    for (const e of all) {
+      const t = e[0].startsWith("enemy_") ? world.mp.m1[e[0]] : null;
+      if (t && world.objects[t]) e[0] = t;
+    }
+  }
   // [§9.11] i gruppi della mappa: tenuti da parte o neutrali (scenario.js)
   const { now: instances, held, neutrals } = splitGroups(roomName, all);
   const fog = new FogMap(room.width, room.height);
@@ -432,7 +507,7 @@ async function main() {
   await loadSlotIndex(); // §9.107: le intestazioni degli slot in IndexedDB, per i menu
   let saved = null;
   if (loadMode) {
-    saved = loadMode === "slot" ? await loadSlot(roomName) : await takePending();
+    saved = early || (loadMode === "slot" ? await loadSlot(roomName) : await takePending()); // §9.190: early, la mappa dell'editor
     params.delete("load");
     history.replaceState(null, "", location.pathname + "?" + params.toString());
     if (!saved || saved.room !== roomName) { saved = null; toast(tr("Not a valid save file"), "warning"); }
@@ -560,7 +635,9 @@ async function main() {
     saveSettings(settings);
   };
   // Salvataggi (save.js, snapshot.js; menu di pausa, "Salva e carica")
-  const capture = () => captureGame({ world, g, manager, path, fog, cam, room: roomName });
+  // [§9.190] la partita su una mappa dell'editor si salva con la mappa (la
+  // room, le opzioni, il nome): la room non e' fra quelle del gioco
+  const capture = () => ({ ...captureGame({ world, g, manager, path, fog, cam, room: roomName }), ...(play ? { custom: play } : {}) });
   const campaignParam = () => (g.campagna === 1 ? "&campaign=1" : "");
   const saveGame = async (auto = false) => {
     try {
@@ -603,6 +680,8 @@ async function main() {
     },
   });
   pause.netMode = !!net;
+  pause.testMode = !!test; // §9.188
+  pause.fileOnly = !!play; // §9.198: le partite sulle mappe dell'editor, solo su file
   // puntatore liberato (Esc, cambio di finestra) a gioco in corso: pausa
   // (in rete: chiesta all'altro giocatore, §9.156)
   input.onUnlock = () => { if (roomName !== "menu" && !pause.paused) { if (netGame) netGame.requestPause(); else pause.open(); } };
@@ -610,6 +689,7 @@ async function main() {
   world.hooks.fullscreen = () => toggleFullscreen();
   world.hooks.loadSlot = (name) => { location.search = "?room=" + name + "&load=slot"; };
   world.hooks.loadFile = () => pause.actions.loadFile();
+  world.hooks.toast = toast; // §9.190 (la schermata della schermaglia)
   // [§9.172] i pulsanti della sconfitta (endgame.js): ricomincia e carica,
   // non nella partita in rete
   if (!net) {
@@ -620,13 +700,13 @@ async function main() {
   // della schermaglia) e "Join game" (?stun=0 passa alla partita: senza
   // server STUN, per le prove in locale)
   const stun = params.get("stun") !== "0";
-  world.hooks.hostGame = (sk) => hostGame({ sk, stun });
-  world.hooks.joinGame = (opts) => joinMenu({ ...opts, version: VERSION, stun });
+  world.hooks.hostGame = (sk, map = null) => hostGame({ sk, stun, map }).catch((e) => { console.error(e); toast(tr("Saving failed"), "warning"); }); // §9.192: map
+  world.hooks.joinGame = (opts) => joinMenu({ ...opts, version: VERSION, stun, objects: world.objects });
   // salvataggio automatico ogni 5 minuti di gioco (non a partita finita)
   const AUTOSAVE_STEPS = room.speed * 300;
   let autosaveAt = AUTOSAVE_STEPS;
   const autosave = () => {
-    if (roomName === "menu" || net || !settings.autosave || --autosaveAt > 0) return;
+    if (roomName === "menu" || test || play || net || !settings.autosave || --autosaveAt > 0) return; // §9.188: non le prove; §9.198: ne' le mappe dell'editor
     autosaveAt = AUTOSAVE_STEPS;
     if (world.exists("victory_manager") || world.exists("gameover_manager")) return;
     saveGame(true);
@@ -1023,13 +1103,16 @@ async function main() {
   if (net) {
     if (world._stepNo !== 0) console.warn("[535 rete] il mondo non parte dal passo 0");
     netGame = startNet({ net, world, g, commands, pause, version: VERSION, hash: hashNow,
-                         dump: () => stateDump({ world, g, manager, path }), toMenu: () => { location.search = "?room=menu"; } });
+                         dump: () => stateDump({ world, g, manager, path }), toMenu,
+                         pre: netPre, mapData: netMap && net.local === 0 ? netMap.map : null }); // §9.192
   }
   // ?nostart=1: per i test, il mondo resta fermo finche' non lo si avanza
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
   window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+                    skLayout, // §9.190: la schermata della schermaglia, per le prove
+                    get reads() { return input.reads || 0; }, // §9.199: le letture dell'input, per le prove
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152
     // §9.153: registro e replay dei comandi (record(), stop(), replay(log))
     commands, record: () => commands.record({ room: roomName, seed: simSeedValue() }),

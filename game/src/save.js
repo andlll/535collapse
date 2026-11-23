@@ -290,7 +290,7 @@ export async function gunzipBase64(b64) {
 
 // uno slot per room: "535.save.match", "535.save.lvl01", ...
 const slotKey = (room) => "535.save." + room;
-export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // SK_ROOMS: §9.118; lvl07: §9.178
+export const SAVE_ROOMS = ["match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS]; // SK_ROOMS: §9.118; lvl07: §9.178 (§9.198: le mappe dell'editor solo su file)
 
 const DB_NAME = "535-saves", BODY = "slots", HEAD = "info";
 let dbOpen = null;
@@ -337,7 +337,8 @@ const lsRemove = (k) => { try { localStorage.removeItem(k); } catch (e) { /* sto
 // data: { game, v, room, date, state }; ritorna il numero di byte scritti
 export async function saveSlot(data) {
   const json = JSON.stringify(sign(data));
-  const head = { v: SAVE_VERSION, room: data.room, date: data.date };
+  // [§9.190] col nome della mappa dell'editor (la partita "custom"), per i menu
+  const head = { v: SAVE_VERSION, room: data.room, date: data.date, ...(data.custom ? { name: data.custom.name || "" } : {}) };
   let idbError = null;
   try {
     const gz = await gzipBytes(json);
@@ -369,12 +370,12 @@ export async function saveSlot(data) {
 // intestazione dello slot (per il menu) senza leggere il mondo
 export function slotInfo(room) {
   const h = heads.get(room);
-  if (h && h.v === SAVE_VERSION) return { room: h.room, date: h.date };
+  if (h && h.v === SAVE_VERSION) return { room: h.room, date: h.date, name: h.name };
   try {
     const raw = lsGet(slotKey(room));
     if (!raw) return null;
     const e = JSON.parse(raw);
-    return e && e.v === SAVE_VERSION ? { room: e.room, date: e.date } : null;
+    return e && e.v === SAVE_VERSION ? { room: e.room, date: e.date, name: e.name } : null;
   } catch (e) { return null; }
 }
 

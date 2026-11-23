@@ -69,6 +69,8 @@ export const ECO = {
     // §9.107
     guard: 0,                                    // soldati della regia che restano a casa (non partono con le ondate)
     anyTroop: false,                             // senza le risorse per la truppa di turno, un'altra che si puo' pagare
+    // §9.189
+    passive: false,                              // la CPU statica (schermaglia, editor): solo la difesa, niente economia
   },
   // [Decisione dell'autore] livello 4: solo ricostruzione degli edifici
   // persi (e riparazioni), niente edifici nuovi; il resto da tarare con la
@@ -647,6 +649,54 @@ function baseSpot(w, p, P, home, o) {
   return null;
 }
 
+// [§9.50] difesa: un alleato vicino a un edificio nemico (entro defendR) e
+// i soldati della regia in attesa accorrono tutti, non solo quelli che lo
+// vedono (entro 400 px, enemies.js); andato via, restano in attesa dove sono.
+// [§9.189] Una funzione a parte: la fa anche la CPU statica. Restituisce i
+// soldati della regia e l'intruso (o null).
+function defend(w, p, E, lost) {
+  const army2 = soldiers(w).filter((e) => e.eco === 1 && !e.retreat); // §9.76: non chi si ritira (regia del livello)
+  let intruder = null;
+  for (const b of w.all("enemy_build")) {
+    if (b.noEco === 1) continue;
+    const a = w.nearest(b.x, b.y, "ally_unit");
+    if (a && dhypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
+  }
+  // [§9.116] anche attorno al posto di un edificio perso da ricostruire:
+  // i soldati in attesa vanno a liberarlo
+  for (const L of lost) {
+    if (intruder) break;
+    const a = w.nearest(L.x, L.y, "ally_unit");
+    if (a && dhypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
+  }
+  // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
+  // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
+  // [§9.82] Difesa e ondate col campo dei soli ostacoli fissi (fixed):
+  // col campo di sempre le celle dei soldati nemici fermi contano come
+  // ostacolo, e con le porte della citta' piene di difensori i soldati
+  // appena nati nelle caserme restavano fuori dal campo (-1, nessuna
+  // uscita), fermi. Col flow field si passa sopra le unita'.
+  let dff = null;
+  for (const e of army2) {
+    if (e.defending && e.role === 32) e.role = 30;
+    if (e.role !== 30 && !(e.defending && e.role === 31)) continue;
+    if (intruder && (e.action === 0 || e.defending)) {
+      dff = dff || p.flowField(p.goalField(intruder.x, intruder.y, true, false, true));
+      if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
+      e.action = 1; e.warwork = 1; e.dirox = intruder.x; e.diroy = intruder.y; e.defending = 1;
+      e.role = 31; e.flow_field = dff;
+    } else if (!intruder && e.defending) {
+      // [§9.82] restano dove sono: prima restavano in cammino verso l'ultima
+      // posizione dell'intruso, col ruolo 30 senza flow field, e dietro le
+      // mura tremavano sul posto (oltre 100 inversioni al minuto)
+      e.defending = 0;
+      if (e.role === 31) e.role = 30;
+      if (e.action === 1 && e.warwork === 1) { e.action = 0; e.warwork = 0; e.speed = 0; e.dirox = e.x; e.diroy = e.y; }
+    }
+  }
+  return { army2, intruder };
+}
+
 export function enemyEco(p) {
   return {
     create(i, w) {
@@ -668,6 +718,11 @@ export function enemyEco(p) {
     step(i, w) {
       if (w._stepNo % EVERY !== 0) return;
       const E = ecoOf(w), en = w.g.en, now = w._stepNo;
+      // [§9.189, richiesta dell'autore: "la CPU statica deve comunque reagire
+      // agli stimoli, semplicemente manca economia e parte gestionale"] la
+      // CPU statica (passive): solo la difesa della base; niente lavori,
+      // lavoratori e soldati nuovi, edifici, riparazioni, ondate
+      if (E.passive) { defend(w, p, E, []); return; }
       const workers = [...w.all("enemy_omino")];
       const home = w.all("enemy_centro").next().value || w.all("enemy_build").next().value;
       // riparazioni finite (o senza piu' materiale, o con alleati vicini):
@@ -802,49 +857,7 @@ export function enemyEco(p) {
         b.prodUntil = now + UNIT_TIME;
         army++;
       }
-      // [§9.50] difesa: un alleato vicino a un edificio nemico (entro
-      // defendR) e i soldati della regia in attesa accorrono tutti, non solo
-      // quelli che lo vedono (entro 400 px, enemies.js); andato via, restano
-      // in attesa dove sono
-      const army2 = soldiers(w).filter((e) => e.eco === 1 && !e.retreat); // §9.76: non chi si ritira (regia del livello)
-      let intruder = null;
-      for (const b of w.all("enemy_build")) {
-        if (b.noEco === 1) continue;
-        const a = w.nearest(b.x, b.y, "ally_unit");
-        if (a && dhypot(a.x - b.x, a.y - b.y) < E.defendR) { intruder = a; break; }
-      }
-      // [§9.116] anche attorno al posto di un edificio perso da ricostruire:
-      // i soldati in attesa vanno a liberarlo
-      for (const L of lost) {
-        if (intruder) break;
-        const a = w.nearest(L.x, L.y, "ally_unit");
-        if (a && dhypot(a.x - L.x, a.y - L.y) < E.defendR) intruder = a;
-      }
-      // (col flow field dei nemici e il ruolo 31, come le ondate: diritti
-      // restavano dietro gli edifici; arrivati, ruolo 32, tornano in attesa)
-      // [§9.82] Difesa e ondate col campo dei soli ostacoli fissi (fixed):
-      // col campo di sempre le celle dei soldati nemici fermi contano come
-      // ostacolo, e con le porte della citta' piene di difensori i soldati
-      // appena nati nelle caserme restavano fuori dal campo (-1, nessuna
-      // uscita), fermi. Col flow field si passa sopra le unita'.
-      let dff = null;
-      for (const e of army2) {
-        if (e.defending && e.role === 32) e.role = 30;
-        if (e.role !== 30 && !(e.defending && e.role === 31)) continue;
-        if (intruder && (e.action === 0 || e.defending)) {
-          dff = dff || p.flowField(p.goalField(intruder.x, intruder.y, true, false, true));
-          if (e.action !== 1) e.alarm.set(0, irandomRange(12, 15));
-          e.action = 1; e.warwork = 1; e.dirox = intruder.x; e.diroy = intruder.y; e.defending = 1;
-          e.role = 31; e.flow_field = dff;
-        } else if (!intruder && e.defending) {
-          // [§9.82] restano dove sono: prima restavano in cammino verso l'ultima
-          // posizione dell'intruso, col ruolo 30 senza flow field, e dietro le
-          // mura tremavano sul posto (oltre 100 inversioni al minuto)
-          e.defending = 0;
-          if (e.role === 31) e.role = 30;
-          if (e.action === 1 && e.warwork === 1) { e.action = 0; e.warwork = 0; e.speed = 0; e.dirox = e.x; e.diroy = e.y; }
-        }
-      }
+      const { army2, intruder } = defend(w, p, E, lost);
       // all'attacco, raccolti abbastanza soldati in attesa (attackAt, piu'
       // attackGrow a ogni ondata, fino al tetto), non prima di firstAttack
       // e a distanza di attackEvery dall'ondata prima; arrivati e fermi

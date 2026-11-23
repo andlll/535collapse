@@ -84,7 +84,7 @@ export class Assets {
 
   // Dopo un webglcontextrestored: le vecchie texture non esistono piu'.
   async reload(onProgress) {
-    const groups = [...this.groups.keys()];
+    const groups = [...this.groups.keys()].filter((g) => this.atlas.groups[g]); // §9.190: non le immagini aggiunte (skuser.js)
     const bgs = [...this.bg.keys()];
     this.r.textures.clear();
     this.groups.clear();

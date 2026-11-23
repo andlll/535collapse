@@ -1,0 +1,555 @@
+// L'editor di mappe: la mappa che si modifica (STUDIO.md §9.181-§9.182).
+//
+// La mappa e' uno scenario (mapfile.js): `map.instances` e' la verita'. La
+// scena la disegna col motore del gioco (un World senza comportamenti, il
+// suolo cotto) e tiene il legame fra ogni voce della mappa e la sua istanza
+// (byEntry). Le modifiche passano tutte da `edit` (una lista di cambi: voce,
+// com'era, come diventa), cosi' annulla e ripeti sono gratis.
+//
+// [§9.182, decisioni dell'autore] l'editor e' per i giocatori e fa mappe da
+// schermaglia: gli oggetti che si inseriscono sono quelli delle cinque mappe
+// della schermaglia (CATALOG), niente unita' ne' edifici dei giocatori
+// tranne le posizioni di partenza (i due `centro`).
+
+import { World } from "./world.js";
+import { Particles } from "./particles.js";
+import { DECOR_OBJECTS, decorCreate, campoCreate } from "./effects.js";
+import { sliced } from "./scenario.js";
+import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
+import { GroundCache, GROUND } from "./ground.js";
+import { bgrToRGB } from "./gl.js";
+import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
+import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS } from "./mapfile.js";
+
+// Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
+// quelli delle mappe della schermaglia (scenari/sk_*.json) e i loro simili.
+// Fiumi, strade e ponti sono della polilinea; i boschi anche del pennello.
+// [§9.183, richiesta dell'autore] "per le case e gli alberi dai la
+// possibilita' prima dell'inserimento di cambiare stile con un tasto, in modo
+// da tenere un singolo oggetto con piu' stili": una casella per piu' stili.
+// Gli alberi (albero e albero finto) hanno gli 8 sprite fra cui il gioco
+// sceglie (choices: alb1..alb8, scritti nella voce come `sprite`); le 25
+// case della citta' romana (ocr_01..ocr_45, tutte della stessa misura) sono
+// una famiglia di oggetti ({ family, objects }). Basilica, teatro e tempio
+// restano a parte (monumenti).
+const range = (pre, list) => list.map((n) => pre + n);
+export const HOUSES = range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25",
+                                     "31", "32", "33", "34", "35", "41", "42", "43", "44", "45"]);
+export const CATALOG = [
+  // [§9.196, richiesta dell'autore] la scheda "Regia": per ora le partenze
+  // (le bandierine), piu' avanti cio' che servira' agli scenari
+  { key: "start", label: "Setup", objects: ["centro"] },
+  // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
+  { key: "units", label: "Units", objects: UNITS },
+  // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
+  { key: "buildings", label: "Buildings", objects: [...BUILDINGS, { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
+  { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
+  { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
+  { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
+    objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
+              "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01"] },
+  { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
+  // [§9.198, richiesta dell'autore] i ponti: solo quelli dipinti dall'autore
+  // (cotti nel suolo sopra il fiume, rivers.js PAINTED_BRIDGES; il primo con
+  // la sua balaustra); M li specchia (l'altro verso del fiume)
+  { key: "bridges", label: "Bridges", objects: [...PAINTED_BRIDGES] },
+  { key: "city", label: "City",
+    objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
+              "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
+];
+// tutti i nomi degli oggetti del catalogo
+export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q) => (typeof q === "string" ? [q] : q.objects)));
+
+// [§9.183] Le caselle di una scheda: ognuna con i suoi stili ({ object,
+// sprite? }): uno solo, gli sprite fra cui il gioco sceglie (gli alberi), o
+// gli oggetti di una famiglia (le case)
+// [§9.191] gli oggetti di uno schieramento (le partenze): una casella per
+// parte, rossa e blu
+export function paletteItems(cat, objects) {
+  return cat.objects.flatMap((q) => {
+    if (typeof q !== "string" && q.sided) { // §9.194: le mura, per parte, coi loro stili (i due versi)
+      return SIDES.map((side) => ({ key: q.family + ":" + side, side, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object, side })) }));
+    }
+    if (typeof q !== "string") return [{ key: q.family, styles: q.objects.filter((n) => objects[n]).map((object) => ({ object })) }];
+    if (SIDED.has(q)) return SIDES.map((side) => ({ key: q + ":" + side, side, styles: [{ object: q, side }] }));
+    const o = objects[q];
+    return [{ key: q, styles: o && o.choices ? o.choices.map((sprite) => ({ object: q, sprite })) : [{ object: q }] }];
+  });
+}
+
+// quante caselle ha una scheda (§9.191: le partenze, una per parte)
+export const paletteCount = (cat) => cat.objects.reduce((n, q) => n + ((typeof q === "string" && SIDED.has(q)) || q.sided ? SIDES.length : 1), 0);
+
+// [§9.183] Gli stili di una voce gia' messa (per cambiarli con "Sposta"):
+// la lista e quale ha ora, o null se ne ha uno solo
+export function stylesOf(e, objects) {
+  const o = objects[e.object];
+  // [§9.191] le partenze: lo schieramento (S lo cambia)
+  if (SIDED.has(e.object)) return { styles: SIDES.map((side) => ({ object: e.object, side })), at: Math.max(0, SIDES.indexOf(e.side)) };
+  if (o && o.choices) {
+    const styles = o.choices.map((sprite) => ({ object: e.object, sprite }));
+    // (senza `sprite` la voce mostra la variante della sua posizione)
+    return { styles, at: o.choices.includes(e.sprite) ? o.choices.indexOf(e.sprite) : variantOf(e.x, e.y, o.choices.length) };
+  }
+  for (const k of CATALOG) {
+    for (const q of k.objects) {
+      if (typeof q !== "string" && q.objects.includes(e.object)) return { styles: q.objects.map((object) => ({ object })), at: q.objects.indexOf(e.object) };
+    }
+  }
+  return null;
+}
+// [§9.184] gli oggetti che una mappa dell'editor puo' avere (la convalida
+// dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
+// dipinti dei modelli
+export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte
+
+// [§9.194, richiesta dell'autore] Mura e porte, come nel gioco (walls.js):
+// un tratto ha due "+" alle estremita' (KIND.plus: l'orizzontale a -219 e
+// +207, il verticale all'origine e 300 px sopra); dal "+" il tratto nuovo
+// prosegue dritto o gira di 90 gradi, secondo la direzione del puntatore,
+// con gli scostamenti dei placer del gioco (SECTORS: oodl -208, oosl +217 o
+// +218, ovbl sul "+", oval 246 sotto; dal "+" di sopra di un verticale 54
+// px piu' giu'). Un tratto diventa porta e viceversa (stessa posizione).
+export const WALL_KIND = { mura_ori: "ori", porta_ori: "ori", mura_vert: "vert", porta_vert: "vert" };
+export const WALL_OF = { ori: "mura_ori", vert: "mura_vert" };
+export const GATE_SWAP = { mura_ori: "porta_ori", porta_ori: "mura_ori", mura_vert: "porta_vert", porta_vert: "mura_vert" };
+const WALL_PLUS = { ori: [["os", -219, 0], ["od", 207, 0]], vert: [["vb", 0, 0], ["va", 0, -300]] };
+// per "+": [direzione (gradi come pointDirection: 0 a destra, 90 in su), verso, dx, dy]
+const WALL_STEPS = {
+  os: [[180, "ori", -208, 0], [90, "vert", 0, 0], [270, "vert", 0, 246]],
+  od: [[0, "ori", 217, 0], [90, "vert", 0, 0], [270, "vert", 0, 246]],
+  va: [[180, "ori", -208, 54], [90, "vert", 0, 54], [0, "ori", 218, 54]],
+  vb: [[180, "ori", -208, 0], [0, "ori", 218, 0], [270, "vert", 0, 246]],
+};
+export const wallPluses = (e) => (WALL_KIND[e.object] ? WALL_PLUS[WALL_KIND[e.object]].map(([key, dx, dy]) => ({ key, e, x: e.x + dx, y: e.y + dy })) : []);
+// i "+" liberi: quelli senza il "+" di un altro tratto vicino (entro `near`
+// px: due tratti di fila li hanno a 2-3 px, ad angolo o in verticale a 54)
+export function freePluses(instances, near = 64) {
+  const all = instances.flatMap(wallPluses);
+  return all.filter((p) => !all.some((q) => q.e !== p.e && Math.abs(q.x - p.x) <= near && Math.abs(q.y - p.y) <= near));
+}
+// il tratto che prosegue dal "+" p verso il punto (x, y) (il verso piu'
+// vicino entro 60 gradi), o null: { object, x, y }
+export function wallStep(p, x, y) {
+  const deg = (((datan2(p.y - y, x - p.x) * 180) / Math.PI) % 360 + 360) % 360;
+  let best = null, bd = 60.5;
+  for (const [dir, kind, dx, dy] of WALL_STEPS[p.key]) {
+    const d = Math.abs((((deg - dir) % 360) + 540) % 360 - 180);
+    if (d < bd) { bd = d; best = { object: WALL_OF[kind], x: p.x + dx, y: p.y + dy }; }
+  }
+  return best;
+}
+// [§9.185] gli alberi (il pennello li dipinge e li cancella)
+export const TREES = new Set(["albero", "albero_fake"]);
+// le posizioni di partenza di una mappa da schermaglia (skirmish.js
+// skirmishPrepare: due centri, uno per parte)
+export { START }; // (mapfile.js, §9.191)
+export const STARTS = 2;
+// [§9.191] come si vede una voce del blu: lo sprite del suo corrispondente
+// della CPU (il centro blu: enemy_centro, cc_b), o null. [§9.193] Il
+// lavoratore della CPU ha lo sprite del civile: quello blu e' b_ (economy.js)
+export { BLUE_OF };
+const BLUE_LOOK = { ally_omino: "b_ow11" };
+// [§9.195, richiesta dell'autore] come nel gioco: il campo e' la terra arata
+// col grano (campo_grano; nella scena anche le file di spighe, campoCreate),
+// per tutte e due le parti (il campo della CPU e' uguale)
+export const EDIT_LOOK = { campo: "campo_grano" };
+// [§9.196, richiesta dell'autore] le partenze come bandierine (quelle del
+// punto di raccolta del gioco, rossa e blu), grandi FLAG_SCALE volte: dove
+// nascera' il centro di quella parte
+export const FLAG = { red: "rflag", blue: "bflag" }, FLAG_SCALE = 2;
+export function sideLook(objects, e) {
+  if (e.object === START) return FLAG[e.side] || FLAG.red;
+  if (EDIT_LOOK[e.object]) return EDIT_LOOK[e.object];
+  if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
+  if (BLUE_LOOK[e.object]) return BLUE_LOOK[e.object];
+  const b = objects[BLUE_OF[e.object]];
+  return (b && b.sprite) || null;
+}
+// oggetti della mappa che non si toccano (il gioco ne ha bisogno: lo mette
+// l'editor dove manca)
+export const SYSTEM = new Set(["manager"]);
+// [§9.185] le liste di forme della mappa, che il suolo disegna
+export const FEATURES = ["patches", "rivers", "roads", "bridges"];
+// cuociono nel suolo (ground.js): se cambiano, il suolo si rifa'
+export const baked = (name) => GROUND.test(name) || PAINTED_BRIDGES.includes(name);
+
+// [§9.184] La simmetria (§9.182-§9.183, confermata dall'autore): il punto
+// gemello di (x, y) in una mappa W x H. Diagonale: la rotazione di 180 gradi
+// attorno al centro (le cinque schermaglie, tools/16); orizzontale: le meta'
+// a sinistra e a destra; verticale: sopra e sotto. Gli oggetti cambiano
+// posto, gli sprite non si capovolgono (le ombre degli edifici restano a
+// destra in basso).
+export function mirrorPoint(mode, W, H, x, y) {
+  if (mode === "diagonal") return [W - x, H - y];
+  if (mode === "horizontal") return [W - x, y];
+  if (mode === "vertical") return [x, H - y];
+  return null;
+}
+export function mirrorDelta(mode, dx, dy) {
+  if (mode === "diagonal") return [-dx, -dy];
+  if (mode === "horizontal") return [-dx, dy];
+  if (mode === "vertical") return [dx, -dy];
+  return [dx, dy];
+}
+
+// [§9.181] La variante di un oggetto con piu' sprite (albero: alb1..alb8),
+// se la mappa non la dice: dalla posizione, sempre la stessa
+export const variantOf = (x, y, n) => (((Math.round(x) * 73856093) ^ (Math.round(y) * 19349663)) >>> 0) % n;
+
+// I gruppi d'atlas che servono a disegnare questi oggetti
+export function groupsFor(assets, objects, names) {
+  const out = new Set();
+  const want = (s) => { if (s && assets.sprites[s]) out.add(assets.sprites[s].group); };
+  for (const n of names) {
+    const o = objects[n];
+    if (!o) continue;
+    want(o.sprite);
+    for (const s of o.choices || []) want(s);
+    for (const [s] of o.slices || []) want(s);
+    if (BRIDGE_RAILS[n] && objects[BRIDGE_RAILS[n]]) want(objects[BRIDGE_RAILS[n]].sprite);
+    if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
+    if (BLUE_LOOK[n]) want(BLUE_LOOK[n]); // §9.193
+    if (EDIT_LOOK[n]) { want(EDIT_LOOK[n]); want("spiga"); } // §9.195: il campo col grano
+    if (n === START) { want(FLAG.red); want(FLAG.blue); } // §9.196: le bandierine
+  }
+  return out;
+}
+
+// Il riquadro dello sprite di un'istanza, stretto (quello di sprites.js
+// spriteBounds e' largo per eccesso); con la rotazione, il riquadro dei
+// quattro angoli. null senza sprite.
+export function tightBounds(assets, name, x, y, sx = 1, sy = 1, angle = 0) {
+  const fr = name && assets.frame(name, 0);
+  if (!fr) return null;
+  const { s, f } = fr, [tx, ty, tw, th] = f.trim;
+  const xs = [(tx - s.origin[0]) * sx, (tx + tw - s.origin[0]) * sx], ys = [(ty - s.origin[1]) * sy, (ty + th - s.origin[1]) * sy];
+  if (!angle) return [x + Math.min(...xs), y + Math.min(...ys), x + Math.max(...xs), y + Math.max(...ys)];
+  const a = -angle * Math.PI / 180, c = dcos(a), sn = dsin(a);
+  const px = [], py = [];
+  for (const lx of xs) for (const ly of ys) { px.push(x + lx * c - ly * sn); py.push(y + lx * sn + ly * c); }
+  return [Math.min(...px), Math.min(...py), Math.max(...px), Math.max(...py)];
+}
+
+export class EditScene {
+  // ctx: { r, assets, objects, masks }. La mappa deve avere gia' gli sprite
+  // caricati (EditScene.load).
+  constructor(ctx, map) {
+    Object.assign(this, ctx);
+    this.map = map;
+    this.undoList = [];
+    this.redoList = [];
+    this.version = 0; // cresce a ogni modifica (la mappa e' cambiata dall'apertura)
+    const world = this.world = new World({ objects: ctx.objects, masks: ctx.masks, assets: ctx.assets, g: {}, roomW: map.width, roomH: map.height });
+    world.particles = new Particles();
+    for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
+    world.register("campo", { create: campoCreate }); // §9.195: le file di spighe, come nel gioco
+    for (const [name, o] of Object.entries(ctx.objects)) if (o.slices) world.register(name, sliced(o));
+    for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
+      world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
+    }
+    this.byEntry = new Map();
+    this.skipped = new Set();
+    for (const e of map.instances) this.spawn(e);
+    if (this.skipped.size) console.warn("[editor] oggetti sconosciuti saltati:", [...this.skipped]);
+    // fiumi, strade, ponti e macchie (come app.js useRivers)
+    for (const k of FEATURES) this._features(k);
+    const room = { backgrounds: map.background ? [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] : [] };
+    this.ground = new GroundCache(ctx.r, ctx.assets, room, world, bgrToRGB(map.colour));
+  }
+
+  // la scena di una mappa, dopo aver caricato gli sprite che le servono
+  // (come in partita: core e gioco se ha qualcosa, e i gruppi in piu' dei
+  // suoi oggetti, la citta')
+  static async load(ctx, map, progress) {
+    const A = ctx.assets, names = new Set(map.instances.map((e) => e.object));
+    const groups = new Set(A.groupsOfTier("core", ...(names.size ? ["gioco"] : [])));
+    for (const g of groupsFor(A, ctx.objects, names)) groups.add(g);
+    const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", ...(map.patches || []).map((p) => p.bg || "city2")];
+    await A.load([...groups], bgs.filter(Boolean), progress);
+    return new EditScene(ctx, map);
+  }
+
+  // ---------------------------------------------------- voci e istanze
+
+  // l'istanza di una voce: sprite (la variante), visibile, il Create di chi
+  // disegna (macchie, fette, balaustre); i "figli" nati nel Create (fette,
+  // balaustre) si ricordano per toglierli con lei
+  spawn(e) {
+    const o = this.objects[e.object];
+    if (!o) { this.skipped.add(e.object); return null; }
+    const w = this.world, n0 = w.instances.length;
+    const i = w._alloc(e.object, e.x, e.y, { sx: e.scale_x ?? 1, sy: e.scale_y ?? 1, rot: e.rotation ?? 0, noChoice: true });
+    if (o.choices) i.sprite_index = o.choices.includes(e.sprite) ? e.sprite : o.choices[variantOf(e.x, e.y, o.choices.length)];
+    const look = sideLook(this.objects, e); // §9.191: il blu col suo sprite
+    if (look) i.sprite_index = look;
+    if (e.object === START) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
+    if (o.reveal) i.visible = true;
+    w.fire(i, "create");
+    i.kids = w.instances.slice(n0 + 1);
+    i.src = e;
+    this.byEntry.set(e, i);
+    return i;
+  }
+
+  despawn(e) {
+    const i = this.byEntry.get(e);
+    if (!i) return;
+    const w = this.world;
+    for (const s of i.grass_rows || []) w.particles.systemDestroy(s); // le macchie (effects.js decorCreate)
+    for (const s of i.crop_rows || []) w.particles.systemDestroy(s); // §9.195: le spighe del campo
+    for (const k of i.kids || []) w.destroy(k);
+    w.destroy(i);
+    this.byEntry.delete(e);
+  }
+
+  instOf(e) { return this.byEntry.get(e) || null; }
+
+  // [§9.185] le forme di una lista della mappa (macchie, fiumi, strade,
+  // ponti) ridisegnate dal motore (come app.js useRivers)
+  _features(key) {
+    const map = this.map, w = this.world, R = [map.width, map.height];
+    if (!map[key]) map[key] = [];
+    if (key === "patches") w.patches = map.patches.map((p) => patchGeometry(p));
+    if (key === "rivers") { w.rivers = riverJoin(map.rivers, (rv) => riverGeometry({ ...rv, room: R })); w._riverCells = undefined; w._water = undefined; }
+    if (key === "roads") w.roads = map.roads.map((rd) => roadGeometry({ ...rd, room: R }));
+    if (key === "bridges") w.bridges = map.bridges.map((b) => bridgeGeometry(b));
+  }
+
+  // ------------------------------------------------------------ modifiche
+
+  // I cambi: { e: la voce, from: com'era (null: non c'era), to: come diventa
+  // (null: tolta), at: il suo posto nella lista }. L'ordine della lista e'
+  // l'ordine di creazione delle istanze in partita. [§9.185] Con `key` il
+  // cambio e' di una forma (macchie, fiumi, strade, ponti: map[key]).
+  _apply(c, back) {
+    if (c.key) {
+      const want = back ? c.from : c.to, list = this.map[c.key], at = list.indexOf(c.e);
+      if (!want) { if (at >= 0) list.splice(at, 1); return; }
+      for (const k of Object.keys(c.e)) delete c.e[k];
+      Object.assign(c.e, JSON.parse(JSON.stringify(want)));
+      if (at < 0) list.splice(Math.min(c.at, list.length), 0, c.e);
+      return;
+    }
+    const want = back ? c.from : c.to, list = this.map.instances, at = list.indexOf(c.e);
+    this.despawn(c.e);
+    if (!want) { if (at >= 0) list.splice(at, 1); return; }
+    for (const k of Object.keys(c.e)) delete c.e[k];
+    Object.assign(c.e, want);
+    if (at < 0) list.splice(Math.min(c.at, list.length), 0, c.e);
+    this.spawn(c.e);
+  }
+
+  _after(changes) {
+    const w = this.world;
+    w.instances = w.instances.filter((i) => i.alive);
+    w._compact();
+    const keys = new Set(changes.filter((c) => c.key).map((c) => c.key));
+    for (const k of keys) this._features(k);
+    if (keys.size || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
+    this.version++;
+  }
+
+  edit(changes) {
+    if (!changes.length) return;
+    for (const c of changes) this._apply(c, false);
+    // [§9.185] dentro un gruppo (una pennellata) i cambi diventano un passo solo
+    if (this.group) this.group.push(...changes);
+    else this._push(changes);
+    this._after(changes);
+  }
+
+  _push(changes) {
+    this.undoList.push(changes);
+    if (this.undoList.length > 200) this.undoList.shift();
+    this.redoList.length = 0;
+  }
+
+  // [§9.185] un gruppo di modifiche (una pennellata): annulla le toglie tutte
+  begin() { this.group = []; }
+  end() {
+    const g = this.group;
+    this.group = null;
+    if (g && g.length) this._push(g);
+  }
+
+  undo() {
+    const cs = this.undoList.pop();
+    if (!cs) return false;
+    for (let k = cs.length - 1; k >= 0; k--) this._apply(cs[k], true);
+    this.redoList.push(cs);
+    this._after(cs);
+    return true;
+  }
+
+  redo() {
+    const cs = this.redoList.pop();
+    if (!cs) return false;
+    for (const c of cs) this._apply(c, false);
+    this.undoList.push(cs);
+    this._after(cs);
+    return true;
+  }
+
+  // voci nuove, in fondo alla lista
+  add(entries) {
+    const n = this.map.instances.length;
+    this.edit(entries.map((e, k) => ({ e, from: null, to: { ...e }, at: n + k })));
+    return entries;
+  }
+
+  // voci tolte: dalla piu' in fondo (annullando tornano ognuna al suo posto)
+  remove(entries) {
+    const list = this.map.instances;
+    const cs = entries.map((e) => ({ e, from: { ...e }, to: null, at: list.indexOf(e) })).filter((c) => c.at >= 0);
+    this.edit(cs.sort((a, b) => b.at - a.at));
+  }
+
+  // voci cambiate: fn(e) da' i campi nuovi
+  modify(entries, fn) {
+    const list = this.map.instances;
+    this.edit(entries.map((e) => ({ e, from: { ...e }, to: { ...e, ...fn(e) }, at: list.indexOf(e) })));
+  }
+
+  // [§9.185] forme nuove (macchie, fiumi, strade, ponti) in fondo alla lista
+  // `key`, e forme tolte (annullando tornano al loro posto)
+  addFeatures(key, list) {
+    const n = (this.map[key] || []).length;
+    this.edit(list.map((e, k) => ({ key, e, from: null, to: JSON.parse(JSON.stringify(e)), at: n + k })));
+    return list;
+  }
+  // [§9.187] forme cambiate (i punti, le larghezze): fn(e) da' i campi nuovi
+  modifyFeatures(key, list, fn) {
+    const all = this.map[key] || [], copy = (x) => JSON.parse(JSON.stringify(x));
+    this.edit(list.map((e) => ({ key, e, from: copy(e), to: copy({ ...e, ...fn(e) }), at: all.indexOf(e) })));
+  }
+
+  // [§9.187] la linea gemella (fiumi, strade) con la simmetria `mode`: stessi
+  // punti specchiati, nello stesso ordine, entro 2 px
+  twinLine(key, e, mode) {
+    if (!mode || mode === "none") return null;
+    const W = this.map.width, H = this.map.height;
+    const want = e.pts.map(([x, y]) => mirrorPoint(mode, W, H, x, y));
+    if (want.every(([x, y], k) => Math.abs(x - e.pts[k][0]) <= 1 && Math.abs(y - e.pts[k][1]) <= 1)) return null; // (gemella di se stessa)
+    return (this.map[key] || []).find((f) => f !== e && f.pts.length === want.length
+      && f.pts.every(([x, y], k) => Math.abs(x - want[k][0]) <= 2 && Math.abs(y - want[k][1]) <= 2)) || null;
+  }
+
+  removeFeatures(key, list) {
+    const all = this.map[key] || [];
+    const cs = list.map((e) => ({ key, e, from: JSON.parse(JSON.stringify(e)), to: null, at: all.indexOf(e) })).filter((c) => c.at >= 0);
+    this.edit(cs.sort((a, b) => b.at - a.at));
+  }
+
+  // [§9.185] il pennello dei boschi: in (x, y) un albero non sta se i piedi
+  // (w x h px attorno al punto) toccano l'acqua o la maschera di un oggetto
+  // della mappa; i prati e le strade dipinti nel suolo e le macchie no
+  blocks(x, y, w = 10, h = 5) {
+    const W = this.world, rc = riverCells(W);
+    if (rc && riverIn(rc, x - w, y - h, x + w, y + h)) return true;
+    const rect = [x - w, y - h, x + w, y + h];
+    for (const o of W._nearList(rect)) {
+      if (!o.alive || GROUND.test(o.object)) continue;
+      const bb = W.bbox(o);
+      if (!bb || bb[0] > rect[2] || bb[2] < rect[0] || bb[1] > rect[3] || bb[3] < rect[1]) continue;
+      for (let yy = Math.floor(Math.max(rect[1], bb[1])); yy <= Math.min(rect[3], bb[3]); yy++) {
+        if (W._spans(o, o.x, o.y, bb, yy, rect[0], rect[2] + 1, [])) return true;
+      }
+    }
+    return false;
+  }
+
+  // gli alberi della mappa (le voci), per il pennello
+  trees() { return this.map.instances.filter((e) => TREES.has(e.object)); }
+
+  // quante posizioni di partenza ci sono ([§9.191] di una parte, o in tutto)
+  starts(side = null) { return this.map.instances.filter((e) => e.object === START && (!side || e.side === side)).length; }
+
+  // [§9.184] dal punto d'origine al centro della maschera (come tools/16:
+  // il gemello ha l'ingombro nello stesso posto), per una voce; [0, 0]
+  // senza maschera (le macchie)
+  maskOffset(e) {
+    const o = this.objects[e.object];
+    if (!o) return [0, 0];
+    const name = o.mask || e.sprite || o.sprite || (o.choices && o.choices[0]), m = name && this.masks[name];
+    if (!m) return [0, 0];
+    const sx = e.scale_x ?? 1, sy = e.scale_y ?? 1;
+    return [((m.bbox[0] + m.bbox[2] + 1) / 2 - m.origin[0]) * sx, ((m.bbox[1] + m.bbox[3] + 1) / 2 - m.origin[1]) * sy];
+  }
+
+  // il gemello di una voce (i campi, al posto gemello), o null se la
+  // simmetria e' spenta o se cadrebbe su se stessa (al centro o sull'asse).
+  // [§9.186] mode: la simmetria dello strumento (non piu' della mappa)
+  twinAt(e, mode) {
+    const [ox, oy] = this.maskOffset(e);
+    const p = mirrorPoint(mode, this.map.width, this.map.height, e.x + ox, e.y + oy);
+    if (!p) return null;
+    const x = Math.round(p[0] - ox), y = Math.round(p[1] - oy);
+    if (Math.abs(x - e.x) <= 1 && Math.abs(y - e.y) <= 1) return null;
+    // [§9.191, richiesta dell'autore] la gemella di una voce di uno
+    // schieramento e' dell'altro
+    return e.side ? { ...e, x, y, side: otherSide(e.side) } : { ...e, x, y };
+  }
+
+  // la voce gemella gia' nella mappa (stesso oggetto, entro 2 px), o null
+  twinOf(e, mode) {
+    const t = this.twinAt(e, mode);
+    if (!t) return null;
+    return this.map.instances.find((q) => q !== e && q.object === e.object && Math.abs(q.x - t.x) <= 2 && Math.abs(q.y - t.y) <= 2) || null;
+  }
+
+  // le voci e le loro gemelle (senza doppioni)
+  withTwins(entries, mode) {
+    const out = new Set(entries);
+    if (mode && mode !== "none") for (const e of entries) { const t = this.twinOf(e, mode); if (t) out.add(t); }
+    return [...out];
+  }
+
+  // ------------------------------------------------------------- scelta
+
+  // il riquadro di una voce (sprite), o null (senza sprite: le macchie)
+  boundsOf(e) {
+    const i = this.byEntry.get(e);
+    if (!i) return null;
+    return tightBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale, i.image_angle);
+  }
+
+  // la voce sotto il punto (x, y) della mappa: la piu' in alto nell'ordine
+  // di disegno; gli oggetti senza sprite (le macchie) entro `slack` px dal
+  // loro centro
+  pick(x, y, slack) {
+    const list = this.world.sorted();
+    for (let k = list.length - 1; k >= 0; k--) {
+      const i = list[k], e = i.src;
+      if (!e || SYSTEM.has(e.object)) continue;
+      const b = tightBounds(this.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale, i.image_angle);
+      if (b ? x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3] : dhypot(x - i.x, y - i.y) <= slack) return e;
+    }
+    return null;
+  }
+
+  // le voci col punto d'origine dentro il rettangolo
+  inBox(x1, y1, x2, y2) {
+    const [l, t, r, b] = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
+    return this.map.instances.filter((e) => !SYSTEM.has(e.object) && this.byEntry.has(e) && e.x >= l && e.x <= r && e.y >= t && e.y <= b);
+  }
+
+  // [trascinando] le istanze spostate di (dx, dy) dalla voce, senza toccare la
+  // mappa (la modifica vera arriva lasciando il tasto: modify)
+  preview(entries, dx, dy) {
+    for (const e of entries) {
+      const i = this.byEntry.get(e);
+      if (!i) continue;
+      const o = this.objects[e.object], ny = e.y + dy;
+      const ddy = ny - i.y, ddx = e.x + dx - i.x;
+      this.world.setPos(i, e.x + dx, ny);
+      if (typeof o.depth !== "number") i.depth = -ny + o.depth.y;
+      for (const k of i.kids || []) { this.world.setPos(k, k.x + ddx, k.y + ddy); k.depth -= ddy; }
+      // [§9.195] le particelle (macchie, spighe del campo) seguono la voce
+      for (const ps of [...(i.grass_rows || []), ...(i.crop_rows || [])]) {
+        for (const q of ps.parts) { q.x += ddx; q.y += ddy; }
+        ps.depth -= ddy;
+      }
+    }
+  }
+}

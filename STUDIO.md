@@ -49,17 +49,44 @@ nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
+ritardo adattivo, riconnessione: §9.156 "Come riprendere"). I codici piu'
+corti (da ~600-780 a ~150-250 caratteri) l'autore li vuole: in un'altra
+sessione, con una PR a parte (§9.200). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
-**Livello 7, "Lost in the Fog"** (§9.148): uno stealth con l'arciere della
-nebbia, di giorno e pieno di nebbia. Fatto il prototipo
-(`?room=match&prova=nebbia`): banchi di nebbia orizzontali, vista davanti,
-allarme e "!", tiro furtivo e rapido, il messaggero che corre alla torre e
-il rinforzo, le torri nella nebbia. Da fare: la copertura del bosco, le mura
-che nascondono, i prigionieri da liberare (soldati e macchine d'assedio), i
-banchi e le pattuglie da Tiled; la mappa (dell'autore); la regia a fasi.
+**Livello 7, "Lost in the Fog"** (§9.148, §9.178): uno stealth con l'arciere
+della nebbia. Fatto: la mappa dell'autore e la regia (§9.178, nella 0.2614).
+Da rivedere in Tiled: le pattuglie e i banchi di nebbia tracciati da me nel
+livello regia (§9.178). (Le voci di §9.148 su bosco, mura e prigionieri
+erano del prototipo: §9.198.)
+
+**Editor di mappe** (§9.180-§9.182, roadmap R6): per i giocatori, mappe da
+schermaglia. Fatti lo scheletro (dal menu "Giocatore singolo" -> "Editor di
+mappe", `?room=editor`, dal disegno dell'autore), la mappa vera (col motore,
+anche tutta intera), le schermaglie come modelli, "Inserisci", "Sposta",
+annulla e ripeti, "Nuova mappa" vuota, gli stili di case e alberi col tasto
+S (§9.183), salva e apri (browser e file `.dvmap`, con la convalida), le
+impostazioni (nome, descrizione, misure, sfondo, CPU con la "statica" e "a
+scelta del giocatore") e la simmetria in tutti i comandi, come impostazione
+degli strumenti (§9.184, §9.186), il pennello ovale (boschi con larghezza e
+densita', texture) e la copertina (§9.185-§9.186), la polilinea per fiumi
+e strade e "Salvare le modifiche?" all'uscita (§9.187), i file collegati
+(Salva con nome, Ctrl+S sul file) e "Prova mappa" con la CPU statica
+(§9.188), che reagisce ma non ha economia ne' gestione (§9.189); le mappe
+dell'editor nella schermaglia (§9.190: dopo le cinque del gioco, dal
+browser o da file, con la copertina o il disegno della mappa e la CPU fissa
+o a scelta; la partita si salva con la mappa dentro), le partenze rossa e
+blu (§9.191: la gemella simmetrica e' dell'altro schieramento), la partita
+online sulle mappe dell'editor (§9.192: chi entra senza la mappa la riceve
+da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
+(§9.193), mura e porte coi "+" come nel gioco e la gomma ad area (§9.194),
+le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
+i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
+freccina), le icone dell'autore, i ponti, la password, le partite solo su
+file e senza lavoratori di partenza (§9.198), anche per i comandi e la
+gomma (§9.199-§9.200). Da fare: la scheda "Regia" per gli scenari (per ora
+no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -12515,3 +12542,1427 @@ piu' corta (0,75: fra due segnalini vicini toccava le icone). Una prima prova
 a (-150, -95), alla quota del 6, stava sopra la catena e quasi addosso
 all'elenco dei livelli. Prova: foto della mappa a 1280 x 720 e 1920 x 1080
 mandate all'autore per l'approvazione.
+
+### 9.180 L'editor di mappe: lo scheletro e la proposta
+
+Richiesta dell'autore (22 novembre 2026, PR nuova, versione **0.2615**), con
+un disegno a matita: "Dobbiamo creare l'editor dei livelli [...] con
+interfaccia incolonnata a sinistra e tool selezionato in basso. Deve essere
+accessibile dal gioco tramite un tasto 'editor di mappe' sotto
+'schermaglia' e fare circa le cose che facciamo su Tiled [...]. Inizia a
+impostare il lavoro e discutiamo insieme di come farlo". E' la tappa R6
+della roadmap ("Editor di mappe e scenari condivisi").
+
+Il disegno: una colonna a sinistra con, dall'alto, *sposta* (copia e
+incolla, specchia, elimina), *polilinea* (fiumi, strade), *pennello area*
+(boschi, texture), *inserisci* (unita', risorse, edifici...); piu' sotto,
+staccati, *nuova mappa*, *apri mappa*, *salva mappa*, *prova mappa*,
+*impostazioni* (controllo CPU, descrizione e informazioni della mappa;
+"password?"). In basso un riquadro col titolo "tool selezionato".
+
+**Fatto: lo scheletro.**
+- Menu: "Editor di mappe" e' il terzo pulsante di "Giocatore singolo",
+  sotto "Schermaglia" (menu.js MENU_PAGES, BTN_LABEL); apre `?room=editor`.
+- app.js: con `room=editor`, dopo renderer e atlas, passa a
+  `editor.js runEditor`, un ciclo suo senza World ne' partita (input, ciclo,
+  renderer, font e sprite del gioco). E' un import dinamico: esbuild lo mette
+  in un pezzo a parte del bundle (~10 KB), che si scarica solo aprendo
+  l'editor; il resto del gioco va in `dist/app.js` e in un pezzo comune.
+- La mappa: `newMap()` e' uno scenario `535-scenario` versione 1 (§9.3), lo
+  stesso formato di tools/12 e degli `scenari/`, vuoto: 6000 x 6000, sfondo
+  green1 (come la mappa vuota del kit). Si disegna lo sfondo ripetuto dentro
+  la mappa, fuori il colore della pagina, il bordo a 2 px.
+- La vista (EditorView): come la Camera del gioco ma con lo zoom da 0,5 a 4
+  (in partita 1-1,7) attorno al puntatore con la rotella (uno scatto x1,15;
+  il touchpad in proporzione), un margine di 400 px fuori dalla mappa per
+  arrivare ai bordi da sotto la colonna; si sposta con le frecce (Shift: piu'
+  veloce), trascinando col tasto centrale o con Spazio + sinistro.
+- La colonna dal disegno: un vetro chiaro coi pulsanti tondi bianchi (come
+  "Indietro" e lo schermo intero del menu), le icone disegnate a linee
+  (quattro frecce, la polilinea coi punti, il pennello, l'omino col "+", il
+  foglio col "+", la cartella, il dischetto, il triangolo del play,
+  l'ingranaggio); lo strumento scelto scuro con l'icona bianca; una lineetta
+  fra strumenti e azioni. Col puntatore sopra, il nome a destra della
+  colonna. Si rimpicciolisce tutta nelle finestre basse (editorLayout).
+- Il riquadro in basso, centrato a destra della colonna: il nome dello
+  strumento, "Prossimamente", le coordinate del puntatore sulla mappa, cosa
+  fara' lo strumento e i comandi della vista. Strumenti coi tasti 1-4.
+- Le azioni (nuova, apri, salva, prova, impostazioni) per ora dicono
+  "Prossimamente". Esc o il cerchio "Indietro" in alto a destra: il menu.
+- Testi nelle sei lingue (texts.js). Il font del gioco non ha "·" ne' "×":
+  la riga sotto il titolo e' "Nuova mappa  -  6000 x 6000".
+
+*Trovato per strada.* La prova del determinismo (§9.152,
+`determinism.test.mjs`) falliva su `main` dal §9.179: menu.js calcolava la
+freccia del livello 7 con `Math.atan2`. Ora `datan2` di dmath.js: stesso
+angolo (-331 gradi).
+
+Prove: `editor.test.mjs` (nuova: la mappa vuota ha le chiavi degli scenari
+di tools/12; colonna e riquadro dentro la finestra a 1920 x 1080, 1600 x
+900, 1280 x 720 e 1024 x 600, senza toccarsi; i pulsanti al loro posto;
+zoom col punto fermo, limiti e margine; testi tradotti), `editor.mjs`
+(nuova, anche in CI: dal menu all'editor, clic e tasto sugli strumenti,
+rotella col punto fermo, trascinata col centrale, Esc al menu), test
+unitari (122), `soak.mjs` su menu e match, screenshot in inglese e in
+italiano.
+
+**La proposta (da discutere con l'autore).**
+
+*1. Che mappe fa.* Due generi, molto diversi per lavoro:
+- (A) **mappe da schermaglia**: due posizioni di partenza (i due `centro`,
+  come le cinque di oggi: skirmish.js skirmishPrepare da' quello della CPU
+  al nemico), risorse, natura, terreno. Le regole sono quelle della
+  schermaglia (difficolta', vittoria, risorse... si scelgono all'avvio),
+  quindi una mappa e' subito giocabile, contro la CPU e online (§9.156).
+- (B) **scenari con regia**, come i livelli della campagna: eserciti ed
+  edifici nemici gia' piazzati, obiettivi, ondate, dialoghi. Oggi la regia
+  e' codice (levels.js, lvl07.js); per gli scenari dei giocatori servono le
+  regole dichiarative della roadmap R2 ("distruggi X: vittoria", "al minuto
+  5 un'ondata"), un lavoro a parte.
+Raccomandazione: prima (A), con (B) dopo, sopra lo stesso editor.
+
+*2. Il formato.* La mappa resta uno scenario `535-scenario` (§9.3): le
+istanze, `rivers`, `roads`, `bridges` e `patches` come le scrive tools/12.
+Una mappa fatta nell'editor e una fatta in Tiled sono la stessa cosa, e il
+gioco le carica allo stesso modo. In piu' solo le informazioni della mappa
+(descrizione, autore, impostazioni). Validazione rigorosa all'apertura (R2:
+solo oggetti noti, dentro la mappa, misure e numero di istanze massimi,
+niente codice: i file si scambiano fra sconosciuti).
+
+*3. Cosa si vede.* La mappa com'e' in partita, col motore del gioco: gli
+sprite dell'atlas, il suolo cotto in blocchi (ground.js) coi fiumi, le
+strade, i ponti e le macchie di rivers.js; gli alberi sempre visibili (in
+partita si scoprono); le macchie d'erba e di fiori con le loro particelle;
+gli oggetti senza sprite (manager, regia) come segnaposto. Da fare per lo
+zoom lontano: i blocchi del suolo sono al piu' 48 da 512 px (bastano fino
+allo zoom 1,7 della partita); per vedere mezza mappa o tutta servono
+blocchi cotti a risoluzione ridotta (1/2, 1/4).
+
+*4. Gli strumenti* (dal disegno), tutti con annulla e ripeti (Ctrl+Z,
+Ctrl+Y):
+- **Sposta**: clic o riquadro per scegliere (Shift aggiunge), trascinare
+  sposta; Ctrl+C e Ctrl+V (incolla sotto il puntatore), specchia (scala x
+  -1, come il ribaltamento di Tiled), ruota, Canc elimina.
+- **Polilinea**: fiume, strada marcata (strada1) o secondaria (strada2),
+  con larghezza, larghezza finale e densita' come in Tiled (§9.97); un clic
+  per punto, doppio clic o Invio per finire, i punti si trascinano. I ponti:
+  un clic su un fiume mette il ponte di traverso, gia' girato e lungo quanto
+  serve (oggi in Tiled e' un rettangolo da girare a mano); anche i ponti
+  dipinti (§9.100).
+- **Pennello area**: un pennello tondo (raggio regolabile) e la gomma.
+  *Boschi*: il pennello dipinge alberi veri, uno per uno, col campionamento
+  di Poisson di tools/12 (distanza 90 px) solo dove non ce ne sono gia';
+  restano istanze normali (si spostano o tolgono a uno a uno). *Texture*:
+  city2, city1, green1 (le macchie di §9.99): il pennello dipinge su una
+  griglia fine, il contorno diventa i poligoni sfumati di oggi.
+- **Inserisci**: le categorie dei tileset del kit (terreno, montagne e
+  fiumi, natura, risorse, edifici, unita', nemici, citta', nuovi) con le
+  loro miniature; le varianti (alb1..alb8) a caso o scelte; il fantasma
+  dell'oggetto sotto il puntatore, rosso dove non sta (come i cantieri);
+  griglia da 50 px facoltativa. Il catalogo oggi e' in Python
+  (tools/tiledkit.py `category`): va scritto anche per il gioco (un JSON
+  generato da tools/07 o 11, cosi' resta uno solo).
+
+*5. Nuova, apri, salva.* Nuova: nome, misura (le mappe di oggi vanno da
+3200 x 8000 a 9000 x 4000; la schermaglia 7000 x 7000), sfondo. Salva: nel
+browser (IndexedDB, come i salvataggi, con l'elenco delle proprie mappe) e
+su file da scaricare (`.dvmap`, compresso come `.dvgame`, §9.134) per
+scambiarle. Apri: le proprie mappe, un file, e le mappe del gioco
+(schermaglie e livelli) come punto di partenza, in copia.
+
+*6. Prova mappa.* La mappa va in IndexedDB e si apre una partita
+(`?room=custom`): app.js carica lo scenario dal browser invece che da
+`assets/rooms/` (la conversione scenario -> room di tools/07 e' breve, si
+porta in JS), con le opzioni della schermaglia; dal menu di pausa "Torna
+all'editor". Prima di partire un controllo: due `centro`, niente oggetti
+fuori mappa. Il manager e la vista iniziale li mette l'editor.
+
+*7. Impostazioni.* Nome, descrizione (si legge nella schermata della
+schermaglia), autore, misura e sfondo; per la schermaglia la **simmetria**
+facoltativa: quello che si fa in una meta' compare ruotato di 180 gradi
+nell'altra, come fa tools/16 per le cinque mappe di oggi. Le mappe
+dell'editor fra quelle della schermaglia, con la foto fatta dal browser.
+
+*Fasi* (una PR ciascuna, o piu'): F1 lo scheletro (questa); F2 la mappa
+vera nell'editor (istanze, suolo, fiumi, strade, macchie; zoom lontano; le
+mappe del gioco aperte in sola lettura; il catalogo); F3 inserisci e sposta
+con annulla e ripeti, salva e apri (browser e file); F4 polilinea e
+pennello; F5 prova mappa e impostazioni, le mappe dell'editor nella
+schermaglia; poi gli scenari con regia (R2) e la condivisione.
+
+**Da decidere con l'autore** (decise in §9.181 e §9.182)
+- [x] Che mappe: solo mappe da schermaglia (§9.182).
+- [x] Per chi: solo per i giocatori, per ora; gli scenari della campagna non
+  si modificano, le mappe della schermaglia sono i modelli (§9.182, al posto
+  di §9.181).
+- [x] I boschi: tutti e due, alberi uno per uno con "Inserisci" e col
+  pennello, che regola larghezza e densita' (§9.182).
+- [x] "Controllo CPU": come nella schermaglia, piu' una CPU statica che non
+  fa nulla (§9.182), e "a scelta del giocatore" al lancio (§9.186); la
+  statica reagisce comunque (difesa, frecce, fuga): le manca solo
+  l'economia e la gestione (§9.189).
+- [ ] "Password?": in sospeso (l'autore non ricorda a cosa servisse).
+- [x] Simmetria: spenta di partenza; si accende diagonale, orizzontale o
+  verticale rispetto alla mappa (§9.182); e' un'impostazione degli strumenti,
+  non della mappa (§9.186).
+- [x] Le mappe dell'editor nella schermata della schermaglia, se caricate;
+  anche nella partita online, col blu che la riceve all'inizio (§9.182).
+
+### 9.181 L'editor di mappe, fase 2: la mappa vera e "Apri mappa"
+
+Risposta dell'autore alla proposta di §9.180 (22 novembre 2026, stessa PR,
+versione 0.2615): "Ovviamente Tiled era un esempio, facciamo la cosa piu'
+comoda per noi". Quindi:
+- **l'editor e' anche lo strumento nostro**, non solo dei giocatori: non
+  imita Tiled e non deve restare compatibile con lui (niente .tmx in
+  uscita). Le mappe che fa sono scenari (§9.3), il formato che il gioco gia'
+  carica: una mappa dell'editor puo' andare dritta in `scenari/` (la CI
+  rifa' solo gli scenari che vengono da un .tmx di `mappe/`). Tiled e il kit
+  restano per le mappe gia' fatte finche' servono;
+- **prima la schermaglia** (due centri, risorse, natura: subito giocabile),
+  poi gli scenari con regia, sopra lo stesso editor;
+- **i boschi si dipingono albero per albero** (istanze normali, come quelle
+  che tools/12 ricava dal livello `boschi`).
+Restano aperte le altre domande di §9.180 (controllo CPU, password,
+simmetria, mappe dell'editor nella schermaglia).
+
+**Fatto: la mappa vera nell'editor** (fase F2 di §9.180, senza il catalogo
+degli oggetti, che va con "Inserisci").
+- `mapfile.js` (nuovo): il formato delle mappe. `newMap` (spostato da
+  editor.js), `roomToScenario` (le room di `game/assets/rooms/` tornano
+  scenari: cosi' l'editor apre le mappe del gioco) e `scenarioToRoom` (la
+  conversione di tools/07_scene.py in JS, che servira' a "Prova mappa": per
+  tutti gli 11 scenari da' le stesse room di tools/07, a parte -0 e 0).
+- La scena (editor.js `buildScene`): un World senza comportamenti, solo per
+  disegnare: gli sprite in ordine di depth come in partita (World.draw),
+  tutti visibili (in partita alberi e rovine si scoprono); i soli
+  comportamenti che servono a disegnare: le macchie d'erba e di fiori (le
+  loro particelle, effects.js decorCreate), gli oggetti a fette (il
+  monastero, il fiume del livello 4: scenario.js sliced), le balaustre dei
+  ponti dipinti. La variante degli oggetti con piu' sprite (alb1..alb8) e'
+  quella scritta nella mappa o, se non c'e', una fissa dalla posizione
+  (`variantOf`: riaprendo la mappa non cambia; in partita la sceglie ancora
+  il gioco). Il suolo e' quello della partita (GroundCache: sfondo, macchie,
+  sprite del suolo, strade, fiumi e ponti). Si caricano i gruppi d'atlas del
+  gioco e quelli degli oggetti della mappa (la citta'); gli oggetti che il
+  gioco non conosce si saltano (con un avviso in console).
+- **Da lontano** (ground.js): la partita cuoce il suolo in blocchi da 512 px
+  di room a un texel per pixel, al piu' 48 (bastano fino allo zoom 1,7).
+  Ora la cache ha dei livelli di dettaglio: al livello L un blocco copre L x
+  L blocchi con gli stessi 514 x 514 texel; l'editor sceglie L dallo zoom
+  (`lodFor`: circa un texel per pixel dello schermo). La partita usa solo il
+  livello 1, con lo stesso codice di prima. Lo zoom dell'editor arriva a 8
+  (prima 4): Padania (7000 x 7000) si vede tutta in 12 blocchi.
+- Fuori dalla mappa il colore della pagina (i blocchi sbordano), sotto le
+  istanze: montagne, chiazze e alberi a cavallo del bordo si vedono interi,
+  come li ha messi l'autore.
+- **"Apri mappa"** (il primo pulsante delle azioni che fa qualcosa): un velo
+  scuro e le mappe del gioco in due colonne, il tutorial e i livelli 1-7 a
+  sinistra, le cinque schermaglie a destra, coi loro nomi tradotti; un clic
+  apre la mappa (la barra di caricamento del gioco), la vista va sulla sua
+  vista iniziale, il nome e le misure sotto il titolo. Esc o un clic fuori
+  chiudono il pannello. Per ora la mappa si guarda soltanto: gli strumenti
+  arrivano con le fasi F3-F4.
+- Testi nuovi nelle sei lingue: "Non e' stato possibile aprire questa
+  mappa".
+
+Prove: `editor.test.mjs` (scenario -> room -> scenario uguale per gli 11
+scenari, con gruppi, fiumi, strade, ponti, macchie e percorsi; il pannello
+in due colonne dentro la finestra a 1920 x 1080 e 1280 x 720; i nomi delle
+mappe; `variantOf` fisso; `lodFor`), `editor.mjs` (in piu': Padania dal
+pannello, 819 istanze, 598 alberi visibili, il fiume e 12 strade, niente
+saltato; da lontano la mappa intera in 12 blocchi), test unitari (125),
+`rivers.mjs` (fiumi, strade, ponti e macchie in partita come prima),
+`soak.mjs` su lvl06, sk_padus e lvl04 senza errori. Aperte nell'editor anche
+lvl03, lvl04, lvl06 e sk_silva (2947 istanze), senza errori: screenshot
+vicini e lontani (la citta' e i ponti dipinti del livello 6, il fiume e le
+montagne del livello 4). Caricare una mappa: ~3 s col rendering software
+delle prove.
+
+**Prossimo** (F3): il catalogo degli oggetti per categoria (un JSON scritto
+da tools/07, dalle categorie di tools/tiledkit.py), "Inserisci" col
+fantasma sotto il puntatore, "Sposta" (selezione, trascinare, copia e
+incolla, specchia, elimina), annulla e ripeti; "Nuova mappa" (misura,
+sfondo), "Salva" e "Apri" anche dal browser e da file.
+
+### 9.182 L'editor di mappe: le decisioni dell'autore, "Inserisci" e "Sposta"
+
+Risposte dell'autore alle domande di §9.180 (22 novembre 2026, stessa PR,
+versione 0.2615):
+1. **Solo mappe da schermaglia**, per cominciare.
+2. **Solo per i giocatori**, per ora: non modificano gli scenari esistenti
+   (i livelli della campagna, il tutorial), ma le mappe della schermaglia
+   sono disponibili come **modelli** per partire. Corregge §9.181 ("anche lo
+   strumento nostro", "Apri mappa" coi livelli): "Apri mappa" ora offre solo
+   le cinque schermaglie, e la mappa aperta e' una mappa nuova ("Nuova mappa
+   da Padania", senza nome).
+3. **I boschi: tutti e due**, alberi uno per uno con "Inserisci" e col
+   pennello, che regola **larghezza e densita'**.
+4. **Controllo CPU: come nella schermaglia** (difficolta', stile), **piu' una
+   CPU statica che non fa nulla** (per provare la mappa con calma).
+5. **Password: in sospeso** (l'autore non ricorda a cosa servisse).
+6. **Simmetria spenta di partenza**; si accende **diagonale, orizzontale o
+   verticale** rispetto alla mappa. Come la intendo (confermato
+   dall'autore, §9.183): diagonale = la rotazione di 180 gradi attorno al centro
+   delle cinque schermaglie di oggi (basi in angoli opposti, tools/16);
+   orizzontale = le due meta' a sinistra e a destra (specchio sull'asse
+   verticale); verticale = sopra e sotto (specchio sull'asse orizzontale).
+   Come in tools/16 si sposta il centro della maschera e lo sprite resta
+   com'e' (uno specchiato o capovolto avrebbe le ombre dalla parte
+   sbagliata, a destra in basso negli edifici).
+7. **Le mappe dell'editor nella schermata della schermaglia**, se caricate;
+   e anche **nella partita online**, col blu che scarica la mappa da solo
+   all'inizio. Domanda dell'autore: "tanto e' un invio di un pacchetto dati
+   allo stesso modo dei comandi della partita, giusto?" *Si', nello stesso
+   canale diretto fra i due browser* (il DataChannel di WebRTC dei comandi,
+   rtc.js), con tre differenze: (a) la mappa e' molto piu' grande di un
+   comando (Padania 73 KB di scenario, Silva 290 KB; compressa come i
+   `.dvgame` qualche decina di KB, contro poche decine di byte di un
+   comando): va spezzata in pezzi da 16 KB, la misura che tutti i browser
+   accettano; (b) va mandata prima che parta la partita, con l'impronta
+   della mappa nel codice di invito, cosi' il blu controlla di aver
+   ricevuto proprio quella (le due partite devono partire identiche, §9.152)
+   e la convalida come ogni file che arriva da fuori; (c) oggi chi entra
+   apre la mappa (per nome) prima di collegarsi, e la partita nasce col
+   caricamento della pagina: con una mappa dell'editor il blu deve
+   collegarsi, ricevere la mappa e solo allora costruire la partita, nella
+   stessa pagina (ricaricarla chiuderebbe il collegamento). E' la parte piu'
+   lunga del lavoro.
+
+**Fatto: "Inserisci", "Sposta", annulla e ripeti** (fase F3, prima parte).
+- `editmap.js` (nuovo): la mappa che si modifica. La mappa (lo scenario) e'
+  la verita'; la scena la disegna (World senza comportamenti, il suolo cotto)
+  e tiene il legame voce -> istanza. Ogni modifica e' una lista di cambi
+  (voce, com'era, come diventa, il suo posto nella lista), quindi annulla e
+  ripeti (fino a 200) rimettono le voci anche al loro posto nell'ordine di
+  creazione. Un'istanza tolta si porta via le sue particelle (le macchie) e
+  i suoi "figli" (fette, balaustre); se cambia un oggetto cotto nel suolo
+  (strade e prati dipinti, chiazze, ponti dipinti) il suolo si rifa'.
+  `buildScene` di §9.181 e' diventato `EditScene`.
+- **Il catalogo** (`CATALOG`): gli oggetti delle cinque mappe della
+  schermaglia e i loro simili, in sei schede: partenze (il `centro`, al
+  piu' due: un terzo non si mette e un avviso lo dice), risorse (oro,
+  pietra grande e piccola, le tre rovine), alberi (albero e albero finto),
+  prati e fiori (le macchie d'erba, di grano e di fili, i fiori, l'erba alta
+  graa11-15, prati, erba e chiazze dipinti), montagne (le dieci), citta'
+  (gli edifici romani `ocr_*`, colonne, fontane, statue). Niente unita' ne'
+  edifici dei giocatori (si parte col centro e 3 lavoratori, §9.118). Fiumi,
+  strade e ponti saranno della polilinea. Il `manager` dei modelli resta
+  nella mappa ma non si sceglie ne' si tocca.
+- **"Inserisci"**: nel riquadro in basso le sei schede e gli oggetti della
+  scheda in caselle con la miniatura (lo sprite rimpicciolito; le macchie
+  senza sprite: un prato coi loro colori), le frecce o la rotella se non ci
+  stanno tutti (la citta' ha 34 oggetti). Scelto un oggetto, il suo
+  fantasma segue il puntatore (rosso fuori dalla mappa o se le partenze
+  sono gia' due); un clic lo mette, il destro o Esc lo lasciano. Gli alberi
+  hanno una variante a caso (alb1..alb8), scritta nella mappa (`sprite`,
+  come fa tools/12) e mostrata gia' nel fantasma. Gli sprite della
+  tavolozza si caricano in sottofondo la prima volta (la tavolozza scrive
+  "Caricamento"): prima bloccavano l'editor per qualche secondo, trovato con
+  la prova nel browser.
+- **"Sposta"**: un clic sceglie la voce piu' in alto sotto il puntatore
+  (dentro il riquadro dello sprite; le macchie, senza sprite, hanno un
+  segnaposto tondo dei loro colori), Maiusc aggiunge o toglie; trascinare
+  sposta la scelta (dal vivo, la modifica vera lasciando il tasto: un solo
+  passo da annullare); trascinare fuori dagli oggetti fa il riquadro di
+  scelta, e con Ctrl il riquadro c'e' sempre (in un bosco ogni clic cade su
+  un albero: trovato con la prova); Canc elimina, M specchia (scala x -1),
+  Ctrl+C e Ctrl+V copiano e incollano sotto il puntatore (senza passare le
+  due partenze), Ctrl+A sceglie tutto, il destro o Esc lasciano la scelta.
+  La scelta ha il riquadro bianco, la voce sotto il puntatore uno sottile.
+- Con ogni strumento: Ctrl+Z annulla, Ctrl+Y (o Ctrl+Maiusc+Z) ripete. Sul
+  Mac si usa Ctrl, non Cmd (il gioco non legge il tasto Cmd).
+- **"Nuova mappa"**: per ora la mappa vuota di partenza (6000 x 6000,
+  green1); misura e sfondo arriveranno con le impostazioni.
+- **La conferma**: uscendo (Indietro, Esc) o aprendo un'altra mappa con una
+  mappa cambiata, "Le modifiche a questa mappa andranno perse", Continua o
+  Annulla. Esc prima lascia l'oggetto o la scelta, poi esce.
+- Testi nuovi nelle sei lingue (schede, comandi, avvisi, conferma).
+
+Prove: `editor.test.mjs` (in piu': i modelli sono le cinque schermaglie; la
+conferma dentro la finestra; la tavolozza dentro il riquadro, le frecce e lo
+scorrimento; ogni oggetto del catalogo esiste fra gli oggetti del gioco; una
+scena vera in node (senza atlas): aggiungi, modifica, togli, annulla tre
+volte e ripeti tre volte, con le voci al loro posto, le particelle della
+macchia tolte con lei, il manager che non si sceglie), `editor.mjs` (in
+piu': i modelli, Padania come mappa nuova senza nome, la miniera messa dalla
+tavolozza sotto il puntatore, annulla e ripeti, il destro, la miniera
+scelta, trascinata e tolta con Canc, la conferma con Annulla e con
+Continua), test unitari (127), screenshot (tavolozza, fantasma, scelta,
+conferma, modelli).
+
+**Prossimo**: "Salva" e "Apri" (le proprie mappe nel browser, in IndexedDB
+come i salvataggi, e su file `.dvmap` da scambiare, con la convalida di
+R2); le impostazioni (nome, descrizione, misura, sfondo, CPU con la statica,
+simmetria); il pennello (boschi con larghezza e densita', texture) e la
+polilinea (fiumi, strade, ponti); "Prova mappa"; le mappe dell'editor nella
+schermata della schermaglia e poi nella partita online.
+
+### 9.183 Gli stili di case e alberi; la simmetria confermata
+
+Risposta dell'autore (22 novembre 2026, stessa PR, versione 0.2615): "si'
+ti confermo sulla simmetria" (diagonale = rotazione di 180 gradi,
+orizzontale = meta' a sinistra e a destra, verticale = sopra e sotto; gli
+oggetti cambiano posto ma non si capovolgono, §9.182 punto 6), e "per le
+case e gli alberi dai la possibilita' prima dell'inserimento di cambiare
+stile con un tasto, in modo da tenere un singolo oggetto con piu' stili".
+
+Prima ogni casa della citta' romana era una casella a se' (34 caselle nella
+scheda "Citta'", da scorrere) e l'albero prendeva una variante a caso a ogni
+clic.
+- **Una casella, piu' stili** (editmap.js `paletteItems`): gli alberi (albero
+  e albero finto) hanno gli 8 sprite fra cui il gioco sceglie (alb1..alb8,
+  scritti nella voce come `sprite`, come fa tools/12 con le varianti di
+  Tiled); le **25 case** `ocr_01`..`ocr_45` (tutte della stessa misura, viste
+  in un foglio di provini) sono una famiglia: una casella "casa" con 25 stili
+  (`HOUSES`; ogni stile e' l'oggetto della sua casa). Basilica, teatro e
+  tempio restano a parte (monumenti), come colonne, fontane e statue. La
+  scheda "Citta'" ora ha 10 caselle e ci sta in una fila.
+- **Il tasto S** ("stile" in tutte e sei le lingue; Maiusc+S all'indietro):
+  con "Inserisci" cambia lo stile della casella scelta prima di metterla; il
+  fantasma sotto il puntatore e la miniatura mostrano lo stile scelto, la
+  casella scrive quale e quanti in basso a destra ("9/25"), il riquadro "S:
+  stile 9/25". Ogni casella ricorda il suo stile. Con "Sposta" lo stesso
+  tasto cambia lo stile delle case e degli alberi scelti (con annulla), anche
+  quelli gia' messi o venuti dal modello (un albero senza `sprite` parte
+  dalla variante che mostra, quella della sua posizione).
+
+Prove: `editor.test.mjs` (l'albero ha gli 8 sprite del gioco, la casa le 25
+case nell'ordine di `HOUSES`, gli altri uno stile; lo stile di una voce
+messa, anche senza `sprite`; la scheda "Citta'" senza scorrimento, quella
+dei prati e fiori con), `editor.mjs` (in piu': l'albero col terzo sprite
+dopo S due volte, la casa col secondo stile dopo S, Maiusc+S, S; con
+"Sposta" S cambia la casa scelta e Ctrl+Z la rimette), test unitari (127),
+screenshot della scheda delle case e di quella degli alberi.
+
+### 9.184 L'editor di mappe: salva e apri, impostazioni, simmetria
+
+Richiesta dell'autore (22 novembre 2026, stessa PR, versione 0.2615):
+"prosegui pure", dopo §9.183. Il passo dopo "Inserisci" e "Sposta": senza
+salvare l'editor non serviva a niente.
+
+**Il formato** (mapfile.js). Le mappe dell'editor restano scenari (§9.3) con
+in piu' tre campi che tools/07 e il gioco ignorano: `description`, `cpu`
+(`difficulty` come nella schermaglia, `style` come nella schermaglia piu'
+`static`, §9.182 punto 4) e `symmetry` (`none`, `diagonal`, `horizontal`,
+`vertical`). `newMap` li ha ai valori di partenza.
+
+**La convalida** (`validateMap`, roadmap R2: le mappe si scambiano fra
+sconosciuti). Una mappa che arriva dal browser o da un file passa solo se:
+formato e versione giusti; misure fra quelle dell'editor (4000-9000 a passi
+di 1000) e sfondo fra i tre; al piu' 20000 istanze, solo oggetti del
+catalogo, il manager e i ponti dipinti dei modelli (`allowedObjects`),
+posizioni entro 4000 px dalla mappa, scale e rotazioni finite (scala non
+zero, al piu' 8), la variante fra quelle del gioco o lo sprite dell'oggetto;
+al piu' 300 fiumi, strade, ponti e macchie, ognuno coi suoi punti (al piu'
+4000, dentro i limiti) e solo i campi che il gioco legge (le strade:
+larghezza, larghezza finale, tipo, densita'; le macchie: sfondo,
+sfumatura, opacita'); nome al piu' 40 caratteri, descrizione 600. I campi
+sconosciuti si perdono, quelli che mancano prendono i valori di partenza.
+Anche i modelli passano dalla convalida: le cinque schermaglie la
+superano. *Trovato cosi'*: gli alberi finti di Appennini (`sk_bardonis`)
+hanno come variante `alb1_F`, lo sprite dell'oggetto (la tile di Tiled),
+non uno degli 8 fra cui il gioco sceglie: accettato.
+
+**Salva** (mapstore.js, il pulsante col dischetto o Ctrl+S). Un pannello
+HTML (netui.js NetPanel, come quelli della partita online: le caselle di
+testo vere) col nome e tre pulsanti: "Salva nel browser" (IndexedDB, il
+database `535-maps`, la mappa compressa con gzip come i salvataggi), "Salva
+su file" (scarica `dustveil-<nome>.dvmap`, il JSON compresso con gzip; non
+mescolato come i `.dvgame`, §9.135: una mappa si scambia), "Annulla". Senza
+nome non salva ("Dai un nome alla mappa"). Ctrl+S dopo la prima volta salva
+di nuovo nel browser senza chiedere (il browser non apre "Salva pagina").
+Il titolo ha un asterisco finche' ci sono modifiche non salvate; la
+conferma prima di perderle (§9.182) guarda le modifiche dall'ultimo
+salvataggio, anche delle impostazioni.
+
+**Apri** (il pulsante con la cartella): a sinistra **le tue mappe** (quelle
+nel browser, dalla piu' recente; otto righe, la rotella scorre le altre;
+il cerchio con la x la elimina, dopo la conferma "Questa mappa sara'
+eliminata"), sotto **"Apri un file..."** (un `.dvmap`, o il `.json` di uno
+scenario); a destra **i modelli** (le cinque schermaglie, §9.182). Una mappa
+aperta dal file non e' ancora nel browser finche' non la si salva.
+
+**Impostazioni** (l'ingranaggio): un pannello HTML compatto (l'etichetta a
+sinistra, le scelte a destra; il primo, coi titoli sopra, non stava nello
+schermo a 1600 x 900 e lasciava vedere sotto i testi dell'editor): nome,
+descrizione, larghezza, altezza, sfondo (prato, selciato, pietra: green1,
+city2, city1), difficolta' e stile della CPU (con "Statica (non fa nulla)"),
+simmetria (spenta, diagonale, orizzontale, verticale). "Applica" li scrive
+nella mappa; misure o sfondo nuovi rifanno la scena (senza perdere annulla
+e ripeti). La CPU per ora si ricorda soltanto: servira' a "Prova mappa" (e
+la statica va fatta nel gioco).
+
+**La simmetria** (editmap.js `mirrorPoint`, `twinAt`, `twinOf`,
+`withTwins`), come confermata in §9.183: il gemello di un oggetto sta al
+posto specchiato del **centro della sua maschera** (come tools/16: l'ingombro
+nello stesso posto; le macchie, senza maschera, dal loro centro), con lo
+stesso sprite, non capovolto; chi cade sull'asse (o al centro, per la
+diagonale) non ha gemello. Con la simmetria accesa: "Inserisci" mette
+l'oggetto e il gemello (il fantasma mostra tutti e due; due partenze in un
+clic); "Sposta" sposta i gemelli a specchio (dal vivo e nella modifica, un
+solo passo da annullare), Canc, M e S valgono anche per loro, Ctrl+V incolla
+anche i gemelli. Il gemello si ritrova cercando lo stesso oggetto entro 2
+px dal posto specchiato: niente legami da tenere, funziona anche con le
+mappe fatte prima di accendere la simmetria. Sulla mappa l'asse tratteggiato
+(orizzontale e verticale) o una croce nel centro (diagonale); i gemelli
+della scelta col riquadro sottile; sotto il titolo "Simmetria: diagonale".
+
+*Trovato con la prova nel browser*: nell'elenco delle mappe un clic sulla
+riga veniva preso per il cerchio "elimina" (stesso nome di campo per la
+riga e per il cerchio) e apriva la conferma di eliminazione. Il riquadro in
+basso passa da 170 a 196 px: i comandi di "Sposta" in italiano, con "S:
+stile", andavano su tre righe e la terza copriva quella della vista.
+
+Testi nuovi nelle sei lingue (impostazioni, salva, apri, simmetria; "Spenta"
+al femminile, come la simmetria).
+
+Prove: `editor.test.mjs` (in piu': la simmetria, i punti e gli spostamenti
+nei tre modi; la convalida: le cinque schermaglie passano con le
+informazioni di partenza, una mappa con una CPU statica e la simmetria
+verticale passa perdendo un campo sconosciuto, non passano un cavaliere
+nemico, una posizione fuori, una variante sbagliata, misure e sfondo
+sbagliati, un fiume di un punto, un altro formato; i gemelli in una scena
+vera: al posto specchiato del centro della maschera, ritrovati, nessuno al
+centro, nessuno se la simmetria cambia; il nome del file; il pannello Apri
+con 12 mappe salvate, lo scorrimento e il file nella colonna giusta),
+`editor.mjs` (in piu': impostazioni con nome e simmetria diagonale; la
+miniera e la gemella, spostate a specchio, tolte insieme, rimesse con
+annulla; Ctrl+S col pannello, salvata nel browser; il `.dvmap` scaricato e
+decompresso; la pagina ricaricata, la mappa nell'elenco e riaperta; aperta
+dal file; eliminata dall'elenco), test unitari (130), screenshot
+(impostazioni, salva, apri, simmetria diagonale con le montagne).
+
+**Prossimo**: il pennello (boschi con larghezza e densita', le texture) e
+la polilinea (fiumi, strade, ponti); "Prova mappa" (lo scenario dal browser
+nel gioco, la CPU statica); le mappe dell'editor nella schermata della
+schermaglia, poi nella partita online.
+
+### 9.185 L'editor di mappe: il pennello e la copertina
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui. Nelle impostazioni deve esserci anche la possibilita' di
+caricare un'immagine come copertina della mappa, tipo quelle della
+schermaglia".
+
+**La copertina** (impostazioni). Una riga "Copertina" con l'anteprima
+(180 x 120), "Carica un'immagine..." e "Togli". L'immagine scelta (qualsiasi
+formato che il browser legge) e' ritagliata al centro alle proporzioni 3:2 e
+ridotta a **720 x 480**, come le foto delle mappe della schermaglia (§9.121),
+poi compressa in WebP (JPEG dove il browser non sa scrivere WebP) e messa
+nella mappa come `cover` (mapstore.js `makeCover`): viaggia col salvataggio
+nel browser e col `.dvmap`. Convalida (mapfile.js): solo WebP o JPEG in
+base64 (niente SVG ne' altri indirizzi), al piu' ~500 KB. Si vedra' nella
+schermata della schermaglia quando ci saranno le mappe dell'editor.
+*Trovato con lo screenshot*: il riquadro "Nessuna copertina" restava accanto
+all'immagine (lo stile `display: flex` vince sull'attributo `hidden`).
+
+**Il pennello** (il terzo strumento; editbrush.js per la geometria). Nel
+riquadro quattro schede, **Bosco**, **Selciato**, **Pietra**, **Prato** (gli
+sfondi delle macchie di §9.99: city2, city1, green1), la **larghezza** (il
+diametro: 200-1600 px, 600 di partenza; anche Maiusc+rotella sulla mappa) e,
+per il bosco, la **densita'** (1-6: la distanza minima fra gli alberi, da
+180 a 60 px; 4 = 90 px, come il pennello bosco di Tiled, tools/12). Il
+**sinistro dipinge, il destro cancella**; sulla mappa il cerchio tratteggiato
+del pennello (rosso cancellando). Una pennellata intera e' **un passo solo**
+da annullare (EditScene `begin`/`end`).
+- *Bosco*: alberi veri, uno per uno (decisione dell'autore, §9.182), con una
+  variante a caso fra le 8: a ogni passo una decina di punti a caso nel
+  cerchio, tenuti se lontani almeno la distanza dagli alberi gia' messi
+  (`TreeGrid`, celle grandi quanto la distanza; `forestStep`) e se i piedi
+  dell'albero non toccano l'acqua o la maschera di un oggetto (miniere,
+  centri, montagne...; i prati e le strade dipinti e le macchie no:
+  EditScene `blocks`). La gomma toglie gli alberi nel cerchio.
+- *Texture*: la pennellata e' una fila di cerchi (uno ogni 30% del raggio);
+  lasciato il tasto, la loro unione diventa il contorno di una macchia
+  (`strokeOutlines`: una griglia fine, marching squares, gli anelli, via i
+  buchi e i pezzetti, Douglas-Peucker), sfumatura 40 px come in Tiled, che il
+  gioco disegna come sempre (rivers.js patchGeometry). Durante la pennellata
+  i cerchi semitrasparenti del colore della texture. La gomma toglie le
+  macchie di quella texture toccate dal cerchio (intere).
+- *Simmetria*: il bosco mette anche il gemello di ogni albero (se c'e'
+  posto), la texture anche la sagoma specchiata, la gomma cancella anche al
+  posto specchiato; il cerchio del pennello si vede tutte e due le volte.
+- Per farlo il modello ha imparato le forme: annulla e ripeti valgono anche
+  per le macchie (e varranno per fiumi, strade e ponti della polilinea:
+  EditScene `addFeatures`, `removeFeatures`, i cambi con `key`); cambiate
+  le forme, il motore ne rifa' la geometria e il suolo si ricuoce.
+
+Testi nuovi nelle sei lingue (bosco, densita', i comandi del pennello, la
+copertina).
+
+Prove: `editor.test.mjs` (in piu': la sagoma di una pennellata contiene i
+suoi centri e non i punti lontani, due pezzi staccati fanno due macchie, un
+anello di cerchi si riempie; il bosco mai sotto la distanza, mai fuori dal
+cerchio, niente dove non sta; area e semplificazione di un poligono; il
+riquadro del pennello a 1920 x 1080 e 1280 x 720; la copertina: WebP e
+JPEG si', SVG, PNG, indirizzi, testo con spazi e immagini troppo grandi no;
+le macchie con annulla e ripeti e la geometria rifatta, cinque pennellate
+in un gruppo = un annulla, gli alberi non stanno su una miniera),
+`editor.mjs` (in piu': un bosco in una pennellata, 53 alberi a non meno di
+90 px fra loro, 8 varianti, un passo solo; la gomma col destro; annullate
+gomma e pennellata; una pennellata di selciato = una macchia; la gomma la
+toglie; la copertina da un'immagine 1200 x 600 diventa 720 x 480, salvata
+nel browser e riaperta dopo aver ricaricato la pagina), test unitari (134),
+screenshot (bosco e selciato, la pennellata in corso, la gomma, le
+impostazioni con la copertina).
+
+**Prossimo**: la polilinea (fiumi, strade, ponti); "Prova mappa" (lo
+scenario dal browser nel gioco, la CPU statica); le mappe dell'editor nella
+schermata della schermaglia, con la copertina.
+
+### 9.186 Il pennello ovale, la simmetria degli strumenti, la CPU a scelta
+
+Richieste dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Occhio che l'area del bosco deve essere ovale 'assonometrica' e non tonda.
+Simmetria deve essere un'impostazione di tool come pennello o piazza
+oggetto, non della mappa. Per difficolta' o stile CPU deve anche esserci
+l'opzione di lasciare al giocatore la scelta al momento di lancio della
+partita."
+
+**Il pennello ovale.** L'area del pennello e' un ovale schiacciato in
+verticale come il suolo del gioco: largo quanto la larghezza scelta, alto
+0,62 volte (`ISO` di rivers.js, lo stesso dei fiumi e delle strade, ora
+esportato). Valgono l'ovale: i punti del bosco (`forestStep` con `ry`), la
+gomma degli alberi e delle macchie, la sagoma delle texture (`strokeOutlines`
+con gli ovali al posto dei cerchi), i cerchi della pennellata in corso e il
+bordo tratteggiato sotto il puntatore. La distanza minima fra gli alberi
+resta quella di prima (in pixel della mappa, come i boschi di Tiled e di
+tools/12).
+
+**La simmetria degli strumenti.** Non e' piu' un campo della mappa (ne' delle
+impostazioni): ogni strumento che la usa ha la sua, spenta di partenza, in
+una riga in fondo al suo riquadro, "Simmetria: Spenta, Diagonale,
+Orizzontale, Verticale" (`symLayout`; il riquadro passa da 196 a 226 px per
+farle posto). "Sposta" la usa per spostare, eliminare, specchiare, cambiare
+stile e incollare anche i gemelli; "Inserisci" per mettere anche il gemello;
+il pennello per dipingere e cancellare anche al posto specchiato. Il
+gemello e' sempre ritrovato dalla posizione (§9.184), quindi la stessa mappa
+si puo' lavorare con simmetrie diverse. L'asse (o il centro) si vede quando
+lo strumento in uso ha la simmetria accesa. Le mappe salvate prima con
+`symmetry` lo perdono alla convalida (campo sconosciuto).
+
+**La CPU a scelta del giocatore.** Difficolta' e stile hanno in piu' "A
+scelta del giocatore" (`choice`), che e' anche la scelta di partenza delle
+mappe nuove: li sceglie chi lancia la partita, nella schermata della
+schermaglia; con una difficolta' o uno stile fissati la schermata li
+mostrera' fermi (come quelli della CPU nella partita online, §9.156). Lo
+stile ha sempre anche "Statica (non fa nulla)".
+
+Prove: `editor.test.mjs` (in piu': la sagoma di un ovale largo 600 e alto
+372; il bosco dentro l'ovale e largo; la riga della simmetria dentro il
+riquadro, sotto la tavolozza e i "-" e "+"; i gemelli con la modalita'
+passata dallo strumento, nessuno con "none"; le mappe convalidate senza
+`symmetry` e con la CPU "a scelta"), `editor.mjs` (in piu': la CPU "a scelta
+del giocatore" di partenza, la statica scelta e salvata; la simmetria
+diagonale scelta nella riga di "Inserisci" e poi in quella di "Sposta",
+senza toccare la mappa), test unitari (134), screenshot (il bosco e la
+pietra con la simmetria orizzontale, l'ovale e il gemello sotto il
+puntatore; le impostazioni della CPU).
+
+### 9.187 L'editor di mappe: la polilinea, niente titolo, "Salvare le modifiche?"
+
+Richieste dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui. Per ora non implementare i ponti. Togli la scritta 'editor di
+mappe' in alto (e' grande ed e' un'informazione ovvia). Se la mappa e'
+stata modificata quando l'utente preme il tasto indietro deve comparire un
+warning che chiede se salvare le modifiche".
+
+**Niente titolo.** In alto resta solo la riga della mappa (nome, asterisco
+se cambiata, misure), dove prima stava il titolo.
+
+**"Salvare le modifiche?"** Con la mappa cambiata dall'ultimo salvataggio,
+"Indietro" (o Esc, o aprire un'altra mappa, o "Nuova mappa") chiede
+"Salvare le modifiche a questa mappa?" con tre pulsanti: **Salva** (nel
+browser se la mappa ci sta gia'; se no il pannello di §9.184 per il nome e
+il posto, e dopo il salvataggio si esce; "Annulla" nel pannello resta
+nell'editor), **Non salvare** (esce perdendo le modifiche, come il "Continua"
+di prima), **Annulla** (resta). La conferma ora ha un numero qualsiasi di
+pulsanti (`confirmLayout(W, H, n)`; anche quella per eliminare una mappa).
+
+**La polilinea** (il secondo strumento). Fiumi e strade come le polilinee di
+Tiled (§9.97), disegnati dal motore del gioco con le loro rive, l'acqua, i
+sassolini; i ponti no, per ora (decisione dell'autore). Nel riquadro tre
+schede, **Fiume**, **Strada** (la marcata, `strada1`) e **Sentiero** (la
+secondaria, `strada2`), la **larghezza** e la **larghezza finale** (quella
+all'ultimo punto: la linea si allarga o si stringe piano, `widthEnd`;
+"Uguale" se e' la stessa) fra 40 e 440 px, di partenza 150 per i fiumi e 110
+per le strade (tools/tiledkit.py), e la riga della simmetria (§9.186).
+- *Disegnare*: un clic fuori dalle linee comincia una linea nuova, ogni clic
+  aggiunge un punto (anche nel margine fuori dalla mappa: i fiumi entrano
+  dal bordo); il destro, Invio o un doppio clic la finiscono; Backspace
+  toglie l'ultimo punto, Esc la lascia. Durante il disegno una fascia larga
+  quanto la linea col tratto fino al puntatore.
+- *Cambiare*: un clic su una linea la sceglie (i suoi punti e il tracciato
+  in bianco; i punti delle altre linee piccoli); i punti si trascinano (la
+  modifica vera lasciando il tasto, un solo annulla); un doppio clic su un
+  tratto della linea scelta aggiunge un punto; Backspace toglie il punto
+  scelto (se ne restano almeno due), Canc toglie la linea; i "-" e "+"
+  cambiano larghezza e larghezza finale della linea scelta (senza linea
+  scelta, quelle delle linee nuove).
+- *Simmetria*: la linea finita ha anche la gemella specchiata; spostare,
+  aggiungere e togliere punti, cambiare larghezza e togliere la linea
+  valgono anche per la gemella, ritrovata dai punti (EditScene `twinLine`:
+  gli stessi punti specchiati, nello stesso ordine, entro 2 px).
+- Le linee sono forme della mappa (`rivers`, `roads`) con annulla e ripeti
+  (§9.185, EditScene `modifyFeatures` in piu'); cambiate, il motore rifa' la
+  geometria, l'acqua (e i suoi ostacoli) e il suolo.
+- I comandi in alto a destra nel riquadro cambiano con quello che si sta
+  facendo; se non stanno accanto al titolo si rimpiccioliscono (prima, con
+  una linea scelta, coprivano il titolo); le etichette dei "-" e "+" hanno
+  piu' spazio ("Larghezza finale" toccava il "-").
+
+Testi nuovi nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': il riquadro della polilinea, la conferma a
+tre pulsanti in fila nella finestra, la distanza da un tratto, il tipo di
+una linea; le linee in una scena vera: il motore ha i fiumi e le strade
+aggiunti, la gemella ritrovata con la diagonale e non con l'orizzontale,
+punti e larghezza finale cambiati e annullati, tolte), `editor.mjs` (in piu':
+"Salvare le modifiche?" coi tre pulsanti; Annulla resta; Salva col pannello,
+poi il menu; un fiume di tre punti finito col destro, piu' largo, un punto
+trascinato e annullato, un punto nuovo col doppio clic tolto con Backspace;
+un sentiero finito con Invio; con la simmetria diagonale una strada e la
+gemella, tolte insieme con Canc; Non salvare: il menu), test unitari (136),
+screenshot (una strada in disegno sopra un fiume, il fiume scelto coi suoi
+punti, l'avviso coi tre pulsanti).
+
+**Prossimo**: "Prova mappa" (la mappa dell'editor giocata nel gioco: lo
+scenario dal browser invece che da `assets/rooms/`, la CPU statica); le
+mappe dell'editor nella schermata della schermaglia (con la copertina, la
+CPU a scelta o fissa).
+
+### 9.188 L'editor di mappe: i file collegati e "Prova mappa"
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, versione 0.2615):
+"Prosegui, considera pero' che i salvataggi sarebbe meglio gestirli su
+file come ci eravamo detti nelle scorse sessioni oltre che all'interno dei
+file del browser". Nelle sessioni passate: le mappe si scambiano su file
+(R6; `.dvmap`, §9.134), come le partite. Fin qui il file era un ripiego:
+Ctrl+S e il "Salva" dell'uscita scrivevano solo nel browser, e "Salva su
+file" scaricava ogni volta una copia nuova.
+
+**I file collegati** (mapstore.js). Dove il browser lo permette (File System
+Access: Chrome, Edge) "Su file" apre la finestra **"Salva con nome"** del
+sistema (nome e cartella a scelta) e "Apri un file..." quella per aprire;
+la mappa resta **collegata al suo file** (il FileSystemFileHandle), che i
+salvataggi dopo riscrivono, chiedendo il permesso se serve. Il nome del
+file si vede in alto, accanto alla mappa. Dove non si puo' (Firefox,
+Safari, la pagina dentro l'iframe di un portale, dove il browser rifiuta la
+finestra) si scarica come prima e si apre col solito `<input type=file>`:
+il file non resta collegato.
+- *Il pannello "Salva mappa"*: il nome, **Dove**: "Nel browser" e "Su file"
+  (tutti e due accesi di partenza, si spengono con un clic; col file
+  collegato "Su file: <nome>"), Salva e Annulla. Il file prima: se "Salva
+  con nome" viene annullata non si salva niente e il pannello resta.
+- *Ctrl+S e il "Salva" dell'uscita*: riscrivono dove la mappa e' collegata,
+  il suo posto nel browser e il suo file, senza pannello; il pannello solo
+  se non e' ancora collegata a niente.
+- *Trovato con la prova*: aprendo il pannello con Ctrl+S, il rilascio di
+  Ctrl e S avveniva dentro il pannello, che ferma i tasti perche' non
+  arrivino all'editor (netui.js): l'editor li credeva tenuti e il Ctrl+S
+  dopo non scattava piu'. Chiudendo un pannello ora i tasti si lasciano
+  tutti (input.js `releaseAll`, come quando la finestra perde il fuoco).
+
+**"Prova mappa"** (il triangolo). Con due posizioni di partenza (se no un
+avviso: "Inserisci, Partenze") la mappa si gioca come una schermaglia:
+- l'editor mette nel browser (IndexedDB, mapstore.js `putService`) la sua
+  sessione (la mappa com'e', il posto nel browser, il file collegato dove
+  il browser lo conserva, se era cambiata, la vista, lo strumento) e la
+  room di prova (mapfile.js `testRoom`: come le room di tools/07, col
+  manager se manca, senza la copertina) con le opzioni della schermaglia:
+  quelle che il giocatore ha scelto l'ultima volta, con difficolta' e stile
+  della CPU della mappa se sono fissati;
+- il gioco apre la room `custom` (app.js): la room dal browser invece che da
+  `assets/rooms/`, una schermaglia per skirmish.js (`isSkirmish`), ma non
+  online ne' fra i salvataggi; niente salvataggio automatico; nel menu di
+  pausa niente "Salva e carica" e **"Torna all'editor"** al posto di "Torna
+  al menu" (pause.js `testMode`); anche la vittoria e la sconfitta tornano
+  all'editor; "Ricomincia livello" rigioca la prova;
+- tornando (`?room=editor&resume=1`) l'editor riapre la sessione: la mappa
+  com'era (cambiata se lo era, col suo posto e il suo file), la vista e lo
+  strumento di prima. Annulla e ripeti ripartono da zero.
+- **La CPU statica**: con lo stile "statica" la regia della CPU non nasce
+  (skirmish.js, e levels.js che la faceva nascere dove c'e' un centro
+  nemico): la CPU ha il suo centro e non fa nulla. "Static" ha un nome fra
+  gli stili (gli obiettivi lo scrivono) ma non e' fra le scelte della
+  schermata della schermaglia.
+
+Il riquadro in basso passa da 226 a 246 px: in "Sposta" la riga della
+simmetria toccava quella dei comandi della vista.
+
+Testi nuovi nelle sei lingue (dove, nel browser, su file, "Torna
+all'editor", l'avviso delle partenze).
+
+Prove: `editor.test.mjs` (in piu': la room di prova col manager una volta
+sola e senza copertina, `custom` e' una schermaglia, la statica ha un nome
+e non e' fra le scelte; la riga della simmetria sopra quella dei comandi),
+`editor.mjs` (in piu', con le finestre di File System Access finte, perche'
+quelle vere sono del sistema: il pannello con tutti e due i posti accesi;
+"Salva con nome" rifiutata come nell'iframe di un portale: il download, non
+collegato; "Salva con nome" riuscita: collegato, Ctrl+S riscrive il file
+(una miniera in piu' nel file) senza pannello; annullata: il pannello resta
+e non si scrive; aperto dalla finestra "Apri": collegato; aperto da `<input
+type=file>`: non collegato; "Prova mappa" senza due partenze no; Padania
+con la CPU statica: la partita `custom` col centro nemico, senza regia, 3
+lavoratori, la pausa in modo prova; "Torna all'editor": la mappa con la
+miniera in piu', cambiata, la CPU statica), test unitari (137), `soak.mjs`
+(menu, sk_padus, lvl04, lvl05), `saves.mjs` (sk_padus, lvl02),
+`economy.mjs`, `truce.mjs`; screenshot (il pannello "Salva mappa", la
+partita di prova e la sua pausa).
+
+**Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
+copertina, la CPU a scelta o fissa) e poi nella partita online.
+
+### 9.189 La CPU statica reagisce: le manca solo l'economia
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Chiaramente non l'ho
+specificato ma la CPU statica deve comunque reagire agli stimoli come
+attaccare nemici molto vicini, semplicemente manca economia e parte
+gestionale".
+
+Prima (§9.188) con lo stile "statica" la regia della CPU (`enemy_eco`) non
+nasceva: la CPU aveva il suo centro e basta, senza i 3 lavoratori di
+partenza (li fa nascere la regia) e senza la difesa della base; e senza
+regia le caserme nemiche, se una mappa ne avesse, avrebbero fatto soldati da
+sole (enemybuild.js, la produzione dell'originale).
+
+Ora la regia nasce sempre, anche per la CPU statica, **passiva**
+(skirmish.js `skirmishEco`: `passive` con lo stile `static`; ECO.default
+`passive: false`):
+- come le altre: le risorse e i 3 lavoratori di partenza attorno al centro;
+- le reazioni restano: il centro tira frecce all'unita' del giocatore piu'
+  vicina entro 600 px (enemybuild.js, del centro, non della regia); il
+  lavoratore colpito scappa verso il centro (economy.js `flee`, del
+  lavoratore); i soldati nemici inseguono chi arriva entro 400 px e
+  accorrono all'edificio attaccato (enemies.js, delle unita'); la difesa
+  della base della regia (§9.50: i soldati della regia in attesa contro chi
+  entra entro `defendR` da un edificio) e' ora una funzione a parte
+  (economy.js `defend`), che la regia passiva fa e basta;
+- non c'e' l'economia ne' la gestione: i lavoratori non vanno a lavorare,
+  niente lavoratori e soldati nuovi, edifici, depositi, riparazioni,
+  ricostruzioni, ondate.
+
+levels.js non ha piu' l'eccezione per la statica (la regia c'e' gia').
+Oggi nelle mappe dell'editor la CPU ha solo il centro e i lavoratori: i
+soldati (della regia o della mappa) reagiranno come quelli delle altre CPU
+quando si potranno mettere unita' con "Inserisci".
+
+Prove: `editor.test.mjs` (in piu': la statica ha la regia passiva, coi
+lavoratori e le risorse di partenza delle altre; 138 test), `editor.mjs`
+(la partita di prova con la statica: la regia c'e', dopo 1800 passi 3
+lavoratori senza lavoro, nessuna spesa, nessun cantiere, nessuna
+produzione, nessun soldato; un guerriero alleato a 300 px dal centro e'
+colpito dalle frecce, il lavoratore colpito scappa), `economy.mjs`,
+`truce.mjs`, `enemydefense.mjs` (la difesa e le ondate della regia normale
+come prima), `soak.mjs` (menu, match, lvl01, lvl02, sk_padus, lvl04,
+lvl05), `saves.mjs`.
+
+**Prossimo**: le mappe dell'editor nella schermata della schermaglia (con la
+copertina, la CPU a scelta o fissa) e poi nella partita online.
+
+### 9.190 Le mappe dell'editor nella schermaglia
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "intanto terminiamo la
+parte offline, poi su come implementare la parte online in modo furbo
+discutiamo insieme". La parte offline: le mappe dell'editor nella schermata
+della schermaglia ("si, se caricate", §9.182), con la copertina e la CPU a
+scelta o fissa (§9.184-§9.186).
+
+**La schermata** (menu.js, skuser.js):
+- dopo le cinque mappe del gioco, con le stesse frecce, scorrono le mappe
+  dell'editor salvate nel browser (lette all'apertura della schermata; la
+  mappa mostrata si legge e si convalida la prima volta, come nell'editor:
+  mapfile.js validateMap) e quelle aperte con **"Apri un file…"** (sotto il
+  riquadro della mappa, a sinistra di "Inizia"): una `.dvmap` scelta col
+  sistema, che vale per quella volta (non entra fra le mappe del browser);
+- la foto e' la **copertina** della mappa (§9.185) o, senza, un **disegno
+  della mappa** (skuser.js `mapPreview`, 720 x 480 come le foto: vista
+  dall'alto coi colori medi degli sfondi, macchie, fiumi, strade, montagne,
+  alberi, risorse, citta' e le due partenze), messo in una texture del gioco
+  (`registerImage`: uno sprite con un suo gruppo d'atlas di una pagina; i
+  gruppi aggiunti non si ricaricano dopo la perdita del contesto WebGL);
+- il nome e la descrizione sono quelli dell'autore della mappa (non
+  tradotti); la descrizione si taglia a parole, coi puntini, all'altezza di
+  quelle delle mappe del gioco (le mappe dell'editor arrivano a 600
+  caratteri); il nome, se lungo, sulla riga fra le frecce;
+- **la CPU**: difficolta' e stile fissati dalla mappa si vedono col valore
+  della mappa, in grigio e col lucchetto (`ico_lock`), e non si cambiano; "a
+  scelta del giocatore" restano liberi. La statica ha la sua icona: il letto
+  (`ico_idle`). Le scelte del giocatore restano le sue (la mappa non le
+  sovrascrive);
+- una mappa senza due partenze (o che non si legge) si vede col motivo al
+  posto della descrizione, e "Inizia" e' spento;
+- si ricorda l'ultima mappa dell'editor scelta (localStorage
+  `535.skirmish.user`): riaprendo la schermata si riparte da quella;
+- nella partita online ("Create game") niente mappe dell'editor ne' "Apri
+  un file": e' la parte da discutere.
+
+**La partita** (app.js): "Inizia" mette la room (mapfile.js `testRoom`) e le
+opzioni (`skForMap`: quelle del giocatore con la CPU della mappa, la stessa
+funzione di "Prova mappa") nella voce di servizio `__play__` e apre
+`?room=custom&play=1`. E' la room `custom` di "Prova mappa" (§9.188), ma da
+partita vera: la pausa di sempre (con "Salva e carica"), il salvataggio
+automatico, la vittoria e la sconfitta tornano al menu, "Ricomincia" rigioca
+la stessa mappa.
+
+**I salvataggi**: la room non e' fra quelle del gioco, quindi la partita si
+salva con la mappa dentro (`custom`: room, opzioni, nome; poche decine di
+KB, compresse). Lo slot e' `custom` (uno, come per ogni room), nell'elenco
+dei salvataggi col nome della mappa ("Schermaglia: <nome>"; anche le
+schermaglie del gioco ora col nome della mappa, prima "sk_padus").
+Caricando (`?room=custom&load=slot` o da file) la room viene dal
+salvataggio, torna in `__play__` (per "Ricomincia") e l'indirizzo diventa
+`&play=1`. Trovato provando: skirmishPrepare cambia le istanze della room
+(il centro della CPU diventa `enemy_centro`) e la room cambiata finiva nel
+salvataggio, e "Ricomincia" dopo un caricamento partiva senza CPU; ora il
+gioco lavora su una copia.
+
+"Static" nelle lingue: "Statica (senza economia)" (era "non fa nulla",
+§9.189). Testo nuovo: "Mappa senza nome".
+
+Prove: `editor.test.mjs` (in piu': la CPU della mappa fissata o a scelta,
+le etichette degli slot; 139 test), `skcustom.mjs` (nuova, nel CI: tre
+mappe nel browser, l'elenco dopo le cinque; A col disegno, difficolta' e
+stile bloccati; B con la copertina e le opzioni libere; C con una partenza,
+"Inizia" spento; la partita su A con la CPU della mappa, non in prova;
+salvata col nome, caricata, "Ricomincia", il menu; riaperta su A; da file;
+online senza mappe dell'editor), `editor.mjs`, `saves.mjs`, `ui.mjs`,
+`netfake.mjs`, `pvp.mjs` (una volta instabile, poi a posto: anche senza
+queste modifiche); screenshot (la schermata con A, B e C, la partita).
+
+**Prossimo**: con l'autore, come fare la partita online sulle mappe
+dell'editor.
+
+### 9.191 Gli schieramenti: le partenze rossa e blu
+
+Risposta dell'autore alla proposta per la partita online (23 novembre 2026,
+stessa PR): "Ovviamente per essere giocata online la mappa deve avere almeno
+un elemento del giocatore rosso e uno del giocatore blu. [...] quando
+nell'editor inserisco un oggetto ad esempio dello schieramento rosso e ho la
+simmetria attiva, dall'altro lato il suo simmetrico viene creato come
+appartenente allo schieramento blu".
+
+Non era cosi': le partenze (il centro) erano neutre e chi prendeva quale lo
+decideva l'avvio a caso, come nelle mappe del gioco (skirmish.js
+skirmishPrepare, l'opzione nascosta `start`); "Inserisci" non ha ancora
+unita' ne' edifici delle due parti. Ora:
+- **le partenze hanno uno schieramento** (`side: "red" | "blue"` nella voce
+  della mappa, mapfile.js): in "Inserisci", scheda "Partenze", due caselle,
+  la rossa e la blu, col pallino del loro colore; la blu si vede col centro
+  blu (lo sprite di `enemy_centro`, cc_b) nella tavolozza, nella mappa e nel
+  fantasma;
+- **la gemella di una voce di uno schieramento e' dell'altro** (editmap.js
+  twinAt): con la simmetria la partenza rossa mette la blu dall'altra parte,
+  e cosi' con "Incolla" e con S;
+- **una partenza per parte**: un'altra partenza della stessa parte non si
+  mette ("Ogni schieramento ha una sola partenza."), anche incollando o
+  cambiando parte con S su una partenza scelta (S cambia lo schieramento);
+- **da giocare** una mappa ha una partenza rossa e una blu (mapfile.js
+  `sidesOk`): "Prova mappa", la schermata della schermaglia ("Una mappa
+  della schermaglia ha bisogno di una partenza rossa e di una blu");
+- **all'avvio il rosso e' il giocatore** (online sara' chi crea la
+  partita), **il blu la CPU** (online chi entra): `skForMap` mette nelle
+  opzioni `start` la lettera della partenza rossa come la conta
+  skirmishPrepare (A: x + y piu' piccolo), al posto del caso. Le mappe del
+  gioco restano a caso;
+- le mappe senza schieramenti (i modelli, le mappe salvate prima) li
+  ricevono nella convalida (`assignSides`): la partenza A rossa, l'altra
+  blu; con una gia' data, l'altra l'opposta. La convalida accetta `side`
+  solo sulle partenze e solo rosso o blu;
+- il disegno delle mappe senza copertina (§9.190) mette le partenze del loro
+  colore.
+
+Lo schieramento e' un campo della voce, pensato per le unita' e gli edifici
+delle due parti in "Inserisci" (il disegno dell'autore, §9.180: "unita',
+risorse, edifici"): il gioco ha gia' le corrispondenze fra gli oggetti del
+giocatore, della CPU e del secondo giocatore (multiplayer.js ENEMY_EQ e i
+gemelli p2_*). Da decidere con l'autore.
+
+Testi: "Ogni schieramento ha una sola partenza." e la richiesta della
+partenza rossa e blu, al posto di quelli delle "due partenze".
+
+Prove: `editor.test.mjs` (in piu': gli schieramenti assegnati, la partenza
+del giocatore per skirmishPrepare, la convalida, la tavolozza con due
+caselle, S, la gemella dell'altra parte; 140 test), `editor.mjs` (la
+partenza rossa con la simmetria e la gemella blu col suo sprite; un'altra
+rossa no), `skcustom.mjs` (la mappa A con la partenza rossa in basso a
+destra: il giocatore li', la CPU in alto a sinistra); screenshot (la
+tavolozza e le due partenze).
+
+### 9.192 La partita online sulle mappe dell'editor
+
+Decisioni dell'autore sulla proposta di §9.190 (23 novembre 2026, stessa
+PR): "la tua proposta mi sembra ottima, anche ci volessero 10-20 secondi per
+caricare la mappa mi sembra un'attesa sensata"; 1) la mappa ricevuta entra
+fra le mappe di chi entra, di partenza; 2) con la copertina; 3) nel
+pannello "Entra" il nome della mappa e l'avviso che verra' scaricata. In
+piu': da giocare online una mappa ha un elemento del rosso e uno del blu
+(§9.191: una partenza per parte).
+
+**Perche' non nel codice d'invito**: una mappa compressa sono 6-18 KB
+(misurate le cinque del gioco: 5,9-17,6 KB con gzip), 8-24 mila caratteri
+in base64: troppi da incollare in una chat (Discord si ferma a 2000). Il
+codice porta solo il nome e l'impronta della mappa; la mappa passa sul
+canale della partita, dopo i codici.
+
+**L'impronta** (mapfile.js `mapHash`): due FNV-1a a 32 bit del JSON della
+room di testRoom, 16 cifre esadecimali. Conta solo cio' che fa la partita
+(nome, descrizione, copertina, CPU no). Una mappa convalidata di nuovo ha la
+stessa impronta.
+
+**Chi crea** ("Multiplayer", "Create game"): nella schermata ora ci sono
+anche le mappe dell'editor e "Apri un file…" (difficolta' e stile della CPU
+restano in grigio). "Create game" su una mappa dell'editor (netgame.js
+`hostGame`): la mappa (con la copertina), la sua room e l'impronta nel
+browser (voce di servizio `__net__`), nome e impronta nella sessione; la
+pagina della partita (`?room=custom&net=host`) prende la room da li', e il
+codice d'invito porta `custom: { name, hash }`.
+
+**Chi entra** ("Join game"): incollato il codice, il pannello cerca fra le
+mappe del browser quella con la stessa impronta (`findMap`) e dice la mappa
+col suo nome; se non c'e': "Non hai questa mappa: verra' scaricata quando
+vi collegate e restera' fra le tue mappe." Con "Entra":
+- **se la mappa ce l'ha**: va in `__net__` e la pagina della partita si
+  costruisce subito, come per le mappe del gioco;
+- **se no**: la pagina mostra subito la sala d'attesa (col codice di
+  risposta), senza partita: la sala d'attesa e il canale nascono prima
+  (netgame.js `netEarly`; la sala d'attesa e' ora una funzione a parte,
+  `lobby`, che le due strade usano uguale). Aperto il canale chiede la mappa
+  (`{t: "mapreq"}`) e chi crea la manda a pezzi (`{t: "map0", n}` poi `{t:
+  "mapc", k, d}`: il JSON compresso con gzip in base64url, 16000 caratteri a
+  pezzo, al piu' 400 pezzi, aspettando che il canale si svuoti), con
+  l'avanzamento nelle due sale d'attesa ("Invio della mappa: N%", "Arriva la
+  mappa: N%"). Chi entra la convalida (come ogni mappa che arriva da fuori,
+  validateMap), controlla l'impronta (una mappa diversa: "Non e' stato
+  possibile ricevere la mappa di questa partita."), **la salva fra le sue
+  mappe** con la copertina ("La mappa e' stata salvata fra le tue mappe.") e
+  costruisce la partita.
+
+**L'avvio**: con una mappa dell'editor il lockstep (i saluti, la misura del
+ritardo) parte solo quando chi entra ha la partita pronta: chi entra manda
+`{t: "mapok"}` (subito all'apertura del canale se aveva la mappa, dopo
+averla ricevuta e costruita la partita se no), chi crea aspetta quello per
+cominciare (startNet). Cosi' il tempo di caricamento non entra nella misura
+del ritardo dei comandi. Il rosso (chi crea) e' alla partenza rossa, il blu
+alla blu (§9.191; `start` dalla mappa, uguale nelle due pagine).
+
+Le mappe del gioco online vanno come prima (nessun messaggio in piu'). Le
+prove col canale finto (`?net=fake`) restano sulle mappe del gioco.
+
+Testi nuovi nelle sei lingue: l'avviso del pannello "Entra", "Collegati:
+arriva la mappa...", "Arriva la mappa: {p}%", "Invio della mappa: {p}%",
+"Mappa inviata: l'altro giocatore la sta caricando...", "Mappa arrivata:
+si carica la partita...", "Mappa arrivata: la partita comincia.", "La mappa
+e' stata salvata fra le tue mappe.", "Non e' stato possibile ricevere la
+mappa di questa partita.".
+
+Prove: `editor.test.mjs` (in piu': l'impronta, uguale senza nome,
+descrizione, copertina e CPU, diversa con un'istanza spostata o un fiume,
+uguale dopo una seconda convalida; 141 test), `netmap.mjs` (nuova, nel CI:
+WebRTC vero fra due pagine con browser diversi; A crea su una sua mappa
+dell'editor, B incolla il codice e il pannello dice nome e download; la
+pagina di B mostra la sala d'attesa senza partita; collegati, B riceve la
+mappa e la tiene con la copertina e gli schieramenti, le due partite
+uguali (istanze, il rosso a 4800,4800), le impronte confrontate uguali;
+poi una seconda partita: B ha la mappa, niente avviso di download, partita
+pronta prima di collegarsi, la mappa non salvata due volte; ~35 s per la
+prima partita sotto swiftshader), `skcustom.mjs` (online ora con le mappe
+dell'editor e "Apri un file"), `rtc.mjs`, `rtcfail.mjs`, `netfake.mjs`,
+`pvp.mjs`, `editor.mjs`; screenshot (il pannello "Entra" con l'avviso, la
+sala d'attesa di chi entra prima della partita).
+
+### 9.193 Unita' ed edifici delle due parti in "Inserisci"
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Si', aggiungi unita'
+ed edifici degli schieramenti in Inserisci" (proposta in §9.191).
+
+- **Due schede nuove** in "Inserisci", dopo le partenze: **Unita'**
+  (lavoratore, guerriero, picchiere, arciere, cavaliere, ariete, catapulta)
+  ed **Edifici** (casa, caserma, stalla, torre, magazzino, mulino, campo,
+  monastero, fortezza). Come le partenze (§9.191), **una casella rossa e una
+  blu per oggetto**, una accanto all'altra, col pallino del colore; il blu
+  si vede con lo sprite della CPU (il lavoratore: b_ow11, come lo disegna
+  economy.js). Le schede sono otto: la scritta di una scheda che non ci sta
+  si rimpicciolisce.
+- **S** con una casella scelta passa a quella dell'altra parte; in alto
+  "Schieramento rosso (S: blu)". Su unita' ed edifici gia' messi ("Sposta")
+  S cambia lo schieramento, come per le partenze.
+- **La simmetria**: la gemella e' dell'altra parte (la regola di §9.191,
+  generale per ogni voce con lo schieramento). Nessun limite di numero (solo
+  le partenze sono una per parte).
+- **Nella mappa** le voci hanno i nomi del giocatore (gli oggetti alleati) e
+  `side`; senza schieramento (una mappa scritta a mano) sono del rosso.
+- **All'avvio** (mapfile.js testRoom): il rosso resta l'oggetto del
+  giocatore; il blu diventa **l'oggetto della CPU** (BLUE_OF: casa ->
+  enemy_house, barn -> enemy_mulino, ally_warrior -> enemy_warrior...; il
+  contrario di multiplayer.js ENEMY_EQ) e, **online, quello del secondo
+  giocatore** (app.js, dopo skirmishPrepare: la tabella m1, enemy_warrior ->
+  p2_warrior...; uguale nelle due pagine, l'impronta della mappa non cambia).
+- Contro la CPU gli oggetti blu della mappa sono come quelli delle mappe
+  della campagna: i soldati sono di guardia (inseguono chi arriva a 400 px,
+  accorrono all'edificio attaccato, enemies.js), non partono con le ondate
+  della regia (sono suoi solo quelli che produce); caserme e stalle blu
+  producono con la regia (con la CPU statica, §9.189, no). Se la mappa ha
+  lavoratori blu la regia non aggiunge i 3 di partenza (economy.js, come nei
+  livelli); il giocatore ha sempre i suoi 3.
+
+Mura e porte restano fuori: si mettono a pezzi allineati e hanno la loro
+logica (porte, collegamenti); da fare con l'autore.
+
+Testi: "Unita'" (gli "Edifici" c'erano gia'), "Schieramento rosso (S: blu)",
+"Schieramento blu (S: rosso)".
+
+Prove: `editor.test.mjs` (in piu': gli oggetti delle due parti esistono,
+la room col blu della CPU, lo schieramento di partenza rosso, due caselle
+per unita', la gemella dell'altra parte; 142 test), `editor.mjs` (il
+guerriero rosso con la simmetria e la gemella blu, bww11; S passa alla
+casella blu; le schede per nome), `skcustom.mjs` (un guerriero per parte e
+una caserma blu: nella partita il guerriero del giocatore, quello della CPU
+e la caserma della CPU), `netmap.mjs` (online: la caserma rossa del rosso,
+il guerriero blu e' p2_warrior, nessun oggetto della CPU, impronte
+uguali); screenshot (la scheda Edifici).
+
+### 9.194 Mura e porte in "Inserisci", la gomma ad area
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "c'e' lo strumento
+mura, con tasto cambio stile per impostarlo sul suo ruotato di 90 gradi e
+viceversa. Una volta piazzato il primo blocco, solo se lo strumento piazza
+oggetto e' attivo, compaiono le due "+" ai lati per aggiungere pezzi, allo
+stesso modo della schermata di gioco. Inoltre sul pezzo di muro, anche li'
+solo con lo strumento aggiungi oggetto attivo, compare un tasto per
+convertire il muro inserito in porta e viceversa. [...] aggiungiamo anche
+uno strumento gomma ad area tipo il pennello per cancellare oggetti in
+blocco".
+
+**Le mura** (Inserisci, scheda Edifici, in fondo):
+- il muro rosso e il blu (come unita' ed edifici, §9.193), ognuno coi due
+  versi: **S** passa dall'orizzontale (mura_ori) al verticale (mura_vert) e
+  viceversa ("Schieramento rosso (S: orizzontale / verticale)"); il blu col
+  muro della CPU (le bandierine azzurre);
+- messo un tratto, **con "Inserisci" attivo** compaiono i **"+"** alle sue
+  estremita' libere, col simbolo del gioco (ico_muraplus), a misura di
+  schermo (da lontano, oltre 4 px di mappa per pixel, niente pulsanti):
+  dove sono quelli del gioco (walls.js KIND.plus: l'orizzontale a -219 e
+  +207, il verticale all'origine e 300 px sopra); i "+" di due tratti che si
+  toccano (di fila a 2-3 px, ad angolo o in verticale a 54) non si vedono
+  (editmap.js `freePluses`);
+- **un clic sul "+"** e il tratto nuovo segue il puntatore come nel gioco:
+  dritto, o girato di 90 gradi in su o in giu' (o a destra e a sinistra da
+  un verticale), con gli scostamenti dei placer del gioco (walls.js
+  SECTORS: -208, +217/+218, 246, 54; editmap.js `wallStep`, il verso piu'
+  vicino entro 60 gradi; indietro niente); un clic lo mette, il destro o
+  Esc lasciano. Il tratto nuovo e' dello schieramento di quello da cui
+  parte; con la simmetria anche il gemello;
+- **su ogni tratto**, sempre solo con "Inserisci", il **pulsante della
+  porta** (ico_gate; su una porta ico_mura): muro -> porta e viceversa,
+  nello stesso punto (porta_ori, porta_vert; con la simmetria anche il
+  gemello; si annulla);
+- nella partita come le altre voci dello schieramento: il rosso del
+  giocatore, il blu della CPU (enemy_mura_*, enemy_porta_*) o, online, del
+  secondo giocatore (p2_mura_*, p2_porta_*).
+
+**La gomma ad area**: un quinto strumento nella colonna (tasto 5), dopo
+"Inserisci" (per non cambiare i tasti degli altri): l'ovale assonometrico
+del pennello (§9.186) con la sua larghezza ("-" e "+" nel riquadro, o
+Maiusc + rotella); col sinistro tenuto toglie **tutti gli oggetti** con
+l'origine nell'ovale (alberi, montagne, edifici, unita', risorse,
+prati...; non fiumi, strade e macchie, che hanno la polilinea e il
+pennello); con la simmetria anche nell'ovale gemello; una passata e' un
+passo solo da annullare. L'ovale e' rosso.
+
+Testi nuovi nelle sei lingue: la gomma (nome, descrizione, comandi), lo
+schieramento delle mura con S, i comandi del prolungamento.
+
+Prove: `editor.test.mjs` (in piu': i "+" e i tratti dritti e ad angolo con
+le misure del gioco, indietro niente, i "+" liberi di fila e ad angolo,
+muro <-> porta, le caselle del muro coi due versi, le porte ammesse e del
+blu della CPU; 143 test), `editor.mjs` (il muro rosso, il "+" di destra e
+il tratto dritto a 424 px, il pulsante della porta, la gomma col tasto 5
+che toglie i due tratti in una passata, annulla che li rimette),
+`skcustom.mjs` (il muro rosso del giocatore e la porta blu della CPU nella
+partita), `netmap.mjs` (online il muro blu e' p2_mura_vert, la porta rossa
+del rosso, impronte uguali); screenshot (il prolungamento, l'angolo, la
+porta).
+
+### 9.195 Rifiniture dell'editor: "Natura", l'interruttore rosso / blu, i campi, i comandi nella colonna
+
+Richieste dell'autore (23 novembre 2026, stessa PR): "rinomina "prati e
+fiori" in "natura" o simili. Metti uno switch in edifici e unita' per
+decidere se filtrare per giocatore rosso o blu cosi' alleggeriamo un po' la
+vista. L'anteprima dei campi coltivati deve essere come in game (non il
+vecchio sprite che vedo ma il campo con sopra le particelle). Per annulla
+oltre ctrl + z mettiamo anche un tasto fisico [...] sempre col simbolo
+della freccia per tornare indietro, idem per taglia, copia, incolla.
+Magari come secondo set di strumenti tra il primo e il terzo".
+
+- **"Natura"** al posto di "Prati e fiori" (la scheda di prati, fiori,
+  erba e macchie; nelle sei lingue).
+- **L'interruttore rosso / blu** in Unita' ed Edifici: due cerchi a sinistra
+  delle caselle (il rosso sopra), la parte scelta piena; si vedono solo le
+  caselle di quella parte (di partenza la rossa). Cambiando parte la casella
+  scelta passa alla stessa dell'altra; anche S con una casella di uno
+  schieramento sposta l'interruttore. Le partenze (due caselle) restano
+  senza.
+- **Il campo come nel gioco**: la terra arata col grano (campo_grano) e
+  sopra le file di spighe a particelle (effects.js campoCreate, la stessa
+  funzione del gioco, registrata nel mondo dell'editor), per tutte e due le
+  parti (il campo della CPU nel gioco e' uguale); nella casella della
+  tavolozza e nel fantasma le file di spighe disegnate (gialle, senza
+  caso). Trascinando un campo (o una macchia di prato) con "Sposta" le
+  particelle ora seguono la voce (prima restavano al loro posto fino al
+  rilascio).
+- **I comandi nella colonna**, un secondo gruppo fra gli strumenti e le
+  azioni (tre gruppi, due lineette): **Annulla** (la freccia che torna
+  indietro), **Taglia** (le forbici), **Copia** (due fogli), **Incolla** (la
+  cartellina), con Ctrl+Z, Ctrl+X (nuovo), Ctrl+C, Ctrl+V nel suggerimento.
+  Spenti quando non c'e' niente da fare (niente da annullare, nessuna
+  scelta, niente da incollare). Taglia come Canc (con le gemelle, se c'e'
+  la simmetria). Incolla dal pulsante mette le voci al centro della vista,
+  scelte, e passa a "Sposta": si trascinano dove servono (Ctrl+V incolla
+  sotto il puntatore). Ripeti resta Ctrl+Y. Con quattordici pulsanti la
+  colonna si rimpicciolisce prima sugli schermi bassi (a 900 px ~0,85).
+
+Testi nuovi: "Natura", i quattro suggerimenti dei comandi.
+
+Prove: `editor.test.mjs` (in piu': i tre gruppi della colonna, la tavolozza
+filtrata per parte con l'interruttore, "Natura"; 144 test), `editor.mjs`
+(solo le caselle rosse, l'interruttore che mostra le blu, S che lo sposta;
+Copia e Incolla dai pulsanti, Annulla, Taglia, Annulla; il campo con
+campo_grano e 13 file di spighe), `skcustom.mjs`; screenshot (la colonna,
+l'interruttore, i campi).
+
+### 9.196 Le partenze come bandierine, la scheda "Regia", la colonna che scorre
+
+Richieste dell'autore (23 novembre 2026, stessa PR): "metti le partenze
+usando gli sprites delle bandierine, fai uno scroller per i pulsanti per
+gli schermi piccoli, chiama la loro scheda "regia" o una parola simile
+breve, ci servira' in futuro se decidiamo di mettere anche scenari piu'
+complessi".
+
+- **Le partenze sono bandierine**: nell'editor (scena, casella, fantasma) la
+  partenza rossa e' la bandierina rossa del punto di raccolta del gioco
+  (rflag) e la blu la blu (bflag), grandi il doppio (FLAG_SCALE) perche' si
+  vedano da lontano; nella mappa restano il centro (`centro` con `side`): la
+  bandierina segna dove nascera' il centro di quella parte. La gemella
+  simmetrica si calcola sempre sull'ingombro del centro (la maschera), come
+  prima.
+- **La scheda "Regia"** (in inglese "Setup") al posto di "Partenze": per ora
+  le due bandierine; piu' avanti cio' che servira' agli scenari. Anche
+  l'avviso "Una mappa della schermaglia ha bisogno di una partenza rossa e
+  di una blu (Inserisci, Regia)".
+- **La colonna che scorre**: la colonna non si rimpicciolisce piu' sotto
+  0,85 (prima fino a 0,5); quando non ci sta (sotto ~880 px di altezza)
+  scorre, con una freccia su in cima e una giu' in fondo (spente quando non
+  c'e' altro), e con la rotella sopra la colonna (uno scatto: un pulsante).
+  I pulsanti fuori dalla parte che si vede non si disegnano e non si
+  toccano. A 1280 x 720 si vedono dieci pulsanti su quattordici.
+
+Testi: "Regia" (Setup) nelle sei lingue (Dirección, Direção, Regie,
+Régie), l'avviso delle partenze.
+
+Prove: `editor.test.mjs` (in piu': la colonna senza scorrere sugli schermi
+grandi; a 1024 x 600 le frecce, il primo pulsante in vista e l'ultimo no,
+in fondo il contrario, i pulsanti nascosti non si toccano; "Regia"; 145
+test), `editor.mjs` (le partenze rflag e bflag; a 1024 x 600 la colonna
+scorre con la rotella e torna su con la freccia); screenshot (1280 x 720:
+la colonna con le frecce, la scheda, le due bandierine).
+
+### 9.197 La freccina nell'editor; cosa resta da fare
+
+Richiesta dell'autore (23 novembre 2026, stessa PR): "Nel prossimo prompt
+ti passo delle icone in PNG da sostituire a quelle che hai messo tu, e
+anche al posto del puntatore a forma di spada solo nell'editor vorrei la
+classica freccina nera stile Mac. Intanto fammi l'elenco di cio' che rimane
+da fare".
+
+**La freccina**: nell'editor il cursore e' la freccina nera col bordo
+bianco (un cursore CSS in SVG, 24 x 24, punta in 2, 2), disegnata dal
+sistema; prima l'editor disegnava la spada del gioco (`cursore`) come la
+partita. Il gioco resta con la spada. (Negli screenshot delle prove il
+cursore di sistema non si vede: controllato che il browser lo accetti.)
+
+**Cosa resta da fare, editor di mappe** (al 23 novembre 2026):
+1. Le icone PNG dell'autore al posto di quelle disegnate a linee (la
+   colonna; il prossimo passo).
+2. I ponti (rimandati dall'autore, §9.187): nei modelli ci sono i ponti
+   dipinti, ma non se ne aggiungono di nuovi; anche i sentieri (`paths`)
+   non si disegnano.
+3. La password (in sospeso: l'autore non ricorda a cosa servisse).
+4. La scheda "Regia" per gli scenari piu' complessi (obiettivi, eventi,
+   dialoghi, rinforzi...): da progettare con l'autore.
+5. Da decidere o rifinire, piccole:
+   - un solo salvataggio per le partite sulle mappe dell'editor (lo slot
+     `custom`: una partita nuova su un'altra mappa sostituisce la prima);
+   - le mappe aperte da file nella schermata della schermaglia valgono per
+     quella volta (non entrano fra quelle del browser);
+   - nessun controllo degli ingombri: oggetti ed edifici si possono mettere
+     uno sopra l'altro o sull'acqua (nella partita le unita' possono restare
+     incastrate);
+   - con lavoratori blu nella mappa la CPU non riceve i suoi 3 di partenza
+     (il giocatore si');
+   - S su un muro gia' messo ("Sposta") cambia lo schieramento, non il
+     verso; Ripeti solo con Ctrl+Y (nessun pulsante);
+   - i pulsanti delle mura spariscono da lontano (oltre 4 px di mappa per
+     pixel);
+   - la partita online sulle mappe dell'editor e' provata solo col canale
+     vero (`netmap.mjs`), non con quello finto.
+6. La PR: questa branch non ha ancora una pull request (la versione e' gia'
+   0.2615).
+
+**Fuori dall'editor** (le voci aperte qui sopra, "Cose da fare"):
+l'audio da riesportare (§9.137-§9.145); il multigiocatore da provare fra
+reti diverse, TURN, codici piu' corti, ritardo adattivo, riconnessione
+(§9.156); il livello 7 (copertura del bosco, mura che nascondono,
+prigionieri, banchi e pattuglie da Tiled, la mappa, la regia a fasi,
+§9.148); il movimento in mischia e i posti di lavoro dei civili (§9.147);
+prima dell'uscita `UNLOCK_ALL` a 1 (progress.js, §9.53).
+
+Prove: test unitari (145), `editor.mjs`.
+
+### 9.198 Icone dell'autore, ponti, password, partite solo su file, niente lavoratori di partenza; la PR
+
+Risposte dell'autore all'elenco di §9.197 (23 novembre 2026, stessa PR),
+con le icone in PNG: "2) interrompi i sentieri in corrispondenza dei fiumi,
+per i ponti inserisci solo quelli caricati da me 3) la password serve a
+editare la mappa: chi una volta impostata la mappa la carica nell'editor la
+puo' editare solo se azzecca la password (se e' stata impostata), mentre il
+caricamento per giocarci e' consentito a tutti 4) lascialo stare 5) il
+salvataggio facciamolo solo su file, ok se non entra tra le mappe, [...]
+nessuno dei due li riceve, il giocatore deve disegnarli a mano nell'editor
+se li vuole, ok sullo spostamento dei muri, [...] pazienza se i pulsanti
+spariscono a vista lontana [...] 6) apri la pr".
+
+- **Le icone dell'autore** (8 PNG di Icons8: sposta, polilinea, pennello,
+  file nuovo, cartella, dischetto, play, ingranaggio) in `nuovi/sprites/`
+  coi loro nomi, e in `nuovi.json` come derivati `ico_ed_*` (64 px, gruppo
+  gui) col `colore` bianco: l'editor le tinge di nero, o le lascia bianche
+  sullo strumento scelto (il cerchio scuro). Dove non c'e' un'icona
+  dell'autore (Inserisci, Gomma, Annulla, Taglia, Copia, Incolla) resta il
+  disegno a linee. Nota: le icone gratuite di Icons8 chiedono il link
+  "Icons by Icons8" nei crediti (da decidere con l'autore).
+- **I sentieri sui fiumi**: provato (un sentiero e una strada che
+  attraversano un fiume, nell'editor): l'acqua li copre gia', i pixel dentro
+  il fiume sono gli stessi con e senza strada; niente da cambiare. Nel mio
+  elenco "sentieri" erano i `paths`, che pero' non si vedono: sono i
+  percorsi della regia della campagna (§9.101). Una prova di togliere i
+  sassi dentro l'acqua e' stata scartata (non cambiava niente).
+- **I ponti**: una scheda "Ponti" in Inserisci coi due ponti dipinti
+  dall'autore (ponte_dx con la sua balaustra, ponte_dx2; rivers.js
+  PAINTED_BRIDGES, cotti nel suolo sopra il fiume, gli stessi dei modelli);
+  M li specchia per l'altro verso del fiume. Nessun ponte "a linee".
+- **La password** (impostazioni della mappa): un campo password (vuoto:
+  resta quella di prima; "Togli": nessuna). Nella mappa solo l'impronta,
+  `lock: { salt, hash }` (SHA-256 di sale e password, mapfile.js `sha256`,
+  scritto in JavaScript: uguale a quello di Node e del browser anche dove il
+  browser non da' la crittografia, per esempio fuori da https). Aprire
+  nell'editor una mappa con la password (dal browser, da file) la chiede:
+  sbagliata, "Password sbagliata." e resta la mappa di prima. Giocarla
+  (schermaglia, online, "Prova mappa") resta libero, e la password non
+  cambia l'impronta della partita. Non e' una cifratura: la mappa resta
+  leggibile per giocarla, e chi modifica il file a mano puo' togliere il
+  lucchetto; ferma chi usa l'editor.
+- **Le partite sulle mappe dell'editor si salvano solo su file**: nella
+  pausa niente "Salva partita" ne' "Salvataggio automatico" (pause.js
+  `fileOnly`), niente salvataggio automatico, lo slot `custom` tolto
+  dall'elenco dei salvataggi; "Salva su file" e "Carica da file" come
+  prima (il file porta la mappa, §9.190).
+- **Nessuno dei due riceve i 3 lavoratori di partenza** sulle mappe
+  dell'editor (ne' il giocatore, ne' la CPU, ne' online il blu): chi li vuole
+  li mette nella mappa (Inserisci, Unita'). Le mappe del gioco come prima.
+- Confermati: i muri con S in "Sposta" (lo schieramento), i pulsanti delle
+  mura che spariscono da lontano, le mappe aperte da file solo per quella
+  volta, nessun controllo degli ingombri. La scheda "Regia" per gli scenari:
+  per ora no.
+- **La 0.2614** (la PR #24, livello 7) e' su main ed e' il punto da cui
+  parte questa branch: niente da conciliare.
+- **La PR** di questa branch: aperta (editor di mappe, §9.180-§9.198).
+
+Testi nuovi: "Ponti", la password (campo, nota, richiesta, "Password
+sbagliata.", "Apri", "Nessuna password").
+
+Prove: `editor.test.mjs` (in piu': SHA-256 coi valori di riferimento, la
+password giusta e sbagliata, niente password in chiaro, la convalida del
+lucchetto, l'impronta della partita uguale, la scheda dei ponti, nessun
+lavoratore di partenza sulle mappe dell'editor, lo slot `custom` tolto; 146
+test), `editor.mjs` (la partita di prova senza lavoratori, i 2 lavoratori
+blu messi a mano per la CPU statica; una mappa con la password: sbagliata
+resta chiusa, giusta si apre col lucchetto), `skcustom.mjs` (senza i 3
+lavoratori; solo su file: la pausa senza slot, il salvataggio con la mappa
+dentro ricaricato da file), `netmap.mjs`, `saves.mjs`, `soak.mjs`
+(sk_padus coi 3 lavoratori come prima, lvl04), `pvp.mjs`; screenshot (la
+colonna con le icone dell'autore).
+
+### 9.199 Le icone dell'autore anche per i comandi
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, #25): "sostituisci anche
+queste 4 icone" (incolla, copia, taglia, annulla; PNG nere 48-64 px).
+
+In `nuovi/sprites/` come `ed_incolla.png`, `ed_copia.png`, `ed_taglia.png`,
+`ed_annulla.png` (arrivate senza nome), e in `nuovi.json` come derivati
+`ico_ed_paste`, `ico_ed_copy`, `ico_ed_cut`, `ico_ed_undo` (64 px, bianchi,
+come quelli di §9.198): l'editor le usa al posto dei disegni a linee. Restano
+disegnate a linee solo Inserisci e Gomma.
+
+Prove: atlas rifatto (tools/05), screenshot della colonna (i comandi spenti
+attenuati come prima).
+
+**Ripeti** (richiesta dell'autore, stessa sera: "inserisci anche il tasto
+ripeti, usa la stessa freccia ma specchiata verso destra"): un quinto
+comando dopo Annulla, con l'icona di Annulla specchiata (Ctrl+Y nel
+suggerimento), spento quando non c'e' niente da ripetere. Con quindici
+pulsanti la colonna si rimpicciolisce fino a 0,8 (era 0,85, §9.196): a 900
+px di altezza stanno ancora tutti senza scorrere. L'icona della gomma
+dell'autore e' arrivata dentro un messaggio mandato mentre lavoravo, e non
+come file: da rimandare.
+
+**La CI rossa** (trovata seguendo la PR #25): da §9.181 la prova
+`editor.mjs` falliva in CI (le esecuzioni non annullate: 421, 422, 424-426,
+428, 430, 432, 434-437, 439), sempre in un punto di tasti o mouse veloci:
+"trascinata col centrale" (421), poi il pannello "Salva mappa" che dopo
+Ctrl+S non compariva (dal §9.184 in poi). In locale passava sempre. La
+causa: nella CI (grafica emulata, pochi core) un fotogramma dura centinaia
+di millisecondi, e "Ctrl giu', S, Ctrl su" arrivano tutti fra un
+fotogramma e l'altro: quando l'editor legge i tasti (una volta per
+fotogramma, input.js beginStep) Ctrl e' gia' lasciato e S diventa "stile";
+il trascinamento col centrale partiva dal punto in cui stava il puntatore
+al fotogramma dopo la pressione, non da dove si era premuto, e perdeva
+l'ultimo tratto se il tasto era gia' lasciato. Correzioni (servono anche a
+chi gioca su una macchina lenta):
+- input.js: i tasti premuti con Ctrl (o Cmd) tenuto si ricordano al
+  keydown (`pressedCtrl`, come `pressedShift` per i gruppi di unita'), e il
+  punto in cui si preme ogni pulsante del mouse (`pressPos`);
+- editor.js: Ctrl vale anche se gia' lasciato, per un tasto premuto con
+  Ctrl tenuto; il trascinamento della vista parte da `pressPos` e si
+  applica fino all'ultima posizione prima di chiudersi.
+
+Con questa correzione la CI ha passato il punto di Ctrl+S (esecuzione 444)
+ed e' caduta piu' avanti, alla polilinea: tre clic per un fiume, ma due
+clic nello stesso fotogramma contano come uno (un solo `mousePressed` per
+passo), e il fiume restava di un punto. In locale (anche col processore
+rallentato di 6 volte, o coi fotogrammi allungati a 250 ms da uno script)
+non si riproduceva. Qui il limite e' della prova, che manda le azioni piu'
+in fretta di quanto la CI disegni: input.js conta le letture dell'input
+(`reads`, esposto in `window.__editor` e `window.__game`), e `editor.mjs` e
+`skcustom.mjs` dopo ogni azione del mouse e della tastiera aspettano che
+la pagina l'abbia letto almeno una volta in piu' (`syncInput`; nessun
+controllo tolto o saltato). Le due prove passano in locale (la schermaglia
+piu' lenta: il menu disegna ~6 fotogrammi al secondo con la grafica
+emulata).
+
+### 9.200 L'icona della gomma dell'autore
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, #25), con l'icona
+(PNG nera, 48 px): "fai solo la gomma, l'altra modifica di networking
+segnala come da fare ma la facciamo in un'altra sessione".
+
+In `nuovi/sprites/ed_gomma.png` e in `nuovi.json` come derivato
+`ico_ed_erase` (64 px, bianco, come quelli di §9.198-§9.199): l'editor la
+usa al posto del disegno a linee (che resta solo se l'icona mancasse).
+Ora nella colonna e' a linee solo Inserisci.
+
+I codici piu' corti del multigiocatore (§9.156, §9.198) restano da fare,
+in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
+
+Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
+scelta), test unitari, `editor.mjs`.

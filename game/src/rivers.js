@@ -41,7 +41,7 @@
 import { datan2, dhypot, dsin } from "./dmath.js"; // §9.152
 
 const STEP = 10;      // px fra un punto e l'altro della linea ammorbidita
-const ISO = 0.62;     // il suolo schiacciato: la larghezza in verticale
+export const ISO = 0.62; // il suolo schiacciato: la larghezza in verticale (§9.186: anche il pennello dell'editor)
 const WALL = 16;      // altezza della parete della riva lontana
 const WOBBLE = 0.12;  // la larghezza varia del +-12% lungo il fiume
 const INK = 0x1c1c1c, INK_ALPHA = 0.92, WALL_TINT = 0.78;

@@ -58,6 +58,12 @@ export class PauseMenu {
     // (net: { by } la pausa chiesta da un giocatore, { lost } la partita
     // interrotta, { solo } una pausa solo qui)
     this.netMode = false;
+    // [§9.188] la partita di "Prova mappa" dell'editor: niente salvataggi,
+    // "Torna all'editor" al posto di "Torna al menu"
+    this.testMode = false;
+    // [§9.198, decisione dell'autore] la partita su una mappa dell'editor si
+    // salva solo su file (niente slot nel browser ne' salvataggio automatico)
+    this.fileOnly = false;
     this.net = null;
   }
 
@@ -236,11 +242,11 @@ export class PauseMenu {
     } else if (this.submenu === "saves") {
       title = tr("SAVE AND LOAD");
       before = [
-        [tr("Save game"), "saveGame"],
+        ...(this.fileOnly ? [] : [[tr("Save game"), "saveGame"]]),
         [tr("Load game"), "loadGame"],
         [tr("Save to file"), "saveFile"],
         [tr("Load from file"), "loadFile"],
-        [tr("Autosave: {state}", { state: onOff(s.autosave) }), "autosave"],
+        ...(this.fileOnly ? [] : [[tr("Autosave: {state}", { state: onOff(s.autosave) }), "autosave"]]),
       ];
       segs = null;
       after = [[tr("Back"), "back"]];
@@ -280,7 +286,7 @@ export class PauseMenu {
       before = [
         [tr("Resume"), "resume"],
         [tr("Graphics options"), "graphics"],
-        [tr("Save and load"), "saves"],
+        ...(this.testMode ? [] : [[tr("Save and load"), "saves"]]),
         [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
         [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
         [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
@@ -291,7 +297,7 @@ export class PauseMenu {
       const cur = getLanguage();
       segs = LANGUAGES.map((l) => ({ value: l, label: l.toUpperCase(), selected: l === cur }));
       segAction = "language";
-      after = [[tr("Restart level"), "restart"], [tr("Back to menu"), "menu"]];
+      after = [[tr("Restart level"), "restart"], [tr(this.testMode ? "Back to the editor" : "Back to menu"), "menu"]];
     }
     // larghezza: quella di NIMBUS (360) o di piu' se un'etichetta tradotta
     // non ci sta

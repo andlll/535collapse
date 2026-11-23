@@ -45,7 +45,9 @@ export const SK_MAPS = [
     desc: "Monte Bardone, the pass of the Via Francigena. A mountain ridge splits the two valleys: only three passes cross it." },
 ];
 export const SK_ROOMS = SK_MAPS.filter((m) => m.room).map((m) => m.room);
-export const isSkirmish = (room) => SK_ROOMS.includes(room);
+// [§9.188] "custom": la mappa dell'editor giocata con "Prova mappa" (app.js),
+// una schermaglia anche lei (ma non online ne' nei salvataggi: SK_ROOMS no)
+export const isSkirmish = (room) => SK_ROOMS.includes(room) || room === "custom";
 
 // I parametri: chiave -> valori (il primo e' quello di partenza, salvo
 // DEFAULTS) ed etichette
@@ -54,7 +56,7 @@ export const SK_OPTIONS = {
                 names: { easy: "Easy", normal: "Normal", hard: "Hard", rigged: "Rigged" } },
   style: { label: "CPU style", values: ["balanced", "aggressive", "defensive", "economic", "raider", "random"],
            names: { balanced: "Balanced", aggressive: "Aggressive", defensive: "Defensive", economic: "Economic",
-                    raider: "Raider", random: "Random" } },
+                    raider: "Raider", random: "Random", static: "Static" } }, // §9.188: static, solo dall'editor
   victory: { label: "Victory", values: ["conquest", "townhall", "score20", "score40", "score60"],
              names: { conquest: "Conquest", townhall: "Town hall", score20: "Score, 20 min", score40: "Score, 40 min",
                       score60: "Score, 60 min" } },
@@ -133,15 +135,18 @@ export function skirmishStart(world, g, manager, fog, cam, params, starts) {
            mult: params.difficulty === "rigged" ? RIGGED : 1 };
   // 3 lavoratori del giocatore davanti al centro (quelli della CPU li fa
   // nascere la sua regia, ECO startWorkers)
+  // [§9.198, decisione dell'autore] sulle mappe dell'editor nessuno dei due
+  // li riceve: chi li vuole li mette nella mappa (Inserisci, Unita')
+  const own = world.room !== "custom";
   const [px, py] = starts.player;
-  for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
+  if (own) for (let n = 0; n < 3; n++) world.create("ally_omino", px - 90 + n * 70, py + 200);
   if (params.pvp) {
     // [§9.155] la partita a due: il giocatore 2 come il giocatore 1, con la
     // sua cassa (global.p2) e i suoi 3 lavoratori; niente regia della CPU
     Object.assign(g.p2, START_RES[params.resources]);
     const [qx, qy] = starts.cpu;
-    for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
-  } else world.create("enemy_eco", 0, 0);
+    if (own) for (let n = 0; n < 3; n++) world.create("p2_omino", qx - 90 + n * 70, qy + 200);
+  } else world.create("enemy_eco", 0, 0); // [§9.189] anche per la CPU statica: la regia passiva (economy.js)
   // tregua: la CPU non attacca (global.en.hold, economy.js) fino alla fine
   if (params.truce > 0 && !params.pvp) g.en.hold = 1;
   world.create("sk_manager", 0, 0);
@@ -306,10 +311,10 @@ export function skirmishEco(sk) {
     D[key] = ["firstAttack", "attackEvery"].includes(key) ? Math.round(D[key] * v) : Math.max(key === "attackAt" ? 3 : 0, D[key] + v);
   }
   const k = sk.difficulty === "rigged" ? RIGGED_START : 1, r = START_RES[sk.resources] || START_RES.normal;
-  return { ...D, startWorkers: 3, start: { food: r.food * k, wood: r.wood * k, gold: r.gold * k, stone: r.stone * k },
+  return { ...D, startWorkers: sk.map === "custom" ? 0 : 3, start: { food: r.food * k, wood: r.wood * k, gold: r.gold * k, stone: r.stone * k }, // §9.198: sulle mappe dell'editor nessuno
            buildOrder: S.buildOrder, troops: S.troops, raid: !!S.raid, houses: true, popMax: sk.pop,
            mix: { wood: 3, gold: 2, food: 3, stone: 1 }, rebuild: true, newDeposits: 3, stoneWork: true, armyEco: false,
-           anyTroop: true, defendR: 700 };
+           anyTroop: true, defendR: 700, passive: sk.style === "static" };
 }
 
 // [§9.122, richiesta dell'autore] Un po' di nebbia sulla mappa: sk_nebbia

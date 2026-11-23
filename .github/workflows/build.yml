@@ -136,6 +136,8 @@ jobs:
           node game/test/browser/enemygarrison.mjs
           node game/test/browser/hintgap.mjs
           node game/test/browser/hover.mjs
+          node game/test/browser/editor.mjs
+          node game/test/browser/skcustom.mjs
           node game/test/browser/alarms.mjs
           node game/test/browser/minimap.mjs
           node game/test/browser/zoom.mjs
@@ -161,6 +163,7 @@ jobs:
           node game/test/browser/netfake.mjs sk_padus 7 2400
           node game/test/browser/rtc.mjs sk_padus 950
           node game/test/browser/rtcfail.mjs
+          node game/test/browser/netmap.mjs
           node game/test/browser/truce.mjs sk_padus 5
           node game/test/browser/portal.mjs build/535-collapse-web.zip 1500
 
