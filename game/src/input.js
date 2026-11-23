@@ -40,6 +40,13 @@ export class Input {
     // trascinamento parte da li', anche se il passo arriva dopo che il
     // puntatore si e' gia' mosso
     this._pressPos = [[0, 0], [0, 0], [0, 0]]; this.pressPos = [[0, 0], [0, 0], [0, 0]];
+    // [§9.201] il doppio clic, deciso all'evento e non al passo: due
+    // pressioni dello stesso pulsante entro DBL_MS e DBL_PX. Col tempo del
+    // passo, su una macchina lenta (fotogrammi di centinaia di ms) i due clic
+    // risultavano lontani, o cadevano nello stesso passo e contavano come uno
+    // (pressDbl vale anche allora, sulla pressione unica che il passo vede).
+    this._pressT = [-Infinity, -Infinity, -Infinity];
+    this._dbl = [false, false, false]; this.pressDbl = [false, false, false];
     this.down = new Set(); this.pressed = new Set(); this.released = new Set();
     this._mdown = [false, false, false];
     this._mp = [false, false, false]; this._mr = [false, false, false];
@@ -88,6 +95,10 @@ export class Input {
       const b = BUTTON[e.button];
       if (b === undefined) return;
       this._mdown[b] = true; this._mp[b] = true;
+      const t = e.timeStamp || performance.now(), [qx, qy] = this._pressPos[b], dx = this.x - qx, dy = this.y - qy;
+      if (t - this._pressT[b] < DBL_MS && dx * dx + dy * dy < DBL_PX * DBL_PX) {
+        this._dbl[b] = true; this._pressT[b] = -Infinity; // il terzo clic ricomincia
+      } else this._pressT[b] = t;
       this._pressPos[b] = [this.x, this.y];
     });
     const up = (e) => {
@@ -165,6 +176,7 @@ export class Input {
     this.pressedShift = this._pressedShift; this._pressedShift = new Set();
     this.pressedCtrl = this._pressedCtrl; this._pressedCtrl = new Set();
     this.pressPos = this._pressPos.map((p) => p.slice());
+    this.pressDbl = this._dbl; this._dbl = [false, false, false];
     this.released = this._released; this._released = new Set();
     this.mouseDown = this._mdown.slice();
     this.mousePressed = this._mp; this._mp = [false, false, false];
@@ -176,6 +188,8 @@ export class Input {
 
 // mb_left, mb_right, mb_middle nell'ordine di GameMaker
 const BUTTON = { 0: 0, 2: 1, 1: 2 };
+// [§9.201] il doppio clic: entro 350 ms e 8 pixel CSS (com'era nell'editor, §9.187)
+const DBL_MS = 350, DBL_PX = 8;
 
 // Codici tasto di GameMaker (= keyCode di Windows): lettere e cifre ASCII,
 // frecce 37-40, ecc. (tools/gmx.py KEYS). `code` e' indipendente dal layout.

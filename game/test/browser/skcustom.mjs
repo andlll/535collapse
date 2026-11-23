@@ -42,7 +42,7 @@ const syncInput = (page) => {
     if (n0 === null) return;
     await page.waitForFunction((n) => { const o = window.__editor || window.__game; return !o || typeof o.reads !== "number" || o.reads > n; }, n0, { timeout: 15000, polling: 10 }).catch(() => {});
   };
-  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel"]], [page.keyboard, ["down", "up", "press"]]]) {
+  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel", "click", "dblclick"]], [page.keyboard, ["down", "up", "press"]]]) {
     for (const m of names) {
       const orig = obj[m].bind(obj);
       obj[m] = async (...a) => { const n0 = await reads(); const r = await orig(...a); await after(n0); return r; };
