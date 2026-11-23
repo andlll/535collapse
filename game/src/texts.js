@@ -1449,7 +1449,7 @@ export const TEXTS = {
   "Continue": { it: "Continua", es: "Continuar", pt: "Continuar", de: "Weiter", fr: "Continuer" },
   "Starting positions": { it: "Partenze", es: "Salidas", pt: "Partidas", de: "Startpositionen", fr: "Départs" },
   "Trees": { it: "Alberi", es: "Árboles", pt: "Árvores", de: "Bäume", fr: "Arbres" },
-  "Meadows and flowers": { it: "Prati e fiori", es: "Prados y flores", pt: "Prados e flores", de: "Wiesen und Blumen", fr: "Prés et fleurs" },
+  "Nature": { it: "Natura", es: "Naturaleza", pt: "Natureza", de: "Natur", fr: "Nature" }, // §9.195: era "Prati e fiori"
   "Mountains": { it: "Montagne", es: "Montañas", pt: "Montanhas", de: "Berge", fr: "Montagnes" },
   "City": { it: "Città", es: "Ciudad", pt: "Cidade", de: "Stadt", fr: "Ville" },
   "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.": {
@@ -1539,6 +1539,11 @@ export const TEXTS = {
     pt: "Mova o ponteiro: reto ou em ângulo. Clique: colocar. Direito: cancelar.",
     de: "Zeiger bewegen: gerade oder ums Eck. Klick: setzen. Rechts: abbrechen.",
     fr: "Bouge le pointeur : tout droit ou en angle. Clic : placer. Droit : annuler." },
+  // [§9.195] i comandi nella colonna dell'editor
+  "Undo (Ctrl+Z)": { it: "Annulla (Ctrl+Z)", es: "Deshacer (Ctrl+Z)", pt: "Desfazer (Ctrl+Z)", de: "Rückgängig (Strg+Z)", fr: "Annuler (Ctrl+Z)" },
+  "Cut (Ctrl+X)": { it: "Taglia (Ctrl+X)", es: "Cortar (Ctrl+X)", pt: "Recortar (Ctrl+X)", de: "Ausschneiden (Strg+X)", fr: "Couper (Ctrl+X)" },
+  "Copy (Ctrl+C)": { it: "Copia (Ctrl+C)", es: "Copiar (Ctrl+C)", pt: "Copiar (Ctrl+C)", de: "Kopieren (Strg+C)", fr: "Copier (Ctrl+C)" },
+  "Paste (Ctrl+V)": { it: "Incolla (Ctrl+V)", es: "Pegar (Ctrl+V)", pt: "Colar (Ctrl+V)", de: "Einfügen (Strg+V)", fr: "Coller (Ctrl+V)" },
   "Untitled map": { it: "Mappa senza nome", es: "Mapa sin nombre", pt: "Mapa sem nome", de: "Unbenannte Karte", fr: "Carte sans nom" },
   // [§9.192] la mappa dell'editor nella partita online
   "You don't have this map: it will be downloaded when you connect, and kept among your maps.": {

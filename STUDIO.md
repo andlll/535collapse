@@ -13679,3 +13679,50 @@ che toglie i due tratti in una passata, annulla che li rimette),
 partita), `netmap.mjs` (online il muro blu e' p2_mura_vert, la porta rossa
 del rosso, impronte uguali); screenshot (il prolungamento, l'angolo, la
 porta).
+
+### 9.195 Rifiniture dell'editor: "Natura", l'interruttore rosso / blu, i campi, i comandi nella colonna
+
+Richieste dell'autore (23 novembre 2026, stessa PR): "rinomina "prati e
+fiori" in "natura" o simili. Metti uno switch in edifici e unita' per
+decidere se filtrare per giocatore rosso o blu cosi' alleggeriamo un po' la
+vista. L'anteprima dei campi coltivati deve essere come in game (non il
+vecchio sprite che vedo ma il campo con sopra le particelle). Per annulla
+oltre ctrl + z mettiamo anche un tasto fisico [...] sempre col simbolo
+della freccia per tornare indietro, idem per taglia, copia, incolla.
+Magari come secondo set di strumenti tra il primo e il terzo".
+
+- **"Natura"** al posto di "Prati e fiori" (la scheda di prati, fiori,
+  erba e macchie; nelle sei lingue).
+- **L'interruttore rosso / blu** in Unita' ed Edifici: due cerchi a sinistra
+  delle caselle (il rosso sopra), la parte scelta piena; si vedono solo le
+  caselle di quella parte (di partenza la rossa). Cambiando parte la casella
+  scelta passa alla stessa dell'altra; anche S con una casella di uno
+  schieramento sposta l'interruttore. Le partenze (due caselle) restano
+  senza.
+- **Il campo come nel gioco**: la terra arata col grano (campo_grano) e
+  sopra le file di spighe a particelle (effects.js campoCreate, la stessa
+  funzione del gioco, registrata nel mondo dell'editor), per tutte e due le
+  parti (il campo della CPU nel gioco e' uguale); nella casella della
+  tavolozza e nel fantasma le file di spighe disegnate (gialle, senza
+  caso). Trascinando un campo (o una macchia di prato) con "Sposta" le
+  particelle ora seguono la voce (prima restavano al loro posto fino al
+  rilascio).
+- **I comandi nella colonna**, un secondo gruppo fra gli strumenti e le
+  azioni (tre gruppi, due lineette): **Annulla** (la freccia che torna
+  indietro), **Taglia** (le forbici), **Copia** (due fogli), **Incolla** (la
+  cartellina), con Ctrl+Z, Ctrl+X (nuovo), Ctrl+C, Ctrl+V nel suggerimento.
+  Spenti quando non c'e' niente da fare (niente da annullare, nessuna
+  scelta, niente da incollare). Taglia come Canc (con le gemelle, se c'e'
+  la simmetria). Incolla dal pulsante mette le voci al centro della vista,
+  scelte, e passa a "Sposta": si trascinano dove servono (Ctrl+V incolla
+  sotto il puntatore). Ripeti resta Ctrl+Y. Con quattordici pulsanti la
+  colonna si rimpicciolisce prima sugli schermi bassi (a 900 px ~0,85).
+
+Testi nuovi: "Natura", i quattro suggerimenti dei comandi.
+
+Prove: `editor.test.mjs` (in piu': i tre gruppi della colonna, la tavolozza
+filtrata per parte con l'interruttore, "Natura"; 144 test), `editor.mjs`
+(solo le caselle rosse, l'interruttore che mostra le blu, S che lo sposta;
+Copia e Incolla dai pulsanti, Annulla, Taglia, Annulla; il campo con
+campo_grano e 13 file di spighe), `skcustom.mjs`; screenshot (la colonna,
+l'interruttore, i campi).

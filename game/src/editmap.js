@@ -13,7 +13,7 @@
 
 import { World } from "./world.js";
 import { Particles } from "./particles.js";
-import { DECOR_OBJECTS, decorCreate } from "./effects.js";
+import { DECOR_OBJECTS, decorCreate, campoCreate } from "./effects.js";
 import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
@@ -43,7 +43,7 @@ export const CATALOG = [
   { key: "buildings", label: "Buildings", objects: [...BUILDINGS, { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
-  { key: "meadows", label: "Meadows and flowers",
+  { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
     objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
               "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01"] },
   { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
@@ -144,7 +144,12 @@ export const STARTS = 2;
 // lavoratore della CPU ha lo sprite del civile: quello blu e' b_ (economy.js)
 export { BLUE_OF };
 const BLUE_LOOK = { ally_omino: "b_ow11" };
+// [§9.195, richiesta dell'autore] come nel gioco: il campo e' la terra arata
+// col grano (campo_grano; nella scena anche le file di spighe, campoCreate),
+// per tutte e due le parti (il campo della CPU e' uguale)
+export const EDIT_LOOK = { campo: "campo_grano" };
 export function sideLook(objects, e) {
+  if (EDIT_LOOK[e.object]) return EDIT_LOOK[e.object];
   if (e.side !== "blue" || !BLUE_OF[e.object]) return null;
   if (BLUE_LOOK[e.object]) return BLUE_LOOK[e.object];
   const b = objects[BLUE_OF[e.object]];
@@ -194,6 +199,7 @@ export function groupsFor(assets, objects, names) {
     if (BRIDGE_RAILS[n] && objects[BRIDGE_RAILS[n]]) want(objects[BRIDGE_RAILS[n]].sprite);
     if (BLUE_OF[n] && objects[BLUE_OF[n]]) want(objects[BLUE_OF[n]].sprite); // §9.191: la partenza blu
     if (BLUE_LOOK[n]) want(BLUE_LOOK[n]); // §9.193
+    if (EDIT_LOOK[n]) { want(EDIT_LOOK[n]); want("spiga"); } // §9.195: il campo col grano
   }
   return out;
 }
@@ -225,6 +231,7 @@ export class EditScene {
     const world = this.world = new World({ objects: ctx.objects, masks: ctx.masks, assets: ctx.assets, g: {}, roomW: map.width, roomH: map.height });
     world.particles = new Particles();
     for (const n of DECOR_OBJECTS) world.register(n, { create: decorCreate });
+    world.register("campo", { create: campoCreate }); // §9.195: le file di spighe, come nel gioco
     for (const [name, o] of Object.entries(ctx.objects)) if (o.slices) world.register(name, sliced(o));
     for (const [name, rail] of Object.entries(BRIDGE_RAILS)) {
       world.register(name, { create(i, w) { w.create(rail, i.x, i.y, { sx: i.image_xscale, sy: i.image_yscale, rot: i.image_angle }); } });
@@ -277,6 +284,7 @@ export class EditScene {
     if (!i) return;
     const w = this.world;
     for (const s of i.grass_rows || []) w.particles.systemDestroy(s); // le macchie (effects.js decorCreate)
+    for (const s of i.crop_rows || []) w.particles.systemDestroy(s); // §9.195: le spighe del campo
     for (const k of i.kids || []) w.destroy(k);
     w.destroy(i);
     this.byEntry.delete(e);
@@ -524,6 +532,11 @@ export class EditScene {
       this.world.setPos(i, e.x + dx, ny);
       if (typeof o.depth !== "number") i.depth = -ny + o.depth.y;
       for (const k of i.kids || []) { this.world.setPos(k, k.x + ddx, k.y + ddy); k.depth -= ddy; }
+      // [§9.195] le particelle (macchie, spighe del campo) seguono la voce
+      for (const ps of [...(i.grass_rows || []), ...(i.crop_rows || [])]) {
+        for (const q of ps.parts) { q.x += ddx; q.y += ddy; }
+        ps.depth -= ddy;
+      }
     }
   }
 }

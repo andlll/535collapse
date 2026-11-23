@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
+import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, EDITS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout,
          lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
@@ -39,13 +39,14 @@ test("§9.180 la colonna e il riquadro stanno nella finestra e non si toccano", 
     const L = editorLayout(W, H);
     const [x1, y1, x2, y2] = L.col;
     assert.ok(x1 >= 0 && y1 >= 0 && x2 < W && y2 <= H, `colonna ${W}x${H}`);
-    assert.equal(L.buttons.length, TOOLS.length + ACTIONS.length);
-    assert.deepEqual(L.buttons.map((b) => b.key), [...TOOLS, ...ACTIONS]);
+    assert.equal(L.buttons.length, TOOLS.length + EDITS.length + ACTIONS.length); // §9.195: i comandi in mezzo
+    assert.deepEqual(L.buttons.map((b) => b.key), [...TOOLS, ...EDITS, ...ACTIONS]);
     for (const b of L.buttons) assert.ok(b.y - b.r >= y1 && b.y + b.r <= y2, `${b.key} dentro la colonna`);
     for (let k = 1; k < L.buttons.length; k++) assert.ok(L.buttons[k].y - L.buttons[k].r > L.buttons[k - 1].y + L.buttons[k - 1].r);
     // gli strumenti e le azioni staccati piu' dei pulsanti fra loro
     const gap = (k) => L.buttons[k].y - L.buttons[k - 1].y;
     assert.ok(gap(TOOLS.length) > gap(1) + 10);
+    assert.ok(gap(TOOLS.length + EDITS.length) > gap(1) + 10);
     const [p1, q1, p2, q2] = L.panel;
     assert.ok(p1 > x2 && p2 <= W && q2 <= H && q1 > 0, `riquadro ${W}x${H}`);
     assert.ok(L.back[0] + L.back[2] <= W);
@@ -86,7 +87,7 @@ test("§9.180 la vista: zoom attorno al puntatore, limiti, margine", () => {
 });
 
 test("§9.180 testi dell'editor tradotti", () => {
-  assert.equal(Object.keys(LABEL).length, TOOLS.length + ACTIONS.length);
+  assert.equal(Object.keys(LABEL).length, TOOLS.length + EDITS.length + ACTIONS.length);
   for (const t of TOOLS) assert.ok(DESC[t], t);
   for (const k of EDITOR_TEXTS) assert.ok(TEXTS[k], k);
   const src = readFileSync(new URL("../src/editor.js", import.meta.url), "utf8");
@@ -615,4 +616,16 @@ test("§9.194 mura e porte", () => {
   assert.ok(allowedObjects().has("porta_ori") && allowedObjects().has("porta_vert"));
   const room = testRoom({ ...newMap(), instances: [W("porta_ori", 100, 100, "blue"), W("mura_vert", 200, 200)] });
   assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "enemy_porta_ori", "mura_vert"]);
+});
+
+// [§9.195] l'interruttore rosso / blu in Unita' ed Edifici: si vedono le
+// caselle di una parte (gli indici della tavolozza restano quelli di tutte)
+test("§9.195 la tavolozza filtrata per parte", () => {
+  const L = editorLayout(1600, 900), units = CATALOG.findIndex((k) => k.key === "units");
+  const all = paletteLayout(L.panel, units, 0), red = paletteLayout(L.panel, units, 0, [0, 2, 4, 6, 8, 10, 12]);
+  assert.ok(red.side && red.side.red[1] < red.side.blue[1], "i due cerchi, il rosso sopra");
+  assert.deepEqual(red.cells.map((q) => q.i), [0, 2, 4, 6, 8, 10, 12]);
+  assert.ok(red.cells[0].x1 > all.cells[0].x1 - 1, "le caselle dopo l'interruttore");
+  assert.equal(paletteLayout(L.panel, 0, 0).side, null, "le partenze senza interruttore");
+  assert.equal(CATALOG.find((k) => k.key === "meadows").label, "Nature");
 });

@@ -141,12 +141,19 @@ export class EditorView {
 // riquadro, finche' lo strumento non c'e').
 export const TOOLS = ["select", "line", "brush", "insert", "erase"]; // §9.194: la gomma, quinta (tasto 5)
 export const ACTIONS = ["new", "open", "save", "test", "settings"];
+// [§9.195, richiesta dell'autore] il secondo gruppo, fra gli strumenti e le
+// azioni: annulla, taglia, copia, incolla (oltre ai tasti)
+export const EDITS = ["undo", "cut", "copy", "paste"];
 export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
   brush: "Area brush: forests, textures",
   insert: "Insert: units, resources, buildings…",
   erase: "Area eraser: delete objects",
+  undo: "Undo (Ctrl+Z)",
+  cut: "Cut (Ctrl+X)",
+  copy: "Copy (Ctrl+C)",
+  paste: "Paste (Ctrl+V)",
   new: "New map",
   open: "Open map",
   save: "Save map",
@@ -203,14 +210,16 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // (panel) e il cerchio "Indietro" (back: x, y, r). Con una finestra bassa
 // la colonna si rimpicciolisce tutta (k) per starci.
 export function editorLayout(W, H) {
-  const n = TOOLS.length + ACTIONS.length;
-  const full = 2 * COL.pad + n * COL.btn + (n - 2) * COL.gap + COL.sep;
+  const n = TOOLS.length + EDITS.length + ACTIONS.length;
+  const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
   const k = Math.max(0.5, Math.min(1, (H - 2 * COL.top) / full));
   const b = COL.btn * k, gap = COL.gap * k, pad = COL.pad * k, sep = COL.sep * k;
   const x1 = COL.left, x2 = x1 + b + 2 * pad, y1 = COL.top;
   const buttons = [];
   let y = y1 + pad;
   for (const key of TOOLS) { buttons.push({ kind: "tool", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
+  y += sep - gap;
+  for (const key of EDITS) { buttons.push({ kind: "edit", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
   y += sep - gap;
   for (const key of ACTIONS) { buttons.push({ kind: "action", key, x: (x1 + x2) / 2, y: y + b / 2, r: b / 2 }); y += b + gap; }
   const col = [x1, y1, x2, y - gap + pad];
@@ -281,6 +290,25 @@ function drawIcon(d, key, x, y, s, ink) {
     const W = (px1, py1, px2, py2) => d.lineWidthColour(x + px1 * s, y + py1 * s, x + px2 * s, y + py2 * s, 3 * s, c.white, c.white);
     W(-4, -4, 7, 7);
     d.setAlpha(d.alpha / 0.45);
+  } else if (key === "undo") { // [§9.195] la freccia che torna indietro: un arco e la punta
+    const P = [];
+    for (let k = 0; k <= 10; k++) { const t = (k / 10) * Math.PI; P.push([2 + dcos(t) * 10, 2 - dsin(t) * 10]); }
+    L(12, 12, 12, 2);
+    for (let k = 1; k < P.length; k++) L(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]);
+    T(-14, 0, -2, 0, -8, 9);
+  } else if (key === "cut") { // le forbici: due anelli e le lame incrociate
+    L(-5, 6, 7, -14, 2.5); L(5, 6, -7, -14, 2.5);
+    for (const sx of [-6, 6]) { C(sx, 10, 5.5); C(sx, 10, 2.8, c.white); }
+  } else if (key === "copy") { // due fogli
+    const sheet = (ox, oy, fill) => {
+      d.roundrectColourExt(x + (ox - 8) * s, y + (oy - 10) * s, x + (ox + 8) * s, y + (oy + 10) * s, 5 * s, 5 * s, ink, ink, false);
+      if (fill) d.roundrectColourExt(x + (ox - 5.5) * s, y + (oy - 7.5) * s, x + (ox + 5.5) * s, y + (oy + 7.5) * s, 3 * s, 3 * s, c.white, c.white, false);
+    };
+    sheet(-4, -4, true); sheet(4, 4, true);
+  } else if (key === "paste") { // la cartellina col fermaglio e il foglio
+    d.roundrectColourExt(x - 11 * s, y - 11 * s, x + 11 * s, y + 15 * s, 5 * s, 5 * s, ink, ink, false);
+    R(-6, -14, 6, -8);
+    d.roundrectColourExt(x - 7 * s, y - 5 * s, x + 7 * s, y + 11 * s, 2 * s, 2 * s, c.white, c.white, false);
   } else if (key === "new") { // un foglio con l'angolo piegato e il "+"
     L(-11, -14, 3, -14, 2.5); L(3, -14, 10, -7, 2.5); L(10, -7, 10, 14, 2.5); L(10, 14, -11, 14, 2.5); L(-11, 14, -11, -14, 2.5);
     L(3, -14, 3, -7, 2); L(3, -7, 10, -7, 2);
@@ -359,18 +387,26 @@ export function confirmLayout(W, H, n = 2) {
 // [§9.183] una casella per voce del catalogo (una famiglia di stili e' una
 // casella sola): `i`, il suo posto nella scheda
 const CELL = 62, CELL_GAP = 8, ARROW = 30;
-export function paletteLayout(panel, cat, scroll) {
+// [§9.195, richiesta dell'autore] in Unita' ed Edifici l'interruttore
+// rosso / blu a sinistra delle caselle: si vedono solo quelle di una parte
+// (idx: gli indici delle caselle che si vedono; side: i due cerchi)
+export const SIDE_TABS = new Set(["units", "buildings"]);
+const SWITCH_W = 40;
+export function paletteLayout(panel, cat, scroll, idx = null) {
   const [x1, y1, x2] = panel, n = CATALOG.length, tw = (x2 - x1 - 40) / n;
   const tabs = CATALOG.map((_, k) => ({ k, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
-  const left = x1 + 20 + ARROW, right = x2 - 20 - ARROW, top = y1 + 98;
+  const sw = SIDE_TABS.has(CATALOG[cat].key) ? SWITCH_W : 0;
+  const left = x1 + 20 + sw + ARROW, right = x2 - 20 - ARROW, top = y1 + 98;
   const per = Math.max(1, Math.floor((right - left + CELL_GAP) / (CELL + CELL_GAP)));
-  const n2 = paletteCount(CATALOG[cat]), max = Math.max(0, n2 - per), s = Math.max(0, Math.min(scroll, max)); // §9.191
+  const n2 = idx ? idx.length : paletteCount(CATALOG[cat]), max = Math.max(0, n2 - per), s = Math.max(0, Math.min(scroll, max)); // §9.191, §9.195
   const cells = [];
   for (let k = 0; k < Math.min(per, n2 - s); k++) {
-    cells.push({ i: s + k, x1: left + k * (CELL + CELL_GAP), y1: top, x2: left + k * (CELL + CELL_GAP) + CELL, y2: top + CELL });
+    cells.push({ i: idx ? idx[s + k] : s + k, x1: left + k * (CELL + CELL_GAP), y1: top, x2: left + k * (CELL + CELL_GAP) + CELL, y2: top + CELL });
   }
   return { tabs, cells, per, max, scroll: s, strip: [x1 + 20, top, x2 - 20, top + CELL],
-           prev: s > 0 ? [x1 + 20, top, x1 + 20 + ARROW - 6, top + CELL] : null,
+           prev: s > 0 ? [x1 + 20 + sw, top, x1 + 20 + sw + ARROW - 6, top + CELL] : null,
+           side: sw ? { red: [x1 + 20 + sw / 2, top + CELL / 2 - 14, 11], blue: [x1 + 20 + sw / 2, top + CELL / 2 + 14, 11],
+                        box: [x1 + 20 + 4, top + 2, x1 + 20 + sw - 4, top + CELL - 2] } : null,
            next: s < max ? [x2 - 20 - ARROW + 6, top, x2 - 20, top + CELL] : null };
 }
 
@@ -464,6 +500,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.194] la gomma (larghezza: indice di BRUSH_WIDTHS, cancellando); le mura:
                // il "+" da cui si prolunga (wall) e il pulsante sotto il puntatore
                erase: { w: 3 }, erasing: false, wall: null, wallHover: null,
+               // [§9.195] la parte che si vede in Unita' ed Edifici
+               sideFilter: "red",
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -473,6 +511,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
   const styleOfCell = (cat, i) => ITEMS[cat][i].styles[ed.style[cat][i]];
   const pickedStyle = () => (ed.pick ? styleOfCell(ed.pick.cat, ed.pick.i) : null);
+  // [§9.195] le caselle che si vedono (in Unita' ed Edifici solo quelle della
+  // parte scelta), o null: tutte
+  const shownIdx = (cat) => (SIDE_TABS.has(CATALOG[cat].key) ? ITEMS[cat].map((q, i) => (q.side && q.side !== ed.sideFilter ? -1 : i)).filter((i) => i >= 0) : null);
+  const paletteNow = (panel) => paletteLayout(panel, ed.cat, ed.scroll[ed.cat], shownIdx(ed.cat));
   canvas.style.cursor = "none"; // il cursore del gioco, disegnato (come in partita)
   const clear = [0x1b / 255, 0x1d / 255, 0x17 / 255]; // fuori dalla mappa: il colore della pagina (index.html)
   const OUTSIDE = 0x171d1b; // lo stesso, in BGR per Draw
@@ -603,7 +645,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       // ([§9.194] le mura hanno anche gli stili, i due versi: S li gira)
       if (it.side && n === 1) {
         const j = ITEMS[cat].findIndex((q) => q.side && q.side !== it.side && q.styles[0].object === it.styles[0].object);
-        if (j >= 0) ed.pick = { cat, i: j };
+        if (j >= 0) { ed.pick = { cat, i: j }; ed.sideFilter = ITEMS[cat][j].side; } // §9.195: e l'interruttore
         return;
       }
       ed.style[cat][i] = (ed.style[cat][i] + dir + n) % n;
@@ -625,6 +667,26 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!list.length) return;
     const cx = list.reduce((a, e) => a + e.x, 0) / list.length, cy = list.reduce((a, e) => a + e.y, 0) / list.length;
     ed.clip = list.map((e) => ({ ...e, x: e.x - cx, y: e.y - cy }));
+  };
+  // [§9.195] taglia: copia e toglie (come Canc, con le gemelle)
+  const cut = () => {
+    if (!ed.sel.size) return;
+    copy();
+    scene.remove(scene.withTwins(selected(), symMode()));
+    ed.sel.clear();
+  };
+  // [§9.195] i pulsanti della colonna: annulla, taglia, copia, incolla (al
+  // centro della vista, scelto, con "Sposta": si trascina dove serve)
+  const editEnabled = (key) => (key === "undo" ? scene.undoList.length > 0 : key === "paste" ? !!ed.clip : selected().length > 0);
+  const editAction = (key) => {
+    if (!editEnabled(key)) return;
+    if (key === "undo") { if (scene.undo()) tidySel(); }
+    else if (key === "cut") cut();
+    else if (key === "copy") copy();
+    else if (key === "paste") {
+      setTool("select");
+      paste(Math.round(view.x + view.w / 2), Math.round(view.y + view.h / 2));
+    }
   };
   const paste = (x, y) => {
     if (!ed.clip) return;
@@ -1043,7 +1105,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       return;
     }
     const hit = input.inside ? hitTest(L, mx, my) : null;
-    ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "back") ? hit : null;
+    ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "edit" || hit.kind === "back") ? hit : null;
     // [§9.185] la pennellata in corso: solo lei (e la vista)
     if (ed.stroke) {
       const st = ed.stroke;
@@ -1092,6 +1154,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (K(46) || K(8)) { scene.remove(scene.withTwins(selected(), symMode())); ed.sel.clear(); }
       if (K(77) && !ctrl && ed.sel.size) scene.modify(scene.withTwins(selected(), symMode()), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
       if (ctrl && K(67)) copy();
+      if (ctrl && K(88)) cut(); // §9.195
       if (ctrl && K(86) && !hit) paste(rx, ry);
       if (ctrl && K(65)) ed.sel = new Set(scene.map.instances.filter((e) => !SYSTEM.has(e.object) && scene.instOf(e)));
     }
@@ -1101,7 +1164,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const sp = shift ? 36 : 14;
     const dx = (input.down.has(39) ? 1 : 0) - (input.down.has(37) ? 1 : 0), dy = (input.down.has(40) ? 1 : 0) - (input.down.has(38) ? 1 : 0);
     if ((dx || dy) && !ctrl) view.pan(dx * sp, dy * sp);
-    const P = ed.tool === "insert" ? paletteLayout(L.panel, ed.cat, ed.scroll[ed.cat]) : null;
+    const P = ed.tool === "insert" ? paletteNow(L.panel) : null;
     if (input.inside && input.wheelStep && shift && (ed.tool === "brush" || ed.tool === "erase") && !hit) { // §9.185: Maiusc+rotella, la larghezza (§9.194: anche la gomma)
       const B = ed.tool === "brush" ? ed.brush : ed.erase;
       B.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, B.w - Math.sign(input.wheelStep)));
@@ -1128,6 +1191,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       clic();
       const b = ed.hover;
       if (b.kind === "back") { guard(toMenu); return; }
+      if (b.kind === "edit") { editAction(b.key); return; } // §9.195
       if (b.kind === "tool") setTool(b.key);
       else if (b.key === "open") openPanel(); // §9.181, §9.184
       else if (b.key === "new") guard(newBlank); // §9.182
@@ -1149,6 +1213,21 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // la tavolozza (Inserisci)
     ed.palHover = null;
     if (P && hit && hit.kind === "ui") {
+      // [§9.195] l'interruttore rosso / blu: la casella scelta passa all'altra parte
+      const sideHit = P.side && ["red", "blue"].find((k) => dhypot(mx - P.side[k][0], my - P.side[k][1]) <= P.side[k][2] + 5);
+      if (sideHit) {
+        ed.palHover = "side";
+        if (input.mouseReleased[0] && sideHit !== ed.sideFilter) {
+          clic();
+          ed.sideFilter = sideHit;
+          const it = ed.pick && ed.pick.cat === ed.cat ? ITEMS[ed.cat][ed.pick.i] : null;
+          if (it && it.side && it.side !== sideHit) {
+            const j = ITEMS[ed.cat].findIndex((q) => q.side === sideHit && q.key.split(":")[0] === it.key.split(":")[0]);
+            ed.pick = j >= 0 ? { cat: ed.cat, i: j } : null;
+          }
+        }
+        return;
+      }
       ed.palHover = P.cells.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2])) || P.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]))
         || (P.prev && inRect(mx, my, P.prev) ? "prev" : P.next && inRect(mx, my, P.next) ? "next" : null);
       if (input.mouseReleased[0] && ed.palHover) {
@@ -1508,6 +1587,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       for (const e of list) {
         const spr = sideLook(objects, e) || st.sprite || (o && o.sprite);
         if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, col, e === list[0] ? 0.6 : 0.4);
+        if (spr && e.object === "campo") cropThumb(e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.195
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
     }
@@ -1532,15 +1612,18 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.roundrectColourExt(cx1, cy1, cx2, cy2, 40 * L.k, 40 * L.k, c.white, c.white, false);
     for (const b of L.buttons) {
       const on = b.kind === "tool" && ed.tool === b.key, hov = ed.hover && ed.hover.key === b.key;
-      draw.setAlpha(on ? 0.85 : hov ? 0.99 : 0.69);
+      const off = b.kind === "edit" && !editEnabled(b.key); // §9.195: niente da annullare, copiare, incollare
+      draw.setAlpha(on ? 0.85 : off ? 0.4 : hov ? 0.99 : 0.69);
       draw.circleColour(b.x, b.y, b.r, on ? DARK : c.white, on ? DARK : c.white, false);
-      draw.setAlpha(on ? 1 : 0.75);
+      draw.setAlpha(on ? 1 : off ? 0.3 : 0.75);
       drawIcon(draw, b.key, b.x, b.y, (b.r / 28) * 0.95, on ? c.white : c.black);
     }
-    // fra gli strumenti e le azioni, una lineetta
-    const last = L.buttons[TOOLS.length - 1], next = L.buttons[TOOLS.length], ym = (last.y + last.r + next.y - next.r) / 2;
-    draw.setAlpha(0.35);
-    draw.lineWidthColour(cx1 + 16 * L.k, ym, cx2 - 16 * L.k, ym, 2, c.black, c.black);
+    // fra gli strumenti, i comandi (§9.195) e le azioni, una lineetta
+    for (const at of [TOOLS.length, TOOLS.length + EDITS.length]) {
+      const last = L.buttons[at - 1], next = L.buttons[at], ym = (last.y + last.r + next.y - next.r) / 2;
+      draw.setAlpha(0.35);
+      draw.lineWidthColour(cx1 + 16 * L.k, ym, cx2 - 16 * L.k, ym, 2, c.black, c.black);
+    }
     // il cerchio "Indietro" (come nelle schermate del menu, §9.158)
     const [bx, by, br] = L.back;
     draw.setAlpha(ed.hover && ed.hover.kind === "back" ? 0.99 : 0.69);
@@ -1613,7 +1696,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
 
   // [§9.182] la tavolozza di "Inserisci": le schede e le caselle
   const drawPalette = (panel) => {
-    const P = paletteLayout(panel, ed.cat, ed.scroll[ed.cat]);
+    const P = paletteNow(panel);
     draw.setFont("overdue");
     draw.setHalign("center");
     draw.setValign("middle");
@@ -1629,6 +1712,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       else draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, label);
     }
     if (catalog !== "ready") { draw.setColour(c.black); draw.setAlpha(0.6); draw.text((P.strip[0] + P.strip[2]) / 2, (P.strip[1] + P.strip[3]) / 2, t("loading")); return; }
+    // [§9.195] l'interruttore rosso / blu (Unita', Edifici): la parte scelta piena
+    if (P.side) {
+      const [bx1, by1, bx2, by2] = P.side.box;
+      draw.setAlpha(ed.palHover === "side" ? 0.95 : 0.75);
+      draw.roundrectColourExt(bx1, by1, bx2, by2, 16, 16, c.white, c.white, false);
+      for (const k of ["red", "blue"]) {
+        const [sx, sy, sr] = P.side[k], on = ed.sideFilter === k, col = SIDE_COLOUR[k];
+        draw.setAlpha(on ? 1 : 0.3);
+        draw.circleColour(sx, sy, on ? sr : sr - 3, col, col, false);
+      }
+    }
     for (const q of P.cells) {
       const on = !!ed.pick && ed.pick.cat === ed.cat && ed.pick.i === q.i, hov = ed.palHover === q;
       draw.setAlpha(on ? 0.85 : hov ? 0.95 : 0.55);
@@ -1746,7 +1840,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const b = spr && tightBounds(assets, spr, 0, 0);
     if (b) {
       const s = Math.min(size / (b[2] - b[0]), size / (b[3] - b[1]), 1);
-      drawSprite(r, assets, spr, 0, cx - ((b[0] + b[2]) / 2) * s, cy - ((b[1] + b[3]) / 2) * s, s, s, 0, c.white, 1);
+      const ox = cx - ((b[0] + b[2]) / 2) * s, oy = cy - ((b[1] + b[3]) / 2) * s;
+      drawSprite(r, assets, spr, 0, ox, oy, s, s, 0, c.white, 1);
+      if (name === "campo") cropThumb(ox, oy, s); // §9.195: le spighe, come nel gioco
       return;
     }
     // le macchie (particelle, senza sprite): un prato coi suoi colori
@@ -1760,6 +1856,15 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
   };
 
+  // [§9.195] le file di spighe del campo in piccolo (effects.js cropRows: righe
+  // ogni CROP px nel rombo largo 145 px, una spiga ogni ~11 px), senza caso
+  const cropThumb = (ox, oy, s, alpha = 1) => {
+    for (let dy = -84; dy <= 84; dy += 12) {
+      const hw = 145 * (1 - Math.abs(dy) / 90) - 8;
+      if (hw < 4) continue;
+      for (let x = -hw; x < hw; x += 11) drawSprite(r, assets, "spiga", 0, ox + x * s, oy + dy * s, s * 0.85, s * 0.85, 0, 0x96e2ff, alpha); // (il giallo del grano, BGR)
+    }
+  };
   const tooltip = (x, y, str) => {
     draw.setFont("GUI_1");
     const w = draw.stringWidth(str) + 36;
@@ -1846,7 +1951,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   window.__editor = { ready: true, ed, view, input, loop, layout: () => editorLayout(view.cssW, view.cssH),
                       openLayout: () => openLayout(view.cssW, view.cssH, ed.open && ed.open.mine ? ed.open.mine.length : 0, ed.open ? ed.open.scroll : 0),
                       confirmLayout: () => confirmLayout(view.cssW, view.cssH, ed.confirm ? ed.confirm.buttons.length : 2),
-                      palette: () => paletteLayout(editorLayout(view.cssW, view.cssH).panel, ed.cat, ed.scroll[ed.cat]),
+                      palette: () => paletteNow(editorLayout(view.cssW, view.cssH).panel),
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap,
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH).panel),

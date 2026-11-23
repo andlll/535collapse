@@ -500,17 +500,24 @@ check("un'altra partenza rossa no", (await startsNow()).length === 2);
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.tabs[TAB.units]));
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.cells[2]));
+// [§9.195] l'interruttore: solo le caselle blu, poi di nuovo le rosse
+check("Unita': solo le caselle rosse", P.side && P.cells.every((q) => q.i % 2 === 0));
+await click(P.side.blue[0], P.side.blue[1]);
+P = await page.evaluate(() => window.__editor.palette());
+check("l'interruttore: le caselle blu", P.cells.every((q) => q.i % 2 === 1) && (await page.evaluate(() => window.__editor.ed.sideFilter)) === "blue");
+await click(P.side.red[0], P.side.red[1]);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells.find((q) => q.i === 2)));
 await click(760, 330);
 const units = await page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.object === "ally_warrior").map((e) => ({ side: e.side, sprite: S.instOf(e).sprite_index })); });
 res.unita = units;
 check("guerriero rosso, gemella blu col suo sprite", units.length === 2 && units[0].side === "red" && units[1].side === "blue" && units[1].sprite === "bww11");
 await page.mouse.move(760, 330); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
-check("S: la casella del guerriero blu", await page.evaluate(() => { const p = window.__editor.ed.pick; return p.cat === 1 && /* TAB.units */ p.i === 3; }));
+check("S: la casella del guerriero blu", await page.evaluate(() => { const E = window.__editor, p = E.ed.pick; return p.cat === 1 && /* TAB.units */ p.i === 3 && E.ed.sideFilter === "blue"; }));
 // [§9.194] le mura (senza simmetria): il muro rosso (Edifici, in fondo), un
 // tratto; il "+" di destra e un tratto dritto; il pulsante della porta; la
 // gomma (tasto 5) che li toglie in una passata; annulla li rimette insieme
-await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none"; E.ed.scroll[2] = 99; E.view.zoomAt(1.6, 800, 400); E.view.centre(3000, 1500); });
+await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none"; E.ed.sideFilter = "red"; E.ed.scroll[2] = 99; E.view.zoomAt(1.6, 800, 400); E.view.centre(3000, 1500); });
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.tabs[TAB.buildings]));
 P = await page.evaluate(() => window.__editor.palette());
@@ -539,6 +546,30 @@ await page.mouse.up(); await page.waitForTimeout(200);
 check("la gomma: via i due tratti", (await wallsNow()).length === 0);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
 check("annulla: tornano tutti e due", (await wallsNow()).length === 2);
+// [§9.195] i pulsanti della colonna: copia e incolla (al centro della vista),
+// annulla, taglia
+const pickWalls = () => page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => /^(mura|porta)_/.test(e.object))); });
+await page.keyboard.press("Digit1"); await page.waitForTimeout(100);
+await pickWalls();
+await click(btn3("copy").x, btn3("copy").y);
+await click(btn3("paste").x, btn3("paste").y);
+check("Copia e Incolla: quattro tratti", (await wallsNow()).length === 4);
+await click(btn3("undo").x, btn3("undo").y);
+check("Annulla: di nuovo due", (await wallsNow()).length === 2);
+await pickWalls();
+await click(btn3("cut").x, btn3("cut").y);
+check("Taglia: nessuno", (await wallsNow()).length === 0);
+await click(btn3("undo").x, btn3("undo").y);
+check("Annulla: tornano", (await wallsNow()).length === 2);
+// [§9.195] il campo come nel gioco: la terra col grano e le file di spighe
+const field = await page.evaluate(() => {
+  const E = window.__editor, e = { object: "campo", x: 4000, y: 1200, scale_x: 1, scale_y: 1, rotation: 0, side: "red" };
+  E.scene.add([e]);
+  const i = E.scene.instOf(e);
+  return { sprite: i.sprite_index, rows: (i.crop_rows || []).length, ears: (i.crop_rows || []).reduce((n, ps) => n + ps.parts.length, 0) };
+});
+res.campo = field;
+check("il campo: campo_grano e le spighe", field.sprite === "campo_grano" && field.rows > 5 && field.ears > 100);
 await page.evaluate(() => window.__editor.openTemplate("sk_padus"));
 await page.waitForFunction(() => window.__editor.ed.label && window.__editor.scene.map.width === 7000 && !window.__editor.ed.loading, null, { timeout: 120000 })
   .catch(async () => { const C7 = await page.evaluate(() => window.__editor.confirmLayout()); await click(...at(C7.buttons[1])); });
