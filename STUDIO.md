@@ -49,7 +49,9 @@ nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
 provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere"). Nel menu
+ritardo adattivo, riconnessione: §9.156 "Come riprendere"). I codici piu'
+corti (da ~600-780 a ~150-250 caratteri) l'autore li vuole: in un'altra
+sessione, con una PR a parte (§9.200). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
@@ -82,8 +84,9 @@ da chi crea e la tiene), unita' ed edifici delle due parti in "Inserisci"
 le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
 i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
 freccina), le icone dell'autore, i ponti, la password, le partite solo su
-file e senza lavoratori di partenza (§9.198). Da fare: la scheda "Regia"
-per gli scenari (per ora no, decisione dell'autore, §9.198).
+file e senza lavoratori di partenza (§9.198), anche per i comandi e la
+gomma (§9.199-§9.200). Da fare: la scheda "Regia" per gli scenari (per ora
+no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -13946,3 +13949,20 @@ la pagina l'abbia letto almeno una volta in piu' (`syncInput`; nessun
 controllo tolto o saltato). Le due prove passano in locale (la schermaglia
 piu' lenta: il menu disegna ~6 fotogrammi al secondo con la grafica
 emulata).
+
+### 9.200 L'icona della gomma dell'autore
+
+Richiesta dell'autore (23 novembre 2026, stessa PR, #25), con l'icona
+(PNG nera, 48 px): "fai solo la gomma, l'altra modifica di networking
+segnala come da fare ma la facciamo in un'altra sessione".
+
+In `nuovi/sprites/ed_gomma.png` e in `nuovi.json` come derivato
+`ico_ed_erase` (64 px, bianco, come quelli di §9.198-§9.199): l'editor la
+usa al posto del disegno a linee (che resta solo se l'icona mancasse).
+Ora nella colonna e' a linee solo Inserisci.
+
+I codici piu' corti del multigiocatore (§9.156, §9.198) restano da fare,
+in un'altra sessione e in un'altra PR: segnati in "Cose da fare".
+
+Prove: atlas rifatto (tools/05), screenshot della colonna (gomma spenta e
+scelta), test unitari, `editor.mjs`.

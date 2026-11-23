@@ -282,7 +282,8 @@ function drawIcon(d, key, x, y, s, ink) {
   // [§9.198, richiesta dell'autore] le icone disegnate dall'autore (PNG,
   // nuovi.json: ico_ed_*, bianche), tinte col colore del segno; dove non
   // ce n'e' una, il disegno a linee qui sotto
-  // ([§9.199] Ripeti: la freccia di Annulla specchiata verso destra)
+  // ([§9.199] Ripeti: la freccia di Annulla specchiata verso destra;
+  // [§9.200] anche la gomma e' dell'autore, a linee resta solo Inserisci)
   const mirror = key === "redo", png = "ico_ed_" + (mirror ? "undo" : key);
   if (d.a.sprites[png] && d.a.frame(png, 0)) {
     const k = (32 * s) / 64;
@@ -311,7 +312,7 @@ function drawIcon(d, key, x, y, s, ink) {
     C(-4, -8, 5.5);
     d.roundrectColourExt(x - 14 * s, y - 1 * s, x + 6 * s, y + 15 * s, 14 * s, 14 * s, ink, ink, false);
     L(6, -9, 16, -9); L(11, -14, 11, -4);
-  } else if (key === "erase") { // [§9.194] la gomma: un parallelepipedo inclinato con la fascia, e l'ovale
+  } else if (key === "erase") { // [§9.194] la gomma (senza l'icona dell'autore, §9.200): un parallelepipedo inclinato con la fascia, e l'ovale
     d.setAlpha(d.alpha * 0.5);
     d.ellipseColour(x - 15 * s, y + 8 * s, x + 9 * s, y + 16 * s, ink, ink, false);
     d.setAlpha(d.alpha / 0.5);

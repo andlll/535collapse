@@ -1998,6 +1998,17 @@
         255
       ],
       "nota": "[§9.199] icona della colonna dell'editor di mappe (undo): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero)"
+    },
+    "ico_ed_erase": {
+      "da": "ed_gomma",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.200] icona della colonna dell'editor di mappe (erase): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
     }
   }
 }
