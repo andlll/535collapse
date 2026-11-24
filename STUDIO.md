@@ -14536,3 +14536,25 @@ piu' un passo di fila "in cammino" senza muoversi; il fante dietro le mura:
 nessuna camminata sul posto. Sul codice di prima falliscono vista, furtivo e
 rapido. Passate anche `lvl07.mjs`, `stealth.mjs`, i test (155) e le impronte
 di `determinism.mjs` su sk_padus (uguali a main).
+
+### 9.210 Le icone dei pulsanti del tiro dell'arciere della nebbia
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617), con due
+disegni caricati: "per il tiro multiplo dell'arciere usa queste frecce
+incrociate, per quello preciso quella del mirino".
+
+I due pulsanti accanto ad attacco e difesa (stealth.js `shotClicker`,
+§9.148) avevano, in attesa delle icone, la lettera della scorciatoia (F, R).
+Ora:
+- **tiro furtivo** (il preciso): il mirino (`nuovi/sprites/tiro_preciso.png`,
+  sprite `ico_tiro_furtivo`, 50 px);
+- **tiro rapido** (il multiplo): le frecce incrociate
+  (`nuovi/sprites/tiro_multiplo.png`, sprite `ico_tiro_rapido`, 64 px).
+Come i simboli del volume (§9.207): in nuovi.json bianchi pieni, tinti nel
+disegno; il lato piu' lungo a 36 px nel cerchio (raggio 30). Nere sul
+pulsante del modo scelto (il cerchio pieno), bianche sull'altro (il cerchio
+vuoto): i due stati di prima. Se l'atlas non le avesse, la lettera di prima.
+I nomi dei modi ("Tiro furtivo", "Tiro rapido") e le scorciatoie non cambiano.
+
+Prove: atlas ricostruito (tools/05_atlas.py); screenshot dei due stati nel
+livello 7; `hunter.mjs` controlla che le due icone siano nell'atlas.

@@ -2066,6 +2066,28 @@
         255
       ],
       "nota": "[§9.207] il simbolo del cursore del volume della musica nel menu di pausa: disegno caricato dall'autore, bianco pieno (il menu lo tinge di nero, grigio a volume 0)"
+    },
+    "ico_tiro_rapido": {
+      "da": "tiro_multiplo",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.210] il pulsante del tiro rapido (multiplo) dell'arciere della nebbia, livello 7: le frecce incrociate, disegno caricato dall'autore, bianco pieno (il pulsante lo tinge)"
+    },
+    "ico_tiro_furtivo": {
+      "da": "tiro_preciso",
+      "lato": 50,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.210] il pulsante del tiro furtivo (preciso) dell'arciere della nebbia, livello 7: il mirino, disegno caricato dall'autore, bianco pieno (il pulsante lo tinge)"
     }
   }
 }

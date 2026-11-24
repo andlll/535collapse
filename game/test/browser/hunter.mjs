@@ -11,6 +11,7 @@
 //              bersaglio)
 //   mura       clic destro su un fante dietro le mura: niente camminata sul
 //              posto (si ferma accanto alle mura o lascia perdere)
+//   icone      [§9.210] le icone dei due pulsanti del tiro nell'atlas
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -75,9 +76,12 @@ res.vista = await page.evaluate(() => {
   for (const e of [near, far]) { e.life = e.slife = 1e6; e.visible = false; }
   b.visible = false;
   G.advance(3);
-  return { fante450: near.visible, fante900: far.visible, edificio450: b.visible, night: w.g.night };
+  const S = w.assets.sprites;
+  return { fante450: near.visible, fante900: far.visible, edificio450: b.visible, night: w.g.night,
+           icone: !!S.ico_tiro_furtivo && !!S.ico_tiro_rapido };
 });
-res.vista.ok = res.vista.fante450 === true && res.vista.fante900 === false && res.vista.edificio450 === true && res.vista.night === 0;
+res.vista.ok = res.vista.fante450 === true && res.vista.fante900 === false && res.vista.edificio450 === true && res.vista.night === 0
+  && res.vista.icone;
 if (!res.vista.ok) ok = false;
 
 // l'inseguimento: un picchiere della pattuglia della cima, l'arciere dietro

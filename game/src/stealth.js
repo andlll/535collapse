@@ -257,6 +257,7 @@ export function stealthMarks() {
 export function shotAction(w, c) {
   for (const u of w.byIds(c.ids, "ally_arciere")) if (u.hunter) u.shotMode = c.modo;
 }
+const ICON_SIDE = 36; // §9.210: il lato piu' lungo dell'icona nel cerchio (raggio 30)
 export function shotClicker(mode) {
   const furtivo = mode === "furtivo", Y = furtivo ? 50 : 120;
   const apply = (w) => w.act("tiro", { ids: w.selectedIds(), modo: mode }); // §9.154: shotAction
@@ -302,10 +303,21 @@ export function shotClicker(mode) {
       d.setAlpha(on ? 0.95 : 0.6);
       d.circleColour(520, Y, 30, white, white, !on);
       d.setAlpha(1);
+      // [§9.210] le icone dell'autore (nuovi.json, bianche, tinte qui): il
+      // mirino per il tiro furtivo (preciso), le frecce incrociate per il
+      // rapido (multiplo); nere sul pulsante scelto, bianche sull'altro.
+      // Se mancassero, la lettera della scorciatoia (com'era prima)
+      const name = furtivo ? "ico_tiro_furtivo" : "ico_tiro_rapido";
+      const spr = d.a && d.a.sprites && d.a.sprites[name];
+      if (spr) {
+        const k = ICON_SIDE / Math.max(spr.width, spr.height);
+        d.spriteExt(name, 0, 520, Y, k, k, 0, on ? 0x000000 : white, on ? 0.9 : 1);
+        d.setAlpha(1);
+        return;
+      }
       d.setFont("GUI_1");
       d.setHalign("center");
       d.setColour(on ? 0x000000 : white);
-      // (in attesa delle icone: la lettera della scorciatoia)
       d.text(520, Y, furtivo ? "F" : "R");
       d.setColour(white);
       d.setHalign("left");
