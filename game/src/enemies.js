@@ -23,7 +23,7 @@ import { complexOf, complexPoint, complexNear } from "./complex.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow } from "./archery.js";
 import { garrisonWalk } from "./enemygarrison.js";
 import { lmStep } from "./lastmile.js";
-import { stealthOn, sees, ST, messengerFor } from "./stealth.js"; // §9.148
+import { stealthOn, sees, ST, messengerFor, inFog } from "./stealth.js"; // §9.148, §9.205
 import { nearestFoe, seenFoe } from "./lvl07.js"; // §9.178: di notte le macchine non si vedono
 import { phaseOf, swingOn, swingVictim, unitRing, stepOver } from "./units.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
@@ -70,6 +70,11 @@ function distTo(w, i, o) {
 // a 200 px invece di 400: quasi immobili.
 export const FOG_SIGHT = 0.5;
 export function fogSight(w, i) {
+  // [§9.205, richiesta dell'autore] i banchi di nebbia (nebbia_banco) messi
+  // nell'editor: dentro un banco il nemico vede a meta', come vicino alle
+  // nuvole del tutorial. Nel livello 7 no: li' lo stealth li conta gia'
+  // (stealth.js sees, chi guarda e chi e' guardato)
+  if (!stealthOn(w) && w.exists("nebbia_banco") && inFog(w, i.x, i.y)) return FOG_SIGHT;
   if (!w.exists("fog01")) return 1;
   return distTo(w, i, w.nearest(i.x, i.y, "fog01")) > 290 ? 1 : FOG_SIGHT;
 }

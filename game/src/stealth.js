@@ -69,12 +69,25 @@ export function inFog(w, x, y) {
 }
 
 // nebbia_banco: x0, x1 (dove torna indietro), speed (px a passo, col segno),
-// clouds (quante nuvole)
+// clouds (quante nuvole); di partenza BANK.range px a destra e a sinistra,
+// BANK.clouds nuvole ([§9.205] cosi' quelli messi nell'editor)
+export const BANK = { range: 600, clouds: 3 };
+// le nuvole di un banco al passo t (anche l'editor, fermo: t 0; s: la scala,
+// per la casella della tavolozza)
+export function bankClouds(d, x, y, n, t, a = 1, s = 1) {
+  // un po' sfalsate e mosse; il centro piu' denso
+  for (let k = 0; k < n; k++) {
+    const ox = (k - (n - 1) / 2) * ST.cloudGap, oy = dsin(k * 2.1 + t / 400) * 18 + ((k % 2) ? -25 : 15);
+    d.spriteExt("fog1", 0, x + ox * s, y + oy * s, s, s, 0, 0xffffff, 0.55 * a);
+  }
+  d.spriteExt("fog1", 0, x, y, s, s, 0, 0xffffff, 0.35 * a);
+  d.setAlpha(1);
+}
 export function fogBank() {
   return {
     create(i) {
       i.sprite_index = null;
-      i.x0 = i.x0 ?? i.x - 600; i.x1 = i.x1 ?? i.x + 600; i.speed0 = i.speed0 ?? 1; i.clouds = i.clouds ?? 3;
+      i.x0 = i.x0 ?? i.x - BANK.range; i.x1 = i.x1 ?? i.x + BANK.range; i.speed0 = i.speed0 ?? 1; i.clouds = i.clouds ?? BANK.clouds;
       i.rx = ((i.clouds - 1) * ST.cloudGap) / 2 + 260;
       i.depth = -i.y - 150;
     },
@@ -84,18 +97,7 @@ export function fogBank() {
       if (x < i.x0) { x = i.x0; i.speed0 = Math.abs(i.speed0); }
       w.setPos(i, x, i.y);
     },
-    draw(i, w, d) {
-      // le nuvole del banco, un po' sfalsate e mosse; il centro piu' denso
-      const n = i.clouds, t = w._stepNo;
-      for (let k = 0; k < n; k++) {
-        const ox = (k - (n - 1) / 2) * ST.cloudGap, oy = dsin(k * 2.1 + t / 400) * 18 + ((k % 2) ? -25 : 15);
-        d.setAlpha(0.55);
-        d.sprite("fog1", 0, i.x + ox, i.y + oy);
-      }
-      d.setAlpha(0.35);
-      d.sprite("fog1", 0, i.x, i.y);
-      d.setAlpha(1);
-    },
+    draw(i, w, d) { bankClouds(d, i.x, i.y, i.clouds, w._stepNo); },
   };
 }
 

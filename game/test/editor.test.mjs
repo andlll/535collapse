@@ -18,6 +18,7 @@ import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
 import { riverGeometry, ISO } from "../src/rivers.js";
+import { fogSight, FOG_SIGHT } from "../src/enemies.js";
 import { skForMap, fixedBy } from "../src/skuser.js";
 import { roomLabel } from "../src/menu.js";
 import { setLanguage } from "../src/i18n.js";
@@ -767,4 +768,19 @@ test("§9.204 anteprima della polilinea e alberi nel fiume", () => {
   const rv = { pts: [[1000, 1000], [3000, 1000]], width: 150 };
   assert.deepEqual(S.treesInRivers([rv]).map((e) => [e.object, e.x, e.y]), [["albero", 2000, 1000], ["albero_fake", 2500, 1030]]);
   assert.deepEqual(S.treesInRivers([{ pts: [[4000, 4000], [5000, 4000]], width: 150 }]), []);
+});
+
+// [§9.205, richiesta dell'autore] la nebbia in "Natura": la estetica e il
+// banco; il banco dimezza la vista dei nemici anche fuori dal livello 7
+test("§9.205 la nebbia nell'editor e nella partita", () => {
+  const meadows = CATALOG.find((k) => k.key === "meadows").objects;
+  assert.ok(meadows.includes("sk_nebbia") && meadows.includes("nebbia_banco"));
+  assert.ok(allowedObjects().has("nebbia_banco") && allowedObjects().has("sk_nebbia"));
+  // la vista del nemico: dentro un banco a meta' (senza stealth), fuori no;
+  // col livello 7 (stealth) fogSight non la tocca (la conta sees)
+  const bank = { object: "nebbia_banco", alive: true, x: 1000, y: 1000, rx: 520 };
+  const w = (stealth) => ({ g: { stealth }, exists: (n) => n === "nebbia_banco", all: (n) => (n === "nebbia_banco" ? [bank] : []) });
+  assert.equal(fogSight(w(0), { x: 1100, y: 1050 }), FOG_SIGHT);
+  assert.equal(fogSight(w(0), { x: 1000, y: 1300 }), 1);
+  assert.equal(fogSight(w(1), { x: 1100, y: 1050 }), 1);
 });

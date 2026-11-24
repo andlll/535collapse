@@ -89,7 +89,8 @@ gomma (§9.199-§9.200); il vetro, gli stili della casa, la F dell'albero
 finto, il municipio come edificio, le foto della Natura, niente clic
 (§9.203; lo stile scelto nell'editor ora arriva anche nella partita),
 l'anteprima della polilinea come la disegna il gioco e il fiume che toglie
-gli alberi nell'acqua (§9.204). Da fare: la scheda "Regia" per gli scenari
+gli alberi nell'acqua (§9.204), la nebbia estetica e il banco di nebbia in
+"Natura" (§9.205). Da fare: la scheda "Regia" per gli scenari
 (per ora no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
@@ -14282,3 +14283,56 @@ alberi nel fiume, non quelli accanto ne' le altre voci; 153 test),
 attraversa: 13 alberi tolti, Ctrl+Z rimette fiume e alberi), screenshot
 (l'anteprima del fiume con tratti orizzontali e verticali, il fiume finito
 senza alberi nell'acqua, l'anteprima di una strada).
+
+### 9.205 La nebbia in "Natura": quella estetica e il banco che nasconde
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "nella
+scheda "natura" mettiamo anche i banchi di nebbia, sia quello "estetico"
+che quello del tutorial/lvl7 che limita la visibilita' ai nemici".
+
+Le nebbie del gioco, guardate prima:
+- *estetica*: `sk_nebbia` (§9.122, skirmish.js), quella delle mappe della
+  schermaglia: fa nascere 5 nuvole (lo sprite fog1) sparse attorno a se'
+  (900 x 300 px) e di nuovo ogni 40 s; ogni nuvola scivola a destra e dopo
+  100 s svanisce. Non cambia niente nella partita;
+- *tutorial*: `fog_controller` / `fog01` (§9.80): nuvole che attraversano la
+  mappa verso destra; un nemico a meno di 290 px da una nuvola vede a meta'
+  (enemies.js `fogSight`);
+- *livello 7*: `nebbia_banco` (§9.148, stealth.js): tre nuvole in fila che
+  vanno avanti e indietro in orizzontale (600 px per parte, 1 px a passo);
+  dentro l'ellisse del banco i nemici vedono a meta', ma solo con lo stealth
+  del livello 7 (stealth.js `sees`).
+Il "banco" da mettere in una mappa e' quello del livello 7 (resta dove lo si
+mette, va e viene: si puo' progettare), con l'effetto del tutorial.
+
+**Cosa e' cambiato.**
+- In fondo a "Natura" la **nebbia estetica** (`sk_nebbia`) e il **banco di
+  nebbia** (`nebbia_banco`). Nella casella le loro nuvole, lo sprite del
+  gioco (fog1, una macchia grigia morbida) senza il prato sotto (richiesta
+  dell'autore: prima avevo fatto le foto come per le altre macchie, tenui
+  sul prato): la estetica a nuvole sparse, il banco a una fila piu' densa.
+- **Nell'editor** si vedono ferme come all'inizio della partita (editmap.js
+  `fogLook`): il banco con le sue tre nuvole (stealth.js `bankClouds`, la
+  funzione del gioco, ora condivisa), la estetica con cinque nuvole in un
+  disegno fisso (nella partita nascono a caso); anche sotto il puntatore
+  prima di metterle. Con "Sposta" e "Inserisci" il pallino per sceglierle e,
+  per il banco, la linea tratteggiata fin dove va avanti e indietro
+  (BANK.range, 600 px per parte).
+- **Nella partita** la estetica fa quello che fa nelle schermaglie; il banco
+  va e viene come nel livello 7 e **dentro un banco il nemico vede a meta'**
+  (enemies.js `fogSight`, come vicino alle nuvole del tutorial: inseguire,
+  tirare, le macchine d'assedio) anche fuori dal livello 7. Nel livello 7 il
+  conto resta quello dello stealth (`sees`: chi guarda e chi e' guardato),
+  senza raddoppiarlo. Vale per i nemici della CPU (online i due giocatori
+  non hanno la nebbia, come per le nuvole del tutorial); le torri della CPU
+  nella nebbia restano come prima (solo nel livello 7 tirano a meta').
+- Il banco ha le misure di partenza del livello 7 (tre nuvole, 600 px per
+  parte, 1 px a passo); l'editor per ora non le cambia.
+
+Prove: `editor.test.mjs` (in piu': le due nebbie nel catalogo e fra gli
+oggetti ammessi; `fogSight` a meta' dentro un banco senza stealth, 1 fuori,
+1 con lo stealth; 154 test), `edstyles.mjs` (in piu': una mappa con le due
+nebbie; nella partita il banco si sposta, un nemico dentro vede a meta' e
+fuori no, la estetica fa nascere 5 nuvole), `editor.mjs`, screenshot (la
+scheda Natura con le due nebbie, le due nebbie sulla mappa col tratteggio
+del banco).

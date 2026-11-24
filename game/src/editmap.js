@@ -21,6 +21,8 @@ import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
 import { makeColourRgb } from "./colours.js";
 import { spriteBounds } from "./sprites.js";
+import { bankClouds, BANK } from "./stealth.js"; // §9.205
+import { MIST } from "./skirmish.js"; // §9.205
 import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS, isStart, HOME_STYLES, blueHome } from "./mapfile.js";
 
 // Gli oggetti che si inseriscono, per categoria (le schede della tavolozza):
@@ -37,6 +39,8 @@ import { START, SIDED, SIDES, otherSide, UNITS, BUILDINGS, BLUE_OF, WALLS, isSta
 const range = (pre, list) => list.map((n) => pre + n);
 export const HOUSES = range("ocr_", ["01", "02", "03", "04", "05", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25",
                                      "31", "32", "33", "34", "35", "41", "42", "43", "44", "45"]);
+// [§9.205] la nebbia in "Natura" (fogLook, sotto)
+export const FOG_OBJECTS = ["sk_nebbia", "nebbia_banco"];
 export const CATALOG = [
   // [§9.196, richiesta dell'autore] la scheda "Regia": per ora le partenze
   // (le bandierine), piu' avanti cio' che servira' agli scenari
@@ -55,7 +59,11 @@ export const CATALOG = [
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
   { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
     objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
-              "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01"] },
+              "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01",
+              // [§9.205, richiesta dell'autore] la nebbia: quella estetica della
+              // schermaglia (sk_nebbia) e il banco che dimezza la vista dei
+              // nemici (nebbia_banco, il livello 7)
+              ...FOG_OBJECTS] },
   { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
   // [§9.198, richiesta dell'autore] i ponti: solo quelli dipinti dall'autore
   // (cotti nel suolo sopra il fiume, rivers.js PAINTED_BRIDGES; il primo con
@@ -156,6 +164,23 @@ export function wallStep(p, x, y) {
   }
   return best;
 }
+// [§9.205, richiesta dell'autore] la nebbia in "Natura" (senza sprite: le
+// nuvole fog1 del gioco). Il banco (nebbia_banco, stealth.js fogBank) va
+// avanti e indietro di BANK.range px e dentro i nemici vedono a meta'
+// (enemies.js fogSight); la nebbia estetica (sk_nebbia, skirmish.js) fa
+// nascere MIST.n nuvole attorno a se' ogni tanto, che scivolano a destra.
+// Nell'editor si vedono ferme come all'inizio della partita: il banco con
+// le sue nuvole, la nebbia estetica con cinque nuvole in un disegno fisso
+const MIST_LOOK = [[-600, -150, 1.1], [-150, 120, 0.9], [300, -80, 1.3], [700, 140, 1], [60, -230, 0.85]];
+// (s: la scala, per la casella della tavolozza: lo sprite senza il prato)
+export function fogLook(d, object, x, y, a = 1, s = 1) {
+  if (object === "nebbia_banco") { bankClouds(d, x, y, BANK.clouds, 0, a, s); return; }
+  for (const [dx, dy, k] of MIST_LOOK) d.spriteExt("fog1", 0, x + dx * s, y + dy * s, k * s, k * s, 0, 0xffffff, MIST.alpha * a);
+  d.setAlpha(1);
+}
+// quanto e' larga la nebbia di fogLook (px a scala 1): la casella la fa stare
+export const FOG_SPAN = { nebbia_banco: 1110, sk_nebbia: 2050 };
+
 // [§9.185] gli alberi (il pennello li dipinge e li cancella)
 export const TREES = new Set(["albero", "albero_fake"]);
 // [§9.203, richiesta dell'autore] l'albero finto con la F, solo nell'editor
@@ -251,6 +276,7 @@ export function groupsFor(assets, objects, names) {
     if (EDIT_LOOK[n]) { want(EDIT_LOOK[n]); want("spiga"); } // §9.195: il campo col grano
     if (n === START) { want(FLAG.red); want(FLAG.blue); } // §9.196: le bandierine
     want("ed_natura_" + n); // §9.203: la foto di una macchia a particelle
+    if (FOG_OBJECTS.includes(n)) want("fog1"); // §9.205: le nuvole della nebbia
   }
   return out;
 }
@@ -285,6 +311,9 @@ export class EditScene {
     world.register("campo", { create: campoCreate }); // §9.195: le file di spighe, come nel gioco
     // [§9.203] l'albero finto con la F, alla sua depth (dietro gli alberi
     // davanti); fuori dalla vista (drawView, editor.js) niente
+    // [§9.205] la nebbia ferma (fogLook), alla depth del gioco
+    world.register("nebbia_banco", { create(i) { i.depth = -i.y - 150; }, draw(i, w, d) { fogLook(d, i.object, i.x, i.y); } });
+    world.register("sk_nebbia", { create(i) { i.depth = -i.y - 100; }, draw(i, w, d) { fogLook(d, i.object, i.x, i.y); } });
     world.register(FAKE, { draw(i, w, d) {
       const v = w.drawView, b = v && spriteBounds(w.assets, i.sprite_index, i.x, i.y, i.image_xscale, i.image_yscale);
       if (v && (!b || b[2] < v.x || b[0] > v.x + v.w || b[3] < v.y || b[1] > v.y + v.h)) return;

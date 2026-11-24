@@ -76,7 +76,9 @@ import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
          testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark } from "./editmap.js";
+         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark,
+         FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
+import { BANK } from "./stealth.js"; // §9.205
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO, riverGeometry } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
@@ -517,7 +519,8 @@ export const naturaSprite = (name) => "ed_natura_" + name;
 // (BGR): erba, grano, fili d'erba, fiori
 const DECOR_TINT = { burst_erba1: [0x3c7a46], burst_grano1: [0x4fb0c8], chiazzaparticellare: [0x5a8a6a],
                      fiori_prato: [0x3030d0, 0x30d0e0, 0xe0e0f0], fiori_papaveri: [0x2020c8], fiori_papaveri_erba: [0x2020c8, 0x3c7a46],
-                     fiori_gialli_erba: [0x30d0e0, 0x3c7a46] };
+                     fiori_gialli_erba: [0x30d0e0, 0x3c7a46],
+                     sk_nebbia: [0xe8e8e8], nebbia_banco: [0x909090] }; // §9.205: la nebbia
 
 // ------------------------------------------------------------- l'editor
 
@@ -1568,6 +1571,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.circleColour(i.x, i.y, 10 * px, c.white, c.white, false);
         draw.setAlpha(0.8);
         draw.circleColour(i.x, i.y, 5 * px, (DECOR_TINT[e.object] || [0x3c7a46])[0], (DECOR_TINT[e.object] || [0x3c7a46])[0], false);
+        // [§9.205] il banco di nebbia: fin dove va, a destra e a sinistra
+        if (e.object === "nebbia_banco") {
+          const r = BANK.range, t = 18 * px;
+          draw.setAlpha(on ? 0.8 : 0.45);
+          draw.dashedLine(i.x - r, i.y, i.x + r, i.y, 2 * px, c.white, 16 * px, 10 * px);
+          for (const x of [i.x - r, i.x + r]) draw.lineWidthColour(x, i.y - t, x, i.y + t, 2 * px, c.white, c.white);
+        }
       }
     }
     const outline = (b, w, col, a) => {
@@ -1716,6 +1726,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         const spr = sideLook(objects, e) || st.sprite || (o && o.sprite), k = isStart(e) ? FLAG_SCALE : 1; // §9.196: la bandierina
         if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, k, k, 0, col, e === list[0] ? 0.6 : 0.4);
         if (spr && e.object === FAKE && spr !== "alb1_F") fakeMark(draw, e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.203
+        if (!spr && FOG_OBJECTS.includes(e.object)) fogLook(draw, e.object, e.x, e.y, e === list[0] ? 0.7 : 0.45); // §9.205
         if (spr && e.object === "campo") cropThumb(e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.195
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
@@ -1995,6 +2006,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // [§9.203, richiesta dell'autore] le macchie (particelle, senza sprite):
     // la loro foto (tools/19_natura.mjs: la macchia nell'editor, sfumata), al
     // posto del disegno di prima, che resta se la foto mancasse
+    // ([§9.205] la nebbia: le sue nuvole, lo sprite senza il prato sotto)
+    if (FOG_OBJECTS.includes(name)) { fogLook(draw, name, cx, cy, 1.6, (size * 1.15) / FOG_SPAN[name]); return; }
     const photo = natura(name), pb = photo && tightBounds(assets, photo, 0, 0);
     if (pb) {
       const s = Math.min((size * 1.2) / (pb[2] - pb[0]), (size * 1.2) / (pb[3] - pb[1]));
