@@ -83,8 +83,7 @@ const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 await page.goto(`${base}/index.html?room=menu`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 const colTop = (n) => H - 100 - n * 70 - (n - 1) * 20;
-await click(W / 2, colTop(4) + 90 + 35); // "Single player" (secondo di quattro)
-await click(W / 2, colTop(3) + 180 + 35); // "Map editor" (terzo di tre)
+await click(W / 2, colTop(4) + 270 + 35); // "Map editor" (§9.208: il quarto del titolo)
 await page.waitForURL(/room=editor/, { timeout: 20000 });
 await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
 check("aperto dal menu", true);

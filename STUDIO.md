@@ -14443,3 +14443,27 @@ spenta diventa 0; l'ordine del menu; la musica trascinata al 70%, un clic
 sugli effetti al 30%, salvati e uguali dopo aver ricaricato; il contatore FPS
 fra le opzioni grafiche, che si accende), test unitari; screenshot (la pausa
 coi due cursori, le opzioni grafiche).
+
+### 9.208 Il menu principale: il tutorial in "Giocatore singolo", l'editor nella colonna del titolo
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "menu
+principale: mettiamo "gioca il tutorial" in "giocatore singolo" in prima
+posizione sopra campagna, editor di mappe invece mettiamo nella schermata
+principale in fondo".
+
+Le pagine della colonna (menu.js `MENU_PAGES`, §9.157):
+- **il titolo**: "Giocatore singolo", "Multigiocatore", "Carica partita",
+  "Editor di mappe" (in fondo; prima: "Gioca il tutorial", "Giocatore
+  singolo", "Multigiocatore", "Carica partita");
+- **"Giocatore singolo"**: "Gioca il tutorial", "Campagna - Collapse",
+  "Schermaglia" (prima: campagna, schermaglia, editor di mappe);
+- "Multigiocatore" come prima.
+Sempre quattro pulsanti nel titolo: il logo resta dove stava. Nessun testo
+nuovo.
+
+Le prove che passano dal menu cliccano per posizione: aggiornate
+(`editor.mjs`: l'editor e' il quarto del titolo; `skcustom.mjs`: "Giocatore
+singolo" il primo, "Schermaglia" il terzo, "Multigiocatore" il secondo;
+`rtc.mjs`, `netmap.mjs`: "Multigiocatore" il secondo; `ui.mjs`: le pagine).
+Passate: `editor.mjs`, `skcustom.mjs`, `rtc.mjs`, `netmap.mjs`, `ui.mjs`
+(it, de: nessun problema); screenshot delle due colonne.

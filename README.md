@@ -86,8 +86,8 @@ minuti, file `.dvgame` da scaricare e riaprire, compresso, §9.134; "Load game" 
 principale). Il gioco si può installare come app (PWA) e, dopo una prima
 partita online, aprire senza rete.
 
-Il menu principale (§9.157): "Gioca il tutorial", "Giocatore singolo"
-(campagna, schermaglia ed editor di mappe, §9.180), "Multigiocatore", "Carica partita".
+Il menu principale (§9.157, §9.208): "Giocatore singolo" (il tutorial, la
+campagna, la schermaglia), "Multigiocatore", "Carica partita", "Editor di mappe" (§9.180).
 
 **Multigiocatore online** (§9.152-§9.158): "Multigiocatore", "Crea partita":
 mappa e opzioni come nella schermaglia (difficolta' e stile della CPU in
