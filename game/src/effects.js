@@ -535,6 +535,7 @@ export function fireStarterCreate(i, w, small) {
 }
 
 export function fireStarterStep(i, w) {
+  if (i.veiled) { P(w).stream(i.fire_emitter, i.fire_part, 0); return; } // §9.211: la torcia del palo velato
   const cam = w.cam, inView = cam && i.x > cam.x && i.x < cam.x + cam.w && i.y > cam.y && i.y < cam.y + cam.h;
   // && cortocircuitato come in GML: l'alleato piu' vicino si cerca solo per
   // i bracieri nella view. distance_to_object(instance_nearest(x,y,ally)):

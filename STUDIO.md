@@ -14568,3 +14568,48 @@ l'icona bianca.
 
 Prove: atlas ricostruito (tools/05_atlas.py); screenshot dei due stati nel
 livello 7; `hunter.mjs` controlla che le due icone siano nell'atlas.
+
+### 9.211 Livello 7: i pali con la fiamma si mostrano quando l'arciere li vede
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "i pali
+che fanno da indicazione (quelli con la fiamma sopra) si "sbloccano" a
+livello di visualizzazione solo quando l'arciere li vede fisicamente,
+altrimenti è una sorta di spoiler del percorso da seguire per finire il
+livello".
+
+Prima i 22 pali (`palo_1`, props.js) della mappa del livello 7 si vedevano
+tutti dall'inizio e, come nell'originale, erano fonti di vista: la nebbia
+attorno a ognuno era scoperta (nella view e nella minimappa, con le
+montagne e i picchieri delle pattuglie vicini, che col palo entro 200 px si
+vedono: enemies.js `T.palo`), e la loro torcia illuminava la notte. La
+strada era tutta segnata.
+
+Ora (lvl07.js, all'avvio: props.js `veilPalo`) ogni palo parte **velato**:
+- non si disegnano ne' il palo ne' la sua torcia (`visible`), che non manda
+  fiamme (effects.js `fireStarterStep`) ne' luce di notte (fog.js
+  `nightLights`);
+- non e' una fonte di vista (fog.js `fogSources`): niente nebbia scoperta
+  attorno, nemmeno nella minimappa;
+- non fa vedere i picchieri vicini (fog.js `seenNear`, solo finche'
+  `g.paliVeiled` > 0, cioe' nel livello 7).
+Si **svela** per sempre (props.js `unveilPalo`, nello Step del palo) quando
+il suo riquadro entra nella vista di un'unita' o di un edificio alleato (o
+di una statua attiva): le stesse ellissi della nebbia (fog.js
+`seenByAllies`), quindi quella allargata dell'arciere. Non quelle degli
+altri pali, che li avrebbero svelati a catena. Da svelato e' il palo di
+prima. Il palo piu' in alto resta la meta della vittoria.
+
+All'inizio se ne vedono 1 su 22: quello accanto alla statua
+`o_statua1_real` in basso a sinistra, che e' un edificio alleato e scopre la
+sua zona fin dall'inizio (come prima). Negli altri livelli nulla cambia
+(i globali ripartono a ogni livello: `paliVeiled` non c'e').
+
+Prove: `hunter.mjs`, il caso nuovo "pali" (21 velati su 22 all'inizio,
+invisibili con la torcia e con la nebbia coperta; l'arciere vicino a uno lo
+svela, la nebbia attorno si scopre; uno lontano resta velato). Nei casi
+dell'inseguimento i pali si svelano prima (strada gia' scoperta): a 900 px,
+coi pali velati, il picchiere e' nella nebbia nera e l'arciere va dove l'ha
+visto e lascia perdere (§9.209), giusto ma non piu' il caso da provare.
+Passate anche `lvl07.mjs`, `stealth.mjs`, `saves.mjs` (lvl07: ripristino
+identico), i test (155) e le impronte di `determinism.mjs` su sk_padus
+(uguali a main). Screenshot della partenza: la minimappa prima e dopo.

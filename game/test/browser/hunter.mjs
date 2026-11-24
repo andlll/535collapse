@@ -12,6 +12,10 @@
 //   mura       clic destro su un fante dietro le mura: niente camminata sul
 //              posto (si ferma accanto alle mura o lascia perdere)
 //   icone      [§9.210] le icone dei due pulsanti del tiro nell'atlas
+//   pali       [§9.211] i pali con la fiamma partono velati (non si vedono,
+//              ne' loro ne' la torcia, e non scoprono la nebbia attorno),
+//              tranne dove un alleato li vede gia'; l'arciere vicino a uno
+//              velato lo svela, e la nebbia attorno si scopre
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -34,6 +38,12 @@ const open = async () => {
       tp(x, y) { const h = this.a(); p.free(h); w.setPos(h, x, y); Object.assign(h, { dirox: x, diroy: y, action: 0 }); p.occupy(h); },
       close() { for (const i of [...w.instances]) if (i.alive && /^dialogo_/.test(i.object)) w.destroy(i); },
       run(n) { for (let k = 0; k < n; k++) { G.advance(1); if (k % 50 === 0) this.close(); } },
+      // [§9.211] tutti i pali svelati, come a strada gia' scoperta (i
+      // picchieri vicino a un palo si vedono)
+      unveil() {
+        for (const q of w.all("palo_1")) { q.veiled = 0; q.visible = true; if (q.fuoco) { q.fuoco.veiled = 0; q.fuoco.visible = true; } }
+        w.g.paliVeiled = 0;
+      },
       // clic destro dell'arciere sul nemico e; poi n passi: quanti di fila
       // "in cammino" (action 1) senza muoversi, quanta strada, morto quando
       attack(e, mode, n, flee) {
@@ -85,7 +95,9 @@ res.vista.ok = res.vista.fante450 === true && res.vista.fante900 === false && re
 if (!res.vista.ok) ok = false;
 
 // l'inseguimento: un picchiere della pattuglia della cima, l'arciere dietro
-// di lui sulla sua strada; dopo l'ordine il picchiere va a sud
+// di lui sulla sua strada; dopo l'ordine il picchiere va a sud. I pali
+// svelati: lungo la strada il picchiere si vede (a 900 px, nella nebbia
+// nera, l'arciere andrebbe dove l'ha visto e lascerebbe perdere)
 for (const [mode, dist] of [["furtivo", 900], ["rapido", 750]]) {
   await open();
   res[mode] = await page.evaluate(([mode, dist]) => {
@@ -93,6 +105,7 @@ for (const [mode, dist] of [["furtivo", 900], ["rapido", 750]]) {
     G.advance(5); T.close();
     const a = T.a();
     a.life = a.slife = 1e6;
+    T.unveil();
     T.tp(4300, 300);
     const e = [...w.all("enemy_unit")].find((x) => x.l7 === "p" && x.road && x.road[0][0] > 5500 && x.road[0][1] < 600);
     const track = [];
@@ -105,6 +118,26 @@ for (const [mode, dist] of [["furtivo", 900], ["rapido", 750]]) {
   r.ok = r.morto > 0 && r.fermoCamminando <= 20 && r.lontano > 300 && r.tirato === 1;
   if (!r.ok) ok = false;
 }
+
+// i pali velati: all'inizio quasi tutti; l'arciere vicino a uno lo svela
+await open();
+res.pali = await page.evaluate(() => {
+  const G = window.__game, w = G.world, T = window.__t, F = G.fog;
+  G.advance(5); T.close();
+  const pali = [...w.all("palo_1")], veiled = pali.filter((q) => q.veiled);
+  const hidden = veiled.every((q) => q.visible === false && q.fuoco && q.fuoco.visible === false && !F.isExplored(q.x, q.y));
+  const a = T.a();
+  const v = veiled.sort((m, n) => Math.hypot(m.x - a.x, m.y - a.y) - Math.hypot(n.x - a.x, n.y - a.y))[0];
+  const far = veiled[veiled.length - 1];
+  T.tp(v.x + 300, v.y + 60);
+  T.run(3);
+  return { pali: pali.length, velati: veiled.length, nascosti: hidden, contati: w.g.paliVeiled,
+           svelato: !v.veiled && v.visible === true && v.fuoco.visible === true && F.isExplored(v.x, v.y),
+           lontanoVelato: far.veiled === 1 && far.visible === false };
+});
+res.pali.ok = res.pali.pali >= 20 && res.pali.velati >= res.pali.pali - 2 && res.pali.nascosti && res.pali.svelato && res.pali.lontanoVelato
+  && res.pali.contati < res.pali.velati;
+if (!res.pali.ok) ok = false;
 
 // dietro le mura: un fante oltre il muro, l'arciere fuori
 await open();

@@ -26,6 +26,7 @@ import { dhypot } from "./dmath.js"; // §9.152
 import { ST, alert, alerted, sees, stealthStep } from "./stealth.js";
 import { orderWork } from "./civilians.js";
 import { dialogOpen } from "./hints.js";
+import { veilPalo } from "./props.js"; // §9.211
 
 export const LV7 = {
   patrolR: 300,      // nemici a meno di tanti px da una tappa di un percorso "pattuglia": della pattuglia
@@ -129,6 +130,8 @@ export function enemyManagerLv7() {
       const gate = w.all("enemy_porta_ori").next().value || w.all("enemy_porta_vert").next().value;
       let top = null;
       for (const q of w.all("palo_1")) if (!top || q.y < top.y) top = q;
+      // [§9.211] i pali si mostrano quando l'arciere li vede (props.js)
+      for (const q of w.all("palo_1")) veilPalo(w, q);
       g.l7 = { phase: 0, t: 0, held: held.length, mx: Math.round(mx), my: Math.round(my), sx: Math.round(sx), sy: Math.round(sy),
                gateX: gate ? gate.x : 0, gateY: gate ? gate.y : 0, gateSeen: 0, freed: 0, gateDown: 0, towersSaid: 0,
                topX: top ? top.x : 0, topY: top ? top.y : 0, machines: 0, knights: 0, lost: null };
