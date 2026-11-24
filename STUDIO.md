@@ -14422,8 +14422,12 @@ selezionata. I simboli te li passo poi io. Opzioni grafiche spostalo sopra
   a 0 vuoti, col simbolo piu' chiaro. Si prendono e si trascinano (o un
   clic dove si vuole), a passi del 5%; il volume segue subito, si salva
   lasciando il tasto; lasciando quello degli effetti si sente il clic al
-  volume nuovo. **I simboli sono provvisori** (una nota e un altoparlante
-  disegnati a linee, `_volumeIcon`): l'autore manda i suoi.
+  volume nuovo. **I simboli** sono quelli dell'autore (mandati dopo, PNG
+  neri da 48 px: `nuovi/sprites/vol_musica.png`, `vol_effetti.png`; in
+  nuovi.json `ico_vol_music` e `ico_vol_sfx`, bianchi come le icone
+  dell'editor, tinti dal menu): neri, e **grigi quando il loro volume e' a
+  0** (richiesta dell'autore). Quelli a linee che avevo disegnato nel
+  frattempo restano solo se mancassero.
 - **I volumi** (settings.js `musicVolume`, `sfxVolume`, 0-1, di partenza 1)
   al posto degli interruttori `music` e `sfx`: chi li aveva spenti li trova
   a 0. Nell'audio (audio.js `setMusicVolume`, `setSfxVolume`) il guadagno e'
@@ -14433,7 +14437,8 @@ selezionata. I simboli te li passo poi io. Opzioni grafiche spostalo sopra
 - **Il contatore FPS** e' fra le opzioni grafiche, in fondo, sopra il limite
   degli FPS.
 
-Prove: `pausevol.mjs` (nuova, nella CI: un'opzione salvata con la musica
+Prove (anche dopo le icone: atlas rifatto, screenshot della musica al 60%
+con la nota nera e degli effetti a 0 con l'altoparlante grigio): `pausevol.mjs` (nuova, nella CI: un'opzione salvata con la musica
 spenta diventa 0; l'ordine del menu; la musica trascinata al 70%, un clic
 sugli effetti al 30%, salvati e uguali dopo aver ricaricato; il contatore FPS
 fra le opzioni grafiche, che si accende), test unitari; screenshot (la pausa

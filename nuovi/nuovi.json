@@ -2044,6 +2044,28 @@
         255
       ],
       "nota": "[§9.200] icona della colonna dell'editor di mappe (erase): disegno caricato dall'autore, bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_vol_sfx": {
+      "da": "vol_effetti",
+      "lato": 48,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.207] il simbolo del cursore del volume degli effetti sonori nel menu di pausa: disegno caricato dall'autore, bianco pieno (il menu lo tinge di nero, grigio a volume 0)"
+    },
+    "ico_vol_music": {
+      "da": "vol_musica",
+      "lato": 48,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.207] il simbolo del cursore del volume della musica nel menu di pausa: disegno caricato dall'autore, bianco pieno (il menu lo tinge di nero, grigio a volume 0)"
     }
   }
 }

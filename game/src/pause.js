@@ -45,6 +45,7 @@ const BTN_H = 42, BTN_GAP = 12, CAPTION_H = 20, SEG_H = 36;
 const TITLE_SCALE = 0.8, TEXT_SCALE = 0.88;
 // [§9.207] le righe dei cursori del volume (nel menu, al posto di due pulsanti)
 const SLIDERS = [{ slider: "music" }, { slider: "sfx" }];
+const ICON_OFF = 0x8a8a8a; // [§9.207] il simbolo a volume 0: grigio
 
 export class PauseMenu {
   // actions: { language(code), restart(), menu(), graphics(changes),
@@ -259,14 +260,24 @@ export class PauseMenu {
       d.setAlpha(0.88);
       d.roundrectColourExt(x, y, x + h + (w - h) * v, y + h, h, h, GREEN, GREEN, false);
     }
-    this._volumeIcon(d, key, x + h * 0.62, y + h / 2, h * 0.3, v > 0 ? 0.85 : 0.35);
+    this._volumeIcon(d, key, x + h * 0.62, y + h / 2, h * 0.3, v > 0);
     this.rects.push({ x, y, w, h, action: "volume", value: key });
   }
 
-  // [§9.207] I simboli dei cursori, provvisori (li disegnera' l'autore): la
-  // nota (la musica) e l'altoparlante (gli effetti), a linee
-  _volumeIcon(d, key, x, y, r, alpha) {
-    d.setAlpha(alpha);
+  // [§9.207] I simboli dei cursori, disegnati dall'autore (nuovi.json
+  // ico_vol_music, la nota; ico_vol_sfx, l'altoparlante; bianchi, tinti qui):
+  // neri, grigi a volume 0 (richiesta dell'autore). Se mancassero, quelli
+  // provvisori a linee
+  _volumeIcon(d, key, x, y, r, on) {
+    const name = key === "music" ? "ico_vol_music" : "ico_vol_sfx";
+    const spr = d.a && d.a.sprites && d.a.sprites[name];
+    if (spr) {
+      const k = (r * 2.1) / Math.max(spr.width, spr.height); // (alti uguali: il lato piu' lungo)
+      d.spriteExt(name, 0, x, y, k, k, 0, on ? c.black : ICON_OFF, on ? 0.85 : 1);
+      d.setAlpha(1);
+      return;
+    }
+    d.setAlpha(on ? 0.85 : 0.35);
     const ink = c.black;
     if (key === "music") {
       d.ellipseColour(x - r * 0.75, y + r * 0.35, x + r * 0.05, y + r * 0.95, ink, ink, false);
