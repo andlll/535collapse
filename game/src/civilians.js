@@ -25,6 +25,7 @@ import { pathEnemy } from "./multiplayer.js"; // §9.155
 import { inHunterSight } from "./fog.js"; // §9.209
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
+const FIELD_HOE_VOL = 0.6; // §9.212: la zappa del contadino al campo di grano (-4,4 dB)
 const OM = "ally_omino";
 
 // [§9.44] La fazione del civile: l'alleato (ally_omino, del giocatore) o il
@@ -1431,7 +1432,9 @@ function otherWorkTick(i, w) {
     i.workHit = w._stepNo; i.workKind = "food";
     i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
     // [§9.168] il colpo di zappa; non dei contadini nemici nella nebbia
-    if (i.visible !== false) audio.play("zappa", i.workX, i.workY);
+    // [§9.212, richiesta dell'autore] al campo un po' piu' basso (60%): lo
+    // stesso suono delle frecce che colpiscono e del fuoco, che restano
+    if (i.visible !== false) audio.play("zappa", i.workX, i.workY, FIELD_HOE_VOL);
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi

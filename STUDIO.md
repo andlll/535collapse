@@ -14623,3 +14623,28 @@ visto e lascia perdere (§9.209), giusto ma non piu' il caso da provare.
 Passate anche `lvl07.mjs`, `stealth.mjs`, `saves.mjs` (lvl07: ripristino
 identico), i test (155) e le impronte di `determinism.mjs` su sk_padus
 (uguali a main). Screenshot della partenza: la minimappa prima e dopo.
+
+### 9.212 Volumi: la zappa al campo piu' bassa, corno e "risorse" piu' alti
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617):
+"Regolazione volumi effetti: abbassiamo un po' la zappa (solo quando usata
+per il campo di grano) alziamo il corno e il suono per quando non ci sono
+abbastanza risorse per compiere un'azione".
+
+- **La zappa al campo di grano**: il colpo del contadino che raccoglie
+  (civilians.js, azione 4) suona al 60% (`FIELD_HOE_VOL`, -4,4 dB). Lo
+  stesso suono `zappa` fa anche le frecce che colpiscono (`ARROW_HIT_VOL`
+  0,7, ranged.js), il fuoco appiccato (effects.js `fireFlare`) e la
+  macchina d'assedio che colpisce (siege.js): restano come prima, quindi il
+  gain della voce (0,35) non cambia.
+- **Il corno di guerra** (attackalarm.js, un attacco nuovo fuori dalla
+  vista): gain da 0,17 a 0,30 (+5 dB, ~ -27 dB nei primi 500 ms).
+- **"Risorse"** (mancano risorse o popolazione per un pulsante, il codice
+  del lucchetto sbagliato, la produzione ferma per la popolazione): gain da
+  0,13 a 0,24 (+5 dB, ~ -23 dB).
+I gain in nuovi/audio/audio.json (tools/18_audio.py li copia in
+game/assets/audio/audio.json; i file mp3 non cambiano), con la nota di ogni
+voce aggiornata.
+
+Prove: nel browser un contadino a un campo su sk_padus, le chiamate audio
+registrate: 19 colpi di `zappa`, tutti a 0,6. I test (155).
