@@ -88,12 +88,57 @@ export function sightK(w) {
   return 1 - (n + DUSK_SIGHT * s * (1 - n));
 }
 
+// [§9.209, richiesta dell'autore] Livello 7: i nemici si mostrano quando
+// entrano nella vista allargata dell'arciere della nebbia (la sua ellisse,
+// shapeOf, quella della nebbia di guerra), non solo alla distanza di
+// sempre (150 px, 300 di giorno, dal bordo): la nebbia si apriva fino a 600
+// px e la' dentro i nemici comparivano dal nulla. Basta che una parte del
+// nemico (il riquadro) ci entri. Le altre unita' come nell'originale.
+export function inHunterSight(w, i) {
+  if (!w.g.stealth) return false;
+  let k = null;
+  for (const h of w.all("ally_arciere")) {
+    if (!h.alive || !h.hunter) continue;
+    if (k === null) k = sightK(w);
+    if (touches(w, i, shapeOf(w, h, k))) return true;
+  }
+  return false;
+}
+// l'ellisse [cx, cy, rx, ry] tocca il riquadro di i
+function touches(w, i, [cx, cy, rx, ry]) {
+  const bb = w.bbox(i) || [i.x, i.y, i.x, i.y];
+  const dx = (Math.max(bb[0], Math.min(cx, bb[2])) - cx) / rx, dy = (Math.max(bb[1], Math.min(cy, bb[3])) - cy) / ry;
+  return dx * dx + dy * dy < 1;
+}
+// [§9.211, richiesta dell'autore] I pali con la fiamma del livello 7
+// partono velati (props.js veilPalo): niente palo ne' torcia, nessuna
+// scoperta ne' vista attorno (fogSources), nessuna luce di notte; si
+// svelano quando entrano nella vista di un'unita' o di un edificio
+// alleato (o di una statua attiva): le stesse ellissi della nebbia, non
+// quelle degli altri pali (si sarebbero svelati a catena).
+export function seenByAllies(w, i) {
+  const k = sightK(w);
+  for (const fam of ["ally_unit", "ally_build"]) {
+    for (const s of w.all(fam)) if (s.alive && !PREVIEWS.has(s.object) && !s.locked && touches(w, i, shapeOf(w, s, k))) return true;
+  }
+  for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) {
+    for (const s of w.all(n)) if (s.alive && s.attiva === 1 && touches(w, i, shapeOf(w, s, k))) return true;
+  }
+  return false;
+}
+
 // [§9.101, regia del livello 6] Le torri della citta' in rovina non sono
 // del giocatore finche' non le ripara oltre il 60% (levels.js, LV6): con
 // `locked` non vedono (fogSources) e i nemici vicini non si scoprono. Le
 // visibilita' dei nemici (enemies.js, economy.js, ...) passano da qui:
 // con torri chiuse (global.towersLocked) si scartano, se no nearWithin.
 export function seenNear(w, i, obj, r, rmax) {
+  if (obj === "ally_unit" && inHunterSight(w, i)) return true; // §9.209
+  // [§9.211] i pali velati del livello 7 non fanno vedere i picchieri
+  if (obj === "palo_1" && w.g.paliVeiled > 0) {
+    for (const o of w.all(obj)) if (o.alive && !o.veiled && w.distanceToInstance(i, o) < r) return true;
+    return false;
+  }
   if (!w.g.towersLocked || (obj !== "torre" && obj !== "ally_build")) return w.nearWithin(i, obj, r, rmax);
   for (const o of w.all(obj)) if (o.alive && !o.locked && w.distanceToInstance(i, o) < r) return true;
   return false;
@@ -109,7 +154,7 @@ const PREVIEWS = new Set(["oodl", "oosl", "ovbl", "oval"]);
 export function fogSources(w, explore, cb) {
   const k = sightK(w); // §9.88
   for (const fam of ["ally_unit", "ally_build", "palo_1"]) {
-    for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object) && !i.locked) cb(i, shapeOf(w, i, k)); // §9.101: locked
+    for (const i of w.all(fam)) if (i.alive && !PREVIEWS.has(i.object) && !i.locked && !i.veiled) cb(i, shapeOf(w, i, k)); // §9.101: locked; §9.211: veiled
   }
   for (const n of ["o_statua1", "o_statua2", "o_statua3", "o_statua4"]) {
     for (const i of w.all(n)) if (i.alive && i.attiva === 1) cb(i, shapeOf(w, i, k));
@@ -277,7 +322,7 @@ export function nightLights(w) {
   const out = [], f = w.g.frame;
   const flicker = (i) => 0.15 * dsin(i.x + f * 0.17);
   for (const n of ["flameqq", "firestarter", "firestarter_small"]) {
-    for (const i of w.all(n)) if (i.alive) out.push([i.x, i.y, 3 + flicker(i)]);
+    for (const i of w.all(n)) if (i.alive && !i.veiled) out.push([i.x, i.y, 3 + flicker(i)]); // §9.211: la torcia del palo velato no
   }
   for (const [n, base] of BUILDING_LIGHTS) {
     for (const i of w.all(n)) {

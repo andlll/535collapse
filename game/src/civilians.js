@@ -22,8 +22,10 @@ import { bridgeEnds, woodDue } from "./bridge.js";
 import { FAM, buttonAlpha, canBuild } from "./buildings.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { pathEnemy } from "./multiplayer.js"; // §9.155
+import { inHunterSight } from "./fog.js"; // §9.209
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
+const FIELD_HOE_VOL = 0.6; // §9.212: la zappa del contadino al campo di grano (-4,4 dB)
 const OM = "ally_omino";
 
 // [§9.44] La fazione del civile: l'alleato (ally_omino, del giocatore) o il
@@ -1430,7 +1432,9 @@ function otherWorkTick(i, w) {
     i.workHit = w._stepNo; i.workKind = "food";
     i.workX = i.x + 20 * dcos(degtorad(i.direction)); i.workY = i.y - 20 * dsin(degtorad(i.direction));
     // [§9.168] il colpo di zappa; non dei contadini nemici nella nebbia
-    if (i.visible !== false) audio.play("zappa", i.workX, i.workY);
+    // [§9.212, richiesta dell'autore] al campo un po' piu' basso (60%): lo
+    // stesso suono delle frecce che colpiscono e del fuoco, che restano
+    if (i.visible !== false) audio.play("zappa", i.workX, i.workY, FIELD_HOE_VOL);
     return;
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
@@ -1658,8 +1662,9 @@ function reveal(i, w, dist, fogAware) {
   // §6.3 N3: nearWithin da' lo stesso risultato di
   // distance_to_object(instance_nearest(...)) < dist, senza rifare la
   // ricerca quando gli alleati sono lontani per certo
+  // ([§9.209] anche dentro la vista dell'arciere della nebbia, livello 7)
   if (w.nearWithin(i, "ally_unit", dist) || w.nearWithin(i, "ally_build", dist)
-      || (fogAware && w.g.fogville === 0)) i.visible = true;
+      || (fogAware && w.g.fogville === 0) || inHunterSight(w, i)) i.visible = true;
 }
 
 // Destroy delle risorse [C]: le celle occupate tornano libere.
@@ -1705,6 +1710,15 @@ export function resource(p, kind) {
         i.visible = false;
       }
       if (kind === "pietra_grande") i.fase = 1;
+    },
+    // [§9.203] la variante scelta nell'editor (world.js loadRoom): il tipo
+    // anche (l'albero che muore lo usa); alb1_F (la F dell'editor) no
+    restyle(i, w, sprite) {
+      const k = ALB.indexOf(sprite);
+      if ((kind !== "albero" && kind !== "albero_fake") || k < 0) return;
+      i.type = k + 1;
+      i.sprite_index = sprite;
+      w.moved(i);
     },
     step(i, w) {
       if (kind === "pietra_grande" && i.fase === 1 && i.stone < 425) {

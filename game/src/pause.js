@@ -19,6 +19,10 @@
 // [Richiesta dell'autore, §9.39] "Carica partita" apre l'elenco degli slot
 // di tutte le room, come nel menu principale (menu.js, slotLabel), invece
 // di caricare solo quello della room in corso.
+// [§9.207, disegno dell'autore] musica ed effetti sonori sono due cursori
+// del volume (la parte piena del verde della lingua scelta, il simbolo a
+// sinistra), sotto suggerimenti e obiettivi; il contatore degli FPS e' fra le
+// opzioni grafiche; "Opzioni grafiche" sta sopra "Torna al menu".
 
 import { c } from "./colours.js";
 import { tr, LANGUAGES, getLanguage } from "./i18n.js";
@@ -39,6 +43,9 @@ const BTN_H = 42, BTN_GAP = 12, CAPTION_H = 20, SEG_H = 36;
 // [Richiesta dell'autore, §6.1 n.87] titolo e scritte un po' piu' piccoli
 // dei font del gioco (gui_sblocco 32 pt, GUI_1 16 pt, overdue 15 pt)
 const TITLE_SCALE = 0.8, TEXT_SCALE = 0.88;
+// [§9.207] le righe dei cursori del volume (nel menu, al posto di due pulsanti)
+const SLIDERS = [{ slider: "music" }, { slider: "sfx" }];
+const ICON_OFF = 0x8a8a8a; // [§9.207] il simbolo a volume 0: grigio
 
 export class PauseMenu {
   // actions: { language(code), restart(), menu(), graphics(changes),
@@ -65,10 +72,11 @@ export class PauseMenu {
     // salva solo su file (niente slot nel browser ne' salvataggio automatico)
     this.fileOnly = false;
     this.net = null;
+    this.drag = null; // [§9.207] il cursore del volume che si trascina
   }
 
   open() { this.paused = true; this.submenu = null; this.dirty = true; }
-  close() { this.paused = false; this.submenu = null; this.net = null; }
+  close() { this.paused = false; this.submenu = null; this.net = null; this.drag = null; }
   // [§9.156] Riprendi / Esc: in rete riprendono tutte e due le pagine
   _resume() {
     if (this.net && this.net.lost) return;
@@ -106,13 +114,29 @@ export class PauseMenu {
 
   // In pausa: Esc torna indietro, un clic preme un pulsante.
   input(input) {
+    // [§9.207] i cursori del volume: si prendono col tasto e si trascinano
+    // (o un clic); il volume segue subito, si salva lasciando il tasto
+    if (input.mousePressed[0] && !this.drag) {
+      const sl = this.rects.find((b) => b.action === "volume" && input.x >= b.x && input.x <= b.x + b.w && input.y >= b.y && input.y <= b.y + b.h);
+      if (sl) this.drag = sl;
+    }
+    if (this.drag) {
+      this._setVolume(this.drag, input.x);
+      if (!input.mouseDown[0]) {
+        const key = this.drag.value;
+        this.drag = null;
+        this.actions.graphics();
+        if (key === "sfx") audio.ui("clic"); // per sentire il volume nuovo
+      }
+      return;
+    }
     if (input.pressed.has(27)) {
       if (this.submenu) this.submenu = this.submenu === "load" ? "saves" : null; else this._resume();
       return;
     }
     if (!input.mouseReleased[0]) return;
     const hit = this.rects.find((b) => input.x >= b.x && input.x <= b.x + b.w && input.y >= b.y && input.y <= b.y + b.h);
-    if (hit) { audio.ui("clic"); this._do(hit); } // §9.168: il clic
+    if (hit && hit.action !== "volume") { audio.ui("clic"); this._do(hit); } // §9.168: il clic
   }
 
   _do(b) {
@@ -136,7 +160,6 @@ export class PauseMenu {
       case "restart": this.actions.restart(); break;
       case "menu": this.actions.menu(); break;
       case "rain": case "grass": case "fire": case "blood": case "dynamicResolution": case "autosave": case "lockMouse": case "glass":
-      case "sfx": case "music": // §9.137, §9.143
         s[b.action] = !s[b.action];
         this.actions.graphics();
         this.dirty = true;
@@ -150,6 +173,16 @@ export class PauseMenu {
         break;
       default: break;
     }
+  }
+
+  // [§9.207] il volume dalla posizione del puntatore sul cursore (a passi di
+  // 0,05), subito nell'audio (si salva lasciando il tasto: input)
+  _setVolume(b, x) {
+    const v = Math.round(Math.max(0, Math.min(1, (x - b.x - b.h / 2) / (b.w - b.h))) * 20) / 20;
+    const key = b.value + "Volume";
+    if (this.settings[key] === v) return;
+    this.settings[key] = v;
+    if (b.value === "music") audio.setMusicVolume(v); else audio.setSfxVolume(v);
   }
 
   // ------------------------------------------------------------- disegno
@@ -216,6 +249,55 @@ export class PauseMenu {
     });
   }
 
+  // [§9.207, disegno dell'autore] Un cursore del volume (key: "music" o
+  // "sfx"): la pillola bianca dei pulsanti, piena da sinistra fino al volume
+  // del verde della lingua scelta (a 0 vuota), col simbolo a sinistra
+  _slider(d, x, y, w, h, key, input) {
+    const v = this.settings[key + "Volume"] ?? 1, hover = input.inside && input.x >= x && input.x <= x + w && input.y >= y && input.y <= y + h;
+    d.setAlpha(hover || this.drag ? 1 : BUTTON_ALPHA);
+    d.roundrectColourExt(x, y, x + w, y + h, h, h, hover ? 0xf2f2f2 : c.white, hover ? 0xf2f2f2 : c.white, false);
+    if (v > 0) {
+      d.setAlpha(0.88);
+      d.roundrectColourExt(x, y, x + h + (w - h) * v, y + h, h, h, GREEN, GREEN, false);
+    }
+    this._volumeIcon(d, key, x + h * 0.62, y + h / 2, h * 0.3, v > 0);
+    this.rects.push({ x, y, w, h, action: "volume", value: key });
+  }
+
+  // [§9.207] I simboli dei cursori, disegnati dall'autore (nuovi.json
+  // ico_vol_music, la nota; ico_vol_sfx, l'altoparlante; bianchi, tinti qui):
+  // neri, grigi a volume 0 (richiesta dell'autore). Se mancassero, quelli
+  // provvisori a linee
+  _volumeIcon(d, key, x, y, r, on) {
+    const name = key === "music" ? "ico_vol_music" : "ico_vol_sfx";
+    const spr = d.a && d.a.sprites && d.a.sprites[name];
+    if (spr) {
+      const k = (r * 2.1) / Math.max(spr.width, spr.height); // (alti uguali: il lato piu' lungo)
+      d.spriteExt(name, 0, x, y, k, k, 0, on ? c.black : ICON_OFF, on ? 0.85 : 1);
+      d.setAlpha(1);
+      return;
+    }
+    d.setAlpha(on ? 0.85 : 0.35);
+    const ink = c.black;
+    if (key === "music") {
+      d.ellipseColour(x - r * 0.75, y + r * 0.35, x + r * 0.05, y + r * 0.95, ink, ink, false);
+      d.lineWidthColour(x, y + r * 0.6, x, y - r * 0.95, r * 0.2, ink, ink);
+      d.lineWidthColour(x, y - r * 0.95, x + r * 0.7, y - r * 0.45, r * 0.2, ink, ink);
+    } else {
+      d.rectangleColour(x - r * 0.95, y - r * 0.35, x - r * 0.45, y + r * 0.35, ink, ink, ink, ink, false);
+      d.triangleColour(x - r * 0.5, y - r * 0.35, x + r * 0.2, y - r * 0.9, x + r * 0.2, y + r * 0.9, ink, ink, ink, false);
+      d.triangleColour(x - r * 0.5, y - r * 0.35, x + r * 0.2, y + r * 0.9, x - r * 0.5, y + r * 0.35, ink, ink, ink, false);
+      for (const k of [0.55, 0.95]) {
+        const a0 = -0.8, a1 = 0.8, n = 6;
+        for (let j = 0; j < n; j++) {
+          const t0 = a0 + ((a1 - a0) * j) / n, t1 = a0 + ((a1 - a0) * (j + 1)) / n;
+          d.lineWidthColour(x + r * 0.2 + dcos(t0) * r * k, y + dsin(t0) * r * k, x + r * 0.2 + dcos(t1) * r * k, y + dsin(t1) * r * k, r * 0.15, ink, ink);
+        }
+      }
+    }
+    d.setAlpha(1);
+  }
+
   // Il pannello (in pixel CSS), sopra lo sfondo sfumato che disegna app.js
   drawPanel(d, W, H, input) {
     this.rects = [];
@@ -234,6 +316,7 @@ export class PauseMenu {
         [tr("Glass interface: {state}", { state: onOff(s.glass) }), "glass"],
         [tr("Full screen: {state}", { state: onOff(isFullscreen()) }), "fullscreen", !fullscreenAvailable()],
         [tr("Lock mouse in window: {state}", { state: onOff(s.lockMouse) }), "lockMouse", !lockAvailable()],
+        [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"], // §9.207: dalla pausa
       ];
       segCaption = tr("FPS limit");
       segs = [30, 60, 0].map((v) => ({ value: v, label: v ? String(v) : tr("None"), selected: s.fpsCap === v }));
@@ -267,42 +350,37 @@ export class PauseMenu {
       const lost = this.net && this.net.lost;
       before = [
         ...(lost ? [] : [[tr("Resume"), "resume"]]),
-        [tr("Graphics options"), "graphics"],
         [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
         [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
-        [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
-        [tr("Music: {state}", { state: onOff(s.music) }), "music"],
-        [tr("Sound effects: {state}", { state: onOff(s.sfx) }), "sfx"],
+        SLIDERS[0], SLIDERS[1], // §9.207: la musica e gli effetti, i cursori
       ];
       segCaption = tr("Language");
       const cur = getLanguage();
       segs = LANGUAGES.map((l) => ({ value: l, label: l.toUpperCase(), selected: l === cur }));
       segAction = "language";
-      after = [[tr("Leave the game"), "menu"]];
+      after = [[tr("Graphics options"), "graphics"], [tr("Leave the game"), "menu"]]; // §9.207: sopra l'uscita
       subtitle = lost ? lost : this.net && this.net.by !== undefined
         ? tr(this.net.by === 0 ? "Paused by the red player" : "Paused by the blue player") : null;
     } else {
       title = tr("PAUSE");
       before = [
         [tr("Resume"), "resume"],
-        [tr("Graphics options"), "graphics"],
         ...(this.testMode ? [] : [[tr("Save and load"), "saves"]]),
         [tr("Hints: {state}", { state: onOff(g.hint === 1) }), "hints"],
         [tr("Objectives: {state}", { state: onOff(g.obj === 1) }), "objectives"],
-        [tr("FPS counter: {state}", { state: onOff(g.fps_show === 1) }), "fps"],
-        [tr("Music: {state}", { state: onOff(s.music) }), "music"], // §9.143
-        [tr("Sound effects: {state}", { state: onOff(s.sfx) }), "sfx"], // §9.137
+        SLIDERS[0], SLIDERS[1], // §9.207: la musica (§9.143) e gli effetti (§9.137), i cursori
       ];
       segCaption = tr("Language");
       const cur = getLanguage();
       segs = LANGUAGES.map((l) => ({ value: l, label: l.toUpperCase(), selected: l === cur }));
       segAction = "language";
-      after = [[tr("Restart level"), "restart"], [tr(this.testMode ? "Back to the editor" : "Back to menu"), "menu"]];
+      // ([§9.207] "Opzioni grafiche" sopra "Torna al menu")
+      after = [[tr("Restart level"), "restart"], [tr("Graphics options"), "graphics"], [tr(this.testMode ? "Back to the editor" : "Back to menu"), "menu"]];
     }
     // larghezza: quella di NIMBUS (360) o di piu' se un'etichetta tradotta
     // non ci sta
     d.setFont("GUI_1");
-    const longest = TEXT_SCALE * Math.max(...[...before, ...after].map(([l]) => d.stringWidth(l)));
+    const longest = TEXT_SCALE * Math.max(...[...before, ...after].filter((it) => !it.slider).map(([l]) => d.stringWidth(l)));
     d.setFont("gui_sblocco");
     const titleW = TITLE_SCALE * d.stringWidth(title);
     const panelW = Math.min(Math.max(340, longest + 90, titleW + 60), W - 40);
@@ -336,7 +414,11 @@ export class PauseMenu {
     let by = py + 84;
     subLines.forEach((l, k) => this._glowLabel(d, px + panelW / 2, py + 76 + k * 24, l, "overdue"));
     by += subH;
-    for (const [label, action, off, value] of before) { this._button(d, bx, by, btnW, bh, label, action, input, off, value); by += bh + gap; }
+    for (const it of before) {
+      if (it.slider) this._slider(d, bx, by, btnW, bh, it.slider, input); // §9.207
+      else { const [label, action, off, value] = it; this._button(d, bx, by, btnW, bh, label, action, input, off, value); }
+      by += bh + gap;
+    }
     if (segs) {
       this._glowLabel(d, bx + btnW / 2, by + CAPTION_H / 2, segCaption, "overdue");
       by += CAPTION_H;

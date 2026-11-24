@@ -64,6 +64,7 @@ export class SoundBank {
     this.ambients = new Map(); // [§9.141] nome -> { src, g, target, zeroAt }: i suoni continui (la pioggia)
     this.layers = new Map();   // [§9.143] nome -> { src, g, target }: le parti della musica che suonano
     this.musicEnabled = true;  // settings.music (menu di pausa)
+    this.musicVolume = 1;      // [§9.207] il volume della musica (musicBus), dal cursore del menu di pausa
     this.musicRoom = true;     // la musica in questa room (app.js: non nel menu principale, per ora)
     this.musicBus = null;
     this.musicT0 = null;       // l'istante (AudioContext) in cui e' partita la musica
@@ -192,6 +193,7 @@ export class SoundBank {
     if (!this.musicEnabled || !this.musicRoom) { this._stopMusic(); return; }
     if (!this.musicBus) {
       this.musicBus = ctx.createGain();
+      this.musicBus.gain.value = this.musicVolume; // §9.207
       this.musicBus.connect(ctx.destination);
     }
     if (this.musicT0 === null) { this.musicT0 = ctx.currentTime + 0.05; this.brano = null; }
@@ -242,6 +244,21 @@ export class SoundBank {
         L.target = target;
       }
     }
+  }
+
+  // [§9.207, richiesta dell'autore] I volumi dei cursori del menu di pausa
+  // (v 0-1, la posizione): il guadagno e' il quadrato (l'orecchio sente
+  // cosi': a meta' cursore un quarto della potenza); a 0 spenti, come gli
+  // interruttori di prima (niente suoni continui, la musica si ferma)
+  setSfxVolume(v) {
+    this.volume = v * v;
+    if (this.master) this.master.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.03);
+    this.setEnabled(v > 0);
+  }
+  setMusicVolume(v) {
+    this.musicVolume = v * v;
+    if (this.musicBus) this.musicBus.gain.setTargetAtTime(this.musicVolume, this.ctx.currentTime, 0.05);
+    this.setMusicEnabled(v > 0);
   }
 
   setMusicEnabled(on) {

@@ -171,7 +171,7 @@ const MENU = () => {
   g.campagna = 0; if (m) m.loadmenu = 0;
   UI.shot("menu: titolo");
   // [§9.157] le tre pagine della colonna, ogni pulsante acceso (btnhover)
-  for (const [page, keys] of [["title", ["tutorial", "single", "multi", "load"]], ["single", ["campaign", "skirmish", "back"]],
+  for (const [page, keys] of [["title", ["single", "multi", "load", "editor"]], ["single", ["tutorial", "campaign", "skirmish", "back"]], // §9.208
                               ["multi", ["create", "join", "back"]]]) {
     if (!m) break;
     m.page = page;

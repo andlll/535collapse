@@ -53,10 +53,45 @@ export const BLUE_OF = {
   mura_ori: "enemy_mura_ori", mura_vert: "enemy_mura_vert", porta_ori: "enemy_porta_ori", porta_vert: "enemy_porta_vert", // §9.194
 };
 export const otherSide = (s) => (s === "red" ? "blue" : "red");
+// [§9.203, richiesta dell'autore] "l'edificio centro deve essere
+// posizionabile come gli altri edifici, al di la' del punto di partenza": un
+// municipio in piu' e' la voce "centro" con `hall: true` (una partenza e' il
+// centro senza). Nella room (testRoom) e' nel gruppo HALL, che
+// skirmishPrepare non conta fra le partenze.
+export const isStart = (e) => e.object === START && !e.hall;
+export const HALL = "hall";
+// [§9.203, richiesta dell'autore] gli stili della casa (come nel gioco: c1s..c6s,
+// quelli del blu c1b..c6b), scritti nella voce come `sprite` (il rosso)
+export const HOME_STYLES = ["c1s", "c2s", "c3s", "c4s", "c5s", "c6s"];
+// [§9.206, richiesta dell'autore] Le impostazioni della nebbia (la voce:
+// `fog`, solo quelle diverse da FOG_DEFAULTS): per ognuna i valori possibili.
+// Il banco (nebbia_banco, stealth.js): densita' (anche quanto vedono i
+// nemici dentro), velocita' (px a passo), ampiezza (px per parte). La
+// nebbia estetica (sk_nebbia, skirmish.js): densita' (l'opacita' delle
+// nuvole), velocita' col verso (px a passo, < 0 a sinistra), durata di una
+// nuvola (s), quante nuvole nascono e ogni quanto (s). I valori di partenza
+// sono quelli di prima (livello 7, schermaglia).
+export const FOG_SETTINGS = {
+  nebbia_banco: { density: [0.25, 0.5, 0.75, 1], speed: [0, 0.5, 1, 2], range: [300, 600, 900, 1200] },
+  sk_nebbia: { density: [0.25, 0.5, 0.75, 1], speed: [-1, -0.5, 0, 0.5, 1], life: [30, 60, 100, 150, 200], count: [3, 5, 8, 12], every: [20, 40, 60, 90] },
+};
+export const FOG_DEFAULTS = {
+  nebbia_banco: { density: 1, speed: 1, range: 600 },
+  sk_nebbia: { density: 0.5, speed: 0.5, life: 100, count: 5, every: 40 },
+};
+// le impostazioni di una voce di nebbia, con quelle di partenza
+export const fogOf = (e) => ({ ...FOG_DEFAULTS[e.object], ...(e.fog || {}) });
+// solo quelle diverse da quelle di partenza (null: nessuna)
+export function fogDiff(object, f) {
+  const out = {};
+  for (const [k, v] of Object.entries(f || {})) if (FOG_DEFAULTS[object] && v !== FOG_DEFAULTS[object][k]) out[k] = v;
+  return Object.keys(out).length ? out : null;
+}
+export const blueHome = (sprite) => (/^c[1-6]s$/.test(sprite || "") ? sprite.slice(0, 2) + "b" : null);
 export function assignSides(instances) {
   // §9.193: unita' ed edifici senza schieramento: del rosso
-  for (const i of instances) if (SIDED.has(i.object) && i.object !== START && !i.side) i.side = "red";
-  const starts = instances.filter((i) => i.object === START);
+  for (const i of instances) if (SIDED.has(i.object) && !isStart(i) && !i.side) i.side = "red";
+  const starts = instances.filter(isStart);
   const free = starts.filter((i) => !i.side).sort((a, b) => (a.x + a.y) - (b.x + b.y));
   for (const i of free) {
     const used = new Set(starts.map((q) => q.side).filter(Boolean));
@@ -65,13 +100,13 @@ export function assignSides(instances) {
   return instances;
 }
 // le partenze di una parte
-export const startsOf = (map, side) => map.instances.filter((e) => e.object === START && e.side === side).length;
+export const startsOf = (map, side) => map.instances.filter((e) => isStart(e) && e.side === side).length;
 // una partenza rossa e una blu: si puo' giocare
 export const sidesOk = (map) => startsOf(map, "red") === 1 && startsOf(map, "blue") === 1;
 // la partenza del rosso come la chiama skirmishPrepare (A: x + y piu'
 // piccolo fra le due, a pari l'ordine della mappa): l'opzione `start`
 export function redStart(map) {
-  const cc = map.instances.filter((e) => e.object === START).sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  const cc = map.instances.filter(isStart).sort((a, b) => (a.x + a.y) - (b.x + b.y));
   return cc.length === 2 && cc[1].side === "red" ? "B" : "A";
 }
 // [§9.185, richiesta dell'autore] la copertina: un'immagine 720 x 480 come
@@ -116,6 +151,16 @@ export function validateMap(data, allowed, objects) {
     if (e.side !== undefined) { // §9.191
       if (!SIDED.has(e.object) || !SIDES.includes(e.side)) { bad("schieramento di " + e.object); continue; }
       i.side = e.side;
+    }
+    if (e.fog !== undefined) { // §9.206: le impostazioni della nebbia
+      const S = FOG_SETTINGS[e.object];
+      if (!S || !e.fog || typeof e.fog !== "object" || !Object.entries(e.fog).every(([k, v]) => S[k] && S[k].includes(v))) { bad("nebbia " + e.object); continue; }
+      const f = fogDiff(e.object, e.fog);
+      if (f) i.fog = f;
+    }
+    if (e.hall !== undefined) { // §9.203: un municipio, non una partenza
+      if (e.object !== START || e.hall !== true) { bad("municipio " + e.object); continue; }
+      i.hall = true;
     }
     if (e.sprite !== undefined) {
       // le varianti del gioco, o lo sprite dell'oggetto (quello della tile di
@@ -204,8 +249,12 @@ export function scenarioToRoom(sc) {
     backgrounds: sc.background ? [{ name: sc.background, visible: true, foreground: false, x: 0, y: 0, htiled: true,
                                     vtiled: true, hspeed: 0, vspeed: 0, stretch: false }] : [],
     objects: [...new Set(sc.instances.map((i) => i.object))].sort(),
+    // ([§9.203] lo stile scelto nell'editor, `sprite`, dopo il gruppo: solo
+    // le mappe dell'editor, testRoom; il gioco lo mette dopo il Create,
+    // world.js loadRoom; [§9.206] poi le impostazioni della nebbia, `fog`)
     instances: sc.instances.map((i) => [i.object, i.x, i.y, i.scale_x, i.scale_y, i.rotation, 4294967295]
-      .concat(i.group ? [i.group] : [])),
+      .concat(i.group || i.sprite || i.fog ? [i.group || null] : []).concat(i.sprite || i.fog ? [i.sprite || null] : [])
+      .concat(i.fog ? [{ ...i.fog }] : [])),
   };
   for (const k of MAP_FEATURES) if (sc[k] && sc[k].length) room[k] = sc[k];
   return room;
@@ -218,7 +267,14 @@ export const TEST_ROOM = "custom";
 export function testRoom(map) {
   // [§9.193] unita' ed edifici del blu: gli oggetti della CPU (le partenze
   // no: le sceglie skirmishPrepare, con l'opzione start)
-  const own = map.instances.map((e) => (e.side === "blue" && e.object !== START && BLUE_OF[e.object] ? { ...e, object: BLUE_OF[e.object] } : e));
+  // [§9.203] i municipi in piu' nel gruppo HALL; la casa blu col suo
+  // sprite blu
+  const own = map.instances.map((e) => {
+    const out = e.side === "blue" && !isStart(e) && BLUE_OF[e.object] ? { ...e, object: BLUE_OF[e.object] } : { ...e };
+    if (e.hall) out.group = HALL;
+    if (e.side === "blue" && blueHome(e.sprite)) out.sprite = blueHome(e.sprite);
+    return out;
+  });
   const instances = own.some((e) => e.object === "manager") ? own
     : [{ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 }, ...own];
   const room = scenarioToRoom({ ...map, instances });

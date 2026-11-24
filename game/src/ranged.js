@@ -10,7 +10,7 @@ import { sightK, seenNear } from "./fog.js";
 import { tr } from "./i18n.js";
 import { ANIM } from "./animTables.js";
 import { pointDirection, pointDistance, lengthdirX, lengthdirY, degtorad, irandomRange } from "./gm.js";
-import { generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, moveStalled } from "./pathing.js";
+import { GRID, generateFields, scrMove, moveFlowField, mpPotentialStep, arriveIfBlocked, seesGoal, seesTarget, armStopTimer, stopTimer, rallyRetry, onFormationSlot, destinationBack, rallyGo, snapToSlot, moveStalled } from "./pathing.js";
 import { REPOS_WAIT, shootable, firingSpot, aimArrow, arrowStopped, towerTarget, towerArrow } from "./archery.js";
 import { phaseOf, walkCycle, boxSelect, escapeDeselect, unitDrawEnd, unitPanel, controlGroups, dcOn, dcArm } from "./units.js";
 import { baseCounters } from "./enemybuild.js";
@@ -184,6 +184,128 @@ export function allyArcher(p) {
     if (i.action !== 1) { i.alarm.set(0, 15); i.step = 0; }
     i.action = 1; i.warwork = 4; i.repos = 1;
   };
+  // [§9.209, segnalazione dell'autore] L'arciere della nebbia (livello 7)
+  // col bersaglio scelto dal clic destro. Prima, come gli altri arcieri:
+  // uscito il bersaglio dalla gittata (o coperta la linea di tiro, senza un
+  // punto di tiro vicino) si fermava e lo dimenticava se era oltre `comp`
+  // (200 px); e arrivato al punto cliccato camminava sul posto se nessun
+  // nemico era entro 800 px (move: il passo verso il nemico piu' vicino,
+  // non verso il bersaglio). Ora lo insegue finche' e' vivo: a tiro e in
+  // linea tira; coperto cerca un punto di tiro e, se non c'e', si avvicina;
+  // fuori tiro gli va dietro (il percorso si rifa' quando il bersaglio si e'
+  // spostato di CHASE_MOVE px). Se non lo vede piu' va dove l'ha visto
+  // l'ultima volta (huntX, huntY): arrivato, lo lascia. Se non c'e' strada
+  // (bloccato, o il punto non si raggiunge) si ferma e aspetta che il
+  // bersaglio si sposti, senza camminare sul posto.
+  const CHASE_MOVE = 64;
+  const forget = (i) => { stopHere(i); i.atkorder = 0; i.atktarget = null; i.huntX = null; i.huntY = null; i.chaseX = null; i.chaseY = null; };
+  const stopShot = (i) => { i.action = 0; i.warwork = 0; i.step = 0; i.speed = 0; p.occupy(i); };
+  // Il percorso verso (tx, ty): scrMove cerca la meta fra le celle valide
+  // del goal field che l'unita' ha (findValidCellBackwards, entro 9 celle
+  // dal punto). Dopo il clic destro e' quello dell'ordine, calcolato dal
+  // bersaglio: con il bersaglio dietro le mura la meta restava dentro, la
+  // cella dell'arciere non aveva direzione e camminava sul posto. Se dalla
+  // meta non si arriva all'arciere, prima il campo calcolato da lui: la meta
+  // e' allora la cella raggiungibile accanto al bersaglio (o nessuna: resta).
+  const huntPath = (i, tx, ty) => {
+    p.free(i);
+    const f = i.goal_field;
+    if (!(f instanceof Int32Array) || p.fieldAt(f, Math.floor(i.x / GRID), Math.floor(i.y / GRID)) === -1) generateFields(p, i, i.x, i.y);
+    scrMove(p, i, tx, ty);
+  };
+  const huntChase = (i, w, t) => {
+    const seen = t.visible === true, tx = i.huntX, ty = i.huntY, now = w._stepNo;
+    if (!seen && pointDistance(i.x, i.y, tx, ty) < 48) { forget(i); return "exit"; }
+    const moved = i.chaseX === null || i.chaseX === undefined || pointDistance(i.chaseX, i.chaseY, tx, ty) > CHASE_MOVE;
+    if (i.warwork !== 1 || moved) {
+      i.chaseX = tx; i.chaseY = ty;
+      huntPath(i, tx, ty);
+      armStopTimer(i, 1200);
+      if (i.action !== 1) { i.alarm.set(0, 15); i.step = 0; }
+      i.action = 1; i.warwork = 1; i.repos = 0; i.anchorX = null; i.anchorY = null;
+      i.huntPX = i.x; i.huntPY = i.y; i.huntPN = now;
+      return "exit";
+    }
+    // in cammino senza avanzare (16 px in 90 passi: altre unita' in mezzo,
+    // un passaggio chiuso): come arrivato
+    if (i.action === 1) {
+      if (pointDistance(i.x, i.y, i.huntPX, i.huntPY) > 16) { i.huntPX = i.x; i.huntPY = i.y; i.huntPN = now; }
+      else if (now - i.huntPN > 90) { i.dirox = i.x; i.diroy = i.y; }
+    }
+    // arrivato dove portava il percorso (o fermato da arriveIfBlocked e dal
+    // timer: dirox = x): senza vederlo lo lascia, se no aspetta che si sposti
+    if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) < 12) {
+      if (!seen) { forget(i); return "exit"; }
+      i.action = 0; i.step = 0; i.speed = 0; p.occupy(i);
+    }
+    return "exit";
+  };
+  // Il caricamento del tiro (2 s col furtivo) comincia solo se allo scocco
+  // il bersaglio sara' ancora a tiro (col passo che ha), e non si annulla
+  // finche' resta entro DRAW_KEEP volte la gittata (la freccia vola oltre:
+  // 660 px, 900 la furtiva): un nemico che si allontanava usciva di tiro a
+  // ogni caricamento e il tiro non partiva mai.
+  const DRAW_KEEP = 1.25;
+  const huntOrder = (i, w, t, range) => {
+    if (t.visible === true || i.huntX === null || i.huntX === undefined) { i.huntX = t.x; i.huntY = t.y; }
+    i.targvalid = t.visible === true ? 1 : 0;
+    let vx = 0, vy = 0;
+    if (i.huntT === t.id) {
+      vx = t.x - i.huntLX; vy = t.y - i.huntLY;
+      const v = pointDistance(0, 0, vx, vy);
+      if (v > 8) { vx = (vx * 8) / v; vy = (vy * 8) / v; }
+    }
+    i.huntT = t.id; i.huntLX = t.x; i.huntLY = t.y;
+    const d = w.distanceToInstance(i, t), drawing = i.warwork === 2;
+    let near = d < range * (drawing ? DRAW_KEEP : 1);
+    if (near && !drawing) {
+      const P = phases(i), T = 2 * P[0] + P[1];
+      near = d + pointDistance(i.x, i.y, t.x + vx * T, t.y + vy * T) - pointDistance(i.x, i.y, t.x, t.y) < range;
+    }
+    if (near) {
+      if (w.shotClear(i.x, i.y, t.x, t.y)) {
+        i.shot = t; i.repos = 0;
+        if (i.warwork === 2) {
+          i.targetx = t.x; i.targety = t.y;
+          i.direction = pointDirection(i.x, i.y, t.x, t.y);
+          p.occupy(i);
+        } else {
+          i.action = 2; i.warwork = 2; i.step = 0; i.speed = 0; p.occupy(i); i.alarm.set(2, phases(i)[0]);
+          i.direction = pointDirection(i.x, i.y, t.x, t.y);
+        }
+        return "exit";
+      }
+      if (i.warwork === 2) stopShot(i);
+      // coperto: verso un punto di tiro (§6.4), se c'e'
+      if (i.repos === 1) {
+        if (i.action === 1 && pointDistance(i.x, i.y, i.dirox, i.diroy) >= 12) return "exit";
+        i.repos = 0;
+      } else if ((i.reposAt || 0) <= w._stepNo) {
+        const spot = firingSpot(w, p, i, t, 0.9 * range);
+        if (spot) {
+          scrMove(p, i, spot[0], spot[1]);
+          i.dirox = spot[0]; i.diroy = spot[1];
+          if (i.action !== 1) { i.alarm.set(0, 15); i.step = 0; }
+          i.action = 1; i.warwork = 4; i.repos = 1; i.chaseX = null;
+          return "exit";
+        }
+        i.reposAt = w._stepNo + REPOS_WAIT;
+      }
+    } else if (i.warwork === 2) stopShot(i);
+    return huntChase(i, w, t);
+  };
+  // [§9.209] la freccia dell'arciere della nebbia: dove sara' il bersaglio
+  // in cammino quando arriva (lo spostamento dell'ultimo passo, al piu' 8
+  // px, per i passi di volo a 20 px per passo). Prima mirava dov'era:
+  // un nemico che camminava di lato non veniva mai colpito.
+  const leadPoint = (b, t) => {
+    let vx = t.x - t.xprevious, vy = t.y - t.yprevious;
+    const v = pointDistance(0, 0, vx, vy);
+    if (v > 8) { vx = (vx * 8) / v; vy = (vy * 8) / v; }
+    let n = pointDistance(b.x, b.y, t.x, t.y) / 20;
+    n = pointDistance(b.x, b.y, t.x + vx * n, t.y + vy * n) / 20;
+    return { x: t.x + vx * n, y: t.y + vy * n };
+  };
   const leftClick = (i, w) => {
     const g = w.g;
     if (!(i.hover === 1 && w.input.mouseReleased[0])) return;
@@ -226,7 +348,8 @@ export function allyArcher(p) {
       // [§9.147] vicino alla meta l'ultimo tratto (gli ordini di movimento:
       // non verso un presidio ne' all'attacco)
       const lm = moveOrder && lmReady(w, i, i.dirox, i.diroy, 500);
-      if (!lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || (moveOrder && !seesGoal(p, i)) || garr)) {
+      const hunt = i.hunter && i.atkorder === 1 && i.warwork === 1; // §9.209: dietro al bersaglio scelto
+      if (!lm && (pointDistance(i.x, i.y, i.dirox, i.diroy) > 500 || !w.placeFreeForSlot(i, i.x, i.y) || ((moveOrder || hunt) && !seesGoal(p, i)) || garr)) {
         const otro = w.instancePlace(i, i.x, i.y, "ally_unit");
         if (otro) {
           // [§9.147] non si aspetta chi sta aspettando noi (come i fanti,
@@ -241,6 +364,7 @@ export function allyArcher(p) {
           arriveIfBlocked(i); // §6.1 n.89
         }
         if (i.presidiowork === 1) mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed);
+        if (hunt) { mpPotentialStep(w, i, i.dirox, i.diroy, i.autospeed); arriveIfBlocked(i); return; } // §9.209
         const n = w.nearest(i.x, i.y, "enemy_unit");
         if (i.warwork === 1 && n && w.distanceToInstance(i, n) < 800 * iso(i.direction) ) mpPotentialStep(w, i, n.x, n.y, i.autospeed);
       }
@@ -272,6 +396,7 @@ export function allyArcher(p) {
     }
     const R = stealthy ? ST.stealthRange : 600;
     const k = iso(i.direction);
+    if (i.hunter && i.atkorder === 1) return huntOrder(i, w, i.atktarget, R * k); // §9.209
     let valid = false;
     valid = (i.atkorder === 0 ? w.nearest(i.x, i.y, "enemy_unit") : i.atktarget).visible === true;
     i.targvalid = valid ? 1 : 0;
@@ -378,7 +503,7 @@ export function allyArcher(p) {
       const t = i.shot && i.shot.alive ? i.shot : null;
       if (!t || !w.shotClear(i.x, i.y, t.x, t.y)) { i.action = 0; i.warwork = 0; i.step = 0; return; }
       const b = w.create("arciere_bullet", i.x, i.y - 40);
-      aimArrow(b, t);
+      aimArrow(b, i.hunter ? leadPoint(b, t) : t); // §9.209
       b.speed = 20;
       // [§9.148] la freccia dell'arciere della nebbia: il modo e da dove e'
       // partita (il rumore porta li'); la furtiva vola piu' lontano
@@ -429,7 +554,10 @@ export function allyArcher(p) {
       // [Correzione decisa dall'autore, §3.11 n.43] non durante un ordine di
       // presidio: la destinazione e' l'edificio, mai libero, e scivolava
       // verso l'arciere fino a fermarlo prima di entrare.
-      if (i.presidiowork !== 1) {
+      // [§9.209] non dietro al bersaglio scelto dell'arciere della nebbia: la
+      // meta (accanto al bersaglio, che la occupa) tornava indietro di 64 px
+      // a passo verso l'arciere finche' non era libera, anche fin quasi a lui
+      if (i.presidiowork !== 1 && !(i.hunter && i.atkorder === 1 && i.warwork === 1)) {
         destination(i, w);
         destination(i, w);
       }
@@ -468,6 +596,7 @@ export function allyArcher(p) {
       armStopTimer(i, 1200); // §9.69
       i.dirox = w.mouse.x; i.diroy = w.mouse.y;
       i.anchorX = null; i.anchorY = null; i.repos = 0; // §6.4: nuovo ordine, niente guinzaglio
+      i.huntX = null; i.huntY = null; i.chaseX = null; i.chaseY = null; i.huntT = null; // §9.209
       i.creation = 0;
       if (i.action !== 1) i.alarm.set(0, irandomRange(5, 13));
       i.action = 1;

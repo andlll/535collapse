@@ -107,7 +107,9 @@ export function riverGeometry(rv) {
   // ([§9.100] non se finisce dentro un altro fiume: riverJoin)
   const tip0 = inRoom(rv.pts[0]) && !rv.noTip0, tip1 = inRoom(rv.pts[rv.pts.length - 1]) && !rv.noTip1;
   const ease = (d) => { const t = Math.max(0, Math.min(1, d / TIP)); return Math.sqrt(t * (2 - t)); };
-  const HW = S.map((s) => ((w0 + (w1 - w0) * (s / total)) / 2) * (1 + WOBBLE * wave(s, seed, 160))
+  // ([§9.204] plain: senza la larghezza che varia, per l'anteprima della
+  // polilinea dell'editor; il gioco non lo passa mai)
+  const HW = S.map((s) => ((w0 + (w1 - w0) * (s / total)) / 2) * (rv.plain ? 1 : 1 + WOBBLE * wave(s, seed, 160))
     * (tip0 ? ease(s) : 1) * (tip1 ? ease(total - s) : 1));
   const side = (sg) => {
     const lim = HW.map((hw, k) => (sg * K[k] > 0 ? Math.min(hw, 0.55 / (sg * K[k])) : hw));

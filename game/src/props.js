@@ -19,6 +19,7 @@
 import { pointDistance, pointDirection, degtorad } from "./gm.js";
 import { fireStarterCreate, fireStarterStep } from "./effects.js";
 import { dsin } from "./dmath.js"; // §9.152
+import { seenByAllies } from "./fog.js"; // §9.211
 
 // offset dei bracieri per oggetto [C, Create di ciascun ocr_*]
 const STD = [[-50, -50], [10, -100], [40, -55]];
@@ -66,8 +67,31 @@ export function palo(path) {
       i.slife = 999;
       i.fuoco = w.create("firestarter_small", i.x, i.y - 82);
     },
-    step(i) { i.life = 999; },
+    step(i, w) {
+      i.life = 999;
+      if (i.veiled && seenByAllies(w, i)) unveilPalo(w, i); // §9.211
+    },
   };
+}
+
+// [§9.211, richiesta dell'autore] Livello 7: i pali che segnano la strada
+// si mostrano solo quando l'arciere (o un altro alleato) li vede; prima si
+// vedevano tutti dall'inizio, con la nebbia aperta attorno, e la strada per
+// finire il livello era gia' scritta. Velato: invisibile il palo e la sua
+// torcia, che non manda fiamme ne' luce (effects.js, fog.js nightLights);
+// non vede (fogSources) e non fa vedere i picchieri (seenNear).
+// g.paliVeiled: quanti sono ancora velati.
+export function veilPalo(w, i) {
+  if (i.veiled) return;
+  i.veiled = 1; i.visible = false;
+  if (i.fuoco) { i.fuoco.veiled = 1; i.fuoco.visible = false; }
+  w.g.paliVeiled = (w.g.paliVeiled || 0) + 1;
+}
+export function unveilPalo(w, i) {
+  if (!i.veiled) return;
+  i.veiled = 0; i.visible = true;
+  if (i.fuoco) { i.fuoco.veiled = 0; i.fuoco.visible = true; }
+  w.g.paliVeiled = Math.max(0, (w.g.paliVeiled || 0) - 1);
 }
 
 export function statue() {

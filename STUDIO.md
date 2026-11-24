@@ -48,10 +48,10 @@ cioe' dialoghi e suggerimenti, e le cose segnate in §9.154 "Cosa resta");
 nebbia, fine e porte per parte; restano piccole cose in §9.155 "Cosa
 resta"); 4 rete e lobby (§9.156: fatta la prima parte giocabile, WebRTC
 coi codici da incollare, lockstep, impronte, pausa, disconnessione; da
-provare su due computer in reti diverse; restano TURN, codici piu' corti,
-ritardo adattivo, riconnessione: §9.156 "Come riprendere"). I codici piu'
-corti (da ~600-780 a ~150-250 caratteri) l'autore li vuole: in un'altra
-sessione, con una PR a parte (§9.200). Nel menu
+provare su due computer in reti diverse; restano TURN, ritardo adattivo,
+riconnessione: §9.156 "Come riprendere"). I codici piu' corti: fatti
+(§9.202, versione 0.2617: ~130-250 caratteri invece di ~600-780), da
+provare anche fra browser diversi (Chrome con Firefox o Safari). Nel menu
 "Multigiocatore" con "Crea partita" e "Partecipa" (§9.157); le cause dei
 collegamenti non riusciti e la guida "Problemi di connessione" (§9.158).
 
@@ -85,8 +85,13 @@ le rifiniture di §9.195-§9.197 (Natura, l'interruttore rosso / blu, i campi,
 i comandi nella colonna, le bandierine, "Regia", la colonna che scorre, la
 freccina), le icone dell'autore, i ponti, la password, le partite solo su
 file e senza lavoratori di partenza (§9.198), anche per i comandi e la
-gomma (§9.199-§9.200). Da fare: la scheda "Regia" per gli scenari (per ora
-no, decisione dell'autore, §9.198).
+gomma (§9.199-§9.200); il vetro, gli stili della casa, la F dell'albero
+finto, il municipio come edificio, le foto della Natura, niente clic
+(§9.203; lo stile scelto nell'editor ora arriva anche nella partita),
+l'anteprima della polilinea come la disegna il gioco e il fiume che toglie
+gli alberi nell'acqua (§9.204), la nebbia estetica e il banco di nebbia in
+"Natura" (§9.205) con le loro impostazioni (§9.206). Da fare: la scheda "Regia" per gli scenari
+(per ora no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -11356,7 +11361,7 @@ sinistra nella GUI tra il pannello risorse e la minimappa".
 3. *Codici piu' corti*: un SDP ridotto ai campi necessari (ufrag, pwd,
    fingerprint, indirizzi: ~150 caratteri) ricostruito dall'altra parte,
    oppure un piccolo servizio di presentazione con codici di 6 lettere
-   (§9.152).
+   (§9.152). [Fatto in §9.202, la prima strada.]
 4. *Il ritardo adattivo*: oggi D si misura una volta all'avvio; si
    potrebbe rimisurare (i turni portano gia' il passo) e cambiarlo d'accordo
    a un passo futuro.
@@ -14015,3 +14020,631 @@ tutti e due i casi. Correzioni:
 Prove: test unitari (146), `editor.mjs` (due volte), `skcustom.mjs`,
 `ui.mjs`, lo script dei fotogrammi lenti.
 
+### 9.202 I codici piu' corti del multigiocatore
+
+Richiesta dell'autore (23 novembre 2026, nuova PR #27, versione 0.2617):
+"accorciare i codici di handshake del multiplayer. Ti sono state lasciate
+delle indicazioni, valuta tu se l'operazione e' fattibile senza fare danni,
+una volta valutato esegui. Prendi in considerazione tutto, anche il fatto
+delle mappe custom che abbiamo introdotto con l'editor". Le indicazioni:
+"Cose da fare" (da ~600-780 a ~150-250 caratteri) e §9.156 "Come
+riprendere", punto 3: un SDP ridotto ai campi necessari, ricostruito
+dall'altra parte (l'altra strada, un servizio con codici di 6 lettere,
+vorrebbe un server: l'autore ha deciso senza, §9.156).
+
+**La valutazione: si puo', senza danni.** Dei ~780 caratteri del codice di
+chi crea, cio' che serve davvero all'altro browser per collegarsi sono
+~100 byte: nome utente e password ICE, l'impronta del certificato DTLS
+(SHA-256, 32 byte), il ruolo DTLS, gli indirizzi (tipo, protocollo,
+indirizzo, porta, priorita'). Il resto e' uguale in ogni browser
+(intestazioni, la riga del canale dati, porta SCTP) o sono annotazioni di
+Chrome che l'altra parte non usa. I rischi che ho visto, e cosa ho fatto:
+- *un browser che scrive l'SDP in un modo non previsto* (Firefox, Safari,
+  una versione nuova di Chrome): il codice corto si fa solo da un SDP in
+  cui ogni riga e' fra quelle conosciute, e solo se, riletto, da' lo stesso
+  modello (`packShort` lo rilegge prima di darlo). Se no si da' il codice
+  lungo di prima, che funziona come sempre: nel caso peggiore il codice e'
+  lungo, mai sbagliato;
+- *un codice rovinato per strada* (una chat che cambia un carattere): prima
+  il JSON compresso non si decomprimeva, ora c'e' una somma di controllo (16
+  bit): "Questo codice non e' valido", come prima, invece di una
+  connessione che non si apre senza dire perche';
+- *versioni diverse*: la versione del gioco e' all'inizio del codice corto,
+  in un posto che non cambiera' (dopo il byte della forma), e una forma che
+  non si conosce (una versione futura) dice "un'altra versione del gioco".
+  Un codice corto incollato in una 0.2615 o prima dice "non valido" (quella
+  versione non sa leggerlo): le due versioni non potrebbero comunque
+  giocare insieme, e la versione si legge nel menu;
+- *le cause dei collegamenti non riusciti* (§9.158) si leggono dagli
+  indirizzi dei due codici: tipo, indirizzo, porta e protocollo restano
+  tutti, quindi le stesse cause (provato);
+- *le mappe dell'editor* (§9.192): nel codice corto ci sono il nome (fino a
+  40 caratteri, anche accentati) e l'impronta (8 byte); la mappa continua
+  a passare sul canale dopo i codici. Costa ~30 caratteri per un nome
+  corto, ~65 per uno di 40;
+- *mappa e opzioni* si scrivono come numeri (la mappa fra le cinque, o 63
+  per quella dell'editor; ogni opzione l'indice nel suo elenco): vale perche'
+  i due giocatori hanno la stessa versione, e lo si controlla prima.
+
+**Le forme del codice** (netcode.js): "DV" + O/A + la forma + base64url.
+- "c", il corto, in byte: la forma (2), la versione; un byte di bit (ruolo
+  DTLS, BUNDLE, trickle, end-of-candidates, misura massima dei messaggi:
+  niente, quella di Chrome e Safari, quella di Firefox o il numero; c'e' la
+  partita); ufrag e password a 6 bit per carattere; l'impronta; gli
+  indirizzi, ognuno con un byte (tipo, tcp, tcptype, forma
+  dell'indirizzo), l'indirizzo (IPv4 4 byte, IPv6 16, il nome mDNS
+  "uuid.local" di Chrome, Firefox e Safari 16, lo stesso di un indirizzo
+  prima 1, se no il testo), la porta e la priorita'; poi, nella risposta,
+  l'offerta a cui risponde (§9.158) e, nell'offerta, la partita (mappa,
+  opzioni a 4 bit, seme, la mappa dell'editor); la somma di controllo.
+- "z" e "p": il JSON con l'SDP intero, come prima (§9.156): si danno solo
+  quando il corto non si puo', e si leggono sempre.
+Il testo incollato dopo il codice corto ("...grazie!") non conta piu'.
+
+**Cosa resta dell'SDP e cosa no.** Restano: ufrag, password, impronta,
+ruolo DTLS, i candidati con tipo, protocollo, tcptype, indirizzo, porta e
+priorita' (tutti: anche i TCP e gli IPv6), BUNDLE, trickle,
+end-of-candidates, max-message-size. Si lasciano: la riga o= (si rifa'
+dall'impronta), i "foundation" dei candidati (si rifanno, uno per
+candidato: servono solo a raggruppare i controlli), raddr e rport (solo
+diagnostica: si rimettono 0.0.0.0 o "::" e 0, come fa gia' Chrome: la
+regola dell'SDP, RFC 8839, li vuole nei candidati non host), generation 0, network-id e
+network-cost (preferenze di Chrome fra due reti dello stesso computer: la
+priorita', che resta, porta gia' l'ordine delle reti), extmap-allow-mixed,
+msid-semantic, sendrecv, porta e indirizzo nelle righe m= e c= (i browser
+usano i candidati). L'SDP ricostruito ha la forma di quello di Chrome
+(sdpFromModel), che Firefox e Safari accettano nelle chiamate fra browser
+diversi.
+
+**Le misure** (caratteri, offerta / risposta; prima ~780 / ~600):
+- Chromium in questa macchina (rtc.mjs, WebRTC vero, un indirizzo mDNS):
+  139 / 130 (prima 775 / 606);
+- Chrome con STUN su una rete mobile (NAT simmetrico, due indirizzi
+  esterni, TCP): 216 / 207; su un computer con due reti, TCP e IPv6 (7
+  indirizzi, il caso piu' lungo delle prove): 247 / 238;
+- Firefox (con un TCP passivo in piu'): 187 / 178; Safari: 168 / 159;
+- su una mappa dell'editor ("La mia isola") l'offerta ~28 in piu'.
+
+**I file**: `netcode.js` (sdpModel, sdpFromModel, il codice corto,
+decodeCode che legge le tre forme), `skirmish.js` (`skValues`: i valori di
+ogni opzione, anche di quelle nascoste; cleanSkirmish lo usa), `menu.js`
+(0.2617: la 0.2616 e' della PR #26, §9.201, entrata su main
+prima di questa). Nessun testo nuovo: gli errori sono quelli di prima.
+
+**Prove.**
+- `test/netcode.test.mjs` (nuova): SDP di Chromium (di questa macchina, e
+  con STUN, due reti, TCP, IPv6, NAT simmetrico), di Firefox e di Safari:
+  il modello, l'SDP ricostruito che riletto da' lo stesso; le righe che il
+  modello non conosce (ice-lite, un'altra impronta, un altro mid, un
+  secondo componente...) danno il codice lungo; le misure; le cause di
+  netdiag uguali dai codici e dagli SDP veri; ogni mappa e ogni valore di
+  ogni opzione, il seme piu' grande, le mappe dell'editor col nome vuoto,
+  accentato, con simboli, di 40 lettere; quello che il codice corto non sa
+  dire va nel codice lungo, uguale; incollato con testo attorno; tagliato
+  (non valido, ma si sa se era un'offerta); ogni carattere cambiato
+  (non valido); un'altra forma (un'altra versione, con la versione); il
+  codice di prima ancora leggibile; ruoli DTLS, misure dei messaggi,
+  indirizzi in tutte le forme. Test unitari: 151.
+- Nel browser (WebRTC vero, Chromium): `rtc.mjs` (collegati, i confronti
+  uguali, codice 139 e risposta 130), `rtcfail.mjs` (i codici cambiati
+  dalla prova, la risposta per un altro codice, la guida), `netmap.mjs` (la
+  mappa dell'editor: il nome letto dal codice corto, la mappa scaricata,
+  ritrovata dall'impronta la seconda volta), `skcustom.mjs`, `netfake.mjs`.
+  In piu' una prova a mano: due collegamenti nella stessa pagina con
+  offerta e risposta passate dai codici corti, il canale aperto.
+- Non provati qui (c'e' solo Chromium): Firefox e Safari veri. Gli SDP di
+  prova sono scritti come li fanno quei browser; se uno ha qualcosa che il
+  modello non conosce si torna al codice lungo. Da provare con il resto
+  (§9.156 "Come riprendere", punto 1): due computer, meglio se uno con
+  Chrome e uno con Firefox.
+
+**Come andare oltre** (se servisse): la priorita' in 3 byte invece di 4
+(l'ultimo e' quasi sempre 255), i candidati ripetuti (lo stesso indirizzo
+dai due server STUN, raro) come un byte: pochi caratteri. Un codice di 6
+lettere vorrebbe un server di presentazione (§9.152), che l'autore non ha
+voluto.
+
+### 9.203 Correzioni dell'editor: vetro, stili della casa, la F, il municipio, le foto della Natura, niente clic
+
+Richieste dell'autore (23 novembre 2026, stessa PR #27, 0.2617): "nell'editor
+bisogna applicare l'effetto vetro sull'interfaccia (per qualche motivo non e'
+stato fatto), deve essere possibile cambiare stile alle case come si fa con
+gli alberi e gli elementi della citta', sull'albero "fake" va disegnata
+temporaneamente la "f" per far capire la differenza all'utente dell'editor
+tra quello normale e quello fake. l'edificio centro deve essere
+posizionabile come gli altri edifici, al di la' del punto di partenza.
+anteprima oggetti natura particellari: sostituire l'immagine che c'e' ora
+concettuale con uno screenshot, come fatto per il campo di grano.
+Nell'editor disattiviamo il suono di clic della GUI, diventa fastidioso dopo
+un po' in un ambiente silenzioso come quello dell'editor."
+
+- **Il vetro** ("Glass interface", §7.14). *Perche' mancava*: lo sfondo
+  sfocato dei pannelli lo cattura app.js dopo aver disegnato il mondo, nel
+  ciclo del gioco; l'editor ha il suo ciclo (editor.js render) e non lo
+  catturava mai, quindi Draw disegnava i pannelli bianchi semplici. Ora la
+  cattura e' in `glass.js` (spostata da app.js, uguale) e l'editor la fa
+  dopo la mappa e prima dell'interfaccia, se l'opzione e' accesa: colonna,
+  pannello, caselle, pulsanti e suggerimenti di vetro come nel gioco.
+- **Gli stili della casa** (Edifici). La casa del gioco ha sei stili (c1s..c6s,
+  quelli della CPU c1b..c6b, buildings.js): la casella della casa (rossa e
+  blu) li ha tutti, S li cambia ("Schieramento rosso (S: stile 3/6)"), come le
+  mura (§9.194: lo schieramento con l'interruttore rosso / blu). Con "Sposta"
+  S cambia lo stile di una casa gia' messa nel suo schieramento, come per
+  alberi e case della citta' (prima ne cambiava lo schieramento: per una casa
+  dell'altra parte la si rimette). Nella voce lo stile e' `sprite` (il nome
+  rosso; il blu si vede col suo, c3s -> c3b).
+- **Lo stile scelto arriva nella partita** (trovato per strada). La room delle
+  mappe dell'editor non portava lo `sprite` delle voci: il gioco tirava a
+  caso lo stile di alberi e case, anche quello scelto nell'editor con S o col
+  pennello. Ora (mapfile.js scenarioToRoom) lo sprite va nella room dopo il
+  gruppo, solo per le mappe dell'editor (le room del gioco sono di
+  tools/07, senza), e world.js `loadRoom` lo mette dopo il Create: il Create
+  tira comunque il suo numero a caso (il generatore della partita consuma
+  gli stessi numeri), poi lo sprite scelto; gli alberi (civilians.js
+  `restyle`) anche il tipo, che usa l'albero che muore. La casa blu della
+  CPU col suo sprite blu; online quella del secondo giocatore torna al nome
+  rosso (i gemelli si disegnano blu da soli, p2sprites.js). L'albero finto
+  dei modelli con `alb1_F` (la F) resta a caso fra gli otto. Le mappe del
+  gioco non cambiano: col seme fisso le impronte di determinism.mjs
+  (sk_padus, 3000 passi) sono le stesse di main.
+- **La F sull'albero finto**, solo nell'editor: la F arancione di `alb1_F`
+  (lo sprite dell'editor di GameMaker; nel kit di Tiled gia' su tutte le
+  varianti, §9.78) disegnata sull'albero alla sua profondita' (editmap.js,
+  l'evento draw di `albero_fake` nel mondo dell'editor: dietro gli alberi
+  davanti), anche nel fantasma sotto il puntatore e nella casella della
+  tavolozza. Nel gioco l'albero finto resta uguale a quello vero.
+- **Il municipio come edificio**: in testa alla scheda Edifici, rosso e blu,
+  quanti se ne vogliono, oltre alle partenze (scheda Regia, una per parte).
+  Nella mappa e' la voce "centro" con `hall: true` (la partenza e' il centro
+  senza: mapfile.js `isStart`; la convalida accetta `hall` solo vero e solo
+  sul centro); nella room (testRoom) e' nel gruppo `hall`, che
+  skirmishPrepare non conta fra le partenze; il blu e' quello della CPU
+  (enemy_centro) o, online, del secondo giocatore. Con la vittoria
+  "Municipio" il giocatore perdeva al primo centro distrutto: ora con
+  l'ultimo (buildings.js; la CPU e la partita online contavano gia' tutti i
+  centri). Il disegno della mappa nella schermaglia (skuser.js) non lo
+  scambia per una partenza.
+- **Le foto della Natura**: le sette macchie a particelle (erba, grano, fili
+  d'erba, i quattro prati fioriti) nella tavolozza avevano un disegno a
+  pallini; ora una foto: `tools/19_natura.mjs` (come tools/17 per le
+  cartoline) mette ogni macchia da sola su una mappa vuota dell'editor (il
+  prato), la inquadra intera, la fotografa e la sfuma con un'ellisse
+  (`nuovi/sprites/ed_natura_*.png`, 320 px, gruppo ambiente, nuovi.json).
+  Il disegno di prima resta se la foto mancasse.
+- **Niente clic** dei pulsanti nell'editor (i dieci `clic()` di §9.168 tolti;
+  nel gioco restano).
+- **Le frecce della colonna che scorre** (§9.196), richiesta successiva
+  dell'autore: "usiamo le stesse del menu della schermaglia, non metterci il
+  cerchio intorno". Ora sono `ico_sk_freccia` (la freccia disegnata
+  dall'autore per la schermata della schermaglia, §9.131), girate in su e in
+  giu', il 40% piu' piccole delle frecce della mappa li' ("falle un po' piu'
+  piccole ste freccette, tipo del 40%"), con le stesse trasparenze
+  (0,55; 0,95 col puntatore; 0,15 spente in cima e in fondo), al posto del
+  cerchio bianco col triangolo. Il punto in cui si cliccano non cambia.
+
+Testi nuovi: "Schieramento rosso / blu (S: stile {i}/{n})" nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': la scheda Edifici col municipio e la casa
+a sei stili, gli stili rossi e blu del gioco, S con "Sposta" nello stesso
+schieramento, l'aspetto del blu, le partenze che non contano i municipi, la
+convalida di `hall`, la room coi municipi nel gruppo e gli stili dopo,
+skirmishPrepare che sceglie le due partenze, splitGroups che tiene lo stile;
+152 test), `editor.mjs` (in piu': il municipio rosso messo dalla tavolozza,
+la casa col terzo stile con S, S con "Sposta", le foto nell'atlas),
+`edstyles.mjs` (nuova, nella CI: una partita su una mappa dell'editor con
+la casa rossa c1s, quella blu c5b, l'albero alb6 col tipo 6, il finto
+`alb1_F` che resta uno degli otto, due centri per parte, 600 passi della
+CPU con due centri; vittoria "Municipio": perso il municipio si gioca,
+persa anche la partenza si perde), `determinism.mjs` (sk_padus, 3000 passi:
+le impronte di main), screenshot (la tavolozza Natura con le foto, gli
+alberi finti con la F, le case, i municipi, il vetro).
+
+### 9.204 La polilinea: l'anteprima come nel gioco, il fiume che toglie gli alberi
+
+Richieste dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "Possiamo
+fare che il fiume quando viene dato invio alla sua polilinea elimina gli
+alberi che gli vanno in interferenza? Possiamo fare in generale la
+polilinea di anteprima (quella prima di premere invio di fiumi sentieri
+ecc) piu' omogenea a livello di rappresentazione e gia' che prenda in
+considerazione il coefficiente di assonometria sull'asse y per disegnare la
+larghezza?"
+
+- **L'anteprima** (la linea che si disegna, fino al puntatore, e quella di
+  un punto trascinato). Prima: un tratto dritto per segmento, largo uguale
+  in ogni direzione, semitrasparente; sui giunti i tratti si sovrapponevano
+  (piu' scuri) e agli angoli restavano dei buchi. Ora la fascia e' quella
+  del gioco (rivers.js `riverGeometry`, con `plain`: senza la larghezza che
+  varia del +-12%, che il gioco non passa mai): i punti smussati come nel
+  gioco, la larghezza misurata sul terreno "steso" (y diviso ISO, 0,62) e poi
+  schiacciata, quindi un tratto orizzontale e' alto 0,62 volte la larghezza
+  e uno verticale largo quanto la larghezza, come il fiume finito; nelle
+  curve strette il bordo interno si ferma come nel fiume vero. Disegnata
+  piena, una tinta uniforme (triangoli che non si sovrappongono), coi bordi
+  e le estremita' a 2 px; uguale per fiume, strada e sentiero, ognuno col
+  suo colore. La larghezza visibile delle strade (i sassi sparsi attorno
+  alla linea, rivers.js SPREAD) e' circa quella indicata, quindi la stessa
+  fascia va bene anche li'. Le estremita' del fiume finito si stringono a
+  punta (dentro la mappa): l'anteprima no.
+- **Il fiume toglie gli alberi**: finita la linea di un fiume (Invio, il
+  destro o il doppio clic) gli alberi (veri e finti) coi piedi nell'acqua
+  del fiume nuovo spariscono, anche quelli della gemella con la simmetria.
+  "Nell'acqua" e' la stessa regola del pennello dei boschi (§9.185,
+  editmap.js `blocks`: 10 x 5 px attorno al piede sulle celle d'acqua del
+  gioco, riverCells), solo per il fiume nuovo (EditScene `treesInRivers`;
+  sotto i ponti non c'e' acqua). Fiume e alberi tolti sono un passo solo:
+  Ctrl+Z li rimette insieme. Un avviso dice quanti ("Alberi tolti dal fiume:
+  N", nelle sei lingue). Le strade non toccano gli alberi (non richiesto);
+  spostare i punti di un fiume gia' fatto nemmeno.
+
+Prove: `editor.test.mjs` (in piu': la fascia senza la variazione, alta w x
+ISO in orizzontale e larga w in verticale; quella del gioco varia; gli
+alberi nel fiume, non quelli accanto ne' le altre voci; 153 test),
+`editor.mjs` (in piu': un bosco di 96 alberi, un fiume di tre punti che lo
+attraversa: 13 alberi tolti, Ctrl+Z rimette fiume e alberi), screenshot
+(l'anteprima del fiume con tratti orizzontali e verticali, il fiume finito
+senza alberi nell'acqua, l'anteprima di una strada).
+
+### 9.205 La nebbia in "Natura": quella estetica e il banco che nasconde
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "nella
+scheda "natura" mettiamo anche i banchi di nebbia, sia quello "estetico"
+che quello del tutorial/lvl7 che limita la visibilita' ai nemici".
+
+Le nebbie del gioco, guardate prima:
+- *estetica*: `sk_nebbia` (§9.122, skirmish.js), quella delle mappe della
+  schermaglia: fa nascere 5 nuvole (lo sprite fog1) sparse attorno a se'
+  (900 x 300 px) e di nuovo ogni 40 s; ogni nuvola scivola a destra e dopo
+  100 s svanisce. Non cambia niente nella partita;
+- *tutorial*: `fog_controller` / `fog01` (§9.80): nuvole che attraversano la
+  mappa verso destra; un nemico a meno di 290 px da una nuvola vede a meta'
+  (enemies.js `fogSight`);
+- *livello 7*: `nebbia_banco` (§9.148, stealth.js): tre nuvole in fila che
+  vanno avanti e indietro in orizzontale (600 px per parte, 1 px a passo);
+  dentro l'ellisse del banco i nemici vedono a meta', ma solo con lo stealth
+  del livello 7 (stealth.js `sees`).
+Il "banco" da mettere in una mappa e' quello del livello 7 (resta dove lo si
+mette, va e viene: si puo' progettare), con l'effetto del tutorial.
+
+**Cosa e' cambiato.**
+- In fondo a "Natura" la **nebbia estetica** (`sk_nebbia`) e il **banco di
+  nebbia** (`nebbia_banco`). Nella casella le loro nuvole, lo sprite del
+  gioco (fog1, una macchia grigia morbida) senza il prato sotto (richiesta
+  dell'autore: prima avevo fatto le foto come per le altre macchie, tenui
+  sul prato): la estetica a nuvole sparse, il banco a una fila piu' densa.
+- **Nell'editor** si vedono ferme come all'inizio della partita (editmap.js
+  `fogLook`): il banco con le sue tre nuvole (stealth.js `bankClouds`, la
+  funzione del gioco, ora condivisa), la estetica con cinque nuvole in un
+  disegno fisso (nella partita nascono a caso); anche sotto il puntatore
+  prima di metterle. Con "Sposta" e "Inserisci" il pallino per sceglierle e,
+  per il banco, la linea tratteggiata fin dove va avanti e indietro
+  (BANK.range, 600 px per parte).
+- **Nella partita** la estetica fa quello che fa nelle schermaglie; il banco
+  va e viene come nel livello 7 e **dentro un banco il nemico vede a meta'**
+  (enemies.js `fogSight`, come vicino alle nuvole del tutorial: inseguire,
+  tirare, le macchine d'assedio) anche fuori dal livello 7. Nel livello 7 il
+  conto resta quello dello stealth (`sees`: chi guarda e chi e' guardato),
+  senza raddoppiarlo. Vale per i nemici della CPU (online i due giocatori
+  non hanno la nebbia, come per le nuvole del tutorial); le torri della CPU
+  nella nebbia restano come prima (solo nel livello 7 tirano a meta').
+- Il banco ha le misure di partenza del livello 7 (tre nuvole, 600 px per
+  parte, 1 px a passo); l'editor per ora non le cambia.
+
+Prove: `editor.test.mjs` (in piu': le due nebbie nel catalogo e fra gli
+oggetti ammessi; `fogSight` a meta' dentro un banco senza stealth, 1 fuori,
+1 con lo stealth; 154 test), `edstyles.mjs` (in piu': una mappa con le due
+nebbie; nella partita il banco si sposta, un nemico dentro vede a meta' e
+fuori no, la estetica fa nascere 5 nuvole), `editor.mjs`, screenshot (la
+scheda Natura con le due nebbie, le due nebbie sulla mappa col tratteggio
+del banco).
+
+### 9.206 Le impostazioni della nebbia
+
+Domande dell'autore (24 novembre 2026, stessa PR #27, 0.2617), durante
+§9.205: "non possiamo semplicemente usare lo sprite senza lo sfondo sotto?
+possiamo regolare la "trasparenza" della nebbia in modo che influenzi
+l'awareness del nemico in proporzione? la nebbia va verso destra poi
+sparisce e si ricrea dov'era nata giusto? o possiamo impostare noi velocita'
+e momento di reset/altre impostazioni?". Lo sprite senza il prato: fatto in
+§9.205. Come va la nebbia: quella estetica si', fa nascere le sue nuvole
+attorno al punto, le nuvole scivolano a destra e svaniscono, e ogni tanto ne
+nascono altre attorno al punto; il banco invece non sparisce mai, va avanti
+e indietro. Scelte dell'autore (alla mia proposta: dei "-" e "+" come quelli
+del pennello, i valori nella mappa): per il banco **densita', velocita',
+ampiezza**; per la nebbia estetica **densita', velocita' e direzione,
+durata, quante nuvole e ogni quanto**.
+
+- **I valori** (mapfile.js `FOG_SETTINGS`, quelli di partenza in
+  `FOG_DEFAULTS`, uguali al gioco di prima):
+  - banco: densita' 25, 50, 75, **100**%; velocita' 0 (fermo), 30, **60**,
+    120 px al secondo; ampiezza 300, **600**, 900, 1200 px per parte;
+  - estetica: densita' 25, **50**, 75, 100% (l'opacita' piu' alta delle
+    nuvole); velocita' « 60, « 30, 0, **30 »**, 60 » px al secondo (« a
+    sinistra, » a destra); durata di una nuvola 30, 60, **100**, 150, 200 s;
+    nuvole 3, **5**, 8, 12; ogni 20, **40**, 60, 90 s.
+- **La densita' del banco e la vista dei nemici**: dentro un banco un
+  nemico vede a 1 - 0,5 x densita' (100%: a meta', come prima; 50%: a tre
+  quarti; 25%: a 7/8). Vale per `fogSight` (le mappe dell'editor) e per lo
+  stealth del livello 7 (`sees`, per chi guarda e per chi e' guardato; i
+  banchi del livello sono a 100%: niente cambia). stealth.js `fogDensity`:
+  la densita' del banco piu' fitto che copre il punto. Anche le nuvole si
+  vedono in proporzione (piu' trasparenti).
+- **Nella mappa** la voce ha `fog` con le sole impostazioni diverse da
+  quelle di partenza (la convalida accetta solo i valori dell'elenco e solo
+  sulle due nebbie); nella room vanno dopo gruppo e stile (scenarioToRoom) e
+  world.js `loadRoom` le mette nell'istanza (`settings`) prima del Create:
+  il banco (stealth.js `fogBank`) e la nebbia estetica (skirmish.js
+  `skNebbia`, che le passa alle sue nuvole) le leggono. Senza impostazioni
+  tutto come prima: le mappe della schermaglia e il livello 7 non cambiano
+  (le impronte di sk_padus su 3000 passi sono quelle di main, lvl07.mjs
+  passa).
+- **Nell'editor** il riquadro delle impostazioni, di vetro, sopra il
+  pannello (tre per riga: l'etichetta, "-", il valore, "+"): in
+  "Inserisci", scelta una delle due nebbie, per quelle che si mettono; in
+  "Sposta", scelte delle nebbie, per quelle scelte della specie della prima
+  (con le gemelle; annulla e ripeti). La nebbia si vede con la sua densita';
+  il tratteggio del banco e' lungo quanto la sua ampiezza (fermo, niente);
+  quello della nebbia estetica dice fin dove arrivano le nuvole prima di
+  svanire (velocita' x durata), con la punta dalla parte verso cui vanno.
+
+Testi nuovi: "Velocita'", "Ampiezza", "Durata", "Nuvole", "Ogni" ("Densita'"
+c'era), nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': i valori di partenza uguali a quelli
+del gioco, la convalida, la room, splitGroups, la vista in proporzione alla
+densita', il riquadro e i valori come si leggono; 155 test), `editor.mjs`
+(in piu': il banco nuovo con densita' 50% e ampiezza 900, poi con "Sposta"
+la velocita' a 120 px/s e Ctrl+Z), `edstyles.mjs` (in piu': un banco a
+densita' 0,5 e veloce, il nemico dentro vede a tre quarti; la nebbia
+estetica con 8 nuvole verso sinistra), `lvl07.mjs`, `determinism.mjs`
+(sk_padus, impronte di main), screenshot (il riquadro in "Inserisci" e in
+"Sposta").
+
+### 9.207 Il menu di pausa: i cursori del volume, il contatore FPS fra le opzioni grafiche
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617), con un
+disegno su carta (dall'alto: "Obiettivi: si'", una pillola con la nota e la
+parte piena fino a una curva, una con l'altoparlante, i cerchi della lingua
+con "IT"; "stesso verde" per la parte piena e la lingua scelta): "modifica
+al menu di pausa: il contatore FPS spostarlo assieme alle opzioni grafiche,
+i pulsanti musica ed effetti sonori modificarlo in modo da farli diventare
+due slider del volume cosi' che i giocatori possano regolarlo. La parte
+"piena" dello slider deve essere dello stesso verde dell'opzione lingua
+selezionata. I simboli te li passo poi io. Opzioni grafiche spostalo sopra
+"torna al menu"".
+
+- **Il menu di pausa** ora: Riprendi, Salva e carica, Suggerimenti,
+  Obiettivi, il cursore della musica, quello degli effetti, la lingua,
+  Ricomincia livello, **Opzioni grafiche**, Torna al menu (online: senza
+  salvataggi ne' Ricomincia, Opzioni grafiche sopra "Lascia la partita").
+- **I cursori** (pause.js `_slider`): la pillola bianca dei pulsanti, piena
+  da sinistra fino al volume del verde della lingua scelta (GREEN, alla
+  stessa trasparenza), con la curva del bordo arrotondato come nel disegno;
+  a 0 vuoti, col simbolo piu' chiaro. Si prendono e si trascinano (o un
+  clic dove si vuole), a passi del 5%; il volume segue subito, si salva
+  lasciando il tasto; lasciando quello degli effetti si sente il clic al
+  volume nuovo. **I simboli** sono quelli dell'autore (mandati dopo, PNG
+  neri da 48 px: `nuovi/sprites/vol_musica.png`, `vol_effetti.png`; in
+  nuovi.json `ico_vol_music` e `ico_vol_sfx`, bianchi come le icone
+  dell'editor, tinti dal menu): neri, e **grigi quando il loro volume e' a
+  0** (richiesta dell'autore). Quelli a linee che avevo disegnato nel
+  frattempo restano solo se mancassero.
+- **I volumi** (settings.js `musicVolume`, `sfxVolume`, 0-1, di partenza 1)
+  al posto degli interruttori `music` e `sfx`: chi li aveva spenti li trova
+  a 0. Nell'audio (audio.js `setMusicVolume`, `setSfxVolume`) il guadagno e'
+  il quadrato della posizione (l'orecchio sente cosi'), sul volume
+  generale degli effetti e su quello della musica; a 0 come spenti (niente
+  suoni continui, la musica si ferma).
+- **Il contatore FPS** e' fra le opzioni grafiche, in fondo, sopra il limite
+  degli FPS.
+
+Prove (anche dopo le icone: atlas rifatto, screenshot della musica al 60%
+con la nota nera e degli effetti a 0 con l'altoparlante grigio): `pausevol.mjs` (nuova, nella CI: un'opzione salvata con la musica
+spenta diventa 0; l'ordine del menu; la musica trascinata al 70%, un clic
+sugli effetti al 30%, salvati e uguali dopo aver ricaricato; il contatore FPS
+fra le opzioni grafiche, che si accende), test unitari; screenshot (la pausa
+coi due cursori, le opzioni grafiche).
+
+Dopo, in CI (PR #27, commit 68fff1e): `pausevol.mjs` e' fallita una volta
+con la musica a 0,3 invece di 0,7, cioe' al valore del clic sugli effetti.
+Era la prova: aspettava tempi fissi (60-200 ms) fra un evento del mouse e
+l'altro, e in CI un fotogramma puo' durarne centinaia; la fine del
+trascinamento e il clic sugli effetti finivano letti insieme, col cursore
+della musica ancora preso. Ora, come `editor.mjs` e `skcustom.mjs`, dopo
+ogni azione del mouse e della tastiera aspetta che la pagina abbia letto
+l'input (`reads`). Qui non si riproduce nemmeno con la CPU rallentata di 8
+volte; passa.
+
+### 9.208 Il menu principale: il tutorial in "Giocatore singolo", l'editor nella colonna del titolo
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "menu
+principale: mettiamo "gioca il tutorial" in "giocatore singolo" in prima
+posizione sopra campagna, editor di mappe invece mettiamo nella schermata
+principale in fondo".
+
+Le pagine della colonna (menu.js `MENU_PAGES`, §9.157):
+- **il titolo**: "Giocatore singolo", "Multigiocatore", "Carica partita",
+  "Editor di mappe" (in fondo; prima: "Gioca il tutorial", "Giocatore
+  singolo", "Multigiocatore", "Carica partita");
+- **"Giocatore singolo"**: "Gioca il tutorial", "Campagna - Collapse",
+  "Schermaglia" (prima: campagna, schermaglia, editor di mappe);
+- "Multigiocatore" come prima.
+Sempre quattro pulsanti nel titolo: il logo resta dove stava. Nessun testo
+nuovo.
+
+Le prove che passano dal menu cliccano per posizione: aggiornate
+(`editor.mjs`: l'editor e' il quarto del titolo; `skcustom.mjs`: "Giocatore
+singolo" il primo, "Schermaglia" il terzo, "Multigiocatore" il secondo;
+`rtc.mjs`, `netmap.mjs`: "Multigiocatore" il secondo; `ui.mjs`: le pagine).
+Passate: `editor.mjs`, `skcustom.mjs`, `rtc.mjs`, `netmap.mjs`, `ui.mjs`
+(it, de: nessun problema); screenshot delle due colonne.
+
+### 9.209 Livello 7: i nemici si vedono con la vista dell'arciere; l'arciere che insegue
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "Correzioni
+da fare al lvl7: gli edifici e personaggi nemici devono rivelarsi in accordo
+con la vista allargata dell'arciere, altrimenti è come se comparissero dal
+nulla. L'arciere del lvl7 ha anche un problema di engage dei nemici in fase
+di attacco, se si allontanano capita che si inceppi (animazione della
+camminata ma omino fermo) e non li segua o che si rifiuti di attaccarli.
+Indaga e risolvi".
+
+**La vista.** La nebbia di guerra si apre attorno all'arciere della nebbia
+con la sua ellisse allargata (fog.js `shapeOf`, `ST.sight` 1,5: 600 x 360 px
+di giorno, meno di notte), ma i nemici si mostravano con la regola di sempre:
+un'unita' alleata entro 150 px (300 di giorno) dalla loro sagoma, 200 (400)
+per gli edifici. Fra 300 e 600 px il terreno era scoperto e il nemico
+invisibile: compariva dal nulla avvicinandosi. Ora (fog.js `inHunterSight`)
+un nemico, unita' o edificio, la cui sagoma tocca l'ellisse di un arciere
+della nebbia e' visibile: in `seenNear` (unita', edifici, lavoratori,
+macchine nemiche) e in civilians.js `reveal` (i civili e le risorse). Solo
+con lo stealth acceso (livello 7, prova della nebbia); altrove nulla cambia.
+
+**L'inseguimento**, riprodotto nel browser sulla mappa del livello 7 (un
+picchiere della pattuglia della cima che, dopo il clic destro, se ne va):
+1. *si rifiuta*: con la linea di tiro coperta (una casa, un bosco) e nessun
+   punto di tiro entro il guinzaglio, l'arciere si fermava; appena il
+   bersaglio usciva di gittata, fuori dai 200 px di `comp` lo dimenticava
+   (`stopHere`, niente piu' ordine). Lo stesso se usciva di gittata mentre
+   caricava il tiro;
+2. *cammina sul posto*: ordine su un bersaglio oltre la gittata (900 px):
+   l'arciere va al punto cliccato; entro 500 px da li' il passo era verso il
+   nemico PIU' VICINO, e solo se entro 800 px; il bersaglio intanto se n'era
+   andato: azione "in cammino", animazione della camminata, nessun passo
+   (394 passi di fila nella prova, finche' il timer fermati non scadeva);
+3. *dietro le mura*: il percorso si cercava nel campo dell'ordine, calcolato
+   dal bersaglio: la meta restava dentro le mura, la cella dell'arciere non
+   aveva direzione e camminava sul posto;
+4. il tiro furtivo (2 s di caricamento) su un nemico che si allontana usciva
+   di gittata a ogni caricamento; e la freccia mirava dov'era il bersaglio:
+   uno che camminava di lato non veniva colpito (col rapido, quattro frecce
+   a vuoto su quattro).
+
+Ora l'arciere della nebbia con un bersaglio scelto (ranged.js `huntOrder`,
+`huntChase`; gli altri arcieri come prima):
+- lo insegue finche' e' vivo: a tiro e in linea tira; coperto cerca un punto
+  di tiro (§6.4) e, se non c'e', si avvicina; fuori tiro gli va dietro; il
+  percorso si rifa' quando il bersaglio si e' spostato di 64 px;
+- se non lo vede piu' va dove l'ha visto l'ultima volta e li' lo lascia;
+- il percorso cerca la meta fra le celle raggiungibili da lui (se dalla meta
+  dell'ordine non si arriva all'arciere, prima il campo calcolato da lui):
+  dietro le mura si ferma alla cella piu' vicina o lascia perdere;
+- in cammino senza avanzare (16 px in 90 passi) o arrivato senza poter
+  tirare: si ferma e aspetta che il bersaglio si sposti, senza camminare sul
+  posto; la meta accanto al bersaglio non torna piu' indietro verso
+  l'arciere (`destination`, che la spostava di 64 px a passo finche' non era
+  libera: occupata dal bersaglio stesso o da alberi, anche fin quasi a lui);
+- il caricamento comincia solo se allo scocco il bersaglio sara' ancora a
+  tiro (col passo che ha) e non si annulla finche' resta entro 1,25 volte la
+  gittata (la freccia vola oltre: 660 px, 900 la furtiva);
+- la freccia mira dove sara' il bersaglio quando arriva (lo spostamento
+  dell'ultimo passo, al piu' 8 px, per i passi di volo a 20 px per passo).
+
+Prove: `hunter.mjs` (nuova, in CI): la vista (fante a 450 px visibile, a 900
+no, edificio a 450 visibile); l'inseguimento col furtivo da 900 px e col
+rapido da 750, il picchiere che va a sud: lo segue (1400 px), lo uccide, al
+piu' un passo di fila "in cammino" senza muoversi; il fante dietro le mura:
+nessuna camminata sul posto. Sul codice di prima falliscono vista, furtivo e
+rapido. Passate anche `lvl07.mjs`, `stealth.mjs`, i test (155) e le impronte
+di `determinism.mjs` su sk_padus (uguali a main).
+
+### 9.210 Le icone dei pulsanti del tiro dell'arciere della nebbia
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617), con due
+disegni caricati: "per il tiro multiplo dell'arciere usa queste frecce
+incrociate, per quello preciso quella del mirino".
+
+I due pulsanti accanto ad attacco e difesa (stealth.js `shotClicker`,
+§9.148) avevano, in attesa delle icone, la lettera della scorciatoia (F, R).
+Ora:
+- **tiro furtivo** (il preciso): il mirino (`nuovi/sprites/tiro_preciso.png`,
+  sprite `ico_tiro_furtivo`, 50 px);
+- **tiro rapido** (il multiplo): le frecce incrociate
+  (`nuovi/sprites/tiro_multiplo.png`, sprite `ico_tiro_rapido`, 64 px).
+Come i simboli del volume (§9.207): in nuovi.json bianchi pieni, tinti nel
+disegno; il lato piu' lungo a 36 px nel cerchio (raggio 30). Se l'atlas non
+le avesse, la lettera di prima. I nomi dei modi ("Tiro furtivo", "Tiro
+rapido") e le scorciatoie non cambiano.
+
+Il pulsante, dopo una seconda indicazione dell'autore ("non devono avere
+fondo nero vuoto, ma fondo bianco come le altre icone, e devono diventare
+verdi scuro quando selezionate, guarda i due pulsanti a sinistra come
+funzionano"): come attacco e difesa (units.js `unitPanel`), il cerchio
+bianco pieno (opacita' 0,69, 0,99 sotto il mouse) con l'icona nera al 70%
+(l'alpha delle icone dell'originale, 179/255); il modo scelto col cerchio
+verde scuro pieno, rgb(46,125,50) (la stessa famiglia del verde della lingua
+scelta, rgb(76,175,80)), e l'icona bianca. Prima di questa: il modo scelto
+col cerchio bianco pieno e l'icona nera, l'altro col cerchio vuoto e
+l'icona bianca.
+
+Prove: atlas ricostruito (tools/05_atlas.py); screenshot dei due stati nel
+livello 7; `hunter.mjs` controlla che le due icone siano nell'atlas.
+
+### 9.211 Livello 7: i pali con la fiamma si mostrano quando l'arciere li vede
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "i pali
+che fanno da indicazione (quelli con la fiamma sopra) si "sbloccano" a
+livello di visualizzazione solo quando l'arciere li vede fisicamente,
+altrimenti è una sorta di spoiler del percorso da seguire per finire il
+livello".
+
+Prima i 22 pali (`palo_1`, props.js) della mappa del livello 7 si vedevano
+tutti dall'inizio e, come nell'originale, erano fonti di vista: la nebbia
+attorno a ognuno era scoperta (nella view e nella minimappa, con le
+montagne e i picchieri delle pattuglie vicini, che col palo entro 200 px si
+vedono: enemies.js `T.palo`), e la loro torcia illuminava la notte. La
+strada era tutta segnata.
+
+Ora (lvl07.js, all'avvio: props.js `veilPalo`) ogni palo parte **velato**:
+- non si disegnano ne' il palo ne' la sua torcia (`visible`), che non manda
+  fiamme (effects.js `fireStarterStep`) ne' luce di notte (fog.js
+  `nightLights`);
+- non e' una fonte di vista (fog.js `fogSources`): niente nebbia scoperta
+  attorno, nemmeno nella minimappa;
+- non fa vedere i picchieri vicini (fog.js `seenNear`, solo finche'
+  `g.paliVeiled` > 0, cioe' nel livello 7).
+Si **svela** per sempre (props.js `unveilPalo`, nello Step del palo) quando
+il suo riquadro entra nella vista di un'unita' o di un edificio alleato (o
+di una statua attiva): le stesse ellissi della nebbia (fog.js
+`seenByAllies`), quindi quella allargata dell'arciere. Non quelle degli
+altri pali, che li avrebbero svelati a catena. Da svelato e' il palo di
+prima. Il palo piu' in alto resta la meta della vittoria.
+
+All'inizio se ne vedono 1 su 22: quello accanto alla statua
+`o_statua1_real` in basso a sinistra, che e' un edificio alleato e scopre la
+sua zona fin dall'inizio (come prima). Negli altri livelli nulla cambia
+(i globali ripartono a ogni livello: `paliVeiled` non c'e').
+
+Prove: `hunter.mjs`, il caso nuovo "pali" (21 velati su 22 all'inizio,
+invisibili con la torcia e con la nebbia coperta; l'arciere vicino a uno lo
+svela, la nebbia attorno si scopre; uno lontano resta velato). Nei casi
+dell'inseguimento i pali si svelano prima (strada gia' scoperta): a 900 px,
+coi pali velati, il picchiere e' nella nebbia nera e l'arciere va dove l'ha
+visto e lascia perdere (§9.209), giusto ma non piu' il caso da provare.
+Passate anche `lvl07.mjs`, `stealth.mjs`, `saves.mjs` (lvl07: ripristino
+identico), i test (155) e le impronte di `determinism.mjs` su sk_padus
+(uguali a main). Screenshot della partenza: la minimappa prima e dopo.
+
+### 9.212 Volumi: la zappa al campo piu' bassa, corno e "risorse" piu' alti
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617):
+"Regolazione volumi effetti: abbassiamo un po' la zappa (solo quando usata
+per il campo di grano) alziamo il corno e il suono per quando non ci sono
+abbastanza risorse per compiere un'azione".
+
+- **La zappa al campo di grano**: il colpo del contadino che raccoglie
+  (civilians.js, azione 4) suona al 60% (`FIELD_HOE_VOL`, -4,4 dB). Lo
+  stesso suono `zappa` fa anche le frecce che colpiscono (`ARROW_HIT_VOL`
+  0,7, ranged.js), il fuoco appiccato (effects.js `fireFlare`) e la
+  macchina d'assedio che colpisce (siege.js): restano come prima, quindi il
+  gain della voce (0,35) non cambia.
+- **Il corno di guerra** (attackalarm.js, un attacco nuovo fuori dalla
+  vista): gain da 0,17 a 0,30 (+5 dB, ~ -27 dB nei primi 500 ms).
+- **"Risorse"** (mancano risorse o popolazione per un pulsante, il codice
+  del lucchetto sbagliato, la produzione ferma per la popolazione): gain da
+  0,13 a 0,24 (+5 dB, ~ -23 dB).
+I gain in nuovi/audio/audio.json (tools/18_audio.py li copia in
+game/assets/audio/audio.json; i file mp3 non cambiano), con la nota di ogni
+voce aggiornata.
+
+Prove: nel browser un contadino a un campo su sk_padus, le chiamate audio
+registrate: 19 colpi di `zappa`, tutti a 0,6. I test (155).

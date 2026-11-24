@@ -80,7 +80,7 @@ await A.evaluate(async () => {
 });
 
 const createOnUserMap = async () => {
-  if (!(await clickUntil(A, W / 2, colY(4, 2), async () => (await menuOf(A))?.page === "multi"))) { fail.push("A: Multiplayer"); return false; }
+  if (!(await clickUntil(A, W / 2, colY(4, 1), async () => (await menuOf(A))?.page === "multi"))) { fail.push("A: Multiplayer"); return false; }
   if (!(await clickUntil(A, W / 2, colY(2, 0), async () => { const m = await menuOf(A); return m?.skmenu === 1 && m.skNet && m.n === 1; }))) { fail.push("A: Create game senza la mappa dell'editor"); return false; }
   // la mappa dell'editor: a sinistra della prima
   const L = await A.evaluate(([w, h]) => window.__game.skLayout(w, h, true), [W, H]);
@@ -96,7 +96,7 @@ const createOnUserMap = async () => {
   return until(A, () => (document.querySelector('textarea[data-net="code"]') || {}).value?.length > 100, null, 30000, "A: niente codice");
 };
 const joinWith = async (offer) => {
-  if (!(await clickUntil(B, W / 2, colY(4, 2), async () => (await menuOf(B))?.page === "multi"))) { fail.push("B: Multiplayer"); return null; }
+  if (!(await clickUntil(B, W / 2, colY(4, 1), async () => (await menuOf(B))?.page === "multi"))) { fail.push("B: Multiplayer"); return null; }
   if (!(await clickUntil(B, W / 2, colY(2, 1), async () => !!(await B.$(".net-panel"))))) { fail.push("B: Join game"); return null; }
   await B.fill('textarea[data-net="join-code"]', offer);
   if (!(await until(B, () => !document.querySelector('[data-net="join"]').disabled, null, 20000, "B: il codice non e' accettato"))) return null;

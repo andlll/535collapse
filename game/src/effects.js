@@ -535,6 +535,7 @@ export function fireStarterCreate(i, w, small) {
 }
 
 export function fireStarterStep(i, w) {
+  if (i.veiled) { P(w).stream(i.fire_emitter, i.fire_part, 0); return; } // §9.211: la torcia del palo velato
   const cam = w.cam, inView = cam && i.x > cam.x && i.x < cam.x + cam.w && i.y > cam.y && i.y < cam.y + cam.h;
   // && cortocircuitato come in GML: l'alleato piu' vicino si cerca solo per
   // i bracieri nella view. distance_to_object(instance_nearest(x,y,ally)):
@@ -600,12 +601,15 @@ Object.assign(DECOR, {
 const DECOR_SIZE = { fiori_papaveri: [200, 125], fiori_papaveri_erba: [200, 125], fiori_gialli_erba: [200, 125],
                      fiori_prato: [200, 125] };
 export const DECOR_OBJECTS = Object.keys(DECOR);
+// i semiassi dell'ellisse di una macchia (§9.203: le foto della tavolozza
+// dell'editor, tools/19_natura.mjs)
+export const decorSize = (name) => DECOR_SIZE[name] || [500, 300];
 
 export function decorCreate(i, w) {
   i.sprite_index = null;
   const ps = P(w).systemCreate(-1, "grass");
   const em = P(w).emitterCreate(ps);
-  const [rx, ry] = DECOR_SIZE[i.object] || [500, 300];
+  const [rx, ry] = decorSize(i.object);
   P(w).region(em, i.x - rx, i.x + rx, i.y - ry, i.y + ry, "ellipse", "gaussian");
   // i gruppi in ordine sparso (l'ordine di nascita e' quello di disegno:
   // a gruppi, i verdi chiari stavano tutti sopra gli scuri)

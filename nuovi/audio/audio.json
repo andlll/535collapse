@@ -49,7 +49,7 @@
       "filtro": "highpass=f=80:poles=2",
       "dissolvenza_ms": [2, 80],
       "gain": 0.35,
-      "nota": "il colpo di zappa del contadino al campo (civilians.js otherWorkTick, la raccolta: una volta per ciclo di 39 passi, come l'ascia; non dei contadini nemici nella nebbia; §9.168). Dalla registrazione dei passi sull'erba (4,6 s, mono in due canali): 14 passi ogni ~320 ms; i primi sei sono colpi singoli e sordi (picchi -22..-36 dB), dai 2 s in poi piu' forti e spesso doppi (tacco e punta, 15-20 ms l'uno dall'altro): la 'sequenza rapida' da lasciare. Tre dei primi, quelli puliti: 130, 786 e 1402 ms (attacchi a 136, 792, 1408), 150 ms l'uno (il passo dura 35-60 ms piu' la coda); scartato quello a 464 (debole e doppio: portato a -3 dB alzava il fruscio di fondo di 23 dB). Passa-alto leggero a 80 Hz (12 dB/ottava) contro il rombo. Gain 0,35: ~ -32 dB nei primi 150 ms, appena sotto ascia e piccone (-30..-32), un colpo nella terra"
+      "nota": "il colpo di zappa del contadino al campo (civilians.js otherWorkTick, la raccolta: una volta per ciclo di 39 passi, come l'ascia; non dei contadini nemici nella nebbia; §9.168). Dalla registrazione dei passi sull'erba (4,6 s, mono in due canali): 14 passi ogni ~320 ms; i primi sei sono colpi singoli e sordi (picchi -22..-36 dB), dai 2 s in poi piu' forti e spesso doppi (tacco e punta, 15-20 ms l'uno dall'altro): la 'sequenza rapida' da lasciare. Tre dei primi, quelli puliti: 130, 786 e 1402 ms (attacchi a 136, 792, 1408), 150 ms l'uno (il passo dura 35-60 ms piu' la coda); scartato quello a 464 (debole e doppio: portato a -3 dB alzava il fruscio di fondo di 23 dB). Passa-alto leggero a 80 Hz (12 dB/ottava) contro il rombo. Gain 0,35: ~ -32 dB nei primi 150 ms, appena sotto ascia e piccone (-30..-32), un colpo nella terra. [§9.212, richiesta dell'autore] al campo di grano piu' basso, al 60% (-4,4 dB: civilians.js FIELD_HOE_VOL); le frecce che colpiscono e il fuoco appiccato come prima"
     },
     "catapulta": {
       "da": "catapulta.mp3",
@@ -100,8 +100,8 @@
       "dissolvenza_ms": [5, 2500],
       "tempo": 1.3,
       "altezza": 0,
-      "gain": 0.17,
-      "nota": "il corno di guerra: un attacco nuovo fuori dalla vista (attackalarm.js raiseAlarm, quando nascono gli anelli sulla minimappa), al piu' uno ogni 30 s, senza posizione; §9.170. Da Freesound (newagesoup, 'big reverb warhorn', WAV 48 kHz 24 bit, 13,6 s): il corno da 0,2 a 2,4 s (-10 dB), poi il riverbero che scende a -45 dB a 6 s e a -93 a 12. Solo energia fra 40 e 1200 Hz (scuro: e' il suo carattere). Smorzato e accelerato (l'autore): da 0,15 a 6 s con il riverbero sfumato negli ultimi 2,5 s, poi 1,3 volte piu' veloce senza cambiare altezza (atempo: resta scuro): 4,5 s invece di 13,6. Mono. Gain 0,17: ~ -32 dB nei primi 500 ms, sotto la musica"
+      "gain": 0.3,
+      "nota": "il corno di guerra: un attacco nuovo fuori dalla vista (attackalarm.js raiseAlarm, quando nascono gli anelli sulla minimappa), al piu' uno ogni 30 s, senza posizione; §9.170. Da Freesound (newagesoup, 'big reverb warhorn', WAV 48 kHz 24 bit, 13,6 s): il corno da 0,2 a 2,4 s (-10 dB), poi il riverbero che scende a -45 dB a 6 s e a -93 a 12. Solo energia fra 40 e 1200 Hz (scuro: e' il suo carattere). Smorzato e accelerato (l'autore): da 0,15 a 6 s con il riverbero sfumato negli ultimi 2,5 s, poi 1,3 volte piu' veloce senza cambiare altezza (atempo: resta scuro): 4,5 s invece di 13,6. Mono. Gain 0,17: ~ -32 dB nei primi 500 ms, sotto la musica. [§9.212, richiesta dell'autore] alzato a 0,30 (+5 dB, ~ -27 dB): si sentiva poco"
     },
     "zoccoli": {
       "da": "cavalli.mp3",
@@ -142,8 +142,8 @@
       "tagli": [[0, 320]],
       "altezza": 0,
       "dissolvenza_ms": [2, 60],
-      "gain": 0.13,
-      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; §9.171); e la produzione pronta ferma per la popolazione (centro, caserma, stalla, castello), una volta sola quando comincia a lampeggiare, non a ogni nuovo tentativo (buildings.js popHeld, §9.173); non gli altri lampeggi automatici (riparazione, ponte senza legno). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB"
+      "gain": 0.24,
+      "nota": "risorse (o popolazione) che mancano quando il giocatore preme un pulsante (costruzione, produzione, il civile, la porta, i prolungamenti delle mura) o sbaglia il codice del lucchetto (audio.js ui; §9.171); e la produzione pronta ferma per la popolazione (centro, caserma, stalla, castello), una volta sola quando comincia a lampeggiare, non a ogni nuovo tentativo (buildings.js popHeld, §9.173); non gli altri lampeggi automatici (riparazione, ponte senza legno). Suono dell'autore (no_resour.wav, 32 kHz, 0,54 s; finisce a 0,3): il tratto da 0 a 0,32 s cosi' com'e'. E' un tono a 46 Hz (armoniche a 93 e 143 Hz, -23 dB): su altoparlanti piccoli (portatili, telefoni) si sente appena. Gain 0,13: ~ -28 dB. [§9.212, richiesta dell'autore] alzato a 0,24 (+5 dB, ~ -23 dB)"
     },
     "cancello": {
       "da": "chain_door.mp3",

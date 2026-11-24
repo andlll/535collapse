@@ -70,15 +70,16 @@ import { SK_MAPS, SK_OPTIONS, loadSkirmish } from "./skirmish.js";
 import { skForMap } from "./skuser.js";
 import { NetPanel } from "./netui.js";
 import { setDomText } from "./domtext.js";
-import { audio } from "./audio.js";
 import { glowText } from "./menu.js";
+import { glassBackdrop } from "./glass.js"; // §9.203
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
-         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens } from "./mapfile.js";
+         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart, FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
-         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE } from "./editmap.js";
+         mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark,
+         FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
-import { ISO } from "./rivers.js";
+import { ISO, riverGeometry } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -180,6 +181,9 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
                              "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.", "Red side (S: blue)", "Blue side (S: red)", "Units",
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
+                             "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
+                             "Trees removed from the river: {n}", // §9.204
+                             "Speed", "Range", "Duration", "Clouds", "Every", // §9.206: la nebbia
                              "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
@@ -220,6 +224,9 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
 // parte che si vede hanno hidden e non si toccano.
 const COL_MIN = 0.8, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti: a 900 px stanno ancora tutti)
+// (§9.203: la freccia della schermaglia, alta come quelle della mappa, menu.js
+// arrow con r 22, poi il 40% piu' piccola: richiesta dell'autore)
+const COL_ARROW_SCALE = ((22 * 0.45 * 2.6) / 24) * 0.6;
 export function editorLayout(W, H, scroll = 0) {
   const n = TOOLS.length + EDITS.length + ACTIONS.length;
   const full = 2 * COL.pad + n * COL.btn + (n - 3) * COL.gap + 2 * COL.sep; // (§9.195: tre gruppi, due lineette)
@@ -262,6 +269,7 @@ export function hitTest(L, mx, my) {
   if (L.down && L.scroll < L.maxScroll && dhypot(mx - L.down[0], my - L.down[1]) <= L.down[2] + 4) return { kind: "colscroll", key: "down", dir: 1 };
   if (dhypot(mx - L.back[0], my - L.back[1]) <= L.back[2]) return { kind: "back", key: "back" };
   if (inRect(mx, my, L.col) || inRect(mx, my, L.panel)) return { kind: "ui", key: null };
+  for (const R of L.extra || []) if (inRect(mx, my, R)) return { kind: "ui", key: null }; // §9.206: il riquadro della nebbia
   return null;
 }
 
@@ -278,6 +286,8 @@ export const NEED_SIDES = "A skirmish map needs a red and a blue starting positi
 export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)" };
 // [§9.194] le mura: la parte e S che le gira di 90 gradi
 export const WALL_HINT = { red: "Red side (S: horizontal / vertical)", blue: "Blue side (S: horizontal / vertical)" };
+// [§9.203] la casa: la parte e S che ne cambia lo stile
+export const HOME_HINT = { red: "Red side (S: style {i}/{n})", blue: "Blue side (S: style {i}/{n})" };
 function drawIcon(d, key, x, y, s, ink) {
   // [§9.198, richiesta dell'autore] le icone disegnate dall'autore (PNG,
   // nuovi.json: ico_ed_*, bianche), tinte col colore del segno; dove non
@@ -469,6 +479,30 @@ export function brushLayout(panel) {
   return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
 }
 
+// [§9.206, richiesta dell'autore] Le impostazioni della nebbia (mapfile.js
+// FOG_SETTINGS) in un riquadro di vetro sopra il pannello, quando una nebbia
+// e' scelta in "Inserisci" (quelle nuove) o con "Sposta" (quelle scelte):
+// per ognuna l'etichetta, "-", il valore e "+", tre per riga
+export const FOG_LABEL = { density: "Density", speed: "Speed", range: "Range", life: "Duration", count: "Clouds", every: "Every" };
+export function fogLayout(panel, object) {
+  const [x1, y1, x2] = panel, keys = Object.keys(FOG_SETTINGS[object]), per = 3, gw = (x2 - x1 - 40) / per;
+  const rows = Math.ceil(keys.length / per), h = 24 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
+  const groups = keys.map((key, k) => {
+    const x = x1 + 20 + (k % per) * gw, cy = box[1] + 32 + Math.floor(k / per) * 40;
+    return { key, label: [x + 12, cy], minus: [x + gw - 132, cy, 14], value: [x + gw - 82, cy], plus: [x + gw - 32, cy, 14] };
+  });
+  return { box, groups };
+}
+// il valore come si legge: la densita' in %, le velocita' in px al secondo
+// (« a sinistra, » a destra: il banco va e viene), l'ampiezza in px, i tempi in s
+export function fogValue(object, key, v) {
+  if (key === "density") return Math.round(v * 100) + "%";
+  if (key === "speed") { const p = Math.round(Math.abs(v) * 60); return object === "nebbia_banco" || !v ? String(p) : v < 0 ? "« " + p : p + " »"; }
+  if (key === "range") return v + " px";
+  if (key === "life" || key === "every") return v + " s";
+  return String(v);
+}
+
 // [§9.187] La polilinea: fiumi e strade (le due di §9.97, la marcata e la
 // secondaria) disegnati punto per punto, come le polilinee di Tiled; i ponti
 // no, per ora (decisione dell'autore). Larghezza e larghezza finale (px,
@@ -503,11 +537,15 @@ export function symLayout(panel) {
   return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
 }
 
+// [§9.203] la foto di una macchia a particelle (nuovi.json, tools/19_natura.mjs)
+export const naturaSprite = (name) => "ed_natura_" + name;
+
 // Il colore di una macchia senza sprite nella tavolozza e nei segnaposto
 // (BGR): erba, grano, fili d'erba, fiori
 const DECOR_TINT = { burst_erba1: [0x3c7a46], burst_grano1: [0x4fb0c8], chiazzaparticellare: [0x5a8a6a],
                      fiori_prato: [0x3030d0, 0x30d0e0, 0xe0e0f0], fiori_papaveri: [0x2020c8], fiori_papaveri_erba: [0x2020c8, 0x3c7a46],
-                     fiori_gialli_erba: [0x30d0e0, 0x3c7a46] };
+                     fiori_gialli_erba: [0x30d0e0, 0x3c7a46],
+                     sk_nebbia: [0xe8e8e8], nebbia_banco: [0x909090] }; // §9.205: la nebbia
 
 // ------------------------------------------------------------- l'editor
 
@@ -544,6 +582,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.195] la parte che si vede in Unita' ed Edifici
                sideFilter: "red",
                colScroll: 0, // [§9.196] la colonna che scorre (schermi bassi)
+               // [§9.206] le impostazioni della nebbia nuova (Inserisci) e il "-" o "+" sotto il puntatore
+               fogSet: Object.fromEntries(Object.entries(FOG_DEFAULTS).map(([k, v]) => [k, { ...v }])), fogHover: null,
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -575,7 +615,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   view.centre(scene.map.width / 2, scene.map.height / 2);
 
   const toMenu = () => { location.search = "?room=menu"; };
-  const clic = () => audio.ui("clic"); // §9.168
+  // ([§9.203, richiesta dell'autore] nell'editor niente clic dei pulsanti,
+  // §9.168: "diventa fastidioso dopo un po' in un ambiente silenzioso come
+  // quello dell'editor")
   const dirty = () => scene.version !== ed.saved || ed.meta;
   const markSaved = () => { ed.saved = scene.version; ed.meta = false; };
   // [§9.182] prima di perdere le modifiche, la conferma
@@ -681,7 +723,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // [§9.191] una partenza per parte: si possono aggiungere le partenze di
   // `list` (voci), togliendo prima quelle di `minus`?
   const canStart = (list, minus = []) => SIDES.every((side) => {
-    const n = (l) => l.filter((e) => e.object === START && e.side === side).length;
+    const n = (l) => l.filter((e) => isStart(e) && e.side === side).length; // (§9.203: i municipi no)
     return scene.starts(side) - n(minus) + n(list) <= 1;
   });
   const ONE_START = "Each side has one starting position.";
@@ -692,6 +734,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const e = { object: st.object, x: Math.round(x), y: Math.round(y), scale_x: 1, scale_y: 1, rotation: 0 };
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
     if (st.side) e.side = st.side; // §9.191
+    if (st.hall) e.hall = true; // §9.203: un municipio, non una partenza
+    if (FOG_SETTINGS[st.object]) { const f = fogDiff(st.object, ed.fogSet[st.object]); if (f) e.fog = f; } // §9.206
     const t = scene.twinAt(e, symMode());
     return t ? [e, t] : [e];
   };
@@ -722,12 +766,44 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (!canStart(list.map((e) => ({ ...e, ...next(e) })), list)) { toast(tr(ONE_START), "warning"); return; }
       scene.modify(list, (e) => {
         const st = next(e);
-        return st.side ? { object: st.object, side: st.side } : st.sprite ? { object: st.object, sprite: st.sprite } : { object: st.object };
+        // ([§9.203] la casa: lo stile nel suo schieramento)
+        return { object: st.object, ...(st.side ? { side: st.side } : {}), ...(st.sprite ? { sprite: st.sprite } : {}) };
       });
     }
   };
   const selected = () => [...ed.sel].filter((e) => scene.instOf(e));
   const tidySel = () => { for (const e of ed.sel) if (!scene.instOf(e)) ed.sel.delete(e); };
+  // [§9.206] la nebbia di cui il riquadro mostra le impostazioni: quella
+  // scelta in "Inserisci" (le nuove) o le voci di nebbia scelte con "Sposta"
+  // (della specie della prima, con le gemelle), o null
+  const fogTarget = () => {
+    if (ed.tool === "insert" && ed.pick && !ed.wall) {
+      const o = pickedStyle().object;
+      return FOG_SETTINGS[o] ? { object: o, values: ed.fogSet[o], list: null } : null;
+    }
+    if (ed.tool === "select" && !ed.move && !ed.box) {
+      const first = selected().find((e) => FOG_SETTINGS[e.object]);
+      if (!first) return null;
+      return { object: first.object, values: fogOf(first), list: scene.withTwins(selected().filter((e) => e.object === first.object), symMode()) };
+    }
+    return null;
+  };
+  // la disposizione, col riquadro della nebbia se c'e' (il puntatore li' non tocca la mappa)
+  const layoutNow = () => {
+    const L = editorLayout(view.cssW, view.cssH, ed.colScroll), F = fogTarget();
+    if (F) L.extra = [fogLayout(L.panel, F.object).box];
+    return L;
+  };
+  // un'impostazione un passo avanti o indietro: per le nebbie nuove, o (con
+  // annulla) per quelle scelte
+  const setFog = (F, key, dir) => {
+    const vals = FOG_SETTINGS[F.object][key], cur = F.values[key];
+    const at = vals.indexOf(cur) >= 0 ? vals.indexOf(cur) : vals.reduce((b, v, k) => (Math.abs(v - cur) < Math.abs(vals[b] - cur) ? k : b), 0);
+    const nv = vals[Math.max(0, Math.min(vals.length - 1, at + dir))];
+    if (nv === cur) return;
+    if (!F.list) { ed.fogSet[F.object][key] = nv; return; }
+    scene.modify(F.list, (e) => ({ fog: fogDiff(e.object, { ...fogOf(e), [key]: nv }) || undefined }));
+  };
   const copy = () => {
     const list = selected();
     if (!list.length) return;
@@ -760,7 +836,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!ed.clip) return;
     let list = ed.clip.map((e) => ({ ...e, x: Math.round(x + e.x), y: Math.round(y + e.y) }));
     list = list.concat(list.map((e) => scene.twinAt(e, symMode())).filter(Boolean)); // §9.184: con la simmetria, le gemelle
-    if (!canStart(list)) { list = list.filter((e) => e.object !== START); toast(tr(ONE_START), "warning"); } // §9.191
+    if (!canStart(list)) { list = list.filter((e) => !isStart(e)); toast(tr(ONE_START), "warning"); } // §9.191
     if (!list.length) return;
     scene.add(list);
     ed.sel = new Set(list);
@@ -898,7 +974,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const t = { ...e, pts: mirrorPts(e.pts) };
       if (!t.pts.every(([x, y], k) => Math.abs(x - e.pts[k][0]) <= 1 && Math.abs(y - e.pts[k][1]) <= 1)) list.push(t);
     }
-    scene.addFeatures(key, list);
+    // [§9.204, richiesta dell'autore] il fiume finito toglie gli alberi coi
+    // piedi nell'acqua (anche quelli della gemella): un passo solo da annullare
+    if (key === "rivers") {
+      scene.begin();
+      scene.addFeatures(key, list);
+      const trees = scene.treesInRivers(list);
+      if (trees.length) scene.remove(trees);
+      scene.end();
+      tidySel();
+      if (trees.length) toast(tr("Trees removed from the river: {n}", { n: trees.length }));
+    } else scene.addFeatures(key, list);
     ed.lsel = { key, e, vi: null };
   };
   const linePick = (x, y) => {
@@ -1153,7 +1239,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const step = () => {
     input.beginStep();
     if (ed.loading || ed.dom) return;
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), mx = input.x, my = input.y;
+    const W = view.cssW, H = view.cssH, L = layoutNow(), mx = input.x, my = input.y; // (§9.206: col riquadro della nebbia)
     const [rx, ry] = view.toRoom(mx, my);
     // ([§9.199] Ctrl anche se gia' lasciato, se il tasto e' stato premuto con
     // Ctrl tenuto: su una macchina lenta Ctrl+S arriva cosi')
@@ -1165,7 +1251,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       ed.confirm.hover = k >= 0 ? k : null;
       if (K(27)) { const esc = ed.confirm.esc; ed.confirm = null; if (esc) esc(); return; }
       if (input.mouseReleased[0] && k >= 0) {
-        clic();
         ed.confirm = null;
         if (B[k].action) B[k].action();
       }
@@ -1181,7 +1266,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (input.wheelStep && inRect(mx, my, O.left)) ed.open.scroll = Math.max(0, O.first + Math.sign(input.wheelStep));
       if (K(27)) { ed.open = null; return; }
       if (input.mouseReleased[0]) {
-        clic();
         const q = ed.open.hover;
         ed.open = null;
         if (q === "file") guard(openFile);
@@ -1285,7 +1369,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     // la colonna e il cerchio "Indietro"
     if (input.mouseReleased[0] && ed.hover && !ed.move && !ed.box) {
-      clic();
       const b = ed.hover;
       if (b.kind === "back") { guard(toMenu); return; }
       if (b.kind === "colscroll") { ed.colScroll = L.scroll + b.dir * L.step; return; } // §9.196
@@ -1304,7 +1387,18 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const o = symLayout(L.panel).opts.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
       if (o) {
         ed.symHover = o.mode;
-        if (input.mouseReleased[0]) { clic(); ed.sym[ed.tool] = o.mode; }
+        if (input.mouseReleased[0]) ed.sym[ed.tool] = o.mode;
+        return;
+      }
+    }
+    // [§9.206] il riquadro della nebbia: "-" e "+" delle impostazioni
+    ed.fogHover = null;
+    const FT = hit && hit.kind === "ui" ? fogTarget() : null;
+    if (FT) {
+      const FL = fogLayout(L.panel, FT.object);
+      if (inRect(mx, my, FL.box)) {
+        for (const G of FL.groups) for (const [C, sg] of [[G.minus, "-"], [G.plus, "+"]]) if (dhypot(mx - C[0], my - C[1]) <= C[2] + 4) ed.fogHover = G.key + sg;
+        if (input.mouseReleased[0] && ed.fogHover) setFog(FT, ed.fogHover.slice(0, -1), ed.fogHover.endsWith("+") ? 1 : -1);
         return;
       }
     }
@@ -1316,7 +1410,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (sideHit) {
         ed.palHover = "side";
         if (input.mouseReleased[0] && sideHit !== ed.sideFilter) {
-          clic();
           ed.sideFilter = sideHit;
           const it = ed.pick && ed.pick.cat === ed.cat ? ITEMS[ed.cat][ed.pick.i] : null;
           if (it && it.side && it.side !== sideHit) {
@@ -1329,7 +1422,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       ed.palHover = P.cells.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2])) || P.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]))
         || (P.prev && inRect(mx, my, P.prev) ? "prev" : P.next && inRect(mx, my, P.next) ? "next" : null);
       if (input.mouseReleased[0] && ed.palHover) {
-        clic();
         const q = ed.palHover;
         if (q === "prev") ed.scroll[ed.cat] = Math.max(0, P.scroll - P.per);
         else if (q === "next") ed.scroll[ed.cat] = Math.min(P.max, P.scroll + P.per);
@@ -1348,7 +1440,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const tab = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
       ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : on(B.end.minus) ? "e-" : on(B.end.plus) ? "e+" : null);
       if (input.mouseReleased[0] && ed.palHover) {
-        clic();
         const q = ed.palHover, dir = q[1] === "+" ? 1 : -1, step = (k) => Math.max(0, Math.min(LINE_WIDTHS.length - 1, k + dir));
         if (q.kind) { ed.line.kind = q.kind; ed.lsel = null; ed.drawing = null; }
         else if (ed.lsel) {
@@ -1372,7 +1463,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
       ed.palHover = on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : null;
       if (input.mouseReleased[0] && ed.palHover) {
-        clic();
         ed.erase.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, ed.erase.w + (ed.palHover === "w+" ? 1 : -1)));
       }
       return;
@@ -1384,7 +1474,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : ed.brush.kind === "forest" && on(B.density.minus) ? "d-"
         : ed.brush.kind === "forest" && on(B.density.plus) ? "d+" : null);
       if (input.mouseReleased[0] && ed.palHover) {
-        clic();
         const q = ed.palHover, b = ed.brush;
         if (q.kind) b.kind = q.kind;
         else if (q[0] === "w") b.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, b.w + (q[1] === "+" ? 1 : -1)));
@@ -1447,7 +1536,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         if (input.mousePressed[1]) { ed.wall = null; return; }
         if (onMap && input.mousePressed[0]) {
           const list = wallPieces(rx, ry);
-          if (list.length && inMap(list[0].x, list[0].y)) { scene.add(list); clic(); }
+          if (list.length && inMap(list[0].x, list[0].y)) scene.add(list);
           ed.wall = null;
         }
         return;
@@ -1455,7 +1544,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       ed.wallHover = onMap ? wallButtonAt(rx, ry) : null;
       if (ed.wallHover && input.mousePressed[0]) {
         const b = ed.wallHover;
-        clic();
         if (b.kind === "plus") ed.wall = { p: b.p };
         else toggleGate(b.e);
         ed.wallHover = null;
@@ -1532,6 +1620,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (Y0 < 0) draw.rectangle(X0, Y0, X1, 0);
     if (Y1 > map.height) draw.rectangle(X0, map.height, X1, Y1);
     draw.setColour(c.white);
+    scene.world.drawView = view; // §9.203: l'albero finto con la F (editmap.js)
     scene.world.draw(r, draw, view);
     draw.reset();
     const px = view.scale; // un pixel dello schermo, in pixel di mappa
@@ -1552,6 +1641,21 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.circleColour(i.x, i.y, 10 * px, c.white, c.white, false);
         draw.setAlpha(0.8);
         draw.circleColour(i.x, i.y, 5 * px, (DECOR_TINT[e.object] || [0x3c7a46])[0], (DECOR_TINT[e.object] || [0x3c7a46])[0], false);
+        // [§9.205] il banco di nebbia: fin dove va, a destra e a sinistra
+        // ([§9.206] la sua ampiezza; fermo, niente); la nebbia estetica: dove
+        // scivolano le nuvole prima di svanire (velocita' x durata)
+        const f = FOG_SETTINGS[e.object] ? fogOf(e) : null, t = 18 * px;
+        draw.setAlpha(on ? 0.8 : 0.45);
+        if (e.object === "nebbia_banco" && f.speed) {
+          const r = f.range;
+          draw.dashedLine(i.x - r, i.y, i.x + r, i.y, 2 * px, c.white, 16 * px, 10 * px);
+          for (const x of [i.x - r, i.x + r]) draw.lineWidthColour(x, i.y - t, x, i.y + t, 2 * px, c.white, c.white);
+        }
+        if (e.object === "sk_nebbia" && f.speed) {
+          const x2 = i.x + f.speed * 60 * f.life, sg = Math.sign(f.speed);
+          draw.dashedLine(i.x, i.y, x2, i.y, 2 * px, c.white, 16 * px, 10 * px);
+          for (const dy of [-1, 1]) draw.lineWidthColour(x2, i.y, x2 - sg * t, i.y + dy * t, 2 * px, c.white, c.white);
+        }
       }
     }
     const outline = (b, w, col, a) => {
@@ -1590,13 +1694,25 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // si disegna (una fascia larga quanto la linea, col tratto fino al
     // puntatore) e il punto trascinato; con la simmetria anche a specchio
     if (ed.tool === "line") {
+      // [§9.204, richiesta dell'autore] la fascia come la disegna il gioco
+      // (rivers.js riverGeometry, senza la larghezza che varia): i punti
+      // smussati, la larghezza sul terreno steso e poi schiacciata in
+      // verticale (ISO: un fiume orizzontale e' alto 0,62 volte la sua
+      // larghezza); piena, una tinta uniforme (prima tratti dritti
+      // sovrapposti, piu' scuri sui giunti), coi bordi; uguale per fiumi,
+      // strade e sentieri, ognuno col suo colore
       const band = (pts, kind, w0, w1, a) => {
-        const tint = LINE_TINT[kind];
+        if (pts.length < 2) return;
+        const { L, R } = riverGeometry({ pts, width: w0, widthEnd: w1, plain: true }), tint = LINE_TINT[kind];
         draw.setAlpha(a);
-        for (let k = 1; k < pts.length; k++) {
-          const t = (k - 0.5) / Math.max(1, pts.length - 1);
-          draw.lineWidthColour(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], w0 + (w1 - w0) * t, tint, tint);
+        for (let k = 1; k < L.length; k++) {
+          const l0 = L[k - 1], l1 = L[k], r0 = R[k - 1], r1 = R[k];
+          draw.triangleColour(l0.x, l0.y, l1.x, l1.y, r1.x, r1.y, tint, tint, tint, false);
+          draw.triangleColour(l0.x, l0.y, r1.x, r1.y, r0.x, r0.y, tint, tint, tint, false);
         }
+        draw.setAlpha(Math.min(1, a * 2.2));
+        for (const E of [L, R]) for (let k = 1; k < E.length; k++) draw.lineWidthColour(E[k - 1].x, E[k - 1].y, E[k].x, E[k].y, 2 * px, tint, tint);
+        for (const k of [0, L.length - 1]) draw.lineWidthColour(L[k].x, L[k].y, R[k].x, R[k].y, 2 * px, tint, tint);
       };
       const dots = (pts, r, col, a) => { draw.setAlpha(a); for (const [x, y] of pts) draw.circleColour(x, y, r * px, col, col, false); };
       for (const key of ["rivers", "roads"]) for (const e of scene.map[key] || []) dots(e.pts, 4, c.white, 0.55);
@@ -1631,7 +1747,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.setAlpha(0.45);
         for (const [x, y] of all) draw.ellipseColour(x - r, y - ry, x + r, y + ry, tint, tint, false);
       }
-      if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
+      if (input.inside && (st || !hitTest(layoutNow(), input.x, input.y))) {
         const [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
         if (symOn()) spots.push(twinPoint(bx, by));
         for (const [x, y] of spots) {
@@ -1645,7 +1761,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
     }
     // [§9.194] la gomma: l'ovale sotto il puntatore (col gemello), rosso
-    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
+    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(layoutNow(), input.x, input.y))) {
       const r = eraseR(), ry = r * ISO, [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
       if (symOn()) spots.push(twinPoint(bx, by));
       for (const [x, y] of spots) {
@@ -1679,14 +1795,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, inMap(e.x, e.y) ? c.white : 0x4040ff, e === list[0] ? 0.6 : 0.4);
       }
     }
-    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)) {
+    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(layoutNow(), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       // [§9.184] con la simmetria anche il fantasma della gemella ([§9.191]
       // dell'altro schieramento: col suo sprite)
       const list = toPlace(gx, gy), col = inMap(gx, gy) && canStart(list) ? c.white : 0x4040ff;
       for (const e of list) {
-        const spr = sideLook(objects, e) || st.sprite || (o && o.sprite), k = e.object === START ? FLAG_SCALE : 1; // §9.196: la bandierina
+        const spr = sideLook(objects, e) || st.sprite || (o && o.sprite), k = isStart(e) ? FLAG_SCALE : 1; // §9.196: la bandierina
         if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, k, k, 0, col, e === list[0] ? 0.6 : 0.4);
+        if (spr && e.object === FAKE && spr !== "alb1_F") fakeMark(draw, e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.203
+        if (!spr && FOG_OBJECTS.includes(e.object)) fogLook(draw, e.object, e.x, e.y, e === list[0] ? 0.7 : 0.45, 1, fogOf(e)); // §9.205, §9.206
         if (spr && e.object === "campo") cropThumb(e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.195
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
@@ -1696,7 +1814,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   const drawUI = () => {
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), map = scene.map;
+    const W = view.cssW, H = view.cssH, L = layoutNow(), map = scene.map;
     r.setProjection(0, 0, W, H);
     draw.reset();
     // il titolo, e la mappa: nome (o "Nuova mappa") e misure
@@ -1728,15 +1846,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.lineWidthColour(cx1 + 16 * L.k, ym, cx2 - 16 * L.k, ym, 2, c.black, c.black);
     }
     // [§9.196] le frecce della colonna che scorre (spente in cima e in fondo)
+    // [§9.203, richiesta dell'autore] le stesse della schermata della
+    // schermaglia (menu.js arrow: ico_sk_freccia, il disegno dell'autore,
+    // della stessa misura e con le stesse trasparenze), girate in su e in
+    // giu', senza il cerchio intorno
     for (const [A, dir, can] of [[L.up, -1, L.scroll > 0], [L.down, 1, L.scroll < L.maxScroll]]) {
       if (!A) continue;
-      const [ax, ay, ar] = A, hov = ed.hover && ed.hover.kind === "colscroll" && ed.hover.dir === dir;
-      draw.setAlpha(!can ? 0.15 : hov ? 0.95 : 0.6);
-      draw.circleColour(ax, ay, ar, c.white, c.white, false);
-      draw.setAlpha(!can ? 0.2 : 0.8);
-      const t = ar * 0.5;
-      draw.triangleColour(ax - t, ay - dir * t * 0.5, ax + t, ay - dir * t * 0.5, ax, ay + dir * t * 0.7, DARK, DARK, DARK, false);
+      const [ax, ay] = A, hov = ed.hover && ed.hover.kind === "colscroll" && ed.hover.dir === dir;
+      draw.spriteExt("ico_sk_freccia", 0, ax, ay, COL_ARROW_SCALE, COL_ARROW_SCALE, dir * 90, c.white, !can ? 0.15 : hov ? 0.95 : 0.55);
     }
+    draw.setAlpha(1);
     // il cerchio "Indietro" (come nelle schermate del menu, §9.158)
     const [bx, by, br] = L.back;
     draw.setAlpha(ed.hover && ed.hover.kind === "back" ? 0.99 : 0.69);
@@ -1745,6 +1864,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.spriteExt("ico_indietro", 0, bx, by, 0.6, 0.6, 0, c.white, 1);
     // il riquadro dello strumento scelto
     drawPanel(L.panel);
+    // [§9.206] sopra, le impostazioni della nebbia
+    const FT = fogTarget();
+    if (FT) {
+      const FL = fogLayout(L.panel, FT.object);
+      draw.setAlpha(0.69);
+      draw.roundrectColourExt(FL.box[0], FL.box[1], FL.box[2], FL.box[3], 40, 40, c.white, c.white, false);
+      draw.setValign("middle");
+      for (const G of FL.groups) pmGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), G.key, ed.fogHover);
+      draw.setAlpha(1); draw.setColour(c.white);
+    }
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
     if (ed.hover && ed.hover.kind !== "back" && ed.hover.kind !== "colscroll" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
     if (ed.open) drawOpen(W, H);
@@ -1768,7 +1897,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     draw.setAlpha(0.55);
     const [mx, my] = view.toRoom(input.x, input.y);
-    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)
+    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(layoutNow(), input.x, input.y)
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
@@ -1778,7 +1907,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
         : "Click: new line. Click on a line: select it.")
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
-      : ed.pick ? (pickedItem().side && pickedItem().styles.length > 1 ? tr(WALL_HINT[pickedItem().side]) + "     " // §9.194: le mura
+      : ed.pick ? (pickedItem().side && pickedItem().styles[0].sprite // §9.203: la casa
+        ? tr(HOME_HINT[pickedItem().side], { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     "
+        : pickedItem().side && pickedItem().styles.length > 1 ? tr(WALL_HINT[pickedItem().side]) + "     " // §9.194: le mura
         : pickedItem().side ? tr(SIDE_HINT[pickedItem().side]) + "     " // §9.193
         : pickedItem().styles.length > 1 ? tr("S: style {i}/{n}", { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     " : "")
         + tr("Click: place. Right click: stop.") : tr("Choose an object");
@@ -1890,13 +2021,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   // un valore coi suoi "-" e "+" (pennello, polilinea)
-  const pmGroup = (G, label, value, key) => {
+  const pmGroup = (G, label, value, key, hover = ed.palHover) => { // (§9.206: hover, il "-" o "+" sotto il puntatore)
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
     draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
     draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
     for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
-      const hov = ed.palHover === key + sign;
+      const hov = hover === key + sign;
       draw.setAlpha(hov ? 0.95 : 0.6);
       draw.circleColour(C[0], C[1], C[2], DARK, DARK, false);
       draw.setAlpha(1);
@@ -1948,6 +2079,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
 
   // la miniatura di uno stile ({ object, sprite? }), dentro un quadrato di
   // lato `size` (centro cx, cy)
+  const natura = (name) => (assets.sprites[naturaSprite(name)] ? naturaSprite(name) : null);
   const thumb = (st, cx, cy, size) => {
     const name = st.object, o = objects[name], spr = sideLook(objects, st) || st.sprite || (o && (o.sprite || (o.choices && o.choices[0]))); // §9.191
     const b = spr && tightBounds(assets, spr, 0, 0);
@@ -1956,9 +2088,21 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const ox = cx - ((b[0] + b[2]) / 2) * s, oy = cy - ((b[1] + b[3]) / 2) * s;
       drawSprite(r, assets, spr, 0, ox, oy, s, s, 0, c.white, 1);
       if (name === "campo") cropThumb(ox, oy, s); // §9.195: le spighe, come nel gioco
+      if (name === FAKE && spr !== "alb1_F") fakeMark(draw, ox, oy, s); // §9.203: la F
       return;
     }
-    // le macchie (particelle, senza sprite): un prato coi suoi colori
+    // [§9.203, richiesta dell'autore] le macchie (particelle, senza sprite):
+    // la loro foto (tools/19_natura.mjs: la macchia nell'editor, sfumata), al
+    // posto del disegno di prima, che resta se la foto mancasse
+    // ([§9.205] la nebbia: le sue nuvole, lo sprite senza il prato sotto)
+    if (FOG_OBJECTS.includes(name)) { fogLook(draw, name, cx, cy, 1.6, (size * 1.15) / FOG_SPAN[name]); return; }
+    const photo = natura(name), pb = photo && tightBounds(assets, photo, 0, 0);
+    if (pb) {
+      const s = Math.min((size * 1.2) / (pb[2] - pb[0]), (size * 1.2) / (pb[3] - pb[1]));
+      drawSprite(r, assets, photo, 0, cx - ((pb[0] + pb[2]) / 2) * s, cy - ((pb[1] + pb[3]) / 2) * s, s, s, 0, c.white, 1);
+      return;
+    }
+    // un prato coi suoi colori
     const tint = DECOR_TINT[name] || [0x3c7a46];
     draw.setAlpha(0.7);
     draw.ellipseColour(cx - size / 2, cy - size / 3, cx + size / 2, cy + size / 3, 0x5f9a72, 0x5f9a72, false);
@@ -2041,11 +2185,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   let shown = false;
+  // [§9.203, richiesta dell'autore] l'interfaccia di vetro, come nel gioco
+  // (opzione "Glass interface", §7.14): sotto i pannelli bianchi la mappa
+  // appena disegnata, sfocata (glass.js)
+  const glassBg = glassBackdrop(r, canvas);
   const render = () => {
     if (!shown) { shown = true; requestAnimationFrame(() => { canvas.style.visibility = "visible"; }); }
     r.beginFrame(view, clear);
     drawMap();
+    draw.setGlass(settings.glass ? glassBg() : null);
     drawUI();
+    draw.setGlass(null);
     r.flush(); // (§9.197: il cursore e' quello del sistema, la freccina)
   };
 
@@ -2064,5 +2214,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap, openSaved, // (§9.198: openSaved)
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
-                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render,
+                      // [§9.206] il riquadro della nebbia (null se non c'e')
+                      fogLayout: () => { const F = fogTarget(); return F ? fogLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel, F.object) : null; } };
 }

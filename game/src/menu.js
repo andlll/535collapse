@@ -32,6 +32,8 @@
 // §9.180, l'editor di mappe),
 // "Multiplayer" (dentro: "Create game", la schermaglia per la partita
 // online, e "Join game", il pannello per il codice ricevuto), "Load game".
+// [§9.208, richiesta dell'autore] ora: "Single player" (dentro: il tutorial,
+// la campagna, la schermaglia), "Multiplayer", "Load game", "Map editor".
 
 import { c, makeColourRgb, mergeColour } from "./colours.js";
 import { tr, getLanguage } from "./i18n.js";
@@ -96,9 +98,11 @@ const inRect = (x, y, x1, y1, x2, y2) => x > x1 && y > y1 && x < x2 && y < y2;
 // del titolo).
 const BTN_W = 400, BTN_H = 70, BTN_GAP = 20;
 const FULL_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio
+// [§9.208, richiesta dell'autore] il tutorial e' in "Single player", primo,
+// sopra la campagna; l'editor di mappe e' nella colonna del titolo, in fondo
 const MENU_PAGES = {
-  title: ["tutorial", "single", "multi", "load"],
-  single: ["campaign", "skirmish", "editor"], // §9.180: l'editor di mappe sotto la schermaglia
+  title: ["single", "multi", "load", "editor"],
+  single: ["tutorial", "campaign", "skirmish"],
   multi: ["create", "join"],
 };
 const BTN_LABEL = { tutorial: "Play the tutorial", single: "Single player", multi: "Multiplayer", load: "Load game",
@@ -491,7 +495,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2616";
+export const VERSION = "0.2617";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna

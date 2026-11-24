@@ -104,8 +104,8 @@ const menu = () => page.evaluate(() => {
            user: m ? { name: m.name, state: m.state, sides: m.sides, cover: m.cover, sprite: !!(m.cover && window.__game.assets.sprites[m.cover]),
                        cpu: m.map && m.map.cpu, file: !!m.file } : null, sk: { ...i.sk } };
 });
-await click(W / 2, colTop(4) + 90 + 35); // "Single player"
-await click(W / 2, colTop(3) + 90 + 35); // "Skirmish" (secondo di tre)
+await click(W / 2, colTop(4) + 35); // "Single player" (§9.208: il primo)
+await click(W / 2, colTop(3) + 180 + 35); // "Skirmish" (§9.208: terzo di tre, dopo il tutorial e la campagna)
 await page.waitForFunction(() => { const i = window.__game.world.all("enemy_manager_menu").next().value; return i.skmenu === 1 && i.userMaps; }, null, { timeout: 20000 });
 const L = await page.evaluate(([w, h]) => window.__game.skLayout(w, h, false), [W, H]);
 const row = (kind, key, dir) => L.rows.find((r) => r.kind === kind && (key === undefined || r.key === key) && (dir === undefined || r.dir === dir));
@@ -190,8 +190,8 @@ check("Ricomincia", game.room === "custom" && game.sk === "hard" && game.step < 
 await page.evaluate(() => window.__game.pause.actions.menu());
 await page.waitForURL(/room=menu/, { timeout: 30000 });
 await ready();
-await click(W / 2, colTop(4) + 90 + 35);
-await click(W / 2, colTop(3) + 90 + 35);
+await click(W / 2, colTop(4) + 35);
+await click(W / 2, colTop(3) + 180 + 35);
 await page.waitForFunction(() => { const i = window.__game.world.all("enemy_manager_menu").next().value; return i.skmenu === 1 && i.userMaps && i.skMap !== null; }, null, { timeout: 20000 });
 s = await menu();
 check("ricordata: si riapre su A", s.user && s.user.name === "Pianura di prova");
@@ -204,7 +204,7 @@ check("da file: aggiunta e mostrata", s.user.name === "Dal file" && s.user.file 
 // online: niente mappe dell'editor
 await page.keyboard.press("Escape"); await page.waitForTimeout(200);
 await page.keyboard.press("Escape"); await page.waitForTimeout(200);
-await click(W / 2, colTop(4) + 180 + 35); // "Multiplayer"
+await click(W / 2, colTop(4) + 90 + 35); // "Multiplayer" (§9.208: il secondo)
 await click(W / 2, colTop(2) + 35); // "Create game"
 await page.waitForTimeout(300);
 s = await menu();

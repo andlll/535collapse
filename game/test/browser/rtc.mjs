@@ -43,7 +43,7 @@ const until = async (page, fn, arg, ms, what) => {
   try { await page.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); return true; } catch (e) { fail.push(what); return false; }
 };
 
-// il menu (§9.157, menu.js titleButtons): "Multiplayer" (il terzo pulsante
+// il menu (§9.157, menu.js titleButtons): "Multiplayer" (il secondo pulsante, §9.208
 // della colonna del titolo, 4 pulsanti alti 70 ogni 90 px, l'ultimo a 100
 // px dal fondo), poi nella pagina "Multiplayer" (2 pulsanti) "Create game" o
 // "Join game"; "Create game" in basso a destra nella schermaglia (skLayout)
@@ -61,7 +61,7 @@ const clickUntil = async (page, x, y, ok) => {
 };
 const colY = (n, k) => H - 100 - n * 70 - (n - 1) * 20 + k * 90 + 35;
 const multiplayer = async (page, who) => {
-  if (await clickUntil(page, W / 2, colY(4, 2), async () => (await menuOf(page))?.page === "multi")) return true;
+  if (await clickUntil(page, W / 2, colY(4, 1), async () => (await menuOf(page))?.page === "multi")) return true;
   fail.push(`${who}: la pagina "Multiplayer" non si apre`);
   return false;
 };

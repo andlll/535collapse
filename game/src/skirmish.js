@@ -17,6 +17,7 @@
 
 import { tr } from "./i18n.js";
 import { simRandom } from "./rng.js"; // §9.152
+import { HALL } from "./mapfile.js"; // §9.203
 
 // Le mappe: room -> nome e descrizione. [§9.129, decisione dell'autore] I
 // nomi in italiano (prima erano quelli storici in latino: Padus, Silva
@@ -77,6 +78,9 @@ export const SK_OPTIONS = {
 const HIDDEN = { start: ["random", "A", "B"] };
 export const SK_DEFAULTS = { map: "sk_padus", difficulty: "normal", style: "balanced", victory: "conquest", resources: "normal",
                              pop: 75, truce: 0, fog: "normal", daynight: "cycle", rain: "normal", start: "random" };
+// i valori validi di un parametro (anche di quelli nascosti), o null (la
+// mappa): [§9.202] il codice corto della partita online li scrive come indici
+export const skValues = (k) => (SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k]) || null;
 const KEY = "535.skirmish";
 
 export function loadSkirmish() {
@@ -92,7 +96,7 @@ export function cleanSkirmish(s) {
   if (!s || typeof s !== "object") return out;
   for (const k of Object.keys(SK_DEFAULTS)) {
     if (k === "map") { if (SK_ROOMS.includes(s.map)) out.map = s.map; continue; }
-    const vs = SK_OPTIONS[k] ? SK_OPTIONS[k].values : HIDDEN[k];
+    const vs = skValues(k);
     if (vs && vs.includes(s[k])) out[k] = s[k];
   }
   return out;
@@ -115,8 +119,10 @@ const STYLES = ["balanced", "aggressive", "defensive", "economic", "raider"];
 
 // Prima che le istanze nascano (app.js): il centro della CPU diventa
 // enemy_centro. `all`: le istanze della room ([obj, x, y, ...]).
+// ([§9.203] i municipi in piu' delle mappe dell'editor, nel gruppo HALL, non
+// sono partenze)
 export function skirmishPrepare(params, all) {
-  const cc = all.filter((e) => e[0] === "centro").sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
+  const cc = all.filter((e) => e[0] === "centro" && e[7] !== HALL).sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
   if (cc.length !== 2) return null;
   const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
   const [mine, cpu] = side === "A" ? cc : [cc[1], cc[0]];
@@ -324,29 +330,41 @@ export function skirmishEco(sk) {
 // MIST.life passi svanisce. Non e' fog01 del menu: la sua presenza cambia
 // l'inseguimento dei nemici [C, enemies.js].
 export const MIST = { n: 5, every: 2400, alpha: 0.5, speed: 0.5, life: 6000, spread: [900, 300], fade: 0.005 };
+// [§9.206, richiesta dell'autore] le impostazioni di una nebbia messa
+// nell'editor (i.settings, mapfile.js FOG_SETTINGS: densita', velocita' col
+// verso, durata e ogni quanto in secondi, quante nuvole); senza, quelle di MIST
+const mistOf = (i) => {
+  const f = i.settings || {};
+  return { n: f.count ?? MIST.n, every: f.every !== undefined ? f.every * 60 : MIST.every, alpha: f.density ?? MIST.alpha,
+           speed: f.speed ?? MIST.speed, life: f.life !== undefined ? f.life * 60 : MIST.life };
+};
 export function skNebbia() {
   const spawn = (i, w) => {
-    for (let k = 0; k < MIST.n; k++) {
+    const M = mistOf(i);
+    for (let k = 0; k < M.n; k++) {
       const x = i.x + (simRandom() - 0.5) * 2 * MIST.spread[0], y = i.y + (simRandom() - 0.5) * 2 * MIST.spread[1];
-      w.create("sk_nube", Math.round(x), Math.round(y));
+      // (senza impostazioni come prima: le mappe della schermaglia non cambiano)
+      w.create("sk_nube", Math.round(x), Math.round(y), i.settings ? { init: (c) => { c.mist = M; } } : undefined);
     }
-    i.alarm.set(0, MIST.every);
+    i.alarm.set(0, M.every);
   };
   return { create(i, w) { i.sprite_index = null; spawn(i, w); }, alarm0: spawn };
 }
 export function skNube() {
   return {
     create(i) {
+      const M = i.mist || MIST; // (§9.206: quelle della sua nebbia)
       i.depth = -i.y - 100;
       i.alfa = 0; i.out = 0;
-      i.direction = 0; i.speed = MIST.speed;
-      i.alarm.set(0, MIST.life);
+      i.direction = M.speed < 0 ? 180 : 0; i.speed = Math.abs(M.speed);
+      i.alarm.set(0, M.life);
       i.image_xscale = i.image_yscale = 0.8 + simRandom() * 0.6;
     },
     alarm0(i) { i.out = 1; },
     step(i, w) {
+      const top = (i.mist || MIST).alpha;
       if (i.out) { i.alfa -= MIST.fade; if (i.alfa <= 0) w.destroy(i); }
-      else if (i.alfa < MIST.alpha) i.alfa = Math.min(MIST.alpha, i.alfa + MIST.fade);
+      else if (i.alfa < top) i.alfa = Math.min(top, i.alfa + MIST.fade);
     },
     draw(i, w, d) {
       d.spriteExt("fog1", 0, i.x, i.y, i.image_xscale, i.image_yscale, 0, 0xffffff, i.alfa);

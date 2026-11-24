@@ -83,8 +83,7 @@ const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 await page.goto(`${base}/index.html?room=menu`);
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 120000 });
 const colTop = (n) => H - 100 - n * 70 - (n - 1) * 20;
-await click(W / 2, colTop(4) + 90 + 35); // "Single player" (secondo di quattro)
-await click(W / 2, colTop(3) + 180 + 35); // "Map editor" (terzo di tre)
+await click(W / 2, colTop(4) + 270 + 35); // "Map editor" (§9.208: il quarto del titolo)
 await page.waitForURL(/room=editor/, { timeout: 20000 });
 await page.waitForFunction(() => window.__editor && window.__editor.ready, null, { timeout: 120000 });
 check("aperto dal menu", true);
@@ -543,7 +542,7 @@ await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none";
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.tabs[TAB.buildings]));
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.cells.find((q) => q.i === 18)));
+await click(...mid(P.cells.find((q) => q.i === 20))); // (§9.203: dopo il municipio, rosso e blu, in testa)
 const toScreen = ([x, y]) => page.evaluate(([x, y]) => { const v = window.__editor.view; return [(x - v.x) / v.scale, (y - v.y) / v.scale]; }, [x, y]);
 const wallsNow = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => /^(mura|porta)_/.test(e.object)).map((e) => ({ o: e.object, x: e.x, y: e.y, side: e.side })));
 await click(...(await toScreen([2800, 1500])));
@@ -674,6 +673,97 @@ await page.locator('.net-panel [data-net="unlock"]').click();
 await page.waitForFunction(() => window.__editor.scene.map.name === "Chiusa" && !window.__editor.ed.loading, null, { timeout: 60000 });
 check("password giusta: si apre, col lucchetto", await page.evaluate(() => !!window.__editor.scene.map.lock && !document.querySelector(".net-panel")));
 await page.evaluate(async (id) => { await (await import("/src/mapstore.js")).deleteMap(id); }, lockedId);
+
+// [§9.203] in Edifici il municipio (rosso, non una partenza) e la casa coi
+// suoi stili: S due volte, il terzo (c3s); con "Sposta" S passa al quarto;
+// la tavolozza "Natura" con le foto delle macchie
+const L6 = await page.evaluate(() => window.__editor.layout());
+const b6 = (key) => L6.buttons.find((q) => q.key === key);
+await click(b6("insert").x, b6("insert").y);
+await page.waitForFunction(() => window.__editor.catalog() === "ready", null, { timeout: 120000 });
+await page.evaluate(() => { const E = window.__editor; E.ed.sym.insert = "none"; E.ed.sideFilter = "red"; E.view.zoomAt(1.6, 640, 360); E.view.centre(3000, 3000); });
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.buildings]));
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells.find((q) => q.i === 0)));
+await click(640, 300);
+await click(...mid(P.cells.find((q) => q.i === 2)));
+await page.mouse.move(820, 300); await page.keyboard.press("KeyS"); await page.keyboard.press("KeyS");
+await click(820, 300);
+const placed6 = () => page.evaluate(() => { const S = window.__editor.scene; return S.map.instances.filter((e) => e.hall || e.object === "casa").map((e) => ({ o: e.object, hall: !!e.hall, side: e.side, sprite: e.sprite || null, look: S.instOf(e).sprite_index })); });
+const p6 = await placed6();
+res.edifici = p6;
+check("il municipio rosso: un centro con hall, non una partenza", p6.some((e) => e.o === "centro" && e.hall && e.side === "red" && e.look === "cc_spr")
+  && (await page.evaluate(() => window.__editor.scene.starts())) === 2);
+check("la casa: S, S, il terzo stile", p6.some((e) => e.o === "casa" && e.sprite === "c3s" && e.look === "c3s"));
+await click(b6("select").x, b6("select").y);
+await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => e.object === "casa")); });
+await page.mouse.move(640, 600); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
+check("Sposta: S cambia lo stile della casa", (await placed6()).some((e) => e.o === "casa" && e.sprite === "c4s" && e.side === "red"));
+await click(b6("insert").x, b6("insert").y);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.meadows]));
+check("Natura: le foto delle macchie nell'atlas", await page.evaluate(async () => {
+  const m = await (await fetch("assets/atlas.json")).json();
+  return ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba"].every((n) => m.sprites["ed_natura_" + n]);
+}));
+if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + "/natura.png" });
+
+// [§9.204] il fiume finito (Invio) toglie gli alberi coi piedi nell'acqua:
+// un bosco, un fiume di tre punti che lo attraversa; Ctrl+Z rimette fiume e
+// alberi insieme
+await page.evaluate(() => {
+  const E = window.__editor, list = [];
+  for (let i = 0; i < 12; i++) for (let j = 0; j < 8; j++) list.push({ object: "albero", x: 2400 + i * 100, y: 2700 + j * 90, scale_x: 1, scale_y: 1, rotation: 0, sprite: "alb1" });
+  E.scene.add(list);
+  E.ed.sym.line = "none";
+  E.view.zoomAt(3.5, 640, 360); E.view.centre(3000, 2950);
+});
+await click(b6("line").x, b6("line").y);
+await page.evaluate(() => { window.__editor.ed.line.kind = "river"; window.__editor.ed.lsel = null; });
+const trees6 = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => e.object === "albero" && e.y >= 2700).length);
+const rivers6 = () => page.evaluate(() => window.__editor.scene.map.rivers.length);
+const t0 = await trees6(), r0 = await rivers6();
+for (const [x, y] of [[1900, 2650], [2900, 2650], [2900, 3300]]) await click(...(await toScreen([x, y])));
+await page.keyboard.press("Enter"); await page.waitForTimeout(200);
+const t1 = await trees6();
+check("il fiume toglie gli alberi nell'acqua", (await rivers6()) === r0 + 1 && t1 < t0 && t0 - t1 >= 8);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(200);
+check("Ctrl+Z: fiume e alberi insieme", (await rivers6()) === r0 && (await trees6()) === t0);
+res.fiumeAlberi = [t0, t1];
+
+// [§9.205-§9.206] la nebbia in Natura: il banco, in fondo alla scheda; il
+// riquadro sopra il pannello: densita' a 50% e ampiezza a 900 per quelli
+// nuovi; messo, con "Sposta" la velocita' a 120 px/s (2 px a passo);
+// Ctrl+Z la rimette
+await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+await click(b6("insert").x, b6("insert").y);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.meadows]));
+for (let k = 0; k < 6; k++) {
+  P = await page.evaluate(() => window.__editor.palette());
+  if (!P.next) break;
+  await click((P.next[0] + P.next[2]) / 2, (P.next[1] + P.next[3]) / 2);
+}
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[P.cells.length - 1]));
+let FL = await page.evaluate(() => window.__editor.fogLayout());
+check("Natura: il banco di nebbia, col riquadro delle impostazioni", !!FL && FL.groups.map((g) => g.key).join() === "density,speed,range");
+const fg = (key) => FL.groups.find((q) => q.key === key);
+await click(fg("density").minus[0], fg("density").minus[1]);
+await click(fg("density").minus[0], fg("density").minus[1]);
+await click(fg("range").plus[0], fg("range").plus[1]);
+await page.evaluate(() => { window.__editor.ed.sym.insert = "none"; });
+await click(700, 300);
+const banks = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => e.object === "nebbia_banco").map((e) => e.fog || null));
+check("il banco nuovo con le sue impostazioni", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, range: 900 }]));
+await click(b6("select").x, b6("select").y);
+await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => e.object === "nebbia_banco")); });
+FL = await page.evaluate(() => window.__editor.fogLayout());
+await click(fg("speed").plus[0], fg("speed").plus[1]);
+check("Sposta: la velocita' del banco scelto", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, speed: 2, range: 900 }]));
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("Ctrl+Z: la velocita' di prima", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, range: 900 }]));
 
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));
