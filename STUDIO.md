@@ -14398,3 +14398,43 @@ densita' 0,5 e veloce, il nemico dentro vede a tre quarti; la nebbia
 estetica con 8 nuvole verso sinistra), `lvl07.mjs`, `determinism.mjs`
 (sk_padus, impronte di main), screenshot (il riquadro in "Inserisci" e in
 "Sposta").
+
+### 9.207 Il menu di pausa: i cursori del volume, il contatore FPS fra le opzioni grafiche
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617), con un
+disegno su carta (dall'alto: "Obiettivi: si'", una pillola con la nota e la
+parte piena fino a una curva, una con l'altoparlante, i cerchi della lingua
+con "IT"; "stesso verde" per la parte piena e la lingua scelta): "modifica
+al menu di pausa: il contatore FPS spostarlo assieme alle opzioni grafiche,
+i pulsanti musica ed effetti sonori modificarlo in modo da farli diventare
+due slider del volume cosi' che i giocatori possano regolarlo. La parte
+"piena" dello slider deve essere dello stesso verde dell'opzione lingua
+selezionata. I simboli te li passo poi io. Opzioni grafiche spostalo sopra
+"torna al menu"".
+
+- **Il menu di pausa** ora: Riprendi, Salva e carica, Suggerimenti,
+  Obiettivi, il cursore della musica, quello degli effetti, la lingua,
+  Ricomincia livello, **Opzioni grafiche**, Torna al menu (online: senza
+  salvataggi ne' Ricomincia, Opzioni grafiche sopra "Lascia la partita").
+- **I cursori** (pause.js `_slider`): la pillola bianca dei pulsanti, piena
+  da sinistra fino al volume del verde della lingua scelta (GREEN, alla
+  stessa trasparenza), con la curva del bordo arrotondato come nel disegno;
+  a 0 vuoti, col simbolo piu' chiaro. Si prendono e si trascinano (o un
+  clic dove si vuole), a passi del 5%; il volume segue subito, si salva
+  lasciando il tasto; lasciando quello degli effetti si sente il clic al
+  volume nuovo. **I simboli sono provvisori** (una nota e un altoparlante
+  disegnati a linee, `_volumeIcon`): l'autore manda i suoi.
+- **I volumi** (settings.js `musicVolume`, `sfxVolume`, 0-1, di partenza 1)
+  al posto degli interruttori `music` e `sfx`: chi li aveva spenti li trova
+  a 0. Nell'audio (audio.js `setMusicVolume`, `setSfxVolume`) il guadagno e'
+  il quadrato della posizione (l'orecchio sente cosi'), sul volume
+  generale degli effetti e su quello della musica; a 0 come spenti (niente
+  suoni continui, la musica si ferma).
+- **Il contatore FPS** e' fra le opzioni grafiche, in fondo, sopra il limite
+  degli FPS.
+
+Prove: `pausevol.mjs` (nuova, nella CI: un'opzione salvata con la musica
+spenta diventa 0; l'ordine del menu; la musica trascinata al 70%, un clic
+sugli effetti al 30%, salvati e uguali dopo aver ricaricato; il contatore FPS
+fra le opzioni grafiche, che si accende), test unitari; screenshot (la pausa
+coi due cursori, le opzioni grafiche).

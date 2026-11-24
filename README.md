@@ -137,7 +137,8 @@ node game/test/browser/hintgap.mjs                      # suggerimenti del tutor
 node game/test/browser/hover.mjs                        # pulsanti col puntatore evidenziati anche sotto i pannelli di vetro
 node game/test/browser/editor.mjs                       # editor di mappe: vista, modelli, Inserisci, Sposta, stili, simmetria, salva e apri (file collegati), pennello, copertina, polilinea, Prova mappa, schieramenti, mura, gomma
 node game/test/browser/skcustom.mjs                     # le mappe dell'editor nella schermaglia: elenco, copertina o disegno, CPU fissata, partita, salvataggio, Ricomincia, file
-node game/test/browser/edstyles.mjs                     # le mappe dell'editor nella partita: stili di case e alberi, municipi in piu', la sconfitta con l'ultimo
+node game/test/browser/edstyles.mjs                     # le mappe dell'editor nella partita: stili di case e alberi, municipi in piu', la sconfitta con l'ultimo, la nebbia
+node game/test/browser/pausevol.mjs                     # il menu di pausa: i cursori del volume di musica ed effetti, il contatore FPS fra le opzioni grafiche
 node game/test/browser/netmap.mjs                       # la partita online su una mappa dell'editor (WebRTC vero): chi entra la riceve, la tiene, la seconda volta no
 node game/test/browser/alarms.mjs                       # allarmi d'attacco sulla minimappa: per zona, anelli, J, suggerimento
 node game/test/browser/minimap.mjs                      # clic sulla minimappa: sposta la view, ordini col destro, riquadro della view

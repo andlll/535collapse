@@ -630,8 +630,8 @@ async function main() {
     // [§7.15 G5] erba e spighe piu' rade con la qualita' piu' bassa (2500-4000
     // fili disegnati a ogni fotogramma, fino al 45% del disegno nel menu)
     world.particles.density.grass = GRASS_DENSITY[settings.quality] ?? 1;
-    audio.setEnabled(settings.sfx); // §9.137
-    audio.setMusicEnabled(settings.music); // §9.143
+    audio.setSfxVolume(settings.sfxVolume ?? 1); // §9.137, §9.207: il volume degli effetti
+    audio.setMusicVolume(settings.musicVolume ?? 1); // §9.143, §9.207: e quello della musica
     rscale.enabled = settings.dynamicResolution;
     loop.fpsCap = settings.fpsCap;
     resize(); // §6.8 G1: la qualita' cambia la scala del mondo
