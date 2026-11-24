@@ -78,7 +78,7 @@ import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DI
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
-import { ISO } from "./rivers.js";
+import { ISO, riverGeometry } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -181,6 +181,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.", "Red side (S: blue)", "Blue side (S: red)", "Units",
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
+                             "Trees removed from the river: {n}", // §9.204
                              "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
@@ -911,7 +912,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const t = { ...e, pts: mirrorPts(e.pts) };
       if (!t.pts.every(([x, y], k) => Math.abs(x - e.pts[k][0]) <= 1 && Math.abs(y - e.pts[k][1]) <= 1)) list.push(t);
     }
-    scene.addFeatures(key, list);
+    // [§9.204, richiesta dell'autore] il fiume finito toglie gli alberi coi
+    // piedi nell'acqua (anche quelli della gemella): un passo solo da annullare
+    if (key === "rivers") {
+      scene.begin();
+      scene.addFeatures(key, list);
+      const trees = scene.treesInRivers(list);
+      if (trees.length) scene.remove(trees);
+      scene.end();
+      tidySel();
+      if (trees.length) toast(tr("Trees removed from the river: {n}", { n: trees.length }));
+    } else scene.addFeatures(key, list);
     ed.lsel = { key, e, vi: null };
   };
   const linePick = (x, y) => {
@@ -1595,13 +1606,25 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // si disegna (una fascia larga quanto la linea, col tratto fino al
     // puntatore) e il punto trascinato; con la simmetria anche a specchio
     if (ed.tool === "line") {
+      // [§9.204, richiesta dell'autore] la fascia come la disegna il gioco
+      // (rivers.js riverGeometry, senza la larghezza che varia): i punti
+      // smussati, la larghezza sul terreno steso e poi schiacciata in
+      // verticale (ISO: un fiume orizzontale e' alto 0,62 volte la sua
+      // larghezza); piena, una tinta uniforme (prima tratti dritti
+      // sovrapposti, piu' scuri sui giunti), coi bordi; uguale per fiumi,
+      // strade e sentieri, ognuno col suo colore
       const band = (pts, kind, w0, w1, a) => {
-        const tint = LINE_TINT[kind];
+        if (pts.length < 2) return;
+        const { L, R } = riverGeometry({ pts, width: w0, widthEnd: w1, plain: true }), tint = LINE_TINT[kind];
         draw.setAlpha(a);
-        for (let k = 1; k < pts.length; k++) {
-          const t = (k - 0.5) / Math.max(1, pts.length - 1);
-          draw.lineWidthColour(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], w0 + (w1 - w0) * t, tint, tint);
+        for (let k = 1; k < L.length; k++) {
+          const l0 = L[k - 1], l1 = L[k], r0 = R[k - 1], r1 = R[k];
+          draw.triangleColour(l0.x, l0.y, l1.x, l1.y, r1.x, r1.y, tint, tint, tint, false);
+          draw.triangleColour(l0.x, l0.y, r1.x, r1.y, r0.x, r0.y, tint, tint, tint, false);
         }
+        draw.setAlpha(Math.min(1, a * 2.2));
+        for (const E of [L, R]) for (let k = 1; k < E.length; k++) draw.lineWidthColour(E[k - 1].x, E[k - 1].y, E[k].x, E[k].y, 2 * px, tint, tint);
+        for (const k of [0, L.length - 1]) draw.lineWidthColour(L[k].x, L[k].y, R[k].x, R[k].y, 2 * px, tint, tint);
       };
       const dots = (pts, r, col, a) => { draw.setAlpha(a); for (const [x, y] of pts) draw.circleColour(x, y, r * px, col, col, false); };
       for (const key of ["rivers", "roads"]) for (const e of scene.map[key] || []) dots(e.pts, 4, c.white, 0.55);

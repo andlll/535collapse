@@ -710,6 +710,29 @@ check("Natura: le foto delle macchie nell'atlas", await page.evaluate(async () =
 }));
 if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + "/natura.png" });
 
+// [§9.204] il fiume finito (Invio) toglie gli alberi coi piedi nell'acqua:
+// un bosco, un fiume di tre punti che lo attraversa; Ctrl+Z rimette fiume e
+// alberi insieme
+await page.evaluate(() => {
+  const E = window.__editor, list = [];
+  for (let i = 0; i < 12; i++) for (let j = 0; j < 8; j++) list.push({ object: "albero", x: 2400 + i * 100, y: 2700 + j * 90, scale_x: 1, scale_y: 1, rotation: 0, sprite: "alb1" });
+  E.scene.add(list);
+  E.ed.sym.line = "none";
+  E.view.zoomAt(3.5, 640, 360); E.view.centre(3000, 2950);
+});
+await click(b6("line").x, b6("line").y);
+await page.evaluate(() => { window.__editor.ed.line.kind = "river"; window.__editor.ed.lsel = null; });
+const trees6 = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => e.object === "albero" && e.y >= 2700).length);
+const rivers6 = () => page.evaluate(() => window.__editor.scene.map.rivers.length);
+const t0 = await trees6(), r0 = await rivers6();
+for (const [x, y] of [[1900, 2650], [2900, 2650], [2900, 3300]]) await click(...(await toScreen([x, y])));
+await page.keyboard.press("Enter"); await page.waitForTimeout(200);
+const t1 = await trees6();
+check("il fiume toglie gli alberi nell'acqua", (await rivers6()) === r0 + 1 && t1 < t0 && t0 - t1 >= 8);
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(200);
+check("Ctrl+Z: fiume e alberi insieme", (await rivers6()) === r0 && (await trees6()) === t0);
+res.fiumeAlberi = [t0, t1];
+
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));
 ok = ok && errs.length === 0;

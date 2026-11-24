@@ -87,9 +87,10 @@ freccina), le icone dell'autore, i ponti, la password, le partite solo su
 file e senza lavoratori di partenza (§9.198), anche per i comandi e la
 gomma (§9.199-§9.200); il vetro, gli stili della casa, la F dell'albero
 finto, il municipio come edificio, le foto della Natura, niente clic
-(§9.203; lo stile scelto nell'editor ora arriva anche nella partita). Da
-fare: la scheda "Regia" per gli scenari (per ora no, decisione
-dell'autore, §9.198).
+(§9.203; lo stile scelto nell'editor ora arriva anche nella partita),
+l'anteprima della polilinea come la disegna il gioco e il fiume che toglie
+gli alberi nell'acqua (§9.204). Da fare: la scheda "Regia" per gli scenari
+(per ora no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
 con memoria; l'ultimo tratto (lastmile.js, un campo fine attorno all'unita')
@@ -14236,3 +14237,48 @@ CPU con due centri; vittoria "Municipio": perso il municipio si gioca,
 persa anche la partenza si perde), `determinism.mjs` (sk_padus, 3000 passi:
 le impronte di main), screenshot (la tavolozza Natura con le foto, gli
 alberi finti con la F, le case, i municipi, il vetro).
+
+### 9.204 La polilinea: l'anteprima come nel gioco, il fiume che toglie gli alberi
+
+Richieste dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "Possiamo
+fare che il fiume quando viene dato invio alla sua polilinea elimina gli
+alberi che gli vanno in interferenza? Possiamo fare in generale la
+polilinea di anteprima (quella prima di premere invio di fiumi sentieri
+ecc) piu' omogenea a livello di rappresentazione e gia' che prenda in
+considerazione il coefficiente di assonometria sull'asse y per disegnare la
+larghezza?"
+
+- **L'anteprima** (la linea che si disegna, fino al puntatore, e quella di
+  un punto trascinato). Prima: un tratto dritto per segmento, largo uguale
+  in ogni direzione, semitrasparente; sui giunti i tratti si sovrapponevano
+  (piu' scuri) e agli angoli restavano dei buchi. Ora la fascia e' quella
+  del gioco (rivers.js `riverGeometry`, con `plain`: senza la larghezza che
+  varia del +-12%, che il gioco non passa mai): i punti smussati come nel
+  gioco, la larghezza misurata sul terreno "steso" (y diviso ISO, 0,62) e poi
+  schiacciata, quindi un tratto orizzontale e' alto 0,62 volte la larghezza
+  e uno verticale largo quanto la larghezza, come il fiume finito; nelle
+  curve strette il bordo interno si ferma come nel fiume vero. Disegnata
+  piena, una tinta uniforme (triangoli che non si sovrappongono), coi bordi
+  e le estremita' a 2 px; uguale per fiume, strada e sentiero, ognuno col
+  suo colore. La larghezza visibile delle strade (i sassi sparsi attorno
+  alla linea, rivers.js SPREAD) e' circa quella indicata, quindi la stessa
+  fascia va bene anche li'. Le estremita' del fiume finito si stringono a
+  punta (dentro la mappa): l'anteprima no.
+- **Il fiume toglie gli alberi**: finita la linea di un fiume (Invio, il
+  destro o il doppio clic) gli alberi (veri e finti) coi piedi nell'acqua
+  del fiume nuovo spariscono, anche quelli della gemella con la simmetria.
+  "Nell'acqua" e' la stessa regola del pennello dei boschi (§9.185,
+  editmap.js `blocks`: 10 x 5 px attorno al piede sulle celle d'acqua del
+  gioco, riverCells), solo per il fiume nuovo (EditScene `treesInRivers`;
+  sotto i ponti non c'e' acqua). Fiume e alberi tolti sono un passo solo:
+  Ctrl+Z li rimette insieme. Un avviso dice quanti ("Alberi tolti dal fiume:
+  N", nelle sei lingue). Le strade non toccano gli alberi (non richiesto);
+  spostare i punti di un fiume gia' fatto nemmeno.
+
+Prove: `editor.test.mjs` (in piu': la fascia senza la variazione, alta w x
+ISO in orizzontale e larga w in verticale; quella del gioco varia; gli
+alberi nel fiume, non quelli accanto ne' le altre voci; 153 test),
+`editor.mjs` (in piu': un bosco di 96 alberi, un fiume di tre punti che lo
+attraversa: 13 alberi tolti, Ctrl+Z rimette fiume e alberi), screenshot
+(l'anteprima del fiume con tratti orizzontali e verticali, il fiume finito
+senza alberi nell'acqua, l'anteprima di una strada).

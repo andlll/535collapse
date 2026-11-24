@@ -17,6 +17,7 @@ import { splitGroups } from "../src/scenario.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
+import { riverGeometry, ISO } from "../src/rivers.js";
 import { skForMap, fixedBy } from "../src/skuser.js";
 import { roomLabel } from "../src/menu.js";
 import { setLanguage } from "../src/i18n.js";
@@ -742,4 +743,28 @@ test("§9.203 municipio, stili della casa, stili nella partita", { skip: !exists
   assert.equal(now.length, all.length);
   assert.deepEqual(now.find((e) => e[0] === "albero").slice(7), [null, "alb6"]);
   assert.equal(now.find((e) => e[0] === "centro" && e[1] === 400).length, 7);
+});
+
+// [§9.204, richieste dell'autore] la fascia dell'anteprima della polilinea
+// (larghezza schiacciata in verticale come nel gioco) e gli alberi che un
+// fiume nuovo toglie
+test("§9.204 anteprima della polilinea e alberi nel fiume", () => {
+  // senza la larghezza che varia: un fiume orizzontale e' alto w x ISO, uno
+  // verticale largo w
+  const h = riverGeometry({ pts: [[1000, 1000], [3000, 1000]], width: 200, plain: true });
+  const v = riverGeometry({ pts: [[1000, 1000], [1000, 3000]], width: 200, plain: true });
+  for (let k = 0; k < h.L.length; k++) assert.ok(Math.abs(Math.abs(h.L[k].y - h.R[k].y) - 200 * ISO) < 0.01);
+  for (let k = 0; k < v.L.length; k++) assert.ok(Math.abs(Math.abs(v.L[k].x - v.R[k].x) - 200) < 0.01);
+  const wob = riverGeometry({ pts: [[1000, 1000], [3000, 1000]], width: 200 });
+  assert.ok(wob.L.some((p, k) => Math.abs(Math.abs(p.y - wob.R[k].y) - 200 * ISO) > 1)); // (il gioco: varia)
+  // gli alberi coi piedi nell'acqua del fiume nuovo (non quelli a fianco,
+  // non le altre voci)
+  const T = (object, x, y) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0 });
+  const map = { ...newMap(), instances: [T("albero", 2000, 1000), T("albero_fake", 2500, 1030), T("albero", 2000, 1200), T("miniera_oro", 1500, 1000), T("albero", 500, 1000)] };
+  const S = Object.create(EditScene.prototype);
+  S.map = map;
+  S.world = { roomW: map.width, roomH: map.height, all: () => [], bridges: [] };
+  const rv = { pts: [[1000, 1000], [3000, 1000]], width: 150 };
+  assert.deepEqual(S.treesInRivers([rv]).map((e) => [e.object, e.x, e.y]), [["albero", 2000, 1000], ["albero_fake", 2500, 1030]]);
+  assert.deepEqual(S.treesInRivers([{ pts: [[4000, 4000], [5000, 4000]], width: 150 }]), []);
 });

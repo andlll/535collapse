@@ -507,6 +507,19 @@ export class EditScene {
     return false;
   }
 
+  // [§9.204, richiesta dell'autore] gli alberi della mappa coi piedi
+  // nell'acqua dei fiumi `list` (le loro voci; come blocks, con la geometria
+  // del gioco): quelli che un fiume nuovo toglie
+  treesInRivers(list, w = 10, h = 5) {
+    // (il mondo della scena con i soli fiumi nuovi: i ponti restano, sotto
+    // non c'e' acqua, come in riverCells)
+    const R = [this.map.width, this.map.height], only = Object.create(this.world);
+    Object.assign(only, { rivers: list.map((rv) => riverGeometry({ ...rv, room: R })), _riverCells: undefined });
+    const rc = riverCells(only);
+    if (!rc) return [];
+    return this.map.instances.filter((e) => TREES.has(e.object) && riverIn(rc, e.x - w, e.y - h, e.x + w, e.y + h));
+  }
+
   // gli alberi della mappa (le voci), per il pennello
   trees() { return this.map.instances.filter((e) => TREES.has(e.object)); }
 
