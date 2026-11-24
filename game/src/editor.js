@@ -74,11 +74,10 @@ import { glowText } from "./menu.js";
 import { glassBackdrop } from "./glass.js"; // §9.203
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
-         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart } from "./mapfile.js";
+         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart, FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark,
          FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
-import { BANK } from "./stealth.js"; // §9.205
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO, riverGeometry } from "./rivers.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
@@ -184,6 +183,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
                              "Trees removed from the river: {n}", // §9.204
+                             "Speed", "Range", "Duration", "Clouds", "Every", // §9.206: la nebbia
                              "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
                              "The changes to this map will be lost.", "Continue", "Cancel",
                              // [§9.184] salva, apri, impostazioni, simmetria
@@ -269,6 +269,7 @@ export function hitTest(L, mx, my) {
   if (L.down && L.scroll < L.maxScroll && dhypot(mx - L.down[0], my - L.down[1]) <= L.down[2] + 4) return { kind: "colscroll", key: "down", dir: 1 };
   if (dhypot(mx - L.back[0], my - L.back[1]) <= L.back[2]) return { kind: "back", key: "back" };
   if (inRect(mx, my, L.col) || inRect(mx, my, L.panel)) return { kind: "ui", key: null };
+  for (const R of L.extra || []) if (inRect(mx, my, R)) return { kind: "ui", key: null }; // §9.206: il riquadro della nebbia
   return null;
 }
 
@@ -478,6 +479,30 @@ export function brushLayout(panel) {
   return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
 }
 
+// [§9.206, richiesta dell'autore] Le impostazioni della nebbia (mapfile.js
+// FOG_SETTINGS) in un riquadro di vetro sopra il pannello, quando una nebbia
+// e' scelta in "Inserisci" (quelle nuove) o con "Sposta" (quelle scelte):
+// per ognuna l'etichetta, "-", il valore e "+", tre per riga
+export const FOG_LABEL = { density: "Density", speed: "Speed", range: "Range", life: "Duration", count: "Clouds", every: "Every" };
+export function fogLayout(panel, object) {
+  const [x1, y1, x2] = panel, keys = Object.keys(FOG_SETTINGS[object]), per = 3, gw = (x2 - x1 - 40) / per;
+  const rows = Math.ceil(keys.length / per), h = 24 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
+  const groups = keys.map((key, k) => {
+    const x = x1 + 20 + (k % per) * gw, cy = box[1] + 32 + Math.floor(k / per) * 40;
+    return { key, label: [x + 12, cy], minus: [x + gw - 132, cy, 14], value: [x + gw - 82, cy], plus: [x + gw - 32, cy, 14] };
+  });
+  return { box, groups };
+}
+// il valore come si legge: la densita' in %, le velocita' in px al secondo
+// (« a sinistra, » a destra: il banco va e viene), l'ampiezza in px, i tempi in s
+export function fogValue(object, key, v) {
+  if (key === "density") return Math.round(v * 100) + "%";
+  if (key === "speed") { const p = Math.round(Math.abs(v) * 60); return object === "nebbia_banco" || !v ? String(p) : v < 0 ? "« " + p : p + " »"; }
+  if (key === "range") return v + " px";
+  if (key === "life" || key === "every") return v + " s";
+  return String(v);
+}
+
 // [§9.187] La polilinea: fiumi e strade (le due di §9.97, la marcata e la
 // secondaria) disegnati punto per punto, come le polilinee di Tiled; i ponti
 // no, per ora (decisione dell'autore). Larghezza e larghezza finale (px,
@@ -557,6 +582,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.195] la parte che si vede in Unita' ed Edifici
                sideFilter: "red",
                colScroll: 0, // [§9.196] la colonna che scorre (schermi bassi)
+               // [§9.206] le impostazioni della nebbia nuova (Inserisci) e il "-" o "+" sotto il puntatore
+               fogSet: Object.fromEntries(Object.entries(FOG_DEFAULTS).map(([k, v]) => [k, { ...v }])), fogHover: null,
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -708,6 +735,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
     if (st.side) e.side = st.side; // §9.191
     if (st.hall) e.hall = true; // §9.203: un municipio, non una partenza
+    if (FOG_SETTINGS[st.object]) { const f = fogDiff(st.object, ed.fogSet[st.object]); if (f) e.fog = f; } // §9.206
     const t = scene.twinAt(e, symMode());
     return t ? [e, t] : [e];
   };
@@ -745,6 +773,37 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
   const selected = () => [...ed.sel].filter((e) => scene.instOf(e));
   const tidySel = () => { for (const e of ed.sel) if (!scene.instOf(e)) ed.sel.delete(e); };
+  // [§9.206] la nebbia di cui il riquadro mostra le impostazioni: quella
+  // scelta in "Inserisci" (le nuove) o le voci di nebbia scelte con "Sposta"
+  // (della specie della prima, con le gemelle), o null
+  const fogTarget = () => {
+    if (ed.tool === "insert" && ed.pick && !ed.wall) {
+      const o = pickedStyle().object;
+      return FOG_SETTINGS[o] ? { object: o, values: ed.fogSet[o], list: null } : null;
+    }
+    if (ed.tool === "select" && !ed.move && !ed.box) {
+      const first = selected().find((e) => FOG_SETTINGS[e.object]);
+      if (!first) return null;
+      return { object: first.object, values: fogOf(first), list: scene.withTwins(selected().filter((e) => e.object === first.object), symMode()) };
+    }
+    return null;
+  };
+  // la disposizione, col riquadro della nebbia se c'e' (il puntatore li' non tocca la mappa)
+  const layoutNow = () => {
+    const L = editorLayout(view.cssW, view.cssH, ed.colScroll), F = fogTarget();
+    if (F) L.extra = [fogLayout(L.panel, F.object).box];
+    return L;
+  };
+  // un'impostazione un passo avanti o indietro: per le nebbie nuove, o (con
+  // annulla) per quelle scelte
+  const setFog = (F, key, dir) => {
+    const vals = FOG_SETTINGS[F.object][key], cur = F.values[key];
+    const at = vals.indexOf(cur) >= 0 ? vals.indexOf(cur) : vals.reduce((b, v, k) => (Math.abs(v - cur) < Math.abs(vals[b] - cur) ? k : b), 0);
+    const nv = vals[Math.max(0, Math.min(vals.length - 1, at + dir))];
+    if (nv === cur) return;
+    if (!F.list) { ed.fogSet[F.object][key] = nv; return; }
+    scene.modify(F.list, (e) => ({ fog: fogDiff(e.object, { ...fogOf(e), [key]: nv }) || undefined }));
+  };
   const copy = () => {
     const list = selected();
     if (!list.length) return;
@@ -1180,7 +1239,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const step = () => {
     input.beginStep();
     if (ed.loading || ed.dom) return;
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), mx = input.x, my = input.y;
+    const W = view.cssW, H = view.cssH, L = layoutNow(), mx = input.x, my = input.y; // (§9.206: col riquadro della nebbia)
     const [rx, ry] = view.toRoom(mx, my);
     // ([§9.199] Ctrl anche se gia' lasciato, se il tasto e' stato premuto con
     // Ctrl tenuto: su una macchina lenta Ctrl+S arriva cosi')
@@ -1329,6 +1388,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (o) {
         ed.symHover = o.mode;
         if (input.mouseReleased[0]) ed.sym[ed.tool] = o.mode;
+        return;
+      }
+    }
+    // [§9.206] il riquadro della nebbia: "-" e "+" delle impostazioni
+    ed.fogHover = null;
+    const FT = hit && hit.kind === "ui" ? fogTarget() : null;
+    if (FT) {
+      const FL = fogLayout(L.panel, FT.object);
+      if (inRect(mx, my, FL.box)) {
+        for (const G of FL.groups) for (const [C, sg] of [[G.minus, "-"], [G.plus, "+"]]) if (dhypot(mx - C[0], my - C[1]) <= C[2] + 4) ed.fogHover = G.key + sg;
+        if (input.mouseReleased[0] && ed.fogHover) setFog(FT, ed.fogHover.slice(0, -1), ed.fogHover.endsWith("+") ? 1 : -1);
         return;
       }
     }
@@ -1572,11 +1642,19 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.setAlpha(0.8);
         draw.circleColour(i.x, i.y, 5 * px, (DECOR_TINT[e.object] || [0x3c7a46])[0], (DECOR_TINT[e.object] || [0x3c7a46])[0], false);
         // [§9.205] il banco di nebbia: fin dove va, a destra e a sinistra
-        if (e.object === "nebbia_banco") {
-          const r = BANK.range, t = 18 * px;
-          draw.setAlpha(on ? 0.8 : 0.45);
+        // ([§9.206] la sua ampiezza; fermo, niente); la nebbia estetica: dove
+        // scivolano le nuvole prima di svanire (velocita' x durata)
+        const f = FOG_SETTINGS[e.object] ? fogOf(e) : null, t = 18 * px;
+        draw.setAlpha(on ? 0.8 : 0.45);
+        if (e.object === "nebbia_banco" && f.speed) {
+          const r = f.range;
           draw.dashedLine(i.x - r, i.y, i.x + r, i.y, 2 * px, c.white, 16 * px, 10 * px);
           for (const x of [i.x - r, i.x + r]) draw.lineWidthColour(x, i.y - t, x, i.y + t, 2 * px, c.white, c.white);
+        }
+        if (e.object === "sk_nebbia" && f.speed) {
+          const x2 = i.x + f.speed * 60 * f.life, sg = Math.sign(f.speed);
+          draw.dashedLine(i.x, i.y, x2, i.y, 2 * px, c.white, 16 * px, 10 * px);
+          for (const dy of [-1, 1]) draw.lineWidthColour(x2, i.y, x2 - sg * t, i.y + dy * t, 2 * px, c.white, c.white);
         }
       }
     }
@@ -1669,7 +1747,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.setAlpha(0.45);
         for (const [x, y] of all) draw.ellipseColour(x - r, y - ry, x + r, y + ry, tint, tint, false);
       }
-      if (input.inside && (st || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
+      if (input.inside && (st || !hitTest(layoutNow(), input.x, input.y))) {
         const [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
         if (symOn()) spots.push(twinPoint(bx, by));
         for (const [x, y] of spots) {
@@ -1683,7 +1761,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
     }
     // [§9.194] la gomma: l'ovale sotto il puntatore (col gemello), rosso
-    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y))) {
+    if (ed.tool === "erase" && input.inside && (ed.erasing || !hitTest(layoutNow(), input.x, input.y))) {
       const r = eraseR(), ry = r * ISO, [bx, by] = view.toRoom(input.x, input.y), spots = [[bx, by]];
       if (symOn()) spots.push(twinPoint(bx, by));
       for (const [x, y] of spots) {
@@ -1717,7 +1795,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         drawSprite(r, assets, spr, 0, e.x, e.y, 1, 1, 0, inMap(e.x, e.y) ? c.white : 0x4040ff, e === list[0] ? 0.6 : 0.4);
       }
     }
-    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)) {
+    if (ed.tool === "insert" && ed.pick && !ed.wall && !ed.wallHover && input.inside && !hitTest(layoutNow(), input.x, input.y)) {
       const [gx, gy] = view.toRoom(input.x, input.y), st = pickedStyle(), o = objects[st.object];
       // [§9.184] con la simmetria anche il fantasma della gemella ([§9.191]
       // dell'altro schieramento: col suo sprite)
@@ -1726,7 +1804,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         const spr = sideLook(objects, e) || st.sprite || (o && o.sprite), k = isStart(e) ? FLAG_SCALE : 1; // §9.196: la bandierina
         if (spr) drawSprite(r, assets, spr, 0, e.x, e.y, k, k, 0, col, e === list[0] ? 0.6 : 0.4);
         if (spr && e.object === FAKE && spr !== "alb1_F") fakeMark(draw, e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.203
-        if (!spr && FOG_OBJECTS.includes(e.object)) fogLook(draw, e.object, e.x, e.y, e === list[0] ? 0.7 : 0.45); // §9.205
+        if (!spr && FOG_OBJECTS.includes(e.object)) fogLook(draw, e.object, e.x, e.y, e === list[0] ? 0.7 : 0.45, 1, fogOf(e)); // §9.205, §9.206
         if (spr && e.object === "campo") cropThumb(e.x, e.y, 1, e === list[0] ? 0.6 : 0.4); // §9.195
         else { draw.setAlpha(0.6); draw.circleColour(e.x, e.y, 10 * px, col, col, false); }
       }
@@ -1736,7 +1814,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   const drawUI = () => {
-    const W = view.cssW, H = view.cssH, L = editorLayout(W, H, ed.colScroll), map = scene.map;
+    const W = view.cssW, H = view.cssH, L = layoutNow(), map = scene.map;
     r.setProjection(0, 0, W, H);
     draw.reset();
     // il titolo, e la mappa: nome (o "Nuova mappa") e misure
@@ -1786,6 +1864,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.spriteExt("ico_indietro", 0, bx, by, 0.6, 0.6, 0, c.white, 1);
     // il riquadro dello strumento scelto
     drawPanel(L.panel);
+    // [§9.206] sopra, le impostazioni della nebbia
+    const FT = fogTarget();
+    if (FT) {
+      const FL = fogLayout(L.panel, FT.object);
+      draw.setAlpha(0.69);
+      draw.roundrectColourExt(FL.box[0], FL.box[1], FL.box[2], FL.box[3], 40, 40, c.white, c.white, false);
+      draw.setValign("middle");
+      for (const G of FL.groups) pmGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), G.key, ed.fogHover);
+      draw.setAlpha(1); draw.setColour(c.white);
+    }
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
     if (ed.hover && ed.hover.kind !== "back" && ed.hover.kind !== "colscroll" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
     if (ed.open) drawOpen(W, H);
@@ -1809,7 +1897,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     draw.setAlpha(0.55);
     const [mx, my] = view.toRoom(input.x, input.y);
-    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(editorLayout(view.cssW, view.cssH, ed.colScroll), input.x, input.y)
+    const onMap = input.inside && !ed.open && !ed.confirm && !hitTest(layoutNow(), input.x, input.y)
       && mx >= 0 && my >= 0 && mx <= map.width && my <= map.height;
     const state = !READY.has(ed.tool) ? tr("Coming soon")
       : ed.tool === "brush" ? tr("Left: paint. Right: erase.")
@@ -1933,13 +2021,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   // un valore coi suoi "-" e "+" (pennello, polilinea)
-  const pmGroup = (G, label, value, key) => {
+  const pmGroup = (G, label, value, key, hover = ed.palHover) => { // (§9.206: hover, il "-" o "+" sotto il puntatore)
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
     draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
     draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
     for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
-      const hov = ed.palHover === key + sign;
+      const hov = hover === key + sign;
       draw.setAlpha(hov ? 0.95 : 0.6);
       draw.circleColour(C[0], C[1], C[2], DARK, DARK, false);
       draw.setAlpha(1);
@@ -2126,5 +2214,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       get scene() { return scene; }, openTemplate, catalog: () => catalog, dirty, quickSave, openPanel, testMap, openSaved, // (§9.198: openSaved)
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
-                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render };
+                      lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render,
+                      // [§9.206] il riquadro della nebbia (null se non c'e')
+                      fogLayout: () => { const F = fogTarget(); return F ? fogLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel, F.object) : null; } };
 }

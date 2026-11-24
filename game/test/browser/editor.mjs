@@ -733,6 +733,39 @@ await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await pa
 check("Ctrl+Z: fiume e alberi insieme", (await rivers6()) === r0 && (await trees6()) === t0);
 res.fiumeAlberi = [t0, t1];
 
+// [§9.205-§9.206] la nebbia in Natura: il banco, in fondo alla scheda; il
+// riquadro sopra il pannello: densita' a 50% e ampiezza a 900 per quelli
+// nuovi; messo, con "Sposta" la velocita' a 120 px/s (2 px a passo);
+// Ctrl+Z la rimette
+await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+await click(b6("insert").x, b6("insert").y);
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.tabs[TAB.meadows]));
+for (let k = 0; k < 6; k++) {
+  P = await page.evaluate(() => window.__editor.palette());
+  if (!P.next) break;
+  await click((P.next[0] + P.next[2]) / 2, (P.next[1] + P.next[3]) / 2);
+}
+P = await page.evaluate(() => window.__editor.palette());
+await click(...mid(P.cells[P.cells.length - 1]));
+let FL = await page.evaluate(() => window.__editor.fogLayout());
+check("Natura: il banco di nebbia, col riquadro delle impostazioni", !!FL && FL.groups.map((g) => g.key).join() === "density,speed,range");
+const fg = (key) => FL.groups.find((q) => q.key === key);
+await click(fg("density").minus[0], fg("density").minus[1]);
+await click(fg("density").minus[0], fg("density").minus[1]);
+await click(fg("range").plus[0], fg("range").plus[1]);
+await page.evaluate(() => { window.__editor.ed.sym.insert = "none"; });
+await click(700, 300);
+const banks = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => e.object === "nebbia_banco").map((e) => e.fog || null));
+check("il banco nuovo con le sue impostazioni", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, range: 900 }]));
+await click(b6("select").x, b6("select").y);
+await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => e.object === "nebbia_banco")); });
+FL = await page.evaluate(() => window.__editor.fogLayout());
+await click(fg("speed").plus[0], fg("speed").plus[1]);
+check("Sposta: la velocita' del banco scelto", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, speed: 2, range: 900 }]));
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
+check("Ctrl+Z: la velocita' di prima", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, range: 900 }]));
+
 console.log(JSON.stringify(res));
 if (errs.length) console.log(errs.slice(0, 5));
 ok = ok && errs.length === 0;

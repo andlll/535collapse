@@ -90,7 +90,7 @@ finto, il municipio come edificio, le foto della Natura, niente clic
 (§9.203; lo stile scelto nell'editor ora arriva anche nella partita),
 l'anteprima della polilinea come la disegna il gioco e il fiume che toglie
 gli alberi nell'acqua (§9.204), la nebbia estetica e il banco di nebbia in
-"Natura" (§9.205). Da fare: la scheda "Regia" per gli scenari
+"Natura" (§9.205) con le loro impostazioni (§9.206). Da fare: la scheda "Regia" per gli scenari
 (per ora no, decisione dell'autore, §9.198).
 
 **Movimento** (§9.146-§9.147): mp_potential_step sostituito da un passo
@@ -14336,3 +14336,65 @@ nebbie; nella partita il banco si sposta, un nemico dentro vede a meta' e
 fuori no, la estetica fa nascere 5 nuvole), `editor.mjs`, screenshot (la
 scheda Natura con le due nebbie, le due nebbie sulla mappa col tratteggio
 del banco).
+
+### 9.206 Le impostazioni della nebbia
+
+Domande dell'autore (24 novembre 2026, stessa PR #27, 0.2617), durante
+§9.205: "non possiamo semplicemente usare lo sprite senza lo sfondo sotto?
+possiamo regolare la "trasparenza" della nebbia in modo che influenzi
+l'awareness del nemico in proporzione? la nebbia va verso destra poi
+sparisce e si ricrea dov'era nata giusto? o possiamo impostare noi velocita'
+e momento di reset/altre impostazioni?". Lo sprite senza il prato: fatto in
+§9.205. Come va la nebbia: quella estetica si', fa nascere le sue nuvole
+attorno al punto, le nuvole scivolano a destra e svaniscono, e ogni tanto ne
+nascono altre attorno al punto; il banco invece non sparisce mai, va avanti
+e indietro. Scelte dell'autore (alla mia proposta: dei "-" e "+" come quelli
+del pennello, i valori nella mappa): per il banco **densita', velocita',
+ampiezza**; per la nebbia estetica **densita', velocita' e direzione,
+durata, quante nuvole e ogni quanto**.
+
+- **I valori** (mapfile.js `FOG_SETTINGS`, quelli di partenza in
+  `FOG_DEFAULTS`, uguali al gioco di prima):
+  - banco: densita' 25, 50, 75, **100**%; velocita' 0 (fermo), 30, **60**,
+    120 px al secondo; ampiezza 300, **600**, 900, 1200 px per parte;
+  - estetica: densita' 25, **50**, 75, 100% (l'opacita' piu' alta delle
+    nuvole); velocita' « 60, « 30, 0, **30 »**, 60 » px al secondo (« a
+    sinistra, » a destra); durata di una nuvola 30, 60, **100**, 150, 200 s;
+    nuvole 3, **5**, 8, 12; ogni 20, **40**, 60, 90 s.
+- **La densita' del banco e la vista dei nemici**: dentro un banco un
+  nemico vede a 1 - 0,5 x densita' (100%: a meta', come prima; 50%: a tre
+  quarti; 25%: a 7/8). Vale per `fogSight` (le mappe dell'editor) e per lo
+  stealth del livello 7 (`sees`, per chi guarda e per chi e' guardato; i
+  banchi del livello sono a 100%: niente cambia). stealth.js `fogDensity`:
+  la densita' del banco piu' fitto che copre il punto. Anche le nuvole si
+  vedono in proporzione (piu' trasparenti).
+- **Nella mappa** la voce ha `fog` con le sole impostazioni diverse da
+  quelle di partenza (la convalida accetta solo i valori dell'elenco e solo
+  sulle due nebbie); nella room vanno dopo gruppo e stile (scenarioToRoom) e
+  world.js `loadRoom` le mette nell'istanza (`settings`) prima del Create:
+  il banco (stealth.js `fogBank`) e la nebbia estetica (skirmish.js
+  `skNebbia`, che le passa alle sue nuvole) le leggono. Senza impostazioni
+  tutto come prima: le mappe della schermaglia e il livello 7 non cambiano
+  (le impronte di sk_padus su 3000 passi sono quelle di main, lvl07.mjs
+  passa).
+- **Nell'editor** il riquadro delle impostazioni, di vetro, sopra il
+  pannello (tre per riga: l'etichetta, "-", il valore, "+"): in
+  "Inserisci", scelta una delle due nebbie, per quelle che si mettono; in
+  "Sposta", scelte delle nebbie, per quelle scelte della specie della prima
+  (con le gemelle; annulla e ripeti). La nebbia si vede con la sua densita';
+  il tratteggio del banco e' lungo quanto la sua ampiezza (fermo, niente);
+  quello della nebbia estetica dice fin dove arrivano le nuvole prima di
+  svanire (velocita' x durata), con la punta dalla parte verso cui vanno.
+
+Testi nuovi: "Velocita'", "Ampiezza", "Durata", "Nuvole", "Ogni" ("Densita'"
+c'era), nelle sei lingue.
+
+Prove: `editor.test.mjs` (in piu': i valori di partenza uguali a quelli
+del gioco, la convalida, la room, splitGroups, la vista in proporzione alla
+densita', il riquadro e i valori come si leggono; 155 test), `editor.mjs`
+(in piu': il banco nuovo con densita' 50% e ampiezza 900, poi con "Sposta"
+la velocita' a 120 px/s e Ctrl+Z), `edstyles.mjs` (in piu': un banco a
+densita' 0,5 e veloce, il nemico dentro vede a tre quarti; la nebbia
+estetica con 8 nuvole verso sinistra), `lvl07.mjs`, `determinism.mjs`
+(sk_padus, impronte di main), screenshot (il riquadro in "Inserisci" e in
+"Sposta").

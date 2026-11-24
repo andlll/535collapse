@@ -113,6 +113,9 @@ export class World {
   loadRoom(list, beforeCreate) {
     const created = list.map(([object, x, y, sx, sy, rot, colour]) =>
       this._alloc(object, x, y, { sx, sy, rot, colour: colour & 0xffffff, alpha: (colour >>> 24) / 255 }));
+    // [§9.206] le impostazioni della voce (mappe dell'editor: la nebbia),
+    // prima del Create che le legge
+    list.forEach((e, k) => { if (e[9] && typeof e[9] === "object") created[k].settings = { ...e[9] }; });
     if (beforeCreate) beforeCreate();
     for (const i of created) if (i.alive) this.fire(i, "create");
     // [§9.203] lo stile scelto nell'editor (mappe dell'editor: lo sprite dopo

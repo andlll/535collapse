@@ -330,29 +330,41 @@ export function skirmishEco(sk) {
 // MIST.life passi svanisce. Non e' fog01 del menu: la sua presenza cambia
 // l'inseguimento dei nemici [C, enemies.js].
 export const MIST = { n: 5, every: 2400, alpha: 0.5, speed: 0.5, life: 6000, spread: [900, 300], fade: 0.005 };
+// [§9.206, richiesta dell'autore] le impostazioni di una nebbia messa
+// nell'editor (i.settings, mapfile.js FOG_SETTINGS: densita', velocita' col
+// verso, durata e ogni quanto in secondi, quante nuvole); senza, quelle di MIST
+const mistOf = (i) => {
+  const f = i.settings || {};
+  return { n: f.count ?? MIST.n, every: f.every !== undefined ? f.every * 60 : MIST.every, alpha: f.density ?? MIST.alpha,
+           speed: f.speed ?? MIST.speed, life: f.life !== undefined ? f.life * 60 : MIST.life };
+};
 export function skNebbia() {
   const spawn = (i, w) => {
-    for (let k = 0; k < MIST.n; k++) {
+    const M = mistOf(i);
+    for (let k = 0; k < M.n; k++) {
       const x = i.x + (simRandom() - 0.5) * 2 * MIST.spread[0], y = i.y + (simRandom() - 0.5) * 2 * MIST.spread[1];
-      w.create("sk_nube", Math.round(x), Math.round(y));
+      // (senza impostazioni come prima: le mappe della schermaglia non cambiano)
+      w.create("sk_nube", Math.round(x), Math.round(y), i.settings ? { init: (c) => { c.mist = M; } } : undefined);
     }
-    i.alarm.set(0, MIST.every);
+    i.alarm.set(0, M.every);
   };
   return { create(i, w) { i.sprite_index = null; spawn(i, w); }, alarm0: spawn };
 }
 export function skNube() {
   return {
     create(i) {
+      const M = i.mist || MIST; // (§9.206: quelle della sua nebbia)
       i.depth = -i.y - 100;
       i.alfa = 0; i.out = 0;
-      i.direction = 0; i.speed = MIST.speed;
-      i.alarm.set(0, MIST.life);
+      i.direction = M.speed < 0 ? 180 : 0; i.speed = Math.abs(M.speed);
+      i.alarm.set(0, M.life);
       i.image_xscale = i.image_yscale = 0.8 + simRandom() * 0.6;
     },
     alarm0(i) { i.out = 1; },
     step(i, w) {
+      const top = (i.mist || MIST).alpha;
       if (i.out) { i.alfa -= MIST.fade; if (i.alfa <= 0) w.destroy(i); }
-      else if (i.alfa < MIST.alpha) i.alfa = Math.min(MIST.alpha, i.alfa + MIST.fade);
+      else if (i.alfa < top) i.alfa = Math.min(top, i.alfa + MIST.fade);
     },
     draw(i, w, d) {
       d.spriteExt("fog1", 0, i.x, i.y, i.image_xscale, i.image_yscale, 0, 0xffffff, i.alfa);

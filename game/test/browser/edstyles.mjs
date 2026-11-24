@@ -12,9 +12,11 @@
 //   municipio  = vittoria "Municipio": perso il municipio in piu' non si
 //                perde, persi tutti e due si'
 //   nebbia     = [§9.205] il banco di nebbia (nebbia_banco) va avanti e
-//                indietro e dentro un nemico vede a meta' (enemies.js
+//                indietro e dentro un nemico vede meno (enemies.js
 //                fogSight), fuori no; la nebbia estetica (sk_nebbia) fa
-//                nascere le sue nuvole
+//                nascere le sue nuvole. [§9.206] Con le impostazioni
+//                dell'editor: il banco a densita' 0,5 (il nemico vede a tre
+//                quarti) e veloce; la estetica con 8 nuvole verso sinistra
 // Esce con codice 1 se qualcosa non torna.
 //
 //   python3 -m http.server 8123 --directory game     (in un altro terminale)
@@ -40,7 +42,7 @@ await page.evaluate(async () => {
                             I("centro", 700, 700, { side: "red", hall: true }), I("centro", 5300, 900, { side: "blue", hall: true }),
                             I("casa", 1900, 1500, { side: "red", sprite: "c1s" }), I("casa", 4100, 4500, { side: "blue", sprite: "c5s" }),
                             I("albero", 3000, 3000, { sprite: "alb6" }), I("albero_fake", 3300, 3000, { sprite: "alb1_F" }),
-                            I("nebbia_banco", 3000, 4000), I("sk_nebbia", 2000, 4300)] };
+                            I("nebbia_banco", 3000, 4000, { fog: { density: 0.5, speed: 2 } }), I("sk_nebbia", 2000, 4300, { fog: { count: 8, speed: -1 } })] };
   const v = mf.validateMap(map, (await import("/src/editmap.js")).allowedObjects(), await (await fetch("assets/objects.json")).json());
   if (v.errors) throw new Error(v.errors.join(", "));
   const opts = { ...sk.loadSkirmish(), victory: "townhall", fog: "none", truce: 0 };
@@ -61,14 +63,17 @@ res.partita = got;
 const fog = await page.evaluate(async () => {
   const { fogSight } = await import("/src/enemies.js");
   const w = window.__game.world, b = [...w.all("nebbia_banco")][0], x0 = b && b.x;
+  const cx = () => [...w.all("sk_nube")].reduce((t, c) => t + c.x, 0);
+  const c0 = cx();
   window.__game.advance(120);
   const inside = { x: b.x + 50, y: b.y + 30 }, outside = { x: b.x, y: b.y + 400 };
-  return { bank: !!b, moved: b && b.x !== x0, clouds: [...w.all("sk_nube")].length, inside: fogSight(w, inside), outside: fogSight(w, outside) };
+  return { bank: !!b, moved: b && Math.abs(b.x - x0) > 200, clouds: [...w.all("sk_nube")].length, left: cx() < c0 - 100,
+           inside: fogSight(w, inside), outside: fogSight(w, outside) };
 });
 res.nebbia = fog;
-check("il banco di nebbia va avanti e indietro", fog.bank && fog.moved);
-check("nel banco il nemico vede a meta', fuori no", fog.inside === 0.5 && fog.outside === 1);
-check("la nebbia estetica fa nascere le sue nuvole", fog.clouds >= 5);
+check("il banco di nebbia va avanti e indietro (veloce: 2 px a passo)", fog.bank && fog.moved);
+check("nel banco a densita' 0,5 il nemico vede a tre quarti, fuori tutto", fog.inside === 0.75 && fog.outside === 1);
+check("la nebbia estetica: 8 nuvole, verso sinistra", fog.clouds === 8 && fog.left);
 await page.evaluate(() => window.__game.advance(600));
 check("la casa rossa c1s, la blu c5b", got.red === "c1s" && got.blue === "c5b");
 check("l'albero alb6 col tipo 6", got.tree && got.tree[0] === "alb6" && got.tree[1] === 6);

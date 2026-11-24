@@ -7,18 +7,20 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { editorLayout, hitTest, EditorView, TOOLS, ACTIONS, EDITS, LABEL, DESC, EDITOR_TEXTS, VIEW_MIN, VIEW_MAX, VIEW_MARGIN,
          openLayout, TEMPLATES, mapLabel, paletteLayout, confirmLayout, brushLayout, BRUSH_WIDTHS, BRUSH_SPACING, symLayout,
-         lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind } from "../src/editor.js";
+         lineLayout, segDist, LINE_WIDTHS, LINE_KEY, lineKind, fogLayout, fogValue } from "../src/editor.js";
 import { EditScene, CATALOG, variantOf, SYSTEM, START, HOUSES, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorPoint, mirrorDelta, freePluses, wallStep, wallPluses, GATE_SWAP, sideLook, paletteCount } from "../src/editmap.js";
 import { newMap, MAP_FORMAT, roomToScenario, scenarioToRoom, validateMap, testRoom, TEST_ROOM, sidesOk, redStart, assignSides,
-         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF, sha256, lockOf, lockOpens, isStart, HALL, HOME_STYLES, blueHome } from "../src/mapfile.js";
-import { isSkirmish, SK_OPTIONS, skirmishEco, skirmishPrepare } from "../src/skirmish.js";
+         startsOf, mapHash, UNITS, BUILDINGS, BLUE_OF, sha256, lockOf, lockOpens, isStart, HALL, HOME_STYLES, blueHome,
+         FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff } from "../src/mapfile.js";
+import { isSkirmish, SK_OPTIONS, skirmishEco, skirmishPrepare, MIST } from "../src/skirmish.js";
 import { splitGroups } from "../src/scenario.js";
 import { mapFileName } from "../src/mapstore.js";
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly, polyArea, simplify } from "../src/editbrush.js";
 import { lodFor } from "../src/ground.js";
 import { riverGeometry, ISO } from "../src/rivers.js";
 import { fogSight, FOG_SIGHT } from "../src/enemies.js";
+import { fogDensity, BANK } from "../src/stealth.js";
 import { skForMap, fixedBy } from "../src/skuser.js";
 import { roomLabel } from "../src/menu.js";
 import { setLanguage } from "../src/i18n.js";
@@ -783,4 +785,47 @@ test("§9.205 la nebbia nell'editor e nella partita", () => {
   assert.equal(fogSight(w(0), { x: 1100, y: 1050 }), FOG_SIGHT);
   assert.equal(fogSight(w(0), { x: 1000, y: 1300 }), 1);
   assert.equal(fogSight(w(1), { x: 1100, y: 1050 }), 1);
+});
+
+// [§9.206, richieste dell'autore] le impostazioni della nebbia: nella mappa
+// (solo quelle diverse da quelle di partenza), convalidate, nella room per il
+// gioco; il banco meno fitto nasconde meno
+test("§9.206 le impostazioni della nebbia", () => {
+  const objects = JSON.parse(readFileSync(OBJECTS, "utf8"));
+  const I = (object, x, y, more = {}) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...more });
+  assert.deepEqual(fogOf(I("nebbia_banco", 0, 0)), FOG_DEFAULTS.nebbia_banco);
+  assert.deepEqual(fogOf(I("sk_nebbia", 0, 0, { fog: { speed: -1 } })), { ...FOG_DEFAULTS.sk_nebbia, speed: -1 });
+  assert.equal(fogDiff("nebbia_banco", FOG_DEFAULTS.nebbia_banco), null);
+  assert.deepEqual(fogDiff("nebbia_banco", { density: 0.5, speed: 1, range: 900 }), { density: 0.5, range: 900 });
+  // i valori di partenza sono quelli del gioco di prima (livello 7, schermaglia)
+  assert.deepEqual([FOG_DEFAULTS.nebbia_banco.range, FOG_DEFAULTS.nebbia_banco.speed], [BANK.range, 1]);
+  assert.deepEqual([FOG_DEFAULTS.sk_nebbia.count, FOG_DEFAULTS.sk_nebbia.every * 60, FOG_DEFAULTS.sk_nebbia.density, FOG_DEFAULTS.sk_nebbia.speed, FOG_DEFAULTS.sk_nebbia.life * 60],
+                   [MIST.n, MIST.every, MIST.alpha, MIST.speed, MIST.life]);
+  for (const [o, S] of Object.entries(FOG_SETTINGS)) for (const [k, v] of Object.entries(FOG_DEFAULTS[o])) assert.ok(S[k].includes(v), o + " " + k);
+  // la convalida: solo valori dell'elenco, solo sulle nebbie; di partenza tolti
+  const allowed = allowedObjects(), map = { ...newMap(), instances: [] };
+  const v = validateMap({ ...map, instances: [I("nebbia_banco", 1, 1, { fog: { density: 0.25, speed: 1 } }), I("sk_nebbia", 2, 2, { fog: { count: 12, every: 20 } })] }, allowed, objects);
+  assert.deepEqual(v.map.instances.map((e) => e.fog), [{ density: 0.25 }, { count: 12, every: 20 }]);
+  for (const bad of [I("nebbia_banco", 1, 1, { fog: { density: 0.3 } }), I("nebbia_banco", 1, 1, { fog: { count: 5 } }), I("albero", 1, 1, { fog: { density: 1 } })]) {
+    assert.ok(validateMap({ ...map, instances: [bad] }, allowed, objects).errors, JSON.stringify(bad));
+  }
+  // nella room, dopo gruppo e stile; splitGroups le tiene
+  const room = testRoom({ ...map, instances: [I("nebbia_banco", 1000, 1000, { fog: { density: 0.5 } }), I("sk_nebbia", 2000, 2000)] });
+  const bankRow = room.instances.find((e) => e[0] === "nebbia_banco");
+  assert.deepEqual(bankRow.slice(7), [null, null, { density: 0.5 }]);
+  assert.equal(room.instances.find((e) => e[0] === "sk_nebbia").length, 7);
+  assert.deepEqual(splitGroups(TEST_ROOM, room.instances).now.find((e) => e[0] === "nebbia_banco")[9], { density: 0.5 });
+  // la vista in proporzione: banco pieno a meta', a 0,5 tre quarti, a 0,25 7/8
+  for (const [dn, k] of [[1, 0.5], [0.5, 0.75], [0.25, 0.875]]) {
+    const bank = { alive: true, x: 1000, y: 1000, rx: 520, density: dn };
+    const w = { g: {}, exists: () => true, all: (n) => (n === "nebbia_banco" ? [bank] : []) };
+    assert.equal(fogDensity(w, 1100, 1050), dn);
+    assert.equal(fogSight(w, { x: 1100, y: 1050 }), k);
+  }
+  // il riquadro: tre impostazioni per riga, sopra il pannello
+  const L = editorLayout(1600, 900), F = fogLayout(L.panel, "sk_nebbia");
+  assert.equal(F.groups.length, 5);
+  assert.ok(F.box[3] < L.panel[1] && F.groups.every((g) => g.plus[0] < L.panel[2] && g.minus[1] > F.box[1] && g.minus[1] < F.box[3]));
+  assert.deepEqual([fogValue("sk_nebbia", "speed", -0.5), fogValue("sk_nebbia", "speed", 1), fogValue("nebbia_banco", "speed", 2), fogValue("nebbia_banco", "density", 0.75)],
+                   ["« 30", "60 »", "120", "75%"]);
 });

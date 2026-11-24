@@ -1537,6 +1537,12 @@ export const TEXTS = {
   // [§9.203] la casa: lo schieramento e S che ne cambia lo stile
   "Red side (S: style {i}/{n})": { it: "Schieramento rosso (S: stile {i}/{n})", es: "Bando rojo (S: estilo {i}/{n})", pt: "Lado vermelho (S: estilo {i}/{n})", de: "Rote Seite (S: Stil {i}/{n})", fr: "Camp rouge (S : style {i}/{n})" },
   "Blue side (S: style {i}/{n})": { it: "Schieramento blu (S: stile {i}/{n})", es: "Bando azul (S: estilo {i}/{n})", pt: "Lado azul (S: estilo {i}/{n})", de: "Blaue Seite (S: Stil {i}/{n})", fr: "Camp bleu (S : style {i}/{n})" },
+  // [§9.206] le impostazioni della nebbia nell'editor ("Density" c'e' gia')
+  "Speed": { it: "Velocità", es: "Velocidad", pt: "Velocidade", de: "Tempo", fr: "Vitesse" },
+  "Range": { it: "Ampiezza", es: "Amplitud", pt: "Amplitude", de: "Weite", fr: "Amplitude" },
+  "Duration": { it: "Durata", es: "Duración", pt: "Duração", de: "Dauer", fr: "Durée" },
+  "Clouds": { it: "Nuvole", es: "Nubes", pt: "Nuvens", de: "Wolken", fr: "Nuages" },
+  "Every": { it: "Ogni", es: "Cada", pt: "A cada", de: "Alle", fr: "Toutes les" },
   // [§9.204] il fiume finito toglie gli alberi coi piedi nell'acqua
   "Trees removed from the river: {n}": { it: "Alberi tolti dal fiume: {n}", es: "Árboles quitados del río: {n}", pt: "Árvores removidas do rio: {n}", de: "Bäume aus dem Fluss entfernt: {n}", fr: "Arbres retirés de la rivière : {n}" },
   "Move the pointer: straight or around the corner. Click: place. Right click: cancel.": {

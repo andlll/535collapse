@@ -59,14 +59,19 @@ export const stealthOn = (w) => !!(w.g && w.g.stealth);
 const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 
 // ---------------------------------------------------------- banchi di nebbia
-// (x, y) e' dentro un banco?
-export function inFog(w, x, y) {
+// quanto e' fitta la nebbia in (x, y): la densita' del banco piu' fitto che
+// lo copre (0: nessuno; [§9.206] i banchi dell'editor possono essere meno
+// fitti, quelli del livello 7 sono a 1)
+export function fogDensity(w, x, y) {
+  let dn = 0;
   for (const b of w.all("nebbia_banco")) {
     const rx = b.rx || 400, dx = (x - b.x) / rx, dy = (y - b.y) / ST.bankRy;
-    if (dx * dx + dy * dy < 1) return true;
+    if (dx * dx + dy * dy < 1) dn = Math.max(dn, b.density ?? 1);
   }
-  return false;
+  return dn;
 }
+// (x, y) e' dentro un banco?
+export const inFog = (w, x, y) => fogDensity(w, x, y) > 0;
 
 // nebbia_banco: x0, x1 (dove torna indietro), speed (px a passo, col segno),
 // clouds (quante nuvole); di partenza BANK.range px a destra e a sinistra,
@@ -74,7 +79,7 @@ export function inFog(w, x, y) {
 export const BANK = { range: 600, clouds: 3 };
 // le nuvole di un banco al passo t (anche l'editor, fermo: t 0; s: la scala,
 // per la casella della tavolozza)
-export function bankClouds(d, x, y, n, t, a = 1, s = 1) {
+export function bankClouds(d, x, y, n, t, a = 1, s = 1) { // (a: [§9.206] anche la densita')
   // un po' sfalsate e mosse; il centro piu' denso
   for (let k = 0; k < n; k++) {
     const ox = (k - (n - 1) / 2) * ST.cloudGap, oy = dsin(k * 2.1 + t / 400) * 18 + ((k % 2) ? -25 : 15);
@@ -87,7 +92,10 @@ export function fogBank() {
   return {
     create(i) {
       i.sprite_index = null;
-      i.x0 = i.x0 ?? i.x - BANK.range; i.x1 = i.x1 ?? i.x + BANK.range; i.speed0 = i.speed0 ?? 1; i.clouds = i.clouds ?? BANK.clouds;
+      // ([§9.206] le impostazioni dell'editor: ampiezza, velocita', densita')
+      const f = i.settings || {};
+      i.x0 = i.x0 ?? i.x - (f.range ?? BANK.range); i.x1 = i.x1 ?? i.x + (f.range ?? BANK.range);
+      i.speed0 = i.speed0 ?? f.speed ?? 1; i.clouds = i.clouds ?? BANK.clouds; i.density = i.density ?? f.density ?? 1;
       i.rx = ((i.clouds - 1) * ST.cloudGap) / 2 + 260;
       i.depth = -i.y - 150;
     },
@@ -97,7 +105,7 @@ export function fogBank() {
       if (x < i.x0) { x = i.x0; i.speed0 = Math.abs(i.speed0); }
       w.setPos(i, x, i.y);
     },
-    draw(i, w, d) { bankClouds(d, i.x, i.y, i.clouds, w._stepNo); },
+    draw(i, w, d) { bankClouds(d, i.x, i.y, i.clouds, w._stepNo, i.density ?? 1); },
   };
 }
 
@@ -110,8 +118,9 @@ export const unaware = (w, e) => !alerted(w, e) && e.warwork !== 1 && e.warwork 
 // prospettiva, fog01: la calcola chi chiama)
 export function sees(w, e, a, lim) {
   let r = lim;
-  if (inFog(w, a.x, a.y)) r *= ST.fogK;
-  if (inFog(w, e.x, e.y)) r *= ST.fogK;
+  // ([§9.206] in proporzione alla densita': a 1, come sempre, a fogK)
+  r *= 1 - (1 - ST.fogK) * fogDensity(w, a.x, a.y);
+  r *= 1 - (1 - ST.fogK) * fogDensity(w, e.x, e.y);
   const d = w.distanceToInstance(e, a);
   if (!(d < r)) return false;
   if (d < ST.hear || alerted(w, e)) return true;

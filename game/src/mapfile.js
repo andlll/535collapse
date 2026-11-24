@@ -63,6 +63,30 @@ export const HALL = "hall";
 // [§9.203, richiesta dell'autore] gli stili della casa (come nel gioco: c1s..c6s,
 // quelli del blu c1b..c6b), scritti nella voce come `sprite` (il rosso)
 export const HOME_STYLES = ["c1s", "c2s", "c3s", "c4s", "c5s", "c6s"];
+// [§9.206, richiesta dell'autore] Le impostazioni della nebbia (la voce:
+// `fog`, solo quelle diverse da FOG_DEFAULTS): per ognuna i valori possibili.
+// Il banco (nebbia_banco, stealth.js): densita' (anche quanto vedono i
+// nemici dentro), velocita' (px a passo), ampiezza (px per parte). La
+// nebbia estetica (sk_nebbia, skirmish.js): densita' (l'opacita' delle
+// nuvole), velocita' col verso (px a passo, < 0 a sinistra), durata di una
+// nuvola (s), quante nuvole nascono e ogni quanto (s). I valori di partenza
+// sono quelli di prima (livello 7, schermaglia).
+export const FOG_SETTINGS = {
+  nebbia_banco: { density: [0.25, 0.5, 0.75, 1], speed: [0, 0.5, 1, 2], range: [300, 600, 900, 1200] },
+  sk_nebbia: { density: [0.25, 0.5, 0.75, 1], speed: [-1, -0.5, 0, 0.5, 1], life: [30, 60, 100, 150, 200], count: [3, 5, 8, 12], every: [20, 40, 60, 90] },
+};
+export const FOG_DEFAULTS = {
+  nebbia_banco: { density: 1, speed: 1, range: 600 },
+  sk_nebbia: { density: 0.5, speed: 0.5, life: 100, count: 5, every: 40 },
+};
+// le impostazioni di una voce di nebbia, con quelle di partenza
+export const fogOf = (e) => ({ ...FOG_DEFAULTS[e.object], ...(e.fog || {}) });
+// solo quelle diverse da quelle di partenza (null: nessuna)
+export function fogDiff(object, f) {
+  const out = {};
+  for (const [k, v] of Object.entries(f || {})) if (FOG_DEFAULTS[object] && v !== FOG_DEFAULTS[object][k]) out[k] = v;
+  return Object.keys(out).length ? out : null;
+}
 export const blueHome = (sprite) => (/^c[1-6]s$/.test(sprite || "") ? sprite.slice(0, 2) + "b" : null);
 export function assignSides(instances) {
   // §9.193: unita' ed edifici senza schieramento: del rosso
@@ -127,6 +151,12 @@ export function validateMap(data, allowed, objects) {
     if (e.side !== undefined) { // §9.191
       if (!SIDED.has(e.object) || !SIDES.includes(e.side)) { bad("schieramento di " + e.object); continue; }
       i.side = e.side;
+    }
+    if (e.fog !== undefined) { // §9.206: le impostazioni della nebbia
+      const S = FOG_SETTINGS[e.object];
+      if (!S || !e.fog || typeof e.fog !== "object" || !Object.entries(e.fog).every(([k, v]) => S[k] && S[k].includes(v))) { bad("nebbia " + e.object); continue; }
+      const f = fogDiff(e.object, e.fog);
+      if (f) i.fog = f;
     }
     if (e.hall !== undefined) { // §9.203: un municipio, non una partenza
       if (e.object !== START || e.hall !== true) { bad("municipio " + e.object); continue; }
@@ -221,9 +251,10 @@ export function scenarioToRoom(sc) {
     objects: [...new Set(sc.instances.map((i) => i.object))].sort(),
     // ([§9.203] lo stile scelto nell'editor, `sprite`, dopo il gruppo: solo
     // le mappe dell'editor, testRoom; il gioco lo mette dopo il Create,
-    // world.js loadRoom)
+    // world.js loadRoom; [§9.206] poi le impostazioni della nebbia, `fog`)
     instances: sc.instances.map((i) => [i.object, i.x, i.y, i.scale_x, i.scale_y, i.rotation, 4294967295]
-      .concat(i.group || i.sprite ? [i.group || null] : []).concat(i.sprite ? [i.sprite] : [])),
+      .concat(i.group || i.sprite || i.fog ? [i.group || null] : []).concat(i.sprite || i.fog ? [i.sprite || null] : [])
+      .concat(i.fog ? [{ ...i.fog }] : [])),
   };
   for (const k of MAP_FEATURES) if (sc[k] && sc[k].length) room[k] = sc[k];
   return room;
