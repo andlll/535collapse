@@ -14551,10 +14551,20 @@ Ora:
 - **tiro rapido** (il multiplo): le frecce incrociate
   (`nuovi/sprites/tiro_multiplo.png`, sprite `ico_tiro_rapido`, 64 px).
 Come i simboli del volume (§9.207): in nuovi.json bianchi pieni, tinti nel
-disegno; il lato piu' lungo a 36 px nel cerchio (raggio 30). Nere sul
-pulsante del modo scelto (il cerchio pieno), bianche sull'altro (il cerchio
-vuoto): i due stati di prima. Se l'atlas non le avesse, la lettera di prima.
-I nomi dei modi ("Tiro furtivo", "Tiro rapido") e le scorciatoie non cambiano.
+disegno; il lato piu' lungo a 36 px nel cerchio (raggio 30). Se l'atlas non
+le avesse, la lettera di prima. I nomi dei modi ("Tiro furtivo", "Tiro
+rapido") e le scorciatoie non cambiano.
+
+Il pulsante, dopo una seconda indicazione dell'autore ("non devono avere
+fondo nero vuoto, ma fondo bianco come le altre icone, e devono diventare
+verdi scuro quando selezionate, guarda i due pulsanti a sinistra come
+funzionano"): come attacco e difesa (units.js `unitPanel`), il cerchio
+bianco pieno (opacita' 0,69, 0,99 sotto il mouse) con l'icona nera al 70%
+(l'alpha delle icone dell'originale, 179/255); il modo scelto col cerchio
+verde scuro pieno, rgb(46,125,50) (la stessa famiglia del verde della lingua
+scelta, rgb(76,175,80)), e l'icona bianca. Prima di questa: il modo scelto
+col cerchio bianco pieno e l'icona nera, l'altro col cerchio vuoto e
+l'icona bianca.
 
 Prove: atlas ricostruito (tools/05_atlas.py); screenshot dei due stati nel
 livello 7; `hunter.mjs` controlla che le due icone siano nell'atlas.

@@ -258,6 +258,7 @@ export function shotAction(w, c) {
   for (const u of w.byIds(c.ids, "ally_arciere")) if (u.hunter) u.shotMode = c.modo;
 }
 const ICON_SIDE = 36; // §9.210: il lato piu' lungo dell'icona nel cerchio (raggio 30)
+const SHOT_ON = 0x327d2e; // §9.210: rgb(46,125,50), verde scuro (BGR); la lingua scelta e' rgb(76,175,80)
 export function shotClicker(mode) {
   const furtivo = mode === "furtivo", Y = furtivo ? 50 : 120;
   const apply = (w) => w.act("tiro", { ids: w.selectedIds(), modo: mode }); // §9.154: shotAction
@@ -300,24 +301,33 @@ export function shotClicker(mode) {
         d.text(320, H - 120 - up, sc);
         d.tooltipEnd(w);
       }
-      d.setAlpha(on ? 0.95 : 0.6);
-      d.circleColour(520, Y, 30, white, white, !on);
+      // [§9.210, richiesta dell'autore] come attacco e difesa (units.js
+      // unitPanel): il cerchio bianco pieno (0,69; 0,99 sotto il mouse) con
+      // l'icona nera al 70%, come le icone dell'originale; il modo scelto col
+      // cerchio verde scuro pieno e l'icona bianca. Prima: il modo scelto
+      // bianco pieno con la lettera nera, l'altro un cerchio vuoto
+      if (on) {
+        d.setAlpha(1);
+        d.circleColour(520, Y, 30, SHOT_ON, SHOT_ON, false);
+      } else {
+        d.setAlpha(i.hover === 1 ? 0.99 : 0.69);
+        d.circleColour(520, Y, 30, white, white, false);
+      }
       d.setAlpha(1);
-      // [§9.210] le icone dell'autore (nuovi.json, bianche, tinte qui): il
-      // mirino per il tiro furtivo (preciso), le frecce incrociate per il
-      // rapido (multiplo); nere sul pulsante scelto, bianche sull'altro.
-      // Se mancassero, la lettera della scorciatoia (com'era prima)
+      // le icone dell'autore (nuovi.json, bianche, tinte qui): il mirino per
+      // il tiro furtivo (preciso), le frecce incrociate per il rapido
+      // (multiplo). Se mancassero, la lettera della scorciatoia
       const name = furtivo ? "ico_tiro_furtivo" : "ico_tiro_rapido";
       const spr = d.a && d.a.sprites && d.a.sprites[name];
       if (spr) {
         const k = ICON_SIDE / Math.max(spr.width, spr.height);
-        d.spriteExt(name, 0, 520, Y, k, k, 0, on ? 0x000000 : white, on ? 0.9 : 1);
+        d.spriteExt(name, 0, 520, Y, k, k, 0, on ? white : 0x000000, on ? 1 : 0.7);
         d.setAlpha(1);
         return;
       }
       d.setFont("GUI_1");
       d.setHalign("center");
-      d.setColour(on ? 0x000000 : white);
+      d.setColour(on ? white : 0x000000);
       d.text(520, Y, furtivo ? "F" : "R");
       d.setColour(white);
       d.setHalign("left");
