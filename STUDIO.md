@@ -14467,3 +14467,72 @@ singolo" il primo, "Schermaglia" il terzo, "Multigiocatore" il secondo;
 `rtc.mjs`, `netmap.mjs`: "Multigiocatore" il secondo; `ui.mjs`: le pagine).
 Passate: `editor.mjs`, `skcustom.mjs`, `rtc.mjs`, `netmap.mjs`, `ui.mjs`
 (it, de: nessun problema); screenshot delle due colonne.
+
+### 9.209 Livello 7: i nemici si vedono con la vista dell'arciere; l'arciere che insegue
+
+Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "Correzioni
+da fare al lvl7: gli edifici e personaggi nemici devono rivelarsi in accordo
+con la vista allargata dell'arciere, altrimenti è come se comparissero dal
+nulla. L'arciere del lvl7 ha anche un problema di engage dei nemici in fase
+di attacco, se si allontanano capita che si inceppi (animazione della
+camminata ma omino fermo) e non li segua o che si rifiuti di attaccarli.
+Indaga e risolvi".
+
+**La vista.** La nebbia di guerra si apre attorno all'arciere della nebbia
+con la sua ellisse allargata (fog.js `shapeOf`, `ST.sight` 1,5: 600 x 360 px
+di giorno, meno di notte), ma i nemici si mostravano con la regola di sempre:
+un'unita' alleata entro 150 px (300 di giorno) dalla loro sagoma, 200 (400)
+per gli edifici. Fra 300 e 600 px il terreno era scoperto e il nemico
+invisibile: compariva dal nulla avvicinandosi. Ora (fog.js `inHunterSight`)
+un nemico, unita' o edificio, la cui sagoma tocca l'ellisse di un arciere
+della nebbia e' visibile: in `seenNear` (unita', edifici, lavoratori,
+macchine nemiche) e in civilians.js `reveal` (i civili e le risorse). Solo
+con lo stealth acceso (livello 7, prova della nebbia); altrove nulla cambia.
+
+**L'inseguimento**, riprodotto nel browser sulla mappa del livello 7 (un
+picchiere della pattuglia della cima che, dopo il clic destro, se ne va):
+1. *si rifiuta*: con la linea di tiro coperta (una casa, un bosco) e nessun
+   punto di tiro entro il guinzaglio, l'arciere si fermava; appena il
+   bersaglio usciva di gittata, fuori dai 200 px di `comp` lo dimenticava
+   (`stopHere`, niente piu' ordine). Lo stesso se usciva di gittata mentre
+   caricava il tiro;
+2. *cammina sul posto*: ordine su un bersaglio oltre la gittata (900 px):
+   l'arciere va al punto cliccato; entro 500 px da li' il passo era verso il
+   nemico PIU' VICINO, e solo se entro 800 px; il bersaglio intanto se n'era
+   andato: azione "in cammino", animazione della camminata, nessun passo
+   (394 passi di fila nella prova, finche' il timer fermati non scadeva);
+3. *dietro le mura*: il percorso si cercava nel campo dell'ordine, calcolato
+   dal bersaglio: la meta restava dentro le mura, la cella dell'arciere non
+   aveva direzione e camminava sul posto;
+4. il tiro furtivo (2 s di caricamento) su un nemico che si allontana usciva
+   di gittata a ogni caricamento; e la freccia mirava dov'era il bersaglio:
+   uno che camminava di lato non veniva colpito (col rapido, quattro frecce
+   a vuoto su quattro).
+
+Ora l'arciere della nebbia con un bersaglio scelto (ranged.js `huntOrder`,
+`huntChase`; gli altri arcieri come prima):
+- lo insegue finche' e' vivo: a tiro e in linea tira; coperto cerca un punto
+  di tiro (§6.4) e, se non c'e', si avvicina; fuori tiro gli va dietro; il
+  percorso si rifa' quando il bersaglio si e' spostato di 64 px;
+- se non lo vede piu' va dove l'ha visto l'ultima volta e li' lo lascia;
+- il percorso cerca la meta fra le celle raggiungibili da lui (se dalla meta
+  dell'ordine non si arriva all'arciere, prima il campo calcolato da lui):
+  dietro le mura si ferma alla cella piu' vicina o lascia perdere;
+- in cammino senza avanzare (16 px in 90 passi) o arrivato senza poter
+  tirare: si ferma e aspetta che il bersaglio si sposti, senza camminare sul
+  posto; la meta accanto al bersaglio non torna piu' indietro verso
+  l'arciere (`destination`, che la spostava di 64 px a passo finche' non era
+  libera: occupata dal bersaglio stesso o da alberi, anche fin quasi a lui);
+- il caricamento comincia solo se allo scocco il bersaglio sara' ancora a
+  tiro (col passo che ha) e non si annulla finche' resta entro 1,25 volte la
+  gittata (la freccia vola oltre: 660 px, 900 la furtiva);
+- la freccia mira dove sara' il bersaglio quando arriva (lo spostamento
+  dell'ultimo passo, al piu' 8 px, per i passi di volo a 20 px per passo).
+
+Prove: `hunter.mjs` (nuova, in CI): la vista (fante a 450 px visibile, a 900
+no, edificio a 450 visibile); l'inseguimento col furtivo da 900 px e col
+rapido da 750, il picchiere che va a sud: lo segue (1400 px), lo uccide, al
+piu' un passo di fila "in cammino" senza muoversi; il fante dietro le mura:
+nessuna camminata sul posto. Sul codice di prima falliscono vista, furtivo e
+rapido. Passate anche `lvl07.mjs`, `stealth.mjs`, i test (155) e le impronte
+di `determinism.mjs` su sk_padus (uguali a main).

@@ -88,12 +88,32 @@ export function sightK(w) {
   return 1 - (n + DUSK_SIGHT * s * (1 - n));
 }
 
+// [§9.209, richiesta dell'autore] Livello 7: i nemici si mostrano quando
+// entrano nella vista allargata dell'arciere della nebbia (la sua ellisse,
+// shapeOf, quella della nebbia di guerra), non solo alla distanza di
+// sempre (150 px, 300 di giorno, dal bordo): la nebbia si apriva fino a 600
+// px e la' dentro i nemici comparivano dal nulla. Basta che una parte del
+// nemico (il riquadro) ci entri. Le altre unita' come nell'originale.
+export function inHunterSight(w, i) {
+  if (!w.g.stealth) return false;
+  let k = null;
+  for (const h of w.all("ally_arciere")) {
+    if (!h.alive || !h.hunter) continue;
+    if (k === null) k = sightK(w);
+    const [cx, cy, rx, ry] = shapeOf(w, h, k), bb = w.bbox(i) || [i.x, i.y, i.x, i.y];
+    const dx = (Math.max(bb[0], Math.min(cx, bb[2])) - cx) / rx, dy = (Math.max(bb[1], Math.min(cy, bb[3])) - cy) / ry;
+    if (dx * dx + dy * dy < 1) return true;
+  }
+  return false;
+}
+
 // [§9.101, regia del livello 6] Le torri della citta' in rovina non sono
 // del giocatore finche' non le ripara oltre il 60% (levels.js, LV6): con
 // `locked` non vedono (fogSources) e i nemici vicini non si scoprono. Le
 // visibilita' dei nemici (enemies.js, economy.js, ...) passano da qui:
 // con torri chiuse (global.towersLocked) si scartano, se no nearWithin.
 export function seenNear(w, i, obj, r, rmax) {
+  if (obj === "ally_unit" && inHunterSight(w, i)) return true; // §9.209
   if (!w.g.towersLocked || (obj !== "torre" && obj !== "ally_build")) return w.nearWithin(i, obj, r, rmax);
   for (const o of w.all(obj)) if (o.alive && !o.locked && w.distanceToInstance(i, o) < r) return true;
   return false;

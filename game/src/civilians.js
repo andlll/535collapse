@@ -22,6 +22,7 @@ import { bridgeEnds, woodDue } from "./bridge.js";
 import { FAM, buttonAlpha, canBuild } from "./buildings.js";
 import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { pathEnemy } from "./multiplayer.js"; // §9.155
+import { inHunterSight } from "./fog.js"; // §9.209
 
 const iso = (dir) => 1 - 0.36 * Math.abs(dsin(degtorad(dir)));
 const OM = "ally_omino";
@@ -1658,8 +1659,9 @@ function reveal(i, w, dist, fogAware) {
   // §6.3 N3: nearWithin da' lo stesso risultato di
   // distance_to_object(instance_nearest(...)) < dist, senza rifare la
   // ricerca quando gli alleati sono lontani per certo
+  // ([§9.209] anche dentro la vista dell'arciere della nebbia, livello 7)
   if (w.nearWithin(i, "ally_unit", dist) || w.nearWithin(i, "ally_build", dist)
-      || (fogAware && w.g.fogville === 0)) i.visible = true;
+      || (fogAware && w.g.fogville === 0) || inHunterSight(w, i)) i.visible = true;
 }
 
 // Destroy delle risorse [C]: le celle occupate tornano libere.

@@ -156,6 +156,7 @@ node game/test/browser/enemydepots.mjs                 # economia nemica: magazz
 node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
 node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
 node game/test/browser/lvl07.mjs                       # livello 7: nebbia, pattuglie, lavoratori, macchine, notte, porta, cavalieri, vittoria e sconfitte (§9.178)
+node game/test/browser/hunter.mjs                      # livello 7: i nemici visti con la vista allargata dell'arciere, l'arciere che insegue e tira al bersaglio scelto (§9.209)
 node game/test/browser/pvp.mjs sk_padus 5 1500         # partita a due in una pagina: le due parti, stesse impronte
 node game/test/browser/netfake.mjs sk_padus 7 2400     # partita a due in rete, canale finto con ritardo e disordine (§9.156)
 node game/test/browser/rtc.mjs sk_padus 950            # partita a due con WebRTC vero fra due pagine, dal menu (§9.156)
