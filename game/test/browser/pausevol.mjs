@@ -15,6 +15,25 @@ const { chromium } = await import(mod);
 const base = process.env.BASE || "http://localhost:8123";
 const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+// Come skcustom.mjs: in CI un fotogramma puo' durare centinaia di ms, e con
+// attese fisse la fine del trascinamento della musica e il clic sugli
+// effetti finivano letti insieme (la musica al valore degli effetti). Dopo
+// ogni azione del mouse e della tastiera si aspetta che la pagina abbia
+// letto l'input (reads) almeno una volta in piu'.
+const syncInput = (page) => {
+  const reads = () => page.evaluate(() => { const o = window.__game; return o && o.ready && typeof o.reads === "number" ? o.reads : null; }).catch(() => null);
+  const after = async (n0) => {
+    if (n0 === null) return;
+    await page.waitForFunction((n) => { const o = window.__game; return !o || typeof o.reads !== "number" || o.reads > n; }, n0, { timeout: 15000, polling: 10 }).catch(() => {});
+  };
+  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "click"]], [page.keyboard, ["down", "up", "press"]]]) {
+    for (const m of names) {
+      const orig = obj[m].bind(obj);
+      obj[m] = async (...a) => { const n0 = await reads(); const r = await orig(...a); await after(n0); return r; };
+    }
+  }
+};
+syncInput(page);
 const errs = []; page.on("pageerror", (e) => errs.push(e.message));
 const res = {};
 let ok = true;

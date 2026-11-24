@@ -14444,6 +14444,16 @@ sugli effetti al 30%, salvati e uguali dopo aver ricaricato; il contatore FPS
 fra le opzioni grafiche, che si accende), test unitari; screenshot (la pausa
 coi due cursori, le opzioni grafiche).
 
+Dopo, in CI (PR #27, commit 68fff1e): `pausevol.mjs` e' fallita una volta
+con la musica a 0,3 invece di 0,7, cioe' al valore del clic sugli effetti.
+Era la prova: aspettava tempi fissi (60-200 ms) fra un evento del mouse e
+l'altro, e in CI un fotogramma puo' durarne centinaia; la fine del
+trascinamento e il clic sugli effetti finivano letti insieme, col cursore
+della musica ancora preso. Ora, come `editor.mjs` e `skcustom.mjs`, dopo
+ogni azione del mouse e della tastiera aspetta che la pagina abbia letto
+l'input (`reads`). Qui non si riproduce nemmeno con la CPU rallentata di 8
+volte; passa.
+
 ### 9.208 Il menu principale: il tutorial in "Giocatore singolo", l'editor nella colonna del titolo
 
 Richiesta dell'autore (24 novembre 2026, stessa PR #27, 0.2617): "menu
