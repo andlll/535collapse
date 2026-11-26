@@ -112,7 +112,7 @@ export async function coverImage(map, sizeOf) {
 // sizeOf(oggetto) -> [larghezza, altezza] dello sprite, in px della room.
 export const PREVIEW = {
   w: 720, h: 480, pad: 14,
-  bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95" },
+  bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95", sabbia: "#ceba8a" }, // (§9.219: la sabbia delle macchie)
   water: "#6a9ec0", road: "#8a7a5e", path: "#9c8c6c",
   tree: "#4f6b45", meadow: "#9fb070", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
   start: { red: "#c83038", blue: "#3070e8" }, startRing: "#ffffff",

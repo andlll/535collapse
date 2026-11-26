@@ -352,7 +352,7 @@ test("§9.185 pennello: sagome e boschi", () => {
 test("§9.185 il riquadro del pennello", () => {
   for (const [W, H] of [[1920, 1080], [1280, 720]]) {
     const L = editorLayout(W, H), B = brushLayout(L.panel), [x1, y1, x2, y2] = L.panel;
-    assert.equal(B.tabs.length, 5); // (§9.216: bosco, erba e le tre texture)
+    assert.equal(B.tabs.length, 6); // (§9.216: bosco, erba e le tre texture; §9.219: e la sabbia)
     for (const q of B.tabs) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y2 <= y2);
     for (const G of [B.width, B.density]) for (const c of [G.minus, G.plus]) assert.ok(c[0] + c[2] <= x2 && c[1] + c[2] <= y2 && c[1] - c[2] > y1 + 90);
     assert.ok(B.width.plus[0] + 20 < B.density.label[0], "larghezza e densita' non si toccano");

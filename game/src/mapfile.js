@@ -26,6 +26,9 @@ export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths", "
 // resta qui: le modalita').
 export const MAP_SIZES = [4000, 5000, 6000, 7000, 8000, 9000];
 export const MAP_BACKGROUNDS = ["green1", "city2", "city1"];
+// [§9.219] le macchie del pennello: gli sfondi della mappa e la sabbia
+// (nuovi/sfondi/sabbia.png, tools/22_sabbia.py)
+export const PATCH_BACKGROUNDS = [...MAP_BACKGROUNDS, "sabbia"];
 export const CPU_DIFFICULTY = ["choice", "easy", "normal", "hard", "rigged"];
 export const CPU_STYLE = ["choice", "balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
 export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
@@ -202,7 +205,7 @@ export function validateMap(data, allowed, objects) {
                 (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd") && [1, 2].includes(f.kind ?? 1) && unit(f, "density", 5)),
     rivers: list("rivers", ["width", "widthEnd"], (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd")),
     bridges: list("bridges", [], (f) => pts(f.pts)),
-    patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || MAP_BACKGROUNDS.includes(f.bg))
+    patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || PATCH_BACKGROUNDS.includes(f.bg))
                   && unit(f, "feather", 400) && unit(f, "alpha", 1)),
     // [§9.214] le montagne del generatore: ogni voce controllata
     // (mountains.js cleanMountain: punti, limiti, parametri)

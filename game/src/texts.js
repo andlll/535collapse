@@ -1576,6 +1576,17 @@ export const TEXTS = {
   "Drag the points. Del: delete. B: draw the base again.": { it: "Trascina i punti. Canc: elimina. B: ridisegna la base.", es: "Arrastra los puntos. Supr: eliminar. B: vuelve a dibujar la base.", pt: "Arraste os pontos. Del: excluir. B: desenhe a base de novo.", de: "Ziehe die Punkte. Entf: löschen. B: Fuß neu zeichnen.", fr: "Fais glisser les points. Suppr : supprimer. B : redessiner la base." },
   // [§9.216] le chiazze d'erba del pennello
   "Grass": { it: "Erba", es: "Hierba", pt: "Erva", de: "Gras", fr: "Herbe" },
+  // [§9.219] "Erba" e "Prato" si somigliavano: il pennello delle particelle e' il bouquet; la sabbia
+  "Bouquet": { it: "Bouquet", es: "Ramillete", pt: "Buquê", de: "Strauß", fr: "Bouquet" },
+  "Sand": { it: "Sabbia", es: "Arena", pt: "Areia", de: "Sand", fr: "Sable" },
+  "Area brush: forests, bouquets, textures": { it: "Pennello area: boschi, bouquet, texture", es: "Pincel de área: bosques, ramilletes, texturas",
+    pt: "Pincel de área: florestas, buquês, texturas", de: "Flächenpinsel: Wälder, Sträuße, Texturen", fr: "Pinceau de zone : forêts, bouquets, textures" },
+  "Paint forests, bouquets of grass and flowers with the particles you choose, and ground textures (city paving, stone, meadow, sand) with a round brush; the right button erases them.": {
+    it: "Dipingi boschi, bouquet d'erba e fiori con le particelle che scegli e texture del terreno (selciato di città, pietra, prato, sabbia) con un pennello tondo; il tasto destro li cancella.",
+    es: "Pinta bosques, ramilletes de hierba y flores con las partículas que elijas y texturas del suelo (empedrado de ciudad, piedra, prado, arena) con un pincel redondo; el botón derecho los borra.",
+    pt: "Pinte florestas, buquês de erva e flores com as partículas que escolher e texturas do terreno (calçamento de cidade, pedra, prado, areia) com um pincel redondo; o botão direito as apaga.",
+    de: "Male Wälder, Sträuße aus Gras und Blumen mit den Partikeln deiner Wahl und Bodentexturen (Stadtpflaster, Stein, Wiese, Sand) mit einem runden Pinsel; die rechte Taste löscht sie.",
+    fr: "Peins forêts, bouquets d'herbe et de fleurs avec les particules que tu choisis et textures du sol (pavés de ville, pierre, prairie, sable) avec un pinceau rond ; le bouton droit les efface." },
   "Particles every 100 x 100 px": { it: "Particelle ogni 100 x 100 px", es: "Partículas cada 100 x 100 px", pt: "Partículas a cada 100 x 100 px", de: "Partikel je 100 x 100 px", fr: "Particules tous les 100 x 100 px" },
   "Dark grass": { it: "Erba scura", es: "Hierba oscura", pt: "Erva escura", de: "Dunkles Gras", fr: "Herbe sombre" },
   "Green grass": { it: "Erba verde", es: "Hierba verde", pt: "Erva verde", de: "Grünes Gras", fr: "Herbe verte" },

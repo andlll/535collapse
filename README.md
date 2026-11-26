@@ -58,7 +58,7 @@ fiumi, delle strade e dei ponti disegnati come linee in Tiled (`nuovi/fiumi/`, �
 acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (dopo
 `tools/01`) solo se cambiano i dipinti da cui vengono. La texture delle montagne del generatore
 (`nuovi/montagne/roccia.png`, §9.213, dalla pietra di montagna9) si rifa' con `python3 tools/20_montagne.py`
-(dopo `tools/01`); la prova di stile delle montagne (fogli PNG accanto ai disegni dell'autore) con
+(dopo `tools/01`); la sabbia del pennello (`nuovi/sfondi/sabbia.png`, §9.219: il prato ricolorato) con `python3 tools/22_sabbia.py` (dopo `tools/01`); la prova di stile delle montagne (fogli PNG accanto ai disegni dell'autore) con
 `node tools/21_prova_montagne.mjs`; la prova nel browser dello strumento montagna dell'editor con `node game/test/browser/mountains.mjs` (senza server: i file li serve Playwright). Le mappe della schermaglia
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
 (poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della

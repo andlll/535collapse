@@ -15059,3 +15059,34 @@ Sarebbe figo se avessero il caratteristico wiggle come nel gioco".
 Prove: meadows.mjs (in piu': il nome dei papaveri col puntatore
 sull'icona; due foto del riquadro a mezzo secondo di distanza sono diverse:
 i ciuffi ondeggiano). La foto del riquadro: build/prova_montagne/erba_icone.png.
+
+### 9.219 Il bouquet e la sabbia nel pennello
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Pennello
+area: erba e prato sono nomi simili, erba chiamiamolo bouquet o un nome
+simpatico del genere. Sarebbe bello anche un pennello sabbia con stessa
+texture del prato ma colore sabbia appunto".
+
+- **Bouquet**: la scheda delle chiazze di particelle (§9.216) si chiama
+  "Bouquet" (es. Ramillete, pt. Buquê, de. Strauß, fr. Bouquet); il titolo
+  dello strumento "Pennello area: boschi, bouquet, texture". Dentro resta
+  `grass` (la mappa: `meadows`).
+- **Sabbia**: una texture in piu' per le macchie del pennello, dopo Prato:
+  lo sfondo del prato (green1) con la sua grana di carta, ricolorato
+  (tools/22_sabbia.py -> nuovi/sfondi/sabbia.png, 66 KB): ogni pixel e' il
+  colore sabbia (206, 186, 138) per la sua luminosita' relativa, con la
+  grana un po' piu' marcata (x1,15: sul chiaro si vedeva meno). Scelta fra
+  tre tinte (206/186/138, 214/196/152 piu' chiara, 196/172/124 piu' scura):
+  la prima, la piu' equilibrata accanto al verde del prato. tools/05_atlas.py
+  mette fra gli sfondi ripetuti i PNG di nuovi/sfondi/ col nome del file
+  (`sabbia`). Le macchie accettano anche la sabbia (mapfile.js
+  PATCH_BACKGROUNDS); la sabbia non e' fra gli sfondi della mappa (le
+  impostazioni), solo nel pennello. L'anteprima delle mappe senza copertina
+  la mostra (#ceba8a).
+- Le schede del pennello: Bosco, Selciato, Pietra, Prato, Sabbia, Bouquet
+  (le prime quattro al loro posto: la prova dell'editor le sceglie per
+  posto); editor.test.mjs ne contava cinque, ora sei.
+
+Prove: meadows.mjs (in piu': la scheda Sabbia, una pennellata, una macchia
+di sabbia con la sua texture caricata); editor.mjs (quella di sempre); i
+test unitari (166).

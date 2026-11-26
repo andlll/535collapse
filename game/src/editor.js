@@ -156,7 +156,7 @@ export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
   mountain: "Mountain: crest and base", // §9.214
-  brush: "Area brush: forests, grass, textures", // §9.216: anche l'erba
+  brush: "Area brush: forests, bouquets, textures", // §9.216: anche l'erba (§9.219: il bouquet)
   insert: "Insert: units, resources, buildings…",
   erase: "Area eraser: delete objects",
   undo: "Undo (Ctrl+Z)",
@@ -174,7 +174,7 @@ export const DESC = {
   select: "Select objects with a click or a box and drag them to move them; copy and paste, mirror or delete the selection.",
   line: "Draw rivers and roads point by point, with their width; drag the points to change their course. Bridges go across rivers.",
   mountain: "Draw a mountain in two steps: the crest, peak by peak, then its base on the ground (or the automatic one). Objects underneath are removed, rivers and roads go around it.",
-  brush: "Paint forests, grass patches with the particles you choose, and ground textures (city paving, stone, meadow) with a round brush; the right button erases them.",
+  brush: "Paint forests, bouquets of grass and flowers with the particles you choose, and ground textures (city paving, stone, meadow, sand) with a round brush; the right button erases them.",
   insert: "Choose an object by category (units, buildings, resources, nature, city…) and place it on the map.",
   erase: "Delete all the objects under the brush, holding the left button down.",
 };
@@ -184,7 +184,7 @@ export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select w
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
 export const READY = new Set(["select", "insert", "brush", "line", "erase", "mountain"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
 // [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
-export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
+export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone", sabbia: "Sand" }; // (§9.219: la sabbia, solo pennello)
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
 // [§9.214, richieste dell'autore] La montagna (mountains.js): in due passi,
 // la cresta (cima per cima, come si vede) e poi la base sul terreno (o
@@ -234,7 +234,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
                              "Trees removed from the river: {n}", // §9.204
-                             "Grass", "Particles every 100 x 100 px", ...Object.values(MEADOW_LABEL), "Choose at least one kind of particle.", // §9.216
+                             "Bouquet", "Particles every 100 x 100 px", ...Object.values(MEADOW_LABEL), "Choose at least one kind of particle.", // §9.216
                              "Too much grass on this map: erase some first.",
                              ...MTN_TEXTS, // §9.214
                              "Speed", "Range", "Duration", "Clouds", "Every", // §9.206: la nebbia
@@ -523,10 +523,11 @@ export function paletteLayout(panel, cat, scroll, idx = null) {
 // mappa), quanto e' fitto il bosco (la distanza minima fra gli alberi: 90
 // px come il pennello bosco di Tiled, tools/12)
 // ([§9.216] "grass": le chiazze d'erba, meadows.js)
-export const BRUSH_KINDS = ["forest", "city2", "city1", "green1", "grass"]; // (in fondo: le schede di prima restano al loro posto)
+// ([§9.219] la sabbia dopo il prato; "grass" e' il bouquet)
+export const BRUSH_KINDS = ["forest", "city2", "city1", "green1", "sabbia", "grass"]; // (in fondo: le schede di prima restano al loro posto)
 export const BRUSH_WIDTHS = [200, 300, 400, 600, 800, 1200, 1600];
 export const BRUSH_SPACING = [180, 140, 110, 90, 75, 60]; // densita' 1..6
-const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46, grass: 0x58b070 };
+const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46, grass: 0x58b070, sabbia: 0x8abace };
 // [§9.216] le chiazze d'erba: il riquadro di vetro sopra il pannello (come
 // quello della nebbia, §9.206) con le particelle e la densita' di ognuna
 export const MEADOW_TITLE = "Particles every 100 x 100 px";
@@ -2572,7 +2573,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
       draw.setColour(on ? c.white : c.black);
       draw.setAlpha(on ? 1 : 0.8);
-      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Grass" : BG_NAMES[q.kind]));
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Bouquet" : BG_NAMES[q.kind])); // (§9.219: "Erba" era troppo simile a "Prato")
     }
     pmGroup(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
     if (b.kind === "forest") pmGroup(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");

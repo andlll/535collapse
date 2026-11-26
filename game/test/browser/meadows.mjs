@@ -110,6 +110,18 @@ check("il fiume taglia la macchia di Natura", cut.after < cut.before && cut.afte
 check("Ctrl+Z: la macchia di nuovo intera", cut.back === cut.before, JSON.stringify(cut));
 await E(() => { const s = window.__editor.scene; s.addFeatures("rivers", [{ pts: [[2000, 3000], [4000, 3000]], width: 150 }]); });
 
+// [§9.219] la scheda Sabbia: una pennellata, una macchia di sabbia (la sua texture caricata)
+const sandTab = (await E(() => window.__editor.brushLayout())).tabs.find((q) => q.kind === "sabbia");
+await E(() => window.__editor.view.centre(4500, 1500)); await settle(200);
+await page.mouse.click((sandTab.x1 + sandTab.x2) / 2, (sandTab.y1 + sandTab.y2) / 2); await settle();
+const [sx, sy] = await toScreen([4300, 1250]);
+await page.mouse.move(sx, sy); await page.mouse.down();
+for (let k = 1; k <= 10; k++) { await page.mouse.move(sx + k * 30, sy + k * 4); await settle(40); }
+await page.mouse.up(); await settle(400);
+const sand = await E(() => ({ bg: (window.__editor.scene.map.patches || []).map((p) => p.bg), tex: !!window.__editor.scene.assets.bg.get("sabbia") }));
+check("una macchia di sabbia", sand.bg.includes("sabbia") && sand.tex, JSON.stringify(sand));
+await page.screenshot({ path: join(SHOTS, "sabbia.png") });
+
 // "Prova mappa": l'erba nel gioco
 await E(() => {
   const s = window.__editor.scene;

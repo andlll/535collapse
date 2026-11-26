@@ -646,6 +646,13 @@ def main():
         im = Image.open(path).convert("RGBA")
         im.save(os.path.join(OUT, "bg", name + ".webp"), "WEBP", quality=QUALITY, method=6)
         manifest["backgrounds"][name] = {"file": "bg/%s.webp" % name, "width": im.width, "height": im.height}
+    # [§9.219] gli sfondi nuovi delle macchie del pennello (nuovi/sfondi/,
+    # tools/22_sabbia.py: la sabbia), col nome del file
+    for path in sorted(glob.glob(os.path.join(REPO_DIR, "nuovi", "sfondi", "*.png"))):
+        name = os.path.splitext(os.path.basename(path))[0]
+        im = Image.open(path).convert("RGBA")
+        im.save(os.path.join(OUT, "bg", name + ".webp"), "WEBP", quality=QUALITY, method=6)
+        manifest["backgrounds"][name] = {"file": "bg/%s.webp" % name, "width": im.width, "height": im.height}
     # [§9.214] la pietra delle montagne del generatore (nuovi/montagne/,
     # tools/20_montagne.py): monte_roccia
     for path in sorted(glob.glob(os.path.join(REPO_DIR, "nuovi", "montagne", "*.png"))):
