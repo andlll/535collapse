@@ -15235,3 +15235,30 @@ Prove: meadows.mjs (in piu': il bouquet di foglie, fiori e foglioline ha
 zero particelle e 433 sprite a terra; nel gioco gli sprite a terra ci sono);
 editor.mjs, mountains.mjs passano; i test unitari (166). La foto:
 build/prova_montagne/bouquet_natura.png.
+
+### 9.225 Le icone dell'autore nei riquadri dell'editor
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con cinque
+disegni: "iniziamo a sostituire le icone che hai fatto tu con icone un po'
+piu' professional, iniziando da queste".
+
+- I cinque disegni (neri su trasparente, 1254 x 1254) ripuliti dai pixel
+  quasi trasparenti (alpha sotto 60: una polvere lontana dal disegno
+  allargava il ritaglio), ritagliati e salvati a 256 px in nuovi/sprites/
+  (ed_simmetria, ed_asperita, ed_dettaglio, ed_larghezza, ed_altezza); in
+  nuovi.json come le altre icone dell'editor (§9.198): ico_ed_sym,
+  ico_ed_rough, ico_ed_detail, ico_ed_width (64 px di larghezza),
+  ico_ed_height (64 di altezza), bianche (l'editor le tinge di scuro).
+- Al posto dei disegni a linee di §9.220-§9.222 (editor.js labelIcon,
+  iconSprite): la simmetria, l'asperita', il dettaglio, la larghezza,
+  l'altezza; la larghezza finale della polilinea e' la freccia
+  dell'autore contro la sbarretta, l'altezza di una cima la sua freccia
+  verticale col suo picco (il dettaglio) piccolo accanto. I disegni a linee
+  restano solo se un'icona mancasse.
+- Restano miei (finche' l'autore non li sostituisce): gli schemi delle
+  modalita' della simmetria, il dado e la base automatica, la densita' del
+  bosco, l'icona dello strumento montagna nella colonna.
+
+Prove: le foto dei riquadri (pennello, polilinea, montagna con una cima
+scelta); editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari
+(166).
