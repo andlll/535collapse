@@ -73,7 +73,7 @@ import { setDomText } from "./domtext.js";
 import { glowText } from "./menu.js";
 import { glassBackdrop } from "./glass.js"; // §9.203
 import { dcos, dsin, dhypot } from "./dmath.js";
-import { newMap, roomToScenario, validateMap, MAP_SIZES, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
+import { newMap, roomToScenario, validateMap, MAP_SIZE, mapSizeOk, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
          testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart, FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff } from "./mapfile.js";
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark,
@@ -152,6 +152,11 @@ export const ACTIONS = ["new", "open", "save", "test", "settings"];
 // [§9.195, richiesta dell'autore] il secondo gruppo, fra gli strumenti e le
 // azioni: annulla, taglia, copia, incolla (oltre ai tasti)
 export const EDITS = ["undo", "redo", "cut", "copy", "paste"]; // §9.199: anche Ripeti
+// [§9.235, richiesta dell'autore: "i titoli dei vari tool sono troppo
+// lunghi, non serve contengano la descrizione di cosa c'e' dentro, si vede
+// gia' dai nomi dei pulsanti"] il titolo del riquadro: il solo nome dello
+// strumento (LABEL, piu' lungo, resta il suggerimento sui pulsanti della colonna)
+export const TITLE = { select: "Selection", line: "Polyline", mountain: "Mountain", brush: "Area brush", insert: "Insert object", erase: "Area eraser" };
 export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
@@ -262,7 +267,8 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              // [§9.188] i salvataggi su file, "Prova mappa"
                              "Where", "In the browser", "To a file", "Choose at least one place.",
                              "A skirmish map needs a red and a blue starting position (Insert, Setup).",
-                             ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
+                             "Width and height: whole numbers from {min} to {max}.", // §9.233
+                             ...Object.values(TITLE), ...Object.values(LABEL), ...Object.values(DESC), ...CATALOG.map((k) => k.label)];
 
 // [§9.197] la freccina nera col bordo bianco, 24 x 24, punta in (2, 2)
 const ARROW_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">'
@@ -342,6 +348,7 @@ export function hitTest(L, mx, my) {
 const DARK = 0x3c3c3c;
 // [§9.191] i colori dei due schieramenti (BGR, come Draw)
 export const SIDE_COLOUR = { red: 0x3830c8, blue: 0xe87030 };
+export const SIZE_RANGE = "Width and height: whole numbers from {min} to {max}."; // §9.233
 export const NEED_SIDES = "A skirmish map needs a red and a blue starting position (Insert, Setup).";
 // [§9.193] lo schieramento della casella scelta (S: l'altro)
 export const SIDE_HINT = { red: "Red side (S: blue)", blue: "Blue side (S: red)" };
@@ -1390,8 +1397,20 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const drop = p.button(coverBtns, tr("Remove"), () => { v.cover = null; showCover(); }, { name: "cover-remove" });
     for (const b of [load, drop]) Object.assign(b.style, { minWidth: "0", height: "32px", padding: "0 12px" });
     showCover();
-    choice(p, "width", tr("Width"), MAP_SIZES, String, v.width, (x) => { v.width = x; });
-    choice(p, "height", tr("Height"), MAP_SIZES, String, v.height, (x) => { v.height = x; });
+    // [§9.233, richiesta dell'autore] larghezza e altezza: numeri interi da
+    // scrivere, fra MAP_SIZE.min e MAP_SIZE.max (controllati con "Applica")
+    const size = (key, label, value) => {
+      const row = line(p, label), t = document.createElement("input");
+      Object.assign(t, { type: "number", min: MAP_SIZE.min, max: MAP_SIZE.max, step: 1, value: String(value) });
+      t.inputMode = "numeric"; t.dataset.net = key;
+      Object.assign(t.style, INPUT, { width: "130px", flex: "0 0 130px" });
+      const unit = document.createElement("div");
+      setDomText(unit, "px", { font: "overdue", colour: "#666", width: 30 });
+      Object.assign(unit.style, { alignSelf: "center" });
+      row.append(t, unit);
+      return t;
+    };
+    const wIn = size("width", tr("Width"), v.width), hIn = size("height", tr("Height"), v.height);
     choice(p, "background", tr("Background"), MAP_BACKGROUNDS, (b) => tr(BG_NAMES[b]), v.background, (x) => { v.background = x; });
     // [§9.186] "a scelta del giocatore": li sceglie chi lancia la partita
     const cpuName = (names) => (q) => tr(q === "choice" ? "Player's choice" : q === "static" ? "Static" : names[q]);
@@ -1417,6 +1436,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     showLock();
     const row = p.row();
     p.button(row, tr("Apply"), () => {
+      const num = (t) => (/^\s*\d+\s*$/.test(t.value) ? Number(t.value) : NaN);
+      v.width = num(wIn); v.height = num(hIn);
+      if (!mapSizeOk(v.width) || !mapSizeOk(v.height)) {
+        p.status(tr(SIZE_RANGE, { min: MAP_SIZE.min, max: MAP_SIZE.max }), "error");
+        (mapSizeOk(v.width) ? hIn : wIn).focus();
+        return;
+      }
       const resize = v.width !== m.width || v.height !== m.height || v.background !== m.background;
       Object.assign(m, { name: name.value.trim().slice(0, NAME_MAX), description: desc.value.trim().slice(0, DESC_MAX),
                          width: v.width, height: v.height, background: v.background,
@@ -2407,7 +2433,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setHalign("left");
     draw.setFont("GUI_1");
     draw.setAlpha(0.8);
-    draw.text(x1 + 26, y1 + 30, tr(LABEL[ed.tool]));
+    draw.text(x1 + 26, y1 + 30, tr(TITLE[ed.tool])); // §9.235
     // a destra: col puntatore sulla mappa le sue coordinate, poi lo stato
     // dello strumento ("Prossimamente" se non c'e' ancora)
     draw.setHalign("right");
@@ -2436,10 +2462,26 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // [§9.187] se non stanno accanto al titolo, rimpiccioliti)
     const right = (onMap && state.length < 48 ? `x ${Math.round(mx)}   y ${Math.round(my)}     ` : "") + state;
     draw.setFont("GUI_1");
-    const room = x2 - x1 - 52 - draw.stringWidth(tr(LABEL[ed.tool])) - 30;
+    const room = x2 - x1 - 52 - draw.stringWidth(tr(TITLE[ed.tool])) - 30;
     draw.setFont("overdue");
-    const wide = draw.stringWidth(right), k = wide > room ? Math.max(0.55, room / wide) : 1;
-    if (k < 1) draw.textTransformed(x2 - 26, y1 + 30, right, k); else draw.text(x2 - 26, y1 + 30, right);
+    const wide = draw.stringWidth(right), k = wide > room ? room / wide : 1;
+    if (k >= 0.8) { if (k < 1) draw.textTransformed(x2 - 26, y1 + 30, right, k); else draw.text(x2 - 26, y1 + 30, right); }
+    else {
+      // [§9.234] troppo lungo (i comandi della polilinea, le lingue lunghe):
+      // su due righe, spezzato fra le parole piu' vicino alla meta', invece
+      // di rimpicciolirlo fino a non leggersi (e, prima, a toccare il titolo)
+      // (con le coordinate: loro sopra, il suggerimento sotto)
+      const coords = right === state ? "" : right.slice(0, right.length - state.length).trim();
+      const words = right.split(" ");
+      let best = coords ? [coords, state, Math.max(draw.stringWidth(coords), draw.stringWidth(state))] : null;
+      for (let n = 1; !coords && n < words.length; n++) {
+        const a = words.slice(0, n).join(" "), b = words.slice(n).join(" "), m = Math.max(draw.stringWidth(a), draw.stringWidth(b));
+        if (!best || m < best[2]) best = [a, b, m];
+      }
+      const k2 = best ? Math.min(0.8, room / best[2]) : room / wide;
+      if (best) { draw.textTransformed(x2 - 26, y1 + 18, best[0], k2); draw.textTransformed(x2 - 26, y1 + 40, best[1], k2); }
+      else draw.textTransformed(x2 - 26, y1 + 30, right, k2);
+    }
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
     if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
@@ -2686,14 +2728,21 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     return out;
   };
 
+  // [§9.234] un testo in `room` px: rimpicciolito se non ci sta
+  const fitText = (x, y, text, room) => {
+    const w = draw.stringWidth(text);
+    if (w > room && room > 0) draw.textTransformed(x, y, text, room / w); else draw.text(x, y, text);
+  };
   // un valore coi suoi "-" e "+" (pennello, polilinea)
   const pmGroup = (G, label, value, key, hover = ed.palHover) => { // (§9.206: hover, il "-" o "+" sotto il puntatore)
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
     // ([§9.220] la larghezza: l'icona delle due frecce al posto della parola)
     if (label && label.icon) labelIcon(label.icon, G.label[0], G.label[1]);
-    else { draw.setHalign("left"); draw.text(G.label[0], G.label[1], label); }
-    draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
+    else { draw.setHalign("left"); fitText(G.label[0], G.label[1], label, G.minus[0] - G.minus[2] - 16 - G.label[0]); }
+    // ([§9.234] nelle lingue coi valori lunghi, "Identique", rimpicciolito
+    // fra il "-" e il "+")
+    draw.setHalign("center"); fitText(G.value[0], G.value[1], value, G.plus[0] - G.plus[2] - G.minus[0] - G.minus[2] - 10);
     for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
       const hov = hover === key + sign;
       draw.setAlpha(hov ? 0.95 : 0.6);

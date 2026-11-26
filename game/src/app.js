@@ -513,7 +513,7 @@ async function main() {
     setupMultiplayer(world, net ? net.local + 1 : params.get("parte") === "2" ? 2 : 1);
     world.p2Sprites = p2SpriteMap(assets.sprites);
   }
-  const skStarts = skParams ? skirmishPrepare(skParams, all) : null;
+  const skStarts = skParams ? skirmishPrepare(skParams, all, room.starts || null) : null; // §9.232: le bandierine
   // [§9.193] online, le unita' e gli edifici blu di una mappa dell'editor
   // (gli oggetti della CPU, mapfile.js testRoom) diventano quelli del secondo
   // giocatore (i gemelli p2_*: la tabella del nemico, multiplayer.js m1)

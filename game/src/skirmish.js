@@ -121,7 +121,12 @@ const STYLES = ["balanced", "aggressive", "defensive", "economic", "raider"];
 // enemy_centro. `all`: le istanze della room ([obj, x, y, ...]).
 // ([§9.203] i municipi in piu' delle mappe dell'editor, nel gruppo HALL, non
 // sono partenze)
-export function skirmishPrepare(params, all) {
+// [§9.232] le mappe dell'editor: `starts` (testRoom room.starts), le
+// bandierine, solo la vista iniziale (il rosso e' il giocatore, il blu la
+// CPU o il giocatore 2); i centri sono i municipi, gia' delle due parti, e
+// possono mancare
+export function skirmishPrepare(params, all, starts = null) {
+  if (starts) return starts.red && starts.blue ? { side: "A", player: starts.red.slice(), cpu: starts.blue.slice() } : null;
   const cc = all.filter((e) => e[0] === "centro" && e[7] !== HALL).sort((a, b) => (a[1] + a[2]) - (b[1] + b[2]));
   if (cc.length !== 2) return null;
   const side = params.start === "random" ? (simRandom() < 0.5 ? "A" : "B") : params.start;
@@ -244,8 +249,13 @@ export function skManager() {
         if (me > cpu) win(); else lose("score");
         return;
       }
-      if (enemyBuildings === 0) win();
-      else if (myBuildings === 0) lose("buildings");
+      // [§9.232] una parte che non ha mai avuto edifici (una mappa
+      // dell'editor con le sole unita'): fuori quando non ha piu' nemmeno
+      // unita'
+      if (myBuildings > 0) S.myBuilt = 1;
+      if (enemyBuildings > 0) S.cpuBuilt = 1;
+      if (enemyBuildings === 0 && (S.cpuBuilt || w.number("enemy_unit") === 0)) win();
+      else if (myBuildings === 0 && (S.myBuilt || w.number("ally_unit") === 0)) lose("buildings");
     },
   };
 }
@@ -273,8 +283,15 @@ function pvpCheck(w, g, S) {
     g.skScores = [a, b];
     why = "score";
     lost = a >= b ? 2 : 1;
-  } else if (built(2) === 0) lost = 2;
-  else if (built(1) === 0) lost = 1;
+  } else {
+    // [§9.232] come contro la CPU: chi non ha mai avuto edifici, senza
+    // nemmeno unita'
+    const B = S.built || (S.built = [0, 0]), out = (s) => built(s) === 0 && (B[s - 1] || w.number(s === 1 ? "ally_unit" : "p2_unit") === 0);
+    if (built(1) > 0) B[0] = 1;
+    if (built(2) > 0) B[1] = 1;
+    if (out(2)) lost = 2;
+    else if (out(1)) lost = 1;
+  }
   if (lost) pvpEnd(w, g, 3 - lost, why);
 }
 function pvpEnd(w, g, winner, why) {

@@ -15403,3 +15403,103 @@ Prove: le foto dei riquadri (pennello col bosco e col bouquet, gomma,
 polilinea, montagna, Inserisci); editor.mjs, mountains.mjs, meadows.mjs,
 edinsert.mjs passano; i test unitari (166, quelli della disposizione dei
 riquadri compresi).
+
+### 9.232 Le bandierine solo per la vista; le partite senza centro citta'
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "bandierine
+della regia: usiamole solo per la posizione di visualizzazione iniziale.
+Facciamo in modo che i giocatori possano giocare senza centro citta'
+volendo (chiaramente in quel caso l'obiettivo di distruggere il centro
+citta' per vincere nelle impostazioni e' grayed out)".
+
+- **Le bandierine** (Inserisci, Regia: la partenza rossa e la blu) non fanno
+  piu' nascere il centro: mapfile.js testRoom le toglie dalla room e le
+  scrive in `room.starts` ({ red: [x, y], blue: [x, y] }); skirmish.js
+  skirmishPrepare, con `starts`, da' la vista del giocatore (il rosso) e
+  della CPU o del giocatore 2 (il blu). I centri sono i municipi
+  (Inserisci, Edifici, §9.203), gia' delle due parti, e possono mancare.
+  Una mappa da giocare ha sempre una bandierina per parte (sidesOk: dicono
+  dove si guarda all'inizio).
+- **Le mappe salvate prima** non perdono i centri: il formato passa alla
+  versione 2 (MAP_VERSION); validateMap, a una mappa della versione 1, mette
+  sotto ogni bandierina un municipio della sua parte. Anche i modelli (le
+  mappe della schermaglia, roomToScenario: versione 1). Le mappe del gioco
+  restano come prima (il centro e' partenza e centro insieme).
+- **La vittoria Municipio** (schermaglia, menu.js) su una mappa dell'editor
+  senza almeno un municipio per parte (mapfile.js hallsOk): il valore si
+  vede scorrendo, ma in grigio, "Inizia" spento e il perche' al posto della
+  descrizione ("La vittoria Municipio ha bisogno di un centro citta' per
+  parte (Inserisci, Edifici): scegli un'altra vittoria."). "Prova mappa"
+  (editor.js, skForMap) su una mappa cosi': Conquista.
+- **Conquista senza edifici** (skManager, pvpCheck): una parte che non ha
+  mai avuto edifici (una mappa di sole unita') e' fuori quando non ha piu'
+  nemmeno unita' (prima avrebbe perso al primo controllo). Chi ha avuto
+  edifici perde, come prima, quando non ne ha piu'.
+
+Prove: editor.test.mjs (§9.232: la versione 1 coi municipi sotto le
+bandierine, la 2 senza, hallsOk, skForMap, la room senza partenze e
+skirmishPrepare con le viste; e i test di §9.188, §9.191, §9.193, §9.203
+aggiornati); nel browser nocentro.mjs (nuova, nel workflow: nessun centro,
+la vista sulla bandierina rossa, 600 passi senza fine, uccise le unita'
+della CPU la vittoria), skcustom.mjs (A come mappa salvata prima, coi suoi
+centri; su B, senza centri, Municipio in grigio e "Inizia" spento),
+edstyles.mjs (la sua mappa della versione 1).
+
+### 9.233 Le misure della mappa da scrivere
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "per le
+dimensioni della mappa sostituiamo i tasti 'fissi' con dei valori integer
+inseribili dall'utente, chiaramente nei limiti della decenza come range".
+
+- Nelle impostazioni della mappa (editor.js openSettings) larghezza e
+  altezza sono due caselle numeriche (px) al posto dei sei pulsanti
+  4000-9000. Con "Applica" si controllano: interi da 3000 a 10000
+  (mapfile.js MAP_SIZE, mapSizeOk); se no il pannello resta aperto col
+  messaggio "Larghezza e altezza: numeri interi da 3000 a 10000." e la
+  casella sbagliata scelta.
+- I limiti: sotto i 3000 px la vista del gioco piu' larga (uno schermo
+  grande, zoom indietro) non ci sta nella mappa; sopra i 10000 nebbia,
+  percorsi e terreno pesano troppo (prima il massimo era 9000).
+- validateMap accetta le stesse misure (qualsiasi intero fra i limiti).
+
+Prove: editor.test.mjs (§9.233); nocentro.mjs gioca una mappa di 4321 x
+5003: la room di quelle misure, la vista in fondo resta nella mappa.
+
+### 9.234 I riquadri dell'editor nelle sei lingue
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "per i layout
+modificati della tavolozza editor controlla che nelle varie traduzioni i
+testi non 'sbattano' tra loro".
+
+Le foto di tutti i riquadri (pennello con le sei schede e il bouquet,
+gomma, polilinea scelta e in disegno, montagna e cresta in disegno,
+Inserisci con le sette schede, una casa e una bandierina scelte, la
+nebbia), in inglese, italiano, spagnolo, portoghese, tedesco e francese, a
+1600, 1280 e 1024 px di larghezza. Cosa toccava, sistemato:
+
+- il valore fra "-" e "+": "Identique" (francese, larghezza finale della
+  polilinea) toccava i cerchi. Ora un valore piu' largo del suo posto si
+  rimpicciolisce (editor.js pmGroup, fitText); lo stesso per le etichette
+  scritte (la nebbia: "Velocidade" toccava il suo "-").
+- il suggerimento in alto a destra: un testo lungo (i comandi della
+  polilinea scelta, la cresta in disegno, nelle lingue lunghe) si
+  rimpiccioliva fino al 55% e, a 1024 px, poteva arrivare al titolo. Ora
+  sotto l'80% va su due righe (spezzato fra le parole piu' vicino alla
+  meta'; con le coordinate: loro sopra, il testo sotto).
+- l'avviso del browser senza accelerazione grafica copre il riquadro solo
+  nelle prove (grafica emulata).
+
+### 9.235 I titoli dei riquadri, corti
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "i titoli dei
+vari tool sono troppo lunghi, non serve contengano la descrizione di cosa
+c'e' dentro, si vede gia' dai nomi dei pulsanti. Basta 'inserisci oggetto' o
+'pennello area' ad esempio".
+
+- editor.js TITLE: il titolo del riquadro e' il solo nome dello strumento:
+  Selezione, Polilinea, Montagna, Pennello area, Inserisci oggetto, Gomma
+  ad area (nelle sei lingue, texts.js). Le descrizioni lunghe (LABEL)
+  restano il suggerimento sui pulsanti della colonna, dove le icone non
+  dicono cosa c'e' dentro.
+- Coi titoli corti il suggerimento ha piu' posto: la maggior parte sta di
+  nuovo su una riga.

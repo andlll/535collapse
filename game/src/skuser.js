@@ -12,7 +12,7 @@
 // mappa dentro: la room non e' fra quelle del gioco), il ritorno al menu.
 
 import { listMaps, loadMap, openMapFile, putService } from "./mapstore.js";
-import { validateMap, testRoom, TEST_ROOM, sidesOk, redStart, START } from "./mapfile.js";
+import { validateMap, testRoom, TEST_ROOM, sidesOk, hallsOk, redStart, START } from "./mapfile.js";
 import { mountainGeometry } from "./mountains.js"; // §9.214
 
 // l'ultima mappa dell'editor scelta nella schermaglia (il suo id nel browser)
@@ -29,14 +29,17 @@ export function rememberUserMap(id) {
 export function skForMap(sk, map) {
   const cpu = map && map.cpu;
   return { ...sk, map: TEST_ROOM, difficulty: !cpu || cpu.difficulty === "choice" ? sk.difficulty : cpu.difficulty,
-           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style, ...(map ? { start: redStart(map) } : {}) };
+           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style, ...(map ? { start: redStart(map) } : {}),
+           // [§9.232] senza un municipio per parte niente vittoria Municipio
+           // (la schermaglia la mostra in grigio; "Prova mappa": Conquista)
+           ...(map && sk.victory === "townhall" && !hallsOk(map) ? { victory: "conquest" } : {}) };
 }
 // il parametro `key` fissato dalla mappa (null: a scelta del giocatore)
 export const fixedBy = (map, key) => (map && map.cpu && map.cpu[key] && map.cpu[key] !== "choice" ? map.cpu[key] : null);
 
 // Le voci della schermata: { user: true, id (nel browser) o file, name,
 // state: "idle" | "loading" | "ok" | "bad", map, sides (§9.191: una
-// partenza rossa e una blu), desc }
+// partenza rossa e una blu), halls (§9.232: un municipio per parte), desc }
 const entry = (fields) => ({ user: true, state: "idle", map: null, sides: false, desc: "", ...fields });
 export async function userMapList() {
   try {
@@ -53,7 +56,8 @@ async function check(data, objects) {
 }
 function fill(e, v) {
   if (v.errors) { e.state = "bad"; console.warn("[schermaglia] mappa non valida:", v.errors); return e; }
-  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", sides: sidesOk(v.map) });
+  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", sides: sidesOk(v.map),
+                  halls: hallsOk(v.map) }); // §9.232: un municipio per parte (la vittoria Municipio)
   return e;
 }
 // la mappa di una voce del browser, letta e convalidata (una volta)
