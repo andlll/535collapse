@@ -15262,3 +15262,24 @@ piu' professional, iniziando da queste".
 Prove: le foto dei riquadri (pennello, polilinea, montagna con una cima
 scelta); editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari
 (166).
+
+### 9.226 I simboli dell'autore per le modalita' della simmetria
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "questi invece
+sono i nuovi simboli per gli stili di simmetria" (quattro disegni: un
+triangolo pieno e, dove va la gemella, il suo specchio vuoto, con l'asse a
+tratti o il punto al centro).
+
+- Le immagini erano solo nel messaggio, non fra i file della sessione:
+  ridisegnate uguali (Pillow, a 1000 px e poi 256: triangoli con gli angoli
+  arrotondati, l'asse a cinque tratti, il punto della diagonale) in
+  nuovi/sprites/ed_sim_spenta, _diagonale, _orizzontale, _verticale; in
+  nuovi.json ico_ed_sym_none, _diagonal, _horizontal, _vertical (64 px di
+  altezza, bianchi). L'autore: "finisci e te le giro dopo": quando arrivano
+  i file si sostituiscono i quattro PNG (e si rifa' tools/05_atlas.py).
+- Nelle pillole della simmetria (editor.js symIcon) al posto dei miei
+  schemi di §9.222, che restano solo se un simbolo mancasse; scuri, bianchi
+  sulla modalita' scelta; il nome nel suggerimento.
+
+Prove: la foto della riga della simmetria; editor.mjs, mountains.mjs,
+meadows.mjs passano.
