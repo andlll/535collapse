@@ -15354,3 +15354,10 @@ serve" (la prima volta erano arrivate solo nel messaggio).
   dovunque c'era ico_casa ora c'e' il disegno nuovo.
 - Controllate a fianco delle originali alla loro misura (stessa tela, peso
   simile) e in partita nei pulsanti di costruzione.
+
+Prove (§9.229): l'atlas ha ico_casa, ico_magazzino, ico_castello a 63 x 65
+(il disegno 54-60 px) e le sagome della minimappa nuove (mm_casa 32 x 31,
+mm_castello 32 x 23); la foto dei pulsanti di costruzione in partita (casa,
+magazzino, castello nei loro cerchi, in linea con le altre icone);
+hover.mjs (misura i pixel sotto le icone di casa e magazzino) passa, e
+editor.mjs, edinsert.mjs, meadows.mjs, mountains.mjs; i test unitari (166).
