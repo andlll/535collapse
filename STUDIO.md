@@ -15133,3 +15133,49 @@ Prove: le foto in italiano (pennello col suggerimento "Simmetria",
 montagna con "Altezza", la cima scelta con la freccia e il picco e
 l'asperita'); editor.mjs, mountains.mjs, meadows.mjs passano; i test
 unitari (166).
+
+### 9.222 Altre icone; via "Natura" e "Montagne" da Inserisci
+
+Richieste dell'autore (26 novembre 2026, stessa PR, 0.2618), sulla lista
+delle parole dell'editor che potevano diventare disegni: "3 e 4 si puo'
+fare. 5 anche ma da ragionare bene. Densita' potrebbe essere due alberi con
+una doppia freccia al centro? Rispetto alle schede di inserisci: lascia
+testo ma eliminiamo natura e montagne visto che sono procedurali"; sulla
+nebbia e sui disegni del terreno che stavano in "Natura": "Nebbia in regia,
+graa le facciamo fuori che sono obsolete, le altre sarebbe interessante
+convertirle in particelle (anche ferme)" (le particelle: §9.223).
+
+**Icone** (editor.js, col nome nel suggerimento come §9.220-§9.221):
+- *le modalita' della simmetria*: uno schemino della mappa (un riquadro)
+  con un triangolo pieno in alto a sinistra e, dove va la gemella, il suo
+  specchio vuoto: Spenta (solo il triangolo), Diagonale (il punto al centro
+  e il triangolo girato in basso a destra), Orizzontale (l'asse verticale a
+  tratti e il triangolo a destra), Verticale (l'asse orizzontale e il
+  triangolo sotto). Le pillole alte 32 px (prima 26); i triangoli staccati
+  dagli assi (attaccati, il verticale sembrava una freccia);
+- *i pulsanti della montagna*: "Nuova variante" un dado, "Base automatica"
+  un contorno a tratti con una scintilla;
+- *la densita' del bosco*: due alberelli con la freccia a due punte fra loro
+  (la distanza fra gli alberi, come proposto dall'autore);
+- *il dettaglio della montagna*: un picco con le sue linee dentro.
+
+**Inserisci** (editmap.js CATALOG): le schede restano parole, ma
+"Natura" e "Montagne" non ci sono piu' (le macchie di particelle le fa il
+pennello, §9.216, le montagne lo strumento montagna, §9.214):
+- le due nebbie in **Regia**, dopo le partenze (sono di gioco: il banco
+  dimezza la vista dei nemici);
+- l'aiuola col bordo di pietra (prato1, "prato") in **Citta'**: non e' un
+  elemento naturale da spargere;
+- le macchie d'erba dipinte graa11-15: fuori (obsolete);
+- erba_1, fiorame1, chiazza01: diventano particelle del bouquet (§9.223).
+Le schede ora: Regia, Unita', Edifici, Risorse, Alberi, Ponti, Citta'.
+Gli oggetti tolti restano ammessi (OLD_OBJECTS): le mappe che li hanno (i
+modelli delle schermaglie: le montagne dipinte, le macchie) si aprono, e
+li' si spostano e si cancellano; non si inseriscono piu'.
+
+**Prove**: le prove che contavano le schede o cercavano la nebbia in
+"Natura" seguono il nuovo ordine (editor.test.mjs: la scheda che scorre e'
+Edifici, prima i prati e fiori; la Regia ha le partenze e le due nebbie,
+quattro caselle; niente "Natura" ne' "Montagne" e gli oggetti di prima
+ammessi; editor.mjs: le schede, la nebbia presa in Regia). editor.mjs,
+mountains.mjs, meadows.mjs passano; i test unitari (166).

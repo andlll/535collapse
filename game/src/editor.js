@@ -610,7 +610,7 @@ export function segDist(px, py, a, b) {
 export const SYM_TOOLS = new Set(["select", "insert", "brush", "line", "erase", "mountain"]); // §9.187: anche la polilinea; §9.194: la gomma; §9.214: la montagna
 export function symLayout(panel) {
   const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
-  return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
+  return { label: [x1 + 30, y + 16], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 32 })) }; // (§9.222: 32, prima 26: lo schema al posto del nome)
 }
 
 // [§9.203] la foto di una macchia a particelle (nuovi.json, tools/19_natura.mjs)
@@ -2332,6 +2332,15 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     // [§9.220] il nome dell'icona della larghezza (sopra l'icona)
     if (ed.iconTip && !ed.open && !ed.confirm && !ed.dom) tooltip(ed.iconTip.x - 6, ed.iconTip.y - 40, tr(ed.iconTip.text));
+    // [§9.222] e quello delle modalita' della simmetria e dei pulsanti della montagna
+    if (!ed.open && !ed.confirm && !ed.dom && SYM_TOOLS.has(ed.tool) && ed.symHover) {
+      const q = symLayout(L.panel).opts.find((o) => o.mode === ed.symHover);
+      if (q) tooltip(q.x1, q.y1 - 26, tr(SYM_NAMES[q.mode]));
+    }
+    if (!ed.open && !ed.confirm && !ed.dom && ed.tool === "mountain" && (ed.palHover === "seed" || ed.palHover === "auto")) {
+      const R = mountainLayout(L.panel)[ed.palHover];
+      tooltip(R[0], R[1] - 26, tr(ed.palHover === "seed" ? "New variant" : "Automatic base"));
+    }
     // [§9.216] sopra, le particelle dell'erba e la loro densita'
     if (ed.tool === "brush" && ed.brush.kind === "grass") {
       const ML = meadowLayout(L.panel);
@@ -2490,9 +2499,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const on = q.mode === cur, hov = ed.symHover === q.mode;
       draw.setAlpha(on ? 0.85 : hov ? 0.9 : 0.45);
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
-      draw.setColour(on ? c.white : c.black);
       draw.setAlpha(on ? 1 : 0.8);
-      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(SYM_NAMES[q.mode]));
+      symIcon(q.mode, (q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2, on ? c.white : DARK); // (§9.222: lo schema al posto del nome)
     }
     draw.setColour(c.black);
     draw.setAlpha(1);
@@ -2509,7 +2517,38 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // tratteggiato
   const HEIGHT_ICON = { icon: "height" }, PEAK_ICON = { icon: "peak" };
   // [§9.221] l'asperita': una linea frastagliata (il contorno strappato)
-  const ROUGH_ICON = { icon: "rough" };
+  const ROUGH_ICON = { icon: "rough" }, DENSITY_ICON = { icon: "density" }, DETAIL_ICON = { icon: "detail" };
+  // [§9.222] i pulsanti della montagna: un dado ("Nuova variante") e il
+  // contorno a tratti con una scintilla ("Base automatica"); ink: il colore
+  const buttonIcon = (q, cx, cy, ink) => {
+    if (q === "seed") {
+      draw.roundrectColourExt(cx - 11, cy - 11, cx + 11, cy + 11, 8, 8, ink, ink, true);
+      for (const [dx, dy] of [[-5, -5], [0, 0], [5, 5]]) draw.circleColour(cx + dx, cy + dy, 2.4, ink, ink, false);
+      return;
+    }
+    const R = [[-16, 2], [-12, -7], [-3, -10], [6, -8], [13, -3], [14, 5], [7, 10], [-4, 9], [-12, 8]];
+    for (let k = 0; k < R.length; k++) {
+      const a = R[k], b = R[(k + 1) % R.length], mx2 = (a[0] + b[0]) / 2, my2 = (a[1] + b[1]) / 2;
+      draw.lineWidthColour(cx + a[0] - 4, cy + a[1], cx + (a[0] + mx2) / 2 - 4, cy + (a[1] + my2) / 2, 2.5, ink, ink); // a tratti
+    }
+    const sx = cx + 15, sy = cy - 10; // la scintilla
+    draw.lineWidthColour(sx - 5, sy, sx + 5, sy, 2, ink, ink); draw.lineWidthColour(sx, sy - 5, sx, sy + 5, 2, ink, ink);
+  };
+  // [§9.222] le modalita' della simmetria: la mappa (un riquadro), un
+  // triangolo pieno e, dove va la gemella, il suo specchio vuoto, coll'asse
+  const symIcon = (mode, cx, cy, ink) => {
+    draw.rectangleColour(cx - 22, cy - 12, cx + 22, cy + 12, ink, ink, ink, ink, true);
+    const tri = (pts, full) => {
+      if (full) { draw.triangleColour(cx + pts[0][0], cy + pts[0][1], cx + pts[1][0], cy + pts[1][1], cx + pts[2][0], cy + pts[2][1], ink, ink, ink, false); return; }
+      for (let k = 0; k < 3; k++) { const a = pts[k], b = pts[(k + 1) % 3]; draw.lineWidthColour(cx + a[0], cy + a[1], cx + b[0], cy + b[1], 2, ink, ink); }
+    };
+    const T = [[-18, -4], [-8, -4], [-8, -11]]; // in alto a sinistra (staccato dagli assi)
+    tri(T, true);
+    const dash = (x1, y1, x2, y2) => { const n = 4; for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 0.5) / n; draw.lineWidthColour(cx + x1 + (x2 - x1) * t0, cy + y1 + (y2 - y1) * t0, cx + x1 + (x2 - x1) * t1, cy + y1 + (y2 - y1) * t1, 1.5, ink, ink); } };
+    if (mode === "horizontal") { dash(0, -12, 0, 12); tri(T.map(([x, y]) => [-x, y]), false); }
+    if (mode === "vertical") { dash(-22, 0, 22, 0); tri(T.map(([x, y]) => [x, -y]), false); }
+    if (mode === "diagonal") { draw.circleColour(cx, cy, 2, ink, ink, false); tri(T.map(([x, y]) => [-x, -y]), false); }
+  };
   const ROUGH_PTS = [[0, 4], [6, -5], [11, 3], [16, -8], [22, 2], [27, -3], [32, 7], [38, -6], [44, 3]];
   const labelIcon = (icon, x, y) => {
     if (icon === "width" || icon === "end") { widthIcon(x, y, icon === "end"); return; }
@@ -2525,6 +2564,25 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         draw.lineWidthColour(x + 33, y - 13, x + 46, y + 15, 3, ink, ink);
         draw.lineWidthColour(x + 20, y + 15, x + 48, y + 15, 3, ink, ink);
       }
+      return;
+    }
+    // [§9.222] la densita' del bosco: due alberelli con la freccia fra loro
+    // (la distanza fra gli alberi); il dettaglio della montagna: un picco
+    // con le sue linee dentro
+    if (icon === "density") {
+      const tree = (tx) => { draw.lineWidthColour(tx, y + 14, tx, y + 4, 3, ink, ink); draw.circleColour(tx, y - 4, 8, ink, ink, false); };
+      tree(x + 6); tree(x + 52);
+      draw.lineWidthColour(x + 22, y + 9, x + 36, y + 9, 2.5, ink, ink);
+      draw.triangleColour(x + 17, y + 9, x + 24, y + 4, x + 24, y + 14, ink, ink, ink, false);
+      draw.triangleColour(x + 41, y + 9, x + 34, y + 4, x + 34, y + 14, ink, ink, ink, false);
+      return;
+    }
+    if (icon === "detail") {
+      const P = [[x, y + 14], [x + 20, y - 15], [x + 46, y + 14]];
+      draw.lineWidthColour(P[0][0], P[0][1], P[1][0], P[1][1], 3, ink, ink);
+      draw.lineWidthColour(P[1][0], P[1][1], P[2][0], P[2][1], 3, ink, ink);
+      draw.lineWidthColour(x - 2, y + 14, x + 48, y + 14, 3, ink, ink);
+      for (const [a, b] of [[[x + 20, y - 15], [x + 14, y + 14]], [[x + 20, y - 15], [x + 27, y + 4]], [[x + 27, y + 4], [x + 36, y + 14]], [[x + 27, y + 4], [x + 25, y + 14]]]) draw.lineWidthColour(a[0], a[1], b[0], b[1], 2, ink, ink);
       return;
     }
     if (icon === "rough") {
@@ -2555,10 +2613,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const out = [];
     if (SYM_TOOLS.has(ed.tool)) out.push([{ label: symLayout(panel).label }, "Symmetry"]);
     if (ed.tool === "brush" || ed.tool === "erase") out.push([brushLayout(panel).width, "Width"]);
+    if (ed.tool === "brush" && ed.brush.kind === "forest") out.push([brushLayout(panel).density, "Density"]); // §9.222
     if (ed.tool === "line") { const B = lineLayout(panel); out.push([B.width, "Width"], [B.end, "End width"]); }
     if (ed.tool === "mountain") {
       const B = mountainLayout(panel);
-      out.push([B.width, "Width"], [B.height, ed.msel && ed.msel.peak != null ? "Peak height" : "Height"], [B.rough, "Roughness"]);
+      out.push([B.width, "Width"], [B.height, ed.msel && ed.msel.peak != null ? "Peak height" : "Height"], [B.rough, "Roughness"], [B.detail, "Detail"]);
     }
     return out;
   };
@@ -2613,7 +2672,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       // ([§9.215] con una cima scelta, "Altezza" e' la sua: in % dell'altezza della montagna)
       const pk = e && ed.msel.peak != null && k === "height" ? ed.msel.peak : null;
       if (pk !== null) { pmGroup(B[k], PEAK_ICON, Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
-      pmGroup(B[k], k === "width" ? WIDTH_ICON : k === "height" ? HEIGHT_ICON : k === "rough" ? ROUGH_ICON : tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
+      pmGroup(B[k], k === "width" ? WIDTH_ICON : k === "height" ? HEIGHT_ICON : k === "rough" ? ROUGH_ICON : DETAIL_ICON, k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
     }
     draw.setFont("overdue");
     draw.setHalign("center");
@@ -2622,11 +2681,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const R = B[q], hov = ed.palHover === q;
       draw.setAlpha(!ok ? 0.2 : hov ? 0.9 : 0.55);
       draw.roundrectColourExt(R[0], R[1], R[2], R[3], 30, 30, DARK, DARK, false);
-      draw.setColour(c.white);
       draw.setAlpha(ok ? 1 : 0.6);
-      const t2 = tr(label), tw = draw.stringWidth(t2), room = R[2] - R[0] - 16;
-      if (tw > room) draw.textTransformed((R[0] + R[2]) / 2, (R[1] + R[3]) / 2 + 1, t2, room / tw);
-      else draw.text((R[0] + R[2]) / 2, (R[1] + R[3]) / 2 + 1, t2);
+      buttonIcon(q, (R[0] + R[2]) / 2, (R[1] + R[3]) / 2, c.white); // (§9.222: l'icona al posto del nome)
     }
     draw.setColour(c.black);
     draw.setAlpha(1);
@@ -2648,7 +2704,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Bouquet" : BG_NAMES[q.kind])); // (§9.219: "Erba" era troppo simile a "Prato")
     }
     pmGroup(B.width, WIDTH_ICON, BRUSH_WIDTHS[b.w] + " px", "w");
-    if (b.kind === "forest") pmGroup(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
+    if (b.kind === "forest") pmGroup(B.density, DENSITY_ICON, (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
     draw.setAlpha(1);
   };
 

@@ -161,10 +161,11 @@ test("§9.182 la tavolozza di Inserisci", () => {
     assert.equal(end.scroll, end.max);
     if (end.max) assert.ok(end.prev && !end.next);
   });
-  // i prati e fiori (16 caselle) non ci stanno in una fila: si scorre
-  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "meadows"), 0).max > 0);
-  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0, 1]); // §9.191: la partenza rossa e la blu
-  assert.deepEqual(CATALOG[0].objects, [START]);
+  // gli edifici (11 caselle per parte, 22) non ci stanno in una fila: si
+  // scorre (§9.222: prima i prati e fiori, la scheda "Natura" non c'e' piu')
+  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "buildings"), 0).max > 0);
+  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0, 1, 2, 3]); // §9.191: la partenza rossa e la blu (§9.222: poi le due nebbie)
+  assert.deepEqual(CATALOG[0].objects, [START, "sk_nebbia", "nebbia_banco"]); // (§9.222: la nebbia in "Regia")
 });
 
 test("§9.181 varianti fisse e livelli di dettaglio del suolo", () => {
@@ -535,7 +536,7 @@ test("§9.191 gli schieramenti delle partenze", () => {
   assert.ok(!sidesOk({ instances: [C(1000, 1000, "red"), C(5000, 5000, "red")] }));
   // la tavolozza: una casella per parte; S cambia lo schieramento
   const items = paletteItems(CATALOG.find((k) => k.key === "start"), { centro: {} });
-  assert.deepEqual(items.map((q) => q.side), ["red", "blue"]);
+  assert.deepEqual(items.filter((q) => q.side).map((q) => q.side), ["red", "blue"]); // (§9.222: poi le nebbie, senza parte)
   assert.deepEqual(stylesOf(C(0, 0, "blue"), { centro: {} }), { styles: [{ object: "centro", side: "red" }, { object: "centro", side: "blue" }], at: 1 });
   // la gemella (simmetria) e' dell'altra parte
   const map = { ...newMap(), instances: [] };
@@ -632,7 +633,10 @@ test("§9.195 la tavolozza filtrata per parte", () => {
   assert.deepEqual(red.cells.map((q) => q.i), [0, 2, 4, 6, 8, 10, 12]);
   assert.ok(red.cells[0].x1 > all.cells[0].x1 - 1, "le caselle dopo l'interruttore");
   assert.equal(paletteLayout(L.panel, 0, 0).side, null, "le partenze senza interruttore");
-  assert.equal(CATALOG.find((k) => k.key === "meadows").label, "Nature");
+  // [§9.222, decisione dell'autore] niente "Natura" ne' "Montagne" (pennello e
+  // strumento montagna); gli oggetti di prima restano ammessi nelle mappe
+  assert.ok(!CATALOG.some((k) => k.key === "meadows" || k.key === "mountains"));
+  assert.ok(["burst_erba1", "chiazza01", "montagna_3", "graa11"].every((n) => allowedObjects().has(n)));
 });
 
 // [§9.196] su uno schermo basso la colonna non si rimpicciolisce oltre 0,85:
@@ -775,8 +779,8 @@ test("§9.204 anteprima della polilinea e alberi nel fiume", () => {
 // [§9.205, richiesta dell'autore] la nebbia in "Natura": la estetica e il
 // banco; il banco dimezza la vista dei nemici anche fuori dal livello 7
 test("§9.205 la nebbia nell'editor e nella partita", () => {
-  const meadows = CATALOG.find((k) => k.key === "meadows").objects;
-  assert.ok(meadows.includes("sk_nebbia") && meadows.includes("nebbia_banco"));
+  const setup = CATALOG.find((k) => k.key === "start").objects; // (§9.222: in "Regia", prima in "Natura")
+  assert.ok(setup.includes("sk_nebbia") && setup.includes("nebbia_banco"));
   assert.ok(allowedObjects().has("nebbia_banco") && allowedObjects().has("sk_nebbia"));
   // la vista del nemico: dentro un banco a meta' (senza stealth), fuori no;
   // col livello 7 (stealth) fogSight non la tocca (la conta sees)

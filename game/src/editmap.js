@@ -44,7 +44,9 @@ export const FOG_OBJECTS = ["sk_nebbia", "nebbia_banco"];
 export const CATALOG = [
   // [§9.196, richiesta dell'autore] la scheda "Regia": per ora le partenze
   // (le bandierine), piu' avanti cio' che servira' agli scenari
-  { key: "start", label: "Setup", objects: ["centro"] },
+  // ([§9.222, decisione dell'autore] anche la nebbia, prima in "Natura": e'
+  // di gioco, il banco dimezza la vista dei nemici)
+  { key: "start", label: "Setup", objects: ["centro", ...FOG_OBJECTS] },
   // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
   { key: "units", label: "Units", objects: UNITS },
   // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
@@ -57,22 +59,23 @@ export const CATALOG = [
               { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
-  { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
-    objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
-              "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01",
-              // [§9.205, richiesta dell'autore] la nebbia: quella estetica della
-              // schermaglia (sk_nebbia) e il banco che dimezza la vista dei
-              // nemici (nebbia_banco, il livello 7)
-              ...FOG_OBJECTS] },
-  { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
+  // [§9.222, decisione dell'autore] niente piu' "Natura" ne' "Montagne": le
+  // macchie di particelle le fa il pennello (il bouquet, §9.216), le montagne
+  // lo strumento montagna (§9.214); la nebbia e' in "Regia", l'aiuola (prato1)
+  // in "Citta'", le macchie d'erba dipinte (graa*) sono superate. Nelle mappe
+  // che li hanno gia' restano (OLD_OBJECTS: si aprono, si spostano, si
+  // cancellano), ma non si inseriscono piu'.
   // [§9.198, richiesta dell'autore] i ponti: solo quelli dipinti dall'autore
   // (cotti nel suolo sopra il fiume, rivers.js PAINTED_BRIDGES; il primo con
   // la sua balaustra); M li specchia (l'altro verso del fiume)
   { key: "bridges", label: "Bridges", objects: [...PAINTED_BRIDGES] },
   { key: "city", label: "City",
     objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
-              "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
+              "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4", "prato1"] }, // (§9.222: l'aiuola)
 ];
+export const OLD_OBJECTS = ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
+                            "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "fiorame1", "chiazza01",
+                            ...range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])];
 // tutti i nomi degli oggetti del catalogo
 export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q) => (typeof q === "string" ? [q] : q.objects)));
 
@@ -126,7 +129,7 @@ export function stylesOf(e, objects) {
 // [§9.184] gli oggetti che una mappa dell'editor puo' avere (la convalida
 // dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
 // dipinti dei modelli
-export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte
+export const allowedObjects = () => new Set([...catalogObjects(), ...OLD_OBJECTS, ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte; §9.222: e quelli di prima
 
 // [§9.194, richiesta dell'autore] Mura e porte, come nel gioco (walls.js):
 // un tratto ha due "+" alle estremita' (KIND.plus: l'orizzontale a -219 e
