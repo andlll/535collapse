@@ -36,7 +36,7 @@ import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
 import { mountainGeometry, mountainCells, mountainIn } from "./mountains.js"; // §9.214
 import { Particles } from "./particles.js";
-import { DECOR_OBJECTS, decorCreate, aquila, meadowCreate } from "./effects.js"; // §9.216: meadowCreate
+import { DECOR_OBJECTS, decorCreate, aquila, meadowCreate, clipDecor } from "./effects.js"; // §9.216: meadowCreate; §9.217: clipDecor
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
 import { victoryManager, gameoverManager, objectiveButton, VICTORY, victoryProgress } from "./endgame.js";
 import { loadUnlock, canPlay } from "./progress.js";
@@ -320,8 +320,11 @@ async function main() {
   // i ponti dipinti dipende da loro: riverCells); in un salvataggio ci sono
   // gia' (i sistemi di particelle si salvano)
   const useMeadows = () => {
+    const blocked = (x, y) => world.inTerrain(x, y, x, y);
     for (const rows of world.meadowRows || []) for (const s of rows) world.particles.systemDestroy(s);
-    world.meadowRows = (world.meadowList || []).map((m) => meadowCreate(world, m, (x, y) => world.inTerrain(x, y, x, y)));
+    world.meadowRows = (world.meadowList || []).map((m) => meadowCreate(world, m, blocked));
+    // [§9.217] e le macchie di "Natura": tagliate da fiumi e montagne
+    for (const i of world.instances) if (i.alive && i.grass_rows) clipDecor(world, i, blocked);
   };
   world.routes = room.paths || []; // §9.101: i percorsi della regia (livello regia di Tiled)
   const path = new Pathing(world, room.width, room.height);

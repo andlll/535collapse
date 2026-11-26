@@ -2,7 +2,8 @@
 // "Erba", le densita' delle particelle (piu' papaveri), una pennellata: la
 // chiazza con le sue particelle; niente erba sull'acqua di un fiume; il
 // destro la cancella, Ctrl+Z la rimette; una montagna sopra: l'erba
-// rinasce solo fuori; "Prova mappa": l'erba nel gioco.
+// rinasce solo fuori; [§9.217] un fiume sopra una macchia di "Natura" la
+// taglia; "Prova mappa": l'erba nel gioco, la macchia tagliata.
 // I file del gioco li serve Playwright dal disco (niente server).
 //
 //   node game/test/browser/meadows.mjs [cartella delle foto]
@@ -83,6 +84,23 @@ const under = await E(() => {
   return { parts: parts.length, inside: parts.filter((q) => grid.grid[Math.floor(q.y / C) * grid.gw + Math.floor(q.x / C)]).length };
 });
 check("sotto la montagna niente erba", under.parts > 0 && under.inside === 0, JSON.stringify(under));
+// [§9.217] una macchia di "Natura" e un fiume nuovo che ci passa sopra: il
+// fiume la taglia (niente particelle sull'acqua), Ctrl+Z la rimette intera
+const cut = await E(() => {
+  const s = window.__editor.scene, e = { object: "burst_erba1", x: 3000, y: 3000, scale_x: 1, scale_y: 1, rotation: 0 };
+  s.add([e]);
+  const i = s.instOf(e), n = () => i.grass_rows.reduce((t, r) => t + r.parts.length, 0);
+  const wet = () => i.grass_rows.flatMap((r) => r.parts).filter((q) => Math.abs(q.y - 3000) < 30 && q.x > 2600 && q.x < 3400).length;
+  const before = n();
+  s.addFeatures("rivers", [{ pts: [[2000, 3000], [4000, 3000]], width: 150 }]);
+  const after = n(), wetAfter = wet();
+  s.undo();
+  return { before, after, wetAfter, back: n() };
+});
+check("il fiume taglia la macchia di Natura", cut.after < cut.before && cut.after > cut.before * 0.6 && cut.wetAfter === 0, JSON.stringify(cut));
+check("Ctrl+Z: la macchia di nuovo intera", cut.back === cut.before, JSON.stringify(cut));
+await E(() => { const s = window.__editor.scene; s.addFeatures("rivers", [{ pts: [[2000, 3000], [4000, 3000]], width: 150 }]); });
+
 // "Prova mappa": l'erba nel gioco
 await E(() => {
   const s = window.__editor.scene;
@@ -96,9 +114,12 @@ const game = await E(() => {
   const G = window.__game;
   if (!G) return null;
   const rows = (G.world.meadowRows || []).flat();
-  return { patches: (G.world.meadowRows || []).length, parts: rows.reduce((n, r) => n + r.parts.length, 0) };
+  const burst = G.world.instances.find((i) => i.object === "burst_erba1");
+  const wet = burst ? burst.grass_rows.flatMap((r) => r.parts).filter((q) => Math.abs(q.y - 3000) < 30 && q.x > 2600 && q.x < 3400).length : -1;
+  return { patches: (G.world.meadowRows || []).length, parts: rows.reduce((n, r) => n + r.parts.length, 0), burstWet: wet };
 });
 check("nel gioco: l'erba", game && game.patches === 1 && game.parts > 200, JSON.stringify(game));
+check("nel gioco: la macchia di Natura tagliata dal fiume", game && game.burstWet === 0, JSON.stringify(game));
 if (game) {
   await E(() => { const G = window.__game; G.cam.x = 1250 - G.cam.w / 2; G.cam.y = 1100 - G.cam.h / 2; });
   await settle(1500);

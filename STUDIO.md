@@ -15005,3 +15005,34 @@ ha: tre per riga, "100 x 100".
 bordi naturali (erba lungo le rive e ai piedi delle montagne, a scelta), il
 bosco che si dirada verso il bordo con qualche radura; non le mappe intere
 (per la campagna conta la regia dell'autore).
+
+### 9.217 Il fiume taglia le macchie di "Natura"
+
+Domanda dell'autore (26 novembre 2026, stessa PR, 0.2618): "Se il fiume
+passa sopra la chiazza particellare la elimina?" No: il fiume nuovo
+toglieva solo gli alberi (§9.204), e le macchie di "Natura" (burst_erba1,
+burst_grano1, chiazzaparticellare, i fiori) restavano con le particelle
+anche sull'acqua, nell'editor e nel gioco (le chiazze del pennello, §9.216,
+invece gia' non nascevano sull'acqua). Proposte due strade (tagliarle o
+eliminarle col centro nell'acqua); l'autore: "Se riesci a farglielo
+tagliare siamo a cavallo".
+
+- **Tagliate** (effects.js clipDecor): le particelle di una macchia
+  sull'acqua dei fiumi a linee o sulle montagne del generatore non si
+  vedono; la macchia resta. Nel gioco una volta, dopo le istanze della room
+  (app.js useMeadows: come le chiazze del pennello); vale anche per le mappe
+  gia' fatte (nelle schermaglie le macchie erano gia' state tolte dai fiumi a
+  mano, §9.150-§9.151: cambia solo qualche bordo).
+- **Nell'editor** le particelle tolte restano da parte (allParts): quando un
+  fiume o una montagna cambiano (nuovi, spostati, tolti, annullati) il taglio
+  si rifa' su tutte le macchie, e una macchia messa o spostata si taglia
+  subito (EditScene spawn). Ctrl+Z del fiume la rimette intera.
+- *La depth* (domanda dell'autore): le particelle delle chiazze del pennello
+  sono a fasce di 12 px a depth -y come quelle delle macchie di "Natura"
+  (Particles.bands, DECOR_BAND, §8.18): le unita' ci restano immerse allo
+  stesso modo.
+
+Prove: game/test/browser/meadows.mjs (in piu': una burst_erba1 e un fiume
+nuovo che la attraversa: da 2600 a ~1730 particelle, nessuna sull'acqua;
+Ctrl+Z: di nuovo 2600; in "Prova mappa" la macchia tagliata). editor.mjs
+(quella di sempre) passa; i test unitari (166).

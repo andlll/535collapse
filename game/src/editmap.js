@@ -13,7 +13,7 @@
 
 import { World } from "./world.js";
 import { Particles } from "./particles.js";
-import { DECOR_OBJECTS, decorCreate, campoCreate, meadowCreate } from "./effects.js";
+import { DECOR_OBJECTS, decorCreate, campoCreate, meadowCreate, clipDecor } from "./effects.js";
 import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
@@ -333,6 +333,9 @@ export class EditScene {
     if (this.skipped.size) console.warn("[editor] oggetti sconosciuti saltati:", [...this.skipped]);
     // fiumi, strade, ponti e macchie (come app.js useRivers)
     for (const k of FEATURES) this._features(k);
+    // [§9.217] le macchie di "Natura" tagliate da fiumi e montagne (ora che ci sono)
+    this.ready = true;
+    this._clipDecors();
     const room = { backgrounds: map.background ? [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] : [] };
     this.ground = new GroundCache(ctx.r, ctx.assets, room, world, bgrToRGB(map.colour));
   }
@@ -366,6 +369,7 @@ export class EditScene {
     if (isStart(e)) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
     if (o.reveal) i.visible = true;
     w.fire(i, "create");
+    if (this.ready && i.grass_rows) clipDecor(w, i, this._blocked(), true); // §9.217: tagliata da fiumi e montagne
     i.kids = w.instances.slice(n0 + 1);
     i.src = e;
     this.byEntry.set(e, i);
@@ -438,6 +442,16 @@ export class EditScene {
     this.meadowRows = now;
   }
 
+  // [§9.217] dove le particelle non stanno: l'acqua dei fiumi, le montagne
+  _blocked() {
+    const w = this.world, rc = riverCells(w), mc = mountainCells(w);
+    return (x, y) => (!!rc && riverIn(rc, x, y, x, y)) || (!!mc && mountainIn(mc, x, y, x, y));
+  }
+  _clipDecors() {
+    const b = this._blocked();
+    for (const i of this.byEntry.values()) if (i.alive && i.grass_rows) clipDecor(this.world, i, b, true);
+  }
+
   _after(changes) {
     const w = this.world;
     w.instances = w.instances.filter((i) => i.alive);
@@ -449,6 +463,7 @@ export class EditScene {
     for (const k of [...keys].sort((a, b) => (a.startsWith("meadows") ? 1 : 0) - (b.startsWith("meadows") ? 1 : 0))) {
       if (k === "meadows!") this._meadows(true); else this._features(k);
     }
+    if (keys.has("rivers") || keys.has("mountains")) this._clipDecors(); // §9.217
     if ([...keys].some((k) => !k.startsWith("meadows")) || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
     this.version++;
   }

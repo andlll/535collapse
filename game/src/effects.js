@@ -608,6 +608,21 @@ export const MEADOW_PARTS = {
   dark: [DECOR.burst_erba1[0][0]], mid: [DECOR.burst_erba1[1][0]], light: [DECOR.burst_erba1[2][0]],
   blades: [DECOR.chiazzaparticellare[0][0]], wheat: [DECOR.burst_grano1[0][0]], poppy: PAPAVERO, yellow: GIALLO,
 };
+// [§9.217, richiesta dell'autore: "se il fiume passa sopra la chiazza
+// particellare... se riesci a farglielo tagliare siamo a cavallo"] Le
+// particelle di una macchia (decorCreate) sull'acqua dei fiumi o sulle
+// montagne del generatore (blocked) non si vedono: la macchia resta, il
+// fiume la taglia. keep: le particelle tolte restano da parte (allParts),
+// per rifare il taglio quando fiumi o montagne cambiano (l'editor); nel
+// gioco si tagliano una volta.
+export function clipDecor(w, i, blocked, keep = false) {
+  for (const s of i.grass_rows || []) {
+    if (keep && !s.allParts) s.allParts = s.parts.slice();
+    const out = (s.allParts || s.parts).filter((q) => !blocked(q.x, q.y));
+    w.particles.count += out.length - s.parts.length;
+    s.parts = out;
+  }
+}
 // una chiazza d'erba: le sue particelle (meadowPoints), a fasce come le
 // macchie (le unita' ci restano immerse); restituisce le fasce
 export function meadowCreate(w, m, blocked) {
