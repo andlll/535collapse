@@ -14949,8 +14949,9 @@ d'erba?"; poi, sulla proposta: "Solo le chiazze d'erba, in cui posso
 decidere quali particelle spawnare con quale densita' per particella
 (sempre in un range gestibile) con un pennello tipo quello del terreno".
 
-**Il pennello.** Una scheda in piu' nel pennello area, **Erba**, fra Bosco
-e le texture (il titolo dello strumento: "Pennello area: boschi, erba,
+**Il pennello.** Una scheda in piu' nel pennello area, **Erba**, in fondo
+dopo le texture (prima stava seconda, ma la prova dell'editor sceglie le
+schede per posto: il selciato e' la seconda; il titolo dello strumento: "Pennello area: boschi, erba,
 texture"). Come le texture (§9.185): la pennellata diventa una sagoma (la
 forma della mappa `meadows`), il destro cancella le chiazze che tocca, la
 simmetria fa la gemella, Ctrl+Z toglie la pennellata intera. Sopra il
@@ -14991,6 +14992,7 @@ fasce come le macchie (§8.18: le unita' ci restano immerse).
 area, tutte dentro la sagoma, sempre uguali, niente dove e' bloccato, il
 limite per chiazza, la convalida; 166 test). editor.test.mjs: il pennello
 ha cinque schede, la prova le contava quattro (ora cinque).
+game/test/browser/editor.mjs (quella di sempre) passa.
 game/test/browser/meadows.mjs (nuova, anche nella CI): la scheda Erba, i
 papaveri alzati a 3 col "+", una pennellata attraverso un fiume: la chiazza
 con 351 particelle, nessuna sull'acqua; il destro la cancella, Ctrl+Z la

@@ -521,7 +521,7 @@ export function paletteLayout(panel, cat, scroll, idx = null) {
 // mappa), quanto e' fitto il bosco (la distanza minima fra gli alberi: 90
 // px come il pennello bosco di Tiled, tools/12)
 // ([§9.216] "grass": le chiazze d'erba, meadows.js)
-export const BRUSH_KINDS = ["forest", "grass", "city2", "city1", "green1"];
+export const BRUSH_KINDS = ["forest", "city2", "city1", "green1", "grass"]; // (in fondo: le schede di prima restano al loro posto)
 export const BRUSH_WIDTHS = [200, 300, 400, 600, 800, 1200, 1600];
 export const BRUSH_SPACING = [180, 140, 110, 90, 75, 60]; // densita' 1..6
 const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46, grass: 0x58b070 };
