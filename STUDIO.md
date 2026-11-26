@@ -15516,3 +15516,11 @@ meadows.mjs, edinsert.mjs) ora fanno come editor.mjs e skcustom.mjs: dopo
 ogni azione di mouse e tastiera aspettano che l'editor abbia letto l'input
 (window.__editor.reads), e il clic e' puntatore, giu' e su, ognuno in un
 passo suo. In locale passano tutte e tre.
+
+Poi in CI netmap.mjs (la partita online su una mappa dell'editor): cercava
+i centri alle due partenze, che dopo §9.232 non nascono piu' dalle
+bandierine. La sua mappa ora ha i municipi sotto le bandierine (il blu
+diventa quello del giocatore 2, p2_centro) e la prova controlla anche che
+la vista di ognuno parta dalla sua bandierina (A sulla rossa, B sulla blu).
+In locale passa (a parte audio.json, che qui manca: in CI lo costruisce il
+passo dell'audio).

@@ -10,7 +10,9 @@
 //   3. A incolla la risposta: il canale si apre, A manda la mappa, B la
 //      riceve, la convalida, la salva fra le sue mappe (con la copertina) e
 //      costruisce la partita; la partita parte nelle due pagine: stessa room,
-//      il rosso (A) alla partenza rossa, le impronte uguali;
+//      il rosso (A) alla partenza rossa, le impronte uguali ([§9.232] i
+//      municipi sotto le bandierine: il blu e' del giocatore 2; la vista di
+//      ognuno sulla sua bandierina);
 //   4. A torna al menu; di nuovo "Create game" sulla stessa mappa: B ora ce
 //      l'ha (il pannello non dice piu' che verra' scaricata), la sua partita
 //      e' pronta prima di collegarsi, e la partita parte.
@@ -69,7 +71,9 @@ await A.evaluate(async () => {
   const trees = [];
   for (let k = 0; k < 30; k++) trees.push(I("albero", 2500 + (k % 6) * 90, 2600 + Math.floor(k / 6) * 90));
   await ms.saveMap({ ...mf.newMap({ name: "Valle online" }), description: "Per la prova online.", cover: c.toDataURL("image/webp", 0.8),
+                     // ([§9.232] le bandierine sono solo la vista: sotto, i municipi)
                      instances: [I("centro", 1200, 1200, { side: "blue" }), I("centro", 4800, 4800, { side: "red" }),
+                                 I("centro", 1200, 1200, { side: "blue", hall: true }), I("centro", 4800, 4800, { side: "red", hall: true }),
                                  I("miniera_oro", 1700, 1300), I("miniera_oro", 4300, 4700), ...trees,
                                  // [§9.193] la caserma rossa, un guerriero per parte
                                  I("caserma", 4300, 4300, { side: "red" }), I("ally_warrior", 4500, 4400, { side: "red" }),
@@ -127,20 +131,23 @@ if (fail.length) await finish();
 res.secondiPrimaPartita = Math.round((Date.now() - t0) / 1000);
 const info = await Promise.all([A, B].map((P) => P.evaluate(() => {
   const w = window.__game.world, at = (o) => { const i = w.all(o).next().value; return i ? [i.x, i.y].join() : null; };
-  return { room: w.room, local: w.mp.local, red: at("centro"), blue: at("p2_centro"), mines: w.number("miniera_oro"), trees: w.number("albero"),
+  const cam = window.__game.cam, view = [Math.round(cam.x + cam.w / 2), Math.round(cam.y + cam.h / 2)].join();
+  return { room: w.room, local: w.mp.local, red: at("centro"), blue: at("p2_centro"), view, mines: w.number("miniera_oro"), trees: w.number("albero"),
            warriors: [w.number("ally_warrior"), w.number("p2_warrior"), w.number("enemy_warrior")], barracks: [w.number("caserma"), w.number("p2_caserma")],
            walls: [w.number("mura_vert"), w.number("p2_mura_vert"), w.number("porta_ori"), w.number("enemy_mura_vert")] };
 })));
 res.partite = info;
 if (info.some((i) => i.room !== "custom")) fail.push("non e' la mappa dell'editor");
 if (info.some((i) => i.red !== "4800,4800" || i.blue !== "1200,1200")) fail.push("il rosso non e' alla partenza rossa: " + JSON.stringify(info));
+// [§9.232] la vista di ognuno parte dalla sua bandierina
+if (info[0].view !== "4800,4800" || info[1].view !== "1200,1200") fail.push("le viste non sono sulle bandierine: " + JSON.stringify(info.map((i) => i.view)));
 if (info[0].mines !== info[1].mines || info[0].trees !== info[1].trees) fail.push("mappe diverse: " + JSON.stringify(info));
 // [§9.193] il guerriero blu e' del secondo giocatore (p2_), non della CPU
 if (info.some((i) => i.warriors.join() !== "1,1,0" || i.barracks.join() !== "1,0" || i.walls.join() !== "0,1,1,0")) fail.push("schieramenti online: " + JSON.stringify(info));
 const kept = await B.evaluate(async () => {
   const ms = await import("/src/mapstore.js"), list = await ms.listMaps(), m = list.find((q) => q.name === "Valle online");
   const map = m && (await ms.loadMap(m.id));
-  return { n: list.length, cover: !!(map && map.cover), sides: map ? map.instances.filter((e) => e.object === "centro").map((e) => e.side).join() : null };
+  return { n: list.length, cover: !!(map && map.cover), sides: map ? map.instances.filter((e) => e.object === "centro" && !e.hall).map((e) => e.side).join() : null };
 });
 res.tenuta = kept;
 if (!(kept.n === 1 && kept.cover && kept.sides === "blue,red")) fail.push("B non ha tenuto la mappa con la copertina: " + JSON.stringify(kept));
