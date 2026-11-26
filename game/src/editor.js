@@ -221,7 +221,7 @@ export const MTN_HINTS = {
   base: "Step 2, the base. Click: add a point. Right click or Enter: done (no points: automatic base). Esc: cancel.",
   sel: "Drag the points. Click on a peak: its height. Del: delete. B: draw the base again.",
   // [§9.215] una cima scelta: la sua altezza
-  peak: "Peak {n}: + and - (or Height) raise and lower it. Esc: the whole mountain.",
+  peak: "Peak {n}: + and - raise and lower it. Esc: the whole mountain.", // (§9.221: "Altezza" ora e' un'icona)
 };
 export const MTN_TEXTS = [...Object.values(MTN_LABEL), ...Object.values(MTN_PROBLEM.crest), ...Object.values(MTN_PROBLEM.base), MTN_OVERLAP, MTN_TWIN,
   ...Object.values(MTN_HINTS), "Peak height", "New variant", "Automatic base", "Trees removed under the mountain: {n}", "Objects removed under the mountain: {n}",
@@ -2484,7 +2484,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setValign("middle");
     draw.setHalign("left");
     draw.setColour(c.black); draw.setAlpha(0.8);
-    draw.text(S.label[0], S.label[1], tr("Symmetry"));
+    labelIcon("sym", S.label[0], S.label[1]); // (§9.221: al posto della parola)
     draw.setHalign("center");
     for (const q of S.opts) {
       const on = q.mode === cur, hov = ed.symHover === q.mode;
@@ -2503,6 +2503,43 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // la larghezza finale della polilinea: la stessa riga che finisce contro
   // una sbarretta (l'estremita' della linea)
   const WIDTH_ICON = { icon: "width" }, END_ICON = { icon: "end" };
+  // [§9.221, richiesta dell'autore: "fai lo stesso per simmetria e altezza"]
+  // l'altezza: una freccia in verticale con due punte (la cima: col picco
+  // accanto); la simmetria: due triangoli specchiati ai lati di un asse
+  // tratteggiato
+  const HEIGHT_ICON = { icon: "height" }, PEAK_ICON = { icon: "peak" };
+  // [§9.221] l'asperita': una linea frastagliata (il contorno strappato)
+  const ROUGH_ICON = { icon: "rough" };
+  const ROUGH_PTS = [[0, 4], [6, -5], [11, 3], [16, -8], [22, 2], [27, -3], [32, 7], [38, -6], [44, 3]];
+  const labelIcon = (icon, x, y) => {
+    if (icon === "width" || icon === "end") { widthIcon(x, y, icon === "end"); return; }
+    const ink = DARK;
+    draw.setAlpha(0.85);
+    if (icon === "height" || icon === "peak") {
+      const cx = x + 10;
+      draw.lineWidthColour(cx, y - 10, cx, y + 10, 3, ink, ink);
+      draw.triangleColour(cx, y - 17, cx - 7, y - 7, cx + 7, y - 7, ink, ink, ink, false);
+      draw.triangleColour(cx, y + 17, cx - 7, y + 7, cx + 7, y + 7, ink, ink, ink, false);
+      if (icon === "peak") { // il picco: due falde e la base
+        draw.lineWidthColour(x + 22, y + 15, x + 33, y - 13, 3, ink, ink);
+        draw.lineWidthColour(x + 33, y - 13, x + 46, y + 15, 3, ink, ink);
+        draw.lineWidthColour(x + 20, y + 15, x + 48, y + 15, 3, ink, ink);
+      }
+      return;
+    }
+    if (icon === "rough") {
+      for (let k = 1; k < ROUGH_PTS.length; k++) draw.lineWidthColour(x + ROUGH_PTS[k - 1][0], y + ROUGH_PTS[k - 1][1], x + ROUGH_PTS[k][0], y + ROUGH_PTS[k][1], 3, ink, ink);
+      return;
+    }
+    if (icon === "sym") {
+      const ax = x + 23;
+      for (let k = 0; k < 4; k++) draw.lineWidthColour(ax, y - 16 + k * 9, ax, y - 11 + k * 9, 2.5, ink, ink); // l'asse a tratti
+      draw.triangleColour(x + 2, y + 10, x + 17, y + 10, x + 17, y - 12, ink, ink, ink, false); // pieno a sinistra
+      draw.lineWidthColour(x + 44, y + 10, x + 29, y + 10, 2.5, ink, ink); // e il suo specchio, vuoto
+      draw.lineWidthColour(x + 29, y + 10, x + 29, y - 12, 2.5, ink, ink);
+      draw.lineWidthColour(x + 29, y - 12, x + 44, y + 10, 2.5, ink, ink);
+    }
+  };
   const widthIcon = (x, y, end = false) => {
     const ink = DARK, w = 44, x2 = x + w;
     draw.setAlpha(0.85);
@@ -2512,12 +2549,18 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.triangleColour(tip, y, tip - 10, y - 7, tip - 10, y + 7, ink, ink, ink, false);
     if (end) draw.lineWidthColour(x2 - 1, y - 11, x2 - 1, y + 11, 3, ink, ink);
   };
-  // le icone della larghezza dello strumento (il loro nome nel suggerimento)
+  // le icone al posto delle parole nel riquadro dello strumento (il loro
+  // nome nel suggerimento): larghezza, altezza, simmetria
   const widthGroups = (panel) => {
-    if (ed.tool === "brush" || ed.tool === "erase") return [[brushLayout(panel).width, "Width"]];
-    if (ed.tool === "line") { const B = lineLayout(panel); return [[B.width, "Width"], [B.end, "End width"]]; }
-    if (ed.tool === "mountain") return [[mountainLayout(panel).width, "Width"]];
-    return [];
+    const out = [];
+    if (SYM_TOOLS.has(ed.tool)) out.push([{ label: symLayout(panel).label }, "Symmetry"]);
+    if (ed.tool === "brush" || ed.tool === "erase") out.push([brushLayout(panel).width, "Width"]);
+    if (ed.tool === "line") { const B = lineLayout(panel); out.push([B.width, "Width"], [B.end, "End width"]); }
+    if (ed.tool === "mountain") {
+      const B = mountainLayout(panel);
+      out.push([B.width, "Width"], [B.height, ed.msel && ed.msel.peak != null ? "Peak height" : "Height"], [B.rough, "Roughness"]);
+    }
+    return out;
   };
 
   // un valore coi suoi "-" e "+" (pennello, polilinea)
@@ -2525,7 +2568,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
     // ([§9.220] la larghezza: l'icona delle due frecce al posto della parola)
-    if (label && label.icon) widthIcon(G.label[0], G.label[1], label.icon === "end");
+    if (label && label.icon) labelIcon(label.icon, G.label[0], G.label[1]);
     else { draw.setHalign("left"); draw.text(G.label[0], G.label[1], label); }
     draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
     for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
@@ -2569,8 +2612,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const v = e ? e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]] : mtnVal(k);
       // ([§9.215] con una cima scelta, "Altezza" e' la sua: in % dell'altezza della montagna)
       const pk = e && ed.msel.peak != null && k === "height" ? ed.msel.peak : null;
-      if (pk !== null) { pmGroup(B[k], tr("Peak height"), Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
-      pmGroup(B[k], k === "width" ? WIDTH_ICON : tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
+      if (pk !== null) { pmGroup(B[k], PEAK_ICON, Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
+      pmGroup(B[k], k === "width" ? WIDTH_ICON : k === "height" ? HEIGHT_ICON : k === "rough" ? ROUGH_ICON : tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
     }
     draw.setFont("overdue");
     draw.setHalign("center");

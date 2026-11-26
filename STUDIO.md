@@ -15110,3 +15110,26 @@ in direzioni opposte".
 Prove: le foto dei tre riquadri in italiano (pennello, polilinea col nome
 "Larghezza finale" sopra l'icona, montagna col nome "Larghezza");
 editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari (166).
+
+### 9.221 Simmetria, altezza e asperita' come icone
+
+Richieste dell'autore (26 novembre 2026, stessa PR, 0.2618): "Fai lo stesso
+per 'simmetria' e 'altezza'"; poi "a questo punto anche asperita' lo
+graficizzerei".
+
+- **Simmetria** (la riga in fondo ai riquadri di tutti gli strumenti): due
+  triangoli ai lati di un asse tratteggiato, uno pieno e il suo specchio
+  vuoto. Le quattro modalita' (Spenta, Diagonale...) restano parole.
+- **Altezza** (montagna): una freccia in verticale con due punte; con una
+  cima scelta ("Altezza cima", §9.215) la stessa freccia col picco accanto.
+  Il suggerimento della cima scelta non dice piu' "(o Altezza)": "Cima N: +
+  e - la alzano e la abbassano. Esc: tutta la montagna".
+- **Asperita'** (montagna): una linea frastagliata, come il contorno
+  strappato delle montagne.
+- Come per la larghezza (§9.220) il nome resta nel suggerimento sopra
+  l'icona, col puntatore sopra (editor.js labelIcon, widthGroups).
+
+Prove: le foto in italiano (pennello col suggerimento "Simmetria",
+montagna con "Altezza", la cima scelta con la freccia e il picco e
+l'asperita'); editor.mjs, mountains.mjs, meadows.mjs passano; i test
+unitari (166).
