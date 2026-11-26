@@ -139,7 +139,7 @@ import { meadowPoints, meadowCounts, cleanMeadow, MEADOW_LIMITS } from "../src/m
 test("§9.216 le chiazze d'erba: quante, dove, sempre uguali, i limiti", () => {
   const sq = [[0, 0], [1000, 0], [1000, 600], [0, 600]]; // 60 quadrati da 100 x 100
   const m = { pts: sq, mix: { dark: 2, poppy: 0.5 }, seed: 9 };
-  assert.deepEqual(meadowCounts(m), { dark: 120, mid: 0, light: 0, blades: 0, wheat: 0, poppy: 30, yellow: 0 });
+  assert.deepEqual(meadowCounts(m), { dark: 120, mid: 0, light: 0, blades: 0, wheat: 0, poppy: 30, yellow: 0, leaves: 0, pink: 0, clover: 0 }); // (§9.223: dieci particelle)
   const P = meadowPoints(m);
   assert.ok(P.length > 60 && P.length <= 150, String(P.length)); // (il bordo sfumato e i ciuffi ne lasciano meno)
   assert.ok(P.every(([k, x, y]) => (k === "dark" || k === "poppy") && x > 0 && x < 1000 && y > 0 && y < 600));

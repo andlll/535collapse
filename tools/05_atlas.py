@@ -414,6 +414,35 @@ def derived_sprites():
         fi = Image.new("RGBA", (s.width + 2 * pad, s.height + 2 * pad), (0, 0, 0, 0))
         fi.alpha_composite(s, (pad, pad))
         out.append((name, "ambiente", fi, (fi.width // 2, pad + s.height - 1)))
+    # [§9.223, richiesta dell'autore: le macchie di "Natura" in particelle]
+    # chiazza01 (lo sprite chiazza2, 1493 x 825) e' fatta di foglioline ovali
+    # sovrapposte: la particella e' un suo ritaglio tondo (CLOVER px, con
+    # alcune foglioline), il bordo sfumato; ripetuta dal pennello rifa' la
+    # trama. CLOVER_N ritagli dove la macchia e' piena fra il 45 e il 75%
+    # (ne' il centro fitto ne' il bordo rado), sempre gli stessi (a passi
+    # regolari fra i candidati)
+    src = img("chiazza2")
+    w, h = src.size
+    al = src.getchannel("A").load()
+    cand = []
+    for y in range(0, h - CLOVER, 22):
+        for x in range(0, w - CLOVER, 22):
+            n = sum(1 for yy in range(y, y + CLOVER, 2) for xx in range(x, x + CLOVER, 2) if al[xx, yy] > 40)
+            f = n / ((CLOVER // 2) ** 2)
+            if 0.45 < f < 0.75:
+                cand.append((x, y))
+    for k in range(CLOVER_N):
+        x, y = cand[(k * len(cand)) // CLOVER_N + len(cand) // (2 * CLOVER_N)]
+        cut = src.crop((x, y, x + CLOVER, y + CLOVER))
+        px = cut.load()
+        r0 = CLOVER / 2
+        for yy in range(CLOVER):
+            for xx in range(CLOVER):
+                d = (((xx + 0.5 - r0) / r0) ** 2 + ((yy + 0.5 - r0) / (r0 * 0.75)) ** 2) ** 0.5
+                f = max(0.0, min(1.0, (1 - d) / 0.35))
+                p = px[xx, yy]
+                px[xx, yy] = (p[0], p[1], p[2], round(p[3] * f))
+        out.append(("fogliolina%d" % (k + 1), "ambiente", cut, (CLOVER // 2, CLOVER // 2)))
     # [§9.109, richiesta dell'autore] le icone di edifici e unita' per la
     # minimappa: le sagome delle icone dell'interfaccia (grigio scuro al 70%)
     # bianche e piene, ritagliate e larghe al piu' MM_SIDE px; il colore
@@ -466,6 +495,7 @@ def tint_flags(im, shift=191, hue_max=40, sat_min=0.3):
     return im
 
 
+CLOVER, CLOVER_N = 44, 6  # [§9.223] i ritagli di chiazza01 per le particelle del bouquet
 FIORI = {"fiore_giallo1": "fiore1_part2x", "fiore_giallo2": "fiore2_part2x",
          "papavero1": "papavero_part_2x", "papavero2": "papavero_part2_2x"}
 

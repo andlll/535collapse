@@ -15179,3 +15179,29 @@ Edifici, prima i prati e fiori; la Regia ha le partenze e le due nebbie,
 quattro caselle; niente "Natura" ne' "Montagne" e gli oggetti di prima
 ammessi; editor.mjs: le schede, la nebbia presa in Regia). editor.mjs,
 mountains.mjs, meadows.mjs passano; i test unitari (166).
+
+### 9.223 I disegni di "Natura" come particelle del bouquet
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), sui disegni
+del terreno della scheda "Natura" (§9.222): "le altre sarebbe interessante
+convertirle in particelle (anche ferme)".
+
+Tre particelle in piu' nel bouquet (§9.216), ferme (niente wiggle):
+- **Foglie**: il ciuffo di foglie di erba_1 (lo sprite erba1, 129 x 83),
+  al 45-75%, girato di +-25 gradi a caso;
+- **Fiori rosa**: il mazzetto di fiorame1 (fiori1, 81 x 51), al 55-85%,
+  +-20 gradi;
+- **Foglioline**: chiazza01 (chiazza2, 1493 x 825) e' fatta di foglioline
+  ovali sovrapposte, separate solo ai bordi: la particella e' un suo
+  ritaglio tondo di 44 px (alcune foglioline, il bordo sfumato), sei ritagli
+  presi dove la macchia e' piena fra il 45 e il 75% (tools/05_atlas.py,
+  fogliolina1-6, gruppo ambiente), all'80-130% e girati del tutto (sono viste
+  dall'alto): ripetuti dal pennello rifanno la trama della macchia.
+Tutte e tre a densita' 0 di partenza, come le altre del bouquet a passi
+0-12 ogni 100 x 100 px; nel selettore i loro ciuffi (due foglie, due
+mazzetti, tre ritagli). L'aiuola (prato1) non e' un elemento da spargere:
+e' in "Citta'" (§9.222).
+
+Prove: mountains.test.mjs (le dieci particelle); meadows.mjs (in piu': un
+bouquet di foglie, fiori rosa e foglioline, con le loro particelle e i loro
+sprite nell'atlas).

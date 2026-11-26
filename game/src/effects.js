@@ -607,6 +607,14 @@ export const DECOR_OBJECTS = Object.keys(DECOR);
 export const MEADOW_PARTS = {
   dark: [DECOR.burst_erba1[0][0]], mid: [DECOR.burst_erba1[1][0]], light: [DECOR.burst_erba1[2][0]],
   blades: [DECOR.chiazzaparticellare[0][0]], wheat: [DECOR.burst_grano1[0][0]], poppy: PAPAVERO, yellow: GIALLO,
+  // [§9.223, richiesta dell'autore: i disegni di "Natura" in particelle,
+  // "anche ferme"] il ciuffo di foglie (erba_1), i fiori rosa (fiorame1), le
+  // foglioline di chiazza01 (ritagli tondi, tools/05_atlas.py): ferme, girate
+  // un po' a caso (le foglioline del tutto: viste dall'alto)
+  leaves: [partType({ sprite: "erba1", size: [0.45, 0.75, 0, 0], orientation: [-25, 25, 0, 0, false], life: [99999999, 99999999] })],
+  pink: [partType({ sprite: "fiori1", size: [0.55, 0.85, 0, 0], orientation: [-20, 20, 0, 0, false], life: [99999999, 99999999] })],
+  clover: [1, 2, 3, 4, 5, 6].map((k) => partType({ sprite: "fogliolina" + k, size: [0.8, 1.3, 0, 0], orientation: [0, 360, 0, 0, false],
+                                                   life: [99999999, 99999999] })),
 };
 // [§9.217, richiesta dell'autore: "se il fiume passa sopra la chiazza
 // particellare... se riesci a farglielo tagliare siamo a cavallo"] Le

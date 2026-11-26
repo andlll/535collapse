@@ -17,13 +17,15 @@
 
 import { dhypot } from "./dmath.js"; // §9.152
 
-export const MEADOW_KEYS = ["dark", "mid", "light", "blades", "wheat", "poppy", "yellow"];
+// ([§9.223] e le foglie, i fiori rosa, le foglioline: i disegni di "Natura")
+export const MEADOW_KEYS = ["dark", "mid", "light", "blades", "wheat", "poppy", "yellow", "leaves", "pink", "clover"];
 export const MEADOW_LABEL = { dark: "Dark grass", mid: "Green grass", light: "Dry grass", blades: "Blades",
-                              wheat: "Wheat", poppy: "Poppies", yellow: "Yellow flowers" };
+                              wheat: "Wheat", poppy: "Poppies", yellow: "Yellow flowers",
+                              leaves: "Leaves", pink: "Pink flowers", clover: "Clover" };
 // le densita' (particelle ogni 100 x 100 px): i passi dei "-" e "+"; quelle
 // di partenza come burst_erba1 (2,3 / 2,1 / 1,1)
 export const MEADOW_STEPS = [0, 0.5, 1, 2, 3, 4, 6, 8, 12];
-export const MEADOW_DEFAULT = { dark: 2, mid: 2, light: 1, blades: 0, wheat: 0, poppy: 0, yellow: 0 };
+export const MEADOW_DEFAULT = { dark: 2, mid: 2, light: 1, blades: 0, wheat: 0, poppy: 0, yellow: 0, leaves: 0, pink: 0, clover: 0 };
 // al piu' PER_PATCH particelle in una chiazza (le densita' si riducono in
 // proporzione) e PER_MAP in tutta la mappa (oltre, la pennellata si
 // rifiuta: l'erba si disegna a ogni fotogramma)

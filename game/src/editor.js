@@ -1511,8 +1511,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // (piu' grandi e piu' piene che sulla mappa: l'erba del gioco e' tenue;
   // una copia del tipo di particella con la sua trasparenza, piu' bassa per
   // le particelle a 0)
-  const uiParts = new Particles(), TUFT = { dark: 6, mid: 6, light: 6, blades: 7, wheat: 5, poppy: 3, yellow: 3 };
-  const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1 };
+  const uiParts = new Particles(), TUFT = { dark: 6, mid: 6, light: 6, blades: 7, wheat: 5, poppy: 3, yellow: 3, leaves: 2, pink: 2, clover: 3 };
+  const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1, leaves: 0.45, pink: 0.6, clover: 0.9 }; // (§9.223: foglie, fiori rosa, foglioline)
   let tufts = null;
   const makeTufts = () => {
     tufts = {};

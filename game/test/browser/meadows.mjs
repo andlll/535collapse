@@ -110,6 +110,22 @@ check("il fiume taglia la macchia di Natura", cut.after < cut.before && cut.afte
 check("Ctrl+Z: la macchia di nuovo intera", cut.back === cut.before, JSON.stringify(cut));
 await E(() => { const s = window.__editor.scene; s.addFeatures("rivers", [{ pts: [[2000, 3000], [4000, 3000]], width: 150 }]); });
 
+// [§9.223] le particelle dai disegni di "Natura": foglie, fiori rosa, foglioline
+await E(() => { const b = window.__editor.ed.brush; b.kind = "grass"; for (const k of Object.keys(b.mix)) b.mix[k] = 0; b.mix.leaves = 3; b.mix.pink = 3; b.mix.clover = 7; window.__editor.view.centre(1500, 2600); });
+await settle(200);
+const [lx, ly] = await toScreen([1200, 2350]);
+await page.mouse.move(lx, ly); await page.mouse.down();
+for (let k = 1; k <= 10; k++) { await page.mouse.move(lx + k * 50, ly + k * 6); await settle(40); }
+await page.mouse.up(); await settle(400);
+const natura = await E(() => {
+  const s = window.__editor.scene, m = s.map.meadows[s.map.meadows.length - 1];
+  const parts = [...s.meadowRows.get(m).rows].flatMap((r) => r.parts), by = {};
+  for (const q of parts) by[q.t.sprite] = (by[q.t.sprite] || 0) + 1;
+  return { mix: m.mix, by, tex: ["erba1", "fiori1", "fogliolina1", "fogliolina6"].every((n) => !!window.__editor.scene.assets.frame(n, 0)) };
+});
+check("foglie, fiori rosa, foglioline", natura.mix.leaves === 2 && natura.mix.pink === 2 && natura.mix.clover === 8 && natura.by.erba1 > 0 && natura.by.fiori1 > 0 && natura.tex, JSON.stringify(natura));
+await page.screenshot({ path: join(SHOTS, "bouquet_natura.png") });
+
 // [§9.219] la scheda Sabbia: una pennellata, una macchia di sabbia (la sua texture caricata)
 const sandTab = (await E(() => window.__editor.brushLayout())).tabs.find((q) => q.kind === "sabbia");
 await E(() => window.__editor.view.centre(4500, 1500)); await settle(200);
