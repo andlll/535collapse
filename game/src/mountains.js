@@ -233,11 +233,15 @@ function jag(P, rough, R) {
 // lunghi, selle e cime minori alternate), un po' fuori dalla linea. `V`: la
 // cresta come si vede; ogni nodo ha il piede sul terreno steso (`p`) e
 // l'altezza (`h`): si vede in [p[0], p[1] * ISO - h].
-function crestNodes(V, m, R) {
-  const H = or(m.height, MOUNTAIN.height), peaks = m.peaks || [];
+// [§9.215] I numeri a caso di ogni cima (e delle selle dopo) vengono da un
+// seme suo: alzando una cima, o spostandola, le altre restano alte uguali
+// (con una sequenza sola cambiava quante selle c'erano, e con loro tutto).
+function crestNodes(V, m) {
+  const H = or(m.height, MOUNTAIN.height), peaks = m.peaks || [], seed = or(m.seed, 1) >>> 0;
   const N = [];
   const node = (v, h, peak) => N.push({ p: [v[0], (v[1] + h) / ISO], h, peak });
   for (let k = 0; k < V.length; k++) {
+    const R = rng((seed ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0);
     const h = H * or(peaks[k], 1) * (0.9 + 0.2 * R());
     node(V[k], h, true);
     if (k === V.length - 1) break;
@@ -285,7 +289,7 @@ function structure(m, R) {
   const rough = or(m.rough, MOUNTAIN.rough), detail = or(m.detail, MOUNTAIN.detail), width = or(m.width, MOUNTAIN.width);
   const H = or(m.height, MOUNTAIN.height) || 1, seed = or(m.seed, 1) >>> 0;
   const steso = (p) => [p[0], p[1] / ISO];
-  const N = crestNodes(m.crest, m, R);
+  const N = crestNodes(m.crest, m);
   const C = N.map((c) => c.p); // la cresta sul terreno
 
   let B;
@@ -739,6 +743,8 @@ export const MOUNTAIN_STEPS = {
   rough: [0, 0.25, 0.5, 0.75, 1],
   detail: [0, 0.25, 0.5, 0.75, 1],
 };
+// [§9.215] l'altezza di una cima sola (moltiplica `height`): i passi
+export const PEAK_STEPS = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2];
 export const MOUNTAIN_LIMITS = { crest: 12, base: 64, gap: 50, seg: 1200, baseGap: 16, turn: 35, area: 15000, count: 60, peak: [0.3, 2] };
 const segCross = (P, closed) => {
   const n = P.length, m = closed ? n : n - 1;

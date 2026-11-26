@@ -198,6 +198,9 @@ const CODES = {
   Escape: 27, Space: 32, Delete: 46, Backspace: 8, Tab: 9, ShiftLeft: 16, ShiftRight: 16,
   ControlLeft: 17, ControlRight: 17, AltLeft: 18, AltRight: 18, PageUp: 33, PageDown: 34,
   Home: 36, End: 35, Insert: 45,
+  // [§9.215] + e - (l'altezza di una cima nell'editor): il tastierino e il
+  // tasto =/- della tastiera americana
+  NumpadAdd: 107, NumpadSubtract: 109, Equal: 187, Minus: 189,
 };
 for (let i = 0; i < 10; i++) { CODES["Digit" + i] = 48 + i; CODES["Numpad" + i] = 96 + i; }
 for (let i = 0; i < 26; i++) CODES["Key" + String.fromCharCode(65 + i)] = 65 + i;
@@ -207,5 +210,7 @@ const PREVENT = new Set([37, 38, 39, 40, 32, 9, 18]);
 
 function keyCode(e) {
   const k = CODES[e.code];
+  // ([§9.215] + e - dal carattere: sulla tastiera italiana stanno su altri tasti)
+  if (k === undefined && (e.key === "+" || e.key === "-")) return e.key === "+" ? 107 : 109;
   return k === undefined ? null : k;
 }

@@ -110,6 +110,21 @@ await page.mouse.move(ML.height.plus[0], ML.height.plus[1]); await settle();
 await page.mouse.click(ML.height.plus[0], ML.height.plus[1]); await settle(300);
 check("+ dell'altezza sulla montagna scelta", (await E(() => window.__editor.scene.map.mountains[0].height)) > h0);
 
+// [§9.215] una cima sola: clic sulla cima (scelta), + la alza; il piede resta
+const pk0 = await E(() => { const s = window.__editor.scene, e = s.map.mountains[0], g = s.world.mountains[0]; return { top: g.tops[1], foot: g.feet.filter((_, i) => true), crest: e.crest[1].slice() }; });
+await clickAt([pk0.top.x, pk0.top.y]);
+check("clic su una cima: scelta", (await E(() => window.__editor.ed.msel && window.__editor.ed.msel.peak)) === 1);
+await page.keyboard.press("Equal"); await settle(300);
+const pk1 = await E(() => { const s = window.__editor.scene, e = s.map.mountains[0], g = s.world.mountains[0]; return { peaks: e.peaks, top: g.tops[1], crest: e.crest[1].slice(), feet: g.feet }; });
+check("+: la cima piu' alta", pk1.peaks && pk1.peaks[1] > 1 && pk1.peaks[0] === 1 && pk1.top.y < pk0.top.y - 20, JSON.stringify([pk1.peaks, pk0.top.y, pk1.top.y]));
+const footOf = (g, top) => g.feet.reduce((b, f) => (Math.abs(f[0] - top.x) < Math.abs(b[0] - top.x) ? f : b));
+check("il piede della cima non si muove", Math.abs(footOf(pk1, pk1.top)[1] - (pk0.top.y + pk0.top.h)) < 2, JSON.stringify([footOf(pk1, pk1.top), pk0.top]));
+const ML2 = await E(() => window.__editor.mountainLayout());
+await page.mouse.click(ML2.height.minus[0], ML2.height.minus[1]); await settle(300);
+check("- di \"Altezza cima\": torna com'era", (await E(() => window.__editor.scene.map.mountains[0].peaks)) === undefined);
+await page.keyboard.press("Escape"); await settle();
+check("Esc: di nuovo tutta la montagna", (await E(() => { const m = window.__editor.ed.msel; return !!m && (m.peak === undefined || m.peak === null); })));
+
 // una seconda montagna che tocca la prima: rifiutata
 await E(() => { window.__editor.ed.msel = null; });
 await clickAt([1500, 560]);

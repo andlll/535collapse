@@ -123,3 +123,13 @@ test("§9.214 i triangoli delle facce e la sagoma come ostacolo", () => {
   assert.ok(!mountainAt(mc, 1900, 1900), "lontano: niente");
   assert.ok(mountainAt(mc, g.feet[0][0], g.feet[0][1]), "il piede della cima");
 });
+
+test("§9.215 una cima sola: alzata, il suo piede e le altre cime restano", () => {
+  const e = { crest: [[950, 520], [1200, 440], [1450, 500]], height: 320, seed: 77 };
+  const a = mountainGeometry(e), t = a.tops[1], dh = t.h * 0.3;
+  const b = mountainGeometry({ ...e, peaks: [1, 1.3, 1], crest: [[950, 520], [1200, 440 - dh], [1450, 500]] });
+  assert.ok(Math.abs(b.tops[1].h - t.h * 1.3) < 1e-6, "la cima e' alta il 30% in piu'");
+  for (let k = 0; k < 3; k++) assert.ok(Math.abs((b.tops[k].y + b.tops[k].h) - (a.tops[k].y + a.tops[k].h)) < 1e-6, "il piede " + k);
+  assert.equal(b.tops[0].h, a.tops[0].h);
+  assert.equal(b.tops[2].h, a.tops[2].h);
+});

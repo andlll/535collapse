@@ -80,7 +80,7 @@ import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, pale
          FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO, riverGeometry } from "./rivers.js";
-import { MOUNTAIN_STEPS, crestProblem, baseProblem } from "./mountains.js"; // §9.214
+import { MOUNTAIN_STEPS, PEAK_STEPS, crestProblem, baseProblem } from "./mountains.js"; // §9.214, §9.215
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -216,11 +216,13 @@ export const MTN_HINTS = {
   idle: "Click: first peak of a new mountain. Click on a mountain: select it.",
   crest: "Step 1, the crest. Click: add a peak. Right click or Enter: done. Backspace: last peak away. Esc: cancel.",
   base: "Step 2, the base. Click: add a point. Right click or Enter: done (no points: automatic base). Esc: cancel.",
-  sel: "Drag the points. Del: delete. B: draw the base again.",
+  sel: "Drag the points. Click on a peak: its height. Del: delete. B: draw the base again.",
+  // [§9.215] una cima scelta: la sua altezza
+  peak: "Peak {n}: + and - (or Height) raise and lower it. Esc: the whole mountain.",
 };
 export const MTN_TEXTS = [...Object.values(MTN_LABEL), ...Object.values(MTN_PROBLEM.crest), ...Object.values(MTN_PROBLEM.base), MTN_OVERLAP, MTN_TWIN,
-  ...Object.values(MTN_HINTS), "New variant", "Automatic base", "Trees removed under the mountain: {n}", "Objects removed under the mountain: {n}",
-  "Rivers and roads moved around the mountain: {n}", "Rivers and roads removed (under the mountain): {n}"];
+  ...Object.values(MTN_HINTS), "Peak height", "New variant", "Automatic base", "Trees removed under the mountain: {n}", "Objects removed under the mountain: {n}",
+  "Rivers and roads moved around the mountain: {n}", "Rivers and roads removed (under the mountain): {n}", "This peak would go off the map."];
 export const mtnValue = (k, v) => (k === "rough" || k === "detail" ? Math.round(v * 100) + "%" : v + " px");
 
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
@@ -1201,8 +1203,31 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
   // i "-" e "+", "Nuova variante", "Base automatica": della montagna scelta
   // (con la gemella), o i parametri delle nuove
+  // [§9.215, richiesta dell'autore] alzare o abbassare una cima sola: il suo
+  // moltiplicatore (`peaks`, a passi PEAK_STEPS) e, perche' la cima salga
+  // davvero sullo schermo, il punto della cresta piu' in alto di quanto
+  // cresce l'altezza (il piede sul terreno resta dov'e': la base, gli
+  // ostacoli sotto, la gemella non cambiano). Coi controlli della cresta.
+  const peakStep = (e, k, dir) => {
+    const peaks = e.peaks ? e.peaks.slice() : e.crest.map(() => 1), m0 = peaks[k];
+    const i = PEAK_STEPS.reduce((b, s, j) => (Math.abs(s - m0) < Math.abs(PEAK_STEPS[b] - m0) ? j : b), 0);
+    const m1 = PEAK_STEPS[Math.max(0, Math.min(PEAK_STEPS.length - 1, i + dir))];
+    if (m1 === m0) return;
+    const top = geoOf(e).tops[k], dh = top.h * (m1 / m0 - 1);
+    peaks[k] = m1;
+    const crest = e.crest.map((q) => q.slice());
+    crest[k][1] = Math.round(crest[k][1] - dh);
+    // (i controlli su come si vede: la cima del punto che si alza)
+    const shown = geoOf(e).tops.map((t) => [t.x, t.y]);
+    shown[k] = [top.x, top.y - dh];
+    const why = crestProblem(shown);
+    if (why) { warn(MTN_PROBLEM.crest[why]); return; }
+    if (top.y - dh < -VIEW_MARGIN) { warn("This peak would go off the map."); return; }
+    mCommit([], mAndTwin(e).map((f) => [f, { peaks: peaks.every((v) => v === 1) ? undefined : peaks, crest }]));
+  };
   const mPanel = (q) => {
     const e = ed.msel && ed.msel.e;
+    if (e && ed.msel.peak !== undefined && ed.msel.peak !== null && (q === "height-" || q === "height+")) { peakStep(e, ed.msel.peak, q.endsWith("+") ? 1 : -1); return; }
     if (q === "seed") { if (e) mCommit([], mAndTwin(e).map((f) => [f, { seed: newSeed() }])); return; }
     if (q === "auto") { if (e && e.base) mCommit([], mAndTwin(e).map((f) => [f, { base: undefined }])); return; }
     const k = q.slice(0, -1), dir = q.endsWith("+") ? 1 : -1, n = MOUNTAIN_STEPS[k].length;
@@ -1520,7 +1545,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (K(13)) { mStep(); return; } // Invio: il passo e' fatto
       if (K(8)) { const L2 = ed.mdraw.step === "crest" ? ed.mdraw.crest : ed.mdraw.base; L2.pop(); if (ed.mdraw.step === "crest" && !L2.length) ed.mdraw = null; return; }
     } else if (ed.tool === "mountain" && ed.msel) {
-      if (K(27)) { ed.msel = null; return; }
+      const pk = ed.msel.peak;
+      if (K(27)) { if (pk !== undefined && pk !== null) ed.msel = { e: ed.msel.e }; else ed.msel = null; return; } // (§9.215: prima la cima)
+      // [§9.215] + e - (anche del tastierino) per la cima scelta
+      if (pk !== undefined && pk !== null && (K(187) || K(107) || K(189) || K(109))) { peakStep(ed.msel.e, pk, K(187) || K(107) ? 1 : -1); return; }
       if (K(46)) { scene.removeFeatures("mountains", mAndTwin(ed.msel.e)); ed.msel = null; return; } // Canc: via la montagna
       if (K(66)) { ed.mdraw = { step: "base", crest: [], base: [], edit: ed.msel.e }; return; } // B: la base di nuovo
     }
@@ -1760,7 +1788,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         const D = ed.mdrag;
         if (!D.on && dhypot(mx - D.sx, my - D.sy) > 4) D.on = true;
         if (D.on) D.cur = [px0, py0];
-        if (!input.mouseDown[0]) { ed.mdrag = null; if (D.on && D.cur) mDragEnd(D); }
+        if (!input.mouseDown[0]) {
+          ed.mdrag = null;
+          if (D.on && D.cur) mDragEnd(D);
+          else if (D.kind === "crest" && ed.msel && ed.msel.e === D.e) ed.msel = { e: D.e, peak: D.k }; // §9.215: un clic su una cima la sceglie
+        }
         return;
       }
       if (onMap && input.mousePressed[1]) { ed.msel = null; return; }
@@ -2027,6 +2059,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
           path(g.base, main ? 2 : 1.5, c.white, main ? 0.8 : 0.5, true);
           path(g.crest, main ? 2.5 : 1.5, c.white, main ? 0.9 : 0.5);
           if (main) { dots(g.tops.map((t) => [t.x, t.y]), 7, c.white, 0.95); const b = baseShown(f); if (b) dots(b, 5, 0x40b0e8, 0.95); } // (la base: ambra, BGR)
+          // [§9.215] la cima scelta: scura col bordo bianco (e la gemella)
+          const pk = ed.msel.peak;
+          if (pk !== undefined && pk !== null && g.tops[pk]) { dots([[g.tops[pk].x, g.tops[pk].y]], main ? 9 : 6, c.white, 1); dots([[g.tops[pk].x, g.tops[pk].y]], main ? 6 : 4, DARK, 1); }
         }
       }
       if (ed.mdrag && ed.mdrag.cur) {
@@ -2232,7 +2267,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       : ed.tool === "line" ? tr(ed.drawing ? "Click: add a point. Right click or Enter: finish. Esc: cancel."
         : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
         : "Click: new line. Click on a line: select it.")
-      : ed.tool === "mountain" ? tr(ed.mdraw ? MTN_HINTS[ed.mdraw.step] : ed.msel ? MTN_HINTS.sel : MTN_HINTS.idle) // §9.214
+      : ed.tool === "mountain" ? tr(ed.mdraw ? MTN_HINTS[ed.mdraw.step] : ed.msel && ed.msel.peak != null ? MTN_HINTS.peak : ed.msel ? MTN_HINTS.sel : MTN_HINTS.idle, // §9.214, §9.215
+                                   ed.msel && ed.msel.peak != null ? { n: ed.msel.peak + 1 } : undefined)
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
       : ed.pick ? (pickedItem().side && pickedItem().styles[0].sprite // §9.203: la casa
         ? tr(HOME_HINT[pickedItem().side], { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     "
@@ -2393,6 +2429,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const B = mountainLayout(panel), e = ed.msel && ed.msel.e;
     for (const k of MTN_KEYS) {
       const v = e ? e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]] : mtnVal(k);
+      // ([§9.215] con una cima scelta, "Altezza" e' la sua: in % dell'altezza della montagna)
+      const pk = e && ed.msel.peak != null && k === "height" ? ed.msel.peak : null;
+      if (pk !== null) { pmGroup(B[k], tr("Peak height"), Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
       pmGroup(B[k], tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
     }
     draw.setFont("overdue");

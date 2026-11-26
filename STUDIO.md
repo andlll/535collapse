@@ -14903,3 +14903,40 @@ campagna); la gemella vista dall'altro lato potrebbe sembrare un'altra
 montagna (e' la stessa, girata): se l'autore preferisce, si puo' disegnarla
 con lo stesso aspetto, ma la parte alta della sagoma (sopra la base) non
 sarebbe piu' esattamente speculare.
+
+### 9.215 L'altezza di una cima sola
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Intanto
+aggiungi il comando per alzare o abbassare una sola cima. Lascia perdere
+Tiled, a questo punto i prossimi livelli li impostiamo dall'editor e la
+regia la vediamo in vibe coding. L'icona te la carico poi." (Tiled: niente
+montagne del generatore nel kit; tolto da "resta da fare" di §9.214.)
+
+- **Scegliere una cima**: con la montagna scelta, un clic su una cima
+  (senza trascinarla) la sceglie: scura col bordo bianco (anche nella
+  gemella). Esc torna a tutta la montagna, un altro Esc la lascia.
+- **Alzarla e abbassarla**: + e - della tastiera (anche del tastierino; il
+  "+" letto dal carattere, perche' sulla tastiera italiana non sta sul tasto
+  "=" americano: input.js), o i "-" e "+" del riquadro, dove "Altezza"
+  diventa "Altezza cima" in % dell'altezza della montagna, a passi dal 30%
+  al 200% (PEAK_STEPS; la voce `peaks` c'era gia' nel generatore e nella
+  convalida delle mappe; tutte al 100%: la voce sparisce).
+- **La cima sale davvero**: il punto della cresta si alza di quanto cresce
+  l'altezza, cosi' il piede sul terreno resta dov'e' (la base, gli
+  ostacoli, la gemella non cambiano). L'"Altezza" di tutta la montagna
+  invece tiene ferma la cresta (§9.214). Coi controlli della cresta (una
+  cima alzata puo' fare un angolo troppo stretto) e una cima che uscirebbe
+  dalla mappa si rifiuta, con l'avviso.
+- **Le altre cime restano come sono**: prima i numeri a caso delle cime
+  (l'altezza varia del +-10%) e delle selle venivano da una sequenza sola, e
+  spostando un punto cambiava quante selle c'erano, quindi anche l'altezza
+  delle altre cime e il piede di quella cambiata (24 px nella prova). Ora
+  ogni cima ha il suo seme (mountains.js crestNodes): le montagne gia' fatte
+  cambiano un po' d'aspetto (le cime e le selle), le basi disegnate a mano
+  no.
+
+Prove: mountains.test.mjs (in piu': alzata del 30%, la cima e' alta il 30%
+in piu', i tre piedi e le altre due cime uguali; 165 test), browser
+mountains.mjs (in piu': clic su una cima la sceglie, + la alza di ~49 px
+col piede fermo entro 2 px, "-" di "Altezza cima" la riporta al 100% e
+`peaks` sparisce, Esc torna alla montagna). Passano.
