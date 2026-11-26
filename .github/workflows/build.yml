@@ -140,8 +140,12 @@ jobs:
           node game/test/browser/hintgap.mjs
           node game/test/browser/hover.mjs
           node game/test/browser/editor.mjs
+          node game/test/browser/mountains.mjs
+          node game/test/browser/meadows.mjs
+          node game/test/browser/edinsert.mjs
           node game/test/browser/skcustom.mjs
           node game/test/browser/edstyles.mjs
+          node game/test/browser/nocentro.mjs
           node game/test/browser/pausevol.mjs
           node game/test/browser/alarms.mjs
           node game/test/browser/minimap.mjs

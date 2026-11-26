@@ -14648,3 +14648,879 @@ voce aggiornata.
 
 Prove: nel browser un contadino a un campo su sk_padus, le chiamate audio
 registrate: 19 colpi di `zappa`, tutti a 0,6. I test (155).
+
+### 9.213 Le montagne del generatore: la prova di stile
+
+Richieste dell'autore (26 novembre 2026, nuova PR, 0.2618): "Iniziamo a
+ragionare come fatto per fiumi sentieri a un tool per l'editor per creare
+montagne procedurali, regolando parametri come altezza o larghezza, a
+partire dai disegni che gia' abbiamo"; poi, sulla proposta: "ha senso
+disegnare sia la cresta (a livello estetico) che la base (che impatta anche
+il gameplay): potrebbe essere una creazione in due step [...]. Partiamo col
+primo punto" (la prova di stile, prima del motore e dell'editor).
+
+**La proposta, decisa.** Come per i fiumi (§9.97): l'autore disegna delle
+linee, il gioco ci costruisce sopra la montagna con una texture presa dai
+suoi disegni; nella mappa solo i parametri (niente immagini), lo stesso
+risultato per lo stesso seme (la partita in rete). In due passi:
+1. la **cresta**, una spezzata dove la si vede (la linea del cielo): ogni
+   punto una cima, fra due cime una sella; e' l'aspetto;
+2. la **base**, il contorno sul terreno: conta per il gioco. Se non la si
+   disegna la fa il generatore attorno alla cresta, larga `width`.
+Parametri: altezza (il piede di ogni cima e' tanti px piu' in basso della
+cresta: piu' alta, la montagna scende di piu', la cresta resta dov'e'),
+larghezza, asperita' (contorno da liscio a frastagliato, lingue e
+insenature), dettaglio (quanti speroni, spalle e piccole piramidi), seme
+(un'altra variante), e l'altezza di ogni cima (`peaks`, moltiplicatori).
+Scartato: stirare i dieci disegni (inchiostro e grana deformati, sempre le
+stesse dieci forme, ~13 MB di memoria video per `montagna10`).
+
+**Cosa hanno in comune i disegni** (montagna1-10, tutte guardate): pietra
+grigia marmorizzata su carta a righe verticali (ogni ~3 px), grandi facce
+piane dalle cime alla base, dove la marmorizzazione cambia verso da una
+faccia all'altra (toppe di carta); inchiostro nero spesso ~4-6 px sulle
+creste e sugli speroni, con tratti che si fermano prima o sbordano;
+speroni che finiscono sulle punte del contorno; spalle a meta' discesa da
+cui scendono piccole piramidi (spesso con linee verticali); il contorno
+strappato, a tratti d'inchiostro piu' spessi in basso; la linea del cielo
+e' la cresta.
+
+**La texture** (`nuovi/montagne/roccia.png`, 258 x 256, 93 KB;
+tools/20_montagne.py, dopo tools/01): cercato in tutte le dieci montagne il
+quadrato di sola pietra (niente inchiostro, niente trasparenza) con la
+luminosita' a blocchi di 32 px piu' uniforme: in montagna9 a (1536, 512).
+Resa senza cuciture come l'acqua (incrocio col ritaglio spostato di mezza
+misura), ma un asse per volta: incrociati insieme (come in 15_fiumi.py)
+vicino agli angoli il salto del ritaglio spostato si vedeva a meta'
+piastrella. Larghezza e spostamento orizzontale multipli di 3, per tenere
+in fase le righe della carta.
+
+**Il generatore** (game/src/mountains.js, `mountainGeometry`; solo + - * /,
+dmath e mulberry32 col seme: niente Math.random ne' Math.sin):
+- la cresta: le cime dell'autore e, fra due, una sella al 55-80% (sui tratti
+  lunghi selle e cime minori alternate), un po' fuori linea; ogni nodo ha il
+  piede sul terreno e l'altezza;
+- la base del generatore: le celle da 8 px vicine alla cresta (la mezza
+  larghezza cambia col rumore: lingue larghe e insenature) o a uno dei 3-5
+  speroni per cima che vanno oltre (sempre piu' stretti: le lingue di
+  roccia), il pezzo attaccato alla cresta, il suo contorno seguito lungo i
+  lati delle celle e semplificato; dietro la cresta non oltre quanto la
+  montagna nasconde (se no spuntava sopra la linea del cielo come un
+  bernoccolo). La base disegnata a mano si usa com'e'; un piede di cima che
+  ci cadesse fuori abbassa la cima finche' ci entra;
+- il contorno frastagliato: tratti dritti di 10-34 px spostati a caso, qualche
+  insenatura stretta;
+- gli speroni: i piedi sono le punte del contorno (i punti piu' lontani
+  dalla cresta nei dintorni) e, nei tratti lunghi senza punte, il punto piu'
+  lontano del tratto; per cima 2-4 speroni grandi (le punte piu' lontane),
+  spesso con una spalla (piu' alta del pendio, mai sopra la sua cima sullo
+  schermo); gli altri piedi scendono dalla spalla di uno sperone grande
+  accanto (piccole piramidi sul fianco). Prima prova: tutti gli speroni
+  dalla cima, a ventaglio regolare: un ombrello, non una montagna;
+- le facce: fra due speroni consecutivi (dove si separano, o la cresta da
+  una cima all'altra, giu' per uno, il contorno, su per l'altro); la luce
+  dalla normale della faccia (luce da sinistra e dall'alto: 0,74-1); la
+  texture fissata al mondo, spostata e girata per faccia;
+- da dietro in avanti (prima le facce coi piedi piu' in alto); l'inchiostro
+  di uno sperone e di ogni tratto di cresta subito dopo l'ultima faccia che
+  lo ha sul bordo, cosi' le facce davanti lo coprono (una catena che gira
+  verso chi guarda nasconde un pezzo della sua cresta); il contorno a tratti
+  con la sua faccia, piu' spesso dove guarda in giu'.
+
+**La prova** (`node tools/21_prova_montagne.mjs [cartella]`, Playwright, il
+canvas 2D del browser; predefinita build/prova_montagne): sei fogli PNG.
+1 i disegni montagna6, 8 e 4 accanto a montagne generate di misura simile;
+2 l'altezza (140, 260, 400) e la larghezza (260, 420, 640); 3 asperita' e
+dettaglio (0, 0,5, 1); 4 sei semi con gli stessi parametri; 5 i due passi
+(la cresta in rosso, i piedi delle cime, la base in blu: quella del
+generatore e una disegnata a mano); 6 una catena diagonale e una a curva
+con le cime di altezze diverse.
+
+Da decidere con l'autore, guardando i fogli: la resa (inchiostro, luce,
+quante linee, quanto frastagliato), i valori di partenza dei parametri.
+Note per il passo dopo:
+- **la roccia sopra la base**: la cresta si vede piu' in alto della base
+  (di quanto e' alta la montagna), quindi la parte alta del disegno sta sopra
+  il terreno dietro la montagna. Proposta: l'ostacolo e' tutta la sagoma
+  visibile (come le maschere precise delle montagne dipinte), la base decide
+  dove la montagna tocca terra davanti;
+- una catena che gira molto (o una base molto concava) a volte ha facce che
+  attraversano un'insenatura: da sistemare (dividere le facce lunghe sulle
+  insenature) prima del motore;
+- nel gioco le facce si disegneranno a triangoli col renderer del suolo
+  (ground.js), l'inchiostro con rivers.js `inkLine` (gia' per punto, `ink`).
+
+Prove: test/mountains.test.mjs (stesso seme stessa montagna, seme diverso
+diversa; le cime dove le ha messe l'autore e i piedi dentro la base per sei
+semi; facce e inchiostro ben fatti; la base disegnata a mano rispettata
+entro 60 px); determinism.test.mjs passa (nessuna funzione vietata). I
+test: 149 passano, 8 saltati; i 2 che falliscono (editor.test.mjs §9.193,
+§9.206) leggono game/assets/objects.json, che c'e' solo dopo la pipeline
+(non rifatta in questa sessione).
+
+### 9.214 Lo strumento montagna nell'editor; le montagne nel gioco
+
+Richieste dell'autore (26 novembre 2026, stessa PR di §9.213, 0.2618), sui
+fogli di §9.213: "In generale la resa e' un buon punto di partenza. Il
+colore mi sembra un po' scuro rispetto ai miei disegni, anche le linee nere
+dentro il disegno mi sembrano poche, considera che non e' obbligatorio
+arrivino fino alla base. Abbiamo strumenti di controllo per evitare
+inserimenti da parte dell'utente di punti assurdi o infattibili?
+Nell'editor inseriscilo come tasto dedicato sotto alla polilinea (strumento
+montagna). La montagna quando creata elimina tutti gli oggetti in collisione
+(warning per tutti gli oggetti che non siano alberi), e sposta le polilinee
+in interferenza in modo che girino intorno alla montagna. Occhio anche che
+lo strumento montagna sia compatibile coi tool di simmetria".
+
+**Lo stile** (mountains.js, tools/20_montagne.py).
+- *Il colore*: la pietra dei disegni ha luminosita' media 162-166, la
+  texture 158 e le facce la scurivano ancora (media ~142). Ora la texture e'
+  schiarita del 4% (164, nuovi/montagne/roccia.png rifatta) e la luce delle
+  facce va da 0,84 a 1 (prima 0,74-1): le facce in luce come i disegni, le
+  altre poco piu' scure.
+- *Le linee dentro*: tutti gli speroni grandi hanno l'inchiostro (90-100%,
+  prima 75-100%), e ogni faccia ha in piu' 1-3 linee che partono da una cima
+  o da una spalla e si fermano a meta' pendio (35-75% della discesa; a volte
+  cominciano poco sotto), spesso dritte in giu' come le verticali dei
+  disegni; solo se restano dentro la faccia.
+- *Le facce che attraversavano le insenature* (§9.213, nota): uno sperone
+  ora deve restare dentro la base (il segmento dritto non ne incrocia il
+  contorno); se la cima piu' vicina non "vede" il piede si prova la
+  successiva, se nessuna lo vede il piede non fa uno sperone; la spalla
+  idem (prima di lato, poi dritta, poi niente).
+
+**I controlli** (mountains.js, la risposta alla domanda: prima non c'erano).
+I limiti (MOUNTAIN_LIMITS, MOUNTAIN_STEPS):
+- *la cresta* (crestProblem): al piu' 12 cime; due di fila fra 50 e 1200 px;
+  la linea non torna indietro con un angolo sotto i 35 gradi; non si incrocia;
+- *la base* (baseProblem): da 3 a 64 punti, a non meno di 16 px; non si
+  incrocia; almeno 15000 px quadrati; sta sotto tutta la cresta (sotto ogni
+  cima, fino alla sua altezza, c'e' base: se no la cima non ha dove poggiare);
+- *i parametri*: altezza 80-480, larghezza 160-1000, asperita' e dettaglio
+  0-1, a passi (i "-" e "+");
+- *una montagna non ne tocca un'altra* (la sagoma), ne' la sua gemella
+  (troppo vicina all'asse della simmetria).
+Nell'editor un punto che non va si rifiuta subito, con l'avviso che dice
+perche' ("Troppo vicina alla cima di prima", "La base non puo'
+incrociarsi"...); la convalida delle mappe che arrivano da fuori (mapfile.js
+validateMap, cleanMountain) scarta la mappa con montagne fuori dai limiti o
+con campi sbagliati, come per le altre parti.
+
+**Lo strumento** (editor.js, editmap.js), il terzo pulsante della colonna,
+sotto la polilinea (icona a linee: due cime; l'autore puo' disegnarne una
+sua, `ico_ed_mountain`). I tasti 1-5 restano quelli di prima (la gomma e'
+ancora il 5), la montagna e' il 6 (TOOL_KEYS).
+- *Passo 1, la cresta*: un clic per cima (come si vede, la linea del
+  cielo); il destro, Invio o un doppio clic la finiscono; Backspace toglie
+  l'ultima; Esc annulla. Mentre la si disegna, l'anteprima della montagna (a
+  facce grigie con l'inchiostro) con la base automatica.
+- *Passo 2, la base*: un clic per punto (il contorno si chiude da solo);
+  il destro, Invio o il doppio clic la finiscono; senza punti, la base
+  automatica (larga `width`). L'anteprima usa la base disegnata appena ha
+  tre punti validi.
+- *Scegliere e cambiare*: un clic su una montagna la sceglie (la sua base,
+  la cresta, i punti); le cime e i punti della base si trascinano (la
+  modifica vera lasciando il tasto, coi controlli); Canc la toglie; B
+  ridisegna la base. Nel riquadro altezza, larghezza, asperita' e dettaglio
+  coi "-" e "+" (della montagna scelta, o delle nuove), "Nuova variante" (un
+  altro seme) e "Base automatica" (via la base disegnata).
+- *Ogni montagna creata o cambiata*, in un passo solo da annullare:
+  - toglie gli oggetti sotto la sua sagoma: gli alberi coi piedi sulla
+    sagoma (come per i fiumi, §9.204; "Alberi tolti sotto la montagna: N"),
+    gli altri con la maschera (righe ogni 4 px), le macchie col punto
+    d'origine; per tutti quelli che non sono alberi l'avviso giallo
+    ("Oggetti tolti sotto la montagna: N"), anche per le partenze (poi il
+    salvataggio chiede le due partenze, §9.191);
+  - fa girare fiumi e strade che la toccano: il pezzo che passa sulla
+    montagna diventa un giro lungo il suo contorno allargato di mezza linea
+    piu' 40 px (dalla parte piu' corta), semplificato (entro 28 px, punti a
+    non meno di 48: il contorno a celle faceva gli scalini e il fiume le
+    zeta); un'estremita' sulla montagna si ferma fuori; una linea tutta
+    sotto sparisce (avviso). I fiumi spostati tolgono gli alberi nella loro
+    acqua nuova, come i fiumi nuovi.
+- *La simmetria*: la riga della simmetria come negli altri strumenti. La
+  gemella e' la stessa montagna specchiata sul terreno (mountains.js
+  mirrorStructure: le stesse cime alte uguali, la stessa base specchiata
+  punto per punto) e vista dallo stesso punto, quindi con la diagonale o la
+  verticale la si vede dall'altro lato: per il gioco conta che la base sia
+  esattamente lo specchio. Nella mappa le due voci hanno gli stessi campi e
+  `sym`; la specchiata anche `mirrored: true`. Trascinare, cambiare i
+  parametri, togliere valgono per tutte e due (twinMountain: stessi campi,
+  l'altra specchiatura). Con la gemella in verticale o in diagonale la base
+  automatica resta nascosta dalla montagna anche davanti (se no la faccia
+  dietro della gemella spuntava sopra la sua cresta).
+
+**Nel gioco** (le montagne del generatore si giocano: "Prova mappa", le
+mappe dell'editor nella schermaglia e online):
+- *cotte nel suolo* (ground.js, dopo strade, fiumi e ponti): le facce a
+  triangoli (mountains.js triangulate, a orecchie) con la pietra
+  `monte_roccia` (tools/05_atlas.py la mette fra gli sfondi) spostata e
+  girata per faccia, moltiplicata per la luce; l'inchiostro come i fiumi
+  (rivers.js inkLine). A ogni fotogramma non costano niente;
+- *l'ostacolo e' la sagoma* (mountainCells, celle da 8 px: le facce come si
+  vedono e la base), come la maschera precisa delle montagne dipinte: per
+  unita' e fantasmi degli edifici (app.js terrainBlocks), per i percorsi
+  (pathing.js, insieme all'acqua), per le frecce (world.js shotClear,
+  archery.js arrowStopped: le montagne fermano le frecce, §6.6), per il
+  pennello dei boschi dell'editor;
+- *la minimappa*: il simbolo dell'autore (§9.115) sul riquadro della
+  montagna, come per quelle dipinte;
+- tutto dai soli parametri, sempre uguale (dmath, mulberry32 col seme): la
+  partita in rete vede le stesse montagne.
+
+**Prove.**
+- test/mountains.test.mjs (in piu': i controlli della cresta e della base
+  coi loro perche'; la convalida delle mappe; la gemella con la base
+  esattamente specchiata e le cime alte uguali, nelle tre simmetrie; i
+  triangoli di un poligono concavo; la sagoma come ostacolo). I test
+  unitari: 164, tutti passano (con game/assets rifatto: tools 05-07).
+- editor.test.mjs: la colonna ha un pulsante in piu' e a 900 px non stava
+  piu' tutta (scorreva): la scala minima della colonna da 0,8 a 0,75 (a 900
+  px stanno ancora tutti i pulsanti), e la prova che controllava la scala
+  minima (">= 0,8") ora controlla ">= 0,75".
+- game/test/browser/mountains.mjs (nuova, anche nella CI): il pulsante
+  sotto la polilinea; la cresta in tre clic (un punto troppo vicino
+  rifiutato); la base automatica; l'albero e la miniera sotto tolti (l'albero
+  lontano resta); il fiume che la attraversava gira attorno e non la tocca
+  piu'; Ctrl+Z toglie tutto in un passo, Ctrl+Y lo rifa'; "+" dell'altezza
+  sulla montagna scelta; una seconda montagna che tocca la prima rifiutata;
+  la base disegnata a mano con la simmetria diagonale: la gemella con la base
+  specchiata; Canc toglie anche la gemella; "Prova mappa": nel gioco tre
+  montagne, ostacolo per i percorsi e riparo dalle frecce. I file del gioco
+  li serve Playwright dal disco (niente server). Passa.
+- game/test/browser/editor.mjs (quella di sempre, coi tasti 1-5 di prima):
+  passa tutta (fatta girare coi file serviti dal disco, come sopra).
+- Le foto (build/prova_montagne/ della prova): la cresta in disegno, la
+  base, la montagna col fiume deviato, la base a mano, la simmetria, la
+  montagna nel gioco.
+- I fogli di §9.213 rifatti (`node tools/21_prova_montagne.mjs`), col foglio
+  7 nuovo: le gemelle nelle tre simmetrie.
+
+**Resta da fare / da decidere**: l'altezza di una sola cima dall'editor (il
+generatore la sa gia', `peaks`; manca il comando); un'icona dell'autore per
+lo strumento; le montagne del generatore in Tiled (per i livelli della
+campagna); la gemella vista dall'altro lato potrebbe sembrare un'altra
+montagna (e' la stessa, girata): se l'autore preferisce, si puo' disegnarla
+con lo stesso aspetto, ma la parte alta della sagoma (sopra la base) non
+sarebbe piu' esattamente speculare.
+
+### 9.215 L'altezza di una cima sola
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Intanto
+aggiungi il comando per alzare o abbassare una sola cima. Lascia perdere
+Tiled, a questo punto i prossimi livelli li impostiamo dall'editor e la
+regia la vediamo in vibe coding. L'icona te la carico poi." (Tiled: niente
+montagne del generatore nel kit; tolto da "resta da fare" di §9.214.)
+
+- **Scegliere una cima**: con la montagna scelta, un clic su una cima
+  (senza trascinarla) la sceglie: scura col bordo bianco (anche nella
+  gemella). Esc torna a tutta la montagna, un altro Esc la lascia.
+- **Alzarla e abbassarla**: + e - della tastiera (anche del tastierino; il
+  "+" letto dal carattere, perche' sulla tastiera italiana non sta sul tasto
+  "=" americano: input.js), o i "-" e "+" del riquadro, dove "Altezza"
+  diventa "Altezza cima" in % dell'altezza della montagna, a passi dal 30%
+  al 200% (PEAK_STEPS; la voce `peaks` c'era gia' nel generatore e nella
+  convalida delle mappe; tutte al 100%: la voce sparisce).
+- **La cima sale davvero**: il punto della cresta si alza di quanto cresce
+  l'altezza, cosi' il piede sul terreno resta dov'e' (la base, gli
+  ostacoli, la gemella non cambiano). L'"Altezza" di tutta la montagna
+  invece tiene ferma la cresta (§9.214). Coi controlli della cresta (una
+  cima alzata puo' fare un angolo troppo stretto) e una cima che uscirebbe
+  dalla mappa si rifiuta, con l'avviso.
+- **Le altre cime restano come sono**: prima i numeri a caso delle cime
+  (l'altezza varia del +-10%) e delle selle venivano da una sequenza sola, e
+  spostando un punto cambiava quante selle c'erano, quindi anche l'altezza
+  delle altre cime e il piede di quella cambiata (24 px nella prova). Ora
+  ogni cima ha il suo seme (mountains.js crestNodes): le montagne gia' fatte
+  cambiano un po' d'aspetto (le cime e le selle), le basi disegnate a mano
+  no.
+
+Prove: mountains.test.mjs (in piu': alzata del 30%, la cima e' alta il 30%
+in piu', i tre piedi e le altre due cime uguali; 165 test), browser
+mountains.mjs (in piu': clic su una cima la sceglie, + la alza di ~49 px
+col piede fermo entro 2 px, "-" di "Altezza cima" la riporta al 100% e
+`peaks` sparisce, Esc torna alla montagna). Passano.
+
+### 9.216 Le chiazze d'erba col pennello
+
+Domanda dell'autore (26 novembre 2026, stessa PR, 0.2618): "Secondo te
+avrebbe senso inserire altri strumenti generativi? Forse per le chiazze
+d'erba?"; poi, sulla proposta: "Solo le chiazze d'erba, in cui posso
+decidere quali particelle spawnare con quale densita' per particella
+(sempre in un range gestibile) con un pennello tipo quello del terreno".
+
+**Il pennello.** Una scheda in piu' nel pennello area, **Erba**, in fondo
+dopo le texture (prima stava seconda, ma la prova dell'editor sceglie le
+schede per posto: il selciato e' la seconda; il titolo dello strumento: "Pennello area: boschi, erba,
+texture"). Come le texture (§9.185): la pennellata diventa una sagoma (la
+forma della mappa `meadows`), il destro cancella le chiazze che tocca, la
+simmetria fa la gemella, Ctrl+Z toglie la pennellata intera. Sopra il
+riquadro, in un riquadro di vetro come quello della nebbia (§9.206), le
+sette particelle delle macchie di "Natura" con la loro densita' ("Particelle
+ogni 100 x 100 px"), coi "-" e "+":
+- erba scura, erba verde, erba secca (i tre verdi di burst_erba1), fili
+  (chiazzaparticellare), spighe (burst_grano1), papaveri e fiori gialli (i
+  fiori dell'autore, §9.37; uno dei due sprite a caso);
+- densita' a passi 0, 0,5, 1, 2, 3, 4, 6, 8, 12; di partenza come
+  burst_erba1 (erba scura 2, verde 2, secca 1, le altre 0: burst_erba1 ha
+  2,3 / 2,1 / 1,1);
+- i limiti: al piu' 20000 particelle in una chiazza (le densita' si
+  riducono in proporzione) e 150000 in tutta la mappa (oltre, la pennellata
+  si rifiuta con l'avviso "Troppa erba su questa mappa": l'erba si disegna a
+  ogni fotogramma); senza nessuna particella, l'avviso "Scegli almeno un
+  tipo di particella".
+
+**Dove nascono** (game/src/meadows.js meadowPoints): a caso nella sagoma,
+sempre uguali per lo stesso seme (mulberry32: l'editor e il gioco, e i due
+giocatori in rete, vedono la stessa chiazza); piu' rade verso il bordo
+(sfumato in 60 px, come le macchie che finiscono a nulla) e a ciuffi (un
+rumore liscio, celle di 160 px, lascia zone piu' fitte e piu' rade); mai
+sull'acqua dei fiumi ne' sulle montagne del generatore. Le particelle a
+fasce come le macchie (§8.18: le unita' ci restano immerse).
+- *nell'editor* (editmap.js _meadows): si rifanno solo le chiazze nuove o
+  cambiate (una pennellata non rifa' tutta l'erba); cambiati fiumi o
+  montagne, tutte (l'erba rinasce solo dove puo': una montagna messa sopra
+  una chiazza la lascia fuori dalla sagoma);
+- *nel gioco* (app.js useMeadows): dopo le istanze della room (l'acqua
+  sotto i ponti dipinti dipende da loro); nei salvataggi ci sono gia' (i
+  sistemi di particelle si salvano); la convalida delle mappe (mapfile.js,
+  meadows.js cleanMeadow) accetta solo le particelle note alle densita' dei
+  passi; l'anteprima delle mappe senza copertina (skuser.js) le mostra in un
+  verde piu' chiaro.
+
+**Prove.** mountains.test.mjs (in piu': quante particelle per densita' e
+area, tutte dentro la sagoma, sempre uguali, niente dove e' bloccato, il
+limite per chiazza, la convalida; 166 test). editor.test.mjs: il pennello
+ha cinque schede, la prova le contava quattro (ora cinque).
+game/test/browser/editor.mjs (quella di sempre) passa.
+game/test/browser/meadows.mjs (nuova, anche nella CI): la scheda Erba, i
+papaveri alzati a 3 col "+", una pennellata attraverso un fiume: la chiazza
+con 351 particelle, nessuna sull'acqua; il destro la cancella, Ctrl+Z la
+rimette; una montagna sopra: nessuna particella nella sagoma; "Prova
+mappa": l'erba nel gioco. Passa. Nella foto il riquadro delle particelle
+aveva le etichette sopra i "-" (quattro per riga) e il "×" che il font non
+ha: tre per riga, "100 x 100".
+
+**Altri strumenti generativi** (la risposta alla domanda, da decidere): i
+bordi naturali (erba lungo le rive e ai piedi delle montagne, a scelta), il
+bosco che si dirada verso il bordo con qualche radura; non le mappe intere
+(per la campagna conta la regia dell'autore).
+
+### 9.217 Il fiume taglia le macchie di "Natura"
+
+Domanda dell'autore (26 novembre 2026, stessa PR, 0.2618): "Se il fiume
+passa sopra la chiazza particellare la elimina?" No: il fiume nuovo
+toglieva solo gli alberi (§9.204), e le macchie di "Natura" (burst_erba1,
+burst_grano1, chiazzaparticellare, i fiori) restavano con le particelle
+anche sull'acqua, nell'editor e nel gioco (le chiazze del pennello, §9.216,
+invece gia' non nascevano sull'acqua). Proposte due strade (tagliarle o
+eliminarle col centro nell'acqua); l'autore: "Se riesci a farglielo
+tagliare siamo a cavallo".
+
+- **Tagliate** (effects.js clipDecor): le particelle di una macchia
+  sull'acqua dei fiumi a linee o sulle montagne del generatore non si
+  vedono; la macchia resta. Nel gioco una volta, dopo le istanze della room
+  (app.js useMeadows: come le chiazze del pennello); vale anche per le mappe
+  gia' fatte (nelle schermaglie le macchie erano gia' state tolte dai fiumi a
+  mano, §9.150-§9.151: cambia solo qualche bordo).
+- **Nell'editor** le particelle tolte restano da parte (allParts): quando un
+  fiume o una montagna cambiano (nuovi, spostati, tolti, annullati) il taglio
+  si rifa' su tutte le macchie, e una macchia messa o spostata si taglia
+  subito (EditScene spawn). Ctrl+Z del fiume la rimette intera.
+- *La depth* (domanda dell'autore): le particelle delle chiazze del pennello
+  sono a fasce di 12 px a depth -y come quelle delle macchie di "Natura"
+  (Particles.bands, DECOR_BAND, §8.18): le unita' ci restano immerse allo
+  stesso modo.
+
+Prove: game/test/browser/meadows.mjs (in piu': una burst_erba1 e un fiume
+nuovo che la attraversa: da 2600 a ~1730 particelle, nessuna sull'acqua;
+Ctrl+Z: di nuovo 2600; in "Prova mappa" la macchia tagliata). editor.mjs
+(quella di sempre) passa; i test unitari (166).
+
+### 9.218 Le particelle dell'erba come icone che ondeggiano
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Iniziamo a
+rendere meno testuale l'editor: in questo nuovo pennello riesci a mettere
+le singole particelle al posto della descrizione testuale nel selettore?
+Sarebbe figo se avessero il caratteristico wiggle come nel gioco".
+
+- Nel riquadro delle particelle dell'erba (§9.216) al posto del nome c'e'
+  un ciuffo di particelle vere, quelle del gioco (effects.js MEADOW_PARTS),
+  in un sistema di particelle dell'editor fuori dalla mappa (editor.js
+  uiParts): il passo dell'editor le fa avanzare, e ondeggiano col wiggle del
+  gioco (Particles.angle: i 4 gradi dell'erba, i fiori piu' lenti).
+- I ciuffi sono piu' grandi e piu' pieni che sulla mappa (l'erba del gioco e'
+  tenue: alpha 0,35-0,75): una copia del tipo di particella con alpha 0,95;
+  dimensioni x1,7 l'erba, x2,2 i fili, x1,5 le spighe, quasi uguali i fiori.
+  Una particella a densita' 0 ha il ciuffo sbiadito (alpha 0,28).
+- Il nome resta nel suggerimento sopra l'icona, col puntatore sopra.
+- Quattro per riga (con i nomi erano tre), righe da 60 px.
+
+Prove: meadows.mjs (in piu': il nome dei papaveri col puntatore
+sull'icona; due foto del riquadro a mezzo secondo di distanza sono diverse:
+i ciuffi ondeggiano). La foto del riquadro: build/prova_montagne/erba_icone.png.
+
+### 9.219 Il bouquet e la sabbia nel pennello
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Pennello
+area: erba e prato sono nomi simili, erba chiamiamolo bouquet o un nome
+simpatico del genere. Sarebbe bello anche un pennello sabbia con stessa
+texture del prato ma colore sabbia appunto".
+
+- **Bouquet**: la scheda delle chiazze di particelle (§9.216) si chiama
+  "Bouquet" (es. Ramillete, pt. Buquê, de. Strauß, fr. Bouquet); il titolo
+  dello strumento "Pennello area: boschi, bouquet, texture". Dentro resta
+  `grass` (la mappa: `meadows`).
+- **Sabbia**: una texture in piu' per le macchie del pennello, dopo Prato:
+  lo sfondo del prato (green1) con la sua grana di carta, ricolorato
+  (tools/22_sabbia.py -> nuovi/sfondi/sabbia.png, 66 KB): ogni pixel e' il
+  colore sabbia (206, 186, 138) per la sua luminosita' relativa, con la
+  grana un po' piu' marcata (x1,15: sul chiaro si vedeva meno). Scelta fra
+  tre tinte (206/186/138, 214/196/152 piu' chiara, 196/172/124 piu' scura):
+  la prima, la piu' equilibrata accanto al verde del prato. tools/05_atlas.py
+  mette fra gli sfondi ripetuti i PNG di nuovi/sfondi/ col nome del file
+  (`sabbia`). Le macchie accettano anche la sabbia (mapfile.js
+  PATCH_BACKGROUNDS); la sabbia non e' fra gli sfondi della mappa (le
+  impostazioni), solo nel pennello. L'anteprima delle mappe senza copertina
+  la mostra (#ceba8a).
+- Le schede del pennello: Bosco, Selciato, Pietra, Prato, Sabbia, Bouquet
+  (le prime quattro al loro posto: la prova dell'editor le sceglie per
+  posto); editor.test.mjs ne contava cinque, ora sei.
+
+Prove: meadows.mjs (in piu': la scheda Sabbia, una pennellata, una macchia
+di sabbia con la sua texture caricata); editor.mjs (quella di sempre); i
+test unitari (166).
+
+### 9.220 La larghezza come icona
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "In generale
+nell'editor al posto della parola 'larghezza' metti un'icona di due frecce
+in direzioni opposte".
+
+- Nei riquadri degli strumenti la parola "Larghezza" e' un'icona: una riga
+  con due punte, a sinistra e a destra (editor.js widthIcon), nel pennello,
+  nella gomma, nella polilinea e nella montagna. La "Larghezza finale" della
+  polilinea: la stessa riga che finisce contro una sbarretta (l'estremita'
+  della linea).
+- Il nome resta nel suggerimento sopra l'icona, col puntatore sopra (come
+  per le particelle del bouquet, §9.218).
+- Restano parole "Larghezza" e "Altezza" nelle impostazioni della mappa (il
+  pannello HTML: le misure della mappa, non uno strumento).
+
+Prove: le foto dei tre riquadri in italiano (pennello, polilinea col nome
+"Larghezza finale" sopra l'icona, montagna col nome "Larghezza");
+editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari (166).
+
+### 9.221 Simmetria, altezza e asperita' come icone
+
+Richieste dell'autore (26 novembre 2026, stessa PR, 0.2618): "Fai lo stesso
+per 'simmetria' e 'altezza'"; poi "a questo punto anche asperita' lo
+graficizzerei".
+
+- **Simmetria** (la riga in fondo ai riquadri di tutti gli strumenti): due
+  triangoli ai lati di un asse tratteggiato, uno pieno e il suo specchio
+  vuoto. Le quattro modalita' (Spenta, Diagonale...) restano parole.
+- **Altezza** (montagna): una freccia in verticale con due punte; con una
+  cima scelta ("Altezza cima", §9.215) la stessa freccia col picco accanto.
+  Il suggerimento della cima scelta non dice piu' "(o Altezza)": "Cima N: +
+  e - la alzano e la abbassano. Esc: tutta la montagna".
+- **Asperita'** (montagna): una linea frastagliata, come il contorno
+  strappato delle montagne.
+- Come per la larghezza (§9.220) il nome resta nel suggerimento sopra
+  l'icona, col puntatore sopra (editor.js labelIcon, widthGroups).
+
+Prove: le foto in italiano (pennello col suggerimento "Simmetria",
+montagna con "Altezza", la cima scelta con la freccia e il picco e
+l'asperita'); editor.mjs, mountains.mjs, meadows.mjs passano; i test
+unitari (166).
+
+### 9.222 Altre icone; via "Natura" e "Montagne" da Inserisci
+
+Richieste dell'autore (26 novembre 2026, stessa PR, 0.2618), sulla lista
+delle parole dell'editor che potevano diventare disegni: "3 e 4 si puo'
+fare. 5 anche ma da ragionare bene. Densita' potrebbe essere due alberi con
+una doppia freccia al centro? Rispetto alle schede di inserisci: lascia
+testo ma eliminiamo natura e montagne visto che sono procedurali"; sulla
+nebbia e sui disegni del terreno che stavano in "Natura": "Nebbia in regia,
+graa le facciamo fuori che sono obsolete, le altre sarebbe interessante
+convertirle in particelle (anche ferme)" (le particelle: §9.223).
+
+**Icone** (editor.js, col nome nel suggerimento come §9.220-§9.221):
+- *le modalita' della simmetria*: uno schemino della mappa (un riquadro)
+  con un triangolo pieno in alto a sinistra e, dove va la gemella, il suo
+  specchio vuoto: Spenta (solo il triangolo), Diagonale (il punto al centro
+  e il triangolo girato in basso a destra), Orizzontale (l'asse verticale a
+  tratti e il triangolo a destra), Verticale (l'asse orizzontale e il
+  triangolo sotto). Le pillole alte 32 px (prima 26); i triangoli staccati
+  dagli assi (attaccati, il verticale sembrava una freccia);
+- *i pulsanti della montagna*: "Nuova variante" un dado, "Base automatica"
+  un contorno a tratti con una scintilla;
+- *la densita' del bosco*: due alberelli con la freccia a due punte fra loro
+  (la distanza fra gli alberi, come proposto dall'autore);
+- *il dettaglio della montagna*: un picco con le sue linee dentro.
+
+**Inserisci** (editmap.js CATALOG): le schede restano parole, ma
+"Natura" e "Montagne" non ci sono piu' (le macchie di particelle le fa il
+pennello, §9.216, le montagne lo strumento montagna, §9.214):
+- le due nebbie in **Regia**, dopo le partenze (sono di gioco: il banco
+  dimezza la vista dei nemici);
+- l'aiuola col bordo di pietra (prato1, "prato") in **Citta'**: non e' un
+  elemento naturale da spargere;
+- le macchie d'erba dipinte graa11-15: fuori (obsolete);
+- erba_1, fiorame1, chiazza01: diventano particelle del bouquet (§9.223).
+Le schede ora: Regia, Unita', Edifici, Risorse, Alberi, Ponti, Citta'.
+Gli oggetti tolti restano ammessi (OLD_OBJECTS): le mappe che li hanno (i
+modelli delle schermaglie: le montagne dipinte, le macchie) si aprono, e
+li' si spostano e si cancellano; non si inseriscono piu'.
+
+**Prove**: le prove che contavano le schede o cercavano la nebbia in
+"Natura" seguono il nuovo ordine (editor.test.mjs: la scheda che scorre e'
+Edifici, prima i prati e fiori; la Regia ha le partenze e le due nebbie,
+quattro caselle; niente "Natura" ne' "Montagne" e gli oggetti di prima
+ammessi; editor.mjs: le schede, la nebbia presa in Regia). editor.mjs,
+mountains.mjs, meadows.mjs passano; i test unitari (166).
+
+### 9.223 I disegni di "Natura" come particelle del bouquet
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), sui disegni
+del terreno della scheda "Natura" (§9.222): "le altre sarebbe interessante
+convertirle in particelle (anche ferme)".
+
+Tre particelle in piu' nel bouquet (§9.216), ferme (niente wiggle):
+- **Foglie**: il ciuffo di foglie di erba_1 (lo sprite erba1, 129 x 83),
+  al 45-75%, girato di +-25 gradi a caso;
+- **Fiori rosa**: il mazzetto di fiorame1 (fiori1, 81 x 51), al 55-85%,
+  +-20 gradi;
+- **Foglioline**: chiazza01 (chiazza2, 1493 x 825) e' fatta di foglioline
+  ovali sovrapposte, separate solo ai bordi: la particella e' un suo
+  ritaglio tondo di 44 px (alcune foglioline, il bordo sfumato), sei ritagli
+  presi dove la macchia e' piena fra il 45 e il 75% (tools/05_atlas.py,
+  fogliolina1-6, gruppo ambiente), all'80-130% e girati del tutto (sono viste
+  dall'alto): ripetuti dal pennello rifanno la trama della macchia.
+Tutte e tre a densita' 0 di partenza, come le altre del bouquet a passi
+0-12 ogni 100 x 100 px; nel selettore i loro ciuffi (due foglie, due
+mazzetti, tre ritagli). L'aiuola (prato1) non e' un elemento da spargere:
+e' in "Citta'" (§9.222).
+
+Prove: mountains.test.mjs (le dieci particelle); meadows.mjs (in piu': un
+bouquet di foglie, fiori rosa e foglioline, con le loro particelle e i loro
+sprite nell'atlas).
+
+### 9.224 Foglie, fiori rosa e foglioline cotti nel suolo
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), sulle tre
+particelle nuove del bouquet (§9.223): "queste verdi e i fiori viola pero'
+vanno a terra e secondo me possiamo anche cucinarle col terreno per
+risparmiare gpu".
+
+- Foglie, fiori rosa e foglioline stanno a terra e sono ferme: non sono
+  piu' particelle (disegnate una per una a ogni fotogramma, a fasce di
+  depth) ma sprite cotti nel suolo (ground.js), come texture e fiumi: a ogni
+  fotogramma non costano nulla. meadows.js meadowFlat: per ogni chiazza gli
+  sprite (lo sprite, il punto, la scala, l'angolo), dagli stessi punti di
+  prima (meadowPoints: niente sull'acqua ne' sulle montagne) e sempre uguali
+  per lo stesso seme; si cuociono dopo le macchie di texture e prima degli
+  sprite del suolo.
+- Le particelle vere restano per quelle che ondeggiano e fra cui le unita'
+  restano immerse: i tre verdi dell'erba, i fili, le spighe, i papaveri, i
+  fiori gialli.
+- Nel gioco gli sprite a terra si rifanno anche caricando un salvataggio
+  (i salvataggi hanno le particelle, non il suolo: app.js useMeadows con
+  flatOnly); nell'editor una pennellata rifa' il suolo.
+- Nel selettore i ciuffi di foglie, fiori rosa e foglioline sono un po'
+  piu' grandi e spostati al loro posto (quei disegni non hanno l'origine al
+  piede come gli steli).
+
+Prove: meadows.mjs (in piu': il bouquet di foglie, fiori e foglioline ha
+zero particelle e 433 sprite a terra; nel gioco gli sprite a terra ci sono);
+editor.mjs, mountains.mjs passano; i test unitari (166). La foto:
+build/prova_montagne/bouquet_natura.png.
+
+### 9.225 Le icone dell'autore nei riquadri dell'editor
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con cinque
+disegni: "iniziamo a sostituire le icone che hai fatto tu con icone un po'
+piu' professional, iniziando da queste".
+
+- I cinque disegni (neri su trasparente, 1254 x 1254) ripuliti dai pixel
+  quasi trasparenti (alpha sotto 60: una polvere lontana dal disegno
+  allargava il ritaglio), ritagliati e salvati a 256 px in nuovi/sprites/
+  (ed_simmetria, ed_asperita, ed_dettaglio, ed_larghezza, ed_altezza); in
+  nuovi.json come le altre icone dell'editor (§9.198): ico_ed_sym,
+  ico_ed_rough, ico_ed_detail, ico_ed_width (64 px di larghezza),
+  ico_ed_height (64 di altezza), bianche (l'editor le tinge di scuro).
+- Al posto dei disegni a linee di §9.220-§9.222 (editor.js labelIcon,
+  iconSprite): la simmetria, l'asperita', il dettaglio, la larghezza,
+  l'altezza; la larghezza finale della polilinea e' la freccia
+  dell'autore contro la sbarretta, l'altezza di una cima la sua freccia
+  verticale col suo picco (il dettaglio) piccolo accanto. I disegni a linee
+  restano solo se un'icona mancasse.
+- Restano miei (finche' l'autore non li sostituisce): gli schemi delle
+  modalita' della simmetria, il dado e la base automatica, la densita' del
+  bosco, l'icona dello strumento montagna nella colonna.
+
+Prove: le foto dei riquadri (pennello, polilinea, montagna con una cima
+scelta); editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari
+(166).
+
+### 9.226 I simboli dell'autore per le modalita' della simmetria
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "questi invece
+sono i nuovi simboli per gli stili di simmetria" (quattro disegni: un
+triangolo pieno e, dove va la gemella, il suo specchio vuoto, con l'asse a
+tratti o il punto al centro).
+
+- Prima le immagini erano arrivate solo nel messaggio: ridisegnate uguali;
+  poi l'autore le ha mandate come file (96 x 96, nere su trasparente), e
+  sono quelle: nuovi/sprites/ed_sim_spenta, _diagonale, _orizzontale,
+  _verticale (portate a 256), in nuovi.json ico_ed_sym_none, _diagonal,
+  _horizontal, _vertical, bianche, **intere** (tools/nuovi.py `intero`:
+  senza il ritaglio sul disegno, se no la "spenta", un triangolo solo,
+  veniva piu' grande delle altre); nella pillola a 36 px la tela.
+- **L'icona dello strumento montagna** (la colonna), dell'autore:
+  nuovi/sprites/ed_montagna (ripulita e ritagliata a 256), ico_ed_mountain
+  (l'editor usa da solo le icone ico_ed_<strumento>, §9.198), al posto del
+  mio disegno a linee.
+- Nelle pillole della simmetria (editor.js symIcon) al posto dei miei
+  schemi di §9.222, che restano solo se un simbolo mancasse; scuri, bianchi
+  sulla modalita' scelta; il nome nel suggerimento.
+
+Prove: la foto della riga della simmetria; editor.mjs, mountains.mjs,
+meadows.mjs passano.
+
+### 9.227 Le statue con quattro stili; il dado degli stili in Inserisci
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "correzione da
+fare sulla scheda citta': anche la statua sono quattro stili dello stesso
+oggetto. Mettiamo un tasto col dado per gli oggetti con stili: se attivo a
+ogni inserimento lo stile cambia a caso, altrimenti rimane quello gia'
+selezionato".
+
+- **Le statue** (o_statua1-4) in "Citta'" sono una casella sola con quattro
+  stili (una famiglia, come le case della citta', §9.183): S li cambia, e
+  con "Sposta" S cambia quello di una statua gia' messa.
+- **Il dado** (editor.js diceLayout): in "Inserisci", in fondo alla riga
+  della simmetria, una pillola col dado (scura se acceso; il suggerimento
+  "Stile a caso: acceso / spento"). Acceso, dopo ogni inserimento lo stile
+  della casella scelta passa a un altro a caso (mai lo stesso di prima): il
+  fantasma mostra gia' il prossimo. Spento, resta quello scelto. Vale per
+  ogni oggetto con piu' stili (alberi, case, statue, la casa delle due
+  parti), non per le mura (i loro "stili" sono i due versi).
+- Le pillole della simmetria si stringono (fino a 90 px) se a destra non
+  c'e' posto per il dado (schermi stretti).
+
+Prove: game/test/browser/edinsert.mjs (nuova, anche nella CI): le statue
+una casella con quattro stili; col dado spento tre statue dello stesso
+stile; col dado acceso sei statue, mai due di fila uguali.
+
+### 9.228 Il dado e la densita' del bosco dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con due
+disegni: "al posto delle varie icone del dado che abbiamo messo
+nell'editor usa questa qui. Ti mando anche quella della densita' del
+bosco".
+
+- Il dado (un cubo con le facce da uno, tre e quattro): nuovi/sprites/
+  ed_dado, ico_ed_dice (64 px di altezza); al posto del mio quadratino coi
+  puntini in "Nuova variante" della montagna e nel dado degli stili di
+  Inserisci (editor.js buttonIcon "seed").
+- La densita' del bosco (due alberi con le frecce che si vengono incontro):
+  ed_densita, ico_ed_density (64 di larghezza), al posto dei miei due
+  alberelli; un po' piu' larga delle altre icone dei riquadri (60 px).
+- Ripuliti e ritagliati come i precedenti (§9.225).
+
+Prove: la foto del pennello (Bosco), della montagna scelta e di
+Inserisci; editor.mjs, mountains.mjs, meadows.mjs, edinsert.mjs.
+
+### 9.229 Le icone di castello, magazzino e casa dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "queste invece
+le nuove icone degli edifici castello, magazzino e casa. Implementali e
+verifica che siano scalati bene"; poi "ecco le tre icone, scalali come
+serve" (la prima volta erano arrivate solo nel messaggio).
+
+- Le icone del progetto (ico_castello, ico_magazzino, ico_casa) sono nere
+  al 70% su una tela di 63 x 65 col disegno grande 55-61 px: i pulsanti di
+  costruzione (a meta': 32 px), i pannelli degli edifici, le icone degli
+  edifici nemici e, ricavate, le sagome della minimappa (mm_casa...).
+- I disegni dell'autore (castello 128 x 128, magazzino e casa 1254 x 1254)
+  ripuliti e ritagliati in nuovi/sprites/ico_*_autore; in nuovi.json come
+  derivati con lo **stesso nome** dell'icona del progetto e `sostituisce`
+  (tools/nuovi.py replaced, tools/05_atlas.py: lo sprite del progetto non
+  entra nell'atlas, e le sue copie, le sagome della minimappa, vengono dal
+  disegno nuovo): neri al 70% come le originali, sulla stessa tela 63 x 65
+  (`tela`), il disegno a 56 px di lato (`contenuto`), il castello a 60 (largo
+  e basso, come quello dell'originale a 61). Il codice del gioco non cambia:
+  dovunque c'era ico_casa ora c'e' il disegno nuovo.
+- Controllate a fianco delle originali alla loro misura (stessa tela, peso
+  simile) e in partita nei pulsanti di costruzione.
+
+Prove (§9.229): l'atlas ha ico_casa, ico_magazzino, ico_castello a 63 x 65
+(il disegno 54-60 px) e le sagome della minimappa nuove (mm_casa 32 x 31,
+mm_castello 32 x 23); la foto dei pulsanti di costruzione in partita (casa,
+magazzino, castello nei loro cerchi, in linea con le altre icone);
+hover.mjs (misura i pixel sotto le icone di casa e magazzino) passa, e
+editor.mjs, edinsert.mjs, meadows.mjs, mountains.mjs; i test unitari (166).
+
+### 9.230 L'icona della base automatica dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con un
+disegno: "questa invece e' la nuova icona per la base automatica montagna
+dell'editor" (la cresta, la base a tratti, un fulmine).
+
+- nuovi/sprites/ed_base_auto (ripulita e ritagliata a 256 px), in
+  nuovi.json ico_ed_autobase (64 px, bianca); nel pulsante "Base
+  automatica" del riquadro della montagna (editor.js buttonIcon "auto") al
+  posto del mio contorno a tratti con la scintilla, che resta solo se
+  l'icona mancasse.
+
+### 9.231 I riquadri dell'editor riorganizzati per le icone
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "tu avevi
+predisposto gli spazi dell'interfaccia dell'editor contando che erano
+testuali, ma ora sono troppo ampi e spesso [...] non si capisce cosa e'
+riferito a cosa. Riorganizza lo spazio nella 'tavolozza' dell'editor in
+accordo a com'e' fatto ora".
+
+- **Un gruppo compatto, uguale dappertutto** (editor.js pmAt): l'icona a
+  sinistra (al piu' ~54 px), poi a 82 px il "-", il valore (~90 px: "600
+  px" e "Uguale" non toccano i cerchi), il "+" a 204; da un gruppo all'altro
+  GROUP_STEP = 280 px, piu' dello spazio dentro il gruppo. Prima l'etichetta
+  aveva 170-200 px di spazio (le parole lunghe, "Larghezza finale") e i "-"
+  "+" stavano a meta' del riquadro, lontani dalla loro icona.
+- **Pennello, gomma, polilinea**: larghezza e densita' (o larghezza
+  finale) in fila, vicine.
+- **Montagna**: due righe (altezza e larghezza; asperita' e dettaglio) e i
+  due pulsanti, "Nuova variante" e "Base automatica", pillole da 100 px con
+  l'icona nella terza colonna (prima larghe fino al bordo).
+- **Simmetria**: le modalita' subito dopo la sua icona (prima a 160 px),
+  pillole da 120 (prima 150).
+- **Bouquet**: ogni ciuffo coi suoi "-" e "+" subito accanto, come gli altri
+  gruppi.
+- L'icona della densita' del bosco a 54 px (a 60 toccava il suo "-").
+
+Prove: le foto dei riquadri (pennello col bosco e col bouquet, gomma,
+polilinea, montagna, Inserisci); editor.mjs, mountains.mjs, meadows.mjs,
+edinsert.mjs passano; i test unitari (166, quelli della disposizione dei
+riquadri compresi).
+
+### 9.232 Le bandierine solo per la vista; le partite senza centro citta'
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "bandierine
+della regia: usiamole solo per la posizione di visualizzazione iniziale.
+Facciamo in modo che i giocatori possano giocare senza centro citta'
+volendo (chiaramente in quel caso l'obiettivo di distruggere il centro
+citta' per vincere nelle impostazioni e' grayed out)".
+
+- **Le bandierine** (Inserisci, Regia: la partenza rossa e la blu) non fanno
+  piu' nascere il centro: mapfile.js testRoom le toglie dalla room e le
+  scrive in `room.starts` ({ red: [x, y], blue: [x, y] }); skirmish.js
+  skirmishPrepare, con `starts`, da' la vista del giocatore (il rosso) e
+  della CPU o del giocatore 2 (il blu). I centri sono i municipi
+  (Inserisci, Edifici, §9.203), gia' delle due parti, e possono mancare.
+  Una mappa da giocare ha sempre una bandierina per parte (sidesOk: dicono
+  dove si guarda all'inizio).
+- **Le mappe salvate prima** non perdono i centri: il formato passa alla
+  versione 2 (MAP_VERSION); validateMap, a una mappa della versione 1, mette
+  sotto ogni bandierina un municipio della sua parte. Anche i modelli (le
+  mappe della schermaglia, roomToScenario: versione 1). Le mappe del gioco
+  restano come prima (il centro e' partenza e centro insieme).
+- **La vittoria Municipio** (schermaglia, menu.js) su una mappa dell'editor
+  senza almeno un municipio per parte (mapfile.js hallsOk): il valore si
+  vede scorrendo, ma in grigio, "Inizia" spento e il perche' al posto della
+  descrizione ("La vittoria Municipio ha bisogno di un centro citta' per
+  parte (Inserisci, Edifici): scegli un'altra vittoria."). "Prova mappa"
+  (editor.js, skForMap) su una mappa cosi': Conquista.
+- **Conquista senza edifici** (skManager, pvpCheck): una parte che non ha
+  mai avuto edifici (una mappa di sole unita') e' fuori quando non ha piu'
+  nemmeno unita' (prima avrebbe perso al primo controllo). Chi ha avuto
+  edifici perde, come prima, quando non ne ha piu'.
+
+Prove: editor.test.mjs (§9.232: la versione 1 coi municipi sotto le
+bandierine, la 2 senza, hallsOk, skForMap, la room senza partenze e
+skirmishPrepare con le viste; e i test di §9.188, §9.191, §9.193, §9.203
+aggiornati); nel browser nocentro.mjs (nuova, nel workflow: nessun centro,
+la vista sulla bandierina rossa, 600 passi senza fine, uccise le unita'
+della CPU la vittoria), skcustom.mjs (A come mappa salvata prima, coi suoi
+centri; su B, senza centri, Municipio in grigio e "Inizia" spento),
+edstyles.mjs (la sua mappa della versione 1).
+
+### 9.233 Le misure della mappa da scrivere
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "per le
+dimensioni della mappa sostituiamo i tasti 'fissi' con dei valori integer
+inseribili dall'utente, chiaramente nei limiti della decenza come range".
+
+- Nelle impostazioni della mappa (editor.js openSettings) larghezza e
+  altezza sono due caselle numeriche (px) al posto dei sei pulsanti
+  4000-9000. Con "Applica" si controllano: interi da 3000 a 10000
+  (mapfile.js MAP_SIZE, mapSizeOk); se no il pannello resta aperto col
+  messaggio "Larghezza e altezza: numeri interi da 3000 a 10000." e la
+  casella sbagliata scelta.
+- I limiti: sotto i 3000 px la vista del gioco piu' larga (uno schermo
+  grande, zoom indietro) non ci sta nella mappa; sopra i 10000 nebbia,
+  percorsi e terreno pesano troppo (prima il massimo era 9000).
+- validateMap accetta le stesse misure (qualsiasi intero fra i limiti).
+
+Prove: editor.test.mjs (§9.233); nocentro.mjs gioca una mappa di 4321 x
+5003: la room di quelle misure, la vista in fondo resta nella mappa.
+
+### 9.234 I riquadri dell'editor nelle sei lingue
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "per i layout
+modificati della tavolozza editor controlla che nelle varie traduzioni i
+testi non 'sbattano' tra loro".
+
+Le foto di tutti i riquadri (pennello con le sei schede e il bouquet,
+gomma, polilinea scelta e in disegno, montagna e cresta in disegno,
+Inserisci con le sette schede, una casa e una bandierina scelte, la
+nebbia), in inglese, italiano, spagnolo, portoghese, tedesco e francese, a
+1600, 1280 e 1024 px di larghezza. Cosa toccava, sistemato:
+
+- il valore fra "-" e "+": "Identique" (francese, larghezza finale della
+  polilinea) toccava i cerchi. Ora un valore piu' largo del suo posto si
+  rimpicciolisce (editor.js pmGroup, fitText); lo stesso per le etichette
+  scritte (la nebbia: "Velocidade" toccava il suo "-").
+- il suggerimento in alto a destra: un testo lungo (i comandi della
+  polilinea scelta, la cresta in disegno, nelle lingue lunghe) si
+  rimpiccioliva fino al 55% e, a 1024 px, poteva arrivare al titolo. Ora
+  sotto l'80% va su due righe (spezzato fra le parole piu' vicino alla
+  meta'; con le coordinate: loro sopra, il testo sotto).
+- l'avviso del browser senza accelerazione grafica copre il riquadro solo
+  nelle prove (grafica emulata).
+
+### 9.235 I titoli dei riquadri, corti
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "i titoli dei
+vari tool sono troppo lunghi, non serve contengano la descrizione di cosa
+c'e' dentro, si vede gia' dai nomi dei pulsanti. Basta 'inserisci oggetto' o
+'pennello area' ad esempio".
+
+- editor.js TITLE: il titolo del riquadro e' il solo nome dello strumento:
+  Selezione, Polilinea, Montagna, Pennello area, Inserisci oggetto, Gomma
+  ad area (nelle sei lingue, texts.js). Le descrizioni lunghe (LABEL)
+  restano il suggerimento sui pulsanti della colonna, dove le icone non
+  dicono cosa c'e' dentro.
+- Coi titoli corti il suggerimento ha piu' posto: la maggior parte sta di
+  nuovo su una riga.
+
+### 9.236 Le prove delle montagne, del bouquet e di Inserisci in CI
+
+La CI della PR (e quella del commit di §9.231) falliva in mountains.mjs: in
+"clic su una cima: scelta" o in "base a mano e gemella diagonale" (nessuna
+montagna nuova), mentre in locale passava. In CI (grafica emulata) i passi
+dell'editor sono radi: due clic, o un clic e un tasto, finiscono nello stesso
+passo e contano come uno (§9.199); e page.mouse.click manda puntatore,
+pressione e rilascio insieme. Le tre prove nuove (mountains.mjs,
+meadows.mjs, edinsert.mjs) ora fanno come editor.mjs e skcustom.mjs: dopo
+ogni azione di mouse e tastiera aspettano che l'editor abbia letto l'input
+(window.__editor.reads), e il clic e' puntatore, giu' e su, ognuno in un
+passo suo. In locale passano tutte e tre.
+
+Poi in CI netmap.mjs (la partita online su una mappa dell'editor): cercava
+i centri alle due partenze, che dopo §9.232 non nascono piu' dalle
+bandierine. La sua mappa ora ha i municipi sotto le bandierine (il blu
+diventa quello del giocatore 2, p2_centro) e la prova controlla anche che
+la vista di ognuno parta dalla sua bandierina (A sulla rossa, B sulla blu).
+In locale passa (a parte audio.json, che qui manca: in CI lo costruisce il
+passo dell'audio).

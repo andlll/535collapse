@@ -8,6 +8,8 @@
 //                e stile bloccati (il clic non li cambia), "Inizia" acceso
 //   B          = la copertina, le opzioni libere
 //   C          = "Inizia" spento (una sola partenza)
+//   municipio  = [§9.232] B (senza centri): la vittoria Municipio in grigio,
+//                "Inizia" spento
 //   partita    = "Inizia" su A: la room custom (&play=1) con la CPU della
 //                mappa, non in modo prova; salvata nello slot "custom" col
 //                nome; caricata (di nuovo &play=1); "Ricomincia"; il menu
@@ -69,7 +71,9 @@ const ids = await page.evaluate(async () => {
   const I = (object, x, y) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0 });
   const trees = [];
   for (let k = 0; k < 40; k++) trees.push(I("albero", 2200 + (k % 8) * 90, 1500 + Math.floor(k / 8) * 90));
-  const A = { ...mf.newMap({ name: "Pianura di prova" }),
+  // ([§9.232] A e' una mappa salvata prima, della versione 1: sotto le
+  // bandierine i centri delle due parti)
+  const A = { ...mf.newMap({ name: "Pianura di prova" }), version: 1,
               // [§9.191] la partenza rossa (del giocatore) in basso a destra
               instances: [{ ...I("centro", 1200, 1200), side: "blue" }, { ...I("centro", 4800, 4800), side: "red" }, I("miniera_oro", 1800, 1500), I("pietra_grande", 4200, 4500),
                           I("montagna_3", 3000, 3000), I("ocr_01", 3600, 2000), ...trees,
@@ -133,6 +137,14 @@ const sB = await menu();
 check("B: la copertina, opzioni libere", s.user.name === "Con copertina" && s.user.sprite && sB.sk.difficulty === "normal");
 await click(...at(row("opt", "difficulty", -1)));
 if (shots) await page.screenshot({ path: shots + "/sk_editor_B.png" });
+// [§9.232] B non ha centri: la vittoria Municipio in grigio, "Inizia" spento
+await click(...at(row("opt", "victory", 1)));
+s = await menu();
+await click(...at(row("start")));
+await page.waitForTimeout(500);
+check("B senza centri: Municipio in grigio, Inizia spento", s.sk.victory === "townhall" && page.url().includes("room=menu"));
+if (shots) await page.screenshot({ path: shots + "/sk_editor_B_municipio.png" });
+await click(...at(row("opt", "victory", -1)));
 // C
 await click(...at(row("map", undefined, -1)));
 await page.waitForFunction(() => { const i = window.__game.world.all("enemy_manager_menu").next().value; const m = i.userMaps[i.skMap - 5]; return m && m.state === "ok"; }, null, { timeout: 20000 });

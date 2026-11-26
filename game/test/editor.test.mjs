@@ -31,7 +31,10 @@ test("§9.180 la mappa vuota e' uno scenario come quelli di tools/12", () => {
   const sc = JSON.parse(readFileSync(new URL("../../scenari/sk_padus.json", import.meta.url), "utf8"));
   assert.equal(m.format, MAP_FORMAT);
   assert.equal(m.format, sc.format);
-  assert.equal(m.version, sc.version);
+  // ([§9.232] le mappe nuove sono della versione 2: la partenza e' solo la
+  // vista; gli scenari del gioco restano della 1, partenza e centro insieme)
+  assert.equal(m.version, 2);
+  assert.equal(sc.version, 1);
   for (const k of ["name", "width", "height", "background", "colour", "view", "instances"]) assert.ok(k in m, k);
   assert.deepEqual(Object.keys(m.view), Object.keys(sc.view));
   assert.equal(m.width, 6000);
@@ -161,10 +164,11 @@ test("§9.182 la tavolozza di Inserisci", () => {
     assert.equal(end.scroll, end.max);
     if (end.max) assert.ok(end.prev && !end.next);
   });
-  // i prati e fiori (16 caselle) non ci stanno in una fila: si scorre
-  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "meadows"), 0).max > 0);
-  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0, 1]); // §9.191: la partenza rossa e la blu
-  assert.deepEqual(CATALOG[0].objects, [START]);
+  // gli edifici (11 caselle per parte, 22) non ci stanno in una fila: si
+  // scorre (§9.222: prima i prati e fiori, la scheda "Natura" non c'e' piu')
+  assert.ok(paletteLayout(L.panel, CATALOG.findIndex((q) => q.key === "buildings"), 0).max > 0);
+  assert.deepEqual(paletteLayout(L.panel, 0, 0).cells.map((q) => q.i), [0, 1, 2, 3]); // §9.191: la partenza rossa e la blu (§9.222: poi le due nebbie)
+  assert.deepEqual(CATALOG[0].objects, [START, "sk_nebbia", "nebbia_banco"]); // (§9.222: la nebbia in "Regia")
 });
 
 test("§9.181 varianti fisse e livelli di dettaglio del suolo", () => {
@@ -262,7 +266,10 @@ test("§9.184 convalida delle mappe", { skip: !existsSync(OBJECTS) }, async () =
     const sc = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
     const v = validateMap(sc, allowed, objects);
     assert.ok(v.map, `${f}: ${v.errors}`);
-    assert.equal(v.map.instances.length, sc.instances.length);
+    // ([§9.232] della versione 1: un municipio sotto ogni partenza)
+    const cc = sc.instances.filter((e) => e.object === "centro");
+    assert.equal(v.map.instances.length, sc.instances.length + cc.length);
+    assert.equal(v.map.instances.filter((e) => e.object === "centro" && e.hall).length, cc.length);
     assert.deepEqual(v.map.rivers, sc.rivers || []);
     assert.deepEqual(v.map.roads, sc.roads || []);
     assert.equal(v.map.symmetry, undefined); // §9.186: la simmetria e' degli strumenti
@@ -352,7 +359,7 @@ test("§9.185 pennello: sagome e boschi", () => {
 test("§9.185 il riquadro del pennello", () => {
   for (const [W, H] of [[1920, 1080], [1280, 720]]) {
     const L = editorLayout(W, H), B = brushLayout(L.panel), [x1, y1, x2, y2] = L.panel;
-    assert.equal(B.tabs.length, 4);
+    assert.equal(B.tabs.length, 6); // (§9.216: bosco, erba e le tre texture; §9.219: e la sabbia)
     for (const q of B.tabs) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y2 <= y2);
     for (const G of [B.width, B.density]) for (const c of [G.minus, G.plus]) assert.ok(c[0] + c[2] <= x2 && c[1] + c[2] <= y2 && c[1] - c[2] > y1 + 90);
     assert.ok(B.width.plus[0] + 20 < B.density.label[0], "larghezza e densita' non si toccano");
@@ -469,11 +476,13 @@ test("§9.187 linee: modifiche e gemelle", { skip: !existsSync(OBJECTS) || !exis
 // la schermaglia che la riconosce; la CPU statica ha un nome
 test("§9.188 la room di prova", () => {
   const map = { ...newMap(), cover: "data:image/webp;base64,UklGRg==",
-                instances: [{ object: "centro", x: 1000, y: 1000, scale_x: 1, scale_y: 1, rotation: 0 },
-                            { object: "centro", x: 5000, y: 5000, scale_x: 1, scale_y: 1, rotation: 0 }] };
+                instances: [{ object: "centro", x: 1000, y: 1000, scale_x: 1, scale_y: 1, rotation: 0, side: "red" },
+                            { object: "centro", x: 5000, y: 5000, scale_x: 1, scale_y: 1, rotation: 0, side: "blue" }] };
   const room = testRoom(map);
   assert.equal(room.name, TEST_ROOM);
-  assert.equal(room.instances.length, 3);
+  // [§9.232] le partenze non sono nella room: solo la vista iniziale
+  assert.equal(room.instances.length, 1);
+  assert.deepEqual(room.starts, { red: [1000, 1000], blue: [5000, 5000] });
   assert.deepEqual(room.instances[0].slice(0, 3), ["manager", 100, 100]);
   assert.equal(room.cover, undefined);
   assert.equal(room.backgrounds[0].name, "green1");
@@ -535,7 +544,7 @@ test("§9.191 gli schieramenti delle partenze", () => {
   assert.ok(!sidesOk({ instances: [C(1000, 1000, "red"), C(5000, 5000, "red")] }));
   // la tavolozza: una casella per parte; S cambia lo schieramento
   const items = paletteItems(CATALOG.find((k) => k.key === "start"), { centro: {} });
-  assert.deepEqual(items.map((q) => q.side), ["red", "blue"]);
+  assert.deepEqual(items.filter((q) => q.side).map((q) => q.side), ["red", "blue"]); // (§9.222: poi le nebbie, senza parte)
   assert.deepEqual(stylesOf(C(0, 0, "blue"), { centro: {} }), { styles: [{ object: "centro", side: "red" }, { object: "centro", side: "blue" }], at: 1 });
   // la gemella (simmetria) e' dell'altra parte
   const map = { ...newMap(), instances: [] };
@@ -576,7 +585,7 @@ test("§9.193 unita' ed edifici delle due parti", () => {
                                           I("ally_warrior", 1200, 1200, "red"), I("ally_warrior", 4800, 4800, "blue"),
                                           I("caserma", 4500, 4500, "blue"), I("albero", 3000, 3000)] };
   const room = testRoom(map);
-  assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "centro", "centro", "ally_warrior", "enemy_warrior", "enemy_caserma", "albero"]);
+  assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "ally_warrior", "enemy_warrior", "enemy_caserma", "albero"]); // (§9.232: le partenze no)
   // senza schieramento: del rosso; la convalida lo accetta su unita' ed edifici
   const allowed = new Set(["centro", "ally_warrior", "caserma", "albero"]);
   const v = validateMap({ ...map, instances: [I("centro", 1000, 1000), I("centro", 5000, 5000), I("ally_warrior", 100, 100), I("caserma", 200, 200, "blue")] }, allowed, objects);
@@ -632,7 +641,10 @@ test("§9.195 la tavolozza filtrata per parte", () => {
   assert.deepEqual(red.cells.map((q) => q.i), [0, 2, 4, 6, 8, 10, 12]);
   assert.ok(red.cells[0].x1 > all.cells[0].x1 - 1, "le caselle dopo l'interruttore");
   assert.equal(paletteLayout(L.panel, 0, 0).side, null, "le partenze senza interruttore");
-  assert.equal(CATALOG.find((k) => k.key === "meadows").label, "Nature");
+  // [§9.222, decisione dell'autore] niente "Natura" ne' "Montagne" (pennello e
+  // strumento montagna); gli oggetti di prima restano ammessi nelle mappe
+  assert.ok(!CATALOG.some((k) => k.key === "meadows" || k.key === "mountains"));
+  assert.ok(["burst_erba1", "chiazza01", "montagna_3", "graa11"].every((n) => allowedObjects().has(n)));
 });
 
 // [§9.196] su uno schermo basso la colonna non si rimpicciolisce oltre 0,85:
@@ -642,7 +654,7 @@ test("§9.196 la colonna che scorre", () => {
   assert.equal(big.maxScroll, 0);
   assert.ok(!big.up && !big.down && big.buttons.every((b) => !b.hidden));
   const top = editorLayout(1024, 600, 0);
-  assert.ok(top.k >= 0.8 && top.maxScroll > 0 && top.up && top.down); // (§9.199: 0,8 con Ripeti)
+  assert.ok(top.k >= 0.75 && top.maxScroll > 0 && top.up && top.down); // (§9.199: 0,8 con Ripeti; §9.214: 0,75)
   assert.equal(editorLayout(1600, 900).maxScroll, 0, "a 900 px stanno tutti");
   assert.ok(!top.buttons[0].hidden && top.buttons[top.buttons.length - 1].hidden);
   assert.equal(hitTest(top, top.down[0], top.down[1]).kind, "colscroll");
@@ -729,18 +741,20 @@ test("§9.203 municipio, stili della casa, stili nella partita", { skip: !exists
   // stile dopo il gruppo (la casa blu col suo sprite blu)
   const room = testRoom(map);
   const row = (o, x) => room.instances.find((e) => e[0] === o && e[1] === x);
-  assert.equal(row("centro", 1000).length, 7);
+  assert.equal(row("centro", 1000), undefined, "§9.232: la partenza e' solo la vista");
+  assert.deepEqual(room.starts, { red: [1000, 1000], blue: [5000, 5000] });
   assert.equal(row("centro", 400)[7], HALL);
   assert.equal(row("enemy_centro", 5600)[7], HALL);
   assert.deepEqual(row("casa", 1300).slice(7), [null, "c1s"]);
   assert.deepEqual(row("enemy_house", 4700).slice(7), [null, "c5b"]);
   assert.deepEqual(row("albero", 3000).slice(7), [null, "alb6"]);
-  // skirmishPrepare sceglie le due partenze, non i municipi
+  // skirmishPrepare: [§9.232] le viste dalle bandierine (il rosso e' il
+  // giocatore), i municipi restano quelli delle due parti
   const all = room.instances.map((e) => e.slice());
-  const st = skirmishPrepare({ start: "A" }, all);
+  const st = skirmishPrepare({ start: "B" }, all, room.starts);
   assert.deepEqual([st.player, st.cpu], [[1000, 1000], [5000, 5000]]);
-  assert.deepEqual(all.filter((e) => /centro$/.test(e[0])).map((e) => [e[0], e[1]]),
-                   [["centro", 1000], ["enemy_centro", 5000], ["centro", 400], ["enemy_centro", 5600]]);
+  assert.deepEqual(all.filter((e) => /centro$/.test(e[0])).map((e) => [e[0], e[1]]), [["centro", 400], ["enemy_centro", 5600]]);
+  assert.equal(skirmishPrepare({ start: "A" }, all, { red: [1, 1] }), null, "senza la partenza blu");
   // splitGroups tiene lo stile (il gruppo HALL non e' una regia: si crea subito)
   const { now } = splitGroups(TEST_ROOM, all);
   assert.equal(now.length, all.length);
@@ -775,8 +789,8 @@ test("§9.204 anteprima della polilinea e alberi nel fiume", () => {
 // [§9.205, richiesta dell'autore] la nebbia in "Natura": la estetica e il
 // banco; il banco dimezza la vista dei nemici anche fuori dal livello 7
 test("§9.205 la nebbia nell'editor e nella partita", () => {
-  const meadows = CATALOG.find((k) => k.key === "meadows").objects;
-  assert.ok(meadows.includes("sk_nebbia") && meadows.includes("nebbia_banco"));
+  const setup = CATALOG.find((k) => k.key === "start").objects; // (§9.222: in "Regia", prima in "Natura")
+  assert.ok(setup.includes("sk_nebbia") && setup.includes("nebbia_banco"));
   assert.ok(allowedObjects().has("nebbia_banco") && allowedObjects().has("sk_nebbia"));
   // la vista del nemico: dentro un banco a meta' (senza stealth), fuori no;
   // col livello 7 (stealth) fogSight non la tocca (la conta sees)
@@ -828,4 +842,44 @@ test("§9.206 le impostazioni della nebbia", () => {
   assert.ok(F.box[3] < L.panel[1] && F.groups.every((g) => g.plus[0] < L.panel[2] && g.minus[1] > F.box[1] && g.minus[1] < F.box[3]));
   assert.deepEqual([fogValue("sk_nebbia", "speed", -0.5), fogValue("sk_nebbia", "speed", 1), fogValue("nebbia_banco", "speed", 2), fogValue("nebbia_banco", "density", 0.75)],
                    ["« 30", "60 »", "120", "75%"]);
+});
+
+// [§9.232, richiesta dell'autore] le bandierine solo per la vista iniziale;
+// le partite senza centro citta'; le mappe salvate prima tengono i centri
+import { hallsOk, hallsOf, MAP_VERSION } from "../src/mapfile.js";
+test("§9.232 bandierine, municipi, le mappe della versione 1", () => {
+  const I = (object, x, y, extra = {}) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...extra });
+  const objects = { centro: { sprite: "cc_spr" }, ally_warrior: { sprite: "w" } }, allowed = new Set(["centro", "ally_warrior"]);
+  const flags = [I("centro", 1000, 1000, { side: "red" }), I("centro", 5000, 5000, { side: "blue" })];
+  // della versione 1: un municipio della sua parte sotto ogni bandierina
+  const old = validateMap({ ...newMap(), version: 1, instances: flags }, allowed, objects).map;
+  assert.equal(old.version, MAP_VERSION);
+  assert.deepEqual(old.instances.map((e) => [e.x, e.side, !!e.hall]), [[1000, "red", false], [1000, "red", true], [5000, "blue", false], [5000, "blue", true]]);
+  assert.ok(hallsOk(old));
+  // della versione 2: le sole bandierine, senza centri (si gioca lo stesso)
+  const now = validateMap({ ...newMap(), instances: [...flags, I("ally_warrior", 1200, 1200, { side: "red" })] }, allowed, objects).map;
+  assert.equal(now.instances.length, 3);
+  assert.ok(sidesOk(now) && !hallsOk(now) && hallsOf(now, "red") === 0);
+  // un centro solo del rosso: la vittoria Municipio non c'e' ancora
+  assert.ok(!hallsOk({ instances: [...flags, I("centro", 900, 900, { side: "red", hall: true })] }));
+  // "Prova mappa" con la vittoria Municipio su una mappa senza centri: Conquista
+  const sk = { map: "sk_padus", difficulty: "easy", style: "balanced", victory: "townhall" };
+  assert.equal(skForMap(sk, now).victory, "conquest");
+  assert.equal(skForMap(sk, old).victory, "townhall");
+  // la room: nessun centro, le viste delle due parti
+  const room = testRoom(now);
+  assert.deepEqual(room.instances.map((e) => e[0]), ["manager", "ally_warrior"]);
+  assert.deepEqual(skirmishPrepare({ start: "random" }, room.instances, room.starts), { side: "A", player: [1000, 1000], cpu: [5000, 5000] });
+});
+
+// [§9.233, richiesta dell'autore] le misure della mappa: interi nei limiti
+import { MAP_SIZE, mapSizeOk } from "../src/mapfile.js";
+test("§9.233 le misure della mappa: interi da MAP_SIZE.min a MAP_SIZE.max", () => {
+  assert.deepEqual(MAP_SIZE, { min: 3000, max: 10000 });
+  for (const v of [3000, 4321, 6000, 10000]) assert.ok(mapSizeOk(v), String(v));
+  for (const v of [2999, 10001, 5000.5, "6000", NaN, null]) assert.ok(!mapSizeOk(v), String(v));
+  const objects = { centro: { sprite: "cc_spr" } }, allowed = new Set(["centro"]);
+  assert.equal(validateMap({ ...newMap(), width: 4321, height: 5003 }, allowed, objects).map.width, 4321);
+  assert.ok(validateMap({ ...newMap(), width: 2500 }, allowed, objects).errors);
+  assert.ok(validateMap({ ...newMap(), height: 6000.5 }, allowed, objects).errors);
 });

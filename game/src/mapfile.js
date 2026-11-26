@@ -6,13 +6,20 @@
 // riporta a scenario (roomToScenario); per provarle nel gioco fara' il
 // contrario (scenarioToRoom, la stessa conversione di tools/07_scene.py).
 
-export const MAP_FORMAT = "535-scenario", MAP_VERSION = 1;
+import { cleanMountain, MOUNTAIN_LIMITS } from "./mountains.js"; // §9.214
+import { cleanMeadow, MEADOW_LIMITS } from "./meadows.js"; // §9.216
+
+// [§9.232] versione 2: la partenza (la bandierina) e' solo la vista
+// iniziale, il centro e' un municipio (`hall`); le mappe della versione 1
+// (la partenza era anche il centro) ricevono un municipio sotto ogni
+// bandierina (validateMap)
+export const MAP_FORMAT = "535-scenario", MAP_VERSION = 2;
 // colore della room [C] (12632256 = c_silver in BGR) e sfondo predefiniti,
 // come la mappa vuota del kit di Tiled (tools/11 --nuova)
 export const MAP_COLOUR = 12632256, MAP_BACKGROUND = "green1";
 // le parti disegnate a linee e a forme (§9.97, §9.99, §9.101), solo se ci
 // sono, come in tools/07
-export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths"];
+export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths", "mountains", "meadows"]; // §9.214: le montagne del generatore; §9.216: le chiazze d'erba
 
 // [§9.184] Le informazioni delle mappe dell'editor, in piu' (tools/07 e il
 // gioco le ignorano): la descrizione (la schermata della schermaglia) e la
@@ -21,8 +28,18 @@ export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths"];
 // giocatore" (`choice`, la scelta di partenza): li sceglie chi lancia la
 // partita; la simmetria non e' piu' della mappa ma degli strumenti (SYMMETRY
 // resta qui: le modalita').
-export const MAP_SIZES = [4000, 5000, 6000, 7000, 8000, 9000];
+// [§9.233, richiesta dell'autore: "per le dimensioni della mappa
+// sostituiamo i tasti fissi con dei valori integer inseribili dall'utente,
+// nei limiti della decenza come range"] larghezza e altezza: interi da
+// MAP_SIZE.min a MAP_SIZE.max px (prima 4000-9000 a passi di 1000: sotto i
+// 3000 la vista del gioco piu' larga non ci sta, sopra i 10000 nebbia,
+// percorsi e terreno pesano troppo)
+export const MAP_SIZE = { min: 3000, max: 10000 };
+export const mapSizeOk = (v) => Number.isInteger(v) && v >= MAP_SIZE.min && v <= MAP_SIZE.max;
 export const MAP_BACKGROUNDS = ["green1", "city2", "city1"];
+// [§9.219] le macchie del pennello: gli sfondi della mappa e la sabbia
+// (nuovi/sfondi/sabbia.png, tools/22_sabbia.py)
+export const PATCH_BACKGROUNDS = [...MAP_BACKGROUNDS, "sabbia"];
 export const CPU_DIFFICULTY = ["choice", "easy", "normal", "hard", "rigged"];
 export const CPU_STYLE = ["choice", "balanced", "aggressive", "defensive", "economic", "raider", "random", "static"];
 export const SYMMETRY = ["none", "diagonal", "horizontal", "vertical"];
@@ -30,7 +47,8 @@ export const NAME_MAX = 40, DESC_MAX = 600;
 // [§9.191, richiesta dell'autore] Gli schieramenti: le partenze (il centro)
 // sono del rosso o del blu (`side` nella voce). Il rosso e' il giocatore (o,
 // online, chi crea la partita), il blu la CPU (o chi entra). Una mappa da
-// giocare ha una partenza per parte. Le mappe senza (i modelli, le mappe
+// giocare ha una partenza per parte ([§9.232] solo la vista iniziale: i
+// centri sono i municipi, `hall`). Le mappe senza (i modelli, le mappe
 // salvate prima): la partenza A (in alto a sinistra, x + y piu' piccolo,
 // come skirmish.js skirmishPrepare) rossa, l'altra blu (assignSides).
 export const START = "centro";
@@ -103,6 +121,10 @@ export function assignSides(instances) {
 export const startsOf = (map, side) => map.instances.filter((e) => isStart(e) && e.side === side).length;
 // una partenza rossa e una blu: si puo' giocare
 export const sidesOk = (map) => startsOf(map, "red") === 1 && startsOf(map, "blue") === 1;
+// [§9.232] i municipi (i centri città) di una parte; con almeno uno per
+// parte si puo' vincere distruggendo il centro (SK_OPTIONS victory townhall)
+export const hallsOf = (map, side) => map.instances.filter((e) => e.object === START && e.hall && e.side === side).length;
+export const hallsOk = (map) => hallsOf(map, "red") > 0 && hallsOf(map, "blue") > 0;
 // la partenza del rosso come la chiama skirmishPrepare (A: x + y piu'
 // piccolo fra le due, a pari l'ordine della mappa): l'opzione `start`
 export function redStart(map) {
@@ -120,7 +142,7 @@ export const COVER_RE = /^data:image\/(webp|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 export function newMap({ name = "", width = 6000, height = 6000, background = MAP_BACKGROUND } = {}) {
   return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: MAP_COLOUR,
            view: { x: 0, y: 0, w: 3000, h: 2000 },
-           instances: [], roads: [], rivers: [], bridges: [], patches: [],
+           instances: [], roads: [], rivers: [], bridges: [], patches: [], mountains: [], meadows: [],
            description: "", cpu: { difficulty: "choice", style: "choice" } };
 }
 
@@ -138,7 +160,7 @@ export function validateMap(data, allowed, objects) {
   if (!data || typeof data !== "object" || data.format !== MAP_FORMAT) return { errors: ["non e' una mappa"] };
   if (!(Number.isInteger(data.version) && data.version >= 1 && data.version <= MAP_VERSION)) bad("versione " + data.version);
   const W = data.width, H = data.height;
-  if (!MAP_SIZES.includes(W) || !MAP_SIZES.includes(H)) bad(`misure ${W} x ${H}`);
+  if (!mapSizeOk(W) || !mapSizeOk(H)) bad(`misure ${W} x ${H}`); // §9.233
   if (!MAP_BACKGROUNDS.includes(data.background)) bad("sfondo " + data.background);
   if (!Array.isArray(data.instances) || data.instances.length > LIMITS.instances) return { errors: [...errors, "istanze"] };
   const M = LIMITS.margin, inside = (x, y) => num(x) && num(y) && x >= -M && y >= -M && x <= W + M && y <= H + M;
@@ -189,6 +211,12 @@ export function validateMap(data, allowed, objects) {
   const width = (f, k) => f[k] === undefined || (num(f[k]) && f[k] > 0 && f[k] <= 2000);
   const unit = (f, k, max) => f[k] === undefined || (num(f[k]) && f[k] >= 0 && f[k] <= max);
   assignSides(instances); // §9.191
+  // [§9.232] la versione 1: la partenza era anche il centro della sua parte
+  if (data.version < 2) {
+    for (const s of instances.filter(isStart)) {
+      if (instances.length < LIMITS.instances) instances.splice(instances.indexOf(s) + 1, 0, { ...s, hall: true });
+    }
+  }
   const map = {
     format: MAP_FORMAT, version: MAP_VERSION, name: str(data.name, NAME_MAX) ? data.name : "", width: W, height: H,
     background: data.background, colour: num(data.colour) ? data.colour : MAP_COLOUR,
@@ -199,8 +227,22 @@ export function validateMap(data, allowed, objects) {
                 (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd") && [1, 2].includes(f.kind ?? 1) && unit(f, "density", 5)),
     rivers: list("rivers", ["width", "widthEnd"], (f) => pts(f.pts) && width(f, "width") && width(f, "widthEnd")),
     bridges: list("bridges", [], (f) => pts(f.pts)),
-    patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || MAP_BACKGROUNDS.includes(f.bg))
+    patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || PATCH_BACKGROUNDS.includes(f.bg))
                   && unit(f, "feather", 400) && unit(f, "alpha", 1)),
+    // [§9.214] le montagne del generatore: ogni voce controllata
+    // (mountains.js cleanMountain: punti, limiti, parametri)
+    mountains: (() => {
+      const l = data.mountains === undefined ? [] : data.mountains;
+      if (!Array.isArray(l) || l.length > MOUNTAIN_LIMITS.count) { bad("mountains"); return []; }
+      return l.map((f) => cleanMountain(f, W, H, M) || (bad("mountains"), null)).filter(Boolean);
+    })(),
+    // [§9.216] le chiazze d'erba del pennello (meadows.js cleanMeadow)
+    meadows: (() => {
+      const l = data.meadows === undefined ? [] : data.meadows;
+      if (!Array.isArray(l) || l.length > MEADOW_LIMITS.count) { bad("meadows"); return []; }
+      const inPt = (q) => Array.isArray(q) && q.length === 2 && inside(q[0], q[1]);
+      return l.map((f) => cleanMeadow(f, inPt) || (bad("meadows"), null)).filter(Boolean);
+    })(),
     description: str(data.description, DESC_MAX) ? data.description : "",
     cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "choice",
            style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "choice" },
@@ -225,7 +267,9 @@ export function roomToScenario(room) {
   const v = (room.views && room.views[0]) || { xview: 0, yview: 0, wview: 3000, hview: 2000 };
   const bg = (room.backgrounds || []).find((b) => b.visible !== false && b.name);
   const sc = {
-    format: MAP_FORMAT, version: MAP_VERSION, name: room.name || "", width: room.width, height: room.height,
+    // ([§9.232] le room del gioco: il centro e' partenza e centro insieme,
+    // come nelle mappe della versione 1)
+    format: MAP_FORMAT, version: 1, name: room.name || "", width: room.width, height: room.height,
     background: bg ? bg.name : "", colour: room.colour ?? MAP_COLOUR,
     view: { x: v.xview, y: v.yview, w: v.wview, h: v.hview },
     instances: room.instances.map(([object, x, y, sx, sy, rot, , group]) => {
@@ -269,7 +313,12 @@ export function testRoom(map) {
   // no: le sceglie skirmishPrepare, con l'opzione start)
   // [§9.203] i municipi in piu' nel gruppo HALL; la casa blu col suo
   // sprite blu
-  const own = map.instances.map((e) => {
+  // [§9.232, richiesta dell'autore: "bandierine della regia: usiamole solo
+  // per la posizione di visualizzazione iniziale"] le partenze non sono
+  // nella room: room.starts, la vista iniziale di ogni parte
+  const starts = {};
+  for (const e of map.instances) if (isStart(e) && e.side && !starts[e.side]) starts[e.side] = [e.x, e.y];
+  const own = map.instances.filter((e) => !isStart(e)).map((e) => {
     const out = e.side === "blue" && !isStart(e) && BLUE_OF[e.object] ? { ...e, object: BLUE_OF[e.object] } : { ...e };
     if (e.hall) out.group = HALL;
     if (e.side === "blue" && blueHome(e.sprite)) out.sprite = blueHome(e.sprite);
@@ -279,6 +328,7 @@ export function testRoom(map) {
     : [{ object: "manager", x: 100, y: 100, scale_x: 1, scale_y: 1, rotation: 0 }, ...own];
   const room = scenarioToRoom({ ...map, instances });
   room.name = TEST_ROOM;
+  room.starts = starts;
   return room;
 }
 

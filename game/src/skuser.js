@@ -12,7 +12,8 @@
 // mappa dentro: la room non e' fra quelle del gioco), il ritorno al menu.
 
 import { listMaps, loadMap, openMapFile, putService } from "./mapstore.js";
-import { validateMap, testRoom, TEST_ROOM, sidesOk, redStart, START } from "./mapfile.js";
+import { validateMap, testRoom, TEST_ROOM, sidesOk, hallsOk, redStart, START } from "./mapfile.js";
+import { mountainGeometry } from "./mountains.js"; // §9.214
 
 // l'ultima mappa dell'editor scelta nella schermaglia (il suo id nel browser)
 const USER_KEY = "535.skirmish.user";
@@ -28,14 +29,17 @@ export function rememberUserMap(id) {
 export function skForMap(sk, map) {
   const cpu = map && map.cpu;
   return { ...sk, map: TEST_ROOM, difficulty: !cpu || cpu.difficulty === "choice" ? sk.difficulty : cpu.difficulty,
-           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style, ...(map ? { start: redStart(map) } : {}) };
+           style: !cpu || cpu.style === "choice" ? sk.style : cpu.style, ...(map ? { start: redStart(map) } : {}),
+           // [§9.232] senza un municipio per parte niente vittoria Municipio
+           // (la schermaglia la mostra in grigio; "Prova mappa": Conquista)
+           ...(map && sk.victory === "townhall" && !hallsOk(map) ? { victory: "conquest" } : {}) };
 }
 // il parametro `key` fissato dalla mappa (null: a scelta del giocatore)
 export const fixedBy = (map, key) => (map && map.cpu && map.cpu[key] && map.cpu[key] !== "choice" ? map.cpu[key] : null);
 
 // Le voci della schermata: { user: true, id (nel browser) o file, name,
 // state: "idle" | "loading" | "ok" | "bad", map, sides (§9.191: una
-// partenza rossa e una blu), desc }
+// partenza rossa e una blu), halls (§9.232: un municipio per parte), desc }
 const entry = (fields) => ({ user: true, state: "idle", map: null, sides: false, desc: "", ...fields });
 export async function userMapList() {
   try {
@@ -52,7 +56,8 @@ async function check(data, objects) {
 }
 function fill(e, v) {
   if (v.errors) { e.state = "bad"; console.warn("[schermaglia] mappa non valida:", v.errors); return e; }
-  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", sides: sidesOk(v.map) });
+  Object.assign(e, { state: "ok", map: v.map, name: v.map.name || e.name, desc: v.map.description || "", sides: sidesOk(v.map),
+                  halls: hallsOk(v.map) }); // §9.232: un municipio per parte (la vittoria Municipio)
   return e;
 }
 // la mappa di una voce del browser, letta e convalidata (una volta)
@@ -111,9 +116,9 @@ export async function coverImage(map, sizeOf) {
 // sizeOf(oggetto) -> [larghezza, altezza] dello sprite, in px della room.
 export const PREVIEW = {
   w: 720, h: 480, pad: 14,
-  bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95" },
+  bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95", sabbia: "#ceba8a" }, // (§9.219: la sabbia delle macchie)
   water: "#6a9ec0", road: "#8a7a5e", path: "#9c8c6c",
-  tree: "#4f6b45", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
+  tree: "#4f6b45", meadow: "#9fb070", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
   start: { red: "#c83038", blue: "#3070e8" }, startRing: "#ffffff",
 };
 const kindOf = (o) => (o === START ? "start" : /^albero/.test(o) ? "tree" : /^montagna_/.test(o) ? "mountain"
@@ -147,6 +152,17 @@ export function mapPreview(map, sizeOf = () => [100, 100]) {
     const [w, h] = sizeOf(e.object);
     g.fillStyle = P.mountain;
     g.beginPath(); g.ellipse(X(e.x), Y(e.y), Math.max(2, w * Math.abs(e.scale_x) * s * 0.42), Math.max(2, h * Math.abs(e.scale_y) * s * 0.32), 0, 0, Math.PI * 2); g.fill();
+  }
+  // [§9.216] le chiazze d'erba del pennello: un verde piu' chiaro
+  g.globalAlpha = 0.5; g.fillStyle = P.meadow;
+  for (const m of map.meadows || []) { poly(m.pts); g.closePath(); g.fill(); }
+  g.globalAlpha = 1;
+  // [§9.214] le montagne del generatore: la loro sagoma (la base e le facce)
+  for (const m of map.mountains || []) {
+    const geo = mountainGeometry({ ...m, room: [map.width, map.height] });
+    g.fillStyle = P.mountain;
+    poly(geo.base); g.closePath(); g.fill();
+    for (const L of geo.layers) if (L.face) { poly(L.face); g.closePath(); g.fill(); }
   }
   for (const k of ["ruin", "city"]) {
     for (const e of groups[k]) {

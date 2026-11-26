@@ -13,10 +13,12 @@
 
 import { World } from "./world.js";
 import { Particles } from "./particles.js";
-import { DECOR_OBJECTS, decorCreate, campoCreate } from "./effects.js";
+import { DECOR_OBJECTS, decorCreate, campoCreate, meadowCreate, clipDecor } from "./effects.js";
 import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
+import { mountainGeometry, mountainCells, mountainIn, rasterize, traceGrid, simplifyLine, insidePoly as pointInPoly, MOUNTAIN_CELL } from "./mountains.js"; // §9.214
+import { meadowFlat } from "./meadows.js"; // §9.224
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
 import { makeColourRgb } from "./colours.js";
@@ -43,7 +45,9 @@ export const FOG_OBJECTS = ["sk_nebbia", "nebbia_banco"];
 export const CATALOG = [
   // [§9.196, richiesta dell'autore] la scheda "Regia": per ora le partenze
   // (le bandierine), piu' avanti cio' che servira' agli scenari
-  { key: "start", label: "Setup", objects: ["centro"] },
+  // ([§9.222, decisione dell'autore] anche la nebbia, prima in "Natura": e'
+  // di gioco, il banco dimezza la vista dei nemici)
+  { key: "start", label: "Setup", objects: ["centro", ...FOG_OBJECTS] },
   // [§9.193] unita' ed edifici delle due parti: una casella rossa e una blu
   { key: "units", label: "Units", objects: UNITS },
   // [§9.194] in fondo le mura: S le gira di 90 gradi (orizzontali, verticali)
@@ -56,22 +60,25 @@ export const CATALOG = [
               { family: "wall", objects: ["mura_ori", "mura_vert"], sided: true }] },
   { key: "resources", label: "Resources", objects: ["miniera_oro", "pietra_grande", "pietr_piccolo", "castelloruin", "torreruin", "chiesaruin"] },
   { key: "trees", label: "Trees", objects: ["albero", "albero_fake"] },
-  { key: "meadows", label: "Nature", // §9.195: era "Prati e fiori"
-    objects: ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
-              "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "prato1", "fiorame1", "chiazza01",
-              // [§9.205, richiesta dell'autore] la nebbia: quella estetica della
-              // schermaglia (sk_nebbia) e il banco che dimezza la vista dei
-              // nemici (nebbia_banco, il livello 7)
-              ...FOG_OBJECTS] },
-  { key: "mountains", label: "Mountains", objects: range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
+  // [§9.222, decisione dell'autore] niente piu' "Natura" ne' "Montagne": le
+  // macchie di particelle le fa il pennello (il bouquet, §9.216), le montagne
+  // lo strumento montagna (§9.214); la nebbia e' in "Regia", l'aiuola (prato1)
+  // in "Citta'", le macchie d'erba dipinte (graa*) sono superate. Nelle mappe
+  // che li hanno gia' restano (OLD_OBJECTS: si aprono, si spostano, si
+  // cancellano), ma non si inseriscono piu'.
   // [§9.198, richiesta dell'autore] i ponti: solo quelli dipinti dall'autore
   // (cotti nel suolo sopra il fiume, rivers.js PAINTED_BRIDGES; il primo con
   // la sua balaustra); M li specchia (l'altro verso del fiume)
   { key: "bridges", label: "Bridges", objects: [...PAINTED_BRIDGES] },
   { key: "city", label: "City",
     objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
-              "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
+              // ([§9.227, segnalazione dell'autore] le quattro statue: un oggetto con quattro stili)
+              "o_colonna", "o_fontana", { family: "statue", objects: ["o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
+              "prato1"] }, // (§9.222: l'aiuola)
 ];
+export const OLD_OBJECTS = ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
+                            "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "fiorame1", "chiazza01",
+                            ...range("montagna_", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])];
 // tutti i nomi degli oggetti del catalogo
 export const catalogObjects = () => CATALOG.flatMap((k) => k.objects.flatMap((q) => (typeof q === "string" ? [q] : q.objects)));
 
@@ -125,7 +132,7 @@ export function stylesOf(e, objects) {
 // [§9.184] gli oggetti che una mappa dell'editor puo' avere (la convalida
 // dei file, mapfile.js validateMap): il catalogo, il manager e i ponti
 // dipinti dei modelli
-export const allowedObjects = () => new Set([...catalogObjects(), ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte
+export const allowedObjects = () => new Set([...catalogObjects(), ...OLD_OBJECTS, ...SYSTEM, ...PAINTED_BRIDGES, ...WALLS]); // §9.194: anche le porte; §9.222: e quelli di prima
 
 // [§9.194, richiesta dell'autore] Mura e porte, come nel gioco (walls.js):
 // un tratto ha due "+" alle estremita' (KIND.plus: l'orizzontale a -219 e
@@ -230,7 +237,8 @@ export function sideLook(objects, e) {
 // l'editor dove manca)
 export const SYSTEM = new Set(["manager"]);
 // [§9.185] le liste di forme della mappa, che il suolo disegna
-export const FEATURES = ["patches", "rivers", "roads", "bridges"];
+// ([§9.216] le chiazze d'erba per ultime: non nascono sull'acqua ne' sulle montagne)
+export const FEATURES = ["patches", "rivers", "roads", "bridges", "mountains", "meadows"]; // §9.214: le montagne del generatore
 // cuociono nel suolo (ground.js): se cambiano, il suolo si rifa'
 export const baked = (name) => GROUND.test(name) || PAINTED_BRIDGES.includes(name);
 
@@ -331,6 +339,9 @@ export class EditScene {
     if (this.skipped.size) console.warn("[editor] oggetti sconosciuti saltati:", [...this.skipped]);
     // fiumi, strade, ponti e macchie (come app.js useRivers)
     for (const k of FEATURES) this._features(k);
+    // [§9.217] le macchie di "Natura" tagliate da fiumi e montagne (ora che ci sono)
+    this.ready = true;
+    this._clipDecors();
     const room = { backgrounds: map.background ? [{ name: map.background, htiled: true, vtiled: true, x: 0, y: 0 }] : [] };
     this.ground = new GroundCache(ctx.r, ctx.assets, room, world, bgrToRGB(map.colour));
   }
@@ -342,7 +353,7 @@ export class EditScene {
     const A = ctx.assets, names = new Set(map.instances.map((e) => e.object));
     const groups = new Set(A.groupsOfTier("core", ...(names.size ? ["gioco"] : [])));
     for (const g of groupsFor(A, ctx.objects, names)) groups.add(g);
-    const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", ...(map.patches || []).map((p) => p.bg || "city2")];
+    const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", "monte_roccia", ...(map.patches || []).map((p) => p.bg || "city2")];
     await A.load([...groups], bgs.filter(Boolean), progress);
     return new EditScene(ctx, map);
   }
@@ -364,6 +375,7 @@ export class EditScene {
     if (isStart(e)) { i.image_xscale *= FLAG_SCALE; i.image_yscale *= FLAG_SCALE; } // §9.196: la bandierina, grande
     if (o.reveal) i.visible = true;
     w.fire(i, "create");
+    if (this.ready && i.grass_rows) clipDecor(w, i, this._blocked(), true); // §9.217: tagliata da fiumi e montagne
     i.kids = w.instances.slice(n0 + 1);
     i.src = e;
     this.byEntry.set(e, i);
@@ -392,6 +404,8 @@ export class EditScene {
     if (key === "rivers") { w.rivers = riverJoin(map.rivers, (rv) => riverGeometry({ ...rv, room: R })); w._riverCells = undefined; w._water = undefined; }
     if (key === "roads") w.roads = map.roads.map((rd) => roadGeometry({ ...rd, room: R }));
     if (key === "bridges") w.bridges = map.bridges.map((b) => bridgeGeometry(b));
+    if (key === "mountains") { w.mountains = map.mountains.map((m) => this.mountainGeo(m)); w._mountainCells = undefined; } // §9.214
+    if (key === "meadows") this._meadows(); // §9.216
   }
 
   // ------------------------------------------------------------ modifiche
@@ -418,12 +432,46 @@ export class EditScene {
     this.spawn(c.e);
   }
 
+  // [§9.216] le particelle delle chiazze d'erba: rifatte solo quelle nuove o
+  // cambiate (una pennellata non rifa' tutta l'erba della mappa); `all`:
+  // tutte (sono cambiati fiumi o montagne, dove l'erba non nasce)
+  _meadows(all = false) {
+    const w = this.world, P = w.particles, old = this.meadowRows || new Map(), now = new Map();
+    const rc = riverCells(w), mc = mountainCells(w);
+    const blocked = (x, y) => (!!rc && riverIn(rc, x, y, x, y)) || (!!mc && mountainIn(mc, x, y, x, y));
+    for (const m of this.map.meadows || []) {
+      const key = JSON.stringify(m), was = old.get(m);
+      if (was && was.key === key && !all) { now.set(m, was); old.delete(m); continue; }
+      now.set(m, { key, rows: meadowCreate(w, m, blocked), flat: meadowFlat(m, blocked) });
+    }
+    for (const [, v] of old) for (const s of v.rows) P.systemDestroy(s);
+    // [§9.224] gli sprite a terra, cotti nel suolo (che si rifa')
+    w.meadowFlat = [...now.values()].flatMap((v) => v.flat);
+    this.meadowRows = now;
+  }
+
+  // [§9.217] dove le particelle non stanno: l'acqua dei fiumi, le montagne
+  _blocked() {
+    const w = this.world, rc = riverCells(w), mc = mountainCells(w);
+    return (x, y) => (!!rc && riverIn(rc, x, y, x, y)) || (!!mc && mountainIn(mc, x, y, x, y));
+  }
+  _clipDecors() {
+    const b = this._blocked();
+    for (const i of this.byEntry.values()) if (i.alive && i.grass_rows) clipDecor(this.world, i, b, true);
+  }
+
   _after(changes) {
     const w = this.world;
     w.instances = w.instances.filter((i) => i.alive);
     w._compact();
     const keys = new Set(changes.filter((c) => c.key).map((c) => c.key));
-    for (const k of keys) this._features(k);
+    // [§9.216] fiumi o montagne cambiati: l'erba rinasce dove puo'
+    if ((keys.has("rivers") || keys.has("mountains")) && (this.map.meadows || []).length && !keys.has("meadows")) keys.add("meadows!");
+    // (l'erba per ultima: sa dove sono acqua e montagne nuove)
+    for (const k of [...keys].sort((a, b) => (a.startsWith("meadows") ? 1 : 0) - (b.startsWith("meadows") ? 1 : 0))) {
+      if (k === "meadows!") this._meadows(true); else this._features(k);
+    }
+    if (keys.has("rivers") || keys.has("mountains")) this._clipDecors(); // §9.217
     if (keys.size || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
     this.version++;
   }
@@ -523,8 +571,9 @@ export class EditScene {
   // (w x h px attorno al punto) toccano l'acqua o la maschera di un oggetto
   // della mappa; i prati e le strade dipinti nel suolo e le macchie no
   blocks(x, y, w = 10, h = 5) {
-    const W = this.world, rc = riverCells(W);
+    const W = this.world, rc = riverCells(W), mc = mountainCells(W);
     if (rc && riverIn(rc, x - w, y - h, x + w, y + h)) return true;
+    if (mc && mountainIn(mc, x - w, y - h, x + w, y + h)) return true; // §9.214
     const rect = [x - w, y - h, x + w, y + h];
     for (const o of W._nearList(rect)) {
       if (!o.alive || GROUND.test(o.object)) continue;
@@ -548,6 +597,147 @@ export class EditScene {
     const rc = riverCells(only);
     if (!rc) return [];
     return this.map.instances.filter((e) => TREES.has(e.object) && riverIn(rc, e.x - w, e.y - h, e.x + w, e.y + h));
+  }
+
+  // ---------------------------------------------------------- montagne
+
+  // [§9.214] la forma di una montagna della mappa (le gemelle: specchiate
+  // nella mappa di adesso)
+  mountainGeo(m) { return mountainGeometry({ ...m, room: [this.map.width, this.map.height] }); }
+
+  // la gemella di una montagna (stessi campi, l'altra con `mirrored`), o null
+  twinMountain(e) {
+    if (!e.sym) return null;
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    return (this.map.mountains || []).find((f) => f !== e && f.sym === e.sym && !f.mirrored !== !e.mirrored && f.seed === e.seed
+      && same(f.crest, e.crest) && same(f.base || null, e.base || null)) || null;
+  }
+
+  // la griglia (celle da 8 px, tutta la mappa) delle montagne `geos`
+  // (forme), allargata di `px` px in orizzontale e px * ISO in verticale
+  mountainGrid(geos, px = 0) {
+    const C = MOUNTAIN_CELL, gw = Math.ceil(this.map.width / C), gh = Math.ceil(this.map.height / C);
+    let grid = new Uint8Array(gw * gh);
+    for (const g of geos) rasterize(g, grid, gw, gh, C);
+    const rx = Math.round(px / C), ry = Math.round((px * 0.62) / C);
+    if (rx > 0 || ry > 0) {
+      const t = new Uint8Array(gw * gh), out = new Uint8Array(gw * gh);
+      for (let y = 0; y < gh; y++) { // in orizzontale: quante celle piene nelle ultime 2rx+1
+        let run = 0;
+        for (let x = -rx; x < gw + rx; x++) {
+          if (x + rx < gw && grid[y * gw + x + rx]) run = 2 * rx + 1;
+          if (x >= 0 && x < gw && run > 0) t[y * gw + x] = 1;
+          run--;
+        }
+      }
+      for (let x = 0; x < gw; x++) {
+        let run = 0;
+        for (let y = -ry; y < gh + ry; y++) {
+          if (y + ry < gh && t[(y + ry) * gw + x]) run = 2 * ry + 1;
+          if (y >= 0 && y < gh && run > 0) out[y * gw + x] = 1;
+          run--;
+        }
+      }
+      grid = out;
+    }
+    return { C, gw, gh, grid };
+  }
+
+  // la montagna (voce) sotto il punto (x, y): la sua sagoma, la piu' davanti
+  mountainAt(x, y) {
+    const list = this.map.mountains || [], geos = this.world.mountains || [];
+    let best = null, by = -Infinity;
+    list.forEach((e, k) => {
+      const g = geos[k];
+      if (!g || x < g.bbox[0] || x > g.bbox[2] || y < g.bbox[1] || y > g.bbox[3]) return;
+      const hit = g.layers.some((L) => L.face && pointInPoly(x, y, L.face)) || pointInPoly(x, y, g.base);
+      if (hit && g.bbox[3] > by) { by = g.bbox[3]; best = e; }
+    });
+    return best;
+  }
+
+  // [§9.214, richiesta dell'autore: "la montagna quando creata elimina
+  // tutti gli oggetti in collisione"] le voci della mappa sotto le montagne
+  // `geos`: gli alberi coi piedi sulla sagoma (come per i fiumi), gli altri
+  // oggetti con la maschera (righe ogni 4 px), quelli senza maschera (le
+  // macchie) col punto d'origine
+  underMountains(geos) {
+    if (!geos.length) return [];
+    const mc = this.mountainGrid(geos), W = this.world, C = mc.C;
+    const cell = (x, y) => x >= 0 && y >= 0 && x < mc.gw * C && y < mc.gh * C && mc.grid[Math.floor(y / C) * mc.gw + Math.floor(x / C)] === 1;
+    const box = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const g of geos) { box[0] = Math.min(box[0], g.bbox[0]); box[1] = Math.min(box[1], g.bbox[1]); box[2] = Math.max(box[2], g.bbox[2]); box[3] = Math.max(box[3], g.bbox[3]); }
+    const out = [], spans = [];
+    for (const e of this.map.instances) {
+      if (SYSTEM.has(e.object)) continue;
+      if (TREES.has(e.object)) { if (mountainIn(mc, e.x - 10, e.y - 5, e.x + 10, e.y + 5)) out.push(e); continue; }
+      const i = this.byEntry.get(e), bb = i && i.alive && W.bbox(i);
+      if (!bb) { if (cell(e.x, e.y)) out.push(e); continue; }
+      if (bb[2] < box[0] || bb[0] > box[2] || bb[3] < box[1] || bb[1] > box[3]) continue;
+      let hit = false;
+      for (let y = Math.floor(bb[1]); y < bb[3] && !hit; y += 4) {
+        const n = W._spans(i, i.x, i.y, bb, y, bb[0], bb[2] + 1, spans);
+        for (let k = 0; k < n && !hit; k += 2) for (let x = spans[k]; x < spans[k + 1] && !hit; x += 4) hit = cell(x, y);
+      }
+      if (hit) out.push(e);
+    }
+    return out;
+  }
+
+  // [§9.214, richiesta dell'autore: "sposta le polilinee in interferenza in
+  // modo che girino intorno alla montagna"] I fiumi e le strade che toccano
+  // le montagne `geos` (forme): il pezzo che ci passa sopra diventa un giro
+  // attorno, lungo il contorno della montagna allargato di mezza linea piu'
+  // MARGIN px (dalla parte piu' corta); un'estremita' sulla montagna si
+  // ferma al contorno. Restituisce [{ key, e, pts }] (pts: null, la linea
+  // sparisce: era tutta sotto la montagna).
+  reroute(geos) {
+    const out = [], MARGIN = 40, STEP = 8;
+    for (const key of ["rivers", "roads"]) {
+      for (const e of this.map[key] || []) {
+        const wmax = Math.max(e.width || 150, e.widthEnd || e.width || 150);
+        const mc = this.mountainGrid(geos, wmax / 2 + MARGIN), C = mc.C;
+        const inside = (p) => p[0] >= 0 && p[1] >= 0 && p[0] < mc.gw * C && p[1] < mc.gh * C && mc.grid[Math.floor(p[1] / C) * mc.gw + Math.floor(p[0] / C)] === 1;
+        // la linea a passi di STEP px, coi punti dell'autore
+        const S = [];
+        for (let k = 0; k < e.pts.length - 1; k++) {
+          const a = e.pts[k], b = e.pts[k + 1], n = Math.max(1, Math.ceil(dhypot(b[0] - a[0], b[1] - a[1]) / STEP));
+          for (let q = 0; q < n; q++) S.push({ p: [a[0] + ((b[0] - a[0]) * q) / n, a[1] + ((b[1] - a[1]) * q) / n], own: q === 0 });
+        }
+        S.push({ p: e.pts[e.pts.length - 1].slice(), own: true });
+        S.forEach((s) => { s.in = inside(s.p); });
+        if (!S.some((s) => s.in)) continue;
+        if (S.every((s) => s.in)) { out.push({ key, e, pts: null }); continue; }
+        const pts = [];
+        let i = 0;
+        while (i < S.length) {
+          if (!S[i].in) { if (S[i].own || !pts.length || (S[i + 1] && S[i + 1].in) || (i > 0 && S[i - 1].in)) pts.push(S[i].p); i++; continue; }
+          let j = i;
+          while (j < S.length && S[j].in) j++;
+          if (i === 0 || j === S.length) { i = j; continue; } // un'estremita' sulla montagna: si ferma fuori
+          // il giro: sul contorno del pezzo di montagna toccato, da dove la
+          // linea entra a dove esce, dalla parte piu' corta
+          const c0 = Math.floor(S[i].p[1] / C) * mc.gw + Math.floor(S[i].p[0] / C);
+          const ring = traceGrid(mc.grid, mc.gw, mc.gh, C, 0, 0, c0);
+          const A = S[i - 1].p, B = S[j].p;
+          const near = (p) => { let best = 0, bd = Infinity; ring.forEach((q, k) => { const d = dhypot(q[0] - p[0], q[1] - p[1]); if (d < bd) { bd = d; best = k; } }); return best; };
+          const ka = near(A), kb = near(B), n = ring.length;
+          const fwd = [], back = [];
+          for (let k = ka; k !== kb; k = (k + 1) % n) fwd.push(ring[k]);
+          for (let k = ka; k !== kb; k = (k - 1 + n) % n) back.push(ring[k]);
+          fwd.push(ring[kb]); back.push(ring[kb]);
+          const len = (L) => L.reduce((t, q, k) => t + (k ? dhypot(q[0] - L[k - 1][0], q[1] - L[k - 1][1]) : 0), 0);
+          pts.push(...(len(fwd) <= len(back) ? fwd : back));
+          i = j;
+        }
+        // (il contorno a celle fa gli scalini: semplificato entro 28 px, meno del
+        // margine, e niente punti a meno di 48 px, se no il fiume fa le zeta)
+        let clean = simplifyLine(pts, 28).map(([x, y]) => [Math.round(x), Math.round(y)]);
+        clean = clean.filter((q, k) => k === 0 || k === clean.length - 1 || dhypot(q[0] - clean[k - 1][0], q[1] - clean[k - 1][1]) >= 48);
+        out.push({ key, e, pts: clean.length >= 2 ? clean : null });
+      }
+    }
+    return out;
   }
 
   // gli alberi della mappa (le voci), per il pennello

@@ -5,7 +5,8 @@
 //                blu della CPU c5b, l'albero alb6 (col suo tipo: l'albero che
 //                muore lo usa); l'albero finto con alb1_F (la F dell'editor)
 //                resta uno degli otto alberi del gioco
-//   municipi   = due centri rossi (partenza e municipio) e due blu: il
+//   municipi   = due centri rossi (partenza e municipio; [§9.232] una
+//                mappa della versione 1: il centro sotto la bandierina) e due blu: il
 //                municipio rosso piu' in alto a sinistra della partenza non
 //                la sostituisce (skirmishPrepare); 600 passi con la CPU che
 //                ha due centri, senza errori
@@ -37,7 +38,8 @@ await ready();
 await page.evaluate(async () => {
   const ms = await import("/src/mapstore.js"), mf = await import("/src/mapfile.js"), su = await import("/src/skuser.js"), sk = await import("/src/skirmish.js");
   const I = (object, x, y, more = {}) => ({ object, x, y, scale_x: 1, scale_y: 1, rotation: 0, ...more });
-  const map = { ...mf.newMap({ name: "Stili" }),
+  // ([§9.232] della versione 1: sotto ogni bandierina il centro della sua parte)
+  const map = { ...mf.newMap({ name: "Stili" }), version: 1,
                 instances: [I("centro", 1500, 1500, { side: "red" }), I("centro", 4500, 4500, { side: "blue" }),
                             I("centro", 700, 700, { side: "red", hall: true }), I("centro", 5300, 900, { side: "blue", hall: true }),
                             I("casa", 1900, 1500, { side: "red", sprite: "c1s" }), I("casa", 4100, 4500, { side: "blue", sprite: "c5s" }),

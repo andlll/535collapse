@@ -209,15 +209,22 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
   if (!MM.mountains) return;
   const mw = w.roomW / sz, mh = w.roomH / sz;
   const ex = exploredCov(w, szT, fogOn), [ew] = dims(w, szT), kT = sz / szT;
+  // i riquadri dei disegni: le montagne dipinte (il trim dello sprite) e
+  // ([§9.214] quelle del generatore (la loro bbox)
+  const boxes = [];
   for (const i of w.instances) {
     if (!i.alive || !i.object.startsWith("montagna") || !i.sprite_index) continue;
     const fr = w.assets.frame(i.sprite_index, 0);
     if (!fr) continue;
     const [tx, ty, tw, th] = fr.f.trim, [sx, sy] = [i.image_xscale || 1, i.image_yscale || 1];
     const bx0 = i.x + (tx - fr.s.origin[0]) * sx, by0 = i.y + (ty - fr.s.origin[1]) * sy;
+    boxes.push([Math.min(bx0, bx0 + tw * sx), Math.min(by0, by0 + th * sy), Math.max(bx0, bx0 + tw * sx), Math.max(by0, by0 + th * sy)]);
+  }
+  for (const g of w.mountains || []) boxes.push(g.bbox);
+  for (const b of boxes) {
     // il disegno in px della minimappa, ristretto alla minimappa
-    const x0 = Math.max(0, Math.min(bx0, bx0 + tw * sx) / sz), x1 = Math.min(mw, Math.max(bx0, bx0 + tw * sx) / sz);
-    const y0 = Math.max(0, Math.min(by0, by0 + th * sy) / sz), y1 = Math.min(mh, Math.max(by0, by0 + th * sy) / sz);
+    const x0 = Math.max(0, b[0] / sz), x1 = Math.min(mw, b[2] / sz);
+    const y0 = Math.max(0, b[1] / sz), y1 = Math.min(mh, b[3] / sz);
     if (x1 - x0 < 6 || y1 - y0 < 5) continue;
     let seen = 1;
     if (ex) { // la parte scoperta del riquadro (in px della scala szT)

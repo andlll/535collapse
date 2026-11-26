@@ -236,6 +236,13 @@ const userMapOf = (i) => { const m = mapAt(i); return m && m.user && m.state ===
 const locked = (i, r) => r.kind === "opt" && CPU_ONLY.has(r.key) && !!fixedBy(userMapOf(i), r.key);
 const held = (i, r) => offline(i, r) || locked(i, r);
 const optValue = (i, key) => (CPU_ONLY.has(key) && fixedBy(userMapOf(i), key)) || i.sk[key];
+// [§9.232, richiesta dell'autore: "i giocatori possano giocare senza centro
+// citta' volendo (in quel caso l'obiettivo di distruggere il centro citta'
+// per vincere e' grayed out)"] su una mappa dell'editor senza un municipio
+// per parte la vittoria Municipio e' in grigio: si vede (scorrendo i valori)
+// ma non si gioca ("Inizia" spento, il perche' nella descrizione)
+const noTownhall = (i, key, v) => key === "victory" && v === "townhall" && (() => { const m = mapAt(i); return !!m && !!m.user && m.state === "ok" && !m.halls; })();
+const canStart = (i) => playable(mapAt(i)) && !noTownhall(i, "victory", optValue(i, "victory"));
 // le misure dello sprite di un oggetto (il disegno delle mappe senza copertina)
 const sizeOf = (w) => (o) => { const ob = w.objects[o], s = ob && ob.sprite && w.assets.sprites[ob.sprite]; return s ? [s.width, s.height] : [100, 100]; };
 // la mappa dell'editor mostrata: letta (una volta) e la sua copertina in una
@@ -332,7 +339,7 @@ export function enemyManagerMenu() {
       if (g.campagna === 0 && i.skmenu === 1) {
         const L = skLayout(W, H, i.skNet);
         L.rows.forEach((r, k) => {
-          if (r.kind === "start" && !playable(mapAt(i))) return; // una mappa non ancora fatta (§9.190: o non giocabile)
+          if (r.kind === "start" && !canStart(i)) return; // una mappa non ancora fatta (§9.190: o non giocabile)
           if (held(i, r)) return; // §9.156, §9.190
           const on = r.circle ? dhypot(mx - r.circle[0], my - r.circle[1]) < r.circle[2] : inRect(mx, my, r.x1, r.y1, r.x2, r.y2);
           if (on) i.skrow = k;
@@ -495,7 +502,7 @@ export function enemyManagerMenu() {
 
 // [Richiesta dell'autore, §9.73] la versione in basso a sinistra: 0.AANN,
 // AA l'anno e NN un progressivo, che sale di 1 a ogni nuova PR (CLAUDE.md)
-export const VERSION = "0.2617";
+export const VERSION = "0.2618";
 const LOGO_MARGIN = 40; // §9.72
 function drawTitle(i, d, W, H) {
   const b = titleButtons(W, H, i.page); // §9.157: la pagina della colonna
@@ -619,7 +626,7 @@ function drawMapCard(i, d, L, m) {
   // c'era solo qui)
   d.justify = true;
   d.setAlpha(live ? 0.8 : 0.45);
-  d.textExt(card.x1 + 24, L.descY, m.user ? userDesc(d, m, card.x2 - card.x1 - 48) : tr(m.desc), 30, card.x2 - card.x1 - 48);
+  d.textExt(card.x1 + 24, L.descY, m.user ? userDesc(d, m, card.x2 - card.x1 - 48, i) : tr(m.desc), 30, card.x2 - card.x1 - 48);
   d.justify = false;
   d.setHalign("center");
   d.setValign("middle");
@@ -627,14 +634,16 @@ function drawMapCard(i, d, L, m) {
 // [§9.190] la descrizione di una mappa dell'editor (scritta dall'autore
 // della mappa, non tradotta), tagliata all'altezza delle descrizioni delle
 // mappe del gioco (skDescH); o perche' non si gioca
-function userDesc(d, m, w) {
+function userDesc(d, m, w, i) {
   if (m.state === "bad") return tr("This map could not be opened");
   if (m.state !== "ok") return "";
   if (!m.sides) return tr("A skirmish map needs a red and a blue starting position (Insert, Setup)."); // §9.191
+  if (noTownhall(i, "victory", optValue(i, "victory"))) return tr(NO_HALL); // §9.232
   const key = skDescH + ":" + w + ":" + getLanguage();
   if (!m.fit || m.fit.key !== key) m.fit = { key, text: fitText(d, m.desc, w, skDescH) };
   return m.fit.text;
 }
+const NO_HALL = "The Town hall victory needs a town centre on each side (Insert, Buildings): choose another victory.";
 // il testo, tagliato a parole (con i puntini) per stare in `maxH` px
 function fitText(d, text, w, maxH) {
   if (!text || d.stringHeightExt(text, 30, w) <= maxH) return text;
@@ -679,7 +688,7 @@ function drawGrid(i, d, W, H, L, m) {
       return;
     }
     if (r.kind === "start") {
-      const on = playable(m);
+      const on = canStart(i); // §9.232
       d.setAlpha(!on ? 0.3 : i.skrow === k ? 0.99 : 0.69);
       d.roundrectColourExt(r.x1, r.y1, r.x2, r.y2, 50, 50, c.white, c.white, false);
       d.setFont("GUI_1");
@@ -695,6 +704,7 @@ function drawGrid(i, d, W, H, L, m) {
     // CPU sono in grigio: il riquadro piu' trasparente, niente frecce, l'icona
     // velata, le scritte tenui
     const off = held(i, r), value = optValue(i, r.key); // §9.190: o fissato dalla mappa
+    const veto = noTownhall(i, r.key, value); // §9.232: il valore in grigio (le frecce restano)
     d.setAlpha(off ? 0.3 : hov ? 0.9 : 0.69);
     d.roundrectColourExt(x1, y1, x2, y2, 40, 40, c.white, c.white, false);
     if (locked(i, r)) d.spriteExt("ico_lock", 0, x2 - 26, y1 + 26, 0.38, 0.38, 0, c.white, 0.6);
@@ -703,7 +713,7 @@ function drawGrid(i, d, W, H, L, m) {
     d.setAlpha(off ? 0.35 : 0.8);
     d.text(cx, y1 + 26, tr(SK_OPTIONS[r.key].label));
     const iy = (y1 + y2) / 2 + 2;
-    iconFade = off ? 0.3 : 1;
+    iconFade = off || veto ? 0.3 : 1;
     drawOptIcon(d, r.key, value, cx, iy, i);
     iconFade = 1;
     if (!off) {
@@ -712,7 +722,7 @@ function drawGrid(i, d, W, H, L, m) {
     }
     d.setFont("overdue");
     d.setColour(c.black);
-    d.setAlpha(off ? 0.35 : 0.8);
+    d.setAlpha(off || veto ? 0.35 : 0.8);
     d.text(cx, y2 - 24, optionLabel(r.key, value));
     if (r.key === "rain") rainOnTop();
   });

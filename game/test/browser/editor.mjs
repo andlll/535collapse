@@ -75,7 +75,7 @@ const saveIn = async ({ browser: inBrowser, file }) => {
 };
 let ok = true;
 // le schede di "Inserisci" (editmap.js CATALOG; §9.193: unita' ed edifici dopo le partenze)
-const TAB = { start: 0, units: 1, buildings: 2, resources: 3, trees: 4, meadows: 5, mountains: 6, bridges: 7, city: 8 }; // (§9.198: i ponti)
+const TAB = { start: 0, units: 1, buildings: 2, resources: 3, trees: 4, bridges: 5, city: 6 }; // (§9.198: i ponti; §9.222: senza Natura e Montagne)
 const check = (name, v) => { res[name] = v; if (!v) ok = false; };
 
 // il menu: la colonna dei pulsanti (menu.js titleButtons: alti 70, 20 fra
@@ -701,8 +701,7 @@ await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scen
 await page.mouse.move(640, 600); await page.keyboard.press("KeyS"); await page.waitForTimeout(150);
 check("Sposta: S cambia lo stile della casa", (await placed6()).some((e) => e.o === "casa" && e.sprite === "c4s" && e.side === "red"));
 await click(b6("insert").x, b6("insert").y);
-P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.tabs[TAB.meadows]));
+// (§9.222: la scheda "Natura" non c'e' piu', le foto delle macchie restano nell'atlas)
 check("Natura: le foto delle macchie nell'atlas", await page.evaluate(async () => {
   const m = await (await fetch("assets/atlas.json")).json();
   return ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba", "fiori_gialli_erba"].every((n) => m.sprites["ed_natura_" + n]);
@@ -732,14 +731,14 @@ await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await pa
 check("Ctrl+Z: fiume e alberi insieme", (await rivers6()) === r0 && (await trees6()) === t0);
 res.fiumeAlberi = [t0, t1];
 
-// [§9.205-§9.206] la nebbia in Natura: il banco, in fondo alla scheda; il
+// [§9.205-§9.206] la nebbia in Regia (§9.222; prima in Natura): il banco, in fondo alla scheda; il
 // riquadro sopra il pannello: densita' a 50% e ampiezza a 900 per quelli
 // nuovi; messo, con "Sposta" la velocita' a 120 px/s (2 px a passo);
 // Ctrl+Z la rimette
 await page.keyboard.press("Escape"); await page.waitForTimeout(100);
 await click(b6("insert").x, b6("insert").y);
 P = await page.evaluate(() => window.__editor.palette());
-await click(...mid(P.tabs[TAB.meadows]));
+await click(...mid(P.tabs[TAB.start]));
 for (let k = 0; k < 6; k++) {
   P = await page.evaluate(() => window.__editor.palette());
   if (!P.next) break;
@@ -748,7 +747,7 @@ for (let k = 0; k < 6; k++) {
 P = await page.evaluate(() => window.__editor.palette());
 await click(...mid(P.cells[P.cells.length - 1]));
 let FL = await page.evaluate(() => window.__editor.fogLayout());
-check("Natura: il banco di nebbia, col riquadro delle impostazioni", !!FL && FL.groups.map((g) => g.key).join() === "density,speed,range");
+check("Regia: il banco di nebbia, col riquadro delle impostazioni", !!FL && FL.groups.map((g) => g.key).join() === "density,speed,range");
 const fg = (key) => FL.groups.find((q) => q.key === key);
 await click(fg("density").minus[0], fg("density").minus[1]);
 await click(fg("density").minus[0], fg("density").minus[1]);

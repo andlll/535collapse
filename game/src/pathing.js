@@ -21,6 +21,7 @@
 
 import { pointDirection, lengthdirX, lengthdirY, pointDistance } from "./gm.js";
 import { riverCells, riverIn } from "./rivers.js";
+import { mountainCells, mountainIn } from "./mountains.js"; // §9.214
 import { lmStep } from "./lastmile.js";
 import { dhypot, sq } from "./dmath.js"; // §9.152
 import { baseOf, unitFam, pathEnemy } from "./multiplayer.js"; // §9.155
@@ -142,12 +143,14 @@ export class Pathing {
   // accanto sparisce un edificio (markInstance)
   riverCells() {
     if (this._river) return this._river;
-    const rc = riverCells(this.w), out = [];
+    // ([§9.214] e la sagoma delle montagne del generatore)
+    const rc = riverCells(this.w), mc = mountainCells(this.w), out = [];
     this._riverSet = new Set();
-    if (rc) {
+    if (rc || mc) {
       for (let gy = 0; gy < this.gh; gy++) {
         for (let gx = 0; gx < this.gw; gx++) {
-          if (riverIn(rc, gx * GRID, gy * GRID, gx * GRID + GRID - 1, gy * GRID + GRID - 1)) { out.push(gy * this.gw + gx); this._riverSet.add(gy * this.gw + gx); }
+          const x0 = gx * GRID, y0 = gy * GRID, x1 = x0 + GRID - 1, y1 = y0 + GRID - 1;
+          if ((rc && riverIn(rc, x0, y0, x1, y1)) || (mc && mountainIn(mc, x0, y0, x1, y1))) { out.push(gy * this.gw + gx); this._riverSet.add(gy * this.gw + gx); }
         }
       }
     }
