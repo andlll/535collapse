@@ -2088,6 +2088,61 @@
         255
       ],
       "nota": "[§9.210] il pulsante del tiro furtivo (preciso) dell'arciere della nebbia, livello 7: il mirino, disegno caricato dall'autore, bianco pieno (il pulsante lo tinge)"
+    },
+    "ico_ed_sym": {
+      "da": "ed_simmetria",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.225] icona dei riquadri dell'editor: la simmetria (la riga in fondo ai riquadri); disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
+    },
+    "ico_ed_rough": {
+      "da": "ed_asperita",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.225] icona dei riquadri dell'editor: l'asperita' della montagna; disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
+    },
+    "ico_ed_detail": {
+      "da": "ed_dettaglio",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.225] icona dei riquadri dell'editor: il dettaglio della montagna; disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
+    },
+    "ico_ed_width": {
+      "da": "ed_larghezza",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.225] icona dei riquadri dell'editor: la larghezza (pennello, gomma, polilinea, montagna); disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
+    },
+    "ico_ed_height": {
+      "da": "ed_altezza",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.225] icona dei riquadri dell'editor: l'altezza della montagna e di una cima; disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
     }
   }
 }

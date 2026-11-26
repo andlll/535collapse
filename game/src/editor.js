@@ -2554,7 +2554,25 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (mode === "diagonal") { draw.circleColour(cx, cy, 2, ink, ink, false); tri(T.map(([x, y]) => [-x, -y]), false); }
   };
   const ROUGH_PTS = [[0, 4], [6, -5], [11, 3], [16, -8], [22, 2], [27, -3], [32, 7], [38, -6], [44, 3]];
+  // [§9.225, richiesta dell'autore: "sostituire le icone che hai fatto tu con
+  // icone un po' piu' professional"] le icone dell'autore (nuovi.json:
+  // ico_ed_sym, _rough, _detail, _width, _height; bianche, tinte di scuro),
+  // in un riquadro di w x h px col centro in (cx, cy); i disegni a linee di
+  // prima restano se l'icona manca
+  const ICON_SPRITE = { sym: "ico_ed_sym", rough: "ico_ed_rough", detail: "ico_ed_detail", width: "ico_ed_width", height: "ico_ed_height" };
+  const iconSprite = (key, cx, cy, w, h, ink = DARK) => {
+    const name = ICON_SPRITE[key], fr = name && assets.sprites[name] && assets.frame(name, 0);
+    if (!fr) return false;
+    const [, , fw, fh] = fr.f.trim, k = Math.min(w / fw, h / fh);
+    drawSprite(r, assets, name, 0, cx, cy, k, k, 0, ink, 0.9);
+    return true;
+  };
   const labelIcon = (icon, x, y) => {
+    if (icon === "end") { // la larghezza finale: la freccia contro la sbarretta (l'estremita' della linea)
+      if (iconSprite("width", x + 18, y, 36, 22)) { draw.setAlpha(0.85); draw.lineWidthColour(x + 41, y - 11, x + 41, y + 11, 3, DARK, DARK); return; }
+    } else if (icon === "peak") { // la cima: la freccia in su e in giu' e il picco
+      if (iconSprite("height", x + 9, y, 18, 32) && iconSprite("detail", x + 36, y + 2, 28, 24)) return;
+    } else if (iconSprite(icon, x + 23, y, 46, 30)) return;
     if (icon === "width" || icon === "end") { widthIcon(x, y, icon === "end"); return; }
     const ink = DARK;
     draw.setAlpha(0.85);
