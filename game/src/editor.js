@@ -2543,7 +2543,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const symIcon = (mode, cx, cy, ink) => {
     // ([§9.226] i simboli dell'autore, se ci sono)
     const name = "ico_ed_sym_" + mode, fr = assets.sprites[name] && assets.frame(name, 0);
-    if (fr) { const [, , fw, fh] = fr.f.trim, k = Math.min(40 / fw, 24 / fh); drawSprite(r, assets, name, 0, cx, cy, k, k, 0, ink, 0.95); return; }
+    if (fr) { const k = 30 / Math.max(fr.s.width || 64, fr.s.height || 64); drawSprite(r, assets, name, 0, cx, cy, k, k, 0, ink, 0.95); return; } // (la tela intera: 30 px)
     draw.rectangleColour(cx - 22, cy - 12, cx + 22, cy + 12, ink, ink, ink, ink, true);
     const tri = (pts, full) => {
       if (full) { draw.triangleColour(cx + pts[0][0], cy + pts[0][1], cx + pts[1][0], cy + pts[1][1], cx + pts[2][0], cy + pts[2][1], ink, ink, ink, false); return; }

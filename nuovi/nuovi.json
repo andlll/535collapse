@@ -2146,47 +2146,62 @@
     },
     "ico_ed_sym_none": {
       "da": "ed_sim_spenta",
-      "alto": 64,
       "gruppo": "gui",
       "colore": [
         255,
         255,
         255
       ],
-      "nota": "[§9.226] la modalita' della simmetria (none) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+      "nota": "[§9.226] la modalita' della simmetria (none) nelle pillole dei riquadri dell'editor: simbolo dell'autore (96 x 96, portato a 256), bianco (l'editor lo tinge); intero, senza ritaglio: i quattro della stessa misura",
+      "lato": 64,
+      "intero": true
     },
     "ico_ed_sym_diagonal": {
       "da": "ed_sim_diagonale",
-      "alto": 64,
       "gruppo": "gui",
       "colore": [
         255,
         255,
         255
       ],
-      "nota": "[§9.226] la modalita' della simmetria (diagonal) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+      "nota": "[§9.226] la modalita' della simmetria (diagonal) nelle pillole dei riquadri dell'editor: simbolo dell'autore (96 x 96, portato a 256), bianco (l'editor lo tinge); intero, senza ritaglio: i quattro della stessa misura",
+      "lato": 64,
+      "intero": true
     },
     "ico_ed_sym_horizontal": {
       "da": "ed_sim_orizzontale",
-      "alto": 64,
       "gruppo": "gui",
       "colore": [
         255,
         255,
         255
       ],
-      "nota": "[§9.226] la modalita' della simmetria (horizontal) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+      "nota": "[§9.226] la modalita' della simmetria (horizontal) nelle pillole dei riquadri dell'editor: simbolo dell'autore (96 x 96, portato a 256), bianco (l'editor lo tinge); intero, senza ritaglio: i quattro della stessa misura",
+      "lato": 64,
+      "intero": true
     },
     "ico_ed_sym_vertical": {
       "da": "ed_sim_verticale",
-      "alto": 64,
       "gruppo": "gui",
       "colore": [
         255,
         255,
         255
       ],
-      "nota": "[§9.226] la modalita' della simmetria (vertical) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+      "nota": "[§9.226] la modalita' della simmetria (vertical) nelle pillole dei riquadri dell'editor: simbolo dell'autore (96 x 96, portato a 256), bianco (l'editor lo tinge); intero, senza ritaglio: i quattro della stessa misura",
+      "lato": 64,
+      "intero": true
+    },
+    "ico_ed_mountain": {
+      "da": "ed_montagna",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.226] icona della colonna dell'editor di mappe (mountain, lo strumento montagna): disegno caricato dall'autore (ripulito e ritagliato a 256 px), bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
     }
   }
 }

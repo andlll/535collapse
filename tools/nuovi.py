@@ -266,11 +266,15 @@ def derived():
     "derivati"): uno sprite nuovo rimpicciolito a `lato` px di larghezza,
     ritagliato sull'alpha, con l'origine al centro. [§9.108] Con `alto` al
     posto di `lato` si fissa l'altezza; con `colore` [r, g, b] il disegno
-    prende quel colore pieno (l'alpha resta), come le icone dell'originale."""
+    prende quel colore pieno (l'alpha resta), come le icone dell'originale.
+    [§9.226] Con `intero` senza ritaglio (la tela intera)."""
     out = []
     for name, d in load().get("derivati", {}).items():
         im = image(d["da"])
-        im = im.crop(im.getchannel("A").getbbox())
+        # ([§9.226] `intero`: senza ritaglio, per disegni della stessa tela
+        # che devono restare della stessa misura fra loro)
+        if not d.get("intero"):
+            im = im.crop(im.getchannel("A").getbbox())
         if d.get("alto"):
             h = d["alto"]
             im = im.resize((max(1, round(im.width * h / im.height)), h), Image.LANCZOS)

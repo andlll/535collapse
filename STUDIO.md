@@ -15270,13 +15270,17 @@ sono i nuovi simboli per gli stili di simmetria" (quattro disegni: un
 triangolo pieno e, dove va la gemella, il suo specchio vuoto, con l'asse a
 tratti o il punto al centro).
 
-- Le immagini erano solo nel messaggio, non fra i file della sessione:
-  ridisegnate uguali (Pillow, a 1000 px e poi 256: triangoli con gli angoli
-  arrotondati, l'asse a cinque tratti, il punto della diagonale) in
-  nuovi/sprites/ed_sim_spenta, _diagonale, _orizzontale, _verticale; in
-  nuovi.json ico_ed_sym_none, _diagonal, _horizontal, _vertical (64 px di
-  altezza, bianchi). L'autore: "finisci e te le giro dopo": quando arrivano
-  i file si sostituiscono i quattro PNG (e si rifa' tools/05_atlas.py).
+- Prima le immagini erano arrivate solo nel messaggio: ridisegnate uguali;
+  poi l'autore le ha mandate come file (96 x 96, nere su trasparente), e
+  sono quelle: nuovi/sprites/ed_sim_spenta, _diagonale, _orizzontale,
+  _verticale (portate a 256), in nuovi.json ico_ed_sym_none, _diagonal,
+  _horizontal, _vertical, bianche, **intere** (tools/nuovi.py `intero`:
+  senza il ritaglio sul disegno, se no la "spenta", un triangolo solo,
+  veniva piu' grande delle altre); nella pillola a 30 px la tela.
+- **L'icona dello strumento montagna** (la colonna), dell'autore:
+  nuovi/sprites/ed_montagna (ripulita e ritagliata a 256), ico_ed_mountain
+  (l'editor usa da solo le icone ico_ed_<strumento>, §9.198), al posto del
+  mio disegno a linee.
 - Nelle pillole della simmetria (editor.js symIcon) al posto dei miei
   schemi di §9.222, che restano solo se un simbolo mancasse; scuri, bianchi
   sulla modalita' scelta; il nome nel suggerimento.
