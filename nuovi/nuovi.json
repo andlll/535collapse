@@ -2143,6 +2143,50 @@
         255
       ],
       "nota": "[§9.225] icona dei riquadri dell'editor: l'altezza della montagna e di una cima; disegno caricato dall'autore (nero, ripulito dai pixel quasi trasparenti e ritagliato a 256 px), bianco pieno (l'editor la tinge)"
+    },
+    "ico_ed_sym_none": {
+      "da": "ed_sim_spenta",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.226] la modalita' della simmetria (none) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+    },
+    "ico_ed_sym_diagonal": {
+      "da": "ed_sim_diagonale",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.226] la modalita' della simmetria (diagonal) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+    },
+    "ico_ed_sym_horizontal": {
+      "da": "ed_sim_orizzontale",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.226] la modalita' della simmetria (horizontal) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
+    },
+    "ico_ed_sym_vertical": {
+      "da": "ed_sim_verticale",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.226] la modalita' della simmetria (vertical) nelle pillole dei riquadri dell'editor: i simboli dell'autore, ridisegnati uguali a 256 px (le immagini erano arrivate solo nel messaggio), bianchi (l'editor li tinge)"
     }
   }
 }
