@@ -15287,3 +15287,28 @@ tratti o il punto al centro).
 
 Prove: la foto della riga della simmetria; editor.mjs, mountains.mjs,
 meadows.mjs passano.
+
+### 9.227 Le statue con quattro stili; il dado degli stili in Inserisci
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "correzione da
+fare sulla scheda citta': anche la statua sono quattro stili dello stesso
+oggetto. Mettiamo un tasto col dado per gli oggetti con stili: se attivo a
+ogni inserimento lo stile cambia a caso, altrimenti rimane quello gia'
+selezionato".
+
+- **Le statue** (o_statua1-4) in "Citta'" sono una casella sola con quattro
+  stili (una famiglia, come le case della citta', §9.183): S li cambia, e
+  con "Sposta" S cambia quello di una statua gia' messa.
+- **Il dado** (editor.js diceLayout): in "Inserisci", in fondo alla riga
+  della simmetria, una pillola col dado (scura se acceso; il suggerimento
+  "Stile a caso: acceso / spento"). Acceso, dopo ogni inserimento lo stile
+  della casella scelta passa a un altro a caso (mai lo stesso di prima): il
+  fantasma mostra gia' il prossimo. Spento, resta quello scelto. Vale per
+  ogni oggetto con piu' stili (alberi, case, statue, la casa delle due
+  parti), non per le mura (i loro "stili" sono i due versi).
+- Le pillole della simmetria si stringono (fino a 90 px) se a destra non
+  c'e' posto per il dado (schermi stretti).
+
+Prove: game/test/browser/edinsert.mjs (nuova, anche nella CI): le statue
+una casella con quattro stili; col dado spento tre statue dello stesso
+stile; col dado acceso sei statue, mai due di fila uguali.

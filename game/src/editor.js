@@ -234,6 +234,7 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
                              "Trees removed from the river: {n}", // §9.204
+                             "Random style: on", "Random style: off", // §9.227
                              "Bouquet", "Particles every 100 x 100 px", ...Object.values(MEADOW_LABEL), "Choose at least one kind of particle.", // §9.216
                              "Too much grass on this map: erase some first.",
                              ...MTN_TEXTS, // §9.214
@@ -608,8 +609,16 @@ export function segDist(px, py, a, b) {
 // strumenti (Sposta, Inserisci, Pennello), non della mappa: una riga in fondo
 // al loro riquadro, "Simmetria" e le quattro modalita'
 export const SYM_TOOLS = new Set(["select", "insert", "brush", "line", "erase", "mountain"]); // §9.187: anche la polilinea; §9.194: la gomma; §9.214: la montagna
+// [§9.227, richiesta dell'autore] "Inserisci": il dado degli stili, in fondo
+// alla riga della simmetria: acceso, ogni oggetto con piu' stili si
+// inserisce con uno stile a caso
+export function diceLayout(panel) {
+  const [, y1, x2] = panel, y = y1 + 168;
+  return [x2 - 24 - 70, y, x2 - 24, y + 32];
+}
 export function symLayout(panel) {
-  const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
+  // ([§9.227] piu' strette se a destra non c'e' posto per il dado)
+  const [x1, y1, x2] = panel, y = y1 + 168, gap = 8, left = x1 + 190, w = Math.max(90, Math.min(150, Math.floor((x2 - 24 - 70 - 16 - left - 3 * gap) / 4)));
   return { label: [x1 + 30, y + 16], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 32 })) }; // (§9.222: 32, prima 26: lo schema al posto del nome)
 }
 
@@ -669,6 +678,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.214] la montagna: i parametri delle nuove (indici di MOUNTAIN_STEPS), quella
                // che si disegna ({ step: "crest" | "base", crest, base, seed, edit }), la scelta
                // ({ e }), il punto trascinato, le forme gia' fatte (l'anteprima)
+               dice: false, // [§9.227] Inserisci: lo stile a caso a ogni inserimento
                mtn: { height: 4, width: 4, rough: 2, detail: 2 }, mdraw: null, msel: null, mdrag: null, mcache: new Map() };
   const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
@@ -827,6 +837,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (!list.length) return;
     if (!canStart(list)) { toast(tr(ONE_START), "warning"); return; }
     scene.add(list);
+    // [§9.227] col dado lo stile dopo a caso (uno diverso; non le mura: i
+    // loro stili sono i due versi)
+    const it = pickedItem();
+    if (ed.dice && it && it.styles.length > 1 && !it.key.startsWith("wall")) {
+      const { cat, i } = ed.pick, n = it.styles.length;
+      ed.style[cat][i] = (ed.style[cat][i] + 1 + Math.floor(vrand() * (n - 1))) % n;
+    }
   };
   // [§9.183] S (Maiusc+S all'indietro): lo stile dopo della casella scelta
   // ("Inserisci") o delle voci scelte ("Sposta", con annulla)
@@ -1709,6 +1726,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     // [§9.186] la riga della simmetria (Sposta, Inserisci, Pennello)
     ed.symHover = null;
+    // [§9.227] il dado degli stili di "Inserisci"
+    ed.diceHover = ed.tool === "insert" && hit && hit.kind === "ui" && inRect(mx, my, diceLayout(L.panel));
+    if (ed.diceHover) { if (input.mouseReleased[0]) ed.dice = !ed.dice; return; }
     if (SYM_TOOLS.has(ed.tool) && hit && hit.kind === "ui") {
       const o = symLayout(L.panel).opts.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
       if (o) {
@@ -2341,6 +2361,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const q = symLayout(L.panel).opts.find((o) => o.mode === ed.symHover);
       if (q) tooltip(q.x1, q.y1 - 26, tr(SYM_NAMES[q.mode]));
     }
+    if (!ed.open && !ed.confirm && !ed.dom && ed.diceHover) { const D = diceLayout(L.panel); tooltip(D[0] - 60, D[1] - 26, tr(ed.dice ? "Random style: on" : "Random style: off")); } // §9.227
     if (!ed.open && !ed.confirm && !ed.dom && ed.tool === "mountain" && (ed.palHover === "seed" || ed.palHover === "auto")) {
       const R = mountainLayout(L.panel)[ed.palHover];
       tooltip(R[0], R[1] - 26, tr(ed.palHover === "seed" ? "New variant" : "Automatic base"));
@@ -2414,6 +2435,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(0.3);
     draw.lineWidthColour(x1 + 20, y1 + 54, x2 - 20, y1 + 54, 2, c.black, c.black);
     if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
+    if (ed.tool === "insert") { // [§9.227] il dado: scuro se acceso
+      const D = diceLayout(panel), on = ed.dice;
+      draw.setAlpha(on ? 0.85 : ed.diceHover ? 0.9 : 0.45);
+      draw.roundrectColourExt(D[0], D[1], D[2], D[3], 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
+      draw.setAlpha(1);
+      buttonIcon("seed", (D[0] + D[2]) / 2, (D[1] + D[3]) / 2, on ? c.white : DARK);
+    }
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
     if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, WIDTH_ICON, BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
@@ -2872,6 +2900,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render,
                       mountainLayout: () => mountainLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), // §9.214
+                      diceLayout: () => diceLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), pickedItem, // §9.227
+                      catalogKeys: () => CATALOG.map((k) => k.key), itemKey: (cat, i) => ITEMS[cat][i].key,
                       meadowLayout: () => meadowLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), // §9.216
                       // [§9.206] il riquadro della nebbia (null se non c'e')
                       fogLayout: () => { const F = fogTarget(); return F ? fogLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel, F.object) : null; } };

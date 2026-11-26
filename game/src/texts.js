@@ -1600,6 +1600,9 @@ export const TEXTS = {
   "Yellow flowers": { it: "Fiori gialli", es: "Flores amarillas", pt: "Flores amarelas", de: "Gelbe Blumen", fr: "Fleurs jaunes" },
   "Choose at least one kind of particle.": { it: "Scegli almeno un tipo di particella.", es: "Elige al menos un tipo de partícula.", pt: "Escolha pelo menos um tipo de partícula.", de: "Wähle mindestens eine Partikelart.", fr: "Choisis au moins un type de particule." },
   "Too much grass on this map: erase some first.": { it: "Troppa erba su questa mappa: prima cancellane un po'.", es: "Demasiada hierba en este mapa: borra un poco antes.", pt: "Erva demais neste mapa: apague um pouco antes.", de: "Zu viel Gras auf dieser Karte: lösche zuerst etwas.", fr: "Trop d'herbe sur cette carte : efface-en d'abord un peu." },
+  // [§9.227] il dado degli stili di "Inserisci"
+  "Random style: on": { it: "Stile a caso: acceso", es: "Estilo al azar: activado", pt: "Estilo aleatório: ligado", de: "Zufälliger Stil: an", fr: "Style au hasard : activé" },
+  "Random style: off": { it: "Stile a caso: spento", es: "Estilo al azar: desactivado", pt: "Estilo aleatório: desligado", de: "Zufälliger Stil: aus", fr: "Style au hasard : désactivé" },
   // [§9.215] l'altezza di una cima sola
   "Peak height": { it: "Altezza cima", es: "Altura cima", pt: "Altura do pico", de: "Gipfelhöhe", fr: "Hauteur du sommet" },
   "This peak would go off the map.": { it: "Questa cima uscirebbe dalla mappa.", es: "Esta cima saldría del mapa.", pt: "Este pico sairia do mapa.", de: "Dieser Gipfel würde die Karte verlassen.", fr: "Ce sommet sortirait de la carte." },

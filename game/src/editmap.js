@@ -72,7 +72,9 @@ export const CATALOG = [
   { key: "bridges", label: "Bridges", objects: [...PAINTED_BRIDGES] },
   { key: "city", label: "City",
     objects: [{ family: "house", objects: HOUSES }, "ocr_basilica", "ocr_teatro", "ocr_tempio",
-              "o_colonna", "o_fontana", "o_statua1", "o_statua2", "o_statua3", "o_statua4", "prato1"] }, // (§9.222: l'aiuola)
+              // ([§9.227, segnalazione dell'autore] le quattro statue: un oggetto con quattro stili)
+              "o_colonna", "o_fontana", { family: "statue", objects: ["o_statua1", "o_statua2", "o_statua3", "o_statua4"] },
+              "prato1"] }, // (§9.222: l'aiuola)
 ];
 export const OLD_OBJECTS = ["burst_erba1", "burst_grano1", "chiazzaparticellare", "fiori_prato", "fiori_papaveri", "fiori_papaveri_erba",
                             "fiori_gialli_erba", "graa11", "graa12", "graa13", "graa14", "graa15", "erba_1", "fiorame1", "chiazza01",
