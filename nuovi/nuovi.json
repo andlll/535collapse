@@ -2278,6 +2278,17 @@
       "contenuto": 56,
       "sostituisce": true,
       "nota": "[§9.229] l'icona dell'edificio (casa) disegnata dall'autore al posto di quella del progetto: nera al 70% come le icone dell'originale, il disegno a 56 px di lato al centro della tela 63 x 65 dell'originale (pulsanti di costruzione, pannelli; la sagoma della minimappa mm_casa viene da qui)"
+    },
+    "ico_ed_autobase": {
+      "da": "ed_base_auto",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.230] \"Base automatica\" della montagna nell'editor: disegno caricato dall'autore (la cresta, la base a tratti, il fulmine; ripulito e ritagliato a 256 px), bianco (l'editor lo tinge)"
     }
   }
 }

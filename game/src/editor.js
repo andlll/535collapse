@@ -2559,6 +2559,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       for (const [dx, dy] of [[-5, -5], [0, 0], [5, 5]]) draw.circleColour(cx + dx, cy + dy, 2.4, ink, ink, false);
       return;
     }
+    if (iconSprite("autobase", cx, cy, 44, 28, ink)) return; // §9.230: l'icona dell'autore
     const R = [[-16, 2], [-12, -7], [-3, -10], [6, -8], [13, -3], [14, 5], [7, 10], [-4, 9], [-12, 8]];
     for (let k = 0; k < R.length; k++) {
       const a = R[k], b = R[(k + 1) % R.length], mx2 = (a[0] + b[0]) / 2, my2 = (a[1] + b[1]) / 2;
@@ -2592,7 +2593,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // in un riquadro di w x h px col centro in (cx, cy); i disegni a linee di
   // prima restano se l'icona manca
   const ICON_SPRITE = { sym: "ico_ed_sym", rough: "ico_ed_rough", detail: "ico_ed_detail", width: "ico_ed_width", height: "ico_ed_height",
-                        density: "ico_ed_density", dice: "ico_ed_dice" }; // (§9.228: la densita' e il dado)
+                        density: "ico_ed_density", dice: "ico_ed_dice", autobase: "ico_ed_autobase" }; // (§9.228: la densita' e il dado; §9.230: la base automatica)
   const iconSprite = (key, cx, cy, w, h, ink = DARK) => {
     const name = ICON_SPRITE[key], fr = name && assets.sprites[name] && assets.frame(name, 0);
     if (!fr) return false;

@@ -15361,3 +15361,15 @@ mm_castello 32 x 23); la foto dei pulsanti di costruzione in partita (casa,
 magazzino, castello nei loro cerchi, in linea con le altre icone);
 hover.mjs (misura i pixel sotto le icone di casa e magazzino) passa, e
 editor.mjs, edinsert.mjs, meadows.mjs, mountains.mjs; i test unitari (166).
+
+### 9.230 L'icona della base automatica dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con un
+disegno: "questa invece e' la nuova icona per la base automatica montagna
+dell'editor" (la cresta, la base a tratti, un fulmine).
+
+- nuovi/sprites/ed_base_auto (ripulita e ritagliata a 256 px), in
+  nuovi.json ico_ed_autobase (64 px, bianca); nel pulsante "Base
+  automatica" del riquadro della montagna (editor.js buttonIcon "auto") al
+  posto del mio contorno a tratti con la scintilla, che resta solo se
+  l'icona mancasse.
