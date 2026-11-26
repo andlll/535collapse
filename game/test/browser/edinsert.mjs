@@ -52,7 +52,7 @@ const D = await E(() => window.__editor.diceLayout());
 await page.mouse.move((D[0] + D[2]) / 2, (D[1] + D[3]) / 2); await settle(); await page.mouse.click((D[0] + D[2]) / 2, (D[1] + D[3]) / 2); await settle();
 check("il dado acceso", await E(() => window.__editor.ed.dice));
 await page.screenshot({ path: join(SHOTS, "dado.png"), clip: { x: D[0] - 300, y: D[1] - 60, width: D[2] - D[0] + 320, height: 110 } });
-for (let k = 0; k < 6; k++) { const [sx, sy] = await toScreen([1100 + k * 250, 1400]); await page.mouse.click(sx, sy); await settle(); }
+for (let k = 0; k < 6; k++) { const [sx, sy] = await toScreen([900 + k * 180, 1250]); await page.mouse.click(sx, sy); await settle(); }
 const on = (await statues()).slice(3);
 check("dado acceso: lo stile cambia a ogni inserimento", on.length === 6 && on.every((o, k) => k === 0 || o !== on[k - 1]), on.join());
 check("nessun errore nella pagina", !errs.length, errs.join(" | "));

@@ -15276,7 +15276,7 @@ tratti o il punto al centro).
   _verticale (portate a 256), in nuovi.json ico_ed_sym_none, _diagonal,
   _horizontal, _vertical, bianche, **intere** (tools/nuovi.py `intero`:
   senza il ritaglio sul disegno, se no la "spenta", un triangolo solo,
-  veniva piu' grande delle altre); nella pillola a 30 px la tela.
+  veniva piu' grande delle altre); nella pillola a 36 px la tela.
 - **L'icona dello strumento montagna** (la colonna), dell'autore:
   nuovi/sprites/ed_montagna (ripulita e ritagliata a 256), ico_ed_mountain
   (l'editor usa da solo le icone ico_ed_<strumento>, §9.198), al posto del
