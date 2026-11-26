@@ -18,6 +18,7 @@ import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
 import { mountainGeometry, mountainCells, mountainIn, rasterize, traceGrid, simplifyLine, insidePoly as pointInPoly, MOUNTAIN_CELL } from "./mountains.js"; // §9.214
+import { meadowFlat } from "./meadows.js"; // §9.224
 import { bgrToRGB } from "./gl.js";
 import { dcos, dsin, dhypot, datan2 } from "./dmath.js";
 import { makeColourRgb } from "./colours.js";
@@ -439,9 +440,11 @@ export class EditScene {
     for (const m of this.map.meadows || []) {
       const key = JSON.stringify(m), was = old.get(m);
       if (was && was.key === key && !all) { now.set(m, was); old.delete(m); continue; }
-      now.set(m, { key, rows: meadowCreate(w, m, blocked) });
+      now.set(m, { key, rows: meadowCreate(w, m, blocked), flat: meadowFlat(m, blocked) });
     }
     for (const [, v] of old) for (const s of v.rows) P.systemDestroy(s);
+    // [§9.224] gli sprite a terra, cotti nel suolo (che si rifa')
+    w.meadowFlat = [...now.values()].flatMap((v) => v.flat);
     this.meadowRows = now;
   }
 
@@ -467,7 +470,7 @@ export class EditScene {
       if (k === "meadows!") this._meadows(true); else this._features(k);
     }
     if (keys.has("rivers") || keys.has("mountains")) this._clipDecors(); // §9.217
-    if ([...keys].some((k) => !k.startsWith("meadows")) || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
+    if (keys.size || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
     this.version++;
   }
 

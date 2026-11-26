@@ -104,6 +104,20 @@ export class GroundCache {
     const feats = [...(w.roads || []).map((g) => ["strada", g]), ...(w.rivers || []).map((g) => ["fiume", g]),
                    ...(w.bridges || []).map((g) => ["ponte", g]),
                    ...(w.mountains || []).map((g) => ["montagna", g])]; // §9.214: sopra a tutto
+    // [§9.224] gli sprite a terra delle chiazze del bouquet (meadows.js
+    // meadowFlat): dopo le macchie, prima degli sprite del suolo
+    this.flatChunks = new Map();
+    this.flatList = w.meadowFlat || [];
+    for (const f of this.flatList) {
+      const rad = 80 * f.s;
+      for (let cy = Math.floor((f.y - rad) / CH); cy <= Math.floor((f.y + rad) / CH); cy++) {
+        for (let cx = Math.floor((f.x - rad) / CH); cx <= Math.floor((f.x + rad) / CH); cx++) {
+          const k = cx + "," + cy;
+          if (!this.flatChunks.has(k)) this.flatChunks.set(k, []);
+          this.flatChunks.get(k).push(f);
+        }
+      }
+    }
     // [§9.99] le macchie, a parte: si cuociono prima degli sprite del suolo
     this.patchChunks = new Map();
     this.patchList = w.patches || []; // §9.181: l'ordine, per i blocchi dei livelli piu' lontani
@@ -153,6 +167,9 @@ export class GroundCache {
     for (const g of this._gather(this.patchChunks, cx, cy, L, inList(this.patchList))) { // §9.99
       const tex = this.assets.bg.get(g.bg);
       if (tex) drawPatch(r, g, tex);
+    }
+    for (const f of this._gather(this.flatChunks, cx, cy, L, inList(this.flatList))) { // §9.224
+      drawSprite(r, this.assets, f.name, 0, f.x, f.y, f.s, f.s, f.a, 0xffffff, 1);
     }
     for (const i of this._gather(this.byChunk, cx, cy, L, byId)) {
       drawSprite(r, this.assets, i.sprite_index, i.image_index, i.x, i.y, i.image_xscale,

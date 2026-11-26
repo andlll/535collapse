@@ -13,7 +13,7 @@ import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 import { baseOf } from "./multiplayer.js"; // §9.167
 import { audio } from "./audio.js"; // §9.170
-import { meadowPoints } from "./meadows.js"; // §9.216
+import { meadowPoints, FLAT_KEYS } from "./meadows.js"; // §9.216, §9.224
 
 const P = (w) => w.particles;
 
@@ -636,7 +636,9 @@ export function clipDecor(w, i, blocked, keep = false) {
 export function meadowCreate(w, m, blocked) {
   const ps = P(w).systemCreate(-1, "grass"), pts = meadowPoints(m, blocked);
   let k = 0;
-  for (const [key, x, y] of pts) { const L = MEADOW_PARTS[key]; P(w).create(ps, x, y, L[k++ % L.length], 1); }
+  // ([§9.224] le particelle che ondeggiano; foglie, fiori rosa e foglioline
+  // sono cotte nel suolo: meadows.js meadowFlat)
+  for (const [key, x, y] of pts) { if (FLAT_KEYS.has(key)) continue; const L = MEADOW_PARTS[key]; P(w).create(ps, x, y, L[k++ % L.length], 1); }
   return P(w).bands(ps, DECOR_BAND);
 }
 // i semiassi dell'ellisse di una macchia (§9.203: le foto della tavolozza

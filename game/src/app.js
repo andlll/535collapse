@@ -64,6 +64,7 @@ import { toggleFullscreen } from "./fullscreen.js";
 import { loadDomFont, setDomText } from "./domtext.js";
 import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
+import { meadowFlat } from "./meadows.js"; // §9.224
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
 const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor", "custom"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180; custom: §9.188
@@ -319,8 +320,12 @@ async function main() {
   // sull'acqua ne' sulle montagne). Dopo le istanze della room (l'acqua sotto
   // i ponti dipinti dipende da loro: riverCells); in un salvataggio ci sono
   // gia' (i sistemi di particelle si salvano)
-  const useMeadows = () => {
+  // ([§9.224] e i loro sprite a terra, cotti nel suolo: anche dopo un
+  // salvataggio, che non li ha: flatOnly)
+  const useMeadows = (flatOnly = false) => {
     const blocked = (x, y) => world.inTerrain(x, y, x, y);
+    world.meadowFlat = (world.meadowList || []).flatMap((m) => meadowFlat(m, blocked));
+    if (flatOnly) return;
     for (const rows of world.meadowRows || []) for (const s of rows) world.particles.systemDestroy(s);
     world.meadowRows = (world.meadowList || []).map((m) => meadowCreate(world, m, blocked));
     // [§9.217] e le macchie di "Natura": tagliate da fiumi e montagne
@@ -542,6 +547,7 @@ async function main() {
   }
   if (saved) {
     restoreGame(saved, { world, g, manager, path, fog, cam });
+    useMeadows(true); // §9.224: gli sprite a terra delle chiazze
     g.unlock = Math.max(g.unlock || 1, loadUnlock()); // lo sblocco non torna indietro
   } else {
     world.loadRoom(instances, () => path.initCost());

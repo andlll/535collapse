@@ -112,6 +112,29 @@ export function meadowPoints(m, blocked = null) {
   return out;
 }
 
+// [§9.224, richiesta dell'autore: "queste verdi e i fiori viola vanno a terra
+// e secondo me possiamo anche cucinarle col terreno per risparmiare gpu"]
+// Foglie, fiori rosa e foglioline stanno a terra e sono ferme: non
+// particelle ma sprite cotti nel suolo (ground.js), come texture e fiumi: a
+// ogni fotogramma non costano nulla. meadowFlat: [{ name, x, y, s, a }] (lo
+// sprite, il punto, la scala, l'angolo in gradi), sempre uguali per lo
+// stesso seme.
+export const FLAT_KEYS = new Set(["leaves", "pink", "clover"]);
+const FLAT = {
+  leaves: { sprites: ["erba1"], size: [0.45, 0.75], rot: 25 },
+  pink: { sprites: ["fiori1"], size: [0.55, 0.85], rot: 20 },
+  clover: { sprites: ["fogliolina1", "fogliolina2", "fogliolina3", "fogliolina4", "fogliolina5", "fogliolina6"], size: [0.8, 1.3], rot: 180 },
+};
+export function meadowFlat(m, blocked = null) {
+  const R = rng((or(m.seed, 1) ^ 0x5bd1e995) >>> 0), out = [];
+  for (const [k, x, y] of meadowPoints(m, blocked)) {
+    const f = FLAT[k];
+    if (!f) continue;
+    out.push({ name: f.sprites[Math.floor(R() * f.sprites.length)], x, y, s: f.size[0] + R() * (f.size[1] - f.size[0]), a: (R() * 2 - 1) * f.rot });
+  }
+  return out;
+}
+
 // [§9.216] una voce della mappa (mapfile.js validateMap): la copia pulita, o
 // null. inPt(q): il punto sta nei limiti della mappa.
 export function cleanMeadow(f, inPt) {

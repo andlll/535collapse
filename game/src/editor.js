@@ -1512,7 +1512,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // una copia del tipo di particella con la sua trasparenza, piu' bassa per
   // le particelle a 0)
   const uiParts = new Particles(), TUFT = { dark: 6, mid: 6, light: 6, blades: 7, wheat: 5, poppy: 3, yellow: 3, leaves: 2, pink: 2, clover: 3 };
-  const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1, leaves: 0.45, pink: 0.6, clover: 0.9 }; // (§9.223: foglie, fiori rosa, foglioline)
+  const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1, leaves: 0.6, pink: 1.05, clover: 0.95 }; // (§9.223: foglie, fiori rosa, foglioline)
+  // ([§9.224] foglie, fiori rosa e foglioline non hanno l'origine al piede: il
+  // ciuffo spostato perche' stia nel suo posto)
+  const TUFT_OFF = { leaves: [0, -12], pink: [-26, -34], clover: [0, -14] };
   let tufts = null;
   const makeTufts = () => {
     tufts = {};
@@ -1525,7 +1528,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         uiParts.create(ps, 0, 0, L[j % L.length], 1);
         const q = ps.parts[ps.parts.length - 1];
         q.size *= TUFT_K[k];
-        q.dx = (j - (n - 1) / 2) * gap + (vrand() - 0.5) * 4; q.dy = (j % 2) * 4;
+        const off = TUFT_OFF[k] || [0, 0];
+        q.dx = (j - (n - 1) / 2) * gap + (vrand() - 0.5) * 4 + off[0]; q.dy = (j % 2) * 4 + off[1];
       }
       ps.parts.sort((a, b) => a.dy - b.dy); // (quelle piu' in basso davanti)
       tufts[k] = ps;

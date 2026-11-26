@@ -15205,3 +15205,33 @@ e' in "Citta'" (§9.222).
 Prove: mountains.test.mjs (le dieci particelle); meadows.mjs (in piu': un
 bouquet di foglie, fiori rosa e foglioline, con le loro particelle e i loro
 sprite nell'atlas).
+
+### 9.224 Foglie, fiori rosa e foglioline cotti nel suolo
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), sulle tre
+particelle nuove del bouquet (§9.223): "queste verdi e i fiori viola pero'
+vanno a terra e secondo me possiamo anche cucinarle col terreno per
+risparmiare gpu".
+
+- Foglie, fiori rosa e foglioline stanno a terra e sono ferme: non sono
+  piu' particelle (disegnate una per una a ogni fotogramma, a fasce di
+  depth) ma sprite cotti nel suolo (ground.js), come texture e fiumi: a ogni
+  fotogramma non costano nulla. meadows.js meadowFlat: per ogni chiazza gli
+  sprite (lo sprite, il punto, la scala, l'angolo), dagli stessi punti di
+  prima (meadowPoints: niente sull'acqua ne' sulle montagne) e sempre uguali
+  per lo stesso seme; si cuociono dopo le macchie di texture e prima degli
+  sprite del suolo.
+- Le particelle vere restano per quelle che ondeggiano e fra cui le unita'
+  restano immerse: i tre verdi dell'erba, i fili, le spighe, i papaveri, i
+  fiori gialli.
+- Nel gioco gli sprite a terra si rifanno anche caricando un salvataggio
+  (i salvataggi hanno le particelle, non il suolo: app.js useMeadows con
+  flatOnly); nell'editor una pennellata rifa' il suolo.
+- Nel selettore i ciuffi di foglie, fiori rosa e foglioline sono un po'
+  piu' grandi e spostati al loro posto (quei disegni non hanno l'origine al
+  piede come gli steli).
+
+Prove: meadows.mjs (in piu': il bouquet di foglie, fiori e foglioline ha
+zero particelle e 433 sprite a terra; nel gioco gli sprite a terra ci sono);
+editor.mjs, mountains.mjs passano; i test unitari (166). La foto:
+build/prova_montagne/bouquet_natura.png.

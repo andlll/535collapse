@@ -119,11 +119,15 @@ for (let k = 1; k <= 10; k++) { await page.mouse.move(lx + k * 50, ly + k * 6); 
 await page.mouse.up(); await settle(400);
 const natura = await E(() => {
   const s = window.__editor.scene, m = s.map.meadows[s.map.meadows.length - 1];
-  const parts = [...s.meadowRows.get(m).rows].flatMap((r) => r.parts), by = {};
-  for (const q of parts) by[q.t.sprite] = (by[q.t.sprite] || 0) + 1;
-  return { mix: m.mix, by, tex: ["erba1", "fiori1", "fogliolina1", "fogliolina6"].every((n) => !!window.__editor.scene.assets.frame(n, 0)) };
+  // ([§9.224] cotte nel suolo: sprite a terra, non particelle)
+  const v = s.meadowRows.get(m), parts = v.rows.flatMap((r) => r.parts).length, by = {};
+  for (const f of v.flat) by[f.name.replace(/[0-9]$/, "")] = (by[f.name.replace(/[0-9]$/, "")] || 0) + 1;
+  const inGround = (s.world.meadowFlat || []).length;
+  return { mix: m.mix, by, parts, inGround, tex: ["erba1", "fiori1", "fogliolina1", "fogliolina6"].every((n) => !!window.__editor.scene.assets.frame(n, 0)) };
 });
-check("foglie, fiori rosa, foglioline", natura.mix.leaves === 2 && natura.mix.pink === 2 && natura.mix.clover === 8 && natura.by.erba1 > 0 && natura.by.fiori1 > 0 && natura.tex, JSON.stringify(natura));
+check("foglie, fiori rosa, foglioline", natura.mix.leaves === 2 && natura.mix.pink === 2 && natura.mix.clover === 8 && natura.by.erba > 0 && natura.by.fiori > 0 && natura.by.fogliolina > 0 && natura.tex, JSON.stringify(natura));
+check("cotte nel suolo, non particelle", natura.parts === 0 && natura.inGround >= natura.by.erba + natura.by.fiori + natura.by.fogliolina, JSON.stringify(natura));
+await E(() => { window.__editor.view.zoomAt(1, 800, 450); window.__editor.view.centre(1450, 2400); }); await settle(600);
 await page.screenshot({ path: join(SHOTS, "bouquet_natura.png") });
 
 // [§9.219] la scheda Sabbia: una pennellata, una macchia di sabbia (la sua texture caricata)
@@ -153,9 +157,10 @@ const game = await E(() => {
   const rows = (G.world.meadowRows || []).flat();
   const burst = G.world.instances.find((i) => i.object === "burst_erba1");
   const wet = burst ? burst.grass_rows.flatMap((r) => r.parts).filter((q) => Math.abs(q.y - 3000) < 30 && q.x > 2600 && q.x < 3400).length : -1;
-  return { patches: (G.world.meadowRows || []).length, parts: rows.reduce((n, r) => n + r.parts.length, 0), burstWet: wet };
+  return { patches: (G.world.meadowRows || []).length, parts: rows.reduce((n, r) => n + r.parts.length, 0), burstWet: wet, flat: (G.world.meadowFlat || []).length };
 });
-check("nel gioco: l'erba", game && game.patches === 1 && game.parts > 200, JSON.stringify(game));
+check("nel gioco: l'erba", game && game.patches === 2 && game.parts > 200, JSON.stringify(game)); // (§9.223: e il bouquet di foglie e fiori)
+check("nel gioco: foglie e fiori cotti nel suolo", game && game.flat > 300, JSON.stringify(game)); // §9.224
 check("nel gioco: la macchia di Natura tagliata dal fiume", game && game.burstWet === 0, JSON.stringify(game));
 if (game) {
   await E(() => { const G = window.__game; G.cam.x = 1250 - G.cam.w / 2; G.cam.y = 1100 - G.cam.h / 2; });
