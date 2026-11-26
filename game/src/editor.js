@@ -84,6 +84,8 @@ import { MOUNTAIN_STEPS, PEAK_STEPS, crestProblem, baseProblem } from "./mountai
 import { MEADOW_KEYS, MEADOW_LABEL, MEADOW_STEPS, MEADOW_DEFAULT, MEADOW_LIMITS, meadowTotal } from "./meadows.js"; // §9.216
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
+import { Particles } from "./particles.js"; // §9.218: le icone dell'erba
+import { MEADOW_PARTS } from "./effects.js"; // §9.218
 
 // ----------------------------------------------------------------- vista
 
@@ -528,12 +530,17 @@ const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest:
 // [§9.216] le chiazze d'erba: il riquadro di vetro sopra il pannello (come
 // quello della nebbia, §9.206) con le particelle e la densita' di ognuna
 export const MEADOW_TITLE = "Particles every 100 x 100 px";
+// [§9.218, richiesta dell'autore: "rendere meno testuale l'editor"] al posto
+// del nome, la particella: un ciuffo di particelle vere che ondeggiano come
+// nel gioco (`icon`: il piede del ciuffo; il nome nel suggerimento, col
+// puntatore sopra: `tip`); quattro per riga
 export function meadowLayout(panel) {
-  const [x1, y1, x2] = panel, per = 3, gw = (x2 - x1 - 40) / per; // (tre per riga: "Fiori gialli" toccava il "-")
-  const rows = Math.ceil(MEADOW_KEYS.length / per), h = 46 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
+  const [x1, y1, x2] = panel, per = 4, gw = (x2 - x1 - 40) / per;
+  const rows = Math.ceil(MEADOW_KEYS.length / per), h = 50 + rows * 60, box = [x1, y1 - 14 - h, x2, y1 - 14];
   const groups = MEADOW_KEYS.map((key, k) => {
-    const x = x1 + 20 + (k % per) * gw, cy = box[1] + 54 + Math.floor(k / per) * 40;
-    return { key, label: [x + 12, cy], minus: [x + gw - 108, cy, 14], value: [x + gw - 70, cy], plus: [x + gw - 32, cy, 14] };
+    const x = x1 + 20 + (k % per) * gw, cy = box[1] + 70 + Math.floor(k / per) * 60;
+    return { key, icon: [x + 44, cy + 16], tip: [x + 6, cy - 22, x + 84, cy + 20], label: [x + 12, cy],
+             minus: [x + gw - 112, cy, 14], value: [x + gw - 72, cy], plus: [x + gw - 32, cy, 14] };
   });
   return { box, groups, title: [x1 + 32, box[1] + 22] };
 }
@@ -643,6 +650,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
                brush: { kind: "forest", w: 3, d: 3, mix: Object.fromEntries(MEADOW_KEYS.map((k) => [k, MEADOW_STEPS.indexOf(MEADOW_DEFAULT[k])])) }, stroke: null,
                mixHover: null, // [§9.216] il "-" o "+" delle particelle sotto il puntatore
+               mixTip: null, // [§9.218] l'icona sotto il puntatore (il suo nome)
                // [§9.186] la simmetria di ogni strumento (spenta di partenza)
                sym: { select: "none", insert: "none", brush: "none", line: "none", erase: "none", mountain: "none" }, symHover: null,
                // [§9.194] la gomma (larghezza: indice di BRUSH_WIDTHS, cancellando); le mura:
@@ -1496,8 +1504,44 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     listMaps().then((l) => { if (ed.open) ed.open.mine = l; }, () => { if (ed.open) ed.open.mine = []; });
   };
 
+  // [§9.218] le icone delle particelle dell'erba: per ognuna un ciuffo di
+  // particelle vere (effects.js MEADOW_PARTS) in un sistema tutto suo, fuori
+  // dalla mappa; il passo le fa ondeggiare come nel gioco (il wiggle)
+  // (piu' grandi e piu' piene che sulla mappa: l'erba del gioco e' tenue;
+  // una copia del tipo di particella con la sua trasparenza, piu' bassa per
+  // le particelle a 0)
+  const uiParts = new Particles(), TUFT = { dark: 6, mid: 6, light: 6, blades: 7, wheat: 5, poppy: 3, yellow: 3 };
+  const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1 };
+  let tufts = null;
+  const makeTufts = () => {
+    tufts = {};
+    for (const k of MEADOW_KEYS) {
+      const ps = uiParts.systemCreate(0, "ui"), n = TUFT[k], gap = n > 4 ? 7 : 12;
+      const L = MEADOW_PARTS[k].map((t) => ({ ...t, alpha: [0.95] }));
+      ps.autoDraw = false;
+      ps.types = L;
+      for (let j = 0; j < n; j++) {
+        uiParts.create(ps, 0, 0, L[j % L.length], 1);
+        const q = ps.parts[ps.parts.length - 1];
+        q.size *= TUFT_K[k];
+        q.dx = (j - (n - 1) / 2) * gap + (vrand() - 0.5) * 4; q.dy = (j % 2) * 4;
+      }
+      ps.parts.sort((a, b) => a.dy - b.dy); // (quelle piu' in basso davanti)
+      tufts[k] = ps;
+    }
+  };
+  const ALL = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 };
+  const drawTuft = (key, x, y, dim) => {
+    if (!tufts) return;
+    const ps = tufts[key];
+    for (const q of ps.parts) { q.x = x + q.dx; q.y = y + q.dy; }
+    for (const t of ps.types) t.alpha = [dim ? 0.28 : 0.95]; // (a 0: sbiadito)
+    uiParts.draw(ps, r, assets, ALL);
+  };
+
   const step = () => {
     input.beginStep();
+    if (ed.tool === "brush" && ed.brush.kind === "grass") { if (!tufts) makeTufts(); uiParts.step(); } // §9.218
     if (ed.loading || ed.dom) return;
     const W = view.cssW, H = view.cssH, L = layoutNow(), mx = input.x, my = input.y; // (§9.206: col riquadro della nebbia)
     const [rx, ry] = view.toRoom(mx, my);
@@ -1752,11 +1796,13 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       return;
     }
     // [§9.216] il riquadro delle particelle dell'erba: i "-" e "+"
-    ed.mixHover = null;
+    ed.mixHover = null; ed.mixTip = null;
     if (ed.tool === "brush" && ed.brush.kind === "grass" && hit && hit.kind === "ui") {
       const ML = meadowLayout(L.panel);
       if (inRect(mx, my, ML.box)) {
         for (const G of ML.groups) for (const [C, sg] of [[G.minus, "-"], [G.plus, "+"]]) if (dhypot(mx - C[0], my - C[1]) <= C[2] + 4) ed.mixHover = G.key + sg;
+        const T = ML.groups.find((G) => inRect(mx, my, G.tip));
+        ed.mixTip = T ? T.key : null; // §9.218
         if (input.mouseReleased[0] && ed.mixHover) {
           const k = ed.mixHover.slice(0, -1), d = ed.mixHover.endsWith("+") ? 1 : -1;
           ed.brush.mix[k] = Math.max(0, Math.min(MEADOW_STEPS.length - 1, ed.brush.mix[k] + d));
@@ -2288,8 +2334,14 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setValign("middle"); draw.setHalign("left"); draw.setFont("overdue");
       draw.setColour(c.black); draw.setAlpha(0.55);
       draw.text(ML.title[0], ML.title[1], tr(MEADOW_TITLE));
-      for (const G of ML.groups) pmGroup(G, tr(MEADOW_LABEL[G.key]), String(MEADOW_STEPS[ed.brush.mix[G.key]]), G.key, ed.mixHover);
+      // ([§9.218] al posto del nome, il ciuffo della particella; il nome col puntatore sopra)
+      for (const G of ML.groups) {
+        pmGroup(G, "", String(MEADOW_STEPS[ed.brush.mix[G.key]]), G.key, ed.mixHover);
+        drawTuft(G.key, G.icon[0], G.icon[1], !MEADOW_STEPS[ed.brush.mix[G.key]]);
+      }
       draw.setAlpha(1); draw.setColour(c.white);
+      const TG = ed.mixTip && ML.groups.find((G) => G.key === ed.mixTip);
+      if (TG) tooltip(TG.tip[0] - 6, TG.tip[1] - 26, tr(MEADOW_LABEL[TG.key])); // (sopra l'icona)
     }
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
     if (ed.hover && ed.hover.kind !== "back" && ed.hover.kind !== "colscroll" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));

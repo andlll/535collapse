@@ -15036,3 +15036,26 @@ Prove: game/test/browser/meadows.mjs (in piu': una burst_erba1 e un fiume
 nuovo che la attraversa: da 2600 a ~1730 particelle, nessuna sull'acqua;
 Ctrl+Z: di nuovo 2600; in "Prova mappa" la macchia tagliata). editor.mjs
 (quella di sempre) passa; i test unitari (166).
+
+### 9.218 Le particelle dell'erba come icone che ondeggiano
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "Iniziamo a
+rendere meno testuale l'editor: in questo nuovo pennello riesci a mettere
+le singole particelle al posto della descrizione testuale nel selettore?
+Sarebbe figo se avessero il caratteristico wiggle come nel gioco".
+
+- Nel riquadro delle particelle dell'erba (§9.216) al posto del nome c'e'
+  un ciuffo di particelle vere, quelle del gioco (effects.js MEADOW_PARTS),
+  in un sistema di particelle dell'editor fuori dalla mappa (editor.js
+  uiParts): il passo dell'editor le fa avanzare, e ondeggiano col wiggle del
+  gioco (Particles.angle: i 4 gradi dell'erba, i fiori piu' lenti).
+- I ciuffi sono piu' grandi e piu' pieni che sulla mappa (l'erba del gioco e'
+  tenue: alpha 0,35-0,75): una copia del tipo di particella con alpha 0,95;
+  dimensioni x1,7 l'erba, x2,2 i fili, x1,5 le spighe, quasi uguali i fiori.
+  Una particella a densita' 0 ha il ciuffo sbiadito (alpha 0,28).
+- Il nome resta nel suggerimento sopra l'icona, col puntatore sopra.
+- Quattro per riga (con i nomi erano tre), righe da 60 px.
+
+Prove: meadows.mjs (in piu': il nome dei papaveri col puntatore
+sull'icona; due foto del riquadro a mezzo secondo di distanza sono diverse:
+i ciuffi ondeggiano). La foto del riquadro: build/prova_montagne/erba_icone.png.

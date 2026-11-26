@@ -54,6 +54,15 @@ const ML = await E(() => window.__editor.meadowLayout());
 const poppy = ML.groups.find((g) => g.key === "poppy");
 for (let k = 0; k < 4; k++) { await page.mouse.move(poppy.plus[0], poppy.plus[1]); await settle(60); await page.mouse.click(poppy.plus[0], poppy.plus[1]); await settle(); }
 check("piu' papaveri", (await E(() => window.__editor.ed.brush.mix.poppy)) === 4);
+// [§9.218] le icone: i ciuffi ondeggiano (due foto del riquadro diverse), il nome col puntatore sopra
+await page.mouse.move((poppy.tip[0] + poppy.tip[2]) / 2, (poppy.tip[1] + poppy.tip[3]) / 2); await settle(200);
+check("il nome della particella col puntatore sopra", (await E(() => window.__editor.ed.mixTip)) === "poppy");
+const clip = { x: ML.box[0], y: ML.box[1], width: ML.box[2] - ML.box[0], height: ML.box[3] - ML.box[1] };
+const shot1 = await page.screenshot({ clip });
+await page.screenshot({ path: join(SHOTS, "erba_icone.png"), clip: { x: clip.x - 10, y: clip.y - 40, width: clip.width + 20, height: clip.height + 50 } });
+await settle(500);
+const shot2 = await page.screenshot({ clip });
+check("i ciuffi ondeggiano", !shot1.equals(shot2));
 // una pennellata attraverso il fiume (la vista: la zona in alto, lontana dai riquadri)
 await E(() => window.__editor.view.centre(1250, 1350)); await settle(200);
 const [ax, ay] = await toScreen([900, 1050]), [bx, by] = await toScreen([1600, 1150]);
