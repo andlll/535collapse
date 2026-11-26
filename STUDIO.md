@@ -15373,3 +15373,33 @@ dell'editor" (la cresta, la base a tratti, un fulmine).
   automatica" del riquadro della montagna (editor.js buttonIcon "auto") al
   posto del mio contorno a tratti con la scintilla, che resta solo se
   l'icona mancasse.
+
+### 9.231 I riquadri dell'editor riorganizzati per le icone
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "tu avevi
+predisposto gli spazi dell'interfaccia dell'editor contando che erano
+testuali, ma ora sono troppo ampi e spesso [...] non si capisce cosa e'
+riferito a cosa. Riorganizza lo spazio nella 'tavolozza' dell'editor in
+accordo a com'e' fatto ora".
+
+- **Un gruppo compatto, uguale dappertutto** (editor.js pmAt): l'icona a
+  sinistra (al piu' ~54 px), poi a 82 px il "-", il valore (~90 px: "600
+  px" e "Uguale" non toccano i cerchi), il "+" a 204; da un gruppo all'altro
+  GROUP_STEP = 280 px, piu' dello spazio dentro il gruppo. Prima l'etichetta
+  aveva 170-200 px di spazio (le parole lunghe, "Larghezza finale") e i "-"
+  "+" stavano a meta' del riquadro, lontani dalla loro icona.
+- **Pennello, gomma, polilinea**: larghezza e densita' (o larghezza
+  finale) in fila, vicine.
+- **Montagna**: due righe (altezza e larghezza; asperita' e dettaglio) e i
+  due pulsanti, "Nuova variante" e "Base automatica", pillole da 100 px con
+  l'icona nella terza colonna (prima larghe fino al bordo).
+- **Simmetria**: le modalita' subito dopo la sua icona (prima a 160 px),
+  pillole da 120 (prima 150).
+- **Bouquet**: ogni ciuffo coi suoi "-" e "+" subito accanto, come gli altri
+  gruppi.
+- L'icona della densita' del bosco a 54 px (a 60 toccava il suo "-").
+
+Prove: le foto dei riquadri (pennello col bosco e col bouquet, gomma,
+polilinea, montagna, Inserisci); editor.mjs, mountains.mjs, meadows.mjs,
+edinsert.mjs passano; i test unitari (166, quelli della disposizione dei
+riquadri compresi).

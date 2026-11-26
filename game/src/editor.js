@@ -192,17 +192,23 @@ export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horiz
 // delle montagne nuove, o della montagna scelta), "Nuova variante" (un
 // altro seme) e "Base automatica" (via la base disegnata). Il riquadro: tre
 // colonne, due righe.
+// [§9.231, richiesta dell'autore: "gli spazi dell'interfaccia [...] ora sono
+// troppo ampi e spesso non si capisce cosa e' riferito a cosa"] Un valore
+// coi suoi "-" e "+", ora che l'etichetta e' un'icona (§9.220-§9.230): tutto
+// vicino e uguale in ogni riquadro, l'icona (al piu' 60 px) a sinistra,
+// subito dopo "-", il valore, "+"; fra un gruppo e l'altro GROUP_STEP px,
+// piu' dello spazio dentro il gruppo
+export const GROUP_STEP = 280;
+// (il valore in mezzo ha ~90 px: "600 px", "Uguale" non toccano i cerchi)
+export const pmAt = (x, cy, r = 16) => ({ label: [x, cy], minus: [x + 82, cy, r], value: [x + 143, cy], plus: [x + 204, cy, r] });
 export const MTN_KEYS = ["height", "width", "rough", "detail"];
 export const MTN_LABEL = { height: "Height", width: "Width", rough: "Roughness", detail: "Detail" };
 export function mountainLayout(panel) {
-  const [x1, y1, x2] = panel, cw = (x2 - x1 - 48) / 3;
-  const group = (col, cy) => {
-    const x = x1 + 24 + col * cw;
-    return { label: [x + 6, cy], minus: [x + cw - 132, cy, 15], value: [x + cw - 80, cy], plus: [x + cw - 28, cy, 15] };
-  };
-  const cy1 = y1 + 84, cy2 = y1 + 130, bx = x1 + 24 + 2 * cw + 10;
-  return { height: group(0, cy1), width: group(1, cy1), rough: group(0, cy2), detail: group(1, cy2),
-           seed: [bx, cy1 - 17, x2 - 24, cy1 + 17], auto: [bx, cy2 - 17, x2 - 24, cy2 + 17] };
+  // ([§9.231] due righe: altezza e larghezza, asperita' e dettaglio; i due
+  // pulsanti, pillole con l'icona, nella terza colonna)
+  const [x1, y1] = panel, cy1 = y1 + 84, cy2 = y1 + 130, x = x1 + 30, bx = x + 2 * GROUP_STEP;
+  return { height: pmAt(x, cy1), width: pmAt(x + GROUP_STEP, cy1), rough: pmAt(x, cy2), detail: pmAt(x + GROUP_STEP, cy2),
+           seed: [bx, cy1 - 17, bx + 100, cy1 + 17], auto: [bx, cy2 - 17, bx + 100, cy2 + 17] };
 }
 // [§9.214, richiesta dell'autore: "strumenti di controllo per evitare
 // inserimenti di punti assurdi o infattibili"] il perche' di un punto
@@ -541,8 +547,9 @@ export function meadowLayout(panel) {
   const rows = Math.ceil(MEADOW_KEYS.length / per), h = 50 + rows * 60, box = [x1, y1 - 14 - h, x2, y1 - 14];
   const groups = MEADOW_KEYS.map((key, k) => {
     const x = x1 + 20 + (k % per) * gw, cy = box[1] + 70 + Math.floor(k / per) * 60;
-    return { key, icon: [x + 44, cy + 16], tip: [x + 6, cy - 22, x + 84, cy + 20], label: [x + 12, cy],
-             minus: [x + gw - 112, cy, 14], value: [x + gw - 72, cy], plus: [x + gw - 32, cy, 14] };
+    // ([§9.231] il ciuffo e i suoi "-" "+" vicini, come gli altri gruppi)
+    return { key, icon: [x + 40, cy + 16], tip: [x, cy - 22, x + 80, cy + 20], label: [x + 12, cy],
+             minus: [x + 100, cy, 14], value: [x + 140, cy], plus: [x + 180, cy, 14] };
   });
   return { box, groups, title: [x1 + 32, box[1] + 22] };
 }
@@ -551,9 +558,9 @@ export function meadowLayout(panel) {
 export function brushLayout(panel) {
   const [x1, y1, x2] = panel, n = BRUSH_KINDS.length, tw = (x2 - x1 - 40) / n;
   const tabs = BRUSH_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
-  // (§9.187: piu' spazio per l'etichetta, "Larghezza finale" toccava il "-")
-  const cy = y1 + 128, group = (x) => ({ label: [x, cy], minus: [x + 200, cy, 16], value: [x + 262, cy], plus: [x + 324, cy, 16] });
-  return { tabs, width: group(x1 + 30), density: group(x1 + 30 + (x2 - x1) / 2) };
+  // ([§9.231] i gruppi compatti: l'etichetta e' un'icona)
+  const cy = y1 + 128;
+  return { tabs, width: pmAt(x1 + 30, cy), density: pmAt(x1 + 30 + GROUP_STEP, cy) };
 }
 
 // [§9.206, richiesta dell'autore] Le impostazioni della nebbia (mapfile.js
@@ -618,7 +625,8 @@ export function diceLayout(panel) {
 }
 export function symLayout(panel) {
   // ([§9.227] piu' strette se a destra non c'e' posto per il dado)
-  const [x1, y1, x2] = panel, y = y1 + 168, gap = 8, left = x1 + 190, w = Math.max(90, Math.min(150, Math.floor((x2 - 24 - 70 - 16 - left - 3 * gap) / 4)));
+  // ([§9.231] le modalita' subito dopo l'icona della simmetria, pillole da 120)
+  const [x1, y1, x2] = panel, y = y1 + 168, gap = 8, left = x1 + 96, w = Math.max(90, Math.min(120, Math.floor((x2 - 24 - 70 - 16 - left - 3 * gap) / 4)));
   return { label: [x1 + 30, y + 16], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 32 })) }; // (§9.222: 32, prima 26: lo schema al posto del nome)
 }
 
@@ -2606,7 +2614,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (iconSprite("width", x + 18, y, 36, 22)) { draw.setAlpha(0.85); draw.lineWidthColour(x + 41, y - 11, x + 41, y + 11, 3, DARK, DARK); return; }
     } else if (icon === "peak") { // la cima: la freccia in su e in giu' e il picco
       if (iconSprite("height", x + 9, y, 18, 32) && iconSprite("detail", x + 36, y + 2, 28, 24)) return;
-    } else if (icon === "density" ? iconSprite(icon, x + 30, y, 60, 30) : iconSprite(icon, x + 23, y, 46, 30)) return; // (§9.228: la densita' e' larga)
+    } else if (icon === "density" ? iconSprite(icon, x + 26, y, 54, 30) : iconSprite(icon, x + 23, y, 46, 30)) return; // (§9.228: la densita' e' larga; §9.231: 54, non tocca il suo "-")
     if (icon === "width" || icon === "end") { widthIcon(x, y, icon === "end"); return; }
     const ink = DARK;
     draw.setAlpha(0.85);
