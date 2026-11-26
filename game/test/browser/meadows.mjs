@@ -28,6 +28,29 @@ await ctx.route("http://prova.local/**", (route) => {
   } catch { route.fulfill({ status: 404, body: "" }); }
 });
 const page = await ctx.newPage();
+// [§9.199] In CI (grafica emulata) un fotogramma puo' durare centinaia di
+// ms: due clic, o un clic e un tasto, potevano finire nello stesso passo e
+// contare come uno. Dopo ogni azione del mouse e della tastiera si aspetta
+// che l'editor abbia letto l'input (window.__editor.reads) almeno una volta
+// in piu' (come editor.mjs e skcustom.mjs).
+const syncInput = (page) => {
+  const reads = () => page.evaluate(() => { const o = window.__editor || window.__game; return o && o.ready && typeof o.reads === "number" ? o.reads : null; }).catch(() => null);
+  const after = async (n0) => {
+    if (n0 === null) return;
+    await page.waitForFunction((n) => { const o = window.__editor || window.__game; return !o || typeof o.reads !== "number" || o.reads > n; }, n0, { timeout: 15000, polling: 10 }).catch(() => {});
+  };
+  for (const [obj, names] of [[page.mouse, ["move", "down", "up", "wheel", "click", "dblclick"]], [page.keyboard, ["down", "up", "press"]]]) {
+    for (const m of names) {
+      const orig = obj[m].bind(obj);
+      obj[m] = async (...a) => { const n0 = await reads(); const r = await orig(...a); await after(n0); return r; };
+    }
+  }
+  // il clic: il puntatore sopra, poi giu' e su, ognuno letto in un passo
+  // suo (click di Playwright li manda insieme: un pulsante non vedeva il
+  // puntatore arrivare)
+  page.mouse.click = async (x, y, { button = "left" } = {}) => { await page.mouse.move(x, y); await page.mouse.down({ button }); await page.mouse.up({ button }); };
+};
+syncInput(page);
 const errs = [];
 page.on("pageerror", (e) => errs.push(e.message));
 let fails = 0;

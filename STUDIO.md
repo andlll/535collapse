@@ -15503,3 +15503,16 @@ c'e' dentro, si vede gia' dai nomi dei pulsanti. Basta 'inserisci oggetto' o
   dicono cosa c'e' dentro.
 - Coi titoli corti il suggerimento ha piu' posto: la maggior parte sta di
   nuovo su una riga.
+
+### 9.236 Le prove delle montagne, del bouquet e di Inserisci in CI
+
+La CI della PR (e quella del commit di §9.231) falliva in mountains.mjs: in
+"clic su una cima: scelta" o in "base a mano e gemella diagonale" (nessuna
+montagna nuova), mentre in locale passava. In CI (grafica emulata) i passi
+dell'editor sono radi: due clic, o un clic e un tasto, finiscono nello stesso
+passo e contano come uno (§9.199); e page.mouse.click manda puntatore,
+pressione e rilascio insieme. Le tre prove nuove (mountains.mjs,
+meadows.mjs, edinsert.mjs) ora fanno come editor.mjs e skcustom.mjs: dopo
+ogni azione di mouse e tastiera aspettano che l'editor abbia letto l'input
+(window.__editor.reads), e il clic e' puntatore, giu' e su, ognuno in un
+passo suo. In locale passano tutte e tre.
