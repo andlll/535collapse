@@ -2202,6 +2202,28 @@
         255
       ],
       "nota": "[§9.226] icona della colonna dell'editor di mappe (mountain, lo strumento montagna): disegno caricato dall'autore (ripulito e ritagliato a 256 px), bianco pieno (l'editor la tinge di nero, o la lascia bianca sullo strumento scelto)"
+    },
+    "ico_ed_dice": {
+      "da": "ed_dado",
+      "alto": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.228] il dado dell'editor (Nuova variante della montagna, lo stile a caso di Inserisci): disegno caricato dall'autore (ripulito e ritagliato a 256 px), bianco (l'editor lo tinge)"
+    },
+    "ico_ed_density": {
+      "da": "ed_densita",
+      "lato": 64,
+      "gruppo": "gui",
+      "colore": [
+        255,
+        255,
+        255
+      ],
+      "nota": "[§9.228] la densita' del bosco (il pennello): disegno caricato dall'autore (ripulito e ritagliato a 256 px), bianco (l'editor lo tinge)"
     }
   }
 }

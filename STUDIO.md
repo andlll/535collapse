@@ -15312,3 +15312,22 @@ selezionato".
 Prove: game/test/browser/edinsert.mjs (nuova, anche nella CI): le statue
 una casella con quattro stili; col dado spento tre statue dello stesso
 stile; col dado acceso sei statue, mai due di fila uguali.
+
+### 9.228 Il dado e la densita' del bosco dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618), con due
+disegni: "al posto delle varie icone del dado che abbiamo messo
+nell'editor usa questa qui. Ti mando anche quella della densita' del
+bosco".
+
+- Il dado (un cubo con le facce da uno, tre e quattro): nuovi/sprites/
+  ed_dado, ico_ed_dice (64 px di altezza); al posto del mio quadratino coi
+  puntini in "Nuova variante" della montagna e nel dado degli stili di
+  Inserisci (editor.js buttonIcon "seed").
+- La densita' del bosco (due alberi con le frecce che si vengono incontro):
+  ed_densita, ico_ed_density (64 di larghezza), al posto dei miei due
+  alberelli; un po' piu' larga delle altre icone dei riquadri (60 px).
+- Ripuliti e ritagliati come i precedenti (§9.225).
+
+Prove: la foto del pennello (Bosco), della montagna scelta e di
+Inserisci; editor.mjs, mountains.mjs, meadows.mjs, edinsert.mjs.

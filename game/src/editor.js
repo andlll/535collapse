@@ -2554,6 +2554,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // contorno a tratti con una scintilla ("Base automatica"); ink: il colore
   const buttonIcon = (q, cx, cy, ink) => {
     if (q === "seed") {
+      if (iconSprite("dice", cx, cy, 26, 26, ink)) return; // §9.228: il dado dell'autore
       draw.roundrectColourExt(cx - 11, cy - 11, cx + 11, cy + 11, 8, 8, ink, ink, true);
       for (const [dx, dy] of [[-5, -5], [0, 0], [5, 5]]) draw.circleColour(cx + dx, cy + dy, 2.4, ink, ink, false);
       return;
@@ -2590,7 +2591,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // ico_ed_sym, _rough, _detail, _width, _height; bianche, tinte di scuro),
   // in un riquadro di w x h px col centro in (cx, cy); i disegni a linee di
   // prima restano se l'icona manca
-  const ICON_SPRITE = { sym: "ico_ed_sym", rough: "ico_ed_rough", detail: "ico_ed_detail", width: "ico_ed_width", height: "ico_ed_height" };
+  const ICON_SPRITE = { sym: "ico_ed_sym", rough: "ico_ed_rough", detail: "ico_ed_detail", width: "ico_ed_width", height: "ico_ed_height",
+                        density: "ico_ed_density", dice: "ico_ed_dice" }; // (§9.228: la densita' e il dado)
   const iconSprite = (key, cx, cy, w, h, ink = DARK) => {
     const name = ICON_SPRITE[key], fr = name && assets.sprites[name] && assets.frame(name, 0);
     if (!fr) return false;
@@ -2603,7 +2605,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (iconSprite("width", x + 18, y, 36, 22)) { draw.setAlpha(0.85); draw.lineWidthColour(x + 41, y - 11, x + 41, y + 11, 3, DARK, DARK); return; }
     } else if (icon === "peak") { // la cima: la freccia in su e in giu' e il picco
       if (iconSprite("height", x + 9, y, 18, 32) && iconSprite("detail", x + 36, y + 2, 28, 24)) return;
-    } else if (iconSprite(icon, x + 23, y, 46, 30)) return;
+    } else if (icon === "density" ? iconSprite(icon, x + 30, y, 60, 30) : iconSprite(icon, x + 23, y, 46, 30)) return; // (§9.228: la densita' e' larga)
     if (icon === "width" || icon === "end") { widthIcon(x, y, icon === "end"); return; }
     const ink = DARK;
     draw.setAlpha(0.85);
