@@ -1586,6 +1586,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     const hit = input.inside ? hitTest(L, mx, my) : null;
     ed.colScroll = L.scroll; // §9.196: (limitato dalla disposizione: la finestra cambia)
+    // [§9.220] il nome dell'icona della larghezza col puntatore sopra
+    const WG = hit && hit.kind === "ui" ? widthGroups(L.panel).find(([G]) => mx >= G.label[0] - 6 && mx <= G.label[0] + 56 && Math.abs(my - G.label[1]) <= 18) : null;
+    ed.iconTip = WG ? { text: WG[1], x: WG[0].label[0], y: WG[0].label[1] } : null;
     ed.hover = hit && (hit.kind === "tool" || hit.kind === "action" || hit.kind === "edit" || hit.kind === "back" || hit.kind === "colscroll") ? hit : null;
     // [§9.185] la pennellata in corso: solo lei (e la vista)
     if (ed.stroke) {
@@ -2327,6 +2330,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       for (const G of FL.groups) pmGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), G.key, ed.fogHover);
       draw.setAlpha(1); draw.setColour(c.white);
     }
+    // [§9.220] il nome dell'icona della larghezza (sopra l'icona)
+    if (ed.iconTip && !ed.open && !ed.confirm && !ed.dom) tooltip(ed.iconTip.x - 6, ed.iconTip.y - 40, tr(ed.iconTip.text));
     // [§9.216] sopra, le particelle dell'erba e la loro densita'
     if (ed.tool === "brush" && ed.brush.kind === "grass") {
       const ML = meadowLayout(L.panel);
@@ -2398,7 +2403,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (SYM_TOOLS.has(ed.tool)) drawSymRow(panel); // §9.186
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
-    if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, tr("Width"), BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
+    if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, WIDTH_ICON, BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
     if (ed.tool === "line") { drawLinePanel(panel); draw.setColour(c.white); return; }
     if (ed.tool === "mountain") { drawMountainPanel(panel); draw.setColour(c.white); return; } // §9.214
     draw.setHalign("left");
@@ -2493,11 +2498,35 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setAlpha(1);
   };
 
+  // [§9.220, richiesta dell'autore: "al posto della parola larghezza metti
+  // un'icona di due frecce in direzioni opposte"] la riga con le due punte;
+  // la larghezza finale della polilinea: la stessa riga che finisce contro
+  // una sbarretta (l'estremita' della linea)
+  const WIDTH_ICON = { icon: "width" }, END_ICON = { icon: "end" };
+  const widthIcon = (x, y, end = false) => {
+    const ink = DARK, w = 44, x2 = x + w;
+    draw.setAlpha(0.85);
+    draw.lineWidthColour(x + 6, y, x2 - (end ? 12 : 6), y, 3, ink, ink);
+    draw.triangleColour(x, y, x + 10, y - 7, x + 10, y + 7, ink, ink, ink, false);
+    const tip = end ? x2 - 6 : x2;
+    draw.triangleColour(tip, y, tip - 10, y - 7, tip - 10, y + 7, ink, ink, ink, false);
+    if (end) draw.lineWidthColour(x2 - 1, y - 11, x2 - 1, y + 11, 3, ink, ink);
+  };
+  // le icone della larghezza dello strumento (il loro nome nel suggerimento)
+  const widthGroups = (panel) => {
+    if (ed.tool === "brush" || ed.tool === "erase") return [[brushLayout(panel).width, "Width"]];
+    if (ed.tool === "line") { const B = lineLayout(panel); return [[B.width, "Width"], [B.end, "End width"]]; }
+    if (ed.tool === "mountain") return [[mountainLayout(panel).width, "Width"]];
+    return [];
+  };
+
   // un valore coi suoi "-" e "+" (pennello, polilinea)
   const pmGroup = (G, label, value, key, hover = ed.palHover) => { // (§9.206: hover, il "-" o "+" sotto il puntatore)
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
-    draw.setHalign("left"); draw.text(G.label[0], G.label[1], label);
+    // ([§9.220] la larghezza: l'icona delle due frecce al posto della parola)
+    if (label && label.icon) widthIcon(G.label[0], G.label[1], label.icon === "end");
+    else { draw.setHalign("left"); draw.text(G.label[0], G.label[1], label); }
     draw.setHalign("center"); draw.text(G.value[0], G.value[1], value);
     for (const [C, sign] of [[G.minus, "-"], [G.plus, "+"]]) {
       const hov = hover === key + sign;
@@ -2525,8 +2554,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(LINE_LABEL[q.kind]));
     }
     const w = sel ? sel.e.width : lineW(kind), we = sel ? sel.e.widthEnd ?? sel.e.width : lineWE(kind);
-    pmGroup(B.width, tr("Width"), w + " px", "w");
-    pmGroup(B.end, tr("End width"), we === w ? tr("Same") : we + " px", "e");
+    pmGroup(B.width, WIDTH_ICON, w + " px", "w");
+    pmGroup(B.end, END_ICON, we === w ? tr("Same") : we + " px", "e");
     draw.setAlpha(1);
   };
 
@@ -2541,7 +2570,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       // ([§9.215] con una cima scelta, "Altezza" e' la sua: in % dell'altezza della montagna)
       const pk = e && ed.msel.peak != null && k === "height" ? ed.msel.peak : null;
       if (pk !== null) { pmGroup(B[k], tr("Peak height"), Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
-      pmGroup(B[k], tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
+      pmGroup(B[k], k === "width" ? WIDTH_ICON : tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
     }
     draw.setFont("overdue");
     draw.setHalign("center");
@@ -2575,7 +2604,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(on ? 1 : 0.8);
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Bouquet" : BG_NAMES[q.kind])); // (§9.219: "Erba" era troppo simile a "Prato")
     }
-    pmGroup(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
+    pmGroup(B.width, WIDTH_ICON, BRUSH_WIDTHS[b.w] + " px", "w");
     if (b.kind === "forest") pmGroup(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
     draw.setAlpha(1);
   };

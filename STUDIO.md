@@ -15090,3 +15090,23 @@ texture del prato ma colore sabbia appunto".
 Prove: meadows.mjs (in piu': la scheda Sabbia, una pennellata, una macchia
 di sabbia con la sua texture caricata); editor.mjs (quella di sempre); i
 test unitari (166).
+
+### 9.220 La larghezza come icona
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "In generale
+nell'editor al posto della parola 'larghezza' metti un'icona di due frecce
+in direzioni opposte".
+
+- Nei riquadri degli strumenti la parola "Larghezza" e' un'icona: una riga
+  con due punte, a sinistra e a destra (editor.js widthIcon), nel pennello,
+  nella gomma, nella polilinea e nella montagna. La "Larghezza finale" della
+  polilinea: la stessa riga che finisce contro una sbarretta (l'estremita'
+  della linea).
+- Il nome resta nel suggerimento sopra l'icona, col puntatore sopra (come
+  per le particelle del bouquet, §9.218).
+- Restano parole "Larghezza" e "Altezza" nelle impostazioni della mappa (il
+  pannello HTML: le misure della mappa, non uno strumento).
+
+Prove: le foto dei tre riquadri in italiano (pennello, polilinea col nome
+"Larghezza finale" sopra l'icona, montagna col nome "Larghezza");
+editor.mjs, mountains.mjs, meadows.mjs passano; i test unitari (166).
