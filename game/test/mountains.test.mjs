@@ -55,3 +55,71 @@ test("la base disegnata a mano: il contorno resta vicino a quello dell'autore", 
   }
   for (const [x, y] of g.feet) assert.ok(insidePoly(x, y, base));
 });
+
+// [§9.214] i controlli dei punti (l'editor li rifiuta col perche') e delle
+// mappe che arrivano da fuori
+import { crestProblem, baseProblem, cleanMountain, triangulate, mountainCells, mountainAt } from "../src/mountains.js";
+import { validateMap, newMap } from "../src/mapfile.js";
+
+test("§9.214 la cresta: punti vicini, lontani, angoli stretti, incroci, quanti", () => {
+  assert.equal(crestProblem([[0, 0]]), null);
+  assert.equal(crestProblem([[0, 0], [300, 0], [600, 40]]), null);
+  assert.equal(crestProblem([[0, 0], [20, 0]]), "close");
+  assert.equal(crestProblem([[0, 0], [2000, 0]]), "far");
+  assert.equal(crestProblem([[0, 0], [300, 0], [10, 30]]), "sharp");
+  assert.equal(crestProblem([[0, 0], [300, 0], [300, 300], [100, 300], [100, -100]]), "cross");
+  assert.equal(crestProblem(Array.from({ length: 13 }, (_, k) => [k * 100, (k % 2) * 60])), "count");
+});
+
+test("§9.214 la base: incroci, troppo piccola, sotto tutta la cresta", () => {
+  const crest = [[300, 100, 200], [600, 80, 200]];
+  const box = [[100, 200], [800, 200], [800, 500], [100, 500]];
+  assert.equal(baseProblem(box, crest, 200), null);
+  assert.equal(baseProblem([[100, 200], [800, 500], [800, 200], [100, 500]], crest, 200), "cross");
+  assert.equal(baseProblem([[100, 200], [150, 200], [150, 240]], crest, 200), "small");
+  assert.equal(baseProblem([[100, 200], [450, 200], [450, 500], [100, 500]], crest, 200), "crest");
+  assert.equal(baseProblem([[100, 200], [800, 200]], crest, 200, true), null, "mentre la si disegna: aperta");
+  assert.equal(baseProblem([[100, 200], [800, 200], [800, 500]], crest, 200, true), null);
+});
+
+test("§9.214 la convalida delle mappe: le montagne buone passano, le assurde no", () => {
+  const ok = { crest: [[400, 300], [700, 260]], height: 260, width: 520, rough: 0.5, detail: 0.5, seed: 12 };
+  assert.deepEqual(cleanMountain(ok, 6000, 6000, 4000), ok);
+  assert.equal(cleanMountain({ ...ok, height: 5000 }, 6000, 6000, 4000), null);
+  assert.equal(cleanMountain({ ...ok, crest: [[400, 300], [410, 300]] }, 6000, 6000, 4000), null);
+  assert.equal(cleanMountain({ ...ok, seed: 1.5 }, 6000, 6000, 4000), null);
+  assert.equal(cleanMountain({ ...ok, mirrored: true }, 6000, 6000, 4000), null, "specchiata senza simmetria");
+  assert.equal(cleanMountain({ ...ok, extra: "x" }, 6000, 6000, 4000).extra, undefined, "niente campi sconosciuti");
+  const m = newMap();
+  m.mountains = [ok, { ...ok, sym: "diagonal", mirrored: true }];
+  assert.equal(validateMap(m, new Set(), {}).map.mountains.length, 2);
+  m.mountains.push({ crest: "no" });
+  assert.ok(validateMap(m, new Set(), {}).errors);
+});
+
+test("§9.214 la gemella: la base esattamente specchiata, le cime alte uguali", () => {
+  const room = [6000, 6000];
+  for (const sym of ["diagonal", "horizontal", "vertical"]) {
+    const a = mountainGeometry({ ...M, sym, room }), b = mountainGeometry({ ...M, sym, mirrored: true, room });
+    const mir = ([x, y]) => (sym === "diagonal" ? [6000 - x, 6000 - y] : sym === "horizontal" ? [6000 - x, y] : [x, 6000 - y]);
+    const key = (p) => p.map((v) => Math.round(v * 10)).join(",");
+    const A = new Set(a.base.map((p) => key(mir(p))));
+    assert.ok(b.base.every((p) => A.has(key(p))), sym);
+    assert.deepEqual(a.tops.map((t) => Math.round(t.h)), b.tops.map((t) => Math.round(t.h)), sym);
+  }
+});
+
+test("§9.214 i triangoli delle facce e la sagoma come ostacolo", () => {
+  // un poligono concavo: i triangoli coprono la sua area
+  const P = [[0, 0], [100, 0], [100, 100], [50, 40], [0, 100]];
+  const T = triangulate(P);
+  let a = 0;
+  for (let i = 0; i < T.length; i += 6) a += Math.abs((T[i + 2] - T[i]) * (T[i + 5] - T[i + 1]) - (T[i + 4] - T[i]) * (T[i + 3] - T[i + 1])) / 2;
+  assert.ok(Math.abs(a - 7000) < 1e-6, String(a)); // (il quadrato meno la tacca: 10000 - 100 x 60 / 2)
+  const g = mountainGeometry(M), w = { roomW: 2000, roomH: 2000, mountains: [g] };
+  const mc = mountainCells(w);
+  const t = g.tops[1];
+  assert.ok(mountainAt(mc, t.x, t.y + 30), "sotto la cima: montagna");
+  assert.ok(!mountainAt(mc, 1900, 1900), "lontano: niente");
+  assert.ok(mountainAt(mc, g.feet[0][0], g.feet[0][1]), "il piede della cima");
+});

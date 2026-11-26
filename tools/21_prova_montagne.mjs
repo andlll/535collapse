@@ -51,6 +51,13 @@ const SHEETS = {
       C("passo 2, il risultato", 1050, 700, [{ crest, base, height: 260, seed: 4 }]),
     ];
   })() },
+  // [§9.214] le gemelle con la simmetria dell'editor (la stessa montagna
+  // specchiata sul terreno, vista dallo stesso punto), in una mappa 1400 x 900
+  "7_simmetria": { cols: 1, cells: (() => {
+    const m = { crest: [[330, 70], [560, 30]], width: 340, height: 200, seed: 6, room: [1400, 900] };
+    return ["diagonal", "horizontal", "vertical"].map((sym) => C(`simmetria ${sym}`, 1400, 900,
+      [{ ...m, sym }, { ...m, sym, mirrored: true }], { show: true, axis: sym }));
+  })() },
   "6_catene": { cols: 2, cells: [
     C("catena diagonale", 1050, 1000, [{ crest: [[180, 560], [380, 440], [600, 340], [850, 210]], width: 380, height: 260, seed: 12 }]),
     C("catena a curva, cime diverse", 1050, 1000, [{ crest: [[160, 150], [380, 60], [620, 90], [820, 230], [860, 400]], peaks: [0.6, 1.2, 0.8, 1, 0.5], width: 360, height: 260, seed: 8 }]),
@@ -85,6 +92,13 @@ window.sheet = async (S) => {
       ctx.beginPath(); ctx.rect(0, 0, cell.w, cell.h); ctx.clip();
       ctx.fillStyle = "#c4ba96"; ctx.fillRect(0, 0, cell.w, cell.h);
       if (cell.ref) ctx.drawImage(await load("/" + cell.ref), 0, 0);
+      if (cell.axis) {
+        ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.setLineDash([10, 8]); ctx.lineWidth = 2; ctx.beginPath();
+        if (cell.axis === "horizontal") { ctx.moveTo(cell.w / 2, 0); ctx.lineTo(cell.w / 2, cell.h); }
+        else if (cell.axis === "vertical") { ctx.moveTo(0, cell.h / 2); ctx.lineTo(cell.w, cell.h / 2); }
+        else { ctx.arc(cell.w / 2, cell.h / 2, 12, 0, 7); }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
       for (const m of cell.ms) {
         const g = mountainGeometry(m);
         draw(ctx, g, pat);
@@ -96,7 +110,7 @@ window.sheet = async (S) => {
           ctx.strokeStyle = "rgba(220,40,30,0.95)"; ctx.lineWidth = 3;
           ctx.beginPath(); g.crest.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke();
           ctx.fillStyle = "rgba(220,40,30,0.95)";
-          for (const p of m.crest) { ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, 7); ctx.fill(); }
+          for (const p of g.tops) { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, 7); ctx.fill(); }
           // i piedi delle cime sul terreno
           ctx.fillStyle = "rgba(220,40,30,0.6)";
           for (const p of g.feet) { ctx.beginPath(); ctx.arc(p[0], p[1], 4, 0, 7); ctx.fill(); }

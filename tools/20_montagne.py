@@ -10,6 +10,10 @@
   lo spostamento orizzontale (129) sono multipli di 3, cosi' le righe del
   ritaglio spostato restano in fase con quelle dell'originale e la
   piastrella si ripete senza salti.
+  [§9.214, richiesta dell'autore: "il colore mi sembra un po' scuro"] schiarita
+  del 4% (luminosita' media 158 -> ~164, quella della pietra dei disegni:
+  162-166), perche' le facce in luce del generatore la lasciano com'e' e le
+  altre la scuriscono.
 
   python3 tools/20_montagne.py
 """
@@ -21,6 +25,7 @@ SRC = os.path.join(ROOT, "gmx", "sprites", "images", "montagna9_0.png")
 OUT = os.path.join(ROOT, "nuovi", "montagne", "roccia.png")
 W, H = 258, 256
 BOX = (1536, 512, 1536 + W, 512 + H)  # solo pietra, niente linee
+LIGHTER = 1.04
 
 
 def roll(im, sx, sy):
@@ -59,7 +64,9 @@ def main():
     im = Image.open(SRC).convert("RGBA").crop(BOX)
     assert im.getextrema()[3][0] == 255, "il ritaglio deve essere tutto pietra"
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    seamless(im, W // 2, H // 2).save(OUT, optimize=True)
+    out = seamless(im, W // 2, H // 2)
+    out = Image.eval(out.convert("RGB"), lambda v: min(255, round(v * LIGHTER))).convert("RGBA")
+    out.save(OUT, optimize=True)
     print(OUT, os.path.getsize(OUT), "byte")
 
 

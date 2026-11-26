@@ -19,6 +19,7 @@
 
 import { drawSprite, spriteBounds } from "./sprites.js";
 import { drawRiver, drawRoad, drawBridge, drawPatch, PAINTED_BRIDGES } from "./rivers.js";
+import { drawMountain } from "./mountains.js";
 
 export const GROUND = /^(traccia\d+|strada_\d+|chiazza01|erba_1|prato1)$/;
 const CH = 512, PAD = 1, S = CH + 2 * PAD, MAX = 48;
@@ -101,7 +102,8 @@ export class GroundCache {
     // blocco, nell'ordine in cui si cuociono
     this.lineChunks = new Map(); // "cx,cy" -> [[tipo, geometria]]
     const feats = [...(w.roads || []).map((g) => ["strada", g]), ...(w.rivers || []).map((g) => ["fiume", g]),
-                   ...(w.bridges || []).map((g) => ["ponte", g])];
+                   ...(w.bridges || []).map((g) => ["ponte", g]),
+                   ...(w.mountains || []).map((g) => ["montagna", g])]; // §9.214: sopra a tutto
     // [§9.99] le macchie, a parte: si cuociono prima degli sprite del suolo
     this.patchChunks = new Map();
     this.patchList = w.patches || []; // §9.181: l'ordine, per i blocchi dei livelli piu' lontani
@@ -160,12 +162,13 @@ export class GroundCache {
     if (feats.length) {
       const A = this.assets, wf = A.frame("__white", 0);
       const white = wf && { t: wf.tex, u: wf.f.rect[0] + 4, v: wf.f.rect[1] + 4 };
-      const water = A.bg.get("fiume_acqua"), stones = A.bg.get("fiume_sassi"), paper = A.bg.get("fiume_carta");
+      const water = A.bg.get("fiume_acqua"), stones = A.bg.get("fiume_sassi"), paper = A.bg.get("fiume_carta"), rock = A.bg.get("monte_roccia");
       const box = [x0, y0, x0 + SL, y0 + SL];
       for (const [kind, g] of feats) {
         if (kind === "strada" && stones) drawRoad(r, g, stones, box);
         else if (kind === "fiume" && water && white) drawRiver(r, g, water, white);
         else if (kind === "ponte" && paper && white) drawBridge(r, g, paper, white);
+        else if (kind === "montagna" && rock && white) drawMountain(r, g, rock, white); // §9.214
       }
     }
     for (const i of this._gather(this.topChunks, cx, cy, L, byId)) { // §9.100

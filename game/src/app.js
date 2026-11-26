@@ -34,6 +34,7 @@ import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseT
 import { FogMap, sightK } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
+import { mountainGeometry, mountainCells, mountainIn } from "./mountains.js"; // §9.214
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila } from "./effects.js";
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -220,7 +221,7 @@ async function main() {
   const room = custom ? JSON.parse(JSON.stringify(custom.room)) : await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
-                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta",
+                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta", ...(room.mountains ? ["monte_roccia"] : []),
                      ...(room.patches || []).map((p) => p.bg || "city2")], progress); // §9.97, §9.99
 
   const [objects, masks] = await Promise.all(
@@ -284,8 +285,12 @@ async function main() {
   let netGame = null; // §9.156: la partita in rete (startNet, sotto)
   // [§9.97] i fiumi disegnati come linee (rivers.js): forma, acqua, ostacolo
   const FEET = [10, 5];
-  const useRivers = (list, roads = [], bridges = [], patches = []) => {
+  const useRivers = (list, roads = [], bridges = [], patches = [], mountains = room.mountains || []) => {
     const R = [room.width, room.height];
+    // [§9.214] le montagne del generatore: cotte nel suolo, la sagoma e'
+    // l'ostacolo (mountains.js mountainCells)
+    world.mountains = mountains.map((m) => mountainGeometry({ ...m, room: R }));
+    world._mountainCells = undefined;
     world.patches = patches.map(patchGeometry); // §9.99
     world.rivers = riverJoin(list, (rv) => riverGeometry({ ...rv, room: R })); // §9.100: le foci
     world.roads = roads.map((rd) => roadGeometry({ ...rd, room: R }));
@@ -295,13 +300,16 @@ async function main() {
     // terra), i fantasmi degli edifici tutta la maschera: col riquadro intero
     // un'unita' sulla riva "toccava" l'acqua, e i nemici che toccano
     // qualcosa avanzano dritti (enemies.js pushThrough)
-    world.terrainBlocks = world.rivers.length ? (inst, x, y) => {
+    // ([§9.214] e la sagoma delle montagne del generatore)
+    const inTerrain = (x0, y0, x1, y1) => {
+      const rc = riverCells(world), mc = mountainCells(world);
+      return (!!rc && riverIn(rc, x0, y0, x1, y1)) || (!!mc && mountainIn(mc, x0, y0, x1, y1));
+    };
+    world.terrainBlocks = world.rivers.length || world.mountains.length ? (inst, x, y) => {
       if (!stopsAtWater(world, inst)) return false;
-      const rc = riverCells(world);
-      if (!rc) return false;
-      if (!/_placer$/.test(inst.object)) return riverIn(rc, x - FEET[0], y - FEET[1], x + FEET[0], y + FEET[1]);
+      if (!/_placer$/.test(inst.object)) return inTerrain(x - FEET[0], y - FEET[1], x + FEET[0], y + FEET[1]);
       const bb = world.bbox(inst, x, y);
-      return !!bb && riverIn(rc, bb[0], bb[1], bb[2], bb[3]);
+      return !!bb && inTerrain(bb[0], bb[1], bb[2], bb[3]);
     } : null;
   };
   useRivers(room.rivers || [], room.roads || [], room.bridges || [], room.patches || []);
@@ -1101,9 +1109,10 @@ async function main() {
                     objectives: () => objectiveMarks(world), // §9.114, per le prove
                     // [§9.97] per le prove: altri fiumi a linee (ricuoce il suolo, rifa' acqua e percorsi)
                     // (se una macchia usa uno sfondo non ancora caricato, lo carica: allora restituisce una promessa)
-                    setRivers(list, roads = [], bridges = [], patches = []) {
-                      const apply = () => { useRivers(list, roads, bridges, patches); path._river = null; path.initCost(); ground.reset(); };
-                      const missing = patches.map((p) => p.bg || "city2").filter((b) => !assets.bg.get(b));
+                    // ([§9.214] anche le montagne del generatore)
+                    setRivers(list, roads = [], bridges = [], patches = [], mountains = []) {
+                      const apply = () => { useRivers(list, roads, bridges, patches, mountains); path._river = null; path.initCost(); ground.reset(); };
+                      const missing = [...patches.map((p) => p.bg || "city2"), ...(mountains.length ? ["monte_roccia"] : [])].filter((b) => !assets.bg.get(b));
                       if (missing.length) return assets.load([], missing).then(apply);
                       apply();
                     },

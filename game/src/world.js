@@ -23,6 +23,7 @@ import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { simRandom, vrand } from "./rng.js"; // §9.152
 import { unitFam } from "./multiplayer.js"; // §9.155
+import { mountainCells, mountainAt } from "./mountains.js"; // §9.214
 
 // [§9.152] le istanze dell'interfaccia (pulsanti, dialoghi, suggerimenti):
 // seguono la vista o nascono per chi guarda; id a parte (negativi) e fuori
@@ -398,6 +399,15 @@ export class World {
   shotClear(x0, y0, x1, y1, from = null) {
     const dx = x1 - x0, dy = y1 - y0, len = dhypot(dx, dy);
     if (len <= 40) return true;
+    // [§9.214] le montagne del generatore (non sono istanze): la loro sagoma
+    const mc = this._mountainCells !== undefined ? this._mountainCells : (this.mountains && this.mountains.length ? mountainCells(this) : null);
+    if (mc) {
+      const n = Math.ceil(len / 8);
+      for (let k = 0; k <= n; k++) {
+        const d = (len * k) / n;
+        if (d >= 20 && d <= len - 20 && mountainAt(mc, x0 + (dx * k) / n, y0 + (dy * k) / n)) return false;
+      }
+    }
     const cands = [];
     this._eachNear([Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)],
                    (o) => { if (this.blocksShots(o) && !(from && this.ignoredFrom(o, from))) cands.push(o); });

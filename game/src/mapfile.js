@@ -6,13 +6,15 @@
 // riporta a scenario (roomToScenario); per provarle nel gioco fara' il
 // contrario (scenarioToRoom, la stessa conversione di tools/07_scene.py).
 
+import { cleanMountain, MOUNTAIN_LIMITS } from "./mountains.js"; // §9.214
+
 export const MAP_FORMAT = "535-scenario", MAP_VERSION = 1;
 // colore della room [C] (12632256 = c_silver in BGR) e sfondo predefiniti,
 // come la mappa vuota del kit di Tiled (tools/11 --nuova)
 export const MAP_COLOUR = 12632256, MAP_BACKGROUND = "green1";
 // le parti disegnate a linee e a forme (§9.97, §9.99, §9.101), solo se ci
 // sono, come in tools/07
-export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths"];
+export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths", "mountains"]; // §9.214: le montagne del generatore
 
 // [§9.184] Le informazioni delle mappe dell'editor, in piu' (tools/07 e il
 // gioco le ignorano): la descrizione (la schermata della schermaglia) e la
@@ -120,7 +122,7 @@ export const COVER_RE = /^data:image\/(webp|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 export function newMap({ name = "", width = 6000, height = 6000, background = MAP_BACKGROUND } = {}) {
   return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: MAP_COLOUR,
            view: { x: 0, y: 0, w: 3000, h: 2000 },
-           instances: [], roads: [], rivers: [], bridges: [], patches: [],
+           instances: [], roads: [], rivers: [], bridges: [], patches: [], mountains: [],
            description: "", cpu: { difficulty: "choice", style: "choice" } };
 }
 
@@ -201,6 +203,13 @@ export function validateMap(data, allowed, objects) {
     bridges: list("bridges", [], (f) => pts(f.pts)),
     patches: list("patches", ["bg", "feather", "alpha"], (f) => pts(f.pts) && (f.bg === undefined || MAP_BACKGROUNDS.includes(f.bg))
                   && unit(f, "feather", 400) && unit(f, "alpha", 1)),
+    // [§9.214] le montagne del generatore: ogni voce controllata
+    // (mountains.js cleanMountain: punti, limiti, parametri)
+    mountains: (() => {
+      const l = data.mountains === undefined ? [] : data.mountains;
+      if (!Array.isArray(l) || l.length > MOUNTAIN_LIMITS.count) { bad("mountains"); return []; }
+      return l.map((f) => cleanMountain(f, W, H, M) || (bad("mountains"), null)).filter(Boolean);
+    })(),
     description: str(data.description, DESC_MAX) ? data.description : "",
     cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "choice",
            style: CPU_STYLE.includes(data.cpu && data.cpu.style) ? data.cpu.style : "choice" },

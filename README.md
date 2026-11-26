@@ -59,7 +59,7 @@ acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (do
 `tools/01`) solo se cambiano i dipinti da cui vengono. La texture delle montagne del generatore
 (`nuovi/montagne/roccia.png`, §9.213, dalla pietra di montagna9) si rifa' con `python3 tools/20_montagne.py`
 (dopo `tools/01`); la prova di stile delle montagne (fogli PNG accanto ai disegni dell'autore) con
-`node tools/21_prova_montagne.mjs`. Le mappe della schermaglia
+`node tools/21_prova_montagne.mjs`; la prova nel browser dello strumento montagna dell'editor con `node game/test/browser/mountains.mjs` (senza server: i file li serve Playwright). Le mappe della schermaglia
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
 (poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della
 schermaglia (`nuovi/sprites/sk_*_cartolina.png`, §9.121) la fa `node tools/17_cartoline.mjs` col gioco
@@ -69,7 +69,7 @@ delle varianti in `audio.json`, fonti e licenze in `CREDITI.md`, §9.137) li fa
 `python3 tools/18_audio.py` (serve ffmpeg) -> `game/assets/audio/`.
 
 Poi `http://127.0.0.1:8000/` (menu) o `?room=match`, `?room=lvl01`,
-`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=lvl07` (l'arciere nella nebbia, §9.178), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room; `?room=editor` apre l'editor di mappe (§9.180-§9.184: mappe da schermaglia; modelli, "Inserisci", "Sposta", annulla e ripeti, salva e apri nel browser o su file `.dvmap`, impostazioni con la copertina, simmetria degli strumenti, pennello ovale per boschi e texture, polilinea per fiumi e strade, file collegati, "Prova mappa" nella room `custom`). Sono giocabili il menu
+`?room=lvl02`, `?room=lvl03`, `?room=lvl04` (il fiume e il ponte, §9.40), `?room=lvl06` (la mappa del livello 6, §9.100), `?room=lvl07` (l'arciere nella nebbia, §9.178), `?room=sk_padus` (la schermaglia su Padus, coi parametri scelti nel menu, §9.118) per entrare direttamente in una room; `?room=editor` apre l'editor di mappe (§9.180-§9.184: mappe da schermaglia; modelli, "Inserisci", "Sposta", annulla e ripeti, salva e apri nel browser o su file `.dvmap`, impostazioni con la copertina, simmetria degli strumenti, pennello ovale per boschi e texture, polilinea per fiumi e strade, montagne del generatore in due passi, cresta e base (§9.213-§9.214), file collegati, "Prova mappa" nella room `custom`). Sono giocabili il menu
 principale con la campagna (mappa, livelli 1 e 2, lucchetto a cinque
 cifre), economia, costruzione e combattimento, con nebbia di guerra,
 notte, pioggia e fuoco, suggerimenti del tutorial, dialoghi, obiettivi,

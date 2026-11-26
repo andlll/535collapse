@@ -80,6 +80,7 @@ import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, pale
          FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO, riverGeometry } from "./rivers.js";
+import { MOUNTAIN_STEPS, crestProblem, baseProblem } from "./mountains.js"; // §9.214
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -140,7 +141,10 @@ export class EditorView {
 // staccate), nell'ordine del disegno dell'autore. label: il suggerimento a
 // destra della colonna e il titolo del riquadro; desc: cosa fara' (nel
 // riquadro, finche' lo strumento non c'e').
-export const TOOLS = ["select", "line", "brush", "insert", "erase"]; // §9.194: la gomma, quinta (tasto 5)
+// [§9.214, richiesta dell'autore] la montagna, "tasto dedicato sotto alla polilinea"
+export const TOOLS = ["select", "line", "mountain", "brush", "insert", "erase"];
+// i tasti 1-6: quelli di prima restano (la gomma e' ancora il 5), la montagna e' il 6
+export const TOOL_KEYS = ["select", "line", "brush", "insert", "erase", "mountain"];
 export const ACTIONS = ["new", "open", "save", "test", "settings"];
 // [§9.195, richiesta dell'autore] il secondo gruppo, fra gli strumenti e le
 // azioni: annulla, taglia, copia, incolla (oltre ai tasti)
@@ -148,6 +152,7 @@ export const EDITS = ["undo", "redo", "cut", "copy", "paste"]; // §9.199: anche
 export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
+  mountain: "Mountain: crest and base", // §9.214
   brush: "Area brush: forests, textures",
   insert: "Insert: units, resources, buildings…",
   erase: "Area eraser: delete objects",
@@ -165,6 +170,7 @@ export const LABEL = {
 export const DESC = {
   select: "Select objects with a click or a box and drag them to move them; copy and paste, mirror or delete the selection.",
   line: "Draw rivers and roads point by point, with their width; drag the points to change their course. Bridges go across rivers.",
+  mountain: "Draw a mountain in two steps: the crest, peak by peak, then its base on the ground (or the automatic one). Objects underneath are removed, rivers and roads go around it.",
   brush: "Paint forests and ground textures (city paving, stone, meadow) with a round brush; the eraser removes them.",
   insert: "Choose an object by category (units, buildings, resources, nature, city…) and place it on the map.",
   erase: "Delete all the objects under the brush, holding the left button down.",
@@ -173,16 +179,57 @@ export const HELP = "Arrows, middle button or Space + drag: move the view. Wheel
 // [§9.182] i comandi degli strumenti che ci sono
 export const SELECT_HINTS = "Click: select (Shift: add). Drag: move, or select with a box (Ctrl: always a box). Del: delete. M: mirror. S: style. "
   + "Ctrl+C, Ctrl+V: copy and paste. Ctrl+Z, Ctrl+Y: undo, redo.";
-export const READY = new Set(["select", "insert", "brush", "line", "erase"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
+export const READY = new Set(["select", "insert", "brush", "line", "erase", "mountain"]); // gli strumenti che funzionano (§9.185: il pennello, §9.187: la polilinea)
 // [§9.184] i nomi degli sfondi e della simmetria nelle impostazioni
 export const BG_NAMES = { green1: "Meadow", city2: "Paving", city1: "Stone" };
 export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horizontal", vertical: "Vertical" };
+// [§9.214, richieste dell'autore] La montagna (mountains.js): in due passi,
+// la cresta (cima per cima, come si vede) e poi la base sul terreno (o
+// quella automatica, larga `width`); i parametri coi "-" e "+" (quelli
+// delle montagne nuove, o della montagna scelta), "Nuova variante" (un
+// altro seme) e "Base automatica" (via la base disegnata). Il riquadro: tre
+// colonne, due righe.
+export const MTN_KEYS = ["height", "width", "rough", "detail"];
+export const MTN_LABEL = { height: "Height", width: "Width", rough: "Roughness", detail: "Detail" };
+export function mountainLayout(panel) {
+  const [x1, y1, x2] = panel, cw = (x2 - x1 - 48) / 3;
+  const group = (col, cy) => {
+    const x = x1 + 24 + col * cw;
+    return { label: [x + 6, cy], minus: [x + cw - 132, cy, 15], value: [x + cw - 80, cy], plus: [x + cw - 28, cy, 15] };
+  };
+  const cy1 = y1 + 84, cy2 = y1 + 130, bx = x1 + 24 + 2 * cw + 10;
+  return { height: group(0, cy1), width: group(1, cy1), rough: group(0, cy2), detail: group(1, cy2),
+           seed: [bx, cy1 - 17, x2 - 24, cy1 + 17], auto: [bx, cy2 - 17, x2 - 24, cy2 + 17] };
+}
+// [§9.214, richiesta dell'autore: "strumenti di controllo per evitare
+// inserimenti di punti assurdi o infattibili"] il perche' di un punto
+// rifiutato (mountains.js crestProblem, baseProblem), e quando una
+// montagna ne tocca un'altra
+export const MTN_PROBLEM = {
+  crest: { count: "A crest has at most 12 peaks.", close: "Too close to the previous peak.", far: "Too far from the previous peak.",
+           sharp: "The crest turns back too sharply.", cross: "The crest can't cross itself." },
+  base: { count: "A base has 3 to 64 points.", close: "Too close to the previous point.", cross: "The base can't cross itself.",
+          small: "This base is too small.", crest: "The base must lie under the whole crest." },
+};
+export const MTN_OVERLAP = "A mountain can't touch another one.", MTN_TWIN = "The mountain touches its mirror twin: move it away from the axis.";
+export const MTN_HINTS = {
+  idle: "Click: first peak of a new mountain. Click on a mountain: select it.",
+  crest: "Step 1, the crest. Click: add a peak. Right click or Enter: done. Backspace: last peak away. Esc: cancel.",
+  base: "Step 2, the base. Click: add a point. Right click or Enter: done (no points: automatic base). Esc: cancel.",
+  sel: "Drag the points. Del: delete. B: draw the base again.",
+};
+export const MTN_TEXTS = [...Object.values(MTN_LABEL), ...Object.values(MTN_PROBLEM.crest), ...Object.values(MTN_PROBLEM.base), MTN_OVERLAP, MTN_TWIN,
+  ...Object.values(MTN_HINTS), "New variant", "Automatic base", "Trees removed under the mountain: {n}", "Objects removed under the mountain: {n}",
+  "Rivers and roads moved around the mountain: {n}", "Rivers and roads removed (under the mountain): {n}"];
+export const mtnValue = (k, v) => (k === "rough" || k === "detail" ? Math.round(v * 100) + "%" : v + " px");
+
 export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map could not be opened", HELP, SELECT_HINTS,
                              "Skirmish maps, as templates for a new map", "New map from {map}", "{n} selected",
                              "Click: place. Right click: stop.", "Choose an object", "S: style {i}/{n}", "Each side has one starting position.", "Red side (S: blue)", "Blue side (S: red)", "Units",
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
                              "Trees removed from the river: {n}", // §9.204
+                             ...MTN_TEXTS, // §9.214
                              "Speed", "Range", "Duration", "Clouds", "Every", // §9.206: la nebbia
                              "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
                              "The changes to this map will be lost.", "Continue", "Cancel",
@@ -223,7 +270,7 @@ export const BACK_BTN = [50, 50, 30]; // dal bordo destro, dall'alto, raggio (co
 // scorre (scroll: px dall'alto, gia' limitato; maxScroll). Le frecce su e
 // giu' (up, down: [x, y, r]) in cima e in fondo; i pulsanti fuori dalla
 // parte che si vede hanno hidden e non si toccano.
-const COL_MIN = 0.8, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti: a 900 px stanno ancora tutti)
+const COL_MIN = 0.75, COL_ARROW = 30; // (§9.199: 0,8 con Ripeti; §9.214: 0,75 con la montagna, a 900 px stanno ancora tutti)
 // (§9.203: la freccia della schermaglia, alta come quelle della mappa, menu.js
 // arrow con r 22, poi il 40% piu' piccola: richiesta dell'autore)
 const COL_ARROW_SCALE = ((22 * 0.45 * 2.6) / 24) * 0.6;
@@ -311,6 +358,9 @@ function drawIcon(d, key, x, y, s, ink) {
     const P = [[-14, 9], [-6, -6], [4, 6], [14, -9]];
     for (let i = 1; i < P.length; i++) L(P[i - 1][0], P[i - 1][1], P[i][0], P[i][1]);
     for (const [px, py] of P) C(px, py, 3.6);
+  } else if (key === "mountain") { // [§9.214] due cime col contorno e una cresta interna
+    L(-16, 12, -7, -4); L(-7, -4, -2, 3); L(-2, 3, 5, -13); L(5, -13, 16, 12); L(-17, 12, 17, 12);
+    L(5, -13, 2, 6, 2); L(-7, -4, -8, 6, 2);
   } else if (key === "brush") { // pennello: manico, ghiera, setole, una pennellata
     L(15, -15, 4, -4, 4);
     L(4, -4, -1, 1, 7);
@@ -531,7 +581,7 @@ export function segDist(px, py, a, b) {
 // [§9.186, richiesta dell'autore] La simmetria e' un'impostazione degli
 // strumenti (Sposta, Inserisci, Pennello), non della mappa: una riga in fondo
 // al loro riquadro, "Simmetria" e le quattro modalita'
-export const SYM_TOOLS = new Set(["select", "insert", "brush", "line", "erase"]); // §9.187: anche la polilinea; §9.194: la gomma
+export const SYM_TOOLS = new Set(["select", "insert", "brush", "line", "erase", "mountain"]); // §9.187: anche la polilinea; §9.194: la gomma; §9.214: la montagna
 export function symLayout(panel) {
   const [x1, y1] = panel, y = y1 + 168, w = 150, gap = 8, left = x1 + 190;
   return { label: [x1 + 30, y + 13], opts: SYMMETRY.map((mode, k) => ({ mode, x1: left + k * (w + gap), y1: y, x2: left + k * (w + gap) + w, y2: y + 26 })) };
@@ -575,7 +625,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
                brush: { kind: "forest", w: 3, d: 3 }, stroke: null,
                // [§9.186] la simmetria di ogni strumento (spenta di partenza)
-               sym: { select: "none", insert: "none", brush: "none", line: "none", erase: "none" }, symHover: null,
+               sym: { select: "none", insert: "none", brush: "none", line: "none", erase: "none", mountain: "none" }, symHover: null,
                // [§9.194] la gomma (larghezza: indice di BRUSH_WIDTHS, cancellando); le mura:
                // il "+" da cui si prolunga (wall) e il pulsante sotto il puntatore
                erase: { w: 3 }, erasing: false, wall: null, wallHover: null,
@@ -587,7 +637,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
-               drawing: null, lsel: null, ldrag: null };
+               drawing: null, lsel: null, ldrag: null,
+               // [§9.214] la montagna: i parametri delle nuove (indici di MOUNTAIN_STEPS), quella
+               // che si disegna ({ step: "crest" | "base", crest, base, seed, edit }), la scelta
+               // ({ e }), il punto trascinato, le forme gia' fatte (l'anteprima)
+               mtn: { height: 4, width: 4, rough: 2, detail: 2 }, mdraw: null, msel: null, mdrag: null, mcache: new Map() };
   const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
@@ -642,7 +696,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     scene.ground.free();
     scene = s;
     Object.assign(ed, { label, sel: new Set(), over: null, move: null, box: null, mapId: id, file, saved: s.version, meta: false,
-                        drawing: null, lsel: null });
+                        drawing: null, lsel: null, mdraw: null, msel: null, mdrag: null });
     view.setMap(s.map.width, s.map.height);
     const v = s.map.view;
     view.centre(v.x + v.w / 2, v.y + v.h / 2);
@@ -712,8 +766,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
   const setTool = (t) => {
-    if (ed.stroke || ed.ldrag || ed.erasing) return;
-    if (t !== ed.tool) Object.assign(ed, { drawing: null, lsel: null, wall: null }); // §9.187; §9.194: il prolungamento delle mura
+    if (ed.stroke || ed.ldrag || ed.erasing || ed.mdrag) return;
+    if (t !== ed.tool) Object.assign(ed, { drawing: null, lsel: null, wall: null, mdraw: null, msel: null }); // §9.187; §9.194: il prolungamento delle mura; §9.214
     ed.tool = t;
     if (t === "insert" || t === "brush") ensureCatalog();
   };
@@ -1006,6 +1060,155 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const linePts = (key, e, fn) => {
     const t = scene.twinLine(key, e, symMode());
     scene.modifyFeatures(key, t ? [e, t] : [e], (f) => ({ pts: fn(f.pts.map((q) => q.slice()), f === t) }));
+  };
+
+  // ------------------------------------------------------------ montagne
+  // [§9.214] i parametri delle montagne nuove, la forma (con una cache: le
+  // anteprime la chiedono a ogni fotogramma), la gemella con la simmetria
+  const mtnVal = (k) => MOUNTAIN_STEPS[k][ed.mtn[k]];
+  const mtnIdx = (k, v) => MOUNTAIN_STEPS[k].reduce((b, s, i) => (Math.abs(s - v) < Math.abs(MOUNTAIN_STEPS[k][b] - v) ? i : b), 0);
+  const newSeed = () => Math.floor(vrand() * 0x7fffffff);
+  const warn = (text, params) => toast(tr(text, params), "warning");
+  const mGeo = (m) => {
+    const k = JSON.stringify(m);
+    let g = ed.mcache.get(k);
+    if (!g) { if (ed.mcache.size > 24) ed.mcache.clear(); g = scene.mountainGeo(m); ed.mcache.set(k, g); }
+    return g;
+  };
+  const geoOf = (e) => (scene.world.mountains || [])[(scene.map.mountains || []).indexOf(e)] || mGeo(e);
+  const roundPts = (pts) => pts.map(([x, y]) => [Math.round(x), Math.round(y)]);
+  // la montagna nuova e, con la simmetria, la gemella: gli stessi campi,
+  // specchiata sul terreno (mountains.js mirrorStructure)
+  const mPair = (e) => {
+    if (!symOn()) return [e];
+    const s = { ...e, sym: symMode() };
+    return [s, { ...JSON.parse(JSON.stringify(s)), mirrored: true }];
+  };
+  const mAndTwin = (e) => { const t = symOn() ? scene.twinMountain(e) : null; return t ? [e, t] : [e]; };
+  // le gemelle specchiate: i punti come si vedono e come stanno nella voce
+  // (la base sul terreno si specchia e basta; una cima si specchia sul
+  // terreno, h px sotto, alla stessa altezza)
+  const mm = (e, p) => mirrorPoint(e.sym, scene.map.width, scene.map.height, p[0], p[1]);
+  const crestStore = (e, p, h) => { if (!e.mirrored) return p; const q = mm(e, [p[0], p[1] + h]); return [q[0], q[1] - h]; };
+  const baseShown = (e) => (e.base ? (e.mirrored ? e.base.map((p) => mm(e, p)) : e.base) : null);
+  const topsOf = (e) => geoOf(e).tops.map((t) => [t.x, t.y, t.h]);
+  // [§9.214, richieste dell'autore] montagne nuove (adds) o cambiate (mods:
+  // [voce, campi]): prima il controllo (non toccano altre montagne, ne' la
+  // gemella), poi in un passo solo da annullare le voci, gli oggetti sotto
+  // tolti ("elimina tutti gli oggetti in collisione", con l'avviso per tutti
+  // quelli che non sono alberi), fiumi e strade che girano attorno ("sposta
+  // le polilinee in interferenza")
+  const mCommit = (adds, mods = []) => {
+    const changed = new Set(mods.map(([e]) => e));
+    const after = [...adds, ...mods.map(([e, f]) => JSON.parse(JSON.stringify({ ...e, ...f })))];
+    const geos = after.map((m) => scene.mountainGeo(m));
+    const others = (scene.map.mountains || []).filter((e) => !changed.has(e));
+    const touch = (a, b) => { for (let k = 0; k < a.grid.length; k++) if (a.grid[k] && b.grid[k]) return true; return false; };
+    if (others.length && touch(scene.mountainGrid(geos), scene.mountainGrid(others.map(geoOf)))) { warn(MTN_OVERLAP); return false; }
+    if (geos.length === 2 && touch(scene.mountainGrid([geos[0]]), scene.mountainGrid([geos[1]]))) { warn(MTN_TWIN); return false; }
+    scene.begin();
+    if (adds.length) scene.addFeatures("mountains", adds);
+    for (const [e, f] of mods) scene.modifyFeatures("mountains", [e], () => f);
+    const gone = scene.underMountains(geos), trees = gone.filter((e) => TREES.has(e.object)).length;
+    if (gone.length) scene.remove(gone);
+    const moved = scene.reroute(geos);
+    for (const { key, e, pts } of moved) {
+      if (pts) scene.modifyFeatures(key, [e], () => ({ pts }));
+      else scene.removeFeatures(key, [e]);
+    }
+    // (i fiumi spostati, come i fiumi nuovi, tolgono gli alberi nell'acqua)
+    const wet = scene.treesInRivers(moved.filter((q) => q.key === "rivers" && q.pts).map((q) => q.e));
+    if (wet.length) scene.remove(wet);
+    scene.end();
+    tidySel();
+    if (ed.lsel && !(scene.map[ed.lsel.key] || []).includes(ed.lsel.e)) ed.lsel = null;
+    const kept = moved.filter((q) => q.pts).length;
+    if (trees + wet.length) toast(tr("Trees removed under the mountain: {n}", { n: trees + wet.length }));
+    if (gone.length > trees) warn("Objects removed under the mountain: {n}", { n: gone.length - trees });
+    if (kept) toast(tr("Rivers and roads moved around the mountain: {n}", { n: kept }));
+    if (moved.length > kept) warn("Rivers and roads removed (under the mountain): {n}", { n: moved.length - kept });
+    return true;
+  };
+  // Invio, il destro o il doppio clic: la cresta e' fatta (si passa alla
+  // base), o la base e' fatta (la montagna si crea, o cambia la sua base)
+  const mStep = () => {
+    const d = ed.mdraw;
+    if (d.step === "crest") {
+      if (!d.crest.length) { ed.mdraw = null; return; }
+      Object.assign(d, { step: "base", base: [] });
+      return;
+    }
+    const H = d.edit ? d.edit.height ?? mtnVal("height") : mtnVal("height");
+    const crest = d.edit ? topsOf(d.edit) : d.crest.map(([x, y]) => [x, y, H * 0.9]);
+    let base = null;
+    if (d.base.length) {
+      const p = baseProblem(d.base, crest, H * 0.9);
+      if (p) { warn(MTN_PROBLEM.base[p]); return; }
+      base = roundPts(d.base);
+    }
+    if (d.edit) {
+      const e = d.edit, stored = base && e.mirrored ? roundPts(base.map((p) => mm(e, p))) : base;
+      if (mCommit([], mAndTwin(e).map((f) => [f, { base: stored || undefined }]))) { ed.mdraw = null; ed.msel = { e }; }
+      return;
+    }
+    const e = { crest: roundPts(d.crest), height: H, width: mtnVal("width"), rough: mtnVal("rough"), detail: mtnVal("detail"), seed: d.seed };
+    if (base) e.base = base;
+    const list = mPair(e);
+    if (mCommit(list)) { ed.mdraw = null; ed.msel = { e: list[0] }; }
+  };
+  // un punto in piu' della cresta o della base, se va (se no l'avviso col perche')
+  const mAdd = (p) => {
+    const d = ed.mdraw;
+    if (d.step === "crest") {
+      const next = [...d.crest, p], why = crestProblem(next);
+      if (why) { warn(MTN_PROBLEM.crest[why]); return; }
+      d.crest = next;
+    } else {
+      const H = d.edit ? d.edit.height ?? mtnVal("height") : mtnVal("height");
+      const crest = d.edit ? topsOf(d.edit) : d.crest.map(([x, y]) => [x, y, H * 0.9]);
+      const next = [...d.base, p], why = baseProblem(next, crest, H, true);
+      if (why) { warn(MTN_PROBLEM.base[why]); return; }
+      d.base = next;
+    }
+  };
+  // i punti della montagna scelta: le cime (come si vedono) e, se l'ha, la base
+  const mHandles = (e) => {
+    const out = geoOf(e).tops.map((t, k) => ({ kind: "crest", k, x: t.x, y: t.y, h: t.h }));
+    const b = baseShown(e);
+    if (b) b.forEach((p, k) => out.push({ kind: "base", k, x: p[0], y: p[1] }));
+    return out;
+  };
+  // lasciato un punto trascinato: la cresta o la base nuova, se va
+  const mDragEnd = (D) => {
+    const e = D.e, tops = topsOf(e), H = e.height ?? mtnVal("height");
+    if (D.kind === "crest") {
+      const shown = tops.map((t) => t.slice());
+      shown[D.k] = [D.cur[0], D.cur[1], D.h];
+      const why = crestProblem(shown.map((t) => [t[0], t[1]]));
+      if (why) { warn(MTN_PROBLEM.crest[why]); return; }
+      if (e.base) { const wb = baseProblem(baseShown(e), shown, H); if (wb) { warn(MTN_PROBLEM.base[wb]); return; } }
+      const stored = e.crest.map((q) => q.slice());
+      stored[D.k] = crestStore(e, D.cur, D.h).map(Math.round);
+      mCommit([], mAndTwin(e).map((f) => [f, { crest: stored }]));
+      return;
+    }
+    const shown = baseShown(e).map((q) => q.slice());
+    shown[D.k] = D.cur;
+    const why = baseProblem(shown, tops, H);
+    if (why) { warn(MTN_PROBLEM.base[why]); return; }
+    const stored = roundPts(e.mirrored ? shown.map((q) => mm(e, q)) : shown);
+    mCommit([], mAndTwin(e).map((f) => [f, { base: stored }]));
+  };
+  // i "-" e "+", "Nuova variante", "Base automatica": della montagna scelta
+  // (con la gemella), o i parametri delle nuove
+  const mPanel = (q) => {
+    const e = ed.msel && ed.msel.e;
+    if (q === "seed") { if (e) mCommit([], mAndTwin(e).map((f) => [f, { seed: newSeed() }])); return; }
+    if (q === "auto") { if (e && e.base) mCommit([], mAndTwin(e).map((f) => [f, { base: undefined }])); return; }
+    const k = q.slice(0, -1), dir = q.endsWith("+") ? 1 : -1, n = MOUNTAIN_STEPS[k].length;
+    if (!e) { ed.mtn[k] = Math.max(0, Math.min(n - 1, ed.mtn[k] + dir)); return; }
+    const i = Math.max(0, Math.min(n - 1, mtnIdx(k, e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]]) + dir));
+    if (MOUNTAIN_STEPS[k][i] !== e[k]) mCommit([], mAndTwin(e).map((f) => [f, { [k]: MOUNTAIN_STEPS[k][i] }]));
   };
 
   // ------------------------------------------- impostazioni e salvataggio
@@ -1310,6 +1513,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         return;
       }
     }
+    // [§9.214] la montagna: i tasti mentre la si disegna o con una scelta
+    if (ed.msel && !(scene.map.mountains || []).includes(ed.msel.e)) ed.msel = null; // (annullata)
+    if (ed.tool === "mountain" && ed.mdraw) {
+      if (K(27)) { ed.mdraw = null; return; } // Esc: via
+      if (K(13)) { mStep(); return; } // Invio: il passo e' fatto
+      if (K(8)) { const L2 = ed.mdraw.step === "crest" ? ed.mdraw.crest : ed.mdraw.base; L2.pop(); if (ed.mdraw.step === "crest" && !L2.length) ed.mdraw = null; return; }
+    } else if (ed.tool === "mountain" && ed.msel) {
+      if (K(27)) { ed.msel = null; return; }
+      if (K(46)) { scene.removeFeatures("mountains", mAndTwin(ed.msel.e)); ed.msel = null; return; } // Canc: via la montagna
+      if (K(66)) { ed.mdraw = { step: "base", crest: [], base: [], edit: ed.msel.e }; return; } // B: la base di nuovo
+    }
     // Esc: prima si lascia l'oggetto o la scelta, poi si esce
     if (K(27)) {
       if (ed.wall) ed.wall = null; // §9.194: via il prolungamento delle mura
@@ -1322,7 +1536,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ctrl && K(90)) { if (shift ? scene.redo() : scene.undo()) tidySel(); return; }
     if (ctrl && K(89)) { if (scene.redo()) tidySel(); return; }
     // gli strumenti coi tasti 1-4
-    if (!ctrl) TOOLS.forEach((t, k) => { if (K(49 + k) || K(97 + k)) setTool(t); });
+    if (!ctrl) TOOL_KEYS.forEach((t, k) => { if (K(49 + k) || K(97 + k)) setTool(t); }); // (§9.214: TOOL_KEYS)
     if (!ctrl && K(83)) nextStyle(shift ? -1 : 1); // §9.183
     if (ctrl && K(83)) { quickSave(); return; } // §9.184
     if (ed.tool === "select") {
@@ -1458,6 +1672,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
       return;
     }
+    // [§9.214] il riquadro della montagna: i "-" e "+", i due pulsanti
+    if (ed.tool === "mountain" && hit && hit.kind === "ui") {
+      const B = mountainLayout(L.panel), on = (q) => dhypot(mx - q[0], my - q[1]) <= q[2] + 4;
+      ed.palHover = null;
+      for (const k of MTN_KEYS) { if (on(B[k].minus)) ed.palHover = k + "-"; if (on(B[k].plus)) ed.palHover = k + "+"; }
+      if (inRect(mx, my, B.seed)) ed.palHover = "seed";
+      if (inRect(mx, my, B.auto)) ed.palHover = "auto";
+      if (input.mouseReleased[0] && ed.palHover && !ed.mdraw) mPanel(ed.palHover);
+      return;
+    }
     // [§9.194] il riquadro della gomma: la larghezza coi "-" e "+"
     if (ed.tool === "erase" && hit && hit.kind === "ui") {
       const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
@@ -1517,6 +1741,39 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
           ed.lsel = { key: h.key, e: h.e, vi: h.seg };
         } else if (h) ed.lsel = { key: h.key, e: h.e, vi: null };
         else { ed.lsel = null; ed.drawing = { kind: ed.line.kind, pts: [[px0, py0]] }; } // fuori dalle linee: una linea nuova
+      }
+      return;
+    }
+    if (ed.tool === "mountain") { // §9.214
+      const dbl = !!input.pressDbl[0];
+      const M = VIEW_MARGIN, px0 = Math.round(Math.max(-M, Math.min(scene.map.width + M, rx))), py0 = Math.round(Math.max(-M, Math.min(scene.map.height + M, ry)));
+      if (ed.mdraw) { // un punto a clic; il destro o il doppio clic finiscono il passo
+        if (onMap && input.mousePressed[1]) { mStep(); return; }
+        if (onMap && input.mousePressed[0]) {
+          const d = ed.mdraw, pts = d.step === "crest" ? d.crest : d.base, last = pts[pts.length - 1];
+          if (!last || dhypot(px0 - last[0], py0 - last[1]) > 6 * view.scale) mAdd([px0, py0]);
+          if (dbl) mStep();
+        }
+        return;
+      }
+      if (ed.mdrag) { // un punto trascinato: la modifica vera lasciando il tasto
+        const D = ed.mdrag;
+        if (!D.on && dhypot(mx - D.sx, my - D.sy) > 4) D.on = true;
+        if (D.on) D.cur = [px0, py0];
+        if (!input.mouseDown[0]) { ed.mdrag = null; if (D.on && D.cur) mDragEnd(D); }
+        return;
+      }
+      if (onMap && input.mousePressed[1]) { ed.msel = null; return; }
+      if (onMap && input.mousePressed[0]) {
+        const tol = 12 * view.scale;
+        const hd = ed.msel && mHandles(ed.msel.e).find((q) => dhypot(rx - q.x, ry - q.y) <= tol);
+        if (hd) { ed.mdrag = { ...hd, e: ed.msel.e, sx: mx, sy: my, on: false, cur: null }; return; }
+        const e = scene.mountainAt(rx, ry);
+        if (e) { ed.msel = { e }; return; }
+        ed.msel = null;
+        ed.mdraw = { step: "crest", crest: [], base: [], seed: newSeed(), edit: null };
+        mAdd([px0, py0]);
+        if (!ed.mdraw.crest.length) ed.mdraw = null;
       }
       return;
     }
@@ -1738,6 +1995,75 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         for (const q of all) { band(q, d.kind, lineW(d.kind), lineWE(d.kind), 0.4); dots(q.slice(0, d.pts.length), 6, c.white, 0.95); }
       }
     }
+    // [§9.214] la montagna: le cime di tutte (pallini), la scelta coi suoi
+    // punti (e la gemella), quella che si disegna (la cresta, la base, e
+    // l'anteprima della montagna, a facce grigie, con la gemella), il punto
+    // trascinato (l'anteprima della montagna cambiata)
+    if (ed.tool === "mountain") {
+      const dots = (pts, rad, col, a) => { draw.setAlpha(a); for (const [x, y] of pts) draw.circleColour(x, y, rad * px, col, col, false); };
+      const path = (pts, w, col, a, closed = false) => {
+        draw.setAlpha(a);
+        for (let k = 1; k < pts.length; k++) draw.lineWidthColour(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], w * px, col, col);
+        if (closed && pts.length > 2) draw.lineWidthColour(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1], w * px, col, col);
+      };
+      // una montagna in anteprima: le facce grigie (la loro luce), l'inchiostro
+      const ghost = (g, a) => {
+        for (const Lr of g.layers) {
+          if (Lr.face) {
+            const v = Math.round(0xc8 * Lr.shade), col = v | (v << 8) | (v << 16), T = Lr.tris;
+            draw.setAlpha(a);
+            for (let i = 0; i < T.length; i += 6) draw.triangleColour(T[i], T[i + 1], T[i + 2], T[i + 3], T[i + 4], T[i + 5], col, col, col, false);
+          } else {
+            draw.setAlpha(Math.min(1, a * 1.3));
+            const P = Lr.ink;
+            for (let k = 1; k < P.length; k++) draw.lineWidthColour(P[k - 1].x, P[k - 1].y, P[k].x, P[k].y, Math.max(1, P[k].ink), 0x1c1c1c, 0x1c1c1c);
+          }
+        }
+      };
+      for (const g of scene.world.mountains || []) dots(g.tops.map((t) => [t.x, t.y]), 4, c.white, 0.55);
+      if (ed.msel && !ed.mdraw) {
+        for (const f of mAndTwin(ed.msel.e)) {
+          const g = geoOf(f), main = f === ed.msel.e;
+          path(g.base, main ? 2 : 1.5, c.white, main ? 0.8 : 0.5, true);
+          path(g.crest, main ? 2.5 : 1.5, c.white, main ? 0.9 : 0.5);
+          if (main) { dots(g.tops.map((t) => [t.x, t.y]), 7, c.white, 0.95); const b = baseShown(f); if (b) dots(b, 5, 0x40b0e8, 0.95); } // (la base: ambra, BGR)
+        }
+      }
+      if (ed.mdrag && ed.mdrag.cur) {
+        const D = ed.mdrag, e = D.e, m = JSON.parse(JSON.stringify(e));
+        if (D.kind === "crest") m.crest[D.k] = crestStore(e, D.cur, D.h);
+        else { const b = baseShown(e).map((q) => q.slice()); b[D.k] = D.cur; m.base = e.mirrored ? b.map((q) => mm(e, q)) : b; }
+        ghost(mGeo(m), 0.55);
+        dots([D.cur], 7, c.white, 1);
+      }
+      if (ed.mdraw) {
+        const d = ed.mdraw, [gx, gy] = view.toRoom(input.x, input.y);
+        if (d.edit) {
+          const g = geoOf(d.edit);
+          path(g.crest, 2.5, c.white, 0.9);
+        } else if (d.crest.length) {
+          // l'anteprima: la cresta fatta fin qui, con la base disegnata (da 3
+          // punti) o quella automatica; con la simmetria anche la gemella
+          const e = { crest: d.crest, height: mtnVal("height"), width: mtnVal("width"), rough: mtnVal("rough"), detail: mtnVal("detail"), seed: d.seed };
+          if (d.step === "base" && d.base.length >= 3 && !baseProblem(d.base, d.crest.map(([x, y]) => [x, y, e.height * 0.9]), e.height * 0.9)) e.base = d.base;
+          for (const m of mPair(e)) ghost(mGeo(m), d.step === "crest" ? 0.35 : 0.5);
+          const cr = d.step === "crest" && input.inside ? [...d.crest, [gx, gy]] : d.crest;
+          path(cr, 3, c.white, 0.95);
+          dots(d.crest, 6, c.white, 0.95);
+          // e la cresta della gemella (le cime specchiate sul terreno)
+          if (symOn()) {
+            const H = e.height, tw = cr.map(([x, y]) => { const q = mirrorPoint(symMode(), map.width, map.height, x, y + H); return [q[0], q[1] - H]; });
+            path(tw, 2, c.white, 0.6);
+          }
+        }
+        if (d.step === "base") {
+          const b = input.inside ? [...d.base, [gx, gy]] : d.base;
+          path(b, 2.5, 0x40b0e8, 0.95, b.length > 2);
+          dots(d.base, 5, 0x40b0e8, 0.95);
+          if (symOn()) path(b.map(([x, y]) => mirrorPoint(symMode(), map.width, map.height, x, y)), 1.5, 0x40b0e8, 0.6, b.length > 2);
+        }
+      }
+    }
     // [§9.185] il pennello: la pennellata di texture in corso e il cerchio
     // sotto il puntatore (col gemello, se c'e' la simmetria)
     if (ed.tool === "brush") {
@@ -1906,6 +2232,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       : ed.tool === "line" ? tr(ed.drawing ? "Click: add a point. Right click or Enter: finish. Esc: cancel."
         : ed.lsel ? "Drag the points. Double click: new point. Del: delete the line. Backspace: delete the point."
         : "Click: new line. Click on a line: select it.")
+      : ed.tool === "mountain" ? tr(ed.mdraw ? MTN_HINTS[ed.mdraw.step] : ed.msel ? MTN_HINTS.sel : MTN_HINTS.idle) // §9.214
       : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
       : ed.pick ? (pickedItem().side && pickedItem().styles[0].sprite // §9.203: la casa
         ? tr(HOME_HINT[pickedItem().side], { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     "
@@ -1928,6 +2255,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
     if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, tr("Width"), BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
     if (ed.tool === "line") { drawLinePanel(panel); draw.setColour(c.white); return; }
+    if (ed.tool === "mountain") { drawMountainPanel(panel); draw.setColour(c.white); return; } // §9.214
     draw.setHalign("left");
     draw.setValign("top");
     draw.setAlpha(0.8);
@@ -2054,6 +2382,33 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const w = sel ? sel.e.width : lineW(kind), we = sel ? sel.e.widthEnd ?? sel.e.width : lineWE(kind);
     pmGroup(B.width, tr("Width"), w + " px", "w");
     pmGroup(B.end, tr("End width"), we === w ? tr("Same") : we + " px", "e");
+    draw.setAlpha(1);
+  };
+
+  // [§9.214] il riquadro della montagna: altezza, larghezza, asperita',
+  // dettaglio (della montagna scelta, o delle nuove), "Nuova variante" e
+  // "Base automatica" (solo con una montagna scelta; la seconda se ha una
+  // base disegnata)
+  const drawMountainPanel = (panel) => {
+    const B = mountainLayout(panel), e = ed.msel && ed.msel.e;
+    for (const k of MTN_KEYS) {
+      const v = e ? e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]] : mtnVal(k);
+      pmGroup(B[k], tr(MTN_LABEL[k]), k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
+    }
+    draw.setFont("overdue");
+    draw.setHalign("center");
+    draw.setValign("middle");
+    for (const [q, label, ok] of [["seed", "New variant", !!e], ["auto", "Automatic base", !!(e && e.base)]]) {
+      const R = B[q], hov = ed.palHover === q;
+      draw.setAlpha(!ok ? 0.2 : hov ? 0.9 : 0.55);
+      draw.roundrectColourExt(R[0], R[1], R[2], R[3], 30, 30, DARK, DARK, false);
+      draw.setColour(c.white);
+      draw.setAlpha(ok ? 1 : 0.6);
+      const t2 = tr(label), tw = draw.stringWidth(t2), room = R[2] - R[0] - 16;
+      if (tw > room) draw.textTransformed((R[0] + R[2]) / 2, (R[1] + R[3]) / 2 + 1, t2, room / tw);
+      else draw.text((R[0] + R[2]) / 2, (R[1] + R[3]) / 2 + 1, t2);
+    }
+    draw.setColour(c.black);
     draw.setAlpha(1);
   };
 
@@ -2215,6 +2570,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       brushLayout: () => brushLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render,
+                      mountainLayout: () => mountainLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), // §9.214
                       // [§9.206] il riquadro della nebbia (null se non c'e')
                       fogLayout: () => { const F = fogTarget(); return F ? fogLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel, F.object) : null; } };
 }

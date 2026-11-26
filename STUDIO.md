@@ -14757,3 +14757,147 @@ entro 60 px); determinism.test.mjs passa (nessuna funzione vietata). I
 test: 149 passano, 8 saltati; i 2 che falliscono (editor.test.mjs §9.193,
 §9.206) leggono game/assets/objects.json, che c'e' solo dopo la pipeline
 (non rifatta in questa sessione).
+
+### 9.214 Lo strumento montagna nell'editor; le montagne nel gioco
+
+Richieste dell'autore (26 novembre 2026, stessa PR di §9.213, 0.2618), sui
+fogli di §9.213: "In generale la resa e' un buon punto di partenza. Il
+colore mi sembra un po' scuro rispetto ai miei disegni, anche le linee nere
+dentro il disegno mi sembrano poche, considera che non e' obbligatorio
+arrivino fino alla base. Abbiamo strumenti di controllo per evitare
+inserimenti da parte dell'utente di punti assurdi o infattibili?
+Nell'editor inseriscilo come tasto dedicato sotto alla polilinea (strumento
+montagna). La montagna quando creata elimina tutti gli oggetti in collisione
+(warning per tutti gli oggetti che non siano alberi), e sposta le polilinee
+in interferenza in modo che girino intorno alla montagna. Occhio anche che
+lo strumento montagna sia compatibile coi tool di simmetria".
+
+**Lo stile** (mountains.js, tools/20_montagne.py).
+- *Il colore*: la pietra dei disegni ha luminosita' media 162-166, la
+  texture 158 e le facce la scurivano ancora (media ~142). Ora la texture e'
+  schiarita del 4% (164, nuovi/montagne/roccia.png rifatta) e la luce delle
+  facce va da 0,84 a 1 (prima 0,74-1): le facce in luce come i disegni, le
+  altre poco piu' scure.
+- *Le linee dentro*: tutti gli speroni grandi hanno l'inchiostro (90-100%,
+  prima 75-100%), e ogni faccia ha in piu' 1-3 linee che partono da una cima
+  o da una spalla e si fermano a meta' pendio (35-75% della discesa; a volte
+  cominciano poco sotto), spesso dritte in giu' come le verticali dei
+  disegni; solo se restano dentro la faccia.
+- *Le facce che attraversavano le insenature* (§9.213, nota): uno sperone
+  ora deve restare dentro la base (il segmento dritto non ne incrocia il
+  contorno); se la cima piu' vicina non "vede" il piede si prova la
+  successiva, se nessuna lo vede il piede non fa uno sperone; la spalla
+  idem (prima di lato, poi dritta, poi niente).
+
+**I controlli** (mountains.js, la risposta alla domanda: prima non c'erano).
+I limiti (MOUNTAIN_LIMITS, MOUNTAIN_STEPS):
+- *la cresta* (crestProblem): al piu' 12 cime; due di fila fra 50 e 1200 px;
+  la linea non torna indietro con un angolo sotto i 35 gradi; non si incrocia;
+- *la base* (baseProblem): da 3 a 64 punti, a non meno di 16 px; non si
+  incrocia; almeno 15000 px quadrati; sta sotto tutta la cresta (sotto ogni
+  cima, fino alla sua altezza, c'e' base: se no la cima non ha dove poggiare);
+- *i parametri*: altezza 80-480, larghezza 160-1000, asperita' e dettaglio
+  0-1, a passi (i "-" e "+");
+- *una montagna non ne tocca un'altra* (la sagoma), ne' la sua gemella
+  (troppo vicina all'asse della simmetria).
+Nell'editor un punto che non va si rifiuta subito, con l'avviso che dice
+perche' ("Troppo vicina alla cima di prima", "La base non puo'
+incrociarsi"...); la convalida delle mappe che arrivano da fuori (mapfile.js
+validateMap, cleanMountain) scarta la mappa con montagne fuori dai limiti o
+con campi sbagliati, come per le altre parti.
+
+**Lo strumento** (editor.js, editmap.js), il terzo pulsante della colonna,
+sotto la polilinea (icona a linee: due cime; l'autore puo' disegnarne una
+sua, `ico_ed_mountain`). I tasti 1-5 restano quelli di prima (la gomma e'
+ancora il 5), la montagna e' il 6 (TOOL_KEYS).
+- *Passo 1, la cresta*: un clic per cima (come si vede, la linea del
+  cielo); il destro, Invio o un doppio clic la finiscono; Backspace toglie
+  l'ultima; Esc annulla. Mentre la si disegna, l'anteprima della montagna (a
+  facce grigie con l'inchiostro) con la base automatica.
+- *Passo 2, la base*: un clic per punto (il contorno si chiude da solo);
+  il destro, Invio o il doppio clic la finiscono; senza punti, la base
+  automatica (larga `width`). L'anteprima usa la base disegnata appena ha
+  tre punti validi.
+- *Scegliere e cambiare*: un clic su una montagna la sceglie (la sua base,
+  la cresta, i punti); le cime e i punti della base si trascinano (la
+  modifica vera lasciando il tasto, coi controlli); Canc la toglie; B
+  ridisegna la base. Nel riquadro altezza, larghezza, asperita' e dettaglio
+  coi "-" e "+" (della montagna scelta, o delle nuove), "Nuova variante" (un
+  altro seme) e "Base automatica" (via la base disegnata).
+- *Ogni montagna creata o cambiata*, in un passo solo da annullare:
+  - toglie gli oggetti sotto la sua sagoma: gli alberi coi piedi sulla
+    sagoma (come per i fiumi, §9.204; "Alberi tolti sotto la montagna: N"),
+    gli altri con la maschera (righe ogni 4 px), le macchie col punto
+    d'origine; per tutti quelli che non sono alberi l'avviso giallo
+    ("Oggetti tolti sotto la montagna: N"), anche per le partenze (poi il
+    salvataggio chiede le due partenze, §9.191);
+  - fa girare fiumi e strade che la toccano: il pezzo che passa sulla
+    montagna diventa un giro lungo il suo contorno allargato di mezza linea
+    piu' 40 px (dalla parte piu' corta), semplificato (entro 28 px, punti a
+    non meno di 48: il contorno a celle faceva gli scalini e il fiume le
+    zeta); un'estremita' sulla montagna si ferma fuori; una linea tutta
+    sotto sparisce (avviso). I fiumi spostati tolgono gli alberi nella loro
+    acqua nuova, come i fiumi nuovi.
+- *La simmetria*: la riga della simmetria come negli altri strumenti. La
+  gemella e' la stessa montagna specchiata sul terreno (mountains.js
+  mirrorStructure: le stesse cime alte uguali, la stessa base specchiata
+  punto per punto) e vista dallo stesso punto, quindi con la diagonale o la
+  verticale la si vede dall'altro lato: per il gioco conta che la base sia
+  esattamente lo specchio. Nella mappa le due voci hanno gli stessi campi e
+  `sym`; la specchiata anche `mirrored: true`. Trascinare, cambiare i
+  parametri, togliere valgono per tutte e due (twinMountain: stessi campi,
+  l'altra specchiatura). Con la gemella in verticale o in diagonale la base
+  automatica resta nascosta dalla montagna anche davanti (se no la faccia
+  dietro della gemella spuntava sopra la sua cresta).
+
+**Nel gioco** (le montagne del generatore si giocano: "Prova mappa", le
+mappe dell'editor nella schermaglia e online):
+- *cotte nel suolo* (ground.js, dopo strade, fiumi e ponti): le facce a
+  triangoli (mountains.js triangulate, a orecchie) con la pietra
+  `monte_roccia` (tools/05_atlas.py la mette fra gli sfondi) spostata e
+  girata per faccia, moltiplicata per la luce; l'inchiostro come i fiumi
+  (rivers.js inkLine). A ogni fotogramma non costano niente;
+- *l'ostacolo e' la sagoma* (mountainCells, celle da 8 px: le facce come si
+  vedono e la base), come la maschera precisa delle montagne dipinte: per
+  unita' e fantasmi degli edifici (app.js terrainBlocks), per i percorsi
+  (pathing.js, insieme all'acqua), per le frecce (world.js shotClear,
+  archery.js arrowStopped: le montagne fermano le frecce, §6.6), per il
+  pennello dei boschi dell'editor;
+- *la minimappa*: il simbolo dell'autore (§9.115) sul riquadro della
+  montagna, come per quelle dipinte;
+- tutto dai soli parametri, sempre uguale (dmath, mulberry32 col seme): la
+  partita in rete vede le stesse montagne.
+
+**Prove.**
+- test/mountains.test.mjs (in piu': i controlli della cresta e della base
+  coi loro perche'; la convalida delle mappe; la gemella con la base
+  esattamente specchiata e le cime alte uguali, nelle tre simmetrie; i
+  triangoli di un poligono concavo; la sagoma come ostacolo). I test
+  unitari: 164, tutti passano (con game/assets rifatto: tools 05-07).
+- editor.test.mjs: la colonna ha un pulsante in piu' e a 900 px non stava
+  piu' tutta (scorreva): la scala minima della colonna da 0,8 a 0,75 (a 900
+  px stanno ancora tutti i pulsanti), e la prova che controllava la scala
+  minima (">= 0,8") ora controlla ">= 0,75".
+- game/test/browser/mountains.mjs (nuova, anche nella CI): il pulsante
+  sotto la polilinea; la cresta in tre clic (un punto troppo vicino
+  rifiutato); la base automatica; l'albero e la miniera sotto tolti (l'albero
+  lontano resta); il fiume che la attraversava gira attorno e non la tocca
+  piu'; Ctrl+Z toglie tutto in un passo, Ctrl+Y lo rifa'; "+" dell'altezza
+  sulla montagna scelta; una seconda montagna che tocca la prima rifiutata;
+  la base disegnata a mano con la simmetria diagonale: la gemella con la base
+  specchiata; Canc toglie anche la gemella; "Prova mappa": nel gioco tre
+  montagne, ostacolo per i percorsi e riparo dalle frecce. I file del gioco
+  li serve Playwright dal disco (niente server). Passa.
+- Le foto (build/prova_montagne/ della prova): la cresta in disegno, la
+  base, la montagna col fiume deviato, la base a mano, la simmetria, la
+  montagna nel gioco.
+- I fogli di §9.213 rifatti (`node tools/21_prova_montagne.mjs`), col foglio
+  7 nuovo: le gemelle nelle tre simmetrie.
+
+**Resta da fare / da decidere**: l'altezza di una sola cima dall'editor (il
+generatore la sa gia', `peaks`; manca il comando); un'icona dell'autore per
+lo strumento; le montagne del generatore in Tiled (per i livelli della
+campagna); la gemella vista dall'altro lato potrebbe sembrare un'altra
+montagna (e' la stessa, girata): se l'autore preferisce, si puo' disegnarla
+con lo stesso aspetto, ma la parte alta della sagoma (sopra la base) non
+sarebbe piu' esattamente speculare.

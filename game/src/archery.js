@@ -6,6 +6,7 @@
 import { pointDirection, pointDistance } from "./gm.js";
 import { GRID, walkLine } from "./pathing.js";
 import { dcos, dsin, sq } from "./dmath.js"; // §9.152
+import { mountainCells, mountainAt } from "./mountains.js"; // §9.214
 
 // [Richiesta dell'autore] Gli arcieri (alleati e nemici) tirano solo se fra
 // loro e il bersaglio non ci sono edifici (world.shotClear: le unita' non
@@ -69,6 +70,8 @@ export function arrowStopped(i, w) {
   const run = pointDistance(f.sx, f.sy, i.x, i.y);
   if (run < 20) return false;
   const gx = i.x, gy = i.y + (f.h ?? 40) * Math.max(0, 1 - run / f.len);
+  // [§9.214] contro una montagna del generatore (la sua sagoma)
+  if (w.mountains && w.mountains.length && mountainAt(mountainCells(w), gx, gy)) return true;
   return !!w._eachNear([gx, gy, gx, gy], (o) => (w.blocksShots(o) && !(f.from && w.ignoredFrom(o, f.from))
     && w.pointIn(o, gx, gy) ? o : null));
 }

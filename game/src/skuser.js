@@ -13,6 +13,7 @@
 
 import { listMaps, loadMap, openMapFile, putService } from "./mapstore.js";
 import { validateMap, testRoom, TEST_ROOM, sidesOk, redStart, START } from "./mapfile.js";
+import { mountainGeometry } from "./mountains.js"; // §9.214
 
 // l'ultima mappa dell'editor scelta nella schermaglia (il suo id nel browser)
 const USER_KEY = "535.skirmish.user";
@@ -147,6 +148,13 @@ export function mapPreview(map, sizeOf = () => [100, 100]) {
     const [w, h] = sizeOf(e.object);
     g.fillStyle = P.mountain;
     g.beginPath(); g.ellipse(X(e.x), Y(e.y), Math.max(2, w * Math.abs(e.scale_x) * s * 0.42), Math.max(2, h * Math.abs(e.scale_y) * s * 0.32), 0, 0, Math.PI * 2); g.fill();
+  }
+  // [§9.214] le montagne del generatore: la loro sagoma (la base e le facce)
+  for (const m of map.mountains || []) {
+    const geo = mountainGeometry({ ...m, room: [map.width, map.height] });
+    g.fillStyle = P.mountain;
+    poly(geo.base); g.closePath(); g.fill();
+    for (const L of geo.layers) if (L.face) { poly(L.face); g.closePath(); g.fill(); }
   }
   for (const k of ["ruin", "city"]) {
     for (const e of groups[k]) {
