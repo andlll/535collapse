@@ -114,7 +114,7 @@ export const PREVIEW = {
   w: 720, h: 480, pad: 14,
   bg: { green1: "#808962", city1: "#a7a399", city2: "#a19e95" },
   water: "#6a9ec0", road: "#8a7a5e", path: "#9c8c6c",
-  tree: "#4f6b45", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
+  tree: "#4f6b45", meadow: "#9fb070", mountain: "#a67b5b", gold: "#e0b43c", stone: "#8f8f8f", ruin: "#7b7267", city: "#ddd5c4",
   start: { red: "#c83038", blue: "#3070e8" }, startRing: "#ffffff",
 };
 const kindOf = (o) => (o === START ? "start" : /^albero/.test(o) ? "tree" : /^montagna_/.test(o) ? "mountain"
@@ -149,6 +149,10 @@ export function mapPreview(map, sizeOf = () => [100, 100]) {
     g.fillStyle = P.mountain;
     g.beginPath(); g.ellipse(X(e.x), Y(e.y), Math.max(2, w * Math.abs(e.scale_x) * s * 0.42), Math.max(2, h * Math.abs(e.scale_y) * s * 0.32), 0, 0, Math.PI * 2); g.fill();
   }
+  // [§9.216] le chiazze d'erba del pennello: un verde piu' chiaro
+  g.globalAlpha = 0.5; g.fillStyle = P.meadow;
+  for (const m of map.meadows || []) { poly(m.pts); g.closePath(); g.fill(); }
+  g.globalAlpha = 1;
   // [§9.214] le montagne del generatore: la loro sagoma (la base e le facce)
   for (const m of map.mountains || []) {
     const geo = mountainGeometry({ ...m, room: [map.width, map.height] });

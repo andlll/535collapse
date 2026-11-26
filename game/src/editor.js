@@ -81,6 +81,7 @@ import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, pale
 import { saveMap, listMaps, loadMap, deleteMap, openMapFile, makeCover, saveMapAs, writeMapFile, putService, takeService } from "./mapstore.js";
 import { ISO, riverGeometry } from "./rivers.js";
 import { MOUNTAIN_STEPS, PEAK_STEPS, crestProblem, baseProblem } from "./mountains.js"; // §9.214, §9.215
+import { MEADOW_KEYS, MEADOW_LABEL, MEADOW_STEPS, MEADOW_DEFAULT, MEADOW_LIMITS, meadowTotal } from "./meadows.js"; // §9.216
 import { strokeOutlines, forestStep, TreeGrid, pointInPoly } from "./editbrush.js";
 import { vrand } from "./rng.js";
 
@@ -153,7 +154,7 @@ export const LABEL = {
   select: "Move, copy and paste, mirror, delete",
   line: "Polyline: rivers, roads",
   mountain: "Mountain: crest and base", // §9.214
-  brush: "Area brush: forests, textures",
+  brush: "Area brush: forests, grass, textures", // §9.216: anche l'erba
   insert: "Insert: units, resources, buildings…",
   erase: "Area eraser: delete objects",
   undo: "Undo (Ctrl+Z)",
@@ -171,7 +172,7 @@ export const DESC = {
   select: "Select objects with a click or a box and drag them to move them; copy and paste, mirror or delete the selection.",
   line: "Draw rivers and roads point by point, with their width; drag the points to change their course. Bridges go across rivers.",
   mountain: "Draw a mountain in two steps: the crest, peak by peak, then its base on the ground (or the automatic one). Objects underneath are removed, rivers and roads go around it.",
-  brush: "Paint forests and ground textures (city paving, stone, meadow) with a round brush; the eraser removes them.",
+  brush: "Paint forests, grass patches with the particles you choose, and ground textures (city paving, stone, meadow) with a round brush; the right button erases them.",
   insert: "Choose an object by category (units, buildings, resources, nature, city…) and place it on the map.",
   erase: "Delete all the objects under the brush, holding the left button down.",
 };
@@ -231,6 +232,8 @@ export const EDITOR_TEXTS = ["Map editor", "Coming soon", "Open map", "This map 
                              "Red side (S: horizontal / vertical)", "Blue side (S: horizontal / vertical)", "Left: erase. Shift + wheel: width.",
                              "Red side (S: style {i}/{n})", "Blue side (S: style {i}/{n})", // §9.203: la casa
                              "Trees removed from the river: {n}", // §9.204
+                             "Grass", "Particles every 100 x 100 px", ...Object.values(MEADOW_LABEL), "Choose at least one kind of particle.", // §9.216
+                             "Too much grass on this map: erase some first.",
                              ...MTN_TEXTS, // §9.214
                              "Speed", "Range", "Duration", "Clouds", "Every", // §9.206: la nebbia
                              "Move the pointer: straight or around the corner. Click: place. Right click: cancel.", "Wall",
@@ -517,10 +520,23 @@ export function paletteLayout(panel, cat, scroll, idx = null) {
 // della macchia, rivers.js drawPatch), quanto e' largo (il diametro, px di
 // mappa), quanto e' fitto il bosco (la distanza minima fra gli alberi: 90
 // px come il pennello bosco di Tiled, tools/12)
-export const BRUSH_KINDS = ["forest", "city2", "city1", "green1"];
+// ([§9.216] "grass": le chiazze d'erba, meadows.js)
+export const BRUSH_KINDS = ["forest", "grass", "city2", "city1", "green1"];
 export const BRUSH_WIDTHS = [200, 300, 400, 600, 800, 1200, 1600];
 export const BRUSH_SPACING = [180, 140, 110, 90, 75, 60]; // densita' 1..6
-const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46 };
+const BRUSH_TINT = { city2: 0x8a96a2, city1: 0xc2c8cc, green1: 0x4f8a5e, forest: 0x3c7a46, grass: 0x58b070 };
+// [§9.216] le chiazze d'erba: il riquadro di vetro sopra il pannello (come
+// quello della nebbia, §9.206) con le particelle e la densita' di ognuna
+export const MEADOW_TITLE = "Particles every 100 x 100 px";
+export function meadowLayout(panel) {
+  const [x1, y1, x2] = panel, per = 3, gw = (x2 - x1 - 40) / per; // (tre per riga: "Fiori gialli" toccava il "-")
+  const rows = Math.ceil(MEADOW_KEYS.length / per), h = 46 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
+  const groups = MEADOW_KEYS.map((key, k) => {
+    const x = x1 + 20 + (k % per) * gw, cy = box[1] + 54 + Math.floor(k / per) * 40;
+    return { key, label: [x + 12, cy], minus: [x + gw - 108, cy, 14], value: [x + gw - 70, cy], plus: [x + gw - 32, cy, 14] };
+  });
+  return { box, groups, title: [x1 + 32, box[1] + 22] };
+}
 // Il riquadro del pennello: le schede (come la tavolozza) e, sotto, i "-" e
 // "+" di larghezza e densita' (cerchi [x, y, r]) coi loro valori
 export function brushLayout(panel) {
@@ -625,7 +641,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                sel: new Set(), over: null, move: null, box: null, clip: null,
                cat: 0, scroll: CATALOG.map(() => 0), pick: null, style: ITEMS.map((l) => l.map(() => 0)), palHover: null,
                // [§9.185] il pennello: cosa, larghezza e densita' (indici), la pennellata in corso
-               brush: { kind: "forest", w: 3, d: 3 }, stroke: null,
+               brush: { kind: "forest", w: 3, d: 3, mix: Object.fromEntries(MEADOW_KEYS.map((k) => [k, MEADOW_STEPS.indexOf(MEADOW_DEFAULT[k])])) }, stroke: null,
+               mixHover: null, // [§9.216] il "-" o "+" delle particelle sotto il puntatore
                // [§9.186] la simmetria di ogni strumento (spenta di partenza)
                sym: { select: "none", insert: "none", brush: "none", line: "none", erase: "none", mountain: "none" }, symHover: null,
                // [§9.194] la gomma (larghezza: indice di BRUSH_WIDTHS, cancellando); le mura:
@@ -764,7 +781,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (catalog !== "no") return;
     catalog = "loading";
     const names = catalogObjects();
-    assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], BRUSH_KINDS.slice(1)) // §9.185: gli sfondi delle texture
+    assets.load([...new Set([...assets.groupsOfTier("core", "gioco"), ...groupsFor(assets, objects, names)])], BRUSH_KINDS.filter((k) => BG_NAMES[k])) // §9.185: gli sfondi delle texture
       .then(() => { catalog = "ready"; }, (e) => { console.error(e); catalog = "no"; });
   };
   const setTool = (t) => {
@@ -848,6 +865,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const layoutNow = () => {
     const L = editorLayout(view.cssW, view.cssH, ed.colScroll), F = fogTarget();
     if (F) L.extra = [fogLayout(L.panel, F.object).box];
+    if (ed.tool === "brush" && ed.brush.kind === "grass") L.extra = [meadowLayout(L.panel).box]; // §9.216
     return L;
   };
   // un'impostazione un passo avanti o indietro: per le nebbie nuove, o (con
@@ -941,6 +959,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (list.length) { scene.remove(list); tidySel(); }
       return;
     }
+    if (st.kind === "grass" && st.erase) { // [§9.216] gomma: via le chiazze d'erba toccate dall'ovale
+      const hit = (p) => spots.some(([sx, sy]) => pointInPoly(sx, sy, p.pts) || p.pts.some(([px, py]) => inOval(px, py, sx, sy, r, ry)));
+      const list = (scene.map.meadows || []).filter(hit);
+      if (list.length) scene.removeFeatures("meadows", list);
+      return;
+    }
     if (st.erase) { // gomma: via le macchie di questa texture toccate dall'ovale
       const hit = (p) => spots.some(([sx, sy]) => pointInPoly(sx, sy, p.pts) || p.pts.some(([px, py]) => inOval(px, py, sx, sy, r, ry)));
       const list = (scene.map.patches || []).filter((p) => (p.bg || "city2") === st.kind && hit(p));
@@ -960,7 +984,15 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         const mirrored = strokeOutlines(st.dabs.map(([x, y]) => twinPoint(x, y)), r, ry);
         polys.push(...mirrored);
       }
-      scene.addFeatures("patches", polys.map((pts) => ({ pts, bg: st.kind, feather: 40 })));
+      if (st.kind === "grass") { // [§9.216] le chiazze d'erba, con le densita' scelte
+        const mix = {};
+        for (const k of MEADOW_KEYS) { const v = MEADOW_STEPS[ed.brush.mix[k]]; if (v) mix[k] = v; }
+        const list = polys.map((pts) => ({ pts, mix, seed: newSeed() }));
+        const now = (scene.map.meadows || []).reduce((n, m) => n + meadowTotal(m), 0), more = list.reduce((n, m) => n + meadowTotal(m), 0);
+        if (!Object.keys(mix).length) toast(tr("Choose at least one kind of particle."), "warning");
+        else if (now + more > MEADOW_LIMITS.map) toast(tr("Too much grass on this map: erase some first."), "warning");
+        else scene.addFeatures("meadows", list);
+      } else scene.addFeatures("patches", polys.map((pts) => ({ pts, bg: st.kind, feather: 40 })));
     }
     scene.end();
   };
@@ -1719,6 +1751,19 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       }
       return;
     }
+    // [§9.216] il riquadro delle particelle dell'erba: i "-" e "+"
+    ed.mixHover = null;
+    if (ed.tool === "brush" && ed.brush.kind === "grass" && hit && hit.kind === "ui") {
+      const ML = meadowLayout(L.panel);
+      if (inRect(mx, my, ML.box)) {
+        for (const G of ML.groups) for (const [C, sg] of [[G.minus, "-"], [G.plus, "+"]]) if (dhypot(mx - C[0], my - C[1]) <= C[2] + 4) ed.mixHover = G.key + sg;
+        if (input.mouseReleased[0] && ed.mixHover) {
+          const k = ed.mixHover.slice(0, -1), d = ed.mixHover.endsWith("+") ? 1 : -1;
+          ed.brush.mix[k] = Math.max(0, Math.min(MEADOW_STEPS.length - 1, ed.brush.mix[k] + d));
+        }
+        return;
+      }
+    }
     // [§9.185] il riquadro del pennello: le schede, i "-" e "+"
     if (ed.tool === "brush" && hit && hit.kind === "ui") {
       const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
@@ -2235,6 +2280,17 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       for (const G of FL.groups) pmGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), G.key, ed.fogHover);
       draw.setAlpha(1); draw.setColour(c.white);
     }
+    // [§9.216] sopra, le particelle dell'erba e la loro densita'
+    if (ed.tool === "brush" && ed.brush.kind === "grass") {
+      const ML = meadowLayout(L.panel);
+      draw.setAlpha(0.69);
+      draw.roundrectColourExt(ML.box[0], ML.box[1], ML.box[2], ML.box[3], 40, 40, c.white, c.white, false);
+      draw.setValign("middle"); draw.setHalign("left"); draw.setFont("overdue");
+      draw.setColour(c.black); draw.setAlpha(0.55);
+      draw.text(ML.title[0], ML.title[1], tr(MEADOW_TITLE));
+      for (const G of ML.groups) pmGroup(G, tr(MEADOW_LABEL[G.key]), String(MEADOW_STEPS[ed.brush.mix[G.key]]), G.key, ed.mixHover);
+      draw.setAlpha(1); draw.setColour(c.white);
+    }
     // il suggerimento del pulsante sotto il puntatore, a destra della colonna
     if (ed.hover && ed.hover.kind !== "back" && ed.hover.kind !== "colscroll" && !ed.open && !ed.confirm && !ed.dom) tooltip(cx2 + 14, ed.hover.y, tr(LABEL[ed.hover.key]));
     if (ed.open) drawOpen(W, H);
@@ -2464,7 +2520,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.roundrectColourExt(q.x1, q.y1, q.x2, q.y2, 26, 26, on ? DARK : c.white, on ? DARK : c.white, false);
       draw.setColour(on ? c.white : c.black);
       draw.setAlpha(on ? 1 : 0.8);
-      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : BG_NAMES[q.kind]));
+      draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Grass" : BG_NAMES[q.kind]));
     }
     pmGroup(B.width, tr("Width"), BRUSH_WIDTHS[b.w] + " px", "w");
     if (b.kind === "forest") pmGroup(B.density, tr("Density"), (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
@@ -2610,6 +2666,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                       symLayout: () => symLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel),
                       lineLayout: () => lineLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), advance(n) { for (let k = 0; k < n; k++) step(); }, render,
                       mountainLayout: () => mountainLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), // §9.214
+                      meadowLayout: () => meadowLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel), // §9.216
                       // [§9.206] il riquadro della nebbia (null se non c'e')
                       fogLayout: () => { const F = fogTarget(); return F ? fogLayout(editorLayout(view.cssW, view.cssH, ed.colScroll).panel, F.object) : null; } };
 }

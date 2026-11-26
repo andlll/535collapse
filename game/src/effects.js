@@ -13,6 +13,7 @@ import { datan2, dcos, dhypot, dsin, sq } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 import { baseOf } from "./multiplayer.js"; // §9.167
 import { audio } from "./audio.js"; // §9.170
+import { meadowPoints } from "./meadows.js"; // §9.216
 
 const P = (w) => w.particles;
 
@@ -601,6 +602,20 @@ Object.assign(DECOR, {
 const DECOR_SIZE = { fiori_papaveri: [200, 125], fiori_papaveri_erba: [200, 125], fiori_gialli_erba: [200, 125],
                      fiori_prato: [200, 125] };
 export const DECOR_OBJECTS = Object.keys(DECOR);
+// [§9.216] le particelle delle chiazze d'erba del pennello (meadows.js): le
+// stesse delle macchie qui sopra (i fiori: uno dei due sprite a caso)
+export const MEADOW_PARTS = {
+  dark: [DECOR.burst_erba1[0][0]], mid: [DECOR.burst_erba1[1][0]], light: [DECOR.burst_erba1[2][0]],
+  blades: [DECOR.chiazzaparticellare[0][0]], wheat: [DECOR.burst_grano1[0][0]], poppy: PAPAVERO, yellow: GIALLO,
+};
+// una chiazza d'erba: le sue particelle (meadowPoints), a fasce come le
+// macchie (le unita' ci restano immerse); restituisce le fasce
+export function meadowCreate(w, m, blocked) {
+  const ps = P(w).systemCreate(-1, "grass"), pts = meadowPoints(m, blocked);
+  let k = 0;
+  for (const [key, x, y] of pts) { const L = MEADOW_PARTS[key]; P(w).create(ps, x, y, L[k++ % L.length], 1); }
+  return P(w).bands(ps, DECOR_BAND);
+}
 // i semiassi dell'ellisse di una macchia (§9.203: le foto della tavolozza
 // dell'editor, tools/19_natura.mjs)
 export const decorSize = (name) => DECOR_SIZE[name] || [500, 300];

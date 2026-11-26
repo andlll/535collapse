@@ -7,6 +7,7 @@
 // contrario (scenarioToRoom, la stessa conversione di tools/07_scene.py).
 
 import { cleanMountain, MOUNTAIN_LIMITS } from "./mountains.js"; // §9.214
+import { cleanMeadow, MEADOW_LIMITS } from "./meadows.js"; // §9.216
 
 export const MAP_FORMAT = "535-scenario", MAP_VERSION = 1;
 // colore della room [C] (12632256 = c_silver in BGR) e sfondo predefiniti,
@@ -14,7 +15,7 @@ export const MAP_FORMAT = "535-scenario", MAP_VERSION = 1;
 export const MAP_COLOUR = 12632256, MAP_BACKGROUND = "green1";
 // le parti disegnate a linee e a forme (§9.97, §9.99, §9.101), solo se ci
 // sono, come in tools/07
-export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths", "mountains"]; // §9.214: le montagne del generatore
+export const MAP_FEATURES = ["patches", "roads", "rivers", "bridges", "paths", "mountains", "meadows"]; // §9.214: le montagne del generatore; §9.216: le chiazze d'erba
 
 // [§9.184] Le informazioni delle mappe dell'editor, in piu' (tools/07 e il
 // gioco le ignorano): la descrizione (la schermata della schermaglia) e la
@@ -122,7 +123,7 @@ export const COVER_RE = /^data:image\/(webp|jpeg);base64,[A-Za-z0-9+/]+=*$/;
 export function newMap({ name = "", width = 6000, height = 6000, background = MAP_BACKGROUND } = {}) {
   return { format: MAP_FORMAT, version: MAP_VERSION, name, width, height, background, colour: MAP_COLOUR,
            view: { x: 0, y: 0, w: 3000, h: 2000 },
-           instances: [], roads: [], rivers: [], bridges: [], patches: [], mountains: [],
+           instances: [], roads: [], rivers: [], bridges: [], patches: [], mountains: [], meadows: [],
            description: "", cpu: { difficulty: "choice", style: "choice" } };
 }
 
@@ -209,6 +210,13 @@ export function validateMap(data, allowed, objects) {
       const l = data.mountains === undefined ? [] : data.mountains;
       if (!Array.isArray(l) || l.length > MOUNTAIN_LIMITS.count) { bad("mountains"); return []; }
       return l.map((f) => cleanMountain(f, W, H, M) || (bad("mountains"), null)).filter(Boolean);
+    })(),
+    // [§9.216] le chiazze d'erba del pennello (meadows.js cleanMeadow)
+    meadows: (() => {
+      const l = data.meadows === undefined ? [] : data.meadows;
+      if (!Array.isArray(l) || l.length > MEADOW_LIMITS.count) { bad("meadows"); return []; }
+      const inPt = (q) => Array.isArray(q) && q.length === 2 && inside(q[0], q[1]);
+      return l.map((f) => cleanMeadow(f, inPt) || (bad("meadows"), null)).filter(Boolean);
     })(),
     description: str(data.description, DESC_MAX) ? data.description : "",
     cpu: { difficulty: CPU_DIFFICULTY.includes(data.cpu && data.cpu.difficulty) ? data.cpu.difficulty : "choice",

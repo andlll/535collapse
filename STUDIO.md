@@ -14940,3 +14940,66 @@ in piu', i tre piedi e le altre due cime uguali; 165 test), browser
 mountains.mjs (in piu': clic su una cima la sceglie, + la alza di ~49 px
 col piede fermo entro 2 px, "-" di "Altezza cima" la riporta al 100% e
 `peaks` sparisce, Esc torna alla montagna). Passano.
+
+### 9.216 Le chiazze d'erba col pennello
+
+Domanda dell'autore (26 novembre 2026, stessa PR, 0.2618): "Secondo te
+avrebbe senso inserire altri strumenti generativi? Forse per le chiazze
+d'erba?"; poi, sulla proposta: "Solo le chiazze d'erba, in cui posso
+decidere quali particelle spawnare con quale densita' per particella
+(sempre in un range gestibile) con un pennello tipo quello del terreno".
+
+**Il pennello.** Una scheda in piu' nel pennello area, **Erba**, fra Bosco
+e le texture (il titolo dello strumento: "Pennello area: boschi, erba,
+texture"). Come le texture (§9.185): la pennellata diventa una sagoma (la
+forma della mappa `meadows`), il destro cancella le chiazze che tocca, la
+simmetria fa la gemella, Ctrl+Z toglie la pennellata intera. Sopra il
+riquadro, in un riquadro di vetro come quello della nebbia (§9.206), le
+sette particelle delle macchie di "Natura" con la loro densita' ("Particelle
+ogni 100 x 100 px"), coi "-" e "+":
+- erba scura, erba verde, erba secca (i tre verdi di burst_erba1), fili
+  (chiazzaparticellare), spighe (burst_grano1), papaveri e fiori gialli (i
+  fiori dell'autore, §9.37; uno dei due sprite a caso);
+- densita' a passi 0, 0,5, 1, 2, 3, 4, 6, 8, 12; di partenza come
+  burst_erba1 (erba scura 2, verde 2, secca 1, le altre 0: burst_erba1 ha
+  2,3 / 2,1 / 1,1);
+- i limiti: al piu' 20000 particelle in una chiazza (le densita' si
+  riducono in proporzione) e 150000 in tutta la mappa (oltre, la pennellata
+  si rifiuta con l'avviso "Troppa erba su questa mappa": l'erba si disegna a
+  ogni fotogramma); senza nessuna particella, l'avviso "Scegli almeno un
+  tipo di particella".
+
+**Dove nascono** (game/src/meadows.js meadowPoints): a caso nella sagoma,
+sempre uguali per lo stesso seme (mulberry32: l'editor e il gioco, e i due
+giocatori in rete, vedono la stessa chiazza); piu' rade verso il bordo
+(sfumato in 60 px, come le macchie che finiscono a nulla) e a ciuffi (un
+rumore liscio, celle di 160 px, lascia zone piu' fitte e piu' rade); mai
+sull'acqua dei fiumi ne' sulle montagne del generatore. Le particelle a
+fasce come le macchie (§8.18: le unita' ci restano immerse).
+- *nell'editor* (editmap.js _meadows): si rifanno solo le chiazze nuove o
+  cambiate (una pennellata non rifa' tutta l'erba); cambiati fiumi o
+  montagne, tutte (l'erba rinasce solo dove puo': una montagna messa sopra
+  una chiazza la lascia fuori dalla sagoma);
+- *nel gioco* (app.js useMeadows): dopo le istanze della room (l'acqua
+  sotto i ponti dipinti dipende da loro); nei salvataggi ci sono gia' (i
+  sistemi di particelle si salvano); la convalida delle mappe (mapfile.js,
+  meadows.js cleanMeadow) accetta solo le particelle note alle densita' dei
+  passi; l'anteprima delle mappe senza copertina (skuser.js) le mostra in un
+  verde piu' chiaro.
+
+**Prove.** mountains.test.mjs (in piu': quante particelle per densita' e
+area, tutte dentro la sagoma, sempre uguali, niente dove e' bloccato, il
+limite per chiazza, la convalida; 166 test). editor.test.mjs: il pennello
+ha cinque schede, la prova le contava quattro (ora cinque).
+game/test/browser/meadows.mjs (nuova, anche nella CI): la scheda Erba, i
+papaveri alzati a 3 col "+", una pennellata attraverso un fiume: la chiazza
+con 351 particelle, nessuna sull'acqua; il destro la cancella, Ctrl+Z la
+rimette; una montagna sopra: nessuna particella nella sagoma; "Prova
+mappa": l'erba nel gioco. Passa. Nella foto il riquadro delle particelle
+aveva le etichette sopra i "-" (quattro per riga) e il "×" che il font non
+ha: tre per riga, "100 x 100".
+
+**Altri strumenti generativi** (la risposta alla domanda, da decidere): i
+bordi naturali (erba lungo le rive e ai piedi delle montagne, a scelta), il
+bosco che si dirada verso il bordo con qualche radura; non le mappe intere
+(per la campagna conta la regia dell'autore).

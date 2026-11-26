@@ -133,3 +133,24 @@ test("§9.215 una cima sola: alzata, il suo piede e le altre cime restano", () =
   assert.equal(b.tops[0].h, a.tops[0].h);
   assert.equal(b.tops[2].h, a.tops[2].h);
 });
+
+// [§9.216] le chiazze d'erba del pennello
+import { meadowPoints, meadowCounts, cleanMeadow, MEADOW_LIMITS } from "../src/meadows.js";
+test("§9.216 le chiazze d'erba: quante, dove, sempre uguali, i limiti", () => {
+  const sq = [[0, 0], [1000, 0], [1000, 600], [0, 600]]; // 60 quadrati da 100 x 100
+  const m = { pts: sq, mix: { dark: 2, poppy: 0.5 }, seed: 9 };
+  assert.deepEqual(meadowCounts(m), { dark: 120, mid: 0, light: 0, blades: 0, wheat: 0, poppy: 30, yellow: 0 });
+  const P = meadowPoints(m);
+  assert.ok(P.length > 60 && P.length <= 150, String(P.length)); // (il bordo sfumato e i ciuffi ne lasciano meno)
+  assert.ok(P.every(([k, x, y]) => (k === "dark" || k === "poppy") && x > 0 && x < 1000 && y > 0 && y < 600));
+  assert.deepEqual(meadowPoints(m), P, "stesso seme, stessa chiazza");
+  assert.ok(meadowPoints(m, (x) => x < 500).every(([, x]) => x >= 500), "niente dove e' bloccato");
+  // una chiazza enorme e fittissima: al piu' MEADOW_LIMITS.patch particelle
+  const big = { pts: [[0, 0], [9000, 0], [9000, 9000], [0, 9000]], mix: { dark: 12, mid: 12 } };
+  assert.ok(Object.values(meadowCounts(big)).reduce((a, b) => a + b, 0) <= MEADOW_LIMITS.patch);
+  const inPt = () => true;
+  assert.deepEqual(cleanMeadow({ pts: sq, mix: { dark: 2, mid: 0 }, seed: 3 }, inPt), { pts: sq, mix: { dark: 2 }, seed: 3 });
+  assert.equal(cleanMeadow({ pts: sq, mix: { dark: 5 } }, inPt), null, "densita' fuori dai passi");
+  assert.equal(cleanMeadow({ pts: sq, mix: { rose: 1 } }, inPt), null, "particella sconosciuta");
+  assert.equal(cleanMeadow({ pts: sq.slice(0, 2), mix: {} }, inPt), null);
+});

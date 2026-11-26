@@ -13,7 +13,7 @@
 
 import { World } from "./world.js";
 import { Particles } from "./particles.js";
-import { DECOR_OBJECTS, decorCreate, campoCreate } from "./effects.js";
+import { DECOR_OBJECTS, decorCreate, campoCreate, meadowCreate } from "./effects.js";
 import { sliced } from "./scenario.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, BRIDGE_RAILS, PAINTED_BRIDGES, riverCells, riverIn } from "./rivers.js";
 import { GroundCache, GROUND } from "./ground.js";
@@ -231,7 +231,8 @@ export function sideLook(objects, e) {
 // l'editor dove manca)
 export const SYSTEM = new Set(["manager"]);
 // [§9.185] le liste di forme della mappa, che il suolo disegna
-export const FEATURES = ["patches", "rivers", "roads", "bridges", "mountains"]; // §9.214: le montagne del generatore
+// ([§9.216] le chiazze d'erba per ultime: non nascono sull'acqua ne' sulle montagne)
+export const FEATURES = ["patches", "rivers", "roads", "bridges", "mountains", "meadows"]; // §9.214: le montagne del generatore
 // cuociono nel suolo (ground.js): se cambiano, il suolo si rifa'
 export const baked = (name) => GROUND.test(name) || PAINTED_BRIDGES.includes(name);
 
@@ -394,6 +395,7 @@ export class EditScene {
     if (key === "roads") w.roads = map.roads.map((rd) => roadGeometry({ ...rd, room: R }));
     if (key === "bridges") w.bridges = map.bridges.map((b) => bridgeGeometry(b));
     if (key === "mountains") { w.mountains = map.mountains.map((m) => this.mountainGeo(m)); w._mountainCells = undefined; } // §9.214
+    if (key === "meadows") this._meadows(); // §9.216
   }
 
   // ------------------------------------------------------------ modifiche
@@ -420,13 +422,34 @@ export class EditScene {
     this.spawn(c.e);
   }
 
+  // [§9.216] le particelle delle chiazze d'erba: rifatte solo quelle nuove o
+  // cambiate (una pennellata non rifa' tutta l'erba della mappa); `all`:
+  // tutte (sono cambiati fiumi o montagne, dove l'erba non nasce)
+  _meadows(all = false) {
+    const w = this.world, P = w.particles, old = this.meadowRows || new Map(), now = new Map();
+    const rc = riverCells(w), mc = mountainCells(w);
+    const blocked = (x, y) => (!!rc && riverIn(rc, x, y, x, y)) || (!!mc && mountainIn(mc, x, y, x, y));
+    for (const m of this.map.meadows || []) {
+      const key = JSON.stringify(m), was = old.get(m);
+      if (was && was.key === key && !all) { now.set(m, was); old.delete(m); continue; }
+      now.set(m, { key, rows: meadowCreate(w, m, blocked) });
+    }
+    for (const [, v] of old) for (const s of v.rows) P.systemDestroy(s);
+    this.meadowRows = now;
+  }
+
   _after(changes) {
     const w = this.world;
     w.instances = w.instances.filter((i) => i.alive);
     w._compact();
     const keys = new Set(changes.filter((c) => c.key).map((c) => c.key));
-    for (const k of keys) this._features(k);
-    if (keys.size || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
+    // [§9.216] fiumi o montagne cambiati: l'erba rinasce dove puo'
+    if ((keys.has("rivers") || keys.has("mountains")) && (this.map.meadows || []).length && !keys.has("meadows")) keys.add("meadows!");
+    // (l'erba per ultima: sa dove sono acqua e montagne nuove)
+    for (const k of [...keys].sort((a, b) => (a.startsWith("meadows") ? 1 : 0) - (b.startsWith("meadows") ? 1 : 0))) {
+      if (k === "meadows!") this._meadows(true); else this._features(k);
+    }
+    if ([...keys].some((k) => !k.startsWith("meadows")) || changes.some((c) => !c.key && (baked((c.from || c.to).object) || (c.to && baked(c.to.object))))) this.ground.reset();
     this.version++;
   }
 
