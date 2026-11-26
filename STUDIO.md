@@ -14648,3 +14648,112 @@ voce aggiornata.
 
 Prove: nel browser un contadino a un campo su sk_padus, le chiamate audio
 registrate: 19 colpi di `zappa`, tutti a 0,6. I test (155).
+
+### 9.213 Le montagne del generatore: la prova di stile
+
+Richieste dell'autore (26 novembre 2026, nuova PR, 0.2618): "Iniziamo a
+ragionare come fatto per fiumi sentieri a un tool per l'editor per creare
+montagne procedurali, regolando parametri come altezza o larghezza, a
+partire dai disegni che gia' abbiamo"; poi, sulla proposta: "ha senso
+disegnare sia la cresta (a livello estetico) che la base (che impatta anche
+il gameplay): potrebbe essere una creazione in due step [...]. Partiamo col
+primo punto" (la prova di stile, prima del motore e dell'editor).
+
+**La proposta, decisa.** Come per i fiumi (§9.97): l'autore disegna delle
+linee, il gioco ci costruisce sopra la montagna con una texture presa dai
+suoi disegni; nella mappa solo i parametri (niente immagini), lo stesso
+risultato per lo stesso seme (la partita in rete). In due passi:
+1. la **cresta**, una spezzata dove la si vede (la linea del cielo): ogni
+   punto una cima, fra due cime una sella; e' l'aspetto;
+2. la **base**, il contorno sul terreno: conta per il gioco. Se non la si
+   disegna la fa il generatore attorno alla cresta, larga `width`.
+Parametri: altezza (il piede di ogni cima e' tanti px piu' in basso della
+cresta: piu' alta, la montagna scende di piu', la cresta resta dov'e'),
+larghezza, asperita' (contorno da liscio a frastagliato, lingue e
+insenature), dettaglio (quanti speroni, spalle e piccole piramidi), seme
+(un'altra variante), e l'altezza di ogni cima (`peaks`, moltiplicatori).
+Scartato: stirare i dieci disegni (inchiostro e grana deformati, sempre le
+stesse dieci forme, ~13 MB di memoria video per `montagna10`).
+
+**Cosa hanno in comune i disegni** (montagna1-10, tutte guardate): pietra
+grigia marmorizzata su carta a righe verticali (ogni ~3 px), grandi facce
+piane dalle cime alla base, dove la marmorizzazione cambia verso da una
+faccia all'altra (toppe di carta); inchiostro nero spesso ~4-6 px sulle
+creste e sugli speroni, con tratti che si fermano prima o sbordano;
+speroni che finiscono sulle punte del contorno; spalle a meta' discesa da
+cui scendono piccole piramidi (spesso con linee verticali); il contorno
+strappato, a tratti d'inchiostro piu' spessi in basso; la linea del cielo
+e' la cresta.
+
+**La texture** (`nuovi/montagne/roccia.png`, 258 x 256, 93 KB;
+tools/20_montagne.py, dopo tools/01): cercato in tutte le dieci montagne il
+quadrato di sola pietra (niente inchiostro, niente trasparenza) con la
+luminosita' a blocchi di 32 px piu' uniforme: in montagna9 a (1536, 512).
+Resa senza cuciture come l'acqua (incrocio col ritaglio spostato di mezza
+misura), ma un asse per volta: incrociati insieme (come in 15_fiumi.py)
+vicino agli angoli il salto del ritaglio spostato si vedeva a meta'
+piastrella. Larghezza e spostamento orizzontale multipli di 3, per tenere
+in fase le righe della carta.
+
+**Il generatore** (game/src/mountains.js, `mountainGeometry`; solo + - * /,
+dmath e mulberry32 col seme: niente Math.random ne' Math.sin):
+- la cresta: le cime dell'autore e, fra due, una sella al 55-80% (sui tratti
+  lunghi selle e cime minori alternate), un po' fuori linea; ogni nodo ha il
+  piede sul terreno e l'altezza;
+- la base del generatore: le celle da 8 px vicine alla cresta (la mezza
+  larghezza cambia col rumore: lingue larghe e insenature) o a uno dei 3-5
+  speroni per cima che vanno oltre (sempre piu' stretti: le lingue di
+  roccia), il pezzo attaccato alla cresta, il suo contorno seguito lungo i
+  lati delle celle e semplificato; dietro la cresta non oltre quanto la
+  montagna nasconde (se no spuntava sopra la linea del cielo come un
+  bernoccolo). La base disegnata a mano si usa com'e'; un piede di cima che
+  ci cadesse fuori abbassa la cima finche' ci entra;
+- il contorno frastagliato: tratti dritti di 10-34 px spostati a caso, qualche
+  insenatura stretta;
+- gli speroni: i piedi sono le punte del contorno (i punti piu' lontani
+  dalla cresta nei dintorni) e, nei tratti lunghi senza punte, il punto piu'
+  lontano del tratto; per cima 2-4 speroni grandi (le punte piu' lontane),
+  spesso con una spalla (piu' alta del pendio, mai sopra la sua cima sullo
+  schermo); gli altri piedi scendono dalla spalla di uno sperone grande
+  accanto (piccole piramidi sul fianco). Prima prova: tutti gli speroni
+  dalla cima, a ventaglio regolare: un ombrello, non una montagna;
+- le facce: fra due speroni consecutivi (dove si separano, o la cresta da
+  una cima all'altra, giu' per uno, il contorno, su per l'altro); la luce
+  dalla normale della faccia (luce da sinistra e dall'alto: 0,74-1); la
+  texture fissata al mondo, spostata e girata per faccia;
+- da dietro in avanti (prima le facce coi piedi piu' in alto); l'inchiostro
+  di uno sperone e di ogni tratto di cresta subito dopo l'ultima faccia che
+  lo ha sul bordo, cosi' le facce davanti lo coprono (una catena che gira
+  verso chi guarda nasconde un pezzo della sua cresta); il contorno a tratti
+  con la sua faccia, piu' spesso dove guarda in giu'.
+
+**La prova** (`node tools/21_prova_montagne.mjs [cartella]`, Playwright, il
+canvas 2D del browser; predefinita build/prova_montagne): sei fogli PNG.
+1 i disegni montagna6, 8 e 4 accanto a montagne generate di misura simile;
+2 l'altezza (140, 260, 400) e la larghezza (260, 420, 640); 3 asperita' e
+dettaglio (0, 0,5, 1); 4 sei semi con gli stessi parametri; 5 i due passi
+(la cresta in rosso, i piedi delle cime, la base in blu: quella del
+generatore e una disegnata a mano); 6 una catena diagonale e una a curva
+con le cime di altezze diverse.
+
+Da decidere con l'autore, guardando i fogli: la resa (inchiostro, luce,
+quante linee, quanto frastagliato), i valori di partenza dei parametri.
+Note per il passo dopo:
+- **la roccia sopra la base**: la cresta si vede piu' in alto della base
+  (di quanto e' alta la montagna), quindi la parte alta del disegno sta sopra
+  il terreno dietro la montagna. Proposta: l'ostacolo e' tutta la sagoma
+  visibile (come le maschere precise delle montagne dipinte), la base decide
+  dove la montagna tocca terra davanti;
+- una catena che gira molto (o una base molto concava) a volte ha facce che
+  attraversano un'insenatura: da sistemare (dividere le facce lunghe sulle
+  insenature) prima del motore;
+- nel gioco le facce si disegneranno a triangoli col renderer del suolo
+  (ground.js), l'inchiostro con rivers.js `inkLine` (gia' per punto, `ink`).
+
+Prove: test/mountains.test.mjs (stesso seme stessa montagna, seme diverso
+diversa; le cime dove le ha messe l'autore e i piedi dentro la base per sei
+semi; facce e inchiostro ben fatti; la base disegnata a mano rispettata
+entro 60 px); determinism.test.mjs passa (nessuna funzione vietata). I
+test: 149 passano, 8 saltati; i 2 che falliscono (editor.test.mjs §9.193,
+§9.206) leggono game/assets/objects.json, che c'e' solo dopo la pipeline
+(non rifatta in questa sessione).

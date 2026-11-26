@@ -56,7 +56,10 @@ degli sprite danneggiati dell'autore (§9.85) si ricalcolano con
 `python3 tools/14_allinea.py` (richiede numpy) se cambiano le immagini. Le texture dei
 fiumi, delle strade e dei ponti disegnati come linee in Tiled (`nuovi/fiumi/`, §9.97:
 acqua, sassolini, grana di carta) si rifanno con `python3 tools/15_fiumi.py` (dopo
-`tools/01`) solo se cambiano i dipinti da cui vengono. Le mappe della schermaglia
+`tools/01`) solo se cambiano i dipinti da cui vengono. La texture delle montagne del generatore
+(`nuovi/montagne/roccia.png`, §9.213, dalla pietra di montagna9) si rifa' con `python3 tools/20_montagne.py`
+(dopo `tools/01`); la prova di stile delle montagne (fogli PNG accanto ai disegni dell'autore) con
+`node tools/21_prova_montagne.mjs`. Le mappe della schermaglia
 (`mappe/sk_*.tmx`, simmetriche, §9.118) le scrive `python3 tools/16_schermaglia.py`
 (poi `tools/12` come per gli altri livelli; `--check` ne controlla la simmetria). La foto di ogni mappa nella schermata della
 schermaglia (`nuovi/sprites/sk_*_cartolina.png`, §9.121) la fa `node tools/17_cartoline.mjs` col gioco
