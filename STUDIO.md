@@ -14888,6 +14888,8 @@ mappe dell'editor nella schermaglia e online):
   specchiata; Canc toglie anche la gemella; "Prova mappa": nel gioco tre
   montagne, ostacolo per i percorsi e riparo dalle frecce. I file del gioco
   li serve Playwright dal disco (niente server). Passa.
+- game/test/browser/editor.mjs (quella di sempre, coi tasti 1-5 di prima):
+  passa tutta (fatta girare coi file serviti dal disco, come sopra).
 - Le foto (build/prova_montagne/ della prova): la cresta in disegno, la
   base, la montagna col fiume deviato, la base a mano, la simmetria, la
   montagna nel gioco.
