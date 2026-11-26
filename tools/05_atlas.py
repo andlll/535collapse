@@ -366,7 +366,10 @@ def derived_sprites():
                  stesso per i loro stadi di danno (<mura>_b_r1, _r2), nel
                  ciclo degli sprite nuovi.
     """
-    img = lambda n: Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
+    # ([§9.229] le icone sostituite dall'autore: anche le loro copie, p.es.
+    # le sagome della minimappa, vengono dal disegno nuovo)
+    rep = nuovi.replaced()
+    img = lambda n: rep[n].copy() if n in rep else Image.open(os.path.join(GMX_DIR, "sprites", "images", n + "_0.png")).convert("RGBA")
     out = []
     # campo_grano: luminanza relativa a quella media della terra arata
     # (174, 119, 65) per il colore paglia
@@ -519,7 +522,10 @@ def main():
     # frame -> immagine ritagliata e scalata
     items = {g: [] for g in GROUPS}
     manifest = {"version": 1, "groups": {}, "sprites": {}, "excluded": []}
+    replaced = set(nuovi.replaced())  # [§9.229] li fa il derivato dell'autore
     for s in sprites:
+        if s["name"] in replaced:
+            continue
         if s["name"] not in used:
             manifest["excluded"].append(s["name"])
             continue

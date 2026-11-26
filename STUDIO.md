@@ -15331,3 +15331,26 @@ bosco".
 
 Prove: la foto del pennello (Bosco), della montagna scelta e di
 Inserisci; editor.mjs, mountains.mjs, meadows.mjs, edinsert.mjs.
+
+### 9.229 Le icone di castello, magazzino e casa dell'autore
+
+Richiesta dell'autore (26 novembre 2026, stessa PR, 0.2618): "queste invece
+le nuove icone degli edifici castello, magazzino e casa. Implementali e
+verifica che siano scalati bene"; poi "ecco le tre icone, scalali come
+serve" (la prima volta erano arrivate solo nel messaggio).
+
+- Le icone del progetto (ico_castello, ico_magazzino, ico_casa) sono nere
+  al 70% su una tela di 63 x 65 col disegno grande 55-61 px: i pulsanti di
+  costruzione (a meta': 32 px), i pannelli degli edifici, le icone degli
+  edifici nemici e, ricavate, le sagome della minimappa (mm_casa...).
+- I disegni dell'autore (castello 128 x 128, magazzino e casa 1254 x 1254)
+  ripuliti e ritagliati in nuovi/sprites/ico_*_autore; in nuovi.json come
+  derivati con lo **stesso nome** dell'icona del progetto e `sostituisce`
+  (tools/nuovi.py replaced, tools/05_atlas.py: lo sprite del progetto non
+  entra nell'atlas, e le sue copie, le sagome della minimappa, vengono dal
+  disegno nuovo): neri al 70% come le originali, sulla stessa tela 63 x 65
+  (`tela`), il disegno a 56 px di lato (`contenuto`), il castello a 60 (largo
+  e basso, come quello dell'originale a 61). Il codice del gioco non cambia:
+  dovunque c'era ico_casa ora c'e' il disegno nuovo.
+- Controllate a fianco delle originali alla loro misura (stessa tela, peso
+  simile) e in partita nei pulsanti di costruzione.

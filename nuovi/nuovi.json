@@ -2224,6 +2224,60 @@
         255
       ],
       "nota": "[§9.228] la densita' del bosco (il pennello): disegno caricato dall'autore (ripulito e ritagliato a 256 px), bianco (l'editor lo tinge)"
+    },
+    "ico_castello": {
+      "da": "ico_castello_autore",
+      "lato": 256,
+      "gruppo": "gui",
+      "colore": [
+        0,
+        0,
+        0
+      ],
+      "alpha": 0.7,
+      "tela": [
+        63,
+        65
+      ],
+      "contenuto": 60,
+      "sostituisce": true,
+      "nota": "[§9.229] l'icona dell'edificio (castello) disegnata dall'autore al posto di quella del progetto: nera al 70% come le icone dell'originale, il disegno a 60 px di lato (largo e basso: come il castello dell'originale, 61) al centro della tela 63 x 65 dell'originale (pulsanti di costruzione, pannelli; la sagoma della minimappa mm_castello viene da qui)"
+    },
+    "ico_magazzino": {
+      "da": "ico_magazzino_autore",
+      "lato": 256,
+      "gruppo": "gui",
+      "colore": [
+        0,
+        0,
+        0
+      ],
+      "alpha": 0.7,
+      "tela": [
+        63,
+        65
+      ],
+      "contenuto": 56,
+      "sostituisce": true,
+      "nota": "[§9.229] l'icona dell'edificio (magazzino) disegnata dall'autore al posto di quella del progetto: nera al 70% come le icone dell'originale, il disegno a 56 px di lato al centro della tela 63 x 65 dell'originale (pulsanti di costruzione, pannelli; la sagoma della minimappa mm_magazzino viene da qui)"
+    },
+    "ico_casa": {
+      "da": "ico_casa_autore",
+      "lato": 256,
+      "gruppo": "gui",
+      "colore": [
+        0,
+        0,
+        0
+      ],
+      "alpha": 0.7,
+      "tela": [
+        63,
+        65
+      ],
+      "contenuto": 56,
+      "sostituisce": true,
+      "nota": "[§9.229] l'icona dell'edificio (casa) disegnata dall'autore al posto di quella del progetto: nera al 70% come le icone dell'originale, il disegno a 56 px di lato al centro della tela 63 x 65 dell'originale (pulsanti di costruzione, pannelli; la sagoma della minimappa mm_casa viene da qui)"
     }
   }
 }
