@@ -21,6 +21,7 @@
 import { waterMap } from "./effects.js";
 import { triangulate } from "./mountains.js"; // §9.237
 import { makeColourRgb } from "./colours.js";
+import { packColor } from "./gl.js"; // §9.241
 import { dhypot, dsin } from "./dmath.js"; // §9.152
 
 export const MM = {
@@ -55,8 +56,12 @@ export const MM = {
   // disegno (contorno, speroni, linee delle facce, cresta) e nient'altro, a
   // inchiostro seppia; lo spessore di ogni tratto quello del gioco per
   // penK (fra penMin e penMax px); colline e dune piu' leggere (come nel gioco)
-  pen: makeColourRgb(58, 42, 28), penAlpha: 0.9, penK: 0.35, penMin: 0.5, penMax: 2.2,
-  penSkin: { rock: 1, grass: 0.6, sand: 0.55 },
+  // ([§9.241, richiesta dell'autore: "E1 direi perfetta, anche di un colore
+  // piu' chiaro magari e se si riesce anche un po' di antialiasing"] lo
+  // spessore sottile, E1, e una seppia piu' chiara (era 58, 42, 28 a 0,9);
+  // i tratti cotti una volta (penMark) con un canvas 2D, che li smussa)
+  pen: makeColourRgb(104, 82, 60), penAlpha: 0.85, penK: 0.25, penMin: 0.4, penMax: 2.2,
+  penSkin: { rock: 1, grass: 0.72, sand: 0.68 }, // (§9.241: con la seppia chiara un po' di piu' di 0,6 e 0,55)
   skin: { rock: makeColourRgb(166, 123, 91), grass: makeColourRgb(104, 150, 74), sand: makeColourRgb(200, 164, 96) },
   // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
@@ -228,6 +233,8 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
   if (!MM.mountains) return;
   const mw = w.roomW / sz, mh = w.roomH / sz;
   const ex = exploredCov(w, szT, fogOn), [ew] = dims(w, szT), kT = sz / szT;
+  // ([§9.241] i pixel veri per pixel CSS: i tratti cotti a quella misura)
+  const px = d.r && d.r.canvas && w.cam && w.cam.cssW ? Math.max(1, Math.min(3, d.r.canvas.width / w.cam.cssW)) : 1;
   // i riquadri dei disegni: le montagne dipinte (il trim dello sprite) e
   // ([§9.214] quelle del generatore (la loro bbox)
   const boxes = [];
@@ -255,7 +262,7 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
       seen = n ? Math.min(1, sum / n / MTN_SEEN) : 0;
       if (seen <= 0.01) continue;
     }
-    if (b[4]) { crestMark(d, b[4], ox, oy, sz, seen); continue; }
+    if (b[4]) { crestMark(d, b[4], ox, oy, sz, seen, px); continue; }
     const k = Math.min((x1 - x0) / MTN_W, (y1 - y0) / MTN_H) * MM.mountainFill;
     d.setAlpha(1);
     d.spriteExt("mm_montagna", 0, ox + (x0 + x1) / 2, oy + (y0 + y1) / 2, k, k, 0, MM.mountain, MM.mountainAlpha * seen);
@@ -270,7 +277,7 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
 // si vede (mountainGeometry crest: la linea del cielo), spessa MM.crest px,
 // piu' sottile per le montagne piccole; del colore della pelle (roccia,
 // colline, dune); sfuma come il simbolo, con la parte scoperta
-function crestMark(d, g, ox, oy, sz, seen) {
+function crestMark(d, g, ox, oy, sz, seen, k = 1) {
   const col = MM.skin[g.skin] || MM.mountain, style = MM.mtnStyle;
   const P = (q) => [ox + q[0] / sz, oy + q[1] / sz];
   const tri = (T, c, a) => {
@@ -282,7 +289,7 @@ function crestMark(d, g, ox, oy, sz, seen) {
   };
   const span = (g.bbox[2] - g.bbox[0]) / sz, wid = Math.max(1, Math.min(MM.crest, span / 8));
   let line = col;
-  if (style === "pen") { penMark(d, g, P, seen); return; }
+  if (style === "pen") { penMark(d, g, ox, oy, sz, k, seen); return; }
   if (style === "crest") tri(g.mmTris || (g.mmTris = triangulate(g.base)), col, MM.baseAlpha * seen);
   else {
     // il profilo: le facce del disegno (la montagna come si vede), piene;
@@ -314,20 +321,46 @@ function crestMark(d, g, ox, oy, sz, seen) {
 }
 // [§9.240] la montagna a inchiostro, come in una mappa disegnata a mano: le
 // sue linee (mountainGeometry layers: ink), ogni tratto spesso quanto nel
-// gioco per MM.penK; niente facce
-function penMark(d, g, P, seen) {
-  const c = MM.pen, a = MM.penAlpha * (MM.penSkin[g.skin] ?? 1) * seen;
-  d.setAlpha(a);
+// gioco per MM.penK; niente facce.
+// [§9.241] I tratti non si disegnano a ogni fotogramma: cotti una volta in
+// una texture per montagna (un canvas 2D, coi bordi smussati: l'antialiasing,
+// e i giunti tondi), alla scala della minimappa e coi pixel veri dello
+// schermo; rifatti solo se cambia la scala (i tasti della minimappa), lo
+// schermo, l'inchiostro o il contesto grafico. A ogni fotogramma un quad per
+// montagna, con l'alpha della parte scoperta.
+const PEN = new WeakMap(); // forma (mountainGeometry) -> { key, tex, x0, y0, w, h }
+const cssRgb = (c) => `rgb(${c & 255},${(c >> 8) & 255},${(c >> 16) & 255})`;
+function penTexture(r, g, sz, k) {
+  const key = [sz, k, r.gen || 0, MM.pen, MM.penK, MM.penMin, MM.penMax].join(":");
+  const old = PEN.get(g);
+  if (old && old.key === key && r.textures.has(old.tex)) return old;
+  if (old && r.textures.has(old.tex)) r.deleteTexture(old.tex);
+  const pad = MM.penMax + 2, x0 = g.bbox[0] / sz - pad, y0 = g.bbox[1] / sz - pad;
+  const w = (g.bbox[2] - g.bbox[0]) / sz + 2 * pad, h = (g.bbox[3] - g.bbox[1]) / sz + 2 * pad;
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.ceil(w * k)); cv.height = Math.max(1, Math.ceil(h * k));
+  const cx = cv.getContext("2d");
+  cx.scale(k, k);
+  cx.lineCap = "round"; cx.lineJoin = "round"; cx.strokeStyle = cssRgb(MM.pen);
   for (const L of g.layers) {
     if (L.face) continue;
     const E = L.ink;
-    for (let k = 1; k < E.length; k++) {
-      const w = Math.max(MM.penMin, Math.min(MM.penMax, ((E[k - 1].ink + E[k].ink) / 2) * MM.penK));
-      const [ax, ay] = P([E[k - 1].x, E[k - 1].y]), [bx, by] = P([E[k].x, E[k].y]);
-      d.lineWidthColour(ax, ay, bx, by, w, c, c);
+    for (let q = 1; q < E.length; q++) {
+      cx.lineWidth = Math.max(MM.penMin, Math.min(MM.penMax, ((E[q - 1].ink + E[q].ink) / 2) * MM.penK));
+      cx.beginPath();
+      cx.moveTo(E[q - 1].x / sz - x0, E[q - 1].y / sz - y0);
+      cx.lineTo(E[q].x / sz - x0, E[q].y / sz - y0);
+      cx.stroke();
     }
   }
-  d.setAlpha(1);
+  const c = { key, tex: r.createTexture(cv, false, true), x0, y0, w, h };
+  PEN.set(g, c);
+  return c;
+}
+function penMark(d, g, ox, oy, sz, k, seen) {
+  const r = d.r, c = penTexture(r, g, sz, k), a = MM.penAlpha * (MM.penSkin[g.skin] ?? 1) * seen;
+  const x0 = ox + c.x0, y0 = oy + c.y0, x1 = x0 + c.w, y1 = y0 + c.h;
+  r.quad(c.tex, x0, y0, x1, y0, x1, y1, x0, y1, 0, 0, c.tex.width, c.tex.height, packColor(0xffffff, a));
 }
 // un colore (0xBBGGRR) per k, canale per canale
 const shadeCol = (c, k) => {

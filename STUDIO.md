@@ -15696,3 +15696,26 @@ l'inchiostro, tipo mappa medievale, senza le campiture colorate".
 - Prove sulla stessa mappa di §9.239, tre spessori (penK 0,25, 0,35, 0,5)
   accanto al profilo con la luce: build/prova_montagne/minimappa_inchiostro.png.
   Scelto il medio. Gli altri modi restano (MM.mtnStyle) per altre prove.
+
+### 9.241 L'inchiostro sottile, piu' chiaro e cotto con l'antialiasing
+
+Richiesta dell'autore (28 novembre 2026, stessa PR, 0.2619): "E1 direi
+perfetta, anche di un colore piu' chiaro magari e se si riesce anche un po'
+di antialiasing (se anche le forme in minimappa vengono generate e cotte a
+inizio livello e' un'operazione poco costosa giusto? Non starei a
+renderizzarle in tempo reale)".
+
+- Lo spessore sottile (E1: MM.penK 0,25, almeno 0,4 px) e una seppia piu'
+  chiara (104, 82, 60 a 0,85; era 58, 42, 28 a 0,9); colline e dune a 0,72 e
+  0,68 (erano 0,6 e 0,55: con la seppia chiara sparivano).
+- I tratti non si disegnano piu' a ogni fotogramma: la prima volta che la
+  minimappa disegna una montagna li cuoce in una texture sua (minimap.js
+  penTexture), un canvas 2D grande quanto la montagna nella minimappa, ai
+  pixel veri dello schermo (fino a x3), coi bordi smussati del canvas
+  (l'antialiasing) e i giunti tondi; poi a ogni fotogramma un quad per
+  montagna, con l'alpha della parte scoperta. Si rifa' solo se cambia la
+  scala della minimappa (i suoi tasti), lo schermo, l'inchiostro o il
+  contesto grafico (gl.js: gen, contato a ogni init; createTexture ha
+  `premul` per un canvas, che non e' premoltiplicato). Costa qualche
+  millisecondo per montagna, una volta.
+- Confronto: build/prova_montagne/minimappa_e1_cotta.png.
