@@ -10,7 +10,7 @@
 // dall'economia nemica (enemy_cantiere, built) partono vuote.
 // [§9.242, richiesta dell'autore: "torri nemiche: facciamo che default sono
 // senza arcieri dentro"] anche le torri nemiche della mappa partono vuote
-// (start 0; la fortezza resta con 2): tirano quando ci entra qualcuno. Nei
+// (start 0; [§9.243] anche la fortezza): tirano quando ci entra qualcuno. Nei
 // livelli della campagna (CAMPAIGN) restano coi 2 arcieri con cui sono stati
 // pensati e provati (le torri esterne del livello 5 tirano, §9.102).
 //
@@ -31,14 +31,17 @@ import { stealthOn, inFog, ST } from "./stealth.js"; // §9.148
 
 export const ENEMY_GARRISON = {
   enemy_torre: { max: 2, start: 0, campaign: 2, pos: [[20, -60], [20, -77]], exitDy: 60 }, // §9.242: vuota (era 2), non nella campagna
-  enemy_castello: { max: 4, start: 2, pos: [[20, -150], [20, -170], [30, -30], [30, -40]], exitDy: 140 },
+  enemy_castello: { max: 4, start: 0, campaign: 2, pos: [[20, -150], [20, -170], [30, -30], [30, -40]], exitDy: 140 },
 };
 const CHECK = 30, THREAT = 700, RECRUIT = 600, LOW = 0.25, CALM = 1800, WALK_MAX = 900;
 
 const CAMPAIGN = /^(match|lvl\d\d)$/; // §9.242
 export const garrisonStart = (G, w) => (G.campaign !== undefined && w && CAMPAIGN.test(w.room) ? G.campaign : G.start);
+// ([§9.243] gli arcieri messi nell'editor, i.settings.garrison, al posto di
+// quelli di partenza)
 export function garrisonCreate(i, w) {
-  const G = ENEMY_GARRISON[i.object], start = garrisonStart(G, w);
+  const G = ENEMY_GARRISON[i.object], set = i.settings && i.settings.garrison;
+  const start = Number.isInteger(set) ? Math.max(0, Math.min(G.max, set)) : garrisonStart(G, w);
   i.npresidio = i.built ? 0 : start;
   // ([§9.242] almeno uno: una torre che parte vuota e si riempie per una
   // minaccia ne tiene uno; con 0 l'ultimo usciva e, in pace, rientrava)

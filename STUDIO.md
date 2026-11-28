@@ -15737,3 +15737,35 @@ facciamo che default sono senza arcieri dentro".
   Vuote quindi nelle schermaglie e nelle mappe dell'editor (garrisonStart).
 - Prove: enemyfields.mjs (in piu': su sk_rivo la torre nemica parte vuota);
   enemygarrison, stealth, lvl05, lvl07, damage come prima.
+
+### 9.243 La fortezza nemica vuota; gli arcieri di partenza dall'editor
+
+Richiesta dell'autore (28 novembre 2026, stessa PR, 0.2619): "Facciamo
+partire a zero anche la fortezza, dall'editor serve la possibilita' di
+mettere arcieri in partenza in torri e fortezze alleate e nemiche, capiamo
+come gestirla (clic con arciere selezionato sul castello? Pulsante dedicato
+come fatto per le mura?)".
+
+- La fortezza nemica parte vuota come la torre (§9.242; nella campagna coi
+  suoi 2).
+- [Scelta] Gli arcieri di partenza sono un'impostazione della voce, come
+  quelle della nebbia (§9.206): lo stesso riquadro di vetro sopra il
+  pannello, con lo slider "Arcieri dentro" (0-2 la torre, 0-4 la fortezza):
+  in "Inserisci", con una torre o una fortezza scelta (rossa o blu), vale
+  per quelle che si mettono; in "Sposta", per quelle scelte (con le gemelle
+  della simmetria, un passo di annulla). Sulla mappa dell'editor un tondo
+  con l'arco per ogni arciere, sopra l'edificio, in ogni strumento: si vede
+  a colpo d'occhio dove ci sono. Scartati: il clic con un arciere scelto
+  (nell'editor le unita' non si comandano, e l'arciere messo resterebbe una
+  voce in piu' da togliere) e un pulsante sulla mappa come per le porte delle
+  mura (per un numero da 0 a 4 servirebbero piu' clic e un segno in piu').
+- La voce: `garrison` (mapfile.js GARRISON_SETTINGS, solo se piu' di 0;
+  convalidata), che va nelle impostazioni dell'istanza (scenarioToRoom, con
+  quelle della nebbia: i.settings.garrison). Nel gioco la torre e la
+  fortezza del giocatore (ranged.js garrisoned, anche quelle del giocatore 2)
+  e quelle della CPU (enemygarrison.js) partono con quegli arcieri, a vita
+  piena; le bandiere degli arcieri si mettono anche partendo pieni (>=).
+- Prove: edgarrison.mjs, nuova (nella CI): una torre rossa con 2 e una
+  fortezza blu con 3 da "Inserisci", la torre a 1 con "Sposta" e Ctrl+Z,
+  nella partita di prova la torre con 2 arcieri e la bandiera e la fortezza
+  della CPU con 3 (foto: build/prova_montagne/ed_arcieri.png).

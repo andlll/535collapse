@@ -74,7 +74,8 @@ import { glowText } from "./menu.js";
 import { glassBackdrop } from "./glass.js"; // §9.203
 import { dcos, dsin, dhypot } from "./dmath.js";
 import { newMap, roomToScenario, validateMap, MAP_SIZE, mapSizeOk, MAP_BACKGROUNDS, CPU_DIFFICULTY, CPU_STYLE, SYMMETRY, NAME_MAX, DESC_MAX,
-         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart, FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff } from "./mapfile.js";
+         testRoom, TEST_ROOM, sidesOk, SIDES, lockOf, lockOpens, isStart, FOG_SETTINGS, FOG_DEFAULTS, fogOf, fogDiff,
+         GARRISON_SETTINGS, EDIT_SETTINGS, EDIT_DEFAULTS, settingsOf, settingsPatch } from "./mapfile.js"; // §9.243
 import { EditScene, CATALOG, START, STARTS, SYSTEM, groupsFor, tightBounds, paletteItems, stylesOf, catalogObjects, allowedObjects,
          mirrorDelta, mirrorPoint, TREES, paletteCount, sideLook, freePluses, wallStep, GATE_SWAP, WALL_KIND, FLAG_SCALE, FAKE, fakeMark,
          FOG_OBJECTS, fogLook, FOG_SPAN } from "./editmap.js";
@@ -594,12 +595,15 @@ export function brushLayout(panel) {
 // e' scelta in "Inserisci" (quelle nuove) o con "Sposta" (quelle scelte):
 // per ognuna l'etichetta, lo slider (§9.237: erano "-" e "+") e il valore,
 // tre per riga
-export const FOG_LABEL = { density: "Density", speed: "Speed", range: "Range", life: "Duration", count: "Clouds", every: "Every" };
+export const FOG_LABEL = { garrison: "Archers inside", density: "Density", speed: "Speed", range: "Range", life: "Duration", count: "Clouds", every: "Every" };
 export function fogLayout(panel, object) {
-  const [x1, y1, x2] = panel, keys = Object.keys(FOG_SETTINGS[object]), per = 3, gw = (x2 - x1 - 40) / per;
+  // ([§9.243] anche gli arcieri dentro: una sola, larga quanto due)
+  const [x1, y1, x2] = panel, keys = Object.keys(EDIT_SETTINGS[object]), per = keys.length === 1 ? 1.5 : 3, gw = (x2 - x1 - 40) / per;
   const rows = Math.ceil(keys.length / per), h = 24 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
   const groups = keys.map((key, k) => {
     const x = x1 + 20 + (k % per) * gw, cy = box[1] + 32 + Math.floor(k / per) * 40;
+    // ([§9.243] una sola impostazione: la guida subito dopo l'etichetta, lunga)
+    if (keys.length === 1) return { key, label: [x + 12, cy], track: [x + 200, x + 380, cy], value: [x + 432, cy], room: 80 };
     return { key, label: [x + 12, cy], track: [x + gw - 156, x + gw - 82, cy], value: [x + gw - 38, cy], room: 64 };
   });
   return { box, groups };
@@ -607,6 +611,7 @@ export function fogLayout(panel, object) {
 // il valore come si legge: la densita' in %, le velocita' in px al secondo
 // (« a sinistra, » a destra: il banco va e viene), l'ampiezza in px, i tempi in s
 export function fogValue(object, key, v) {
+  if (key === "garrison") return v + " / " + (GARRISON_SETTINGS[object].garrison.length - 1); // §9.243: gli arcieri, sui posti
   if (key === "density") return Math.round(v * 100) + "%";
   if (key === "speed") { const p = Math.round(Math.abs(v) * 60); return object === "nebbia_banco" || !v ? String(p) : v < 0 ? "« " + p : p + " »"; }
   if (key === "range") return v + " px";
@@ -705,7 +710,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                sideFilter: "red",
                colScroll: 0, // [§9.196] la colonna che scorre (schermi bassi)
                // [§9.206] le impostazioni della nebbia nuova (Inserisci) e il "-" o "+" sotto il puntatore
-               fogSet: Object.fromEntries(Object.entries(FOG_DEFAULTS).map(([k, v]) => [k, { ...v }])), slHover: null, slide: null, // §9.237: lo slider sotto il puntatore, quello trascinato
+               fogSet: Object.fromEntries(Object.entries(EDIT_DEFAULTS).map(([k, v]) => [k, { ...v }])), slHover: null, slide: null, // §9.237: lo slider sotto il puntatore, quello trascinato
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -864,7 +869,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (st.sprite) e.sprite = st.sprite; // (la variante, come la scrive tools/12)
     if (st.side) e.side = st.side; // §9.191
     if (st.hall) e.hall = true; // §9.203: un municipio, non una partenza
-    if (FOG_SETTINGS[st.object]) { const f = fogDiff(st.object, ed.fogSet[st.object]); if (f) e.fog = f; } // §9.206
+    // ([§9.206] la nebbia; [§9.243] gli arcieri dentro)
+    if (EDIT_SETTINGS[st.object]) for (const [k, v] of Object.entries(settingsPatch(st.object, ed.fogSet[st.object]))) if (v !== undefined) e[k] = v;
     const t = scene.twinAt(e, symMode());
     return t ? [e, t] : [e];
   };
@@ -915,12 +921,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   const fogTarget = () => {
     if (ed.tool === "insert" && ed.pick && !ed.wall) {
       const o = pickedStyle().object;
-      return FOG_SETTINGS[o] ? { object: o, values: ed.fogSet[o], list: null } : null;
+      return EDIT_SETTINGS[o] ? { object: o, values: ed.fogSet[o], list: null } : null;
     }
     if (ed.tool === "select" && !ed.move && !ed.box) {
-      const first = selected().find((e) => FOG_SETTINGS[e.object]);
+      const first = selected().find((e) => EDIT_SETTINGS[e.object]);
       if (!first) return null;
-      return { object: first.object, values: fogOf(first), list: scene.withTwins(selected().filter((e) => e.object === first.object), symMode()) };
+      return { object: first.object, values: settingsOf(first), list: scene.withTwins(selected().filter((e) => e.object === first.object), symMode()) };
     }
     return null;
   };
@@ -934,12 +940,12 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // un'impostazione un passo avanti o indietro: per le nebbie nuove, o (con
   // annulla) per quelle scelte
   const setFog = (F, key, dir) => {
-    const vals = FOG_SETTINGS[F.object][key], cur = F.values[key];
+    const vals = EDIT_SETTINGS[F.object][key], cur = F.values[key];
     const at = vals.indexOf(cur) >= 0 ? vals.indexOf(cur) : vals.reduce((b, v, k) => (Math.abs(v - cur) < Math.abs(vals[b] - cur) ? k : b), 0);
     const nv = vals[Math.max(0, Math.min(vals.length - 1, at + dir))];
     if (nv === cur) return;
     if (!F.list) { ed.fogSet[F.object][key] = nv; return; }
-    scene.modify(F.list, (e) => ({ fog: fogDiff(e.object, { ...fogOf(e), [key]: nv }) || undefined }));
+    scene.modify(F.list, (e) => settingsPatch(e.object, { ...settingsOf(e), [key]: nv }));
   };
   // [§9.237] gli slider dei riquadri di adesso: { id, G (la disposizione),
   // n passi, cur() il passo scelto, set(i, d) va al passo i (d passi da
@@ -949,7 +955,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const FT = fogTarget();
     if (FT) {
       for (const G of fogLayout(L.panel, FT.object).groups) {
-        const vals = FOG_SETTINGS[FT.object][G.key];
+        const vals = EDIT_SETTINGS[FT.object][G.key];
         const cur = () => { const F = fogTarget(), v = F ? F.values[G.key] : vals[0]; return vals.reduce((b, x, k) => (Math.abs(x - v) < Math.abs(vals[b] - v) ? k : b), 0); };
         add("fog:" + G.key, G, vals.length, cur, (i, d) => { const F = fogTarget(); if (F) setFog(F, G.key, d); }, !!FT.list);
       }
@@ -2272,6 +2278,18 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const B = g.base;
       for (let k = 0; k < B.length; k++) { const p = B[k], q = B[(k + 1) % B.length]; draw.lineWidthColour(p[0] + ox, p[1] + oy, q[0] + ox, q[1] + oy, w * px, c.white, c.white); }
     };
+    // [§9.243] gli arcieri dentro torri e fortezze: un tondo con l'arciere
+    // per ognuno, sopra l'edificio (in ogni strumento)
+    for (const e of scene.map.instances) {
+      if (!e.garrison || !GARRISON_SETTINGS[e.object] || !scene.instOf(e)) continue;
+      const b = boxOf(e), n = e.garrison, R = 19 * px, gap = 42 * px, cy = b[1] - 26 * px;
+      for (let k = 0; k < n; k++) {
+        const cx = (b[0] + b[2]) / 2 + (k - (n - 1) / 2) * gap;
+        draw.setAlpha(0.95); draw.circleColour(cx, cy, R + 2 * px, DARK, DARK, false);
+        draw.circleColour(cx, cy, R, c.white, c.white, false);
+        draw.setAlpha(1); drawSprite(r, assets, "ico_arciere", 0, cx, cy, 0.5 * px, 0.5 * px, 0, DARK, 1);
+      }
+    }
     if (ed.tool === "select") {
       // [§9.237] la montagna sotto il puntatore (la base) e quella trascinata
       // (con la gemella, a specchio), in anteprima dove andra'

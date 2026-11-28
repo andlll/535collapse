@@ -1551,6 +1551,7 @@ export const TEXTS = {
   "Speed": { it: "Velocità", es: "Velocidad", pt: "Velocidade", de: "Tempo", fr: "Vitesse" },
   "Range": { it: "Ampiezza", es: "Amplitud", pt: "Amplitude", de: "Weite", fr: "Amplitude" },
   "Duration": { it: "Durata", es: "Duración", pt: "Duração", de: "Dauer", fr: "Durée" },
+  "Archers inside": { it: "Arcieri dentro", es: "Arqueros dentro", pt: "Arqueiros dentro", de: "Bogenschützen drin", fr: "Archers dedans" }, // §9.243
   "Clouds": { it: "Nuvole", es: "Nubes", pt: "Nuvens", de: "Wolken", fr: "Nuages" },
   "Every": { it: "Ogni", es: "Cada", pt: "A cada", de: "Alle", fr: "Toutes les" },
   // [§9.204] il fiume finito toglie gli alberi coi piedi nell'acqua

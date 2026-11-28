@@ -717,6 +717,10 @@ export function garrisoned(name, base) {
       i.npresidio = 0;
       i.flagged = 0;
       for (let k = 1; k <= 4; k++) i["flagged" + k] = 0;
+      // [§9.243] gli arcieri messi nell'editor (i.settings.garrison), dentro
+      // da subito, a vita piena (le bandiere le mette il passo)
+      const n = i.settings && i.settings.garrison;
+      if (Number.isInteger(n) && n > 0) { i.npresidio = Math.min(G.max, n); i.garrisonLives = []; }
     },
     alarm0(i) { i.arm = 1; },
     // Mouse_LeftReleased [C]: selezione (il castello non nel menu) e, la
@@ -745,7 +749,7 @@ export function garrisoned(name, base) {
       // bandiere del presidio (la torre ne ha una sola)
       for (const [n, obj, dx, dy] of G.flags) {
         const key = name === "torre" ? "flagged" : "flagged" + n;
-        if (i.npresidio === n && i[key] === 0) { w.create(obj, i.x + dx, i.y + dy); i[key] = 1; }
+        if (i.npresidio >= n && i[key] === 0) { w.create(obj, i.x + dx, i.y + dy); i[key] = 1; } // (§9.243: >=, chi parte pieno)
       }
     },
     // Destroy [C]: le bandiere spariscono. [Correzione decisa dall'autore,

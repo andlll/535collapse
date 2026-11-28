@@ -105,6 +105,19 @@ export function fogDiff(object, f) {
   for (const [k, v] of Object.entries(f || {})) if (FOG_DEFAULTS[object] && v !== FOG_DEFAULTS[object][k]) out[k] = v;
   return Object.keys(out).length ? out : null;
 }
+// [§9.243, richiesta dell'autore: "dall'editor serve la possibilita' di
+// mettere arcieri in partenza in torri e fortezze alleate e nemiche"] gli
+// arcieri dentro all'inizio della partita (la voce: `garrison`, solo se piu'
+// di 0), per torre e castello di tutte e due le parti (il blu: la CPU o il
+// giocatore 2), fino ai posti dell'edificio. Nell'editor sono impostazioni
+// come quelle della nebbia (EDIT_SETTINGS: lo stesso riquadro).
+export const GARRISON_SETTINGS = { torre: { garrison: [0, 1, 2] }, castello: { garrison: [0, 1, 2, 3, 4] } };
+export const EDIT_SETTINGS = { ...FOG_SETTINGS, ...GARRISON_SETTINGS };
+export const EDIT_DEFAULTS = { ...FOG_DEFAULTS, torre: { garrison: 0 }, castello: { garrison: 0 } };
+// le impostazioni di una voce (nebbia o arcieri), con quelle di partenza
+export const settingsOf = (e) => (GARRISON_SETTINGS[e.object] ? { garrison: e.garrison || 0 } : fogOf(e));
+// i campi della voce per le impostazioni f (undefined: il campo va via)
+export const settingsPatch = (object, f) => (GARRISON_SETTINGS[object] ? { garrison: f.garrison || undefined } : { fog: fogDiff(object, f) || undefined });
 export const blueHome = (sprite) => (/^c[1-6]s$/.test(sprite || "") ? sprite.slice(0, 2) + "b" : null);
 export function assignSides(instances) {
   // §9.193: unita' ed edifici senza schieramento: del rosso
@@ -179,6 +192,11 @@ export function validateMap(data, allowed, objects) {
       if (!S || !e.fog || typeof e.fog !== "object" || !Object.entries(e.fog).every(([k, v]) => S[k] && S[k].includes(v))) { bad("nebbia " + e.object); continue; }
       const f = fogDiff(e.object, e.fog);
       if (f) i.fog = f;
+    }
+    if (e.garrison !== undefined) { // §9.243: gli arcieri dentro
+      const S = GARRISON_SETTINGS[e.object];
+      if (!S || !S.garrison.includes(e.garrison)) { bad("arcieri di " + e.object); continue; }
+      if (e.garrison) i.garrison = e.garrison;
     }
     if (e.hall !== undefined) { // §9.203: un municipio, non una partenza
       if (e.object !== START || e.hall !== true) { bad("municipio " + e.object); continue; }
@@ -296,9 +314,13 @@ export function scenarioToRoom(sc) {
     // ([§9.203] lo stile scelto nell'editor, `sprite`, dopo il gruppo: solo
     // le mappe dell'editor, testRoom; il gioco lo mette dopo il Create,
     // world.js loadRoom; [§9.206] poi le impostazioni della nebbia, `fog`)
-    instances: sc.instances.map((i) => [i.object, i.x, i.y, i.scale_x, i.scale_y, i.rotation, 4294967295]
-      .concat(i.group || i.sprite || i.fog ? [i.group || null] : []).concat(i.sprite || i.fog ? [i.sprite || null] : [])
-      .concat(i.fog ? [{ ...i.fog }] : [])),
+    // ([§9.243] e gli arcieri dentro, `garrison`, nelle stesse impostazioni)
+    instances: sc.instances.map((i) => {
+      const set = i.fog || i.garrison ? { ...(i.fog || {}), ...(i.garrison ? { garrison: i.garrison } : {}) } : null;
+      return [i.object, i.x, i.y, i.scale_x, i.scale_y, i.rotation, 4294967295]
+        .concat(i.group || i.sprite || set ? [i.group || null] : []).concat(i.sprite || set ? [i.sprite || null] : [])
+        .concat(set ? [set] : []);
+    }),
   };
   for (const k of MAP_FEATURES) if (sc[k] && sc[k].length) room[k] = sc[k];
   return room;
