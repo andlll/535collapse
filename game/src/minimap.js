@@ -49,7 +49,14 @@ export const MM = {
   // (§9.237), "profile" la sagoma del disegno piena e la cresta scura,
   // "shaded" la sagoma con la luce delle facce, "ink" e in piu' l'inchiostro
   // degli speroni, sottile
-  mtnStyle: "shaded", profileAlpha: 0.85,
+  mtnStyle: "pen", profileAlpha: 0.85,
+  // [§9.240, proposta dell'autore: "teniamo solo l'inchiostro, tipo mappa
+  // medievale, senza le campiture colorate"] "pen": tutte le linee del
+  // disegno (contorno, speroni, linee delle facce, cresta) e nient'altro, a
+  // inchiostro seppia; lo spessore di ogni tratto quello del gioco per
+  // penK (fra penMin e penMax px); colline e dune piu' leggere (come nel gioco)
+  pen: makeColourRgb(58, 42, 28), penAlpha: 0.9, penK: 0.35, penMin: 0.5, penMax: 2.2,
+  penSkin: { rock: 1, grass: 0.6, sand: 0.55 },
   skin: { rock: makeColourRgb(166, 123, 91), grass: makeColourRgb(104, 150, 74), sand: makeColourRgb(200, 164, 96) },
   // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
@@ -275,6 +282,7 @@ function crestMark(d, g, ox, oy, sz, seen) {
   };
   const span = (g.bbox[2] - g.bbox[0]) / sz, wid = Math.max(1, Math.min(MM.crest, span / 8));
   let line = col;
+  if (style === "pen") { penMark(d, g, P, seen); return; }
   if (style === "crest") tri(g.mmTris || (g.mmTris = triangulate(g.base)), col, MM.baseAlpha * seen);
   else {
     // il profilo: le facce del disegno (la montagna come si vede), piene;
@@ -302,6 +310,23 @@ function crestMark(d, g, ox, oy, sz, seen) {
   for (let k = 1; k < C.length; k++) d.lineWidthColour(C[k - 1][0], C[k - 1][1], C[k][0], C[k][1], w, line, line);
   if (C.length === 1) d.circleColour(C[0][0], C[0][1], w, line, line, false);
   for (let k = 1; k < C.length - 1; k++) d.circleColour(C[k][0], C[k][1], w / 2, line, line, false); // (i giunti tondi)
+  d.setAlpha(1);
+}
+// [§9.240] la montagna a inchiostro, come in una mappa disegnata a mano: le
+// sue linee (mountainGeometry layers: ink), ogni tratto spesso quanto nel
+// gioco per MM.penK; niente facce
+function penMark(d, g, P, seen) {
+  const c = MM.pen, a = MM.penAlpha * (MM.penSkin[g.skin] ?? 1) * seen;
+  d.setAlpha(a);
+  for (const L of g.layers) {
+    if (L.face) continue;
+    const E = L.ink;
+    for (let k = 1; k < E.length; k++) {
+      const w = Math.max(MM.penMin, Math.min(MM.penMax, ((E[k - 1].ink + E[k].ink) / 2) * MM.penK));
+      const [ax, ay] = P([E[k - 1].x, E[k - 1].y]), [bx, by] = P([E[k].x, E[k].y]);
+      d.lineWidthColour(ax, ay, bx, by, w, c, c);
+    }
+  }
   d.setAlpha(1);
 }
 // un colore (0xBBGGRR) per k, canale per canale

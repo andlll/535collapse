@@ -15681,3 +15681,18 @@ per riprovarli.
 
 Prove: mountains.mjs (in piu': Sposta sceglie la montagna, Canc la toglie
 con la gemella, Ctrl+Z la rimette).
+
+### 9.240 Le montagne nella minimappa a solo inchiostro
+
+Proposta dell'autore (28 novembre 2026, stessa PR, 0.2619): "teniamo solo
+l'inchiostro, tipo mappa medievale, senza le campiture colorate".
+
+- Nuovo modo "pen" (minimap.js penMark), ora quello del gioco: della
+  montagna del generatore si disegnano solo le linee d'inchiostro del suo
+  disegno (il contorno a tratti, gli speroni, le linee dentro le facce, la
+  cresta), in seppia, niente facce ne' base velata. Ogni tratto e' spesso
+  come nel gioco per MM.penK (0,35), fra 0,5 e 2,2 px; colline e dune piu'
+  leggere (alpha x0,6 e x0,55), come il loro inchiostro nel gioco.
+- Prove sulla stessa mappa di §9.239, tre spessori (penK 0,25, 0,35, 0,5)
+  accanto al profilo con la luce: build/prova_montagne/minimappa_inchiostro.png.
+  Scelto il medio. Gli altri modi restano (MM.mtnStyle) per altre prove.
