@@ -65,6 +65,7 @@ import { loadDomFont, setDomText } from "./domtext.js";
 import { audio } from "./audio.js"; // §9.137
 import { musicPlan } from "./music.js"; // §9.161
 import { meadowFlat } from "./meadows.js"; // §9.224
+import { MM } from "./minimap.js"; // §9.239: le prove della minimappa (window.__game.mm)
 
 // lvl03, lvl04, lvl05: scenari da Tiled (§9.10, §9.40, §9.74)
 const ROOMS = ["menu", "match", "lvl01", "lvl02", "lvl03", "lvl04", "lvl05", "lvl06", "lvl07", ...SK_ROOMS, "editor", "custom"]; // lvl06: §9.100; lvl07: §9.178; SK_ROOMS: §9.118; editor: §9.180; custom: §9.188
@@ -1125,7 +1126,7 @@ async function main() {
   if (!params.has("nostart")) loop.start();
   // Per i test automatici (Playwright): stato leggibile dalla pagina.
   window.__pause = pause;
-  window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, ready: true,
+  window.__game = { r, assets, world, path, cam, input, loop, diag, g, manager, fog, pause, capture, settings, eco: ECO, ground, audio, mm: MM, ready: true, // (mm: §9.239, le prove della minimappa)
                     skLayout, // §9.190: la schermata della schermaglia, per le prove
                     get reads() { return input.reads || 0; }, // §9.199: le letture dell'input, per le prove
     hash: () => stateHash({ world, g, manager, path }), dump: () => stateDump({ world, g, manager, path }), // §9.152

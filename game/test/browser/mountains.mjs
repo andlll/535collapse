@@ -235,6 +235,20 @@ const am0 = await E(() => ({ base: window.__editor.scene.world.mountains[0].base
 const am1 = await E(() => ({ base: window.__editor.scene.world.mountains[0].base, crest: window.__editor.scene.map.mountains[0].crest, off: window.__editor.scene.map.mountains[0].off }));
 check("la base automatica spostata e' la stessa", !!am1.off && shifted(am0.base, am1.base, am1.off[0], am1.off[1]), JSON.stringify(am1.off));
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await settle(300);
+// [§9.239] Sposta: un clic sceglie la montagna, Canc la toglie (con la gemella se la simmetria e' accesa); Ctrl+Z la rimette
+{
+  await E(() => { const E2 = window.__editor; E2.ed.sym.select = "diagonal"; E2.view.centre(1200, 2100); });
+  await settle(200);
+  const t = await E(() => window.__editor.scene.world.mountains[1].tops[0]);
+  await page.mouse.click(...(await toScreen([t.x, t.y + 60]))); await settle(200);
+  const picked = await E(() => window.__editor.ed.mpick === window.__editor.scene.map.mountains[1]);
+  await page.keyboard.press("Delete"); await settle(300);
+  const n = await E(() => window.__editor.scene.map.mountains.length);
+  check("Sposta: clic sceglie la montagna, Canc la toglie con la gemella", picked && n === 1, JSON.stringify([picked, n]));
+  await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await settle(300);
+  check("Ctrl+Z: tornano tutte e due", (await E(() => window.__editor.scene.map.mountains.length)) === 3);
+  await E(() => { window.__editor.ed.sym.select = "none"; });
+}
 
 // [§9.237] la pelle: colline (prato) sulla montagna scelta
 await E(() => { const E2 = window.__editor; E2.ed.tool = "mountain"; E2.ed.msel = { e: E2.scene.map.mountains[0] }; });

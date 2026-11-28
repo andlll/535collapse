@@ -15656,3 +15656,28 @@ Sposta con la gemella diagonale, la forma uguale, Ctrl+Z; la base automatica
 spostata uguale; le colline sulla montagna scelta, anche nel gioco; la foto
 della minimappa), mountains.test.mjs (la geometria spostata e' la stessa,
 pelle e `off` nella convalida).
+
+### 9.239 Canc con Sposta; il profilo delle montagne nella minimappa
+
+Richieste dell'autore (28 novembre 2026, stessa PR, 0.2619): "Si dovrebbero
+potersi cancellare anche da li'. Per le creste nella minimappa: mi sembra
+ancora insufficiente come rappresentazione, aggiungerei proprio il profilo,
+facciamo prove".
+
+**Canc con Sposta.** Un clic su una montagna con "Sposta" la sceglie (base e
+cresta spesse, la gemella sottili; il suggerimento in alto lo dice, nelle
+sei lingue); Canc o Backspace la tolgono, con la gemella se la simmetria
+dello strumento e' accesa. Un clic altrove o il destro la lasciano.
+
+**Il profilo nella minimappa (prove).** Quattro modi (minimap.js
+MM.mtnStyle), fotografati sulla stessa mappa (roccia grande e piccola,
+colline, dune; build/prova_montagne/minimappa_prove.png):
+A "crest", la cresta sulla base velata (§9.237); B "profile", la sagoma del
+disegno piena e la cresta scura; C "shaded", la sagoma con la luce delle
+facce (piu' contrasto che nel gioco: a questa misura le facce sono pochi px)
+e la cresta scura; D "ink", e in piu' l'inchiostro degli speroni, sottile.
+Per ora C (si cambia con una riga: MM.mtnStyle). Nel gioco window.__game.mm
+per riprovarli.
+
+Prove: mountains.mjs (in piu': Sposta sceglie la montagna, Canc la toglie
+con la gemella, Ctrl+Z la rimette).

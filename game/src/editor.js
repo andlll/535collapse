@@ -248,7 +248,9 @@ export const MTN_HINTS = {
   // [§9.215] una cima scelta: la sua altezza
   peak: "Peak {n}: + and - raise and lower it. Esc: the whole mountain.", // (§9.221: "Altezza" ora e' un'icona)
 };
-export const MTN_TEXTS = [...Object.values(MTN_LABEL), ...Object.values(MTN_PROBLEM.crest), ...Object.values(MTN_PROBLEM.base), MTN_OVERLAP, MTN_TWIN,
+// [§9.239] la montagna scelta con Sposta
+export const MTN_PICK_HINT = "Mountain: drag it to move it. Del: delete it (with its twin, with symmetry).";
+export const MTN_TEXTS = [MTN_PICK_HINT, ...Object.values(MTN_LABEL), ...Object.values(MTN_PROBLEM.crest), ...Object.values(MTN_PROBLEM.base), MTN_OVERLAP, MTN_TWIN,
   ...Object.values(MTN_HINTS), "Peak height", "New variant", "Automatic base", "Rock", "Hills (meadow)", "Dunes (sand)", // (§9.237) "Trees removed under the mountain: {n}", "Objects removed under the mountain: {n}",
   "Rivers and roads moved around the mountain: {n}", "Rivers and roads removed (under the mountain): {n}", "This peak would go off the map."];
 // [§9.237] le pelli della montagna: il nome (nel suggerimento) e il colore del tondo
@@ -713,7 +715,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                // ({ e }), il punto trascinato, le forme gia' fatte (l'anteprima)
                dice: false, // [§9.227] Inserisci: lo stile a caso a ogni inserimento
                mtn: { height: 4, width: 4, rough: 2, detail: 2, skin: "rock" }, mdraw: null, msel: null, mdrag: null, mcache: new Map(),
-               mmove: null, mover: null }; // [§9.237] la montagna trascinata con Sposta, quella sotto il puntatore
+               mmove: null, mover: null, // [§9.237] la montagna trascinata con Sposta, quella sotto il puntatore
+               mpick: null }; // [§9.239] la montagna scelta con Sposta (Canc la toglie)
   const symMode = () => ed.sym[ed.tool] || "none";
   // [§9.183] la casella scelta, il suo stile ({ object, sprite? }) e quanti ne ha
   const pickedItem = () => (ed.pick ? ITEMS[ed.pick.cat][ed.pick.i] : null);
@@ -1817,6 +1820,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ctrl && K(83)) { quickSave(); return; } // §9.184
     if (ed.tool === "select") {
       // (§9.184: con la simmetria anche le gemelle)
+      // ([§9.239, richiesta dell'autore] e la montagna scelta, con la gemella se la simmetria e' accesa)
+      if ((K(46) || K(8)) && ed.mpick && (scene.map.mountains || []).includes(ed.mpick)) { scene.removeFeatures("mountains", mAndTwin(ed.mpick)); ed.mpick = null; }
       if (K(46) || K(8)) { scene.remove(scene.withTwins(selected(), symMode())); ed.sel.clear(); }
       if (K(77) && !ctrl && ed.sel.size) scene.modify(scene.withTwins(selected(), symMode()), (e) => ({ scale_x: -(e.scale_x ?? 1) }));
       if (ctrl && K(67)) copy();
@@ -2104,8 +2109,10 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.tool !== "select") return;
     const slack = 14 * view.scale; // il segnaposto delle macchie, 14 px a schermo
     ed.over = onMap && !ed.move && !ed.box ? scene.pick(rx, ry, slack) : null;
-    if (onMap && input.mousePressed[1]) ed.sel.clear();
+    if (onMap && input.mousePressed[1]) { ed.sel.clear(); ed.mpick = null; }
+    if (ed.mpick && !(scene.map.mountains || []).includes(ed.mpick)) ed.mpick = null; // (annullata, tolta)
     if (onMap && input.mousePressed[0]) {
+      ed.mpick = null; // [§9.239] un clic altrove lascia la montagna
       // (con Ctrl sempre il riquadro: in un bosco ogni clic cade su un albero)
       const e = ctrl ? null : scene.pick(rx, ry, slack);
       if (e) {
@@ -2121,6 +2128,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         // un oggetto sopra): si trascina tutta, cresta e base
         ed.sel.clear();
         ed.mmove = { e: scene.mountainAt(rx, ry), x0: rx, y0: ry, sx: mx, sy: my, dx: 0, dy: 0, on: false };
+        ed.mpick = ed.mmove.e; // [§9.239] e la sceglie (Canc la toglie)
       } else {
         if (!shift) ed.sel.clear();
         ed.box = { x0: rx, y0: ry, x1: rx, y1: ry };
@@ -2133,6 +2141,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (M.on) [M.dx, M.dy] = mClampMove(M.e, Math.round(rx - M.x0), Math.round(ry - M.y0));
       if (!input.mouseDown[0]) {
         if (M.on && (M.dx || M.dy) && (scene.map.mountains || []).includes(M.e)) mMove(M.e, M.dx, M.dy);
+        if (!(scene.map.mountains || []).includes(ed.mpick)) ed.mpick = null; // (spostamento rifiutato o no: resta scelta se c'e')
         ed.mmove = null;
       }
     }
@@ -2266,7 +2275,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (ed.tool === "select") {
       // [§9.237] la montagna sotto il puntatore (la base) e quella trascinata
       // (con la gemella, a specchio), in anteprima dove andra'
-      if (ed.mover && (scene.map.mountains || []).includes(ed.mover)) for (const f of mAndTwin(ed.mover)) mOutline(geoOf(f), f === ed.mover ? 2 : 1.5, f === ed.mover ? 0.8 : 0.5);
+      if (ed.mover && ed.mover !== ed.mpick && (scene.map.mountains || []).includes(ed.mover)) for (const f of mAndTwin(ed.mover)) mOutline(geoOf(f), f === ed.mover ? 2 : 1.5, f === ed.mover ? 0.8 : 0.5);
+      // [§9.239] la montagna scelta: la base e la cresta spesse (la gemella sottili)
+      if (ed.mpick && !(ed.mmove && ed.mmove.on) && (scene.map.mountains || []).includes(ed.mpick)) {
+        for (const f of mAndTwin(ed.mpick)) {
+          const g = geoOf(f), main = f === ed.mpick;
+          mOutline(g, main ? 3 : 1.5, main ? 0.95 : 0.55);
+          draw.setAlpha(main ? 0.95 : 0.55);
+          for (let k = 1; k < g.crest.length; k++) draw.lineWidthColour(g.crest[k - 1][0], g.crest[k - 1][1], g.crest[k][0], g.crest[k][1], (main ? 3 : 1.5) * px, c.white, c.white);
+        }
+      }
       if (ed.mmove && ed.mmove.on && (scene.map.mountains || []).includes(ed.mmove.e)) {
         const M = ed.mmove, [tx, ty] = M.e.sym ? mirrorDelta(M.e.sym, M.dx, M.dy) : [M.dx, M.dy];
         for (const f of mAndTwin(M.e)) {
@@ -2596,7 +2614,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         : "Click: new line. Click on a line: select it.")
       : ed.tool === "mountain" ? tr(ed.mdraw ? MTN_HINTS[ed.mdraw.step] : ed.msel && ed.msel.peak != null ? MTN_HINTS.peak : ed.msel ? MTN_HINTS.sel : MTN_HINTS.idle, // §9.214, §9.215
                                    ed.msel && ed.msel.peak != null ? { n: ed.msel.peak + 1 } : undefined)
-      : ed.tool === "select" ? (ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "")
+      : ed.tool === "select" ? (ed.mpick ? tr(MTN_PICK_HINT) : ed.sel.size ? tr("{n} selected", { n: ed.sel.size }) : "") // (§9.239)
       : ed.pick ? (pickedItem().side && pickedItem().styles[0].sprite // §9.203: la casa
         ? tr(HOME_HINT[pickedItem().side], { i: ed.style[ed.pick.cat][ed.pick.i] + 1, n: pickedItem().styles.length }) + "     "
         : pickedItem().side && pickedItem().styles.length > 1 ? tr(WALL_HINT[pickedItem().side]) + "     " // §9.194: le mura

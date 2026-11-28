@@ -1618,6 +1618,12 @@ export const TEXTS = {
   "Peak {n}: + and - raise and lower it. Esc: the whole mountain.": { it: "Cima {n}: + e - la alzano e la abbassano. Esc: tutta la montagna.", es: "Cima {n}: + y - la suben y la bajan. Esc: toda la montaña.", pt: "Pico {n}: + e - o sobem e descem. Esc: a montanha inteira.", de: "Gipfel {n}: + und - heben und senken ihn. Esc: der ganze Berg.", fr: "Sommet {n} : + et - le montent et le descendent. Échap : toute la montagne." },
   "Drag the points. Click on a peak: its height. Del: delete. B: draw the base again.": { it: "Trascina i punti. Clic su una cima: la sua altezza. Canc: elimina. B: ridisegna la base.", es: "Arrastra los puntos. Clic en una cima: su altura. Supr: eliminar. B: vuelve a dibujar la base.", pt: "Arraste os pontos. Clique num pico: a sua altura. Del: excluir. B: desenhe a base de novo.", de: "Ziehe die Punkte. Klick auf einen Gipfel: seine Höhe. Entf: löschen. B: Fuß neu zeichnen.", fr: "Fais glisser les points. Clic sur un sommet : sa hauteur. Suppr : supprimer. B : redessiner la base." },
   "New variant": { it: "Nuova variante", es: "Nueva variante", pt: "Nova variante", de: "Neue Variante", fr: "Nouvelle variante" },
+  "Mountain: drag it to move it. Del: delete it (with its twin, with symmetry).": { // §9.239
+    it: "Montagna: trascinala per spostarla. Canc: eliminala (con la gemella, con la simmetria).",
+    es: "Montaña: arrástrala para moverla. Supr: elimínala (con su gemela, con simetría).",
+    pt: "Montanha: arraste-a para movê-la. Del: exclua-a (com a gêmea, com simetria).",
+    de: "Berg: ziehen zum Verschieben. Entf: löschen (mit dem Zwilling, bei Symmetrie).",
+    fr: "Montagne : faites-la glisser pour la déplacer. Suppr : supprimez-la (avec sa jumelle, avec la symétrie)." },
   "Rock": { it: "Roccia", es: "Roca", pt: "Rocha", de: "Fels", fr: "Roche" }, // §9.237: le pelli della montagna
   "Hills (meadow)": { it: "Colline (prato)", es: "Colinas (prado)", pt: "Colinas (prado)", de: "Hügel (Wiese)", fr: "Collines (pré)" },
   "Dunes (sand)": { it: "Dune (sabbia)", es: "Dunas (arena)", pt: "Dunas (areia)", de: "Dünen (Sand)", fr: "Dunes (sable)" },

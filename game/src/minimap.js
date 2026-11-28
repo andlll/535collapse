@@ -44,6 +44,12 @@ export const MM = {
   // [§9.237] le montagne del generatore: la loro cresta (px della minimappa,
   // al piu'), la base appena accennata; colline e dune coi loro colori
   crest: 2.2, baseAlpha: 0.28,
+  // [§9.239, richiesta dell'autore: "aggiungerei proprio il profilo,
+  // facciamo prove"] come si disegnano: "crest" la cresta sulla base velata
+  // (§9.237), "profile" la sagoma del disegno piena e la cresta scura,
+  // "shaded" la sagoma con la luce delle facce, "ink" e in piu' l'inchiostro
+  // degli speroni, sottile
+  mtnStyle: "shaded", profileAlpha: 0.85,
   skin: { rock: makeColourRgb(166, 123, 91), grass: makeColourRgb(104, 150, 74), sand: makeColourRgb(200, 164, 96) },
   // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
@@ -258,22 +264,51 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
 // piu' sottile per le montagne piccole; del colore della pelle (roccia,
 // colline, dune); sfuma come il simbolo, con la parte scoperta
 function crestMark(d, g, ox, oy, sz, seen) {
-  const col = MM.skin[g.skin] || MM.mountain;
+  const col = MM.skin[g.skin] || MM.mountain, style = MM.mtnStyle;
   const P = (q) => [ox + q[0] / sz, oy + q[1] / sz];
-  const T = g.mmTris || (g.mmTris = triangulate(g.base));
-  d.setAlpha(MM.baseAlpha * seen);
-  for (let i = 0; i < T.length; i += 6) {
-    const [ax, ay] = P([T[i], T[i + 1]]), [bx, by] = P([T[i + 2], T[i + 3]]), [cx, cy] = P([T[i + 4], T[i + 5]]);
-    d.triangleColour(ax, ay, bx, by, cx, cy, col, col, col, false);
-  }
+  const tri = (T, c, a) => {
+    d.setAlpha(a);
+    for (let i = 0; i < T.length; i += 6) {
+      const [ax, ay] = P([T[i], T[i + 1]]), [bx, by] = P([T[i + 2], T[i + 3]]), [cx, cy] = P([T[i + 4], T[i + 5]]);
+      d.triangleColour(ax, ay, bx, by, cx, cy, c, c, c, false);
+    }
+  };
   const span = (g.bbox[2] - g.bbox[0]) / sz, wid = Math.max(1, Math.min(MM.crest, span / 8));
+  let line = col;
+  if (style === "crest") tri(g.mmTris || (g.mmTris = triangulate(g.base)), col, MM.baseAlpha * seen);
+  else {
+    // il profilo: le facce del disegno (la montagna come si vede), piene;
+    // con la luce: ogni faccia del colore della pelle per la sua luce (piu'
+    // contrasto che nel gioco, a questa misura le facce sono pochi px)
+    for (const L of g.layers) {
+      if (!L.face) continue;
+      const k = style === "profile" ? 1 : 0.62 + 0.5 * Math.max(0, (L.shade - 0.84) / 0.16);
+      tri(L.tris, shadeCol(col, k), MM.profileAlpha * seen);
+    }
+    line = shadeCol(col, 0.45);
+    if (style === "ink") {
+      d.setAlpha(0.6 * seen);
+      for (const L of g.layers) {
+        if (L.face || L.ink.length < 2) continue;
+        for (let k = 1; k < L.ink.length; k++) {
+          const [ax, ay] = P([L.ink[k - 1].x, L.ink[k - 1].y]), [bx, by] = P([L.ink[k].x, L.ink[k].y]);
+          d.lineWidthColour(ax, ay, bx, by, 0.6, line, line);
+        }
+      }
+    }
+  }
   d.setAlpha(MM.mountainAlpha * seen);
-  const C = g.crest.map(P);
-  for (let k = 1; k < C.length; k++) d.lineWidthColour(C[k - 1][0], C[k - 1][1], C[k][0], C[k][1], wid, col, col);
-  if (C.length === 1) d.circleColour(C[0][0], C[0][1], wid, col, col, false);
-  for (let k = 1; k < C.length - 1; k++) d.circleColour(C[k][0], C[k][1], wid / 2, col, col, false); // (i giunti tondi)
+  const C = g.crest.map(P), w = style === "crest" ? wid : Math.max(1, wid * 0.7);
+  for (let k = 1; k < C.length; k++) d.lineWidthColour(C[k - 1][0], C[k - 1][1], C[k][0], C[k][1], w, line, line);
+  if (C.length === 1) d.circleColour(C[0][0], C[0][1], w, line, line, false);
+  for (let k = 1; k < C.length - 1; k++) d.circleColour(C[k][0], C[k][1], w / 2, line, line, false); // (i giunti tondi)
   d.setAlpha(1);
 }
+// un colore (0xBBGGRR) per k, canale per canale
+const shadeCol = (c, k) => {
+  const ch = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return ch(c & 255) | (ch((c >> 8) & 255) << 8) | (ch((c >> 16) & 255) << 16);
+};
 
 // l'icona di un edificio o di un'unita' (false se l'oggetto non ne ha una)
 // (gli edifici: le unita' sono puntini, §9.110)
