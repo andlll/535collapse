@@ -353,7 +353,7 @@ export class EditScene {
     const A = ctx.assets, names = new Set(map.instances.map((e) => e.object));
     const groups = new Set(A.groupsOfTier("core", ...(names.size ? ["gioco"] : [])));
     for (const g of groupsFor(A, ctx.objects, names)) groups.add(g);
-    const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", "monte_roccia", ...(map.patches || []).map((p) => p.bg || "city2")];
+    const bgs = [map.background, "fiume_acqua", "fiume_sassi", "fiume_carta", "monte_roccia", "green1", "sabbia", ...(map.patches || []).map((p) => p.bg || "city2")]; // (§9.237: colline e dune)
     await A.load([...groups], bgs.filter(Boolean), progress);
     return new EditScene(ctx, map);
   }
@@ -618,10 +618,11 @@ export class EditScene {
 
   // la griglia (celle da 8 px, tutta la mappa) delle montagne `geos`
   // (forme), allargata di `px` px in orizzontale e px * ISO in verticale
-  mountainGrid(geos, px = 0) {
+  // ([§9.237] baseOnly: solo le basi, il contorno sul terreno)
+  mountainGrid(geos, px = 0, baseOnly = false) {
     const C = MOUNTAIN_CELL, gw = Math.ceil(this.map.width / C), gh = Math.ceil(this.map.height / C);
     let grid = new Uint8Array(gw * gh);
-    for (const g of geos) rasterize(g, grid, gw, gh, C);
+    for (const g of geos) rasterize(g, grid, gw, gh, C, 1, baseOnly);
     const rx = Math.round(px / C), ry = Math.round((px * 0.62) / C);
     if (rx > 0 || ry > 0) {
       const t = new Uint8Array(gw * gh), out = new Uint8Array(gw * gh);
@@ -694,12 +695,16 @@ export class EditScene {
   // MARGIN px (dalla parte piu' corta); un'estremita' sulla montagna si
   // ferma al contorno. Restituisce [{ key, e, pts }] (pts: null, la linea
   // sparisce: era tutta sotto la montagna).
+  // [§9.237, richiesta dell'autore: "deve considerare la base della
+  // montagna e non la cresta per le collisioni"] conta solo la base, il
+  // contorno sul terreno: un fiume o una strada dietro la montagna, sotto il
+  // disegno ma fuori dalla base, resta dov'e' (la montagna lo copre)
   reroute(geos) {
     const out = [], MARGIN = 40, STEP = 8;
     for (const key of ["rivers", "roads"]) {
       for (const e of this.map[key] || []) {
         const wmax = Math.max(e.width || 150, e.widthEnd || e.width || 150);
-        const mc = this.mountainGrid(geos, wmax / 2 + MARGIN), C = mc.C;
+        const mc = this.mountainGrid(geos, wmax / 2 + MARGIN, true), C = mc.C;
         const inside = (p) => p[0] >= 0 && p[1] >= 0 && p[0] < mc.gw * C && p[1] < mc.gh * C && mc.grid[Math.floor(p[1] / C) * mc.gw + Math.floor(p[0] / C)] === 1;
         // la linea a passi di STEP px, coi punti dell'autore
         const S = [];

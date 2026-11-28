@@ -6,7 +6,8 @@
 //   senza le parti coperte dai ponti), a corse orizzontali di pixel della
 //   minimappa, rifatte solo se cambia la scala;
 // - le montagne col simbolo dell'autore (§9.115), nocciola, grande quanto il
-//   disegno della montagna e dentro la minimappa;
+//   disegno della montagna e dentro la minimappa; [§9.237] quelle del
+//   generatore con la loro cresta;
 // - gli alberi come prima (triangoli), di un verde piu' tenue e meno saturo;
 // - gli edifici con le loro icone (le icone dell'interfaccia, bianche: mm_*
 //   da tools/05_atlas.py), del colore della parte: marroni i tuoi, blu i
@@ -18,6 +19,7 @@
 //   piu' opaca solo la parte scoperta (la nebbia di guerra).
 
 import { waterMap } from "./effects.js";
+import { triangulate } from "./mountains.js"; // §9.237
 import { makeColourRgb } from "./colours.js";
 import { dhypot, dsin } from "./dmath.js"; // §9.152
 
@@ -39,6 +41,10 @@ export const MM = {
   mountain: makeColourRgb(166, 123, 91), // nocciola
   mountainAlpha: 0.9,
   mountainFill: 0.9,                     // il simbolo occupa al piu' il 90% del disegno della montagna
+  // [§9.237] le montagne del generatore: la loro cresta (px della minimappa,
+  // al piu'), la base appena accennata; colline e dune coi loro colori
+  crest: 2.2, baseAlpha: 0.28,
+  skin: { rock: makeColourRgb(166, 123, 91), grass: makeColourRgb(104, 150, 74), sand: makeColourRgb(200, 164, 96) },
   // [§9.110] col puntatore sopra il fondo piu' opaco (0,69 invece di 0,19)
   // solo sulla parte scoperta dal giocatore: il bianco che manca, sopra il
   // fondo di sempre
@@ -220,7 +226,9 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
     const bx0 = i.x + (tx - fr.s.origin[0]) * sx, by0 = i.y + (ty - fr.s.origin[1]) * sy;
     boxes.push([Math.min(bx0, bx0 + tw * sx), Math.min(by0, by0 + th * sy), Math.max(bx0, bx0 + tw * sx), Math.max(by0, by0 + th * sy)]);
   }
-  for (const g of w.mountains || []) boxes.push(g.bbox);
+  // ([§9.214] quelle del generatore (la loro bbox); [§9.237] col disegno
+  // della loro cresta, non col simbolo)
+  for (const g of w.mountains || []) boxes.push([...g.bbox, g]);
   for (const b of boxes) {
     // il disegno in px della minimappa, ristretto alla minimappa
     const x0 = Math.max(0, b[0] / sz), x1 = Math.min(mw, b[2] / sz);
@@ -234,10 +242,36 @@ export function drawMountains(d, w, ox, oy, sz, szT = sz, fogOn = false) {
       seen = n ? Math.min(1, sum / n / MTN_SEEN) : 0;
       if (seen <= 0.01) continue;
     }
+    if (b[4]) { crestMark(d, b[4], ox, oy, sz, seen); continue; }
     const k = Math.min((x1 - x0) / MTN_W, (y1 - y0) / MTN_H) * MM.mountainFill;
     d.setAlpha(1);
     d.spriteExt("mm_montagna", 0, ox + (x0 + x1) / 2, oy + (y0 + y1) / 2, k, k, 0, MM.mountain, MM.mountainAlpha * seen);
   }
+  d.setAlpha(1);
+}
+
+// [§9.237, richiesta dell'autore: "visto che la cresta e' procedurale
+// potrebbe essere un tocco di classe usare la stessa cresta sulla
+// minimappa"] una montagna del generatore nella minimappa: la base (il
+// contorno sul terreno, l'ostacolo) appena velata e sopra la cresta come la
+// si vede (mountainGeometry crest: la linea del cielo), spessa MM.crest px,
+// piu' sottile per le montagne piccole; del colore della pelle (roccia,
+// colline, dune); sfuma come il simbolo, con la parte scoperta
+function crestMark(d, g, ox, oy, sz, seen) {
+  const col = MM.skin[g.skin] || MM.mountain;
+  const P = (q) => [ox + q[0] / sz, oy + q[1] / sz];
+  const T = g.mmTris || (g.mmTris = triangulate(g.base));
+  d.setAlpha(MM.baseAlpha * seen);
+  for (let i = 0; i < T.length; i += 6) {
+    const [ax, ay] = P([T[i], T[i + 1]]), [bx, by] = P([T[i + 2], T[i + 3]]), [cx, cy] = P([T[i + 4], T[i + 5]]);
+    d.triangleColour(ax, ay, bx, by, cx, cy, col, col, col, false);
+  }
+  const span = (g.bbox[2] - g.bbox[0]) / sz, wid = Math.max(1, Math.min(MM.crest, span / 8));
+  d.setAlpha(MM.mountainAlpha * seen);
+  const C = g.crest.map(P);
+  for (let k = 1; k < C.length; k++) d.lineWidthColour(C[k - 1][0], C[k - 1][1], C[k][0], C[k][1], wid, col, col);
+  if (C.length === 1) d.circleColour(C[0][0], C[0][1], wid, col, col, false);
+  for (let k = 1; k < C.length - 1; k++) d.circleColour(C[k][0], C[k][1], wid / 2, col, col, false); // (i giunti tondi)
   d.setAlpha(1);
 }
 

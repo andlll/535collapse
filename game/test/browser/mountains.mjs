@@ -107,7 +107,7 @@ check("albero e miniera sotto la montagna tolti", !made.inst.includes("miniera_o
 check("il fiume gira attorno", made.river && made.river !== before.river, made.river);
 // il fiume nuovo non tocca la montagna
 const clear = await E(() => {
-  const s = window.__editor.scene, g = s.world.mountains[0], grid = s.mountainGrid([g]), C = grid.C;
+  const s = window.__editor.scene, g = s.world.mountains[0], grid = s.mountainGrid([g], 0, true), C = grid.C; // (§9.237: la base)
   const pts = s.map.rivers[0].pts;
   for (let k = 1; k < pts.length; k++) {
     const [a, b] = [pts[k - 1], pts[k]], n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4);
@@ -115,7 +115,22 @@ const clear = await E(() => {
   }
   return true;
 });
-check("la linea del fiume fuori dalla montagna", clear);
+check("la linea del fiume fuori dalla base della montagna", clear);
+// [§9.237] conta la base, non il disegno: una linea dietro la montagna, sotto
+// il disegno ma lontana dalla base, resta dov'e'
+const behind = await E(() => {
+  const s = window.__editor.scene, g = s.world.mountains[0], full = s.mountainGrid([g], 60), base = s.mountainGrid([g], 60, true), C = full.C;
+  const hits = (G, y) => { for (let x = g.bbox[0]; x <= g.bbox[2]; x += 4) if (G.grid[Math.floor(y / C) * G.gw + Math.floor(x / C)]) return true; return false; };
+  let y = null;
+  for (let yy = Math.ceil(g.bbox[1]); yy < g.bbox[3] && y === null; yy += 4) if (hits(full, yy) && !hits(base, yy)) y = yy;
+  if (y === null) return { y };
+  const e = { pts: [[g.bbox[0] - 200, y], [g.bbox[2] + 200, y]], width: 40 };
+  s.map.rivers.push(e);
+  const moved = s.reroute([g]).filter((q) => q.e === e).length;
+  s.map.rivers.pop();
+  return { y, moved };
+});
+check("una linea solo sotto il disegno (dietro la montagna) non si sposta", behind.y !== null && behind.moved === 0, JSON.stringify(behind));
 await E(() => window.__editor.view.centre(1250, 800)); await settle(400);
 await page.screenshot({ path: join(SHOTS, "ed_3_montagna.png") });
 // un passo solo da annullare
@@ -185,6 +200,51 @@ await page.keyboard.press("Delete"); await settle(200);
 check("Canc toglie anche la gemella", (await E(() => window.__editor.scene.map.mountains.length)) === 1);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await settle(300);
 
+// [§9.237] Sposta: la montagna (con la gemella) trascinata in blocco; la
+// forma resta la stessa (la base automatica e quella a mano), Ctrl+Z la
+// rimette
+await E(() => { const E2 = window.__editor; E2.ed.tool = "select"; E2.ed.sym.select = "diagonal"; E2.ed.msel = null; E2.view.centre(1200, 2100); });
+await settle(200);
+const mv0 = await E(() => { const s = window.__editor.scene, m = s.map.mountains; return { crest: m.map((e) => e.crest), base: s.world.mountains.map((g) => g.base), top: s.world.mountains[1].tops[0] }; });
+{
+  const [ax, ay] = await toScreen([mv0.top.x, mv0.top.y + 60]), sc = await E(() => window.__editor.view.scale);
+  await page.mouse.move(ax, ay); await settle(); await page.mouse.down(); await settle();
+  for (let k = 1; k <= 6; k++) { await page.mouse.move(ax + (300 / sc) * k / 6, ay + (150 / sc) * k / 6); await settle(40); }
+  await settle(200);
+  await page.mouse.up(); await settle(400);
+}
+const mv1 = await E(() => { const s = window.__editor.scene, m = s.map.mountains; return { crest: m.map((e) => e.crest), base: s.world.mountains.map((g) => g.base), off: m.map((e) => e.off || null) }; });
+const shifted = (A, B, dx, dy) => A.length === B.length && A.every((p, k) => Math.abs(B[k][0] - p[0] - dx) < 1.5 && Math.abs(B[k][1] - p[1] - dy) < 1.5);
+const [ddx, ddy] = [mv1.crest[1][0][0] - mv0.crest[1][0][0], mv1.crest[1][0][1] - mv0.crest[1][0][1]];
+check("Sposta: la montagna trascinata in blocco", Math.abs(ddx - 300) < 8 && Math.abs(ddy - 150) < 8 && shifted(mv0.crest[1], mv1.crest[1], ddx, ddy), JSON.stringify([ddx, ddy, mv1.off]));
+check("la gemella a specchio, la prima montagna ferma", shifted(mv0.base[2], mv1.base[2], -ddx, -ddy) && JSON.stringify(mv0.crest[0]) === JSON.stringify(mv1.crest[0]));
+check("la forma resta la stessa (la base sposta e basta)", shifted(mv0.base[1], mv1.base[1], ddx, ddy));
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await settle(300);
+check("Ctrl+Z: la montagna torna dov'era", (await E(() => JSON.stringify(window.__editor.scene.map.mountains.map((e) => e.crest)))) === JSON.stringify(mv0.crest));
+// e la prima, con la base automatica, spostata senza gemella: la base uguale
+await E(() => { const E2 = window.__editor; E2.ed.sym.select = "none"; E2.view.centre(1200, 700); });
+await settle(200);
+const am0 = await E(() => ({ base: window.__editor.scene.world.mountains[0].base, top: window.__editor.scene.world.mountains[0].tops[1] }));
+{
+  const [ax, ay] = await toScreen([am0.top.x, am0.top.y + 60]), sc = await E(() => window.__editor.view.scale);
+  await page.mouse.move(ax, ay); await settle(); await page.mouse.down(); await settle();
+  for (let k = 1; k <= 6; k++) { await page.mouse.move(ax - (240 / sc) * k / 6, ay + (40 / sc) * k / 6); await settle(40); }
+  await settle(200);
+  await page.mouse.up(); await settle(400);
+}
+const am1 = await E(() => ({ base: window.__editor.scene.world.mountains[0].base, crest: window.__editor.scene.map.mountains[0].crest, off: window.__editor.scene.map.mountains[0].off }));
+check("la base automatica spostata e' la stessa", !!am1.off && shifted(am0.base, am1.base, am1.off[0], am1.off[1]), JSON.stringify(am1.off));
+await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await settle(300);
+
+// [§9.237] la pelle: colline (prato) sulla montagna scelta
+await E(() => { const E2 = window.__editor; E2.ed.tool = "mountain"; E2.ed.msel = { e: E2.scene.map.mountains[0] }; });
+await settle(200);
+const SK = (await E(() => window.__editor.mountainLayout())).skins.find((q) => q.skin === "grass");
+await page.mouse.click(SK.x, SK.y); await settle(300);
+check("la pelle: colline", (await E(() => [window.__editor.scene.map.mountains[0].skin, window.__editor.scene.world.mountains[0].skin].join())) === "grass,grass");
+await E(() => window.__editor.view.centre(1250, 800)); await settle(400);
+await page.screenshot({ path: join(SHOTS, "ed_6_colline.png") });
+
 // "Prova mappa": le montagne nel gioco (servono le partenze)
 await E(() => {
   const s = window.__editor.scene;
@@ -206,10 +266,15 @@ const game = await E(() => {
   return { n: w.mountains.length, terrain: !!w.terrainBlocks, shot: w.shotClear(x - 300, y + 10, x + 300, y + 10), solid: cell };
 });
 check("nel gioco: le montagne, ostacolo e riparo dalle frecce", game && game.n === 3 && game.terrain && game.shot === false, JSON.stringify(game));
+check("nel gioco: le colline col prato", (await E(() => window.__game && window.__game.world.mountains[0].skin)) === "grass");
 if (game) {
   await E(() => { const G = window.__game, t = G.world.mountains[0].tops[0]; G.cam.x = t.x - G.cam.w / 2; G.cam.y = t.y - 200; });
   await settle(1500);
   await page.screenshot({ path: join(SHOTS, "gioco_montagna.png") });
+  // [§9.237] la minimappa con le creste
+  await E(() => { const G = window.__game; G.cam.x = 0; G.cam.y = 0; });
+  await settle(500);
+  await page.screenshot({ path: join(SHOTS, "gioco_minimappa.png") });
 }
 check("nessun errore nella pagina", !errs.length, errs.join(" | "));
 await browser.close();

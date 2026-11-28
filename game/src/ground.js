@@ -19,7 +19,7 @@
 
 import { drawSprite, spriteBounds } from "./sprites.js";
 import { drawRiver, drawRoad, drawBridge, drawPatch, PAINTED_BRIDGES } from "./rivers.js";
-import { drawMountain } from "./mountains.js";
+import { drawMountain, SKIN_BG } from "./mountains.js";
 
 export const GROUND = /^(traccia\d+|strada_\d+|chiazza01|erba_1|prato1)$/;
 const CH = 512, PAD = 1, S = CH + 2 * PAD, MAX = 48;
@@ -185,7 +185,10 @@ export class GroundCache {
         if (kind === "strada" && stones) drawRoad(r, g, stones, box);
         else if (kind === "fiume" && water && white) drawRiver(r, g, water, white);
         else if (kind === "ponte" && paper && white) drawBridge(r, g, paper, white);
-        else if (kind === "montagna" && rock && white) drawMountain(r, g, rock, white); // §9.214
+        else if (kind === "montagna" && white) { // §9.214 ([§9.237] colline e dune: prato e sabbia)
+          const tex = g.skin && g.skin !== "rock" ? A.bg.get(SKIN_BG[g.skin]) || rock : rock;
+          if (tex) drawMountain(r, g, tex, white);
+        }
       }
     }
     for (const i of this._gather(this.topChunks, cx, cy, L, byId)) { // §9.100

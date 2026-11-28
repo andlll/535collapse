@@ -15601,3 +15601,58 @@ una caserma); un campo del giocatore, uno della CPU e uno da seminare
 bruciati senza "rovina", una casa si'. editor.mjs (in piu': lo slider della
 larghezza premuto, trascinato oltre la fine e cliccato), mountains.mjs ed
 editor.test.mjs per gli slider al posto di "-" e "+".
+
+### 9.238 Le montagne: Sposta, la cresta nella minimappa, colline e dune; i fiumi girano attorno alla base
+
+Richieste dell'autore (28 novembre 2026, stessa PR, 0.2619): "Montagne
+dell'editor: rendiamole spostabili in blocco con lo strumento sposta. Visto
+che la cresta e' procedurale potrebbe essere un tocco di classe usare la
+stessa cresta sulla minimappa per rappresentarla. Consideriamo nello
+strumento la possibilita' di dargli la texture prato o quella sabbia oltre a
+quella di default della roccia, per rappresentare colline o dune.
+Spostamento polilinee automatico sotto la montagna: deve considerare la base
+della montagna e non la cresta per le collisioni".
+
+**Sposta.** Con "Sposta" un clic su una montagna (dove non c'e' un oggetto)
+la prende: trascinandola si sposta tutta, cresta e base (quella a mano o
+l'automatica), in anteprima grigia col contorno della base; col puntatore
+sopra si vede il contorno della base. Lasciata, e' come una montagna nuova
+(editor.js mCommit): rifiutata se ne tocca un'altra, gli oggetti sotto tolti,
+fiumi e strade girati attorno; un passo solo di "annulla". Con la simmetria
+dello strumento anche la gemella, a specchio (nella voce lo spostamento e'
+lo stesso per le due: la gemella e' specchiata dal generatore). Non esce
+dalla mappa piu' del margine della vista.
+Perche' la montagna spostata sia la stessa, la voce ha `off`, quanto si e'
+spostata in tutto: il rumore della base automatica si legge spostato di
+`off` (prima era fissato al mondo: spostata, la base cambiava forma) e la
+pietra, fissata al mondo, si sposta con lei. Le montagne di prima (senza
+`off`) restano com'erano.
+
+**La minimappa.** Le montagne del generatore non hanno piu' il simbolo
+(mm_montagna, §9.115, che resta per quelle dipinte): la base appena velata
+(l'ostacolo) e sopra la loro cresta come la si vede, la linea del cielo
+(minimap.js crestMark), spessa 2,2 px (meno per le montagne piccole), del
+colore della pelle; sfuma con la parte scoperta come il simbolo.
+
+**Colline e dune.** Nel riquadro della montagna, accanto ai due pulsanti,
+tre tondi: roccia (quella di sempre), colline (il prato, green1), dune (la
+sabbia del pennello); il nome nel suggerimento. Valgono per le montagne
+nuove o per quella scelta (e la gemella). Nella mappa `skin` ("grass",
+"sand"; senza: la roccia). Sul prato e sulla sabbia del terreno le facce in
+luce sparivano: per colline e dune la luce ha piu' contrasto (le facce in
+ombra al 62% e al 68%) e l'inchiostro e' piu' leggero (alpha 0,5 e 0,45).
+Gli sfondi si caricano con la mappa (app.js, editmap.js).
+
+**I fiumi e le strade attorno alla base.** Lo spostamento automatico delle
+polilinee (editmap.js reroute) contava tutta la sagoma disegnata, facce
+comprese: un fiume dietro la montagna, sotto il disegno ma lontano dal
+piede, veniva spinto via. Ora conta solo la base (mountainGrid con
+baseOnly): dietro la montagna il fiume resta, e la montagna lo copre. Gli
+oggetti sotto la montagna (underMountains) e l'ostacolo nel gioco restano
+come prima (tutto il disegno).
+
+Prove: mountains.mjs (in piu': la linea solo sotto il disegno non si sposta;
+Sposta con la gemella diagonale, la forma uguale, Ctrl+Z; la base automatica
+spostata uguale; le colline sulla montagna scelta, anche nel gioco; la foto
+della minimappa), mountains.test.mjs (la geometria spostata e' la stessa,
+pelle e `off` nella convalida).

@@ -113,7 +113,9 @@ function simplify(P, tol) {
 // roccia dei disegni, dove finiscono le creste), il pezzo attaccato alla
 // cresta, il suo contorno. Dietro la cresta, non oltre quanto la montagna
 // nasconde.
-function autoBase(N, spines, width, rough, seed, both = false) {
+// ([§9.237] il rumore si legge spostato di `off` (sul terreno steso): una
+// montagna spostata in blocco ha la stessa base di prima)
+function autoBase(N, spines, width, rough, seed, both = false, off = [0, 0]) {
   const C = N.map((c) => c.p);
   const r0 = width / 2, pad = r0 * 1.8 + 2 * CELL;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -124,7 +126,8 @@ function autoBase(N, spines, width, rough, seed, both = false) {
   for (let j = 0; j < gh; j++) {
     for (let i = 0; i < gw; i++) {
       const p = [x0 + (i + 0.5) * CELL, y0 + (j + 0.5) * CELL];
-      const r = r0 * (1 + rough * (0.42 * noise2(p[0], p[1], r0 * 0.9, seed) + 0.2 * noise2(p[0], p[1], r0 * 0.3, seed + 7)));
+      const nx = p[0] - off[0], ny = p[1] - off[1];
+      const r = r0 * (1 + rough * (0.42 * noise2(nx, ny, r0 * 0.9, seed) + 0.2 * noise2(nx, ny, r0 * 0.3, seed + 7)));
       // la cresta piu' vicina: distanza, e quanto e' alta li'
       let d = Infinity, hq = 0, qy = 0;
       if (N.length === 1) { d = dhypot(p[0] - C[0][0], p[1] - C[0][1]); hq = N[0].h; qy = C[0][1]; }
@@ -314,7 +317,8 @@ function structure(m, R) {
         spines.push({ a: c.p, b: [c.p[0] + cs[0] * len, c.p[1] + cs[1] * len], r: (width / 2) * (0.35 + 0.2 * R()) });
       }
     }
-    B = autoBase(N, spines, width, rough, seed, !!m.sym && m.sym !== "horizontal");
+    const off = m.off ? [m.off[0], m.off[1] / ISO] : [0, 0]; // §9.237
+    B = autoBase(N, spines, width, rough, seed, !!m.sym && m.sym !== "horizontal", off);
   }
   if (area(B) < 0) B = B.slice().reverse();
   B = jag(B, rough, R);
@@ -457,6 +461,10 @@ export function mountainGeometry(m) {
   const st = structure(m, R);
   if (m.mirrored && m.sym && m.room) mirrorStructure(st, m.sym, m.room);
   const { N, foot, spurs, detail } = st, B = foot.map((f) => f.p), nb = B.length;
+  // [§9.237] la pietra (fissata al mondo) segue la montagna spostata: la
+  // gemella specchiata si e' spostata a specchio
+  const o = m.off || [0, 0], sm = m.mirrored && m.sym;
+  const toff = !sm ? o : sm === "diagonal" ? [-o[0], -o[1]] : sm === "horizontal" ? [-o[0], o[1]] : [o[0], -o[1]];
 
   const scr = (q) => [q.p[0], q.p[1] * ISO - q.h];
   const faces = [];
@@ -494,7 +502,7 @@ export function mountainGeometry(m) {
     const shade = Math.min(1, 0.84 + 0.3 * lam + (R() - 0.5) * 0.05);
     const arc = [];
     for (let k = X.k; ; k = (k + 1) % nb) { arc.push(B[k]); if (k === Y.k) break; }
-    faces.push({ ring, shade, depth: gc ? gy / gc : 0, arc, tex: [Math.floor(R() * 256), Math.floor(R() * 256), (R() - 0.5) * 1.2] });
+    faces.push({ ring, shade, depth: gc ? gy / gc : 0, arc, tex: [Math.floor(R() * 256) + toff[0], Math.floor(R() * 256) + toff[1], (R() - 0.5) * 1.2] });
   }
   // da dietro in avanti: prima le facce coi piedi piu' in alto
   const order = faces.map((_, i) => i).sort((a, b) => faces[a].depth - faces[b].depth);
@@ -588,6 +596,7 @@ export function mountainGeometry(m) {
   const base = B.map(([x, y]) => [x, y * ISO]);
   for (const [x, y] of base) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   return {
+    skin: MOUNTAIN_SKINS.includes(m.skin) ? m.skin : "rock", // §9.237
     layers, base, crest: N.map((c) => scr(c)), feet: N.map((c) => [c.p[0], c.p[1] * ISO]),
     // le cime dell'autore (per l'editor: dove si vedono, quanto sono alte)
     tops: N.filter((c) => c.peak).map((c) => ({ x: c.p[0], y: c.p[1] * ISO - c.h, h: c.h })),
@@ -670,10 +679,16 @@ function taper(P, w, R, solid) {
 // pietra `rock` (ripetuta, spostata e girata per faccia) moltiplicata per la
 // loro luce, l'inchiostro come i fiumi (rivers.js inkLine); `white` il
 // quadratino bianco ({ t, u, v }).
+// [§9.237] colline e dune (g.skin): la luce delle facce con piu' contrasto
+// (sul prato e sulla sabbia del terreno le facce in luce sparivano) e
+// l'inchiostro piu' leggero (sono dolci, non pietra)
+const SKIN_LOOK = { grass: { lo: 0.62, ink: 0.5 }, sand: { lo: 0.68, ink: 0.45 } };
 export function drawMountain(r, g, rock, white) {
+  const look = SKIN_LOOK[g.skin];
   for (const L of g.layers) {
-    if (!L.face) { inkLine(r, white, L.ink, () => 0, () => true); continue; }
-    const v = Math.round(255 * L.shade), col = (v | (v << 8) | (v << 16) | (255 << 24)) >>> 0;
+    if (!L.face) { if (look) inkLine(r, white, L.ink, () => 0, () => true, undefined, look.ink); else inkLine(r, white, L.ink, () => 0, () => true); continue; }
+    const sh = look ? look.lo + (1 - look.lo) * Math.max(0, (L.shade - 0.84) / 0.16) : L.shade;
+    const v = Math.round(255 * Math.min(1, sh)), col = (v | (v << 8) | (v << 16) | (255 << 24)) >>> 0;
     const [dx, dy, a] = L.tex, c = dcos(a), s = dsin(a);
     const U = (x, y) => c * (x - dx) + s * (y - dy), V = (x, y) => -s * (x - dx) + c * (y - dy);
     const T = L.tris;
@@ -698,8 +713,9 @@ export function mountainCells(w) {
   for (const g of list) rasterize(g, grid, gw, gh, C);
   return (w._mountainCells = { C, gw, gh, grid });
 }
-// la sagoma di una montagna nella griglia (celle col centro dentro)
-export function rasterize(g, grid, gw, gh, C, val = 1) {
+// la sagoma di una montagna nella griglia (celle col centro dentro);
+// ([§9.237] baseOnly: solo la base, il contorno sul terreno)
+export function rasterize(g, grid, gw, gh, C, val = 1, baseOnly = false) {
   const fill = (poly, tri) => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < poly.length; i += 2) { x0 = Math.min(x0, poly[i]); x1 = Math.max(x1, poly[i]); y0 = Math.min(y0, poly[i + 1]); y1 = Math.max(y1, poly[i + 1]); }
@@ -715,7 +731,7 @@ export function rasterize(g, grid, gw, gh, C, val = 1) {
       }
     }
   };
-  for (const L of g.layers) if (L.tris) for (let i = 0; i < L.tris.length; i += 6) fill(L.tris.slice(i, i + 6), true);
+  if (!baseOnly) for (const L of g.layers) if (L.tris) for (let i = 0; i < L.tris.length; i += 6) fill(L.tris.slice(i, i + 6), true);
   fill(g.base.flat(), false);
 }
 // il riquadro [x0, y0, x1, y1] tocca una montagna?
@@ -745,6 +761,11 @@ export const MOUNTAIN_STEPS = {
 };
 // [§9.215] l'altezza di una cima sola (moltiplica `height`): i passi
 export const PEAK_STEPS = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2];
+// [§9.237, richiesta dell'autore: "la texture prato o quella sabbia oltre a
+// quella di default della roccia, per rappresentare colline o dune"] la
+// pelle della montagna (skin nella mappa; senza: la roccia) e il suo sfondo
+export const MOUNTAIN_SKINS = ["rock", "grass", "sand"];
+export const SKIN_BG = { rock: "monte_roccia", grass: "green1", sand: "sabbia" };
 export const MOUNTAIN_LIMITS = { crest: 12, base: 64, gap: 50, seg: 1200, baseGap: 16, turn: 35, area: 15000, count: 60, peak: [0.3, 2] };
 const segCross = (P, closed) => {
   const n = P.length, m = closed ? n : n - 1;
@@ -819,5 +840,11 @@ export function cleanMountain(f, W, H, M) {
   }
   if (f.sym !== undefined) { if (!["diagonal", "horizontal", "vertical"].includes(f.sym)) return null; c.sym = f.sym; }
   if (f.mirrored !== undefined) { if (f.mirrored !== true || !c.sym) return null; c.mirrored = true; }
+  // [§9.237] la pelle (colline, dune) e lo spostamento in blocco
+  if (f.skin !== undefined) { if (!MOUNTAIN_SKINS.includes(f.skin)) return null; if (f.skin !== "rock") c.skin = f.skin; }
+  if (f.off !== undefined) {
+    if (!Array.isArray(f.off) || f.off.length !== 2 || !f.off.every((v) => Number.isInteger(v) && Math.abs(v) <= 4 * (W + H + M))) return null;
+    c.off = [f.off[0], f.off[1]];
+  }
   return c;
 }

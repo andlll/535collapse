@@ -154,3 +154,24 @@ test("§9.216 le chiazze d'erba: quante, dove, sempre uguali, i limiti", () => {
   assert.equal(cleanMeadow({ pts: sq, mix: { rose: 1 } }, inPt), null, "particella sconosciuta");
   assert.equal(cleanMeadow({ pts: sq.slice(0, 2), mix: {} }, inPt), null);
 });
+
+// [§9.237] lo spostamento in blocco: cresta (e base) spostate e `off`, la
+// montagna e' la stessa, solo piu' in la' (la base automatica non cambia
+// forma); la pelle e lo spostamento nella convalida
+test("§9.237 la montagna spostata e' la stessa; pelle e off nella convalida", () => {
+  const D = [137, -53], sh = (P) => P.map(([x, y]) => [x + D[0], y + D[1]]);
+  for (const seed of [1, 4, 9]) {
+    const a = mountainGeometry({ ...M, seed }), b = mountainGeometry({ ...M, seed, crest: sh(M.crest), off: D });
+    assert.equal(a.base.length, b.base.length, `seme ${seed}`);
+    a.base.forEach((p, k) => { assert.ok(Math.abs(b.base[k][0] - p[0] - D[0]) < 0.01 && Math.abs(b.base[k][1] - p[1] - D[1]) < 0.01, `seme ${seed}, punto ${k}`); });
+    const sa = a.layers.filter((L) => L.face).map((L) => L.shade), sb = b.layers.filter((L) => L.face).map((L) => L.shade);
+    assert.ok(sa.length === sb.length && sa.every((v, k) => Math.abs(v - sb[k]) < 1e-9), "le stesse facce, con la stessa luce");
+  }
+  assert.equal(mountainGeometry({ ...M, skin: "sand" }).skin, "sand");
+  assert.equal(mountainGeometry(M).skin, "rock");
+  const ok = { crest: [[400, 300], [700, 260]], seed: 12 };
+  assert.deepEqual(cleanMountain({ ...ok, skin: "grass", off: [120, -40] }, 6000, 6000, 4000), { ...ok, skin: "grass", off: [120, -40] });
+  assert.deepEqual(cleanMountain({ ...ok, skin: "rock" }, 6000, 6000, 4000), ok, "la roccia e' quella di sempre: non si scrive");
+  assert.equal(cleanMountain({ ...ok, skin: "lava" }, 6000, 6000, 4000), null);
+  assert.equal(cleanMountain({ ...ok, off: [1.5, 0] }, 6000, 6000, 4000), null);
+});

@@ -34,7 +34,7 @@ import { CITY_FIRES, cityBuilding, fireStarter, palo, statue, houseTorch, houseT
 import { FogMap, sightK } from "./fog.js";
 import { GroundCache } from "./ground.js";
 import { riverGeometry, riverJoin, roadGeometry, bridgeGeometry, patchGeometry, riverCells, riverIn, stopsAtWater, BRIDGE_RAILS } from "./rivers.js";
-import { mountainGeometry, mountainCells, mountainIn } from "./mountains.js"; // §9.214
+import { mountainGeometry, mountainCells, mountainIn, SKIN_BG } from "./mountains.js"; // §9.214
 import { Particles } from "./particles.js";
 import { DECOR_OBJECTS, decorCreate, aquila, meadowCreate, clipDecor } from "./effects.js"; // §9.216: meadowCreate; §9.217: clipDecor
 import { hint, dialog, HINT_NAMES, DIALOG_NAMES } from "./hints.js";
@@ -222,7 +222,7 @@ async function main() {
   const room = custom ? JSON.parse(JSON.stringify(custom.room)) : await (await fetch(`assets/rooms/${roomName}.json`)).json();
   setDomText($("loading-text"), t("loading"), { font: "GUI_1", colour: "#e8e2d0" });
   await assets.load(assets.groupsOfTier(...TIERS[roomName]),
-                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta", ...(room.mountains ? ["monte_roccia"] : []),
+                    [...room.backgrounds.map((b) => b.name), "fiume_acqua", "fiume_sassi", "fiume_carta", ...(room.mountains ? ["monte_roccia", ...room.mountains.map((m) => SKIN_BG[m.skin]).filter(Boolean)] : []), // (§9.237: colline e dune)
                      ...(room.patches || []).map((p) => p.bg || "city2")], progress); // §9.97, §9.99
 
   const [objects, masks] = await Promise.all(
@@ -1137,7 +1137,7 @@ async function main() {
                     // ([§9.214] anche le montagne del generatore)
                     setRivers(list, roads = [], bridges = [], patches = [], mountains = [], meadows = []) { // (§9.216: e l'erba)
                       const apply = () => { useRivers(list, roads, bridges, patches, mountains, meadows); useMeadows(); path._river = null; path.initCost(); ground.reset(); };
-                      const missing = [...patches.map((p) => p.bg || "city2"), ...(mountains.length ? ["monte_roccia"] : [])].filter((b) => !assets.bg.get(b));
+                      const missing = [...patches.map((p) => p.bg || "city2"), ...(mountains.length ? ["monte_roccia"] : []), ...mountains.map((m) => SKIN_BG[m.skin]).filter(Boolean)].filter((b) => !assets.bg.get(b));
                       if (missing.length) return assets.load([], missing).then(apply);
                       apply();
                     },
