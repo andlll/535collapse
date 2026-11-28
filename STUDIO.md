@@ -15715,7 +15715,7 @@ renderizzarle in tempo reale)".
   (l'antialiasing) e i giunti tondi; poi a ogni fotogramma un quad per
   montagna, con l'alpha della parte scoperta. Si rifa' solo se cambia la
   scala della minimappa (i suoi tasti), lo schermo, l'inchiostro o il
-  contesto grafico (gl.js: gen, contato a ogni init; createTexture ha
+  contesto grafico (gl.js: generation, contata a ogni init; createTexture ha
   `premul` per un canvas, che non e' premoltiplicato). Costa qualche
   millisecondo per montagna, una volta.
 - Confronto: build/prova_montagne/minimappa_e1_cotta.png.
@@ -15769,3 +15769,17 @@ come fatto per le mura?)".
   fortezza blu con 3 da "Inserisci", la torre a 1 con "Sposta" e Ctrl+Z,
   nella partita di prova la torre con 2 arcieri e la bandiera e la fortezza
   della CPU con 3 (foto: build/prova_montagne/ed_arcieri.png).
+
+### 9.244 I segni degli arcieri come i pulsanti dell'editor
+
+Richiesta dell'autore (28 novembre 2026, stessa PR, 0.2619): "I pulsanti
+arciere pero' falli dello stesso stile degli altri (effetto vetro, icona
+dell'arciere piu' piccola)".
+
+- I tondi degli arcieri sopra torri e fortezze (§9.243) come i pulsanti
+  della colonna: bianchi a 0,69 col vetro sotto (opzione "Interfaccia di
+  vetro"), l'arciere nero a 0,75, piu' piccolo (tondo di 15 px, icona a
+  0,27). Disegnati con l'interfaccia, a misura fissa sullo schermo (prima
+  nella mappa, crescevano con lo zoom), sotto la colonna e i riquadri.
+- (§9.241: la texture dell'inchiostro della minimappa usa il contatore del
+  contesto che c'era gia', gl.js generation, non uno nuovo.)

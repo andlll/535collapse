@@ -331,7 +331,7 @@ function crestMark(d, g, ox, oy, sz, seen, k = 1) {
 const PEN = new WeakMap(); // forma (mountainGeometry) -> { key, tex, x0, y0, w, h }
 const cssRgb = (c) => `rgb(${c & 255},${(c >> 8) & 255},${(c >> 16) & 255})`;
 function penTexture(r, g, sz, k) {
-  const key = [sz, k, r.gen || 0, MM.pen, MM.penK, MM.penMin, MM.penMax].join(":");
+  const key = [sz, k, r.generation || 0, MM.pen, MM.penK, MM.penMin, MM.penMax].join(":");
   const old = PEN.get(g);
   if (old && old.key === key && r.textures.has(old.tex)) return old;
   if (old && r.textures.has(old.tex)) r.deleteTexture(old.tex);

@@ -76,7 +76,6 @@ export class Renderer {
   // Crea il contesto. Prima chiede di fallire se le prestazioni sarebbero
   // molto scarse; se non c'e' altro, accetta e segna `slowContext`.
   init() {
-    this.gen = (this.gen || 0) + 1; // [§9.241] le texture fatte prima di una perdita del contesto non valgono piu'
     const opts = { alpha: false, antialias: false, premultipliedAlpha: true,
                    preserveDrawingBuffer: false, powerPreference: "high-performance" };
     let gl = this.canvas.getContext("webgl2", { ...opts, failIfMajorPerformanceCaveat: true });

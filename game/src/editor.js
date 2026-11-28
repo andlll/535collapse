@@ -2278,18 +2278,6 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const B = g.base;
       for (let k = 0; k < B.length; k++) { const p = B[k], q = B[(k + 1) % B.length]; draw.lineWidthColour(p[0] + ox, p[1] + oy, q[0] + ox, q[1] + oy, w * px, c.white, c.white); }
     };
-    // [§9.243] gli arcieri dentro torri e fortezze: un tondo con l'arciere
-    // per ognuno, sopra l'edificio (in ogni strumento)
-    for (const e of scene.map.instances) {
-      if (!e.garrison || !GARRISON_SETTINGS[e.object] || !scene.instOf(e)) continue;
-      const b = boxOf(e), n = e.garrison, R = 19 * px, gap = 42 * px, cy = b[1] - 26 * px;
-      for (let k = 0; k < n; k++) {
-        const cx = (b[0] + b[2]) / 2 + (k - (n - 1) / 2) * gap;
-        draw.setAlpha(0.95); draw.circleColour(cx, cy, R + 2 * px, DARK, DARK, false);
-        draw.circleColour(cx, cy, R, c.white, c.white, false);
-        draw.setAlpha(1); drawSprite(r, assets, "ico_arciere", 0, cx, cy, 0.5 * px, 0.5 * px, 0, DARK, 1);
-      }
-    }
     if (ed.tool === "select") {
       // [§9.237] la montagna sotto il puntatore (la base) e quella trascinata
       // (con la gemella, a specchio), in anteprima dove andra'
@@ -2515,6 +2503,26 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     draw.setFont("overdue");
     glowText(draw, W / 2, 36, (map.name || ed.label || tr("New map")) + (dirty() ? " *" : "") + "  -  " + map.width + " x " + map.height
       + (ed.file && ed.file.name ? "  -  " + ed.file.name : "")); // §9.188: il file collegato
+    // [§9.243] gli arcieri dentro torri e fortezze: un tondo per ognuno,
+    // sopra l'edificio (in ogni strumento); [§9.244, richiesta dell'autore]
+    // come i pulsanti della colonna: bianco a vetro, l'arciere nero piu'
+    // piccolo; disegnati con l'interfaccia (a misura fissa sullo schermo),
+    // sotto colonna e riquadri
+    for (const e of map.instances) {
+      if (!e.garrison || !GARRISON_SETTINGS[e.object] || !scene.instOf(e)) continue;
+      const b = scene.boundsOf(e);
+      if (!b) continue;
+      const n = e.garrison, R = 15, gap = 34, sx = ((b[0] + b[2]) / 2 - view.x) / view.scale, sy = (b[1] - view.y) / view.scale - R - 8;
+      if (sx < -80 || sx > W + 80 || sy < -40 || sy > H + 40) continue;
+      for (let k = 0; k < n; k++) {
+        const x = sx + (k - (n - 1) / 2) * gap;
+        draw.setAlpha(0.69);
+        draw.circleColour(x, sy, R, c.white, c.white, false);
+        draw.setAlpha(0.75);
+        draw.spriteExt("ico_arciere", 0, x, sy, 0.27, 0.27, 0, c.black, 0.75);
+      }
+    }
+    draw.setAlpha(1);
     // la colonna: un vetro chiaro, i pulsanti tondi; lo strumento scelto scuro
     const [cx1, cy1, cx2, cy2] = L.col;
     draw.setAlpha(0.35);
