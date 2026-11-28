@@ -48,7 +48,7 @@ for (const kind of ["torre", "calma", "nuova", "nebbia"]) {
     if (KIND === "torre") {
       w._stepNo = 0; const t = w.create("enemy_torre", X, Y); w._stepNo = 100; // della mappa
       t.life = t.slife = 100000;
-      out.start = t.npresidio;
+      out.start = t.npresidio; // (§9.242: nella campagna coi suoi 2; fuori vuota, prova "vuota")
       // un bersaglio a 400 px: tira (2 arcieri)
       const s1 = w.create("ally_warrior", X + 400, Y);
       let shot = 0; run(120, () => { shot = Math.max(shot, arrows()); s1.life = s1.slife; });

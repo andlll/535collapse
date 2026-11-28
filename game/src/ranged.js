@@ -18,7 +18,7 @@ import { holdStill } from "./siege.js";
 import { lmStep, lmReady } from "./lastmile.js";
 import { ST, huntHit } from "./stealth.js"; // §9.148
 import { lostBuilding } from "./economy.js";
-import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON } from "./enemygarrison.js";
+import { garrisonCreate, garrisonShoot, garrisonAI, ENEMY_GARRISON, garrisonStart } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
 import { burnTick } from "./effects.js";
 import { bloodHit } from "./blood.js";
@@ -820,7 +820,7 @@ export function enemyTower(p) {
       i.alarm.set(1, 70);
       i.visible = false;
       w.create("flag_b", i.x, i.y - 170);
-      garrisonCreate(i); // §9.80
+      garrisonCreate(i, w); // §9.80
     },
     alarm0(i) { i.arm = 1; },
     alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
@@ -857,7 +857,7 @@ export function enemyTower(p) {
         d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, blue);
       }
       // §9.80: gli arcieri dentro, come la torre alleata
-      if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? 2) + "/" + ENEMY_GARRISON.enemy_torre.max); d.setHalign("left"); }
+      if (i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? garrisonStart(ENEMY_GARRISON.enemy_torre, w)) + "/" + ENEMY_GARRISON.enemy_torre.max); d.setHalign("left"); }
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;

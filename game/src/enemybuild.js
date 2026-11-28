@@ -13,7 +13,7 @@ import { fireStep, fireStop, burnTick } from "./effects.js";
 import { creazioneAttaccantiGenerico } from "./levels.js";
 import { towerTarget, towerArrow } from "./archery.js";
 import { lostBuilding } from "./economy.js";
-import { ENEMY_GARRISON, garrisonCreate, garrisonShoot, garrisonAI } from "./enemygarrison.js";
+import { ENEMY_GARRISON, garrisonCreate, garrisonShoot, garrisonAI, garrisonStart } from "./enemygarrison.js";
 import { showDamage } from "./damage.js";
 import { dsin } from "./dmath.js"; // §9.152
 
@@ -40,7 +40,7 @@ export function enemyBarAndPanel(icon, wooden = true) {
       if (i.hit === 1 && w.room === "match") bar();
       // §9.80: gli arcieri dentro (torre e fortezza nemiche), come la torre alleata
       const G = ENEMY_GARRISON[i.object];
-      if (G && i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? G.start) + "/" + G.max); d.setHalign("left"); }
+      if (G && i.selected === 1) { d.setHalign("center"); d.text(i.x, i.y - 200, (i.npresidio ?? garrisonStart(G, w)) + "/" + G.max); d.setHalign("left"); }
     },
     drawGUI(i, w, d) {
       if (i.selected !== 1) return;
@@ -114,7 +114,7 @@ export function enemyBuilding(kind, p) {
       if (K.speed) i.image_speed = K.speed;
       if (K.heal) i.alarm.set(4, 180);
       if (K.produces) Object.assign(i, { flagx: i.x, flagy: i.y, role: 0, prod: 1 });
-      if (K.garrison) garrisonCreate(i); // §9.80
+      if (K.garrison) garrisonCreate(i, w); // §9.80
       // enemy_house [C]: uno dei 6 stili a caso (3 = lo sprite dell'oggetto)
       if (kind === "enemy_house") {
         const ind = irandomRange(1, 6);

@@ -8,6 +8,11 @@
 // sempre due frecce, senza nessuno dentro. Ora quelle della mappa partono
 // con START arcieri dentro (all'inizio tirano come prima); quelle costruite
 // dall'economia nemica (enemy_cantiere, built) partono vuote.
+// [§9.242, richiesta dell'autore: "torri nemiche: facciamo che default sono
+// senza arcieri dentro"] anche le torri nemiche della mappa partono vuote
+// (start 0; la fortezza resta con 2): tirano quando ci entra qualcuno. Nei
+// livelli della campagna (CAMPAIGN) restano coi 2 arcieri con cui sono stati
+// pensati e provati (le torri esterne del livello 5 tirano, §9.102).
 //
 // Le scelte dell'AI, ogni CHECK passi per edificio:
 // - minaccia (un'unita' del giocatore entro THREAT px): gli arcieri nemici
@@ -25,15 +30,19 @@ import { pointDistance } from "./gm.js";
 import { stealthOn, inFog, ST } from "./stealth.js"; // §9.148
 
 export const ENEMY_GARRISON = {
-  enemy_torre: { max: 2, start: 2, pos: [[20, -60], [20, -77]], exitDy: 60 },
+  enemy_torre: { max: 2, start: 0, campaign: 2, pos: [[20, -60], [20, -77]], exitDy: 60 }, // §9.242: vuota (era 2), non nella campagna
   enemy_castello: { max: 4, start: 2, pos: [[20, -150], [20, -170], [30, -30], [30, -40]], exitDy: 140 },
 };
 const CHECK = 30, THREAT = 700, RECRUIT = 600, LOW = 0.25, CALM = 1800, WALK_MAX = 900;
 
-export function garrisonCreate(i) {
-  const G = ENEMY_GARRISON[i.object];
-  i.npresidio = i.built ? 0 : G.start;
-  i.keep = i.built ? 1 : G.start;
+const CAMPAIGN = /^(match|lvl\d\d)$/; // §9.242
+export const garrisonStart = (G, w) => (G.campaign !== undefined && w && CAMPAIGN.test(w.room) ? G.campaign : G.start);
+export function garrisonCreate(i, w) {
+  const G = ENEMY_GARRISON[i.object], start = garrisonStart(G, w);
+  i.npresidio = i.built ? 0 : start;
+  // ([§9.242] almeno uno: una torre che parte vuota e si riempie per una
+  // minaccia ne tiene uno; con 0 l'ultimo usciva e, in pace, rientrava)
+  i.keep = i.built ? 1 : Math.max(1, start);
   i.garrisonLives = [];
   i.calmSince = 0;
 }
@@ -42,7 +51,7 @@ export function garrisonCreate(i) {
 // sinistra secondo il bersaglio). true se ha tirato.
 export function garrisonShoot(i, w, every, alarm) {
   const G = ENEMY_GARRISON[i.object];
-  if (i.npresidio === undefined) garrisonCreate(i); // salvataggio di prima
+  if (i.npresidio === undefined) garrisonCreate(i, w); // salvataggio di prima
   if (i.arm !== 1 || i.npresidio <= 0 || i.watch) return false;
   const a = towerTarget(w, i, "ally_unit", 600);
   if (!a) return false;
@@ -74,7 +83,7 @@ const incoming = (w, b) => { let n = 0; for (const e of w.all("enemy_arciere")) 
 export function garrisonAI(i, w) {
   if (w.room === "menu" || i.watch || (w._stepNo + i.id) % CHECK !== 0) return;
   const G = ENEMY_GARRISON[i.object];
-  if (i.npresidio === undefined) garrisonCreate(i);
+  if (i.npresidio === undefined) garrisonCreate(i, w);
   const threat = w.nearWithin(i, "ally_unit", THREAT, THREAT);
   if (threat) i.calmSince = w._stepNo;
   if (i.life < LOW * i.slife) { while (i.npresidio > 0) garrisonSendOut(i, w); return; }

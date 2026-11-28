@@ -12,6 +12,8 @@
 //   uno      = su ogni campo da seminare al piu' un lavoratore, e nessuno
 //              lo costruisce (azione 6)
 //   finiti   = almeno un campo seminato diventa un campo (enemy_campo)
+//   torre    = [§9.242] una torre nemica della mappa, fuori dalla campagna,
+//              parte vuota
 //   silenzio = un campo bruciato (del giocatore e della CPU, sotto gli
 //              occhi) non fa il suono del crollo; una casa si'
 // Esce con codice 1 se qualcosa non torna.
@@ -70,6 +72,8 @@ const res = await page.evaluate((steps) => {
     G.advance(3);
     return played.filter((n) => /^rovina/.test(n));
   };
+  // [§9.242] fuori dalla campagna la torre nemica della mappa parte vuota
+  { const t = w.create("enemy_torre", 300, 300); out.torreVuota = t.npresidio === 0; w.destroy(t); }
   out.suoni = { campo: sound("campo"), enemy_campo: sound("enemy_campo"), enemy_campo_fond: sound("enemy_campo_fond"), enemy_house: sound("enemy_house") };
   G.audio.play = orig;
   return out;
@@ -112,7 +116,7 @@ const res2 = await page.evaluate((steps) => {
 console.log(JSON.stringify(res2));
 const S = res.suoni;
 const ok = res.rivers > 0 && res.wet.length === 0 && res.cantiereCampo === 0 && res.fonds > 0 && res.maxSowers <= 1 && res.builders === 0
-  && res.campi > res.campi0 && res2.home.wet > 10 && res2.nuovi >= 4 && res2.wet.length === 0 && !S.campo.length && !S.enemy_campo.length && !S.enemy_campo_fond.length && S.enemy_house.length > 0 && errs.length === 0;
+  && res.campi > res.campi0 && res.torreVuota && res2.home.wet > 10 && res2.nuovi >= 4 && res2.wet.length === 0 && !S.campo.length && !S.enemy_campo.length && !S.enemy_campo_fond.length && S.enemy_house.length > 0 && errs.length === 0;
 if (errs.length) console.log(errs.slice(0, 5));
 console.log(ok ? "ok" : "NON VA");
 await browser.close();

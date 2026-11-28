@@ -15719,3 +15719,21 @@ renderizzarle in tempo reale)".
   `premul` per un canvas, che non e' premoltiplicato). Costa qualche
   millisecondo per montagna, una volta.
 - Confronto: build/prova_montagne/minimappa_e1_cotta.png.
+
+### 9.242 Le torri nemiche partono vuote (fuori dalla campagna)
+
+Richiesta dell'autore (28 novembre 2026, stessa PR, 0.2619): "Torri nemiche:
+facciamo che default sono senza arcieri dentro".
+
+- enemygarrison.js: la torre nemica della mappa parte senza arcieri (start
+  0, era 2) e tira solo quando ci entra qualcuno (in pace un arciere nemico
+  vicino a una torre vuota ci entra; con un soldato del giocatore vicino la
+  riempiono, §9.80). Tenuta minima 1 (keep): con 0 l'ultimo usciva e in pace
+  rientrava subito. La fortezza resta con 2.
+- [Scelta, da confermare con l'autore] nei livelli della campagna (match,
+  lvl01-07) le torri restano coi 2 arcieri con cui sono stati pensati e
+  provati: col default nuovo le torri esterne del livello 5 non tiravano piu'
+  (lvl05.mjs, "vedetta"), e quel tiro l'aveva chiesto l'autore (§9.102).
+  Vuote quindi nelle schermaglie e nelle mappe dell'editor (garrisonStart).
+- Prove: enemyfields.mjs (in piu': su sk_rivo la torre nemica parte vuota);
+  enemygarrison, stealth, lvl05, lvl07, damage come prima.
