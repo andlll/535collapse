@@ -34,13 +34,13 @@
 import { lengthdirX, lengthdirY, pointDirection } from "./gm.js";
 import { mergeColour } from "./colours.js";
 import { drawSprite } from "./sprites.js";
-import { dhypot, dsin } from "./dmath.js"; // §9.152
+import { dcos, dhypot, dsin } from "./dmath.js"; // §9.152
 import { vrand } from "./rng.js"; // §9.152
 
 // star: §9.94, le scintille delle miniere (tools/05_atlas.py)
 const SHAPES = { flare: "__pt_flare", line: "__pt_line", pixel: "__pt_pixel", ring: "__pt_ring", star: "__pt_star", leaf: "__pt_leaf", // leaf: §9.106
                  chip: "__pt_chip" }; // chip: §9.107, le schegge sotto il piccone
-const TAU = Math.PI * 2;
+const TAU = Math.PI * 2, DEG = Math.PI / 180;
 // [§9.90] Il vento (Particles.wind, 0-1, ambience.js) sulle piante: i tipi
 // con l'orientamento che oscilla (wiggle) e non relativo alla direzione, cioe'
 // erba, spighe, fiori, germogli (nessun altro tipo oscilla cosi'; anche nei
@@ -86,6 +86,9 @@ export class Particles {
     this.seq = 0;
     this.count = 0; // particelle vive, per la diagnostica
     this.wind = 0;  // §9.90
+    // [§9.237] l'oscillazione delle piante: ampiezza e rapidita' (1: quella
+    // del gioco; l'editor la calma per le icone del bouquet)
+    this.swayAmp = 1; this.swayRate = 1;
   }
 
   // ------------------------------------------------------------ sistemi
@@ -218,9 +221,9 @@ export class Particles {
 
   // orientamento disegnato: wiggle, direzione se relativo, vento (§9.90)
   angle(q) {
-    const t = q.t, ow = t.orientation[3], k = !t.orientation[4] && ow ? this.wind : 0;
-    if (!k) return q.ang + this._wig(q, ow) + (t.orientation[4] ? q.dir : 0);
-    const amp = 1 + (SWAY_AMP - 1) * k, rate = 1 + (SWAY_RATE - 1) * k;
+    const t = q.t, ow = t.orientation[3], plant = !t.orientation[4] && ow, k = plant ? this.wind : 0;
+    if (!k && (!plant || (this.swayAmp === 1 && this.swayRate === 1))) return q.ang + this._wig(q, ow) + (t.orientation[4] ? q.dir : 0);
+    const amp = (1 + (SWAY_AMP - 1) * k) * this.swayAmp, rate = (1 + (SWAY_RATE - 1) * k) * this.swayRate;
     return q.ang + ow * (SWAY_LEAN * k + amp * dsin(TAU * (q.age * rate / q.per + q.ph)));
   }
 
@@ -299,7 +302,16 @@ export class Particles {
       if (a <= 0) continue;
       const ang = this.angle(q);
       const name = t.sprite ? t.sprite : SHAPES[t.shape];
-      drawSprite(r, assets, name, 0, q.x, q.y, size * t.scale[0], size * t.scale[1], ang, col, Math.min(1, a));
+      let x = q.x, y = q.y;
+      // [§9.237, richiesta dell'autore: "sui fili d'erba deve fare perno alla
+      // base e non al centro"] pivot "base": la forma (la linea, larga 64 px
+      // con l'origine in mezzo) gira attorno alla sua estremita' di sotto
+      // com'era alla nascita (q.ang), non attorno al centro; ferma, e' dov'era
+      if (t.pivot === "base" && ang !== q.ang) {
+        const L = 32 * size * t.scale[0], a0 = q.ang * DEG, a1 = ang * DEG;
+        x += L * (dcos(a1) - dcos(a0)); y -= L * (dsin(a1) - dsin(a0));
+      }
+      drawSprite(r, assets, name, 0, x, y, size * t.scale[0], size * t.scale[1], ang, col, Math.min(1, a));
     }
     if (blend !== "normal") r.setBlend("normal");
   }

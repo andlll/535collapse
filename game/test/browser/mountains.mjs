@@ -129,8 +129,11 @@ check("Ctrl+Y: di nuovo", (await E(() => window.__editor.scene.map.mountains.len
 await E(() => { window.__editor.ed.msel = { e: window.__editor.scene.map.mountains[0] }; });
 const h0 = await E(() => window.__editor.scene.map.mountains[0].height);
 const ML = await E(() => window.__editor.mountainLayout());
-await page.mouse.move(ML.height.plus[0], ML.height.plus[1]); await settle();
-await page.mouse.click(ML.height.plus[0], ML.height.plus[1]); await settle(300);
+// [§9.237] lo slider: un clic sul passo dopo quello dell'altezza
+const HS = [80, 120, 160, 200, 260, 320, 400, 480], slAt = (G, n, i) => [G.track[0] + ((G.track[1] - G.track[0]) * i) / (n - 1), G.track[2]];
+const hUp = slAt(ML.height, HS.length, Math.min(HS.length - 1, HS.reduce((b, v, k) => (Math.abs(v - h0) < Math.abs(HS[b] - h0) ? k : b), 0) + 1));
+await page.mouse.move(...hUp); await settle();
+await page.mouse.click(...hUp); await settle(300);
 check("+ dell'altezza sulla montagna scelta", (await E(() => window.__editor.scene.map.mountains[0].height)) > h0);
 
 // [§9.215] una cima sola: clic sulla cima (scelta), + la alza; il piede resta
@@ -143,7 +146,7 @@ check("+: la cima piu' alta", pk1.peaks && pk1.peaks[1] > 1 && pk1.peaks[0] === 
 const footOf = (g, top) => g.feet.reduce((b, f) => (Math.abs(f[0] - top.x) < Math.abs(b[0] - top.x) ? f : b));
 check("il piede della cima non si muove", Math.abs(footOf(pk1, pk1.top)[1] - (pk0.top.y + pk0.top.h)) < 2, JSON.stringify([footOf(pk1, pk1.top), pk0.top]));
 const ML2 = await E(() => window.__editor.mountainLayout());
-await page.mouse.click(ML2.height.minus[0], ML2.height.minus[1]); await settle(300);
+await page.mouse.click(...slAt(ML2.height, 13, 7)); await settle(300); // (PEAK_STEPS: 1,15 -> 1)
 check("- di \"Altezza cima\": torna com'era", (await E(() => window.__editor.scene.map.mountains[0].peaks)) === undefined);
 await page.keyboard.press("Escape"); await settle();
 check("Esc: di nuovo tutta la montagna", (await E(() => { const m = window.__editor.ed.msel; return !!m && (m.peak === undefined || m.peak === null); })));

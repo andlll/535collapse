@@ -74,7 +74,7 @@ export const ENEMY_EQ = {
   enemy_warrior: "ally_warrior", enemy_picchiere: "ally_picchiere", enemy_cavaliere: "ally_cavaliere",
   enemy_arciere: "ally_arciere", enemy_ariete: "ally_ariete", enemy_catapulta: "ally_catapulta", enemy_omino: "ally_omino",
   enemy_centro: "centro", enemy_house: "casa", enemy_caserma: "caserma", enemy_stalla: "stalla", enemy_castello: "castello",
-  enemy_torre: "torre", enemy_chiesa: "chiesa", enemy_magazzino: "magazzino", enemy_mulino: "barn", enemy_campo: "campo",
+  enemy_torre: "torre", enemy_chiesa: "chiesa", enemy_magazzino: "magazzino", enemy_mulino: "barn", enemy_campo: "campo", enemy_campo_fond: "campo_fond",
   enemy_mura_ori: "mura_ori", enemy_mura_vert: "mura_vert", enemy_porta_ori: "porta_ori", enemy_porta_vert: "porta_vert",
 };
 

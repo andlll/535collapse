@@ -158,6 +158,7 @@ node game/test/browser/economy.mjs                     # economia nemica: raccol
 node game/test/browser/enemyarmy.mjs                   # economia nemica: soldati pagati, attacco, riparazioni, ricostruzione
 node game/test/browser/enemydepots.mjs                 # economia nemica: magazzini e mulini nuovi dove mancano
 node game/test/browser/enemydefense.mjs                # economia nemica: difesa della base e ondate d'attacco
+node game/test/browser/enemyfields.mjs                 # CPU: niente edifici sui fiumi, campi seminati da un lavoratore, campi bruciati senza crollo (§9.237)
 node game/test/browser/lvl04.mjs                       # livello 4: ponte, ondate dalla base nord, base sud, vittoria
 node game/test/browser/lvl07.mjs                       # livello 7: nebbia, pattuglie, lavoratori, macchine, notte, porta, cavalieri, vittoria e sconfitte (§9.178)
 node game/test/browser/hunter.mjs                      # livello 7: i nemici visti con la vista allargata dell'arciere, l'arciere che insegue e tira al bersaglio scelto (§9.209)

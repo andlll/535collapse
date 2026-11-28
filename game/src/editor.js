@@ -204,15 +204,27 @@ export const SYM_NAMES = { none: "Off", diagonal: "Diagonal", horizontal: "Horiz
 // subito dopo "-", il valore, "+"; fra un gruppo e l'altro GROUP_STEP px,
 // piu' dello spazio dentro il gruppo
 export const GROUP_STEP = 280;
-// (il valore in mezzo ha ~90 px: "600 px", "Uguale" non toccano i cerchi)
-export const pmAt = (x, cy, r = 16) => ({ label: [x, cy], minus: [x + 82, cy, r], value: [x + 143, cy], plus: [x + 204, cy, r] });
+// [§9.237, richiesta dell'autore: "proviamo a sostituire i pulsanti piu' e
+// meno delle varie funzioni con degli slider, lascia piu' e meno solo per le
+// particelle del pennello bouquet"] Un valore a passi (larghezze, densita',
+// altezze, impostazioni della nebbia) e' uno slider: l'icona (o l'etichetta),
+// la guida coi passi (track: [x0, x1, cy]; la manopola sul passo scelto) e il
+// valore a destra (in `room` px). Si clicca o si trascina sulla guida.
+// (il valore ha ~80 px: "600 px", "Uguale" non toccano la guida)
+export const slAt = (x, cy) => ({ label: [x, cy], track: [x + 64, x + 172, cy], value: [x + 224, cy], room: 80 });
+export const SLIDER_KNOB = 9;
+// il passo (0..n-1) sotto il punto mx, la x della manopola al passo i, il
+// puntatore sulla guida (con un margine attorno)
+export const sliderIndex = (G, n, mx) => (n <= 1 ? 0 : Math.round(Math.max(0, Math.min(1, (mx - G.track[0]) / (G.track[1] - G.track[0]))) * (n - 1)));
+export const sliderX = (G, n, i) => G.track[0] + (n <= 1 ? 0 : ((G.track[1] - G.track[0]) * i) / (n - 1));
+export const onSlider = (G, mx, my) => mx >= G.track[0] - 14 && mx <= G.track[1] + 14 && Math.abs(my - G.track[2]) <= 15;
 export const MTN_KEYS = ["height", "width", "rough", "detail"];
 export const MTN_LABEL = { height: "Height", width: "Width", rough: "Roughness", detail: "Detail" };
 export function mountainLayout(panel) {
   // ([§9.231] due righe: altezza e larghezza, asperita' e dettaglio; i due
   // pulsanti, pillole con l'icona, nella terza colonna)
   const [x1, y1] = panel, cy1 = y1 + 84, cy2 = y1 + 130, x = x1 + 30, bx = x + 2 * GROUP_STEP;
-  return { height: pmAt(x, cy1), width: pmAt(x + GROUP_STEP, cy1), rough: pmAt(x, cy2), detail: pmAt(x + GROUP_STEP, cy2),
+  return { height: slAt(x, cy1), width: slAt(x + GROUP_STEP, cy1), rough: slAt(x, cy2), detail: slAt(x + GROUP_STEP, cy2),
            seed: [bx, cy1 - 17, bx + 100, cy1 + 17], auto: [bx, cy2 - 17, bx + 100, cy2 + 17] };
 }
 // [§9.214, richiesta dell'autore: "strumenti di controllo per evitare
@@ -560,27 +572,28 @@ export function meadowLayout(panel) {
   });
   return { box, groups, title: [x1 + 32, box[1] + 22] };
 }
-// Il riquadro del pennello: le schede (come la tavolozza) e, sotto, i "-" e
-// "+" di larghezza e densita' (cerchi [x, y, r]) coi loro valori
+// Il riquadro del pennello: le schede (come la tavolozza) e, sotto, gli
+// slider di larghezza e densita' (§9.237: erano "-" e "+") coi loro valori
 export function brushLayout(panel) {
   const [x1, y1, x2] = panel, n = BRUSH_KINDS.length, tw = (x2 - x1 - 40) / n;
   const tabs = BRUSH_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
   // ([§9.231] i gruppi compatti: l'etichetta e' un'icona)
   const cy = y1 + 128;
-  return { tabs, width: pmAt(x1 + 30, cy), density: pmAt(x1 + 30 + GROUP_STEP, cy) };
+  return { tabs, width: slAt(x1 + 30, cy), density: slAt(x1 + 30 + GROUP_STEP, cy) }; // (§9.237: slider)
 }
 
 // [§9.206, richiesta dell'autore] Le impostazioni della nebbia (mapfile.js
 // FOG_SETTINGS) in un riquadro di vetro sopra il pannello, quando una nebbia
 // e' scelta in "Inserisci" (quelle nuove) o con "Sposta" (quelle scelte):
-// per ognuna l'etichetta, "-", il valore e "+", tre per riga
+// per ognuna l'etichetta, lo slider (§9.237: erano "-" e "+") e il valore,
+// tre per riga
 export const FOG_LABEL = { density: "Density", speed: "Speed", range: "Range", life: "Duration", count: "Clouds", every: "Every" };
 export function fogLayout(panel, object) {
   const [x1, y1, x2] = panel, keys = Object.keys(FOG_SETTINGS[object]), per = 3, gw = (x2 - x1 - 40) / per;
   const rows = Math.ceil(keys.length / per), h = 24 + rows * 40, box = [x1, y1 - 14 - h, x2, y1 - 14];
   const groups = keys.map((key, k) => {
     const x = x1 + 20 + (k % per) * gw, cy = box[1] + 32 + Math.floor(k / per) * 40;
-    return { key, label: [x + 12, cy], minus: [x + gw - 132, cy, 14], value: [x + gw - 82, cy], plus: [x + gw - 32, cy, 14] };
+    return { key, label: [x + 12, cy], track: [x + gw - 156, x + gw - 82, cy], value: [x + gw - 38, cy], room: 64 };
   });
   return { box, groups };
 }
@@ -606,7 +619,7 @@ export const LINE_LABEL = { river: "River", road1: "Road", road2: "Track" };
 export const LINE_WIDTHS = [40, 60, 80, 110, 150, 200, 260, 340, 440];
 const LINE_TINT = { river: 0xa8783c, road1: 0x88b4c8, road2: 0x8cb0a0 };
 export const lineKind = (key, e) => (key === "rivers" ? "river" : e.kind === 2 ? "road2" : "road1");
-// il riquadro: le tre schede, larghezza e larghezza finale coi "-" e "+"
+// il riquadro: le tre schede, larghezza e larghezza finale (slider, §9.237)
 export function lineLayout(panel) {
   const B = brushLayout(panel), [x1, y1, x2] = panel, n = LINE_KINDS.length, tw = (x2 - x1 - 40) / n;
   const tabs = LINE_KINDS.map((kind, k) => ({ kind, x1: x1 + 20 + k * tw + 3, y1: y1 + 62, x2: x1 + 20 + (k + 1) * tw - 3, y2: y1 + 90 }));
@@ -685,7 +698,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
                sideFilter: "red",
                colScroll: 0, // [§9.196] la colonna che scorre (schermi bassi)
                // [§9.206] le impostazioni della nebbia nuova (Inserisci) e il "-" o "+" sotto il puntatore
-               fogSet: Object.fromEntries(Object.entries(FOG_DEFAULTS).map(([k, v]) => [k, { ...v }])), fogHover: null,
+               fogSet: Object.fromEntries(Object.entries(FOG_DEFAULTS).map(([k, v]) => [k, { ...v }])), slHover: null, slide: null, // §9.237: lo slider sotto il puntatore, quello trascinato
                // [§9.187] la polilinea: il tipo e le larghezze di partenza (indici, per tipo),
                // la linea che si disegna (punti), la linea scelta ({ key, e, vi }), il punto trascinato
                line: { kind: "river", w: { river: 4, road1: 3, road2: 3 }, we: { river: 4, road1: 3, road2: 3 } },
@@ -918,6 +931,63 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (nv === cur) return;
     if (!F.list) { ed.fogSet[F.object][key] = nv; return; }
     scene.modify(F.list, (e) => ({ fog: fogDiff(e.object, { ...fogOf(e), [key]: nv }) || undefined }));
+  };
+  // [§9.237] gli slider dei riquadri di adesso: { id, G (la disposizione),
+  // n passi, cur() il passo scelto, set(i, d) va al passo i (d passi da
+  // cur), group: cambia la mappa (un passo di "annulla" a trascinamento) }
+  const sliders = (L) => {
+    const out = [], add = (id, G, n, cur, set, group = false) => out.push({ id, G, n, cur, set, group });
+    const FT = fogTarget();
+    if (FT) {
+      for (const G of fogLayout(L.panel, FT.object).groups) {
+        const vals = FOG_SETTINGS[FT.object][G.key];
+        const cur = () => { const F = fogTarget(), v = F ? F.values[G.key] : vals[0]; return vals.reduce((b, x, k) => (Math.abs(x - v) < Math.abs(vals[b] - v) ? k : b), 0); };
+        add("fog:" + G.key, G, vals.length, cur, (i, d) => { const F = fogTarget(); if (F) setFog(F, G.key, d); }, !!FT.list);
+      }
+    }
+    if (ed.tool === "line") {
+      const B = lineLayout(L.panel), clampW = (k) => Math.max(0, Math.min(LINE_WIDTHS.length - 1, k));
+      const curOf = (q) => {
+        if (ed.lsel) { const e = ed.lsel.e; return nearestW(q === "w" ? e.width : e.widthEnd ?? e.width); }
+        return (q === "w" ? ed.line.w : ed.line.we)[ed.line.kind];
+      };
+      const setLine = (q, dir) => {
+        const step = (k) => clampW(k + dir);
+        if (ed.lsel) {
+          const { key, e } = ed.lsel;
+          scene.modifyFeatures(key, lineAndTwin(key, e), (f) => {
+            const w = f.width, we = f.widthEnd ?? f.width;
+            if (q === "w") { const nw = LINE_WIDTHS[step(nearestW(w))]; return we === w ? { width: nw } : { width: nw, widthEnd: we }; }
+            const ne = LINE_WIDTHS[step(nearestW(we))];
+            return ne === w ? { widthEnd: undefined } : { widthEnd: ne };
+          });
+          for (const f of lineAndTwin(key, e)) if (f.widthEnd === undefined) delete f.widthEnd;
+        } else {
+          const k = ed.line.kind, W0 = ed.line.w, E0 = ed.line.we;
+          if (q === "w") { const linked = E0[k] === W0[k]; W0[k] = step(W0[k]); if (linked) E0[k] = W0[k]; } else E0[k] = step(E0[k]);
+        }
+      };
+      for (const [q, G] of [["w", B.width], ["e", B.end]]) add("line:" + q, G, LINE_WIDTHS.length, () => curOf(q), (i, d) => setLine(q, d), !!ed.lsel);
+    }
+    if (ed.tool === "mountain") {
+      const B = mountainLayout(L.panel), e = ed.msel && ed.msel.e, pk = e ? ed.msel.peak : null;
+      for (const k of MTN_KEYS) {
+        if (pk !== undefined && pk !== null && k === "height") {
+          const pIdx = () => { const m = ed.msel && ed.msel.e && ed.msel.e.peaks ? ed.msel.e.peaks[pk] : 1; return PEAK_STEPS.reduce((b, s2, j) => (Math.abs(s2 - m) < Math.abs(PEAK_STEPS[b] - m) ? j : b), 0); };
+          add("mtn:peak", B[k], PEAK_STEPS.length, pIdx, (i, d) => { if (!ed.mdraw && ed.msel) peakStep(ed.msel.e, pk, d); }, true);
+          continue;
+        }
+        const cur = () => { const m = ed.msel && ed.msel.e; return m ? mtnIdx(k, m[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]]) : ed.mtn[k]; };
+        add("mtn:" + k, B[k], MOUNTAIN_STEPS[k].length, cur, (i, d) => { if (!ed.mdraw) mAdjust(k, d); }, !!e);
+      }
+    }
+    if (ed.tool === "erase") add("erase:w", brushLayout(L.panel).width, BRUSH_WIDTHS.length, () => ed.erase.w, (i) => { ed.erase.w = i; });
+    if (ed.tool === "brush") {
+      const B = brushLayout(L.panel);
+      add("brush:w", B.width, BRUSH_WIDTHS.length, () => ed.brush.w, (i) => { ed.brush.w = i; });
+      if (ed.brush.kind === "forest") add("brush:d", B.density, BRUSH_SPACING.length, () => ed.brush.d, (i) => { ed.brush.d = i; });
+    }
+    return out;
   };
   const copy = () => {
     const list = selected();
@@ -1303,7 +1373,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     if (e && ed.msel.peak !== undefined && ed.msel.peak !== null && (q === "height-" || q === "height+")) { peakStep(e, ed.msel.peak, q.endsWith("+") ? 1 : -1); return; }
     if (q === "seed") { if (e) mCommit([], mAndTwin(e).map((f) => [f, { seed: newSeed() }])); return; }
     if (q === "auto") { if (e && e.base) mCommit([], mAndTwin(e).map((f) => [f, { base: undefined }])); return; }
-    const k = q.slice(0, -1), dir = q.endsWith("+") ? 1 : -1, n = MOUNTAIN_STEPS[k].length;
+    mAdjust(q.slice(0, -1), q.endsWith("+") ? 1 : -1);
+  };
+  // un parametro della montagna di `dir` passi (§9.237: anche piu' d'uno, lo slider)
+  const mAdjust = (k, dir) => {
+    const e = ed.msel && ed.msel.e, n = MOUNTAIN_STEPS[k].length;
     if (!e) { ed.mtn[k] = Math.max(0, Math.min(n - 1, ed.mtn[k] + dir)); return; }
     const i = Math.max(0, Math.min(n - 1, mtnIdx(k, e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]]) + dir));
     if (MOUNTAIN_STEPS[k][i] !== e[k]) mCommit([], mAndTwin(e).map((f) => [f, { [k]: MOUNTAIN_STEPS[k][i] }]));
@@ -1562,11 +1636,16 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   // (piu' grandi e piu' piene che sulla mappa: l'erba del gioco e' tenue;
   // una copia del tipo di particella con la sua trasparenza, piu' bassa per
   // le particelle a 0)
+  // ([§9.237, segnalazione dell'autore: "il wiggle delle particelle del
+  // pennello bouquet e' troppo forte"] ingrandite nel riquadro, con
+  // l'ampiezza e il ritmo del gioco sembravano agitate: qui meno della meta'
+  // dell'ampiezza e piu' lente)
   const uiParts = new Particles(), TUFT = { dark: 6, mid: 6, light: 6, blades: 7, wheat: 5, poppy: 3, yellow: 3, leaves: 2, pink: 2, clover: 3 };
   const TUFT_K = { dark: 1.7, mid: 1.7, light: 1.7, blades: 2.2, wheat: 1.5, poppy: 0.95, yellow: 1.1, leaves: 0.6, pink: 1.05, clover: 0.95 }; // (§9.223: foglie, fiori rosa, foglioline)
   // ([§9.224] foglie, fiori rosa e foglioline non hanno l'origine al piede: il
   // ciuffo spostato perche' stia nel suo posto)
   const TUFT_OFF = { leaves: [0, -12], pink: [-26, -34], clover: [0, -14] };
+  uiParts.swayAmp = 0.4; uiParts.swayRate = 0.6;
   let tufts = null;
   const makeTufts = () => {
     tufts = {};
@@ -1744,6 +1823,37 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       if (!input.mouseDown[ed.drag.button]) ed.drag = null;
       return;
     }
+    // [§9.237] gli slider dei riquadri: premuto sulla guida si trascina (anche
+    // fuori dal riquadro) fino al rilascio; un trascinamento che cambia la
+    // mappa e' un passo solo di "annulla". Il passo si prova solo quando
+    // cambia (un'altezza rifiutata non riavvisa a ogni passo)
+    if (ed.slide) {
+      const S = ed.slide, q = sliders(L).find((o) => o.id === S.id);
+      if (q && S.tool === ed.tool) {
+        const i = sliderIndex(q.G, q.n, mx);
+        if (i !== S.last) { S.last = i; const d = i - q.cur(); if (d) q.set(i, d); }
+      }
+      if (!q || S.tool !== ed.tool || !input.mouseDown[0]) { if (S.group) scene.end(); ed.slide = null; }
+      return;
+    }
+    ed.slHover = null;
+    if (hit && hit.kind === "ui" && !ed.open && !ed.confirm && !ed.dom) {
+      const q = sliders(L).find((o) => onSlider(o.G, mx, my));
+      if (q) {
+        ed.slHover = q.id;
+        if (input.mousePressed[0]) {
+          ed.slide = { id: q.id, tool: ed.tool, group: q.group, last: null };
+          if (q.group) scene.begin();
+          const i = sliderIndex(q.G, q.n, input.pressPos[0][0]);
+          ed.slide.last = i;
+          const d = i - q.cur();
+          if (d) q.set(i, d);
+          // (pressione e rilascio nello stesso passo: un clic)
+          if (!input.mouseDown[0]) { if (q.group) scene.end(); ed.slide = null; }
+        }
+        return;
+      }
+    }
     // la colonna e il cerchio "Indietro"
     if (input.mouseReleased[0] && ed.hover && !ed.move && !ed.box) {
       const b = ed.hover;
@@ -1771,17 +1881,9 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         return;
       }
     }
-    // [§9.206] il riquadro della nebbia: "-" e "+" delle impostazioni
-    ed.fogHover = null;
+    // [§9.206] il riquadro della nebbia (§9.237: gli slider, sopra)
     const FT = hit && hit.kind === "ui" ? fogTarget() : null;
-    if (FT) {
-      const FL = fogLayout(L.panel, FT.object);
-      if (inRect(mx, my, FL.box)) {
-        for (const G of FL.groups) for (const [C, sg] of [[G.minus, "-"], [G.plus, "+"]]) if (dhypot(mx - C[0], my - C[1]) <= C[2] + 4) ed.fogHover = G.key + sg;
-        if (input.mouseReleased[0] && ed.fogHover) setFog(FT, ed.fogHover.slice(0, -1), ed.fogHover.endsWith("+") ? 1 : -1);
-        return;
-      }
-    }
+    if (FT && inRect(mx, my, fogLayout(L.panel, FT.object).box)) return;
     // la tavolozza (Inserisci)
     ed.palHover = null;
     if (P && hit && hit.kind === "ui") {
@@ -1816,47 +1918,23 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     // [§9.187] il riquadro della polilinea: le schede, larghezza e larghezza
     // finale (della linea scelta, o di quelle nuove)
     if (ed.tool === "line" && hit && hit.kind === "ui") {
-      const B = lineLayout(L.panel), on = (q) => dhypot(mx - q[0], my - q[1]) <= q[2] + 4;
+      const B = lineLayout(L.panel);
       const tab = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
-      ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : on(B.end.minus) ? "e-" : on(B.end.plus) ? "e+" : null);
-      if (input.mouseReleased[0] && ed.palHover) {
-        const q = ed.palHover, dir = q[1] === "+" ? 1 : -1, step = (k) => Math.max(0, Math.min(LINE_WIDTHS.length - 1, k + dir));
-        if (q.kind) { ed.line.kind = q.kind; ed.lsel = null; ed.drawing = null; }
-        else if (ed.lsel) {
-          const { key, e } = ed.lsel;
-          scene.modifyFeatures(key, lineAndTwin(key, e), (f) => {
-            const w = f.width, we = f.widthEnd ?? f.width;
-            if (q[0] === "w") { const nw = LINE_WIDTHS[step(nearestW(w))]; return we === w ? { width: nw } : { width: nw, widthEnd: we }; }
-            const ne = LINE_WIDTHS[step(nearestW(we))];
-            return ne === w ? { widthEnd: undefined } : { widthEnd: ne };
-          });
-          for (const f of lineAndTwin(key, e)) if (f.widthEnd === undefined) delete f.widthEnd;
-        } else {
-          const k = ed.line.kind, W0 = ed.line.w, E0 = ed.line.we;
-          if (q[0] === "w") { const linked = E0[k] === W0[k]; W0[k] = step(W0[k]); if (linked) E0[k] = W0[k]; } else E0[k] = step(E0[k]);
-        }
-      }
+      ed.palHover = tab || null;
+      if (input.mouseReleased[0] && ed.palHover && ed.palHover.kind) { ed.line.kind = ed.palHover.kind; ed.lsel = null; ed.drawing = null; }
       return;
     }
     // [§9.214] il riquadro della montagna: i "-" e "+", i due pulsanti
     if (ed.tool === "mountain" && hit && hit.kind === "ui") {
-      const B = mountainLayout(L.panel), on = (q) => dhypot(mx - q[0], my - q[1]) <= q[2] + 4;
+      const B = mountainLayout(L.panel);
       ed.palHover = null;
-      for (const k of MTN_KEYS) { if (on(B[k].minus)) ed.palHover = k + "-"; if (on(B[k].plus)) ed.palHover = k + "+"; }
       if (inRect(mx, my, B.seed)) ed.palHover = "seed";
       if (inRect(mx, my, B.auto)) ed.palHover = "auto";
       if (input.mouseReleased[0] && ed.palHover && !ed.mdraw) mPanel(ed.palHover);
       return;
     }
-    // [§9.194] il riquadro della gomma: la larghezza coi "-" e "+"
-    if (ed.tool === "erase" && hit && hit.kind === "ui") {
-      const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
-      ed.palHover = on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : null;
-      if (input.mouseReleased[0] && ed.palHover) {
-        ed.erase.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, ed.erase.w + (ed.palHover === "w+" ? 1 : -1)));
-      }
-      return;
-    }
+    // [§9.194] il riquadro della gomma: la larghezza (§9.237: lo slider, sopra)
+    if (ed.tool === "erase" && hit && hit.kind === "ui") return;
     // [§9.216] il riquadro delle particelle dell'erba: i "-" e "+"
     ed.mixHover = null; ed.mixTip = null;
     if (ed.tool === "brush" && ed.brush.kind === "grass" && hit && hit.kind === "ui") {
@@ -1872,18 +1950,11 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
         return;
       }
     }
-    // [§9.185] il riquadro del pennello: le schede, i "-" e "+"
+    // [§9.185] il riquadro del pennello: le schede (§9.237: gli slider, sopra)
     if (ed.tool === "brush" && hit && hit.kind === "ui") {
-      const B = brushLayout(L.panel), on = (c) => dhypot(mx - c[0], my - c[1]) <= c[2] + 4;
-      const tab = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2]));
-      ed.palHover = tab || (on(B.width.minus) ? "w-" : on(B.width.plus) ? "w+" : ed.brush.kind === "forest" && on(B.density.minus) ? "d-"
-        : ed.brush.kind === "forest" && on(B.density.plus) ? "d+" : null);
-      if (input.mouseReleased[0] && ed.palHover) {
-        const q = ed.palHover, b = ed.brush;
-        if (q.kind) b.kind = q.kind;
-        else if (q[0] === "w") b.w = Math.max(0, Math.min(BRUSH_WIDTHS.length - 1, b.w + (q[1] === "+" ? 1 : -1)));
-        else b.d = Math.max(0, Math.min(BRUSH_SPACING.length - 1, b.d + (q[1] === "+" ? 1 : -1)));
-      }
+      const B = brushLayout(L.panel);
+      ed.palHover = B.tabs.find((q) => inRect(mx, my, [q.x1, q.y1, q.x2, q.y2])) || null;
+      if (input.mouseReleased[0] && ed.palHover) ed.brush.kind = ed.palHover.kind;
       return;
     }
     // sulla mappa
@@ -2385,7 +2456,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(0.69);
       draw.roundrectColourExt(FL.box[0], FL.box[1], FL.box[2], FL.box[3], 40, 40, c.white, c.white, false);
       draw.setValign("middle");
-      for (const G of FL.groups) pmGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), G.key, ed.fogHover);
+      for (const G of FL.groups) slGroup(G, tr(FOG_LABEL[G.key]), fogValue(FT.object, G.key, FT.values[G.key]), "fog:" + G.key, L.panel);
       draw.setAlpha(1); draw.setColour(c.white);
     }
     // [§9.220] il nome dell'icona della larghezza (sopra l'icona)
@@ -2494,7 +2565,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
     if (ed.tool === "insert") { drawPalette(panel); draw.setColour(c.white); return; }
     if (ed.tool === "brush") { drawBrushPanel(panel); draw.setColour(c.white); return; }
-    if (ed.tool === "erase") { pmGroup(brushLayout(panel).width, WIDTH_ICON, BRUSH_WIDTHS[ed.erase.w] + " px", "w"); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
+    if (ed.tool === "erase") { slGroup(brushLayout(panel).width, WIDTH_ICON, BRUSH_WIDTHS[ed.erase.w] + " px", "erase:w", panel); draw.setAlpha(1); draw.setColour(c.white); return; } // §9.194
     if (ed.tool === "line") { drawLinePanel(panel); draw.setColour(c.white); return; }
     if (ed.tool === "mountain") { drawMountainPanel(panel); draw.setColour(c.white); return; } // §9.214
     draw.setHalign("left");
@@ -2733,7 +2804,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     const w = draw.stringWidth(text);
     if (w > room && room > 0) draw.textTransformed(x, y, text, room / w); else draw.text(x, y, text);
   };
-  // un valore coi suoi "-" e "+" (pennello, polilinea)
+  // un valore coi suoi "-" e "+" (§9.237: solo le particelle del bouquet)
   const pmGroup = (G, label, value, key, hover = ed.palHover) => { // (§9.206: hover, il "-" o "+" sotto il puntatore)
     draw.setFont("overdue");
     draw.setColour(c.black); draw.setAlpha(0.8);
@@ -2753,6 +2824,28 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
     }
   };
 
+  // [§9.237] uno slider (pennello, gomma, polilinea, montagna, nebbia):
+  // l'icona o l'etichetta, la guida coi passi, la parte fino al passo scelto
+  // piena, la manopola (piu' grande col puntatore sopra o trascinata), il valore
+  const slGroup = (G, label, value, id, panel) => {
+    const q = sliders({ panel }).find((o) => o.id === id);
+    draw.setFont("overdue");
+    draw.setColour(c.black); draw.setAlpha(0.8);
+    if (label && label.icon) labelIcon(label.icon, G.label[0], G.label[1]);
+    else { draw.setHalign("left"); fitText(G.label[0], G.label[1], label, G.track[0] - 16 - G.label[0]); }
+    draw.setHalign("center"); fitText(G.value[0], G.value[1], value, G.room);
+    if (!q) return;
+    const [x0, x1, cy] = G.track, i = q.cur(), kx = sliderX(G, q.n, i);
+    const hov = ed.slHover === id || (ed.slide && ed.slide.id === id);
+    draw.setAlpha(0.25); draw.lineWidthColour(x0, cy, x1, cy, 6, DARK, DARK);
+    draw.setAlpha(0.75); draw.lineWidthColour(x0, cy, kx, cy, 6, DARK, DARK);
+    for (let k = 0; k < q.n; k++) { draw.setAlpha(k <= i ? 0.9 : 0.45); draw.circleColour(sliderX(G, q.n, k), cy, 2.5, k <= i ? c.white : DARK, k <= i ? c.white : DARK, false); }
+    draw.setAlpha(hov ? 1 : 0.85);
+    draw.circleColour(kx, cy, SLIDER_KNOB + (hov ? 2 : 0), DARK, DARK, false);
+    draw.setAlpha(1);
+    draw.circleColour(kx, cy, 3.5, c.white, c.white, false);
+  };
+
   // [§9.187] il riquadro della polilinea: fiume, strada, sentiero; larghezza
   // e larghezza finale della linea scelta (o di quelle nuove)
   const drawLinePanel = (panel) => {
@@ -2769,8 +2862,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(LINE_LABEL[q.kind]));
     }
     const w = sel ? sel.e.width : lineW(kind), we = sel ? sel.e.widthEnd ?? sel.e.width : lineWE(kind);
-    pmGroup(B.width, WIDTH_ICON, w + " px", "w");
-    pmGroup(B.end, END_ICON, we === w ? tr("Same") : we + " px", "e");
+    slGroup(B.width, WIDTH_ICON, w + " px", "line:w", panel);
+    slGroup(B.end, END_ICON, we === w ? tr("Same") : we + " px", "line:e", panel);
     draw.setAlpha(1);
   };
 
@@ -2784,8 +2877,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       const v = e ? e[k] ?? MOUNTAIN_STEPS[k][ed.mtn[k]] : mtnVal(k);
       // ([§9.215] con una cima scelta, "Altezza" e' la sua: in % dell'altezza della montagna)
       const pk = e && ed.msel.peak != null && k === "height" ? ed.msel.peak : null;
-      if (pk !== null) { pmGroup(B[k], PEAK_ICON, Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", k); continue; }
-      pmGroup(B[k], k === "width" ? WIDTH_ICON : k === "height" ? HEIGHT_ICON : k === "rough" ? ROUGH_ICON : DETAIL_ICON, k === "width" && e && e.base ? "—" : mtnValue(k, v), k);
+      if (pk !== null) { slGroup(B[k], PEAK_ICON, Math.round((e.peaks ? e.peaks[pk] : 1) * 100) + "%", "mtn:peak", panel); continue; }
+      slGroup(B[k], k === "width" ? WIDTH_ICON : k === "height" ? HEIGHT_ICON : k === "rough" ? ROUGH_ICON : DETAIL_ICON, k === "width" && e && e.base ? "—" : mtnValue(k, v), "mtn:" + k, panel);
     }
     draw.setFont("overdue");
     draw.setHalign("center");
@@ -2802,7 +2895,7 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
   };
 
   // [§9.185] il riquadro del pennello: le schede (bosco e texture), larghezza
-  // e densita' (solo per il bosco) coi loro "-" e "+"
+  // e densita' (solo per il bosco) coi loro slider (§9.237)
   const drawBrushPanel = (panel) => {
     const B = brushLayout(panel), b = ed.brush;
     draw.setFont("overdue");
@@ -2816,8 +2909,8 @@ export async function runEditor({ r, assets, canvas, settings, params, toast, pr
       draw.setAlpha(on ? 1 : 0.8);
       draw.text((q.x1 + q.x2) / 2, (q.y1 + q.y2) / 2 + 1, tr(q.kind === "forest" ? "Forest" : q.kind === "grass" ? "Bouquet" : BG_NAMES[q.kind])); // (§9.219: "Erba" era troppo simile a "Prato")
     }
-    pmGroup(B.width, WIDTH_ICON, BRUSH_WIDTHS[b.w] + " px", "w");
-    if (b.kind === "forest") pmGroup(B.density, DENSITY_ICON, (b.d + 1) + " / " + BRUSH_SPACING.length, "d");
+    slGroup(B.width, WIDTH_ICON, BRUSH_WIDTHS[b.w] + " px", "brush:w", panel);
+    if (b.kind === "forest") slGroup(B.density, DENSITY_ICON, (b.d + 1) + " / " + BRUSH_SPACING.length, "brush:d", panel);
     draw.setAlpha(1);
   };
 

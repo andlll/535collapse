@@ -571,7 +571,8 @@ const DECOR = {
   burst_erba1: [[erba([51, 70, 36], [80, 105, 52]), 1100], [erba([80, 105, 52], [114, 132, 66]), 1000],
                 [erba([114, 132, 66], [145, 155, 80]), 500]],
   burst_grano1: [[partType({ sprite: "part_crop", size: [0.4, 0.7, 0, 0], ...SWAY, alpha: [0.3, 0.7] }), 2500]],
-  chiazzaparticellare: [[partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false],
+  // ([§9.237] i fili girano attorno alla base: pivot)
+  chiazzaparticellare: [[partType({ shape: "line", size: [0.1, 0.3, 0, 0], orientation: [85, 95, 0, 7, false], pivot: "base",
                                     colour: { mix: [makeColourRgb(52, 94, 10), makeColourRgb(113, 151, 56)] },
                                     alpha: [1, 0.8], life: [99999999, 99999999] }), 1700]],
 };

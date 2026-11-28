@@ -492,8 +492,11 @@ export class EditScene {
   }
 
   // [§9.185] un gruppo di modifiche (una pennellata): annulla le toglie tutte
-  begin() { this.group = []; }
+  // ([§9.237] annidati: lo slider trascinato apre un gruppo, e ogni passo
+  // della montagna (mCommit) ne apre uno suo dentro: conta il piu' esterno)
+  begin() { if (this.group) { this.groupDepth = (this.groupDepth || 0) + 1; return; } this.group = []; }
   end() {
+    if (this.groupDepth) { this.groupDepth--; return; }
     const g = this.group;
     this.group = null;
     if (g && g.length) this._push(g);

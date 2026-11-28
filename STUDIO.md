@@ -15524,3 +15524,80 @@ diventa quello del giocatore 2, p2_centro) e la prova controlla anche che
 la vista di ognuno parta dalla sua bandierina (A sulla rossa, B sulla blu).
 In locale passa (a parte audio.json, che qui manca: in CI lo costruisce il
 passo dell'audio).
+
+### 9.237 La CPU: niente edifici sui fiumi, i campi seminati; gli slider dell'editor
+
+Richieste dell'autore (28 novembre 2026, nuova PR, 0.2619): "Dobbiamo
+fixare dei comportamenti della ai del nemico: 1) non puo' costruire in posti
+bloccati come sopra i fiumi 2) non deve costruire i campi di grano come
+edifici, ma coltivarli usando un lavoratore per volta. Altre cose da fixare:
+quando un campo di grano viene distrutto non deve fare il sfx del crollo.
+Nell'editor il wiggle delle particelle del pennello bouquet e' troppo forte,
+e sui fili d'erba deve fare perno alla base e non al centro (fixare anche le
+particelle in game se sono state fatte cosi'). Regola generale per la
+tavolozza dell'editor: proviamo a sostituire i pulsanti piu' e meno delle
+varie funzioni con degli slider, lascia piu' e meno solo per le particelle
+del pennello bouquet".
+
+**I posti della CPU (economy.js site).** Il controllo "lontano dal fiume"
+c'era solo per gli edifici nuovi della schermaglia (baseSpot) e non valeva:
+chiamava world.terrainBlocks, che guarda solo unita' e fantasmi degli
+edifici (*_placer), e il cantiere nemico non e' ne' l'una ne' l'altro. Ora
+il controllo e' in site(), il posto libero di ogni cantiere della CPU
+(edifici nuovi, depositi nuovi, ricostruzioni, la fattoria di partenza):
+nessuna acqua dei fiumi a linee ne' montagne del generatore sotto la
+maschera (world.inTerrain sulla scatola), come per il fantasma degli edifici
+del giocatore. La casa nemica non ha maschera (la sua scatola e' il disegno
+intero, tetto compreso): conta l'impronta del cantiere (c?m), la stessa del
+fantasma della casa del giocatore.
+
+**I campi seminati (enemy_campo_fond).** La CPU apriva per il campo un
+cantiere come per gli altri edifici (enemy_cantiere, tre costruttori,
+l'azione 6). Ora il campo nemico nasce da seminare, come quello del
+giocatore (campo_fond): enemy_campo_fond (nuovi.json; non e'
+enemy_fondamenta, i costruttori non ci vanno; non solido), coi germogli che
+si fanno fitti man mano; la regia ci manda un lavoratore solo (orderWork
+"sow": fieldwork e azione 8, +5 di vita a scatto, il lancio dei semi) e non
+lo toglie per altri lavori (pull). Seminato, al suo posto il campo nemico, e
+il seminatore resta a coltivarlo (come il civile del giocatore). Il civile
+(civilians.js) cerca il cantiere di campo della sua parte (SIDES.campoFond).
+Il campo da seminare conta come cantiere aperto (uno alla volta) e come
+campo per l'ordine di costruzione dello stile; si vede come gli altri
+edifici nemici; i fanti del giocatore gli danno fuoco (clic destro, frecce
+incendiarie: -20 come al campo) e, bruciato, la CPU lo rifara'.
+
+**Il suono.** Un campo (del giocatore o della CPU, finito o da seminare)
+bruciato non fa il suono del crollo (app.js, hooks.destroyed).
+
+**Il bouquet nell'editor.** Le icone del riquadro delle particelle (§9.218)
+sono ingrandite (fino a x2,2) e, con l'ampiezza e il ritmo del gioco,
+sembravano agitate: ora il 40% dell'ampiezza e il 60% del ritmo
+(Particles.swayAmp e swayRate, 1 nel gioco). I fili d'erba (la linea di
+chiazzaparticellare, larga 64 px con l'origine in mezzo) giravano attorno al
+centro, anche nel gioco: ora attorno alla base (pivot "base" del tipo: la
+linea si sposta perche' l'estremita' di sotto resti dov'era alla nascita).
+Le altre particelle che ondeggiano (erba, spighe, fiori, germogli) hanno gia'
+l'origine al piede.
+
+**Gli slider.** Larghezza e densita' del pennello, larghezza della gomma,
+larghezza e larghezza finale della polilinea, altezza, larghezza, asperita'
+e dettaglio della montagna (e l'altezza della cima scelta), le impostazioni
+della nebbia: al posto di "-" e "+" uno slider coi passi (editor.js slAt,
+slGroup, sliders): la guida coi puntini dei passi, piena fino alla
+manopola, il valore a destra. Un clic sulla guida va al passo piu' vicino;
+premuto, si trascina (anche fuori dal riquadro) fino al rilascio. Un
+trascinamento che cambia la mappa (la linea o la montagna scelta, la nebbia
+scelta) e' un passo solo di "annulla" (i gruppi di editmap.js ora si
+annidano: la montagna ne apre uno suo a ogni passo). I passi si provano solo
+quando cambiano (un'altezza della cima rifiutata non riavvisa a ogni passo).
+I "-" e "+" restano solo per le particelle del bouquet.
+
+Prove: enemyfields.mjs, nuova (nella CI): una schermaglia su sk_rivo con la
+CPU che gioca da sola (nessun edificio nuovo sull'acqua, i campi nascono da
+seminare, al piu' un seminatore, nessun costruttore, campi finiti); poi la
+base della CPU (un centro nuovo) dove attorno c'e' piu' acqua: nessun
+edificio nuovo sull'acqua (col controllo di prima: sei, fra campi, cantieri e
+una caserma); un campo del giocatore, uno della CPU e uno da seminare
+bruciati senza "rovina", una casa si'. editor.mjs (in piu': lo slider della
+larghezza premuto, trascinato oltre la fine e cliccato), mountains.mjs ed
+editor.test.mjs per gli slider al posto di "-" e "+".

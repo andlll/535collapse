@@ -361,8 +361,12 @@ test("§9.185 il riquadro del pennello", () => {
     const L = editorLayout(W, H), B = brushLayout(L.panel), [x1, y1, x2, y2] = L.panel;
     assert.equal(B.tabs.length, 6); // (§9.216: bosco, erba e le tre texture; §9.219: e la sabbia)
     for (const q of B.tabs) assert.ok(q.x1 >= x1 && q.x2 <= x2 && q.y2 <= y2);
-    for (const G of [B.width, B.density]) for (const c of [G.minus, G.plus]) assert.ok(c[0] + c[2] <= x2 && c[1] + c[2] <= y2 && c[1] - c[2] > y1 + 90);
-    assert.ok(B.width.plus[0] + 20 < B.density.label[0], "larghezza e densita' non si toccano");
+    // ([§9.237] gli slider: la guida e il valore dentro il riquadro, sotto le schede)
+    for (const G of [B.width, B.density]) {
+      const [t0, t1, cy] = G.track;
+      assert.ok(t0 > G.label[0] + 50 && t1 < G.value[0] - G.room / 2 && G.value[0] + G.room / 2 <= x2 && cy + 15 <= y2 && cy - 15 > y1 + 90);
+    }
+    assert.ok(B.width.value[0] + B.width.room / 2 + 10 < B.density.label[0], "larghezza e densita' non si toccano");
   }
   assert.equal(BRUSH_SPACING[3], 90); // la densita' di partenza, come il pennello bosco di Tiled
   // [§9.186] la riga della simmetria: dentro il riquadro, sotto la tavolozza e i "-" "+"
@@ -371,7 +375,7 @@ test("§9.185 il riquadro del pennello", () => {
     assert.equal(S.opts.length, 4);
     for (const q of S.opts) {
       assert.ok(q.x1 > S.label[0] && q.x2 <= L.panel[2] && q.y2 < L.panel[3] - 20, `${W}x${H}`);
-      assert.ok(q.y1 > B.width.minus[1] + B.width.minus[2] && q.y1 > P.cells[0].y2);
+      assert.ok(q.y1 > B.width.track[2] + 15 && q.y1 > P.cells[0].y2);
       assert.ok(q.y2 + 30 <= L.panel[3] - 14, "sopra la riga dei comandi della vista (in basso, alta ~20)");
     }
   }
@@ -431,7 +435,7 @@ test("§9.187 polilinea e avviso", () => {
     const L = editorLayout(W, H), B = lineLayout(L.panel), S = symLayout(L.panel);
     assert.equal(B.tabs.length, 3);
     for (const q of B.tabs) assert.ok(q.x1 >= L.panel[0] && q.x2 <= L.panel[2]);
-    for (const c of [B.width.minus, B.width.plus, B.end.minus, B.end.plus]) assert.ok(c[1] + c[2] < S.opts[0].y1 && c[0] + c[2] <= L.panel[2]);
+    for (const G of [B.width, B.end]) assert.ok(G.track[2] + 15 < S.opts[0].y1 && G.value[0] + G.room / 2 <= L.panel[2]); // §9.237
     const C = confirmLayout(W, H, 3);
     assert.equal(C.buttons.length, 3);
     for (let k = 1; k < 3; k++) assert.ok(C.buttons[k][0] > C.buttons[k - 1][2]);
@@ -839,7 +843,8 @@ test("§9.206 le impostazioni della nebbia", () => {
   // il riquadro: tre impostazioni per riga, sopra il pannello
   const L = editorLayout(1600, 900), F = fogLayout(L.panel, "sk_nebbia");
   assert.equal(F.groups.length, 5);
-  assert.ok(F.box[3] < L.panel[1] && F.groups.every((g) => g.plus[0] < L.panel[2] && g.minus[1] > F.box[1] && g.minus[1] < F.box[3]));
+  assert.ok(F.box[3] < L.panel[1] && F.groups.every((g) => g.value[0] + g.room / 2 < L.panel[2] && g.track[2] - 15 > F.box[1] && g.track[2] + 15 < F.box[3]
+    && g.track[0] > g.label[0] + 60 && g.track[1] + 14 < g.value[0] - g.room / 2 + 14)); // §9.237: lo slider
   assert.deepEqual([fogValue("sk_nebbia", "speed", -0.5), fogValue("sk_nebbia", "speed", 1), fogValue("nebbia_banco", "speed", 2), fogValue("nebbia_banco", "density", 0.75)],
                    ["« 30", "60 »", "120", "75%"]);
 });

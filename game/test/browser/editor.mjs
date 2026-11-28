@@ -64,6 +64,8 @@ const click = async (x, y, button = "left") => {
   await page.mouse.down({ button }); await page.waitForTimeout(80); await page.mouse.up({ button }); await page.waitForTimeout(150);
 };
 const res = {};
+// [§9.237] il punto della guida di uno slider al passo i (di n)
+const slAt = (G, n, i) => [G.track[0] + ((G.track[1] - G.track[0]) * i) / (n - 1), G.track[2]];
 // [§9.188] il pannello "Salva mappa": dove (nel browser, su file), poi Salva
 const saveIn = async ({ browser: inBrowser, file }) => {
   await page.waitForSelector('.net-panel [data-net="save"]');
@@ -404,6 +406,19 @@ check("la gomma col destro", left < forest.n && left > 0);
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(200);
 check("annullate gomma e pennellata", (await page.evaluate(() => window.__editor.scene.trees().length)) === 0);
 const BL = await page.evaluate(() => window.__editor.brushLayout());
+// [§9.237] lo slider della larghezza trascinato dal primo all'ultimo passo, e indietro di uno con un clic
+{
+  const [ax, ay] = slAt(BL.width, 7, 0), [bx] = slAt(BL.width, 7, 6);
+  await page.mouse.move(ax, ay); await page.waitForTimeout(100); await page.mouse.down(); await page.waitForTimeout(80);
+  const mid = await page.evaluate(() => window.__editor.ed.brush.w);
+  for (let k = 1; k <= 8; k++) { await page.mouse.move(ax + ((bx + 30 - ax) * k) / 8, ay + (k % 2) * 30); await page.waitForTimeout(40); }
+  await page.mouse.up(); await page.waitForTimeout(150);
+  const end = await page.evaluate(() => window.__editor.ed.brush.w);
+  await click(...slAt(BL.width, 7, 5));
+  const back = await page.evaluate(() => [window.__editor.ed.brush.w, window.__editor.ed.slide]);
+  check("lo slider della larghezza: premuto, trascinato, cliccato", mid === 0 && end === 6 && back[0] === 5 && back[1] === null);
+  await page.evaluate(() => { window.__editor.ed.brush.w = 3; });
+}
 await click((BL.tabs[1].x1 + BL.tabs[1].x2) / 2, (BL.tabs[1].y1 + BL.tabs[1].y2) / 2);
 await page.mouse.move(600, 400); await page.mouse.down();
 for (let k = 0; k <= 20; k++) { await page.mouse.move(600 + k * 15, 400 - k * 3); await page.waitForTimeout(30); }
@@ -458,7 +473,7 @@ for (const [x, y] of [[500, 300], [700, 350], [900, 300]]) await click(x, y);
 await click(1000, 300, "right");
 const river = await page.evaluate(() => { const m = window.__editor.scene.map; return { n: m.rivers.length, pts: m.rivers[0] && m.rivers[0].pts.length, w: m.rivers[0] && m.rivers[0].width, geo: window.__editor.scene.world.rivers.length }; });
 check("un fiume di tre punti", river.n === 1 && river.pts === 3 && river.w === 150 && river.geo === 1);
-await click(LL.width.plus[0], LL.width.plus[1]);
+await click(...slAt(LL.width, 9, 5)); // (§9.237: lo slider, LINE_WIDTHS: 150 -> 200)
 check("piu' largo", (await page.evaluate(() => window.__editor.scene.map.rivers[0].width)) === 200);
 const p1 = await page.evaluate(() => window.__editor.scene.map.rivers[0].pts[1].slice());
 await page.mouse.move(700, 350); await page.waitForTimeout(100); await page.mouse.down();
@@ -749,9 +764,8 @@ await click(...mid(P.cells[P.cells.length - 1]));
 let FL = await page.evaluate(() => window.__editor.fogLayout());
 check("Regia: il banco di nebbia, col riquadro delle impostazioni", !!FL && FL.groups.map((g) => g.key).join() === "density,speed,range");
 const fg = (key) => FL.groups.find((q) => q.key === key);
-await click(fg("density").minus[0], fg("density").minus[1]);
-await click(fg("density").minus[0], fg("density").minus[1]);
-await click(fg("range").plus[0], fg("range").plus[1]);
+await click(...slAt(fg("density"), 4, 1)); // (§9.237: gli slider; FOG_SETTINGS: 1 -> 0,5)
+await click(...slAt(fg("range"), 4, 2)); // (600 -> 900)
 await page.evaluate(() => { window.__editor.ed.sym.insert = "none"; });
 await click(700, 300);
 const banks = () => page.evaluate(() => window.__editor.scene.map.instances.filter((e) => e.object === "nebbia_banco").map((e) => e.fog || null));
@@ -759,7 +773,7 @@ check("il banco nuovo con le sue impostazioni", JSON.stringify(await banks()) ==
 await click(b6("select").x, b6("select").y);
 await page.evaluate(() => { const E = window.__editor; E.ed.sel = new Set(E.scene.map.instances.filter((e) => e.object === "nebbia_banco")); });
 FL = await page.evaluate(() => window.__editor.fogLayout());
-await click(fg("speed").plus[0], fg("speed").plus[1]);
+await click(...slAt(fg("speed"), 4, 3)); // (1 -> 2)
 check("Sposta: la velocita' del banco scelto", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, speed: 2, range: 900 }]));
 await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control"); await page.waitForTimeout(150);
 check("Ctrl+Z: la velocita' di prima", JSON.stringify(await banks()) === JSON.stringify([{ density: 0.5, range: 900 }]));

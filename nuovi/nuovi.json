@@ -1635,6 +1635,19 @@
       "depth": -1,
       "nota": "il campo coltivato nemico (§9.44), dei lavoratori nemici"
     },
+    "enemy_campo_fond": {
+      "sprite": "campo_maggese",
+      "mask": "campo1",
+      "parents": [
+        "enemy_wooden",
+        "enemy_build",
+        "enemy"
+      ],
+      "solid": false,
+      "depth": -1,
+      "kit": false,
+      "nota": "il campo nemico da seminare (§9.237, economy.js): come il campo_fond del giocatore, lo semina un lavoratore nemico alla volta; seminato diventa enemy_campo"
+    },
     "enemy_eco": {
       "sprite": null,
       "parents": [],

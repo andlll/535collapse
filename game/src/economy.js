@@ -32,7 +32,7 @@
 import { omino, orderWork } from "./civilians.js";
 import { campo, FAM, lifeBar } from "./buildings.js";
 import { fireOrder } from "./siege.js";
-import { fireStep, fireStop, burnTick } from "./effects.js";
+import { fireStep, fireStop, burnTick, campoFondCreate, campoFondStream } from "./effects.js";
 import { PRODUCERS } from "./production.js";
 import { freeSpawnEnemy } from "./enemies.js";
 import { irandomRange } from "./gm.js";
@@ -343,7 +343,7 @@ function targetFor(w, i, kind, wide, workers = []) {
 const REBUILD = {
   enemy_magazzino: { prio: 1, fam: "magazzino" },
   enemy_mulino: { prio: 1, fam: "barn" },
-  enemy_campo: { prio: 2, fam: "campo", slife: 100, rate: 5 },
+  enemy_campo: { prio: 2, fam: "campo" }, // §9.237: si semina (enemy_campo_fond), non si costruisce
   enemy_caserma: { prio: 3, fam: "caserma" },
   enemy_stalla: { prio: 4, fam: "stalla" },
   enemy_torre: { prio: 5, fam: "torre" },
@@ -373,10 +373,17 @@ function plan(w, o) {
 // Il posto e' libero: nessun solido (le rovine non contano: si tolgono) e
 // nessuna unita' sotto la maschera del cantiere. Ritorna le rovine da
 // togliere, o null se il posto e' occupato.
+// [§9.237, segnalazione dell'autore: "il nemico costruisce sopra i fiumi"]
+// e niente acqua dei fiumi a linee ne' montagne del generatore sotto la
+// maschera, come per il fantasma degli edifici del giocatore (app.js
+// terrainBlocks, *_placer). Prima il controllo c'era solo per gli edifici
+// nuovi della schermaglia (baseSpot) e non valeva: terrainBlocks guarda
+// solo unita' e fantasmi, e il cantiere non e' ne' l'una ne' l'altro.
 function site(w, L, P) {
   const f = { x: L.x, y: L.y, mask_index: P.mask, sprite_index: P.sprite, image_xscale: 1, image_yscale: 1, image_angle: 0, image_index: 0 };
   const bb = w.bbox(f);
   if (!bb) return null;
+  if (w.inTerrain && w.inTerrain(bb[0], bb[1], bb[2], bb[3])) return null;
   const ruins = [];
   const block = w._eachNear(bb, (o) => {
     if (!o.alive || !w.overlap(f, f.x, f.y, o)) return null;
@@ -386,10 +393,13 @@ function site(w, L, P) {
   return block ? null : ruins;
 }
 
-// Paga e apre il cantiere di P in spot (togliendo le rovine sotto)
+// Paga e apre il cantiere di P in spot (togliendo le rovine sotto).
+// [§9.237] Il campo non ha un cantiere da costruire: si semina
+// (enemy_campo_fond), come il campo del giocatore
 function placeCantiere(w, P, spot, en) {
   pay(en, P.cost);
   for (const r of spot.ruins) w.destroy(r);
+  if (P.o === "enemy_campo") { w.create("enemy_campo_fond", spot.x, spot.y); return; }
   w.create("enemy_cantiere", spot.x, spot.y, { init: (f) => {
     Object.assign(f, { target: P.o, slife: P.slife, rate: P.rate, phases: P.phases, solid: P.solid });
     f.sprite_index = P.sprite; f.mask_index = P.mask;
@@ -501,6 +511,61 @@ export function enemyCantiere(p) {
   };
 }
 
+// [§9.237, richiesta dell'autore: "non deve costruire i campi di grano come
+// edifici, ma coltivarli usando un lavoratore per volta"] enemy_campo_fond:
+// il cantiere del campo nemico. Come il campo_fond del giocatore
+// (buildings.js campoFond) non e' un cantiere da costruire (non e'
+// enemy_fondamenta: i costruttori non ci vanno) ne' un solido: lo semina un
+// lavoratore alla volta (orderWork "sow": fieldwork, azione 8, +5 vita a
+// ogni scatto), coi germogli che si fanno fitti man mano. Seminato, al suo
+// posto il campo nemico (enemy_campo), e il seminatore resta a coltivarlo.
+// Si vede come gli altri edifici nemici (revealBuilding, germogli compresi);
+// i fanti del giocatore gli danno fuoco (clic destro) come al campo:
+// bruciato, il nemico lo rifara'.
+export function enemyCampoFond(p) {
+  const showSprouts = (i) => { if (i.grass_system) i.grass_system.autoDraw = i.visible !== false; };
+  return {
+    create(i, w) {
+      p.markInstance(i, 1);
+      Object.assign(i, { life: 1, slife: 100, fase: 0, fondazione: 1, occupato: 0, legno: 0, pietra: 0, hit: 0, onfire: 0,
+                         firestarted: 0, selected: 0, hover: 0 });
+      i.depth = -1;
+      i.visible = false;
+      i.alarm.set(1, 70);
+      campoFondCreate(i, w);
+      revealBuilding(i, w);
+      showSprouts(i);
+    },
+    alarm1(i, w) { i.alarm.set(1, 70); burnTick(i, w); },
+    alarm2(i) { i.hit = 0; },
+    destroy(i, w) { w.particles.systemDestroy(i.grass_system); fireStop(i, w); },
+    step(i, w) {
+      revealBuilding(i, w);
+      showSprouts(i);
+      fireStep(i, w, "campo");
+      if (i.life <= 0) {
+        lostBuilding(w, { object: "enemy_campo", x: i.x, y: i.y });
+        w.destroy(i);
+        return;
+      }
+      if (i.life >= i.slife) {
+        const { x, y, visible } = i;
+        w.destroy(i);
+        const c = w.create("enemy_campo", x, y);
+        if (visible) { c.visible = true; showCrops(c); }
+        return;
+      }
+      campoFondStream(i, w);
+    },
+    mouseEnter(i) { i.hover = 1; },
+    mouseLeave(i) { i.hover = 0; },
+    rightReleased: fireOrder,
+    drawEnd(i, w, d) {
+      if (i.visible && (i.hover === 1 || i.hit === 1)) d.lifeBar(i.x - 25, i.y - 82, i.life / i.slife, 0xff0000);
+    },
+  };
+}
+
 // [§9.57, richiesta dell'autore] La fattoria di partenza, gia' finita: un
 // mulino e dei campi nei punti di `farm` ({ mill: [x, y], fields: [[x, y],
 // ...] }, levels.js). Se un punto non va, il piu' vicino che va su anelli
@@ -546,7 +611,7 @@ function pull(w, workers, t, now) {
   let best = null, bd = Infinity;
   for (const pass of [0, 1]) {
     for (const o of workers) {
-      if (o.fleeUntil > now || o.buildwork || o.action === 6 || o.repairwork || o.action === 7) continue;
+      if (o.fleeUntil > now || o.buildwork || o.action === 6 || o.repairwork || o.action === 7 || o.fieldwork || o.action === 8) continue; // §9.237: non chi semina
       if (pass === 0 ? o.action !== 0 : !jobOf(o)) continue;
       const d = dhypot(o.x - t.x, o.y - t.y);
       if (d < bd) { bd = d; best = o; }
@@ -592,7 +657,8 @@ function popCap(w, E) {
 // il tetto non e' gia' il massimo), se no il primo dell'ordine dello stile
 // che non c'e' ancora (contando quelli gia' fatti e i cantieri).
 function nextBuild(w, E, nWorkers, home) {
-  const have = (o) => w.number(o) + [...w.all("enemy_cantiere")].filter((f) => f.target === o).length;
+  const have = (o) => w.number(o) + [...w.all("enemy_cantiere")].filter((f) => f.target === o).length
+    + (o === "enemy_campo" ? w.number("enemy_campo_fond") : 0); // §9.237
   const pop = nWorkers + soldiers(w).length, cap = popCap(w, E);
   if (E.houses && pop + 3 >= cap && cap < (E.popMax || 99) && ![...w.all("enemy_cantiere")].some((f) => f.target === "enemy_house")) return "enemy_house";
   const seen = {};
@@ -603,7 +669,7 @@ function nextBuild(w, E, nWorkers, home) {
   return null;
 }
 // Il posto di un edificio nuovo attorno alla base (home): su anelli da 260
-// a 1100 px, libero (site) e lontano dal fiume, a BASE_GAP px da altri
+// a 1100 px, libero (site: anche dai fiumi e dalle montagne), a BASE_GAP px da altri
 // edifici e dalle risorse (non chiude miniere e boschi), non dove ci sono
 // soldati del giocatore, raggiungibile. I campi vicini al centro (dove si
 // porta il cibo); le torri dalla parte del giocatore; il resto prima piu'
@@ -631,7 +697,6 @@ function baseSpot(w, p, P, home, o) {
     const ruins = site(w, pt, P);
     if (!ruins) continue;
     Object.assign(f, { x: pt.x, y: pt.y });
-    if (w.terrainBlocks && w.terrainBlocks(f, pt.x, pt.y)) continue;
     const bb = w.bbox(f);
     if (!bb) continue;
     const big = [bb[0] - BASE_GAP, bb[1] - BASE_GAP, bb[2] + BASE_GAP, bb[3] + BASE_GAP];
@@ -744,7 +809,8 @@ export function enemyEco(p) {
       const lost = E.rebuild ? (en.lost || []) : [];
       lost.sort((a, b) => REBUILD[a.o].prio - REBUILD[b.o].prio);
       let keep = {};
-      if (!w.exists("enemy_fondamenta") && workers.length) {
+      const opening = () => w.exists("enemy_fondamenta") || w.exists("enemy_campo_fond"); // §9.237: anche il campo da seminare
+      if (!opening() && workers.length) {
         const need = E.newDeposits > (en.newDeposits || 0) ? depositNeed(w, workers, lost) : null;
         const P = need && plan(w, need.o);
         const spot = P && canPay(en, P.cost) ? findSpot(w, p, P, need, workers) : null;
@@ -765,7 +831,7 @@ export function enemyEco(p) {
         }
         // [§9.118] schermaglia: gli edifici nuovi della CPU (case quando
         // servono, poi l'ordine dello stile), uno alla volta
-        if (E.buildOrder && home && !w.exists("enemy_fondamenta") && !Object.keys(keep).length) {
+        if (E.buildOrder && home && !opening() && !Object.keys(keep).length) {
           const o = nextBuild(w, E, workers.length, home);
           if (o) {
             const P3 = plan(w, o);
@@ -784,6 +850,13 @@ export function enemyEco(p) {
           orderWork(w, p, o, "build", f);
           n++;
         }
+      }
+      // [§9.237] al campo da seminare: un lavoratore solo, come il giocatore
+      for (const f of w.all("enemy_campo_fond")) {
+        if (threatened(w, f.x, f.y, E.defendR)) continue;
+        if (workers.some((o) => (o.fieldwork === 1 || o.action === 8) && dhypot(o.buildx - f.x, o.buildy - f.y) < 30)) continue;
+        const o = pull(w, workers, f, now);
+        if (o) orderWork(w, p, o, "sow", f);
       }
       // alle riparazioni
       for (const b of w.all("enemy_build")) {

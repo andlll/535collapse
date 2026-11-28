@@ -54,7 +54,7 @@ import { captureGame, restoreGame, stateHash, stateDump } from "./snapshot.js";
 import { simSeed, freshSeed, simSeedValue } from "./rng.js"; // §9.152
 import { Commands } from "./commands.js"; // §9.153
 import { fiumeGrande, ponte } from "./bridge.js";
-import { enemyOmino, enemyCampo, enemyEco, enemyCantiere, ECO } from "./economy.js";
+import { enemyOmino, enemyCampo, enemyCampoFond, enemyEco, enemyCantiere, ECO } from "./economy.js";
 import { SK_MAPS, SK_ROOMS, isSkirmish, loadSkirmish, skirmishPrepare, skirmishStart, skManager, skNebbia, skNube, pvpTruce } from "./skirmish.js";
 import { setupMultiplayer, pvpVisibility, baseOf } from "./multiplayer.js"; // §9.155, §9.174
 import { netParams, startNet, hostGame, joinMenu, netEarly, checkMap, NET_MAP } from "./netgame.js"; // §9.156, §9.157, §9.192
@@ -350,6 +350,7 @@ async function main() {
   world.register("enemy_campo", enemyCampo(path));
   world.register("enemy_eco", enemyEco(path));
   world.register("enemy_cantiere", enemyCantiere(path));
+  world.register("enemy_campo_fond", enemyCampoFond(path)); // §9.237
   world.register("ponte", ponte(path));
   world.register("enemy_manager_lv3", enemyManagerLv3(path));
   world.register("enemy_manager_lv4", enemyManagerLv4(path)); // §9.52
@@ -604,8 +605,12 @@ async function main() {
     if (/ariete$|catapulta$/.test(n)) return "rovina_piccola";
     return "morte";
   };
+  // [§9.237, richiesta dell'autore] un campo di grano (finito o da seminare,
+  // di chiunque) bruciato non crolla: niente suono
+  const FIELDS = new Set(["campo", "campo_fond", "enemy_campo", "enemy_campo_fond"]);
   world.hooks.destroyed = (i) => {
     if (!(i.life <= 0) || !world.shown(i)) return;
+    if (FIELDS.has(baseOf(i))) return;
     // [§9.175] il crollo si sente anche fuori dalla vista, lontano (audio.js far)
     if (i.parents.some((p) => BUILD_FAMILIES.includes(p))) audio.play(i.slife >= 300 ? "rovina" : "rovina_piccola", i.x, i.y, 1, false, true);
     else if (i.parents.some((p) => UNIT_FAMILIES.includes(p))) audio.play(deathSound(i), i.x, i.y);

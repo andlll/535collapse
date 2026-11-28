@@ -34,9 +34,9 @@ const OM = "ally_omino";
 // global.en per il nemico).
 export const SIDES = {
   ally: { om: "ally_omino", unit: "ally_unit", magazza: "ally_magazza", barn: "ally_barn", fond: "ally_fondamenta",
-          build: "ally_build", campo: "campo", enemy: false, player: true },
+          build: "ally_build", campo: "campo", campoFond: "campo_fond", enemy: false, player: true },
   enemy: { om: "enemy_omino", unit: "enemy_unit", magazza: "enemy_magazza", barn: "enemy_barn", fond: "enemy_fondamenta",
-           build: "enemy_build", campo: "enemy_campo", enemy: true, player: false },
+           build: "enemy_build", campo: "enemy_campo", campoFond: "enemy_campo_fond", enemy: true, player: false }, // §9.237: campoFond
 };
 export const sideOf = (i) => (i.object === "enemy_omino" ? SIDES.enemy : SIDES.ally);
 export const poolOf = (w, i) => (i.object === "enemy_omino" ? w.g.en : w.g);
@@ -996,7 +996,7 @@ function ominoMove(i, w, p) {
       if (i.buildwork === 1) { const f = n(S.fond, i.buildx, i.buildy); if (f && !f.buildReach) toEdgeSpot(w, i, f); else mp(f); }
       if (i.repairwork === 1) toEdgeSpot(w, i, n(S.build, i.repx, i.repy));
       if (i.fieldwork === 1) {
-        const f = n("campo_fond", i.buildx, i.buildy);
+        const f = n(S.campoFond, i.buildx, i.buildy); // §9.237: anche il nemico semina
         mp(f);
         if (f) { i.dirox = f.x; i.diroy = f.y; }
       }
@@ -1326,7 +1326,7 @@ function buildStep(i, w, p) {
   // il piu' vicino al civile: con due campi in costruzione, chi andava al
   // secondo passando sul centro del primo si fermava a seminare il primo
   if (i.fieldwork === 1) {
-    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
+    const f = w.nearest(i.buildx, i.buildy, S.campoFond);
     if (!f) {
       i.fieldwork = 0; i.action = 0; p.occupy(i); i.step = 0; i.speed = 0; g.idle += 1;
     } else if (pointDistance(i.x, i.y, f.x, f.y) < 10) {
@@ -1386,7 +1386,7 @@ function buildStep(i, w, p) {
   // cantiere a 30 px): il seminatore diventa contadino. campox e' quello
   // vecchio: l'azione 3 del passo dopo trova il campo libero piu' vicino.
   if (i.action === 8) {
-    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
+    const f = w.nearest(i.buildx, i.buildy, S.campoFond);
     if (!f || pointDistance(i.buildx, i.buildy, f.x, f.y) > 30) {
       i.dirox = i.campox; i.diroy = i.campoy;
       i.foodx = i.campox; i.foody = i.campoy;
@@ -1439,9 +1439,9 @@ function otherWorkTick(i, w) {
   }
   // semina [C]: +5 a ogni scatto; alla terza fase lancia i semi
   if (i.action === 8) {
-    const f = w.nearest(i.buildx, i.buildy, "campo_fond");
+    const f = w.nearest(i.buildx, i.buildy, S.campoFond);
     if (f && f.fondazione === 1) { f.life += 5; if (f.life > f.slife) f.life = f.slife; }
-    if (i.step === 2) seedsThrow(i, w);
+    if (i.step === 2 && i.visible !== false) seedsThrow(i, w); // (§9.237: non il seminatore nemico nella nebbia)
     i.step = i.step === 0 ? 1 : i.step === 1 ? 2 : 0;
     i.alarm.set(2, 13);
     return;
@@ -1834,7 +1834,8 @@ export function recountIdle(w) {
 // destro del giocatore su una risorsa (rightClick): kind "wood", "gold",
 // "stone" verso la risorsa t, "food" al campo libero piu' vicino della
 // fazione (fieldsStep, foodwork 6), "move" verso t senza lavoro (la fuga),
-// "build" al cantiere t, "repair" all'edificio t (§9.45).
+// "build" al cantiere t, "repair" all'edificio t (§9.45), "sow" al
+// cantiere di campo t (§9.237).
 export function orderWork(w, p, i, kind, t) {
   for (const k of ["woodwork", "goldwork", "stonework", "foodwork", "buildwork", "repairwork", "fieldwork"]) i[k] = 0;
   i.creation = 0;
@@ -1847,8 +1848,11 @@ export function orderWork(w, p, i, kind, t) {
   if (kind === "move") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
   // [§9.45] costruire il cantiere t, riparare l'edificio t
   if (kind === "build") { i.buildwork = 1; i.buildx = t.x; i.buildy = t.y; }
+  // [§9.237] seminare il cantiere di campo t (enemy_campo_fond), come il
+  // civile che il giocatore manda sul campo_fond (fieldwork, azione 8)
+  if (kind === "sow") { i.fieldwork = 1; i.buildx = t.x; i.buildy = t.y; }
   if (kind === "repair") { i.repairwork = 1; i.repx = t.x; i.repy = t.y; i.repT = null; }
-  if (kind === "build" || kind === "repair") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
+  if (kind === "build" || kind === "repair" || kind === "sow") { i.dirox = t.x; i.diroy = t.y; fieldTo(w, p, i, t.x, t.y); return; }
   const [work, kx, ky] = { wood: ["woodwork", "woodx", "woody"], gold: ["goldwork", "goldx", "goldy"],
                            stone: ["stonework", "stonex", "stoney"] }[kind];
   i[work] = 1;
